@@ -172,7 +172,11 @@ CAIP-2: `aptos:` and the numeric chain id.
 
 ### exactAptos
 
-> `const` **exactAptos**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosUnsigned`](#aptosunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/aptos"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosRef`](#aptosref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`AptosStatus`](#aptosstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactAptos**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosUnsigned`](#aptosunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/aptos"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosRef`](#aptosref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`AptosStatus`](#aptosstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+
+`x402/exact/aptos`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
+transaction the payer signed and names its hash; `status` finds it by that hash, else by the payer's sender and
+sequence number.
 
 ## Functions
 
@@ -262,3 +266,9 @@ ASCII letters, digits and underscores, else `aptos/tx-malformed`.
 #### Returns
 
 [`Refusal`](index.md#refusal) \| [`AptosInstrument`](#aptosinstrument)
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

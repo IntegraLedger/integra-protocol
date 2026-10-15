@@ -58,6 +58,22 @@ description: "The exports of @integraledger/lcp/acp."
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
+##### broadcaster()
+
+> **broadcaster**(`presented`): `Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+
+Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`).
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `presented` | `unknown` |
+
+###### Returns
+
+`Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+
 ##### build()
 
 > **build**(`choice`, `h`): `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>
@@ -211,6 +227,9 @@ A CheckoutSession. Every member other than `id` and `metadata.legal_context` is 
 
 > `const` **delegated**: [`AcpBinding`](#acpbinding)\<`"acp/checkout/delegated"`\>
 
+`acp/checkout/delegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's PSP charges the vault
+token the buyer's agent obtained; nothing here reads it.
+
 ***
 
 ### issuedDigest
@@ -231,6 +250,9 @@ SHA-256 over the RFC 8785 form of an issued handler option.
 
 > `const` **undelegated**: [`AcpBinding`](#acpbinding)\<`"acp/checkout/undelegated"`\>
 
+`acp/checkout/undelegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment handler
+charges the payment the checkout completed; nothing here reads it.
+
 ## Functions
 
 ### tie()
@@ -248,3 +270,9 @@ The binding slot: one option per kind of payment handler the session offers, and
 #### Returns
 
 \[`"acp"`, \{ `options`: readonly [`HandlerOption`](#handleroption)[]; \}\]
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

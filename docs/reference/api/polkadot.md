@@ -172,7 +172,10 @@ Pallet and call indices, the same on both networks.
 
 ### exactPolkadotRemark
 
-> `const` **exactPolkadotRemark**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotUnsigned`](#polkadotunsigned)\>; `carrier`: `null`; `claims`: `true`; `id`: `"x402/exact/polkadot/lcp-assets-remark"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotRef`](#polkadotref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactPolkadotRemark**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotUnsigned`](#polkadotunsigned)\>; `carrier`: `null`; `claims`: `true`; `id`: `"x402/exact/polkadot/lcp-assets-remark"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotRef`](#polkadotref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+
+`x402/exact/polkadot/lcp-assets-remark`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
+facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by block and index.
 
 ***
 
@@ -359,3 +362,9 @@ A simple-format SS58 address: one prefix byte 0–63, a 32-byte account, and a t
 #### Returns
 
 `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

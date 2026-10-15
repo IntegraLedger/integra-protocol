@@ -58,6 +58,22 @@ description: "The exports of @integraledger/lcp/ucp."
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
+##### broadcaster()
+
+> **broadcaster**(`presented`): `Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+
+Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`).
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `presented` | `unknown` |
+
+###### Returns
+
+`Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+
 ##### build()
 
 > **build**(`offer`, `h`): `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>
@@ -213,17 +229,26 @@ A checkout's own `id`, 1–256 characters.
 
 > `const` **ap2Mandate**: [`UcpBinding`](#ucpbinding)\<`"ucp/checkout/ap2-mandate"`, [`CheckoutOption`](#checkoutoption)\>
 
+`ucp/checkout/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+
 ***
 
 ### bookingAp2Mandate
 
 > `const` **bookingAp2Mandate**: [`UcpBinding`](#ucpbinding)\<`"ucp/booking/ap2-mandate"`, [`BookingOption`](#bookingoption)\>
 
+`ucp/booking/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+
 ***
 
 ### bookingUnsigned
 
 > `const` **bookingUnsigned**: [`UcpBinding`](#ucpbinding)\<`"ucp/booking/unsigned"`, [`BookingOption`](#bookingoption)\>
+
+`ucp/booking/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+executes the payment the booking completed; nothing here reads it.
 
 ***
 
@@ -244,6 +269,9 @@ The option digest the issuer keeps: SHA-256 over the RFC 8785 form.
 ### unsigned
 
 > `const` **unsigned**: [`UcpBinding`](#ucpbinding)\<`"ucp/checkout/unsigned"`, [`CheckoutOption`](#checkoutoption)\>
+
+`ucp/checkout/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+executes the payment the checkout completed; nothing here reads it.
 
 ## Functions
 
@@ -286,3 +314,9 @@ The binding slot: the checkouts or bookings this ATR was minted for, each by its
 #### Returns
 
 \[`"ucp"`, \{ `options`: readonly `O`[]; \}\]
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

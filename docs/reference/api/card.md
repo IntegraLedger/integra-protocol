@@ -72,6 +72,22 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
+##### broadcaster()
+
+> **broadcaster**(`presented`): `Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+
+Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`).
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `presented` | `unknown` |
+
+###### Returns
+
+`Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+
 ##### build()
 
 > **build**(`doc`, `h`): `Promise`\<[`Refusal`](index.md#refusal) \| `U`\>
@@ -221,6 +237,9 @@ The checkout mandate for the wallet (L2) or the agent (L3b) to sign, and the pay
 
 > `const` **sellerReference**: [`CardPairing`](#cardpairing)\<`"card/seller-reference"`, `never`\>
 
+`card/seller-reference`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment
+to its processor, with H in its processor reference; nothing here reads it.
+
 ***
 
 ### TAP\_FIELD
@@ -233,17 +252,26 @@ The checkout mandate for the wallet (L2) or the agent (L3b) to sign, and the pay
 
 > `const` **viAutonomous**: [`CardPairing`](#cardpairing)\<`"card/mastercard-vi/autonomous"`, [`ViUnsigned`](#viunsigned)\>
 
+`card/mastercard-vi/autonomous`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
+payment the mandates authorize to its processor; nothing here reads it.
+
 ***
 
 ### viImmediate
 
 > `const` **viImmediate**: [`CardPairing`](#cardpairing)\<`"card/mastercard-vi/immediate"`, [`ViUnsigned`](#viunsigned)\>
 
+`card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
+payment the mandate authorizes to its processor; nothing here reads it.
+
 ***
 
 ### visaTap
 
 > `const` **visaTap**: [`CardPairing`](#cardpairing)\<`"card/visa-tap"`, [`TapUnsigned`](#tapunsigned)\>
+
+`card/visa-tap`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment to its
+processor; nothing here reads it.
 
 ## Functions
 
@@ -280,3 +308,9 @@ The binding slot: every card option offered at this checkout, exactly as issued.
 #### Returns
 
 \[`"card"`, \{ `options`: readonly [`CardOption`](#cardoption)[]; \}\]
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

@@ -112,7 +112,10 @@ The `checkout_jwt` payload: the commerce object.
 
 ### checkoutMandate
 
-> `const` **checkoutMandate**: `Readonly`\<\{ `advertise`: (`payload`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`Payload`](#payload); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`offer`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>; `claims`: `boolean`; `id`: `"ap2/checkout-mandate"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: [`Ap2Offer`](#ap2offer); \}; `tie`: (`options`) => \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`CheckoutOption`](#checkoutoption); \}\>
+> `const` **checkoutMandate**: `Readonly`\<\{ `advertise`: (`payload`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`Payload`](#payload); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Broadcaster`](index.md#broadcaster)\>; `build`: (`offer`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>; `claims`: `boolean`; `id`: `"ap2/checkout-mandate"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: [`Ap2Offer`](#ap2offer); \}; `tie`: (`options`) => \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`CheckoutOption`](#checkoutoption); \}\>
+
+`ap2/checkout-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment processor
+executes the payment the closed Checkout Mandate authorizes; nothing here reads it.
 
 ***
 
@@ -223,3 +226,9 @@ The binding slot: the checkouts this ATR was minted for, each by its own `id`.
 #### Returns
 
 \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

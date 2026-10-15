@@ -57,7 +57,11 @@ agreement URL after the link when one is given.
 
 ### paymentRequest
 
-> `const` **paymentRequest**: `Readonly`\<\{ `advertise`: (`_doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`AckValues`](#ackvalues); `bound`: (`_presented`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `build`: (`_doc`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `id`: `"ack/payment-request"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `options`: readonly [`Json`](index.md#json)[]; \}; \}; `tie`: (`options`) => \[`"ack"`, \{ `paymentOptions`: readonly [`AckPaymentOption`](#ackpaymentoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`AckPaymentOption`](#ackpaymentoption); \}\>
+> `const` **paymentRequest**: `Readonly`\<\{ `advertise`: (`_doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`AckValues`](#ackvalues); `bound`: (`_presented`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `broadcaster`: (`presented`) => `Promise`\<[`Broadcaster`](index.md#broadcaster)\>; `build`: (`_doc`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `id`: `"ack/payment-request"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `options`: readonly [`Json`](index.md#json)[]; \}; \}; `tie`: (`options`) => \[`"ack"`, \{ `paymentOptions`: readonly [`AckPaymentOption`](#ackpaymentoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`AckPaymentOption`](#ackpaymentoption); \}\>
+
+`ack/payment-request`. The payer broadcasts (`broadcaster` answers `"payer"`): it pays the Payment Request through
+its payment service before presenting the receipt. Settlement is the seller's report: the seller verifies the
+receipt, and `fromReceipt` reads the hash from it; no `fetchPresented`, `status` or `recover` reads it.
 
 ## Functions
 
@@ -95,3 +99,9 @@ The binding slot: the Payment Request's options exactly as issued.
 #### Returns
 
 \[`"ack"`, \{ `paymentOptions`: readonly [`AckPaymentOption`](#ackpaymentoption)[]; \}\]
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

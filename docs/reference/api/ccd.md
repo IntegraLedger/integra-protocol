@@ -127,7 +127,10 @@ CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash.
 
 ### exactCcd
 
-> `const` **exactCcd**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCcd**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+
+`x402/exact/ccd`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the sponsor,
+signs and submits the sponsored transaction the payer signed; `status` reads the finalized transfer.
 
 ## Functions
 
@@ -274,3 +277,9 @@ CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 
 #### Returns
 
 `Uint8Array`\<`ArrayBuffer`\>
+
+## References
+
+### Broadcaster
+
+Re-exports [Broadcaster](index.md#broadcaster)

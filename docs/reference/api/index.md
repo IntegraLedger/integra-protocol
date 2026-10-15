@@ -75,6 +75,15 @@ A pairing of protocol, scheme and rail.
 
 ***
 
+### Broadcaster
+
+> **Broadcaster** = `"payer"` \| `"payee"`
+
+Who broadcasts what a payer presents under a pairing: `"payer"`, which sent the payment before presenting it, or
+`"payee"`, the seller, or the facilitator or processor acting for it, which sends or executes it after.
+
+***
+
 ### CoreRefusal
 
 > **CoreRefusal** = `object`
