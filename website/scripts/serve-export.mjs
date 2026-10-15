@@ -3,7 +3,10 @@
 // - `/` is index.html, `/<page>` is <page>.html, and any other address is the file at that path;
 // - an address with no file is answered 404 with 404.html (`not_found_handling = "404-page"`);
 // - each response carries the headers of every rule of out/_headers whose path matches its address, in the file's
-//   order, a rule's Content-Type replacing the one the file's extension gives.
+//   order, a header that two rules set taking both values joined by a comma, and a rule's Content-Type replacing the
+//   one the file's extension gives (https://developers.cloudflare.com/workers/static-assets/headers/). A rule that
+//   detaches a header (`! Name`) is refused: the documentation does not say how a detach orders with the rules that set
+//   the header, so this server does not guess.
 // worker.js is not run: it answers only a request that asks for Markdown, and a browser loading a page asks for HTML.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -32,6 +35,7 @@ export function parseHeaders(text) {
       const pattern = line.trim().replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*");
       rules.push({ path: line.trim(), match: new RegExp(`^${pattern}$`), headers: [] });
     } else if (rules.length > 0) {
+      if (line.trimStart().startsWith("!")) throw new Error(`_headers detaches a header, which this server does not serve: ${line.trim()}`);
       const colon = line.indexOf(":");
       rules.at(-1).headers.push([line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim()]);
     }
@@ -77,9 +81,9 @@ export function pagesOf(outDir) {
 }
 
 /**
- * Starts the server on 127.0.0.1 and a port the system picks. `extra` maps an address the export does not hold to the
- * HTML it is answered with, under the headers out/_headers gives that address. Resolves to the origin and a close
- * function.
+ * Starts the server on 127.0.0.1 and a port the system picks. `extra` maps an address the export does not hold to what
+ * it is answered with, under the headers out/_headers gives that address: a string of HTML, or `{ type, body }`.
+ * Resolves to the origin and a close function.
  */
 export async function serveExport(outDir, extra = {}) {
   const out = resolve(outDir);
@@ -94,8 +98,9 @@ export async function serveExport(outDir, extra = {}) {
     let body;
     let type;
     if (Object.hasOwn(extra, address)) {
-      body = Buffer.from(extra[address]);
-      type = TYPES[".html"];
+      const given = extra[address];
+      body = Buffer.from(typeof given === "string" ? given : given.body);
+      type = typeof given === "string" ? TYPES[".html"] : given.type;
     } else {
       let file = fileFor(out, address);
       if (file === undefined) {

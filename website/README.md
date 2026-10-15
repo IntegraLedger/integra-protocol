@@ -70,6 +70,12 @@ could differ; on another platform the build stops and names the platform it is p
   address (`/ucp/x402/2026-10-02`, its `schema.json`, and the rest it lists), and gives each address its type and
   `Cache-Control: public, max-age=86400` in `out/_headers`. A profile whose address is also its schema's folder is
   written as `<address>.html`, which the static assets serve at the address itself.
+- Last, `scripts/script-policy.mjs` writes each page's script policy into the page: a
+  `<meta http-equiv="Content-Security-Policy">` right after its `<meta charSet>` that allows the site's script files
+  and the page's inline scripts, each by its SHA-256 hash, and nothing else. The browser enforces it beside the policy
+  in `public/_headers`, which keeps `frame-ancestors 'none'`, a directive a page's own policy cannot carry. Every file
+  that is not a page takes a second header policy, `default-src 'none'; script-src 'none'`, so none runs a script when
+  it is opened as a document.
 
 ## How it is served
 

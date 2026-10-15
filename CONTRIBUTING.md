@@ -106,7 +106,17 @@ node scripts/docs-reference.mjs --check
   has one, and the search dialog with a query typed. It fails on any content policy violation, on a page served
   without `frame-ancestors 'none'` and `X-Frame-Options: DENY`, and on a page with a `<base>` or a `<form>`. It also
   loads pages of its own that use a `data:` image, a `data:` font, a `blob:` worker and a `<base>`, and submit a form,
-  and fails unless the policy refuses each of them.
+  and fails unless the policy refuses each of them. It loads each page at 1280 and 390 pixels wide, checks that the
+  page's own inline scripts ran, and adds an inline script to it, which must be refused. It also loads an SVG document
+  holding an inline script at an address that is not a page, and fails unless the script is refused.
+- `node scripts/check-script-policy.mjs`, in `website/` after the site's build, reads every file of `website/out`. It
+  fails unless each page holds one script policy, right after its `<meta charSet>`, which ends within the first 1,024
+  bytes, and before every script, link and style, that allows `'self'` and the SHA-256 of each of the page's inline
+  scripts and nothing else. The build writes it (`website/scripts/script-policy.mjs`). It also fails when a page's
+  header policies refuse the site's script files or lack `frame-ancestors 'none'`, when a file that is not a page is
+  given no header policy with `default-src 'none'` and `script-src 'none'`, and when `out/_headers` holds more than
+  Cloudflare's 100 rules or a line over its 2,000 characters; and it checks that a page with an inline script its
+  policy does not hash is reported.
 - Two builds of one commit are byte-equal. The build ID, which every page carries and which names the folder of the
   build's manifests under `/_next/static/`, is the commit's sha (`website/next.config.ts`); with uncommitted changes
   it is the sha and a digest of those changes. The Mermaid diagrams are drawn in the browser build and the font the

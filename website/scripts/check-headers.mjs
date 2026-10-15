@@ -1,9 +1,14 @@
 #!/usr/bin/env node
-// Checks the content policy the site serves (public/_headers, which the build copies to out/_headers) in the pinned
-// browser (scripts/browser.mjs):
+// Checks the content policies the site serves in the pinned browser (scripts/browser.mjs): the one public/_headers
+// gives every response (the build copies it to out/_headers), and each page's script policy, which
+// scripts/script-policy.mjs writes into the page:
 // - every page of out/, served with the headers out/_headers gives it (scripts/serve-export.mjs), loads in the light
-//   and the dark theme with no content policy violation, with its first Twoslash popup opened where it has one, and
-//   the search dialog opened with a query typed over the home page;
+//   and the dark theme, at a desktop and a phone width, with no content policy violation, its own inline scripts run,
+//   and its first Twoslash popup opened where it has one; and over the home page, the search dialog opens with a query
+//   typed, a sidebar link moves to its page in place, and the theme switch changes the theme, each with no violation;
+// - on every page so loaded, an inline script added to it, which its script policy does not hash, is refused;
+// - an SVG document holding an inline script, served at an address that is not a page under the headers out/_headers
+//   gives it, has the script refused, and the site's own SVG icon, opened as a document, loads with no violation;
 // - every page is served with `frame-ancestors 'none'` and `X-Frame-Options: DENY`, so no origin shows it in a frame,
 //   and holds no <base> or <form> element;
 // - a page served under the same headers that loads a data: image and a data: font, starts a blob: worker and sets a
@@ -19,6 +24,7 @@ import { pagesOf, serveExport } from "./serve-export.mjs";
 
 const OUT = "out";
 const SCHEMES = ["light", "dark"];
+const WIDTHS = [1280, 390];
 const QUERY = "refusal";
 /** How many pages are loaded at once, each in a tab of its own. */
 const TABS = 4;
@@ -50,11 +56,26 @@ if (pages.length === 0) {
 const failures = [];
 let loads = 0;
 let popups = 0;
-const server = await serveExport(OUT, { [REFUSED]: REFUSED_PAGE, [REFUSED_FORM]: REFUSED_FORM_PAGE });
+let planted = 0;
+let interactions = 0;
+/** The address of an SVG document holding an inline script; like every file that is not a page, its script is refused. */
+const REFUSED_SVG = "/check-headers-refused.svg";
+const REFUSED_SVG_FILE = {
+  type: "image/svg+xml",
+  body: '<svg xmlns="http://www.w3.org/2000/svg"><script>window.__svgScript = true;</script></svg>',
+};
+/** A file of the site that is not a page, opened as a document. */
+const ICON = "/icon.svg";
+const server = await serveExport(OUT, {
+  [REFUSED]: REFUSED_PAGE,
+  [REFUSED_FORM]: REFUSED_FORM_PAGE,
+  [REFUSED_SVG]: REFUSED_SVG_FILE,
+});
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true });
 try {
-  for (const scheme of SCHEMES) {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: scheme });
+  for (const [width, scheme] of WIDTHS.flatMap((w) => SCHEMES.map((s) => [w, s]))) {
+    const at = `${scheme}, ${width} px`;
+    const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme });
     // Each violation the page reports, as `directive blocked-address`.
     await context.addInitScript(() => {
       window.__violations = [];
@@ -74,7 +95,8 @@ try {
         await act?.();
         await page.waitForTimeout(300);
         const seen = await page.evaluate(() => window.__violations);
-        return { response, violations: [...seen, ...logged.map((t) => `console: ${t}`)] };
+        // A console message names the whole policy, which can be thousands of characters long: its start is kept.
+        return { response, violations: [...seen, ...logged.map((t) => `console: ${t.slice(0, 160)}`)] };
       };
       return { page, visit };
     };
@@ -93,15 +115,33 @@ try {
             popups++;
           });
           loads++;
-          for (const v of violations) failures.push(`${address} (${scheme}): ${v}`);
+          for (const v of violations) failures.push(`${address} (${at}): ${v}`);
+          // The page's own inline scripts ran: Next.js's payload scripts fill self.__next_f, and the theme script sets
+          // the theme's class.
+          const ran = await page.evaluate(
+            (scheme) => Array.isArray(self.__next_f) && document.documentElement.classList.contains(scheme),
+            scheme,
+          );
+          if (!ran) failures.push(`${address} (${at}): its inline scripts did not run`);
+          // An inline script its policy does not hash is refused.
+          const plant = await page.evaluate(async () => {
+            const before = window.__violations.length;
+            const script = document.createElement("script");
+            script.textContent = "window.__planted = true;";
+            document.head.append(script);
+            await new Promise((done) => setTimeout(done, 100));
+            return { ran: window.__planted === true, refused: window.__violations.slice(before).some((v) => v.startsWith("script-src")) };
+          });
+          planted++;
+          if (plant.ran || !plant.refused) failures.push(`${address} (${at}): an inline script its policy does not hash ran`);
           const headers = (await response?.allHeaders()) ?? {};
           if (!/(^|;)\s*frame-ancestors 'none'\s*(;|$)/.test(headers["content-security-policy"] ?? "")) {
-            failures.push(`${address} (${scheme}): its content policy does not hold frame-ancestors 'none'`);
+            failures.push(`${address} (${at}): its content policy does not hold frame-ancestors 'none'`);
           }
-          if (headers["x-frame-options"] !== "DENY") failures.push(`${address} (${scheme}): X-Frame-Options is not DENY`);
+          if (headers["x-frame-options"] !== "DENY") failures.push(`${address} (${at}): X-Frame-Options is not DENY`);
           const refusedElements = await page.evaluate(() => [...document.querySelectorAll("base, form")].map((e) => e.localName));
           if (refusedElements.length > 0) {
-            failures.push(`${address} (${scheme}): holds ${refusedElements.join(", ")}, which base-uri or form-action refuses`);
+            failures.push(`${address} (${at}): holds ${refusedElements.join(", ")}, which base-uri or form-action refuses`);
           }
         }
         await page.close();
@@ -110,17 +150,41 @@ try {
 
     const { page, visit } = await tab();
     const search = await visit("/", async () => {
-      await page.locator("button[data-search-full]").first().click();
+      await page.locator(width < 768 ? "button[data-search]" : "button[data-search-full]").first().click();
       await page.locator('[role="dialog"] input').fill(QUERY);
       await page.locator('[role="dialog"] [role="option"]').first().waitFor({ timeout: 30_000 });
       await page.waitForLoadState("networkidle");
     });
-    for (const v of search.violations) failures.push(`the search dialog for "${QUERY}" (${scheme}): ${v}`);
+    for (const v of search.violations) failures.push(`the search dialog for "${QUERY}" (${at}): ${v}`);
+
+    // A sidebar link, followed in place by the client's router, and the theme switch, at the desktop width, where both
+    // show without a menu.
+    if (width >= 768) {
+      let to;
+      const moved = await visit("/", async () => {
+        const link = page.locator('#nd-sidebar a[href^="/"]:not([href="/"]):visible').first();
+        to = await link.getAttribute("href");
+        await page.evaluate(() => {
+          window.__sameDocument = true;
+        });
+        await link.click();
+        await page.waitForURL((url) => url.pathname === to, { timeout: 30_000 });
+        await page.waitForLoadState("networkidle");
+        if (!(await page.evaluate(() => window.__sameDocument === true))) {
+          failures.push(`/ (${at}): the sidebar link to ${to} loads a new document, not the page in place`);
+        }
+        const before = await page.evaluate(() => document.documentElement.className);
+        await page.locator("button[data-theme-toggle]:visible").first().click();
+        await page.waitForFunction((b) => document.documentElement.className !== b, before, { timeout: 10_000 });
+      });
+      interactions++;
+      for (const v of moved.violations) failures.push(`/ (${at}), the sidebar link to ${to} and the theme switch: ${v}`);
+    }
 
     const refused = await visit(REFUSED, () => page.waitForTimeout(700));
     for (const directive of REFUSED_DIRECTIVES) {
       if (!refused.violations.some((v) => v.startsWith(`${directive} `))) {
-        failures.push(`${REFUSED} (${scheme}): the policy allows what ${directive} would refuse`);
+        failures.push(`${REFUSED} (${at}): the policy allows what ${directive} would refuse`);
       }
     }
     const form = await visit(REFUSED_FORM, async () => {
@@ -128,8 +192,14 @@ try {
       await page.waitForLoadState("networkidle");
     });
     if (new URL(page.url()).pathname !== REFUSED_FORM || !form.violations.some((v) => v.startsWith("form-action "))) {
-      failures.push(`${REFUSED_FORM} (${scheme}): the policy allows a form's submission, which form-action would refuse`);
+      failures.push(`${REFUSED_FORM} (${at}): the policy allows a form's submission, which form-action would refuse`);
     }
+    const svg = await visit(REFUSED_SVG);
+    const svgRan = await page.evaluate(() => window.__svgScript === true);
+    if (svgRan || !svg.violations.some((v) => v.startsWith("script-src"))) {
+      failures.push(`${REFUSED_SVG} (${at}): an inline script in a file that is not a page is not refused`);
+    }
+    for (const v of (await visit(ICON)).violations) failures.push(`${ICON} (${at}): ${v}`);
     await context.close();
   }
 } finally {
@@ -138,13 +208,16 @@ try {
 }
 
 if (failures.length > 0) {
-  console.log(`${failures.length} failure(s) of the content policy in out/_headers:`);
+  console.log(`${failures.length} failure(s) of the content policies of out/:`);
   for (const f of failures.sort()) console.log(`  ${f}`);
   process.exit(1);
 }
 console.log(
-  `${pages.length} pages in the light and the dark theme (${loads} loads, ${popups} with a Twoslash popup open) and the ` +
-    `search dialog load with no content policy violation, each page under frame-ancestors 'none' and X-Frame-Options ` +
-    `DENY and with no <base> or <form>; a data: image, a data: font, a blob: worker, a <base> and a form's submission ` +
-    `are each refused`,
+  `${pages.length} pages in the light and the dark theme at ${WIDTHS.join(" and ")} px (${loads} loads, ${popups} with a ` +
+    `Twoslash popup open), the search dialog, ${interactions} sidebar moves and theme switches load with no content ` +
+    `policy violation and their inline scripts run, ` +
+    `each page under frame-ancestors 'none' and X-Frame-Options DENY and with no <base> or <form>; an inline script ` +
+    `the page's policy does not hash is refused on each of the ${planted} loads; a data: image, a data: font, a blob: ` +
+    `worker, a <base> and a form's submission are each refused, and so is an inline script in an SVG document that ` +
+    `is not a page; ${ICON} loads as a document with no violation`,
 );

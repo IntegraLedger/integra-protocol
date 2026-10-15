@@ -661,6 +661,9 @@ jobs:
       - name: Every page loads under the headers out/_headers gives it with no content policy violation, is never framed, and a data: or blob: source is refused
         working-directory: website
         run: node scripts/check-headers.mjs
+      - name: Every inline script of every page is hashed in the page's own script policy, which allows nothing else, and every file that is not a page runs no script
+        working-directory: website
+        run: node scripts/check-script-policy.mjs
       - name: Two builds of one commit are byte-equal
         working-directory: website
         run: |
