@@ -489,6 +489,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "xrpl/memo-count",
   "xrpl/memos-not-carried",
   "xrpl/multisigned",
+  "xrpl/network-id-mismatch",
   "xrpl/network-malformed",
   "xrpl/network-missing",
   "xrpl/no-invoice-id",

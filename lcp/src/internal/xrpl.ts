@@ -151,6 +151,17 @@ export function networkId(n: XrplNetwork): number {
   return Number(n.slice("xrpl:".length));
 }
 
+/**
+ * True when a node of `network` takes the transaction for its `NetworkID`, as rippled 3.4.1 reads it in `preflight0`
+ * (`src/libxrpl/tx/Transactor.cpp` L73-93): a network whose id is at most 1024 takes a transaction without `NetworkID`
+ * only (`telNETWORK_ID_MAKES_TX_NON_CANONICAL`, whatever its value), and one above 1024 takes one whose `NetworkID` is
+ * its own id only (`telREQUIRES_NETWORK_ID`, `telWRONG_NETWORK`).
+ */
+export function networkIdHeld(tx: XrplTxJson, network: XrplNetwork): boolean {
+  const id = networkId(network);
+  return id <= 1024 ? tx["NetworkID"] === undefined : tx["NetworkID"] === id;
+}
+
 function fromHex(s: string): Uint8Array {
   const out = new Uint8Array(s.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(s.slice(2 * i, 2 * i + 2), 16);

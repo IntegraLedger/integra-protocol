@@ -55,7 +55,16 @@ import {
   type XrplCloseRef,
   type XrplCloseStatus,
 } from "./internal/xrpl-session.js";
-import { decodeBlob, decodePresented, type XrplNetwork, type XrplReader, type XrplRef, type XrplStatus, type XrplTxJson } from "./internal/xrpl.js";
+import {
+  decodeBlob,
+  decodePresented,
+  networkIdHeld,
+  type XrplNetwork,
+  type XrplReader,
+  type XrplRef,
+  type XrplStatus,
+  type XrplTxJson,
+} from "./internal/xrpl.js";
 import {
   checkedFor,
   chosenFor,
@@ -843,7 +852,8 @@ function xrplLcpMemo(tx: XrplTxJson): AtrHash | Refusal {
 
 /**
  * The opening's blob, decoded once per payload: a `PaymentChannelCreate` the payer signed with a single key (a blob that
- * carries `Signers` is refused `xrpl/multisigned`), whose one LCP memo is the echoed challenge's H.
+ * carries `Signers` is refused `xrpl/multisigned`), whose `NetworkID` a node of the challenge's network takes, as
+ * rippled reads it (`networkIdHeld`, else `xrpl/network-id-mismatch`), and whose one LCP memo is the echoed challenge's H.
  */
 async function xrplOpening(
   presented: MppCredential,
@@ -854,6 +864,9 @@ async function xrplOpening(
   if (typeof blob !== "string") return refusal("xrpl/blob-malformed");
   const decoded = await decodePresented(e.payload, blob);
   if (isRefusal(decoded)) return decoded;
+  const network = xrplNetworkOf(e.checked.details);
+  if (isRefusal(network)) return network;
+  if (!networkIdHeld(decoded.tx, network)) return refusal("xrpl/network-id-mismatch");
   if (decoded.tx.TransactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
   const h = xrplLcpMemo(decoded.tx);
   if (isRefusal(h)) return h;
@@ -980,8 +993,9 @@ function xrplCloseRef(chosen: MppChallenge, channel: string): Omit<XrplCloseRef,
 }
 
 /**
- * The `PaymentChannelCreate` for the wallet to sign, with one LCP memo carrying H, and the first claim's bytes on the
- * resulting channel. `complete` checks the signed blob before returning the credential.
+ * The `PaymentChannelCreate` for the wallet to sign, with one LCP memo carrying H and no `NetworkID` (each network the
+ * challenge can name has an id of at most 1024), and the first claim's bytes on the resulting channel. `complete` checks
+ * the signed blob as `bound` does before returning the credential, its `NetworkID` among the checks.
  */
 async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSessionUnsigned | Refusal> {
   if (!isObject(choice) || !isObject(choice.xrpl)) return refusal("mpp/input-malformed");

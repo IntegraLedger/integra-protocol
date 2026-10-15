@@ -39,9 +39,11 @@ import {
 import { MEMO_V3 } from "../src/svm.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
+import { networkIdHeld } from "../src/internal/xrpl.js";
 import { stellarLocate, type StellarReader, type StellarRef } from "../src/stellar.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { resigned } from "./fixtures/xrpl-resign.js";
 import { rowsOf } from "./rows.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
@@ -680,7 +682,7 @@ describe("mpp-charge-xrpl.json", () => {
     delete decoded["SigningPubKey"];
     delete decoded["TxnSignature"];
     expect(u.request.txJson).toEqual(decoded);
-    const cr = u.complete(V.V3.blob);
+    const cr = await u.complete(V.V3.blob);
     if ("refused" in cr) throw new Error(cr.code);
     expect(await chargeXrpl.bound(cr)).toBe(H);
     const memos = withRequest(placed, { ...V.fixed.request, methodDetails: { network: "testnet", invoiceId: V.fixed.invoiceId, memos: [] } });
@@ -783,6 +785,19 @@ describe("mpp-charge-xrpl.json", () => {
 
   it("plant: a memo carrying L without InvoiceID is refused, never H", async () => {
     expect(await chargeXrpl.bound(credential(placed, { type: "transaction", blob: V.plant.blob }))).toEqual(refused(V.plant.expect));
+  });
+
+  // rippled 3.4.1's preflight0 (src/libxrpl/tx/Transactor.cpp L73-93): a network whose id is at most 1024 takes a
+  // transaction without NetworkID only; one above 1024 takes one whose NetworkID is its own id only. Each network
+  // MPP's XRPL methods name is at most 1024, so the pairings reach the first branch; the second is read here.
+  it("networkIdHeld reads NetworkID as rippled does, on both sides of 1024", () => {
+    const tx = decodeXrpl(V.V3.blob) as { TransactionType: string; Account: string };
+    expect([0, 1, 1024].map((id) => networkIdHeld(tx, `xrpl:${id}`))).toEqual([true, true, true]);
+    expect([0, 1, 1024, 1025].map((n) => networkIdHeld({ ...tx, NetworkID: n }, "xrpl:1"))).toEqual([false, false, false, false]);
+    expect(networkIdHeld({ ...tx, NetworkID: 1024 }, "xrpl:1024")).toBe(false);
+    expect(networkIdHeld(tx, "xrpl:1025")).toBe(false);
+    expect(networkIdHeld({ ...tx, NetworkID: 1025 }, "xrpl:1025")).toBe(true);
+    expect([1026, 21337, 1].map((n) => networkIdHeld({ ...tx, NetworkID: n }, "xrpl:1025"))).toEqual([false, false, false]);
   });
 });
 
@@ -1075,8 +1090,26 @@ describe("mpp-charge-xrpl.json agreedRefusals: every row runs", () => {
     sequence: V.build.sequence,
     lastLedgerSequence: V.build.lastLedgerSequence,
   };
+  /** The row whose blobs carry NetworkID: V3's Payment, each with one of its networkIds, signed again by V3's payer. */
+  const networkRow = (V.agreedRefusals.rows as (AgreedRow & { networkIds?: number[]; blobs?: string[] })[]).find(
+    (r) => r.networkIds !== undefined,
+  )!;
 
   const cases: Record<string, () => Promise<unknown[]>> = {
+    // The blobs are V3's Payment re-signed with the row's NetworkID, and the same steps without one give V3's blob.
+    // build's complete reads each as bound does, so each call is refused.
+    [networkRow.case]: async () => {
+      expect(resigned(V.V3.blob)).toBe(V.V3.blob);
+      expect(networkRow.networkIds!.map((n) => resigned(V.V3.blob, n))).toEqual(networkRow.blobs);
+      const u = await chargeXrpl.build(choice, H);
+      if ("refused" in u) throw new Error(u.code);
+      const out: unknown[] = [];
+      for (const blob of networkRow.blobs!) {
+        const cr = credential(placed, { type: "transaction", blob });
+        out.push(await chargeXrpl.bound(cr), await chargeXrpl.reference(cr), await u.complete(blob));
+      }
+      return out;
+    },
     "pairingsOf with methodDetails.network other than mainnet, testnet or devnet": async () => [
       pairingsOf(editedRequest(V.challenge, (_, d) => (d["network"] = "betanet"))),
       pairingsOf(editedRequest(V.challenge, (_, d) => (d["network"] = "xrpl:1"))),

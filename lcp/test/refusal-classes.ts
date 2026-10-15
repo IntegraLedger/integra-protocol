@@ -203,7 +203,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   xrpl: [
     "blob-malformed", "blob-too-large", "carrier-mismatch", "carrier-not-lcp", "carrier-occupied", "currency-not-xrp",
-    "memo-count", "memos-not-carried", "multisigned", "network-malformed", "network-missing", "no-invoice-id",
-    "no-memo", "not-channel-create", "not-payment", "not-success", "peer-missing", "read-first", "wrong-reader",
+    "memo-count", "memos-not-carried", "multisigned", "network-id-mismatch", "network-malformed", "network-missing",
+    "no-invoice-id", "no-memo", "not-channel-create", "not-payment", "not-success", "peer-missing", "read-first",
+    "wrong-reader",
   ],
 };

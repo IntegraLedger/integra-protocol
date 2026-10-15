@@ -49,6 +49,7 @@ import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader 
 import { counting } from "./fixtures/counting-reader.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 import { TABLE, tableClose, tableOpening } from "./fixtures/svm-lookup-table.js";
+import { resigned } from "./fixtures/xrpl-resign.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
@@ -1612,6 +1613,27 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
         await sessionSolana.buildWithin({ challenge: client, opening: cred(client, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H),
         await sessionSolana.buildWithin({ challenge: C_S, opening: cred(C_S, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "close" } as SessionWithin, H),
       ],
+  };
+
+  // The row whose blobs carry NetworkID: XS2's opening re-signed with each of its networkIds, and the same steps without
+  // one give XS2's blob. build's complete and buildWithin read the opening as bound does, so each call is refused.
+  const networkRow = (V.agreedRefusals.rows as (Row & { networkIds?: number[]; blobs?: string[] })[]).find((r) => r.networkIds !== undefined)!;
+  cases[networkRow.case] = async () => {
+    expect(resigned(V.XS2.blob)).toBe(V.XS2.blob);
+    expect(networkRow.networkIds!.map((n) => resigned(V.XS2.blob, n))).toEqual(networkRow.blobs);
+    const u = await sessionXrpl.build(xrplChoice, H);
+    if ("refused" in u) throw new Error(u.code);
+    const out: unknown[] = [];
+    for (const blob of networkRow.blobs!) {
+      const opening = xrplOpen(blob);
+      out.push(
+        await sessionXrpl.bound(opening),
+        await sessionXrpl.reference(opening),
+        await u.complete({ signedBlob: blob, claimSignature: "00" }),
+        await sessionXrpl.buildWithin({ challenge: C_X, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H),
+      );
+    }
+    return out;
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });

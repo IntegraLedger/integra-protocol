@@ -7,6 +7,7 @@ import { normalHash } from "./fields.js";
 import {
   decodePresented,
   mppInvoiceId,
+  networkIdHeld,
   sameInvoice,
   xrplInvoiceOf,
   xrplStatus,
@@ -49,8 +50,12 @@ export interface XrplChargeChoice {
 
 export interface XrplChargeUnsigned {
   request: { kind: "xrpl-tx"; txJson: XrplTxJson };
-  /** The wallet's signed blob, hex. */
-  complete(signedBlob: string): MppCredential | Refusal;
+  /**
+   * The wallet's signed blob, hex, read as `bound` reads it: a blob that does not decode, or is multi-signed, gets the
+   * refusal `bound` gives it, and one whose `NetworkID` the challenge's network does not take is
+   * `xrpl/network-id-mismatch`.
+   */
+  complete(signedBlob: string): Promise<MppCredential | Refusal>;
 }
 
 /** The signed blob a credential presents: its `blob`, or for `type="hash"` the one fetched by that hash. */
@@ -64,7 +69,8 @@ function presentedBlob(payload: { [k: string]: Json }): string | Refusal {
 
 /**
  * The echoed challenge's binding: its `methodDetails.invoiceId`, read as `advertise` reads it (absent, or 64 hex digits,
- * else `mpp/request-malformed`), and the signed Payment's `InvoiceID`, which must equal it and the challenge's H.
+ * else `mpp/request-malformed`), and the signed Payment's `InvoiceID`, which must equal it and the challenge's H. The
+ * blob's `NetworkID` is read first, as rippled reads it (`networkIdHeld`), else `xrpl/network-id-mismatch`.
  */
 async function bindingOf(
   credential: MppCredential,
@@ -77,6 +83,9 @@ async function bindingOf(
   const decoded = await decodePresented(e.payload, blob);
   if (isRefusal(decoded)) return decoded;
   const { tx } = decoded;
+  const network = xrplNetworkOf(e.checked.details);
+  if (isRefusal(network)) return network;
+  if (!networkIdHeld(tx, network)) return refusal("xrpl/network-id-mismatch");
   if (tx.TransactionType !== "Payment") return refusal("xrpl/not-payment");
   if (typeof tx.InvoiceID !== "string") return refusal("xrpl/no-invoice-id");
   const md = e.checked.details;
@@ -156,7 +165,9 @@ async function fetchPresented(credential: MppCredential, reader: XrplReader): Pr
 /**
  * The Payment for the wallet to sign: `Destination` the request's `recipient`, `Amount` from its `currency` (drops,
  * an issued amount with `SendMax` equal to it, or an MPT amount), `InvoiceID` the request's `invoiceId`, which must be
- * this H, and the request's tags. A request with `memos` is refused.
+ * this H, and the request's tags, with no `NetworkID`: each network the challenge can name has an id of at most 1024. A
+ * request with `memos` is refused. `complete` decodes the signed blob as `bound` does and refuses one whose `NetworkID`
+ * the challenge's network does not take with `xrpl/network-id-mismatch`.
  */
 async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
@@ -165,6 +176,8 @@ async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUn
   const r = checked.request;
   const d = checked.details;
   if (!sameInvoice(d["invoiceId"], mppInvoiceId(h))) return refusal("xrpl/carrier-mismatch");
+  const network = xrplNetworkOf(d);
+  if (isRefusal(network)) return network;
   const u32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
   if (
     typeof choice.account !== "string" ||
@@ -204,9 +217,13 @@ async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUn
   const challenge = choice.challenge;
   return {
     request: { kind: "xrpl-tx", txJson },
-    complete(signedBlob: string): MppCredential | Refusal {
+    async complete(signedBlob: string): Promise<MppCredential | Refusal> {
       if (typeof signedBlob !== "string" || !HEX.test(signedBlob)) return refusal("xrpl/blob-malformed");
-      return { challenge, payload: { type: "transaction", blob: signedBlob } };
+      const payload = { type: "transaction", blob: signedBlob };
+      const decoded = await decodePresented(payload, signedBlob);
+      if (isRefusal(decoded)) return decoded;
+      if (!networkIdHeld(decoded.tx, network)) return refusal("xrpl/network-id-mismatch");
+      return { challenge, payload };
     },
   };
 }

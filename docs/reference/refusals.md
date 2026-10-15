@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 498 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 499 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -39,7 +39,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
 | [`svm`](#svm) | 29 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
-| [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
+| [`xrpl`](#xrpl) | 23 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`). |
 | [`avm`](#avm) | 13 | Algorand (`@integraledger/lcp/avm`). |
 | [`aptos`](#aptos) | 6 | Aptos (`@integraledger/lcp/aptos`). |
@@ -448,7 +448,8 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/currency-not-xrp` | An MPP XRPL session challenge names a `currency` other than `XRP`. |
 | `xrpl/memo-count` | The XRPL session opening carries more than 8 memos, or more than one memo carrying an LCP string. |
 | `xrpl/memos-not-carried` | An MPP XRPL charge challenge's `methodDetails` carries `memos`, which `build` does not write: `pairingsOf` refuses it, and so does each function that holds the challenge to the pairing's filter. |
-| `xrpl/multisigned` | The signed blob presented to `x402/exact/xrpl`, `mpp/charge/xrpl` or the `mpp/session/xrpl` opening carries `Signers`: the XRPL pairings take a transaction the payer signed with a single key, whose transaction hash is the one that can land. |
+| `xrpl/multisigned` | The signed blob presented to `x402/exact/xrpl`, `mpp/charge/xrpl` or the `mpp/session/xrpl` opening, or given to the `build`'s `complete` of `mpp/charge/xrpl` or `mpp/session/xrpl`, carries `Signers`: the XRPL pairings take a transaction the payer signed with a single key, whose transaction hash is the one that can land. |
+| `xrpl/network-id-mismatch` | The signed blob of an `mpp/charge/xrpl` credential or an `mpp/session/xrpl` opening, or one given to their `build`'s `complete`, carries a `NetworkID` a node of the challenge's network does not take, as rippled 3.4.1's `preflight0` reads it (`src/libxrpl/tx/Transactor.cpp` L73-93): a network whose id is at most 1024, as each network these pairings name is, takes no `NetworkID`, and one above 1024 takes its own id only. |
 | `xrpl/network-malformed` | The MPP XRPL challenge's `methodDetails.network` is not one of the XRPL network names this package maps. |
 | `xrpl/network-missing` | The MPP XRPL challenge's `methodDetails` names no `network`, which has no default. |
 | `xrpl/no-invoice-id` | The XRPL `Payment` carries no `InvoiceID`, or the validated transaction a recovery reads has no 256-bit `InvoiceID`. |
