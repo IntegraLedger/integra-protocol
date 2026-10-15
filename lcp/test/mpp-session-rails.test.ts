@@ -1221,6 +1221,18 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     const within = await sessionHedera.buildWithin({ challenge: C_H, opening: hs3, cumulativeAmount: 100n, action } as SessionWithin, H);
     return [sessionHedera.channel.kind(paid), await sessionHedera.channel.ref(paid), within];
   };
+  /** channel.kind and channel.ref of an XRPL payment under `action`, and buildWithin of `action` on XS2's opening. */
+  const xrplActionCalls = async (action: string) => {
+    const paid = cred(C_X, { action, channelId: V.XS2.expectChannel, amount: "100", signature: "00" });
+    const within = await sessionXrpl.buildWithin({ challenge: C_X, opening: xrplOpen(V.XS2.blob), cumulativeAmount: 100n, action } as SessionWithin, H);
+    return [sessionXrpl.channel.kind(paid), await sessionXrpl.channel.ref(paid), within];
+  };
+  /** channel.kind and channel.ref of a Solana payment under `action`, and buildWithin of `action` on SV2's opening. */
+  const solanaActionCalls = async (action: string) => {
+    const paid = cred(C_S, { action, channelId: V.SV2.channel });
+    const within = await sessionSolana.buildWithin({ challenge: C_S, opening: cred(C_S, solanaOpen), cumulativeAmount: 100n, action } as SessionWithin, H);
+    return [sessionSolana.channel.kind(paid), await sessionSolana.channel.ref(paid), within];
+  };
 
   // Each input a row changes is accepted as given, so each refusal below is the change's.
   it("the inputs the rows change, as given, are accepted", async () => {
@@ -1245,6 +1257,10 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     const [kind, ref, within] = await hederaActionCalls("voucher");
     expect([kind, ref]).toEqual(["within", { network: "hedera:testnet", channel: V.HS1.expectChannelId }]);
     expect(within).not.toHaveProperty("refused");
+    for (const calls of [await xrplActionCalls("voucher"), await solanaActionCalls("voucher")]) {
+      expect(calls[0]).toBe("within");
+      for (const answer of calls.slice(1)) expect(answer).not.toHaveProperty("refused");
+    }
   });
 
   const cases: Record<string, () => Promise<unknown[]>> = {
@@ -1345,6 +1361,10 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
         ...(await solanaCloseCalls(operator, { voucher: closeVoucher, authentication: proofFor(operator) })),
         ...(await solanaCloseCalls(operator, {})),
       ],
+    "an xrpl topUp, use or bearer (draft-xrpl-session-00 L334-377 at tempoxyz/mpp-specs 08e7dd87: the payload's action is open, voucher or close)":
+      async () => [...(await xrplActionCalls("topUp")), ...(await xrplActionCalls("use")), ...(await xrplActionCalls("bearer"))],
+    "a solana bearer (draft-solana-session-00 L1178-1353 at tempoxyz/mpp-specs 08e7dd87: the actions are open, voucher, use, topUp and close)":
+      async () => solanaActionCalls("bearer"),
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });

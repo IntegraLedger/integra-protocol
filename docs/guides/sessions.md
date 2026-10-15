@@ -108,7 +108,8 @@ On top of the members every pairing has, a channel pairing has:
 
 `buildWithin` exists on the two x402 channels and the MPP sessions on EVM, Tempo, Hedera, Solana and the XRP Ledger.
 On MPP it builds a voucher or the close. It does not build a top-up, which is a further deposit, or Solana's operator
-`use`.
+`use` (`mpp/within-action-not-built`). An action the pairing's draft does not define, such as a `topUp` on the XRP
+Ledger, is `mpp/session-action`, as `channel.kind` answers it.
 
 `mpp/subscription/stripe`'s `channel.ref` takes the payment's receipt as a second argument: the Stripe subscription
 it names is the channel.

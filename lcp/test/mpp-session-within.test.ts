@@ -133,6 +133,19 @@ describe("mpp/session/evm: buildWithin", async () => {
     expect(await sessionEvm.buildWithin(w(1n << 128n), H)).toEqual(refused("mpp/input-malformed"));
     expect(await sessionEvm.buildWithin({ ...w(1n), challenge: { ...within, method: "tempo" } }, H)).toEqual(refused("mpp/not-this-pairing"));
   });
+
+  // draft-evm-session-00 L1213 at tempoxyz/mpp-specs 08e7dd87: the payload's `action` is one of "open", "topUp",
+  // "voucher" and "close". An action the draft does not define is mpp/session-action from buildWithin as from
+  // channel.kind; a `topUp`, which it defines, is within and is not built.
+  it("an action the EVM draft does not define is mpp/session-action from buildWithin and channel.kind; a topUp is not built", async () => {
+    const kind = (action: string) => sessionEvm.channel.kind({ challenge: within, payload: { action, channelId: E.ES1.expectChannelId } });
+    for (const action of ["use", "bearer"]) {
+      expect(kind(action)).toEqual(refused("mpp/session-action"));
+      expect(await sessionEvm.buildWithin(w(1n, action), H)).toEqual(refused("mpp/session-action"));
+    }
+    expect(kind("topUp")).toBe("within");
+    expect(await sessionEvm.buildWithin(w(1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
+  });
 });
 
 describe("mpp/session/tempo: buildWithin", async () => {
@@ -185,6 +198,20 @@ describe("mpp/session/tempo: buildWithin", async () => {
     });
     expect(await sessionTempo.buildWithin(w(v1, f.requestV1, 1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
     expect(await sessionTempo.buildWithin(w(v1, f.requestV1, 1n), H2)).toEqual(refused("mpp/id-not-ours"));
+  });
+
+  // draft-tempo-session-00 L829 at tempoxyz/mpp-specs 08e7dd87: the payload's `action` is one of "open", "topUp",
+  // "voucher" and "close". An action the draft does not define is mpp/session-action from buildWithin as from
+  // channel.kind; a `topUp`, which it defines, is within and is not built.
+  it("an action the Tempo draft does not define is mpp/session-action from buildWithin and channel.kind; a topUp is not built", async () => {
+    const kind = (action: string) => sessionTempo.channel.kind({ challenge: v2.challenge, payload: { action, channelId: T.TS3.expectChannelId } });
+    for (const action of ["use", "bearer"]) {
+      expect(kind(action)).toEqual(refused("mpp/session-action"));
+      expect(await sessionTempo.buildWithin(w(v1, f.requestV1, 1n, action), H)).toEqual(refused("mpp/session-action"));
+      expect(await sessionTempo.buildWithin(w(v2, f.requestV2, 1n, action), H)).toEqual(refused("mpp/session-action"));
+    }
+    expect(kind("topUp")).toBe("within");
+    expect(await sessionTempo.buildWithin(w(v2, f.requestV2, 1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
   });
 });
 
@@ -281,6 +308,16 @@ describe("mpp/session/solana: buildWithin", () => {
     expect(await sessionSolana.buildWithin(w(1n), H2)).toEqual(refused("mpp/id-not-ours"));
     expect(await sessionSolana.buildWithin(w(1n << 64n), H)).toEqual(refused("mpp/input-malformed"));
   });
+
+  // draft-solana-session-00 L1178-1353 at tempoxyz/mpp-specs 08e7dd87: the actions are "open", "voucher", "use",
+  // "topUp" and "close". A `bearer`, which the draft does not define, is mpp/session-action from buildWithin as from
+  // channel.kind; a `topUp` and a `use`, which it defines, are not built.
+  it("an action the Solana draft does not define is mpp/session-action from buildWithin and channel.kind; a topUp or a use is not built", async () => {
+    expect(sessionSolana.channel.kind({ challenge: C_S, payload: { action: "bearer", channelId: R.SV2.channel } })).toEqual(refused("mpp/session-action"));
+    expect(await sessionSolana.buildWithin(w(1n, "bearer"), H)).toEqual(refused("mpp/session-action"));
+    expect(await sessionSolana.buildWithin(w(1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
+    expect(await sessionSolana.buildWithin(w(1n, "use"), H)).toEqual(refused("mpp/within-action-not-built"));
+  });
 });
 
 describe("mpp/session/xrpl: buildWithin", () => {
@@ -304,6 +341,15 @@ describe("mpp/session/xrpl: buildWithin", () => {
     });
     expect(u.complete(["zz"])).toEqual(refused("mpp/credential-malformed"));
     expect(await sessionXrpl.buildWithin(w(1n), H2)).toEqual(refused("mpp/id-not-ours"));
-    expect(await sessionXrpl.buildWithin(w(1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
+  });
+
+  // draft-xrpl-session-00 L334-377 at tempoxyz/mpp-specs 08e7dd87: the payload is discriminated by `action`, whose
+  // values are "open", "voucher" and "close". Any other, a `topUp` among them, is mpp/session-action from buildWithin as
+  // from channel.kind.
+  it("an action the XRPL draft does not define, a topUp among them, is mpp/session-action from buildWithin and channel.kind", async () => {
+    for (const action of ["topUp", "use", "bearer"]) {
+      expect(sessionXrpl.channel.kind({ challenge: within, payload: { action, channelId: R.XS2.expectChannel } })).toEqual(refused("mpp/session-action"));
+      expect(await sessionXrpl.buildWithin(w(1n, action), H)).toEqual(refused("mpp/session-action"));
+    }
   });
 });

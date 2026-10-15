@@ -776,10 +776,11 @@ function sameKeyBytes(a: Uint8Array | undefined, b: Uint8Array): boolean {
 /**
  * A voucher, or a close's voucher, on the channel the held opening opened, for its `client` voucher signer: one
  * `ed25519-raw` request over `solanaVoucher(channelId, cumulativeAmount)`, for the signer the opening's `open`
- * instruction named. An `operator` channel's vouchers are the operator's, and are not built.
+ * instruction named. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a
+ * `use`; an action draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
  */
 async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64);
+  const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64, ["topUp", "use"]);
   if (isRefusal(o)) return o;
   if (o.checked.details["voucherSigner"] === "operator") return refusal("mpp/within-action-not-built");
   const signer = openSigner(o.tx, o.program);
@@ -1053,10 +1054,11 @@ async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSes
 /**
  * A claim, or a close's final claim, on the channel the held opening created: one `xrpl-claim` request over
  * `xrplClaim(channelId, drops)`, for the channel's key, with the channel id derived from the opening's signed blob
- * (`xrplOpeningChannel`).
+ * (`xrplOpeningChannel`). draft-xrpl-session-00 defines no other action within a channel: any other, such as `topUp`,
+ * is `mpp/session-action`.
  */
 async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/xrpl", (p) => xrplOpening(p), U64);
+  const o = await withinChecks(w, h, "session/xrpl", (p) => xrplOpening(p), U64, []);
   if (isRefusal(o)) return o;
   const channelId = xrplOpeningChannel(o.tx);
   if (isRefusal(channelId)) return channelId;

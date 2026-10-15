@@ -181,14 +181,12 @@ export interface SessionWithinUnsigned {
   complete(signatures: readonly string[]): MppCredential | Refusal;
 }
 
-/** The actions `buildWithin` does not build: `topUp` (a new deposit), Solana's operator `use` and Lightning's `bearer`. */
-const WITHIN_NOT_BUILT = ["topUp", "use", "bearer"];
-
 /**
  * The checks `buildWithin` makes on its input before any channel value is read, in the input's member order: the
  * within challenge's shape and its intent and method; the opening, by `opened`, bound to `h`; the cumulative amount
- * below `limit`; and the action, `voucher` or `close`. An action in `notBuilt` is `mpp/within-action-not-built`, and any
- * other is `mpp/session-action`.
+ * below `limit`; and the action, `voucher` or `close`. `notBuilt` lists the actions the pairing's draft defines within
+ * a channel that `buildWithin` does not build: each is `mpp/within-action-not-built`, and an action neither built nor
+ * listed is `mpp/session-action`, as the pairing's `channel.kind` answers an action its draft does not define.
  */
 export async function withinChecks<O>(
   w: SessionWithin,
@@ -196,7 +194,7 @@ export async function withinChecks<O>(
   intentAndMethod: string,
   opened: (opening: MppCredential) => Promise<(O & { h: AtrHash }) | Refusal>,
   limit: bigint,
-  notBuilt: readonly string[] = WITHIN_NOT_BUILT,
+  notBuilt: readonly string[],
 ): Promise<O | Refusal> {
   if (!isObject(w)) return refusal("mpp/input-malformed");
   const c = w.challenge;
@@ -1158,10 +1156,11 @@ function opensChannel(args: Uint8Array, payer: Hex, opens: NonNullable<SessionRe
 
 /**
  * A voucher, or a close's final voucher, on the channel the held opening opened: `Voucher(bytes32 channelId,uint128
- * cumulativeAmount)` under "EVM Payment Channel", with the channel id, the escrow and the chain from the opening.
+ * cumulativeAmount)` under "EVM Payment Channel", with the channel id, the escrow and the chain from the opening. A
+ * `topUp` is not built; an action draft-evm-session-00 does not define, such as `use`, is `mpp/session-action`.
  */
 async function evmBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/evm", async (opening) => evmOpened(opening), U128);
+  const o = await withinChecks(w, h, "session/evm", async (opening) => evmOpened(opening), U128, ["topUp"]);
   if (isRefusal(o)) return o;
   const channelId = normalHash(w.opening.payload["channelId"]);
   if (channelId === null) return refusal("mpp/credential-malformed");
@@ -1391,12 +1390,13 @@ function tempoCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refu
 /**
  * A voucher, or a close's final voucher, on the channel the held opening opened: under "Tempo Stream Channel" with
  * `uint128` on v1, and under "TIP20 Channel Reserve" with `uint96` on v2, whose credential also carries the opening's
- * descriptor. The channel id, the escrow, the chain and the descriptor come from the opening.
+ * descriptor. The channel id, the escrow, the chain and the descriptor come from the opening. A `topUp` is not built;
+ * an action draft-tempo-session-00 does not define, such as `use`, is `mpp/session-action`.
  */
 async function tempoBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
   const version = isObject(w) && isObject(w.opening) ? paramsOf(w.opening.challenge) : refusal("mpp/input-malformed");
   const limit = !isRefusal(version) && version.version === "v2" ? U96 : U128;
-  const o = await withinChecks(w, h, "session/tempo", async (opening) => tempoOpened(opening), limit);
+  const o = await withinChecks(w, h, "session/tempo", async (opening) => tempoOpened(opening), limit, ["topUp"]);
   if (isRefusal(o)) return o;
   const p = o.params;
   if (p.version === "v2") {

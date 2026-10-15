@@ -677,6 +677,14 @@
    {
     "case": "a solana close with voucher or without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: voucher MUST be absent for operator, authentication REQUIRED for operator)",
     "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "an xrpl topUp, use or bearer (draft-xrpl-session-00 L334-377 at tempoxyz/mpp-specs 08e7dd87: the payload's action is open, voucher or close)",
+    "expect": "mpp/session-action"
+   },
+   {
+    "case": "a solana bearer (draft-solana-session-00 L1178-1353 at tempoxyz/mpp-specs 08e7dd87: the actions are open, voucher, use, topUp and close)",
+    "expect": "mpp/session-action"
    }
   ]
  },
