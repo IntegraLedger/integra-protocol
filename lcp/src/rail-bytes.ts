@@ -20,7 +20,7 @@ function isBase64(s: unknown): s is string {
 /**
  * The bytes of `s` when it is padded standard base64 (RFC 4648 §4) in its canonical form (RFC 4648 §3.5), or null: a
  * text whose last character before the padding has a bit set past the last byte is not that form. Every rail's
- * standard base64 is read here.
+ * standard base64 is read by this one function.
  */
 export function fromBase64(s: unknown): Uint8Array | null {
   if (!isBase64(s)) return null;
@@ -31,8 +31,8 @@ export function fromBase64(s: unknown): Uint8Array | null {
 }
 
 /**
- * The bytes of `s` as `fromBase64` reads them, or "too-large" when they would exceed `maxBytes`, or "malformed". The
- * length is checked before anything is decoded.
+ * The bytes of `s` as `fromBase64` reads them, or "too-large" when they would be more than `maxBytes`, or "malformed".
+ * The size is read from the text's length before anything is decoded, so a text past the bound is never decoded.
  */
 export function base64Bytes(s: unknown, maxBytes: number): Uint8Array | "too-large" | "malformed" {
   if (typeof s !== "string") return "malformed";
@@ -42,7 +42,7 @@ export function base64Bytes(s: unknown, maxBytes: number): Uint8Array | "too-lar
   return fromBase64(s) ?? "malformed";
 }
 
-/** Standard padded base64 of `b`. */
+/** Padded standard base64 (RFC 4648 §4) of `b`, in the canonical form `fromBase64` reads. */
 export function toBase64(b: Uint8Array): string {
   let bin = "";
   for (let i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]!);

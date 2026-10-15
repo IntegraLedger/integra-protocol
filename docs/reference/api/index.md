@@ -191,6 +191,26 @@ behind an accessor included.
 
 ***
 
+### base64Bytes()
+
+> **base64Bytes**(`s`, `maxBytes`): `Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+
+The bytes of `s` as `fromBase64` reads them, or "too-large" when they would be more than `maxBytes`, or "malformed".
+The size is read from the text's length before anything is decoded, so a text past the bound is never decoded.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `s` | `unknown` |
+| `maxBytes` | `number` |
+
+#### Returns
+
+`Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+
+***
+
 ### canonicalJson()
 
 > **canonicalJson**(`v`): `string` \| [`CoreRefusal`](#corerefusal)
@@ -226,6 +246,26 @@ an unpaired surrogate, or anything that is not a JSON value.
 #### Returns
 
 `Promise`\<`` `0x${string}` `` \| [`CoreRefusal`](#corerefusal)\>
+
+***
+
+### fromBase64()
+
+> **fromBase64**(`s`): `Uint8Array`\<`ArrayBufferLike`\> \| `null`
+
+The bytes of `s` when it is padded standard base64 (RFC 4648 §4) in its canonical form (RFC 4648 §3.5), or null: a
+text whose last character before the padding has a bit set past the last byte is not that form. Every rail's
+standard base64 is read by this one function.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `s` | `unknown` |
+
+#### Returns
+
+`Uint8Array`\<`ArrayBufferLike`\> \| `null`
 
 ***
 
@@ -473,6 +513,24 @@ it), a missing peer dependency, and malformed input. A string the package does n
 #### Returns
 
 `boolean`
+
+***
+
+### toBase64()
+
+> **toBase64**(`b`): `string`
+
+Padded standard base64 (RFC 4648 §4) of `b`, in the canonical form `fromBase64` reads.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `b` | `Uint8Array` |
+
+#### Returns
+
+`string`
 
 ***
 

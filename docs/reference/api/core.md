@@ -19,6 +19,12 @@ Re-exports [AtrHash](index.md#atrhash)
 
 ***
 
+### base64Bytes
+
+Re-exports [base64Bytes](index.md#base64bytes)
+
+***
+
 ### canonicalJson
 
 Re-exports [canonicalJson](index.md#canonicaljson)
@@ -34,6 +40,12 @@ Re-exports [CoreRefusal](index.md#corerefusal)
 ### digestJson
 
 Re-exports [digestJson](index.md#digestjson)
+
+***
+
+### fromBase64
+
+Re-exports [fromBase64](index.md#frombase64)
 
 ***
 
@@ -112,6 +124,12 @@ Re-exports [readToRepeat](index.md#readtorepeat)
 ### Refusal
 
 Re-exports [Refusal](index.md#refusal)
+
+***
+
+### toBase64
+
+Re-exports [toBase64](index.md#tobase64)
 
 ***
 

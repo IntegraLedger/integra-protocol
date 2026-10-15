@@ -87,8 +87,8 @@ scheme, at most 2048 characters long, as `<surface>/link-not-https`, and any oth
 
 A Worker that needs only the core imports `@integraledger/lcp/core`. It exports the core functions the package root
 exports, each the root's own function: `assemble`, `newAtrId`, `hash`, `hashEquals`, the forms of H and their readers,
-`isHttpsLink`, `isOtherSchemeLink`, `canonicalJson`, `digestJson`, `parseJson`, `isRefusal` and `readToRepeat`. It
-imports no pairing, no rail and no optional peer, so the Worker's bundle holds the core alone.
+`isHttpsLink`, `isOtherSchemeLink`, `canonicalJson`, `digestJson`, `parseJson`, `fromBase64`, `base64Bytes`,
+`toBase64`, `isRefusal` and `readToRepeat`. It imports no pairing, no rail and no optional peer, so the Worker's bundle holds the core alone.
 
 ```ts
 import { hash, hashEquals, toLcpString } from "@integraledger/lcp/core";

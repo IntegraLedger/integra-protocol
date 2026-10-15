@@ -3,8 +3,10 @@ import { isRefusal, type Refusal } from "./refusal.js";
 
 export {
   assemble,
+  base64Bytes,
   canonicalJson,
   digestJson,
+  fromBase64,
   fromLcpString,
   fromLegalContext,
   fromRawBytes,
@@ -14,6 +16,7 @@ export {
   isOtherSchemeLink,
   newAtrId,
   parseJson,
+  toBase64,
   toLcpString,
   toLegalContext,
   toRawBytes,

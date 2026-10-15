@@ -258,6 +258,7 @@ describe("each public entry point bundled for a Worker with no optional peer ins
       `${PKG.name}/dist/core.js`,
       `${PKG.name}/dist/internal/core.js`,
       `${PKG.name}/dist/internal/reads-to-repeat.js`,
+      `${PKG.name}/dist/rail-bytes.js`,
       `${PKG.name}/dist/refusal.js`,
     ]);
     expect(readFileSync(bundleOf(KEYS.indexOf("./core")), "utf8")).not.toMatch(/\bimport\s*\(/);
