@@ -15,7 +15,7 @@ import { decodeCardanoTx, exactCardano } from "../src/cardano.js";
 import { chargeHedera, exactHedera, hederaStatus, type HederaReader, type MirrorEntry } from "../src/hedera.js";
 import type { MppCredential } from "../src/mpp.js";
 import { exactNear, type NearReader } from "../src/near.js";
-import { base64Bytes, fromBase64 } from "../src/rail-bytes.js";
+import { base64Bytes, fromBase64, toBase64 } from "../src/rail-bytes.js";
 import { decodeStellarTx, transferEventOf } from "../src/stellar.js";
 import { decodeSuiTx, exactSui } from "../src/sui.js";
 import { exactTvm } from "../src/tvm.js";
@@ -82,6 +82,21 @@ describe("standard base64 in its canonical form", () => {
     expect(differ).toEqual([]);
     expect([raised("QQ=="), raised("QUI=")]).toEqual(["QR==", "QUJ="]);
     expect([fromBase64("QR=="), fromBase64("QUJ="), base64Bytes("QR==", 8)]).toEqual([null, null, "malformed"]);
+  }, 0);
+
+  it("toBase64 writes 16 MiB as Node's Buffer writes it, and fromBase64 and base64Bytes read it back", () => {
+    // 16 MiB is one byte more than a multiple of three, so the text ends in "==". The test has no time bound (0): the
+    // reader and the writer each make one pass, in constant stack, and how long that takes depends only on the machine.
+    const bytes = Uint8Array.from({ length: 16 * 1024 * 1024 }, (_, i) => (i * 31 + (i >>> 11)) & 0xff);
+    const text = Buffer.from(bytes).toString("base64");
+    expect([text.length, text.endsWith("==")]).toEqual([22369624, true]);
+    expect(toBase64(bytes) === text).toBe(true);
+    const read = fromBase64(text);
+    const bounded = base64Bytes(text, bytes.length);
+    expect(read !== null && Buffer.from(read).equals(bytes)).toBe(true);
+    expect(bounded instanceof Uint8Array && Buffer.from(bounded).equals(bytes)).toBe(true);
+    expect(base64Bytes(text, bytes.length - 1)).toBe("too-large");
+    expect(fromBase64(`${text.slice(0, -3)}R==`)).toBeNull();
   }, 0);
 });
 
