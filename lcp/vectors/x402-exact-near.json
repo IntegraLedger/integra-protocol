@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; row 28, V1's with two parts changed, the receiver's first bytes and the count of actions; row 29, V1's with two parts changed, the sender, written as 64 A's, and the count of actions; and row 30, V1's with two parts changed, the receiver, written as -usdc.testnet, and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; row 28, V1's with two parts changed, the receiver's first bytes and the count of actions; row 29, V1's with two parts changed, the sender, written as 64 A's, and the count of actions; and row 30, V1's with two parts changed, the receiver, written as -usdc.testnet, and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. A lapsed row with a ref member is read with V3's ref, each member it names in place of the ref's own. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -472,6 +472,18 @@
      "blockHeight": "200000060"
     },
     "expect": false
+   },
+   {
+    "case": "finalHeight 200000061, key nonce 100 read at 200000061, with the ref's publicKey ed25519: and no key: the ref names no key, so no key read is made and none proves the lapse",
+    "ref": {
+     "publicKey": "ed25519:"
+    },
+    "finalHeight": "200000061",
+    "keyNonce": {
+     "nonce": "100",
+     "blockHeight": "200000061"
+    },
+    "expect": false
    }
   ],
   "recover": [
@@ -793,6 +805,46 @@
     "case": "build with a payer of payer-.testnet, which is not a NEAR account id (a separator never follows another, whichever the two are)",
     "payer": "payer-.testnet",
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "args that name receiver_id twice, first as Not An Id, which is not a NEAR account id, then as merchant.testnet: the token contract reads its arguments with serde's derived reader (near-sdk), which refuses the first receiver_id and refuses a field named twice (duplicate_field), where JSON.parse keeps the last",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKmAAAAeyJyZWNlaXZlcl9pZCI6Ik5vdCBBbiBJZCIsInJlY2VpdmVyX2lkIjoibWVyY2hhbnQudGVzdG5ldCIsImFtb3VudCI6IjEwMDAwMDAiLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "args that name receiver_id twice, first as merchant.testnet, then as Not An Id: serde's derived reader refuses a field named twice",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKmAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJyZWNlaXZlcl9pZCI6Ik5vdCBBbiBJZCIsImFtb3VudCI6IjEwMDAwMDAiLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "args that name memo twice, first as a free-form string, then as V1's LCP string: serde's derived reader refuses a field named twice, so the token contract refuses the arguments",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKmAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImEgZnJlZS1mb3JtIG1lbW8iLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "args that name receiver_id twice, the second key written receiver\\u005fid, each merchant.testnet: serde_json decodes a key's escapes before serde's derived reader matches it, so the arguments name receiver_id twice",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKyAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicmVjZWl2ZXJcdTAwNWZpZCI6Im1lcmNoYW50LnRlc3RuZXQifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "args with no amount: the token contract reads amount as a U128, which serde's derived reader requires (missing_field)",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXJ5AAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "args whose amount is the JSON number 1000000: near-sdk reads a U128 from a JSON string alone",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKKAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOjEwMDAwMDAsIm1lbW8iOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9AOBX60gbAAABAAAAAAAAAAAAAAAAAAAAZQAAAAAAAAA8wusLAAAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "args whose amount is 340282366920938463463374607431768211456, 2^128: near-sdk reads a U128 with Rust's u128::from_str, whose largest value is 2^128 - 1",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKsAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIzNDAyODIzNjY5MjA5Mzg0NjM0NjMzNzQ2MDc0MzE3NjgyMTE0NTYiLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQDgV+tIGwAAAQAAAAAAAAAAAAAAAAAAAGUAAAAAAAAAPMLrCwAAAAAAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "args whose object has a key written \\ud800, a lone surrogate: serde_json reads each key of the object as a string and refuses an escape that decodes to a lone surrogate, though serde's derived reader would skip the key",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKZAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwiXHVkODAwIjoieCJ9AOBX60gbAAABAAAAAAAAAAAAAAAAAAAAZQAAAAAAAAA8wusLAAAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "near/args-malformed"
    }
   ]
  },

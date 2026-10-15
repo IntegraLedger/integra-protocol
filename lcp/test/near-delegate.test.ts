@@ -182,8 +182,8 @@ function signedDelegatesIn(v: unknown, path: string, out: [string, string][]): [
 
 describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
   it("every signed delegate action in x402-exact-near.json: each reader reads what the other reads, and both write its bytes", () => {
-    // V2's and the secp256k1 vector's, V2's four refusals, eighteen agreedRefusals rows and one buyer row.
-    const all = rowsOf(signedDelegatesIn(V, "", []), "x402-exact-near.json, every signedDelegateAction", { exact: 25 });
+    // V2's and the secp256k1 vector's, V2's four refusals, twenty-six agreedRefusals rows and one buyer row.
+    const all = rowsOf(signedDelegatesIn(V, "", []), "x402-exact-near.json, every signedDelegateAction", { exact: 33 });
     const read: string[] = [];
     const nearcoreRefuses: string[] = [];
     for (const [where, text] of all) {
@@ -216,6 +216,14 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       "/agreedRefusals/rows/7/signedDelegateAction",
       "/agreedRefusals/rows/16/signedDelegateAction",
       "/agreedRefusals/rows/33/signedDelegateAction",
+      "/agreedRefusals/rows/35/signedDelegateAction",
+      "/agreedRefusals/rows/36/signedDelegateAction",
+      "/agreedRefusals/rows/37/signedDelegateAction",
+      "/agreedRefusals/rows/38/signedDelegateAction",
+      "/agreedRefusals/rows/39/signedDelegateAction",
+      "/agreedRefusals/rows/40/signedDelegateAction",
+      "/agreedRefusals/rows/41/signedDelegateAction",
+      "/agreedRefusals/rows/42/signedDelegateAction",
       "/buyer/rows/1/input/presented/payload/signedDelegateAction",
       "/secp256k1/expectSignedDelegateAction",
     ]);

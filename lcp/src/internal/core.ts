@@ -380,6 +380,39 @@ export function jsonWithinDepth(text: string): boolean {
   return true;
 }
 
+/**
+ * The keys of the object at the top of JSON text, in their order, a repeated key as often as it appears, each with its
+ * escapes decoded: `"receiver\u005fid"` is `receiver_id`, and `"\ud800"` is a lone surrogate. Undefined when the
+ * text's value is not an object. The text must be JSON that `JSON.parse` reads; nothing else about it is checked.
+ */
+export function jsonObjectKeys(text: string): string[] | undefined {
+  let i = 0;
+  while (i < text.length && (text[i] === " " || text[i] === "\t" || text[i] === "\n" || text[i] === "\r")) i++;
+  if (text[i] !== "{") return undefined;
+  const keys: string[] = [];
+  let depth = 0;
+  let keyNext = false;
+  for (; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 0x22) {
+      const start = i;
+      for (i++; i < text.length && text.charCodeAt(i) !== 0x22; i++) if (text.charCodeAt(i) === 0x5c) i++;
+      if (depth === 1 && keyNext) {
+        keys.push(JSON.parse(text.slice(start, i + 1)) as string);
+        keyNext = false;
+      }
+    } else if (c === 0x7b || c === 0x5b) {
+      depth++;
+      keyNext = depth === 1;
+    } else if (c === 0x7d || c === 0x5d) {
+      depth--;
+    } else if (c === 0x2c && depth === 1) {
+      keyNext = true;
+    }
+  }
+  return keys;
+}
+
 /** The value of JSON text nested at most 64 levels deep; undefined for text that is deeper or is not JSON. */
 export function parseJson(text: string): unknown {
   if (typeof text !== "string" || !jsonWithinDepth(text)) return undefined;

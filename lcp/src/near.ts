@@ -6,6 +6,7 @@
 import type * as Borsh from "borsh";
 import { fromLcpString, hash, hashEquals, parseJson, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
+import { jsonObjectKeys } from "./internal/core.js";
 import type { NearPayment } from "./internal/near.js";
 import {
   decodeSignedDelegate,
@@ -81,7 +82,10 @@ export interface NearReader {
   txStatus(txHash: string, sender: string): Promise<NearOutcome | null>;
   /** `block` at finality "final": its header's height. */
   finalHeight(): Promise<bigint>;
-  /** `view_access_key` at "final": the key's nonce and the `block_height` of the block whose state it reads; null: no such key. */
+  /**
+   * `view_access_key` at "final" for the account and the key asked, which is written as nearcore's RPC writes a key: that
+   * key's nonce and the `block_height` of the block whose state it reads; null: no such key.
+   */
   accessKeyNonce(account: string, publicKey: string): Promise<{ nonce: bigint; blockHeight: bigint } | null>;
 }
 
@@ -146,12 +150,14 @@ const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
  * `ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A
- * `payTo` that is not a NEAR account id is `near/option-malformed`, as the option filter answers an option carrying it,
- * since the token contract reads `receiver_id` as an `AccountId` and refuses any other string; then a value that is not a
+ * `payTo` that is not a NEAR account id, or an `amount` that is not the canonical decimal string of a positive integer
+ * below 2^128, is `near/option-malformed`, as the option filter answers an option carrying it, since the token contract
+ * reads `receiver_id` as an `AccountId` and `amount` as a `U128` and refuses anything else; then a value that is not a
  * 32-byte hash is `x402/payload-malformed`.
  */
 export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8Array<ArrayBuffer> | Refusal {
   if (!isNearAccountId(payTo)) return refusal("near/option-malformed");
+  if (!isAmount(amount) || decimalBelow(amount, U128_LIMIT) === undefined) return refusal("near/option-malformed");
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   return utf8.encode(JSON.stringify({ receiver_id: payTo, amount, memo: toLcpString(nh) }));
@@ -166,10 +172,16 @@ export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8
  * Otherwise the bytes must be exactly the borsh encoding of what is read, every string in it UTF-8, the key and the
  * signature each Ed25519 or secp256k1, and an Ed25519 signature's last byte below 0x20, as nearcore reads one, or they
  * are `near/sda-malformed`. The arguments are strict UTF-8 JSON text whose leading byte-order mark is kept as a
- * character, so arguments that begin with one are `near/args-malformed`, as are arguments whose `receiver_id` is not a
- * NEAR account id, which the token contract refuses; then a `memo` that is not a string is `near/memo-missing`. A NEAR
- * account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`, where a separator (`-`, `_`
- * or `.`) is never first, never last, and never follows another (near-account-id's `AccountId`).
+ * character, so arguments that begin with one are `near/args-malformed`. So are arguments the token contract refuses:
+ * it reads them as near-sdk does, with serde's derived reader over `receiver_id: AccountId`, `amount: U128` and
+ * `memo: Option<String>`. Those are arguments whose object names `receiver_id`, `amount` or `memo` more than once, each
+ * key read with its escapes decoded, or has a key that decodes to a lone surrogate, or whose `receiver_id` is not a NEAR
+ * account id, or whose `amount` is not a string of an optional `+` and one or more ASCII digits below 2^128, leading
+ * zeros allowed (Rust's `u128::from_str`). Any other key is ignored, however often it repeats. Then a `memo` that is not
+ * a string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. The amount is not compared
+ * with the option's. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`,
+ * where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
+ * `AccountId`).
  */
 export function nearCarrier(signedDelegateAction: string): {
   h: AtrHash;
@@ -207,10 +219,10 @@ function carrierOf(signedDelegateAction: string): {
   const da = d.delegateAction;
   if (da.functionCall.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = da.functionCall.args;
-  const parsed = argsObject(args);
-  if (isRefusal(parsed)) return parsed;
-  if (!isNearAccountId(parsed["receiver_id"])) return refusal("near/args-malformed");
-  const memo = memoIn(parsed);
+  const read = argsObject(args);
+  if (isRefusal(read)) return read;
+  if (!tokenReads(read.text, read.parsed)) return refusal("near/args-malformed");
+  const memo = memoIn(read.parsed);
   if (isRefusal(memo)) return memo;
   return {
     h: memo,
@@ -223,16 +235,49 @@ function carrierOf(signedDelegateAction: string): {
   };
 }
 
-/** `ft_transfer`'s arguments as a JSON object: strict UTF-8 JSON text of at most 4096 bytes. */
-function argsObject(args: Uint8Array): Record<string, unknown> | Refusal {
+/** `ft_transfer`'s arguments as a JSON object, with their text: strict UTF-8 JSON text of at most 4096 bytes. */
+function argsObject(args: Uint8Array): { text: string; parsed: Record<string, unknown> } | Refusal {
   if (args.length > MAX_ARGS_BYTES) return refusal("near/args-malformed");
-  let parsed: unknown;
+  let text: string;
   try {
-    parsed = parseJson(strictUtf8.decode(args));
+    text = strictUtf8.decode(args);
   } catch {
     return refusal("near/args-malformed");
   }
-  return isObject(parsed) ? parsed : refusal("near/args-malformed");
+  const parsed = parseJson(text);
+  return isObject(parsed) ? { text, parsed } : refusal("near/args-malformed");
+}
+
+/** The keys the token contract's `ft_transfer` reads. */
+const TRANSFER_KEYS: ReadonlySet<string> = new Set(["receiver_id", "amount", "memo"]);
+/** A surrogate code unit that is not half of a pair. */
+const LONE_SURROGATE = /\p{Cs}/u;
+/** `u128::from_str`'s text: an optional `+`, then one or more ASCII digits. */
+const U128_TEXT = /^\+?[0-9]+$/;
+
+/**
+ * True for `ft_transfer` arguments the token contract reads. near-sdk reads a JSON method's arguments with
+ * `serde_json::from_slice` into a struct serde derives from the method's parameters, here `receiver_id: AccountId`,
+ * `amount: U128` and `memo: Option<String>`, and it refuses unknown keys only for a method marked
+ * `deny_unknown_arguments`. serde_json reads each key of the object as a string, refusing an escape that decodes to a
+ * lone surrogate. The derived reader refuses a key it names that appears twice, and skips any other key each time it
+ * appears. `AccountId` is a NEAR account id; `U128` is a string that Rust's `u128::from_str` reads: an optional `+`,
+ * then one or more ASCII digits, leading zeros allowed, at most 2^128 - 1. The memo is read after, by `memoIn`.
+ */
+function tokenReads(text: string, parsed: Record<string, unknown>): boolean {
+  const keys = jsonObjectKeys(text);
+  if (keys === undefined) return false;
+  const named = new Set<string>();
+  for (const key of keys) {
+    if (LONE_SURROGATE.test(key)) return false;
+    if (!TRANSFER_KEYS.has(key)) continue;
+    if (named.has(key)) return false;
+    named.add(key);
+  }
+  if (!isNearAccountId(parsed["receiver_id"])) return false;
+  const amount = parsed["amount"];
+  if (typeof amount !== "string" || !U128_TEXT.test(amount)) return false;
+  return BigInt(amount.startsWith("+") ? amount.slice(1) : amount) < U128_LIMIT;
 }
 
 /** The hash in the `memo` of a JSON object of `ft_transfer` arguments. */
@@ -307,14 +352,18 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
  * the key's nonce, read at a block height at or past that final height, is below the action's. A key read that lags
  * the final height read first is false. A key that does not exist is false, because a key deleted after the delegate
  * executed gives the same answer. Two calls; a failed or malformed read, or a ref or reader that is not an object, is
- * false. A ref whose payer is not a NEAR account id is false, with nothing read.
+ * false. The key is read only for the delegate's own key, the ref's `publicKey` in the form nearcore's RPC writes it
+ * and `reference` copies from the delegate (`ed25519:` and the base58 of 32 bytes, or `secp256k1:` and of 64), since
+ * the reader's answer names no key: it is the answer for the key asked. A ref whose public key is in any other form,
+ * another spelling of a key included, or names no key, is false with nothing read, as `nearStatus` reads it as
+ * unreadable; so is a ref whose payer is not a NEAR account id.
  */
 export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<boolean> {
   if (!isObject(ref) || !isObject(reader)) return false;
   const maxBlockHeight = u64Of(ref.maxBlockHeight);
   const signed = u64Of(ref.nonce);
   if (reader.network !== ref.network || maxBlockHeight === null || signed === null) return false;
-  if (!isNearAccountId(ref.payer)) return false;
+  if (!isNearAccountId(ref.payer) || !isPublicKey(ref.publicKey)) return false;
   try {
     const height = await reader.finalHeight();
     if (typeof height !== "bigint" || height <= maxBlockHeight) return false;
@@ -348,8 +397,8 @@ export async function nearRecover(ref: { network: NearNetwork; transaction: stri
   if (outcome.delegate === null || outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = fromBase64(outcome.delegate.argsBase64);
   if (args === null) return refusal("near/unreadable");
-  const parsed = argsObject(args);
-  return isRefusal(parsed) ? parsed : memoIn(parsed);
+  const read = argsObject(args);
+  return isRefusal(read) ? read : memoIn(read.parsed);
 }
 
 /** The relayers the reader lists, the first four, when there is one and each is a NEAR account id; else null. */
@@ -523,7 +572,8 @@ function u64Of(s: unknown): bigint | null {
  * True for a public key as nearcore writes it: `ed25519:` and the base58 of 32 bytes, or `secp256k1:` and of 64.
  * `nearStatus` compares a ref's key as text with the key the reader's delegate carries, which nearcore's RPC writes in
  * this form, so a ref holds it in this form alone: another spelling `build` reads, such as `ED25519:` or no key type,
- * names the same key but would compare unequal, and is unreadable here.
+ * names the same key but would compare unequal, and is unreadable here. `nearLapsed` asks the reader for a key's nonce
+ * only with a ref's key in this form.
  */
 function isPublicKey(s: unknown): boolean {
   const k = nearKeyOf(s);

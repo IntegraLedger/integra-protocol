@@ -37,7 +37,8 @@ Bounded, read-only calls against one network's RPC. Every failure rejects, for e
 
 > **accessKeyNonce**(`account`, `publicKey`): `Promise`\<\{ `blockHeight`: `bigint`; `nonce`: `bigint`; \} \| `null`\>
 
-`view_access_key` at "final": the key's nonce and the `block_height` of the block whose state it reads; null: no such key.
+`view_access_key` at "final" for the account and the key asked, which is written as nearcore's RPC writes a key: that
+key's nonce and the `block_height` of the block whose state it reads; null: no such key.
 
 ###### Parameters
 
@@ -171,8 +172,9 @@ The NEP-461 prefix for a delegate action: (1 << 30) + 366.
 > **ftTransferArgs**(`payTo`, `amount`, `h`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 `ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A
-`payTo` that is not a NEAR account id is `near/option-malformed`, as the option filter answers an option carrying it,
-since the token contract reads `receiver_id` as an `AccountId` and refuses any other string; then a value that is not a
+`payTo` that is not a NEAR account id, or an `amount` that is not the canonical decimal string of a positive integer
+below 2^128, is `near/option-malformed`, as the option filter answers an option carrying it, since the token contract
+reads `receiver_id` as an `AccountId` and `amount` as a `U128` and refuses anything else; then a value that is not a
 32-byte hash is `x402/payload-malformed`.
 
 #### Parameters
@@ -201,10 +203,16 @@ variant index, where any index other than `FunctionCall`'s is `near/not-ft-trans
 Otherwise the bytes must be exactly the borsh encoding of what is read, every string in it UTF-8, the key and the
 signature each Ed25519 or secp256k1, and an Ed25519 signature's last byte below 0x20, as nearcore reads one, or they
 are `near/sda-malformed`. The arguments are strict UTF-8 JSON text whose leading byte-order mark is kept as a
-character, so arguments that begin with one are `near/args-malformed`, as are arguments whose `receiver_id` is not a
-NEAR account id, which the token contract refuses; then a `memo` that is not a string is `near/memo-missing`. A NEAR
-account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`, where a separator (`-`, `_`
-or `.`) is never first, never last, and never follows another (near-account-id's `AccountId`).
+character, so arguments that begin with one are `near/args-malformed`. So are arguments the token contract refuses:
+it reads them as near-sdk does, with serde's derived reader over `receiver_id: AccountId`, `amount: U128` and
+`memo: Option<String>`. Those are arguments whose object names `receiver_id`, `amount` or `memo` more than once, each
+key read with its escapes decoded, or has a key that decodes to a lone surrogate, or whose `receiver_id` is not a NEAR
+account id, or whose `amount` is not a string of an optional `+` and one or more ASCII digits below 2^128, leading
+zeros allowed (Rust's `u128::from_str`). Any other key is ignored, however often it repeats. Then a `memo` that is not
+a string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. The amount is not compared
+with the option's. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`,
+where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
+`AccountId`).
 
 #### Parameters
 
@@ -226,7 +234,11 @@ True only when the delegate action can never execute: the final height, read fir
 the key's nonce, read at a block height at or past that final height, is below the action's. A key read that lags
 the final height read first is false. A key that does not exist is false, because a key deleted after the delegate
 executed gives the same answer. Two calls; a failed or malformed read, or a ref or reader that is not an object, is
-false. A ref whose payer is not a NEAR account id is false, with nothing read.
+false. The key is read only for the delegate's own key, the ref's `publicKey` in the form nearcore's RPC writes it
+and `reference` copies from the delegate (`ed25519:` and the base58 of 32 bytes, or `secp256k1:` and of 64), since
+the reader's answer names no key: it is the answer for the key asked. A ref whose public key is in any other form,
+another spelling of a key included, or names no key, is false with nothing read, as `nearStatus` reads it as
+unreadable; so is a ref whose payer is not a NEAR account id.
 
 #### Parameters
 

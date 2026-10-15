@@ -334,8 +334,8 @@ describe("x402-exact-near.json", () => {
     for (const row of rowsOf(V.V3.status, "x402-exact-near.json V3.status")) {
       expect([row.case, await exactNear.status(REF, readerFor(row))]).toEqual([row.case, row.expect]);
     }
-    for (const row of rowsOf(V.V3.lapsed, "x402-exact-near.json V3.lapsed")) {
-      expect([row.case, await nearLapsed(REF, readerFor(row))]).toEqual([row.case, row.expect]);
+    for (const row of rowsOf(V.V3.lapsed, "x402-exact-near.json V3.lapsed", { exact: 6 })) {
+      expect([row.case, await nearLapsed({ ...REF, ...row.ref }, readerFor(row))]).toEqual([row.case, row.expect]);
     }
     for (const row of rowsOf(V.V3.recover, "x402-exact-near.json V3.recover")) {
       const got = await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor(row));
@@ -377,6 +377,59 @@ describe("x402-exact-near.json", () => {
     expect(await nearLapsed(REF, bare)).toBe(false);
     const unnamed = { ...readerFor({ finalHeight: final.toString() }), accessKeyNonce: async () => ({ nonce: 100n }) as never };
     expect(await nearLapsed(REF, unnamed)).toBe(false);
+  });
+
+  // view_access_key's answer names no key: it is the answer for the key asked. nearLapsed asks with the ref's key, in the
+  // form nearcore's RPC writes it and reference copies from the delegate, and with no other text, so the read it judges
+  // is the delegate's own key's.
+  it("V3: nearLapsed reads the key only for a ref key in nearcore's form, and asks for that key", async () => {
+    const lapse = V.V3.lapsed[0];
+    expect(lapse.expect).toBe(true);
+    const asked: unknown[][] = [];
+    const lapsing = (): NearReader => ({
+      ...readerFor(lapse),
+      accessKeyNonce: async (...a: unknown[]) => {
+        asked.push(a);
+        return { nonce: BigInt(lapse.keyNonce.nonce), blockHeight: BigInt(lapse.keyNonce.blockHeight) };
+      },
+    });
+    for (const key of [REF.publicKey, V.secp256k1.publicKey as string]) {
+      asked.length = 0;
+      const { reader, calls } = counting(lapsing());
+      expect([key, await nearLapsed({ ...REF, publicKey: key }, reader), calls]).toEqual([key, true, ["finalHeight", "accessKeyNonce"]]);
+      expect(asked).toEqual([[REF.payer, key]]);
+    }
+    const b58 = REF.publicKey.slice("ed25519:".length);
+    const bytes = base58.decode(b58);
+    const others = rowsOf(
+      [
+        undefined,
+        null,
+        7,
+        "",
+        "ed25519:",
+        "secp256k1:",
+        b58,
+        `ED25519:${b58}`,
+        `Ed25519:${b58}`,
+        ` ${REF.publicKey}`,
+        `${REF.publicKey} `,
+        `ed25519:${base58.encode(bytes.subarray(1))}`,
+        `ed25519:${base58.encode(Uint8Array.from([...bytes, 0]))}`,
+        `ed25519:1${b58}`,
+        `secp256k1:${b58}`,
+        `ed25519:${(V.secp256k1.publicKey as string).slice("secp256k1:".length)}`,
+        new String(REF.publicKey),
+        { toString: () => REF.publicKey },
+        [REF.publicKey],
+      ],
+      "ref keys that are not in nearcore's form",
+      { exact: 19 },
+    );
+    for (const key of others) {
+      const { reader, calls } = counting(lapsing());
+      expect([key, await nearLapsed({ ...REF, publicKey: key as string }, reader), calls]).toEqual([key, false, []]);
+    }
   });
 
   // The ref's argsDigest is a 32-byte hash compared as bytes, as hashEquals compares hashes; a ref without one cannot
