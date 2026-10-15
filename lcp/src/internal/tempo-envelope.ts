@@ -99,7 +99,12 @@ function primitiveSigner(sig: Uint8Array, hash: Uint8Array): Hex | Refusal {
  * The sender of a signed `0x76` transaction, as Tempo recovers it from the sender's signature over what the sender
  * signed (`senderSigned`): a primitive signature's signer, or for a keychain signature (`0x03`, or `0x04` whose inner
  * signature signs keccak256(`0x04` ‖ that hash ‖ the account), each a 20-byte account and a primitive signature) that
- * account. Any other signature is `tempo/tx-malformed`.
+ * account. Any other signature is `tempo/tx-malformed`, a `0x05` type byte among them: Tempo's transaction
+ * specification lists the secp256k1, P256, WebAuthn and keychain signature types and no other ("Signature Types"), and
+ * its signature validation takes any other format as invalid ("Transaction Validation", step 1: "Otherwise invalid").
+ * Tempo's node answers any other type byte "Unknown signature type identifier" (tempoxyz/tempo `7d4fd03`,
+ * `crates/primitives/src/transaction/tt_signature.rs`: `TempoSignature::from_bytes` reads `0x03` and `0x04` and passes
+ * every other signature to `PrimitiveSignature::from_bytes`, which reads 65 bytes, `0x01` and `0x02`).
  */
 export function tempoSender(wire: Uint8Array): Hex | Refusal {
   const items = decodeEnvelope(wire);
