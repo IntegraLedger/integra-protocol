@@ -6,7 +6,8 @@
 // keys and signatures of both types), and the pairing's build and complete (accounts, amounts, nonces, heights,
 // timeouts, and keys of both types). The sweeps draw their bytes from SHA-256 of a label and a counter.
 // Where near-api-js reads more than nearcore does, the pairing reads as nearcore does: an Ed25519 signature whose last
-// byte is 0x20 or more is refused (core/crypto/src/signature.rs), and public keys are read as nearcore's
+// byte is 0x20 or more is refused (core/crypto/src/signature.rs), a sender or receiver that is not a NEAR account id is
+// refused (near-account-id src/borsh.rs; near-account-id.test.ts holds the rule), and public keys are read as nearcore's
 // PublicKey::from_str reads them, which a last test holds to a transcription of that function.
 import { readFileSync } from "node:fs";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -181,8 +182,8 @@ function signedDelegatesIn(v: unknown, path: string, out: [string, string][]): [
 
 describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
   it("every signed delegate action in x402-exact-near.json: each reader reads what the other reads, and both write its bytes", () => {
-    // V2's and the secp256k1 vector's, V2's four refusals, fifteen agreedRefusals rows and one buyer row.
-    const all = rowsOf(signedDelegatesIn(V, "", []), "x402-exact-near.json, every signedDelegateAction", { exact: 22 });
+    // V2's and the secp256k1 vector's, V2's four refusals, eighteen agreedRefusals rows and one buyer row.
+    const all = rowsOf(signedDelegatesIn(V, "", []), "x402-exact-near.json, every signedDelegateAction", { exact: 25 });
     const read: string[] = [];
     const nearcoreRefuses: string[] = [];
     for (const [where, text] of all) {
@@ -214,12 +215,15 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       "/V2/refusals/2/signedDelegateAction",
       "/agreedRefusals/rows/7/signedDelegateAction",
       "/agreedRefusals/rows/16/signedDelegateAction",
+      "/agreedRefusals/rows/33/signedDelegateAction",
       "/buyer/rows/1/input/presented/payload/signedDelegateAction",
       "/secp256k1/expectSignedDelegateAction",
     ]);
     expect(nearcoreRefuses).toEqual(["/agreedRefusals/rows/26/signedDelegateAction"]);
   });
 
+  // Every 32nd delegate's sender or receiver is UTF-8 but no NEAR account id: near-api-js reads it, and the pairing,
+  // as nearcore, refuses it.
   it(`a sweep of ${SWEEP} delegates: the same bytes from both writers, and each reads the other's`, { timeout: SWEEP_MS }, () => {
     const r = draws("near-delegate");
     const methods = ["ft_transfer", "ft_transfer_call", "storage_deposit", ""];
@@ -229,7 +233,7 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       const sig = r.below(2) === 0 ? { keyType: 0 as const, data: readableEd25519(r.take(64)) } : { keyType: 1 as const, data: r.take(65) };
       const d: FunctionCallDelegate = {
         senderId: i % 64 === 0 ? names[(i / 64) % 2]! : r.account(),
-        receiverId: r.account(),
+        receiverId: i % 64 === 32 ? names[((i - 32) / 64) % 2]! : r.account(),
         functionCall: {
           methodName: i % 4 === 0 ? methods[r.below(methods.length)]! : "ft_transfer",
           args: r.take(r.below(512)),
@@ -246,7 +250,7 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       const ours = lcpEncodeSignedDelegate(borsh, s);
       const theirs = nearApiSigned(s);
       expect([i, ours]).toEqual([i, theirs]);
-      expect([i, decodeSignedDelegate(borsh, theirs)]).toEqual([i, s]);
+      expect([i, decodeSignedDelegate(borsh, theirs)]).toEqual([i, i % 32 === 0 ? "malformed" : s]);
       expect([i, nearApiRead(ours)]).toEqual([i, s]);
       if (sig.keyType === 0) {
         const high = Uint8Array.from(sig.data);

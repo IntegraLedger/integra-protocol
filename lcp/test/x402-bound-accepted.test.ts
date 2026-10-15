@@ -131,8 +131,8 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 30423;
-const NOT_OFFERED = 872531;
+const PRESENTED = 30509;
+const NOT_OFFERED = 875025;
 const OFFERED_OWN_BINDS = 1264;
 const OFFERED_COUNTS = [1174, 90, 1100];
 

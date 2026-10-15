@@ -1,8 +1,9 @@
 /**
  * NEP-366's `DelegateAction` and `SignedDelegate` in borsh, as nearcore defines them (`DelegateAction` and
  * `SignedDelegateAction`), for the one shape `../near.ts` reads and writes: a delegate action holding one
- * `FunctionCall` action, under an Ed25519 or secp256k1 key, with a signature of either type. The schemas are written
- * for the borsh package. No entry point exports any name here.
+ * `FunctionCall` action, under an Ed25519 or secp256k1 key, with a signature of either type, and the NEAR account id
+ * rule its sender and receiver are read by. The schemas are written for the borsh package. `../near.ts` re-exports
+ * `NEP461_DELEGATE`; no entry point exports the other names.
  *
  * In borsh a `Vec<Action>` is its u32 length and each action, and an `Action` is its u8 variant index and its value;
  * `FunctionCall` is variant 2. The schemas write the one-action vector as two fields, the length 1 and the variant
@@ -44,6 +45,8 @@ export type DelegateRefused = "malformed" | "action-count" | "not-function-call"
 const KEY_SIZES = [32, 64] as const;
 const SIGNATURE_SIZES = [64, 65] as const;
 const FUNCTION_CALL = 2;
+/** An account id's shortest and longest length. */
+const ACCOUNT_ID_LENGTH = [2, 64] as const;
 
 const PUBLIC_KEY: Schema = {
   enum: [
@@ -132,6 +135,29 @@ export function encodeSignedDelegate(borsh: typeof Borsh, s: SignedFunctionCallD
 }
 
 /**
+ * True for a NEAR account id: what near-account-id 3.0.0, the version nearcore locks, reads as an `AccountId`
+ * (src/validation.rs, `validate`, and `MIN_LEN` and `MAX_LEN`). Its borsh reader, through which nearcore reads a delegate
+ * action's sender and receiver, and its serde reader, through which a NEP-141 contract reads `ft_transfer`'s
+ * `receiver_id`, each refuse any other string. An id is 2 to 64 characters, each a lowercase ASCII letter, a digit,
+ * `-`, `_` or `.`; a separator (`-`, `_` or `.`) is never first, never last, and never follows another. The length
+ * bounds count bytes, and every character an id may hold is one byte, so counting UTF-16 code units gives the same
+ * answer. The typed forms the crate names (`get_account_type`: 64 lowercase hex digits, or `0x`, `0s` or `0u` and
+ * lowercase hex or base32 digits) are kinds of ids that meet these rules, and none changes which strings are ids.
+ */
+export function isNearAccountId(id: unknown): id is string {
+  if (typeof id !== "string" || id.length < ACCOUNT_ID_LENGTH[0] || id.length > ACCOUNT_ID_LENGTH[1]) return false;
+  let afterSeparator = true;
+  for (let i = 0; i < id.length; i++) {
+    const c = id.charCodeAt(i);
+    const separator = c === 0x2d || c === 0x5f || c === 0x2e;
+    if (!separator && !((c >= 0x61 && c <= 0x7a) || (c >= 0x30 && c <= 0x39))) return false;
+    if (separator && afterSeparator) return false;
+    afterSeparator = separator;
+  }
+  return !afterSeparator;
+}
+
+/**
  * True when nearcore reads these bytes as an Ed25519 signature: 64 bytes whose last byte is below 0x20, the top three
  * bits clear (core/crypto/src/signature.rs, `Signature`'s borsh reader). The last 32 bytes are S, little-endian, and a
  * valid signature's S is below the group order, under 2^253, so every valid signature is read.
@@ -144,10 +170,11 @@ export function isNearEd25519Signature(data: Uint8Array): boolean {
  * Reads a signed delegate action in the order nearcore reads its bytes. The sender, the receiver and the count of
  * actions come first, and must be exactly their own borsh, or they are "malformed": the borsh package reads a string's
  * bytes without checking them, so a sender or receiver that is not UTF-8 reads as text whose encoding differs from its
- * bytes, where nearcore refuses it as an account id. Then a count other than one is "action-count", and a first action
- * whose variant index is not `FunctionCall`'s is "not-function-call", the bytes after it unread. Otherwise the bytes
- * must be exactly the borsh of the one-action delegate and its signature, each key and signature Ed25519 or secp256k1,
- * and an Ed25519 signature one nearcore reads, or they are "malformed".
+ * bytes, where nearcore refuses it as an account id. The sender and the receiver must each be a NEAR account id
+ * (`isNearAccountId`), as nearcore's `AccountId` reader requires, or they are "malformed". Then a count other than one
+ * is "action-count", and a first action whose variant index is not `FunctionCall`'s is "not-function-call", the bytes
+ * after it unread. Otherwise the bytes must be exactly the borsh of the one-action delegate and its signature, each key
+ * and signature Ed25519 or secp256k1, and an Ed25519 signature one nearcore reads, or they are "malformed".
  */
 export function decodeSignedDelegate(borsh: typeof Borsh, bytes: Uint8Array): SignedFunctionCallDelegate | DelegateRefused {
   let read: { delegateAction: DelegateValue; signature: KeyValue };
@@ -155,6 +182,7 @@ export function decodeSignedDelegate(borsh: typeof Borsh, bytes: Uint8Array): Si
     const head = borsh.deserialize(HEAD, bytes) as { senderId: string; receiverId: string; actionCount: number };
     const written = borsh.serialize(HEAD, head);
     if (!sameBytes(written, bytes.subarray(0, written.length))) return "malformed";
+    if (!isNearAccountId(head.senderId) || !isNearAccountId(head.receiverId)) return "malformed";
     if (head.actionCount !== 1) return "action-count";
     const first = borsh.deserialize(HEAD_AND_VARIANT, bytes) as { variant: number };
     if (first.variant !== FUNCTION_CALL) return "not-function-call";

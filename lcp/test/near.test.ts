@@ -188,8 +188,9 @@ describe("x402-exact-near.json", () => {
   };
 
   // The borsh specification encodes a String as the u32 length and the bytes of its UTF-8 (github.com/near/borsh,
-  // "String": utf8_encoding(x) as Vec<u8>). A receiver whose bytes are not UTF-8 is no borsh string; a sender in UTF-8
-  // beyond ASCII reads as the characters it encodes.
+  // "String": utf8_encoding(x) as Vec<u8>). A receiver whose bytes are not UTF-8 is no borsh string. A sender in UTF-8
+  // beyond ASCII is a string but no NEAR account id, which nearcore's AccountId reader refuses (near-account-id
+  // src/borsh.rs); a sender that is one reads as the characters it encodes.
   it("V2: a delegate's strings are read as UTF-8, and bytes that are not UTF-8 are near/sda-malformed", async () => {
     const bytes = v2Bytes();
     const senderEnd = 4 + bytes.readUInt32LE(0);
@@ -200,17 +201,20 @@ describe("x402-exact-near.json", () => {
     const refused = { refused: true, code: "near/sda-malformed" };
     expect(nearCarrier(notUtf8.toString("base64"))).toEqual(refused);
     expect(await exactNear.bound(payment(notUtf8.toString("base64")))).toEqual(refused);
-    const payer = "payer-\u00e9.testnet";
-    const named = Buffer.concat([u32(Buffer.byteLength(payer)), Buffer.from(payer, "utf8"), bytes.subarray(senderEnd)]);
-    const c = nearCarrier(named.toString("base64"));
+    const named = (payer: string) =>
+      Buffer.concat([u32(Buffer.byteLength(payer)), Buffer.from(payer, "utf8"), bytes.subarray(senderEnd)]).toString("base64");
+    expect(nearCarrier(named("payer-\u00e9.testnet"))).toEqual(refused);
+    expect(await exactNear.bound(payment(named("payer-\u00e9.testnet")))).toEqual(refused);
+    const c = nearCarrier(named("payer-e.testnet"));
     if ("refused" in c) throw new Error(c.code);
-    expect([c.payer, c.h]).toEqual([payer, H]);
+    expect([c.payer, c.h]).toEqual(["payer-e.testnet", H]);
   });
 
   // nearcore reads a delegate action's sender and receiver as AccountIds, each a borsh String that must be UTF-8
   // (near-account-id src/borsh.rs), before the Vec of actions and its length. A sender or receiver whose bytes are not
   // UTF-8 is refused there, whatever the count of actions says: C3 41 (a lead byte without its continuation), C0 80 (an
-  // overlong NUL), ED A0 80 (the surrogate U+D800) and FF. A sender in UTF-8 beyond ASCII reads, and the count follows.
+  // overlong NUL), ED A0 80 (the surrogate U+D800) and FF. A sender in UTF-8 beyond ASCII is no account id, and is
+  // refused there too; a sender that is one reads, and the count follows.
   it("V2: a sender or receiver that is not UTF-8 is near/sda-malformed before the count of actions", async () => {
     const bytes = v2Bytes();
     const senderEnd = 4 + bytes.readUInt32LE(0);
@@ -231,7 +235,11 @@ describe("x402-exact-near.json", () => {
     const utf8Sender = Buffer.from(bytes);
     Buffer.from([0xc3, 0xa9]).copy(utf8Sender, 4);
     utf8Sender.writeUInt32LE(2, countAt);
-    expect(nearCarrier(utf8Sender.toString("base64"))).toEqual({ refused: true, code: "near/actions" });
+    expect(nearCarrier(utf8Sender.toString("base64"))).toEqual(refused);
+    const otherSender = Buffer.from(bytes);
+    Buffer.from("ab", "latin1").copy(otherSender, 4);
+    otherSender.writeUInt32LE(2, countAt);
+    expect(nearCarrier(otherSender.toString("base64"))).toEqual({ refused: true, code: "near/actions" });
   });
 
   // nearcore's Signature reader refuses an Ed25519 signature whose last byte has any of its top three bits set
@@ -380,20 +388,21 @@ describe("x402-exact-near.json", () => {
     expect(await exactNear.status({ ...REF, argsDigest: "0x12" as never }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
     const upper = `0x${argsDigest.slice(2).toUpperCase()}` as const;
     expect(await exactNear.status({ ...REF, argsDigest: upper }, readerFor(settled))).toEqual(settled.expect);
-    // NEAR account ids are 2 to 64 characters of lowercase letters, digits, ".", "_" and "-", so this ref names no token.
+    // A NEAR account id's letters are lowercase (near-account-id's validate), so this ref names no token.
     expect(await exactNear.status({ ...REF, asset: "USDC.testnet" }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
   });
 
-  // A ref that cannot name the delegate is pending before any read. NEAR account ids are lowercase (nearcore's account id
-  // rules); a public key is written `ed25519:` and the base58 of its 32 bytes (near-api-js PublicKey.toString), as
-  // nearCarrier and nearcore's RPC write it. build reads the other spellings keyForms lists, but status compares the
-  // ref's key as text with the delegate's, so a ref holds only the written form.
+  // A ref that cannot name the delegate is pending before any read. A NEAR account id's letters are lowercase, and a
+  // separator is never first, last or doubled (near-account-id's validate); a public key is written `ed25519:` and the
+  // base58 of its 32 bytes (near-api-js PublicKey.toString), as nearCarrier and nearcore's RPC write it. build reads
+  // the other spellings keyForms lists, but status compares the ref's key as text with the delegate's, so a ref holds
+  // only the written form.
   it("V3: a ref whose nonce, asset, payer, public key or digest is malformed is pending unreadable, with nothing read", async () => {
     const settled = V.V3.status[0];
     const [, key] = REF.publicKey.split(":") as [string, string];
     const malformed = [
-      { nonce: "x" }, { asset: "USDC.testnet" }, { argsDigest: "0x12" },
-      { payer: REF.payer.toUpperCase() }, { payer: undefined }, { payer: "" },
+      { nonce: "x" }, { asset: "USDC.testnet" }, { asset: "usdc..testnet" }, { argsDigest: "0x12" },
+      { payer: REF.payer.toUpperCase() }, { payer: undefined }, { payer: "" }, { payer: `-${REF.payer.slice(1)}` },
       { publicKey: `ED25519:${key}` }, { publicKey: undefined }, { publicKey: key }, { publicKey: `ed25519:${key.slice(0, -2)}` },
       { publicKey: `secp256k1:${key}` },
     ];
@@ -448,6 +457,8 @@ describe("x402-exact-near.json", () => {
         expect([row.case, await exactNear.bound(payment(row.signedDelegateAction))]).toEqual([row.case, want]);
       } else if (row.publicKey !== undefined) {
         expect(await exactNear.build({ ...choice(), publicKey: row.publicKey }, H)).toEqual(want);
+      } else if (row.payer !== undefined) {
+        expect([row.case, await exactNear.build({ ...choice(), payer: row.payer }, H)]).toEqual([row.case, want]);
       } else if (row.signatureBytes !== undefined) {
         const u = await exactNear.build(choice(), H);
         if ("refused" in u) throw new Error(u.code);

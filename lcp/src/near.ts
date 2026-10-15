@@ -11,6 +11,7 @@ import {
   decodeSignedDelegate,
   delegateMessage,
   encodeSignedDelegate,
+  isNearAccountId,
   isNearEd25519Signature,
   nearKeyOf,
   nearKeyText,
@@ -50,7 +51,8 @@ export interface NearOutcome {
   status: "FINAL" | "EXECUTED" | string;
   /**
    * The delegate action the relayed transaction carries: its `sender_id`, `public_key` and `nonce`, its `receiver_id`,
-   * and the `method_name` and base64 `args` of its first action's function call.
+   * and the `method_name` and base64 `args` of its first action's function call. The sender and the receiver are NEAR
+   * account ids, as nearcore's RPC writes them.
    */
   delegate: null | {
     senderId: string;
@@ -60,6 +62,7 @@ export interface NearOutcome {
     methodName: string;
     argsBase64: string;
   };
+  /** Each receipt's `executor_id`, a NEAR account id, and its outcome. */
   receipts: readonly { executor: string; outcome: "success" | "failure" | "pending" }[];
 }
 
@@ -70,8 +73,8 @@ export interface NearOutcome {
 export interface NearReader {
   readonly network: NearNetwork;
   /**
-   * The relayer accounts the transaction is looked up under, the first four. x402's NEAR scheme leaves relayer
-   * selection to the facilitator, which may list them under `/supported` `signers["near:*"]`.
+   * The relayer accounts the transaction is looked up under, the first four, each a NEAR account id. x402's NEAR scheme
+   * leaves relayer selection to the facilitator, which may list them under `/supported` `signers["near:*"]`.
    */
   readonly relayers: readonly string[];
   /** `EXPERIMENTAL_tx_status` with `wait_until` "NONE"; null: unknown. */
@@ -106,6 +109,7 @@ export type NearStatus =
 interface NearChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
+  /** The payer's account: a NEAR account id, as nearcore reads a delegate action's sender, or `x402/option-malformed`. */
   payer: string;
   /**
    * The access key, read as nearcore's `PublicKey::from_str` reads it: the key type before the first `:`, `ed25519` or
@@ -135,17 +139,19 @@ const MAX_ARGS_BYTES = 4096;
 const MAX_RELAYERS = 4;
 const U128_LIMIT = 1n << 128n;
 const U64_LIMIT = 1n << 64n;
-const ACCOUNT = /^[a-z0-9._-]{2,64}$/;
 
 const utf8 = new TextEncoder();
 /** The arguments' text: strict UTF-8, a leading byte-order mark kept, so arguments that begin with one are not JSON. */
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
- * `ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A value
- * that is not a 32-byte hash is `x402/payload-malformed`.
+ * `ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A
+ * `payTo` that is not a NEAR account id is `near/option-malformed`, as the option filter answers an option carrying it,
+ * since the token contract reads `receiver_id` as an `AccountId` and refuses any other string; then a value that is not a
+ * 32-byte hash is `x402/payload-malformed`.
  */
 export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8Array<ArrayBuffer> | Refusal {
+  if (!isNearAccountId(payTo)) return refusal("near/option-malformed");
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   return utf8.encode(JSON.stringify({ receiver_id: payTo, amount, memo: toLcpString(nh) }));
@@ -153,13 +159,17 @@ export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8
 
 /**
  * Reads a base64 `SignedDelegateAction` whose one action is a `FunctionCall` of `ft_transfer` with a JSON object of
- * arguments whose `memo` is an LCP string. The bytes are read in the order nearcore reads them: the sender and the
- * receiver, where one that is not UTF-8 is `near/sda-malformed`, then the count of actions, where a count other than
- * one is `near/actions`, then the action's variant index, where any index other than `FunctionCall`'s is
- * `near/not-ft-transfer`, the bytes after it unread. Otherwise the bytes must be exactly the borsh encoding of what is
- * read, every string in it UTF-8, the key and the signature each Ed25519 or secp256k1, and an Ed25519 signature's last
- * byte below 0x20, as nearcore reads one, or they are `near/sda-malformed`. The arguments are strict UTF-8 JSON text
- * whose leading byte-order mark is kept as a character, so arguments that begin with one are `near/args-malformed`.
+ * arguments whose `receiver_id` is a NEAR account id and whose `memo` is an LCP string. The bytes are read in the order
+ * nearcore reads them: the sender and the receiver, where one that is not UTF-8, or not a NEAR account id, is
+ * `near/sda-malformed`, then the count of actions, where a count other than one is `near/actions`, then the action's
+ * variant index, where any index other than `FunctionCall`'s is `near/not-ft-transfer`, the bytes after it unread.
+ * Otherwise the bytes must be exactly the borsh encoding of what is read, every string in it UTF-8, the key and the
+ * signature each Ed25519 or secp256k1, and an Ed25519 signature's last byte below 0x20, as nearcore reads one, or they
+ * are `near/sda-malformed`. The arguments are strict UTF-8 JSON text whose leading byte-order mark is kept as a
+ * character, so arguments that begin with one are `near/args-malformed`, as are arguments whose `receiver_id` is not a
+ * NEAR account id, which the token contract refuses; then a `memo` that is not a string is `near/memo-missing`. A NEAR
+ * account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`, where a separator (`-`, `_`
+ * or `.`) is never first, never last, and never follows another (near-account-id's `AccountId`).
  */
 export function nearCarrier(signedDelegateAction: string): {
   h: AtrHash;
@@ -197,7 +207,10 @@ function carrierOf(signedDelegateAction: string): {
   const da = d.delegateAction;
   if (da.functionCall.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = da.functionCall.args;
-  const memo = memoOf(args);
+  const parsed = argsObject(args);
+  if (isRefusal(parsed)) return parsed;
+  if (!isNearAccountId(parsed["receiver_id"])) return refusal("near/args-malformed");
+  const memo = memoIn(parsed);
   if (isRefusal(memo)) return memo;
   return {
     h: memo,
@@ -210,8 +223,8 @@ function carrierOf(signedDelegateAction: string): {
   };
 }
 
-/** The hash in the `memo` of a JSON object of `ft_transfer` arguments. */
-function memoOf(args: Uint8Array): AtrHash | Refusal {
+/** `ft_transfer`'s arguments as a JSON object: strict UTF-8 JSON text of at most 4096 bytes. */
+function argsObject(args: Uint8Array): Record<string, unknown> | Refusal {
   if (args.length > MAX_ARGS_BYTES) return refusal("near/args-malformed");
   let parsed: unknown;
   try {
@@ -219,7 +232,11 @@ function memoOf(args: Uint8Array): AtrHash | Refusal {
   } catch {
     return refusal("near/args-malformed");
   }
-  if (!isObject(parsed)) return refusal("near/args-malformed");
+  return isObject(parsed) ? parsed : refusal("near/args-malformed");
+}
+
+/** The hash in the `memo` of a JSON object of `ft_transfer` arguments. */
+function memoIn(parsed: Record<string, unknown>): AtrHash | Refusal {
   const memo = parsed["memo"];
   if (typeof memo !== "string") return refusal("near/memo-missing");
   return fromLcpString(memo) ?? refusal("near/memo-not-lcp");
@@ -234,30 +251,33 @@ function memoOf(args: Uint8Array): AtrHash | Refusal {
  * `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
  * on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
  * the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
- * every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
- * empty relayer list, a reader for another network, or a delegate whose arguments are not base64 in its canonical form
- * (RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed is pending
- * `unreadable`, with nothing read: the asset and the payer must be account ids of 2 to 64 lowercase letters, digits,
- * `.`, `_` or `-`, and the public key `ed25519:` and the base58 of 32 bytes or `secp256k1:` and of 64.
+ * every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, a
+ * reader for another network, an outcome that is not well formed (a delegate sender or receiver, or a receipt's
+ * executor, that is not a NEAR account id among them), or a delegate whose arguments are not base64 in its canonical
+ * form (RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed, or a relayer list
+ * that is empty or whose first four are not each a NEAR account id, is pending `unreadable`, with nothing read: the
+ * asset and the payer must be NEAR account ids, and the public key `ed25519:` and the base58 of 32 bytes or
+ * `secp256k1:` and of 64. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or
+ * `.`, where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
+ * `AccountId`).
  */
 export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
     return { state: "pending", why: "unreadable" };
   }
-  if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) {
-    return { state: "pending", why: "unreadable" };
-  }
+  const relayers = relayersOf(reader);
+  if (relayers === null) return { state: "pending", why: "unreadable" };
   const nonce = u64Of(ref.nonce);
   if (
     nonce === null ||
-    !isAccount(ref.asset) ||
-    !isAccount(ref.payer) ||
+    !isNearAccountId(ref.asset) ||
+    !isNearAccountId(ref.payer) ||
     !isPublicKey(ref.publicKey) ||
     normalHash(ref.argsDigest) === null
   ) {
     return { state: "pending", why: "unreadable" };
   }
-  const outcome = await findOutcome(ref.transaction, reader);
+  const outcome = await findOutcome(ref.transaction, reader, relayers);
   if (outcome === "unreadable") return { state: "pending", why: "unreadable" };
   if (outcome === null) return { state: "pending", why: "not-found" };
   const dg = outcome.delegate;
@@ -287,13 +307,14 @@ export async function nearStatus(ref: NearRef & { transaction: string }, reader:
  * the key's nonce, read at a block height at or past that final height, is below the action's. A key read that lags
  * the final height read first is false. A key that does not exist is false, because a key deleted after the delegate
  * executed gives the same answer. Two calls; a failed or malformed read, or a ref or reader that is not an object, is
- * false.
+ * false. A ref whose payer is not a NEAR account id is false, with nothing read.
  */
 export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<boolean> {
   if (!isObject(ref) || !isObject(reader)) return false;
   const maxBlockHeight = u64Of(ref.maxBlockHeight);
   const signed = u64Of(ref.nonce);
   if (reader.network !== ref.network || maxBlockHeight === null || signed === null) return false;
+  if (!isNearAccountId(ref.payer)) return false;
   try {
     const height = await reader.finalHeight();
     if (typeof height !== "bigint" || height <= maxBlockHeight) return false;
@@ -309,25 +330,37 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
  * Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A transaction
  * that carries no delegate action, or whose delegate calls another method, is `near/not-ft-transfer`, as `nearStatus`
  * answers it failed `not-this-instrument`; one that no relayer the reader lists knows is `near/not-found`. A failed
- * read, an outcome that is not well formed, or a delegate whose arguments are not base64 in its canonical form (RFC 4648
- * §3.5), an answer out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref
- * that names no `transaction` string is `near/wrong-reader`, with nothing read.
+ * read, an outcome that is not well formed (a delegate sender or receiver, or a receipt's executor, that is not a NEAR
+ * account id among them), or a delegate whose arguments are not base64 in its canonical form (RFC 4648 §3.5), an answer
+ * out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref that names no
+ * `transaction` string is `near/wrong-reader`, and a relayer list that is empty or whose first four are not each a NEAR
+ * account id is `near/no-relayer`, each with nothing read. The arguments are read for their `memo` alone: the hash a
+ * transaction carries is recovered whatever its transfer's outcome.
  */
 export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("near/wrong-reader");
   if (typeof ref.transaction !== "string" || ref.transaction === "") return refusal("near/wrong-reader");
-  if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) return refusal("near/no-relayer");
-  const outcome = await findOutcome(ref.transaction, reader);
+  const relayers = relayersOf(reader);
+  if (relayers === null) return refusal("near/no-relayer");
+  const outcome = await findOutcome(ref.transaction, reader, relayers);
   if (outcome === "unreadable") return refusal("near/unreadable");
   if (outcome === null) return refusal("near/not-found");
   if (outcome.delegate === null || outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = fromBase64(outcome.delegate.argsBase64);
   if (args === null) return refusal("near/unreadable");
-  return memoOf(args);
+  const parsed = argsObject(args);
+  return isRefusal(parsed) ? parsed : memoIn(parsed);
 }
 
-async function findOutcome(txHash: string, reader: NearReader): Promise<NearOutcome | null | "unreadable"> {
-  for (const relayer of reader.relayers.slice(0, MAX_RELAYERS)) {
+/** The relayers the reader lists, the first four, when there is one and each is a NEAR account id; else null. */
+function relayersOf(reader: NearReader): readonly string[] | null {
+  if (!Array.isArray(reader.relayers) || reader.relayers.length === 0) return null;
+  const relayers: readonly unknown[] = reader.relayers.slice(0, MAX_RELAYERS);
+  return relayers.every(isNearAccountId) ? (relayers as readonly string[]) : null;
+}
+
+async function findOutcome(txHash: string, reader: NearReader, relayers: readonly string[]): Promise<NearOutcome | null | "unreadable"> {
+  for (const relayer of relayers) {
     let o: NearOutcome | null;
     try {
       o = await reader.txStatus(txHash, relayer);
@@ -345,13 +378,13 @@ function isOutcome(o: unknown): o is NearOutcome {
   const d = o["delegate"];
   if (d !== null) {
     if (!isObject(d)) return false;
-    if (typeof d["senderId"] !== "string" || typeof d["publicKey"] !== "string" || typeof d["nonce"] !== "bigint") {
+    if (!isNearAccountId(d["senderId"]) || typeof d["publicKey"] !== "string" || typeof d["nonce"] !== "bigint") {
       return false;
     }
-    if (typeof d["receiverId"] !== "string" || typeof d["methodName"] !== "string") return false;
+    if (!isNearAccountId(d["receiverId"]) || typeof d["methodName"] !== "string") return false;
     if (typeof d["argsBase64"] !== "string") return false;
   }
-  return o["receipts"].every((r) => isObject(r) && typeof r["executor"] === "string" && typeof r["outcome"] === "string");
+  return o["receipts"].every((r) => isObject(r) && isNearAccountId(r["executor"]) && typeof r["outcome"] === "string");
 }
 
 // ── The pairing.
@@ -365,8 +398,7 @@ const check: OptionFilter = (o) => {
   const flow = extra?.["paymentFlow"];
   if (flow !== undefined && flow !== "authorization") return refusal("x402/option-not-this-pairing");
   if (o.network !== "near:mainnet" && o.network !== "near:testnet") return refusal("near/network-malformed");
-  if (typeof o.asset !== "string" || !ACCOUNT.test(o.asset)) return refusal("near/option-malformed");
-  if (typeof o.payTo !== "string" || !ACCOUNT.test(o.payTo)) return refusal("near/option-malformed");
+  if (!isNearAccountId(o.asset) || !isNearAccountId(o.payTo)) return refusal("near/option-malformed");
   if (!isAmount(o.amount) || decimalBelow(o.amount, U128_LIMIT) === undefined) return refusal("near/option-malformed");
   if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return refusal("near/option-malformed");
   return true;
@@ -395,7 +427,7 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   if (ok !== true) return ok;
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
-  if (typeof payer !== "string" || !ACCOUNT.test(payer)) return refusal("x402/option-malformed");
+  if (!isNearAccountId(payer)) return refusal("x402/option-malformed");
   const key = nearKeyOf(publicKey);
   if (key === null) return refusal("x402/option-malformed");
   if (typeof accessKeyNonce !== "bigint" || accessKeyNonce < 0n || accessKeyNonce + 1n >= U64_LIMIT) {
@@ -485,10 +517,6 @@ function u64Of(s: unknown): bigint | null {
   if (typeof s !== "string" || !/^[0-9]{1,20}$/.test(s)) return null;
   const v = BigInt(s);
   return v < U64_LIMIT ? v : null;
-}
-
-function isAccount(s: unknown): s is string {
-  return typeof s === "string" && ACCOUNT.test(s);
 }
 
 /**

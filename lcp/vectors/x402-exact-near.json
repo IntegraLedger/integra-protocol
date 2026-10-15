@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; and row 28, V1's with two parts changed, the receiver's first bytes and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; row 28, V1's with two parts changed, the receiver's first bytes and the count of actions; row 29, V1's with two parts changed, the sender, written as 64 A's, and the count of actions; and row 30, V1's with two parts changed, the receiver, written as -usdc.testnet, and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -564,7 +564,7 @@
   }
  },
  "agreedRefusals": {
-  "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript and Python implementations both apply the option, delegate-action, key and signature rows. The two recover rows and the missing-peer row are the TypeScript implementation's alone: the Python one has no recover, and decodes NEAR with no optional package. A signedDelegateAction's length is counted in UTF-16 code units, as JavaScript's String length counts it; U+10000 is one code point of two UTF-16 code units.",
+  "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript and Python implementations both apply the option, delegate-action, payer, key and signature rows. The two recover rows and the missing-peer row are the TypeScript implementation's alone: the Python one has no recover, and decodes NEAR with no optional package. A signedDelegateAction's length is counted in UTF-16 code units, as JavaScript's String length counts it; U+10000 is one code point of two UTF-16 code units.",
   "rows": [
    {
     "case": "an option on near:betanet",
@@ -749,6 +749,50 @@
     "case": "a signedDelegateAction whose receiver begins C3 41, which is not UTF-8, and whose delegate action counts two actions: the receiver is read before the count, as nearcore reads an account id",
     "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAw0FkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "expect": "near/sda-malformed"
+   },
+   {
+    "case": "a signedDelegateAction whose sender is 64 A's, which is UTF-8 but not a NEAR account id (an account id's letters are lowercase), and whose delegate action counts two actions: the sender is read as an account id before the count, as nearcore reads it (near-account-id src/borsh.rs)",
+    "signedDelegateAction": "QAAAAEFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEMAAAAdXNkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/sda-malformed"
+   },
+   {
+    "case": "a signedDelegateAction whose receiver is -usdc.testnet, which is not a NEAR account id (a separator is never first), and whose delegate action counts two actions: the receiver is read as an account id before the count",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMNAAAALXVzZGMudGVzdG5ldAIAAAACCwAAAGZ0X3RyYW5zZmVyjAAAAHsicmVjZWl2ZXJfaWQiOiJtZXJjaGFudC50ZXN0bmV0IiwiYW1vdW50IjoiMTAwMDAwMCIsIm1lbW8iOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9AOBX60gbAAABAAAAAAAAAAAAAAAAAAAAZQAAAAAAAAA8wusLAAAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "near/sda-malformed"
+   },
+   {
+    "case": "an option whose payTo is merchant..testnet, which is not a NEAR account id (a separator never follows another)",
+    "option": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant..testnet",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "an option whose asset is usdc.testnet., which is not a NEAR account id (a separator is never last)",
+    "option": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet.",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "args whose receiver_id is 57 a's and .testnet, 65 characters, which is not a NEAR account id (an account id is at most 64 characters): the token contract reads receiver_id as an AccountId and refuses it",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXK9AAAAeyJyZWNlaXZlcl9pZCI6ImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYS50ZXN0bmV0IiwiYW1vdW50IjoiMTAwMDAwMCIsIm1lbW8iOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCJ9AOBX60gbAAABAAAAAAAAAAAAAAAAAAAAZQAAAAAAAAA8wusLAAAAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": "near/args-malformed"
+   },
+   {
+    "case": "build with a payer of payer-.testnet, which is not a NEAR account id (a separator never follows another, whichever the two are)",
+    "payer": "payer-.testnet",
+    "expect": "x402/option-malformed"
    }
   ]
  },

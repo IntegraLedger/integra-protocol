@@ -13,8 +13,8 @@ description: "The exports of @integraledger/lcp/near."
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-delegate"></a> `delegate` | \{ `argsBase64`: `string`; `methodName`: `string`; `nonce`: `bigint`; `publicKey`: `string`; `receiverId`: `string`; `senderId`: `string`; \} \| `null` | The delegate action the relayed transaction carries: its `sender_id`, `public_key` and `nonce`, its `receiver_id`, and the `method_name` and base64 `args` of its first action's function call. |
-| <a id="property-receipts"></a> `receipts` | readonly `object`[] | - |
+| <a id="property-delegate"></a> `delegate` | \{ `argsBase64`: `string`; `methodName`: `string`; `nonce`: `bigint`; `publicKey`: `string`; `receiverId`: `string`; `senderId`: `string`; \} \| `null` | The delegate action the relayed transaction carries: its `sender_id`, `public_key` and `nonce`, its `receiver_id`, and the `method_name` and base64 `args` of its first action's function call. The sender and the receiver are NEAR account ids, as nearcore's RPC writes them. |
+| <a id="property-receipts"></a> `receipts` | readonly `object`[] | Each receipt's `executor_id`, a NEAR account id, and its outcome. |
 | <a id="property-status"></a> `status` | `string` | `final_execution_status`. |
 
 ***
@@ -29,7 +29,7 @@ Bounded, read-only calls against one network's RPC. Every failure rejects, for e
 | Property | Modifier | Type | Description |
 | ------ | ------ | ------ | ------ |
 | <a id="property-network"></a> `network` | `readonly` | [`NearNetwork`](#nearnetwork) | - |
-| <a id="property-relayers"></a> `relayers` | `readonly` | readonly `string`[] | The relayer accounts the transaction is looked up under, the first four. x402's NEAR scheme leaves relayer selection to the facilitator, which may list them under `/supported` `signers["near:*"]`. |
+| <a id="property-relayers"></a> `relayers` | `readonly` | readonly `string`[] | The relayer accounts the transaction is looked up under, the first four, each a NEAR account id. x402's NEAR scheme leaves relayer selection to the facilitator, which may list them under `/supported` `signers["near:*"]`. |
 
 #### Methods
 
@@ -170,8 +170,10 @@ The NEP-461 prefix for a delegate action: (1 << 30) + 366.
 
 > **ftTransferArgs**(`payTo`, `amount`, `h`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
-`ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A value
-that is not a 32-byte hash is `x402/payload-malformed`.
+`ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A
+`payTo` that is not a NEAR account id is `near/option-malformed`, as the option filter answers an option carrying it,
+since the token contract reads `receiver_id` as an `AccountId` and refuses any other string; then a value that is not a
+32-byte hash is `x402/payload-malformed`.
 
 #### Parameters
 
@@ -192,13 +194,17 @@ that is not a 32-byte hash is `x402/payload-malformed`.
 > **nearCarrier**(`signedDelegateAction`): [`Refusal`](index.md#refusal) \| \{ `asset`: `string`; `h`: `` `0x${string}` ``; `maxBlockHeight`: `bigint`; `nonce`: `bigint`; `payer`: `string`; `publicKey`: `string`; \}
 
 Reads a base64 `SignedDelegateAction` whose one action is a `FunctionCall` of `ft_transfer` with a JSON object of
-arguments whose `memo` is an LCP string. The bytes are read in the order nearcore reads them: the sender and the
-receiver, where one that is not UTF-8 is `near/sda-malformed`, then the count of actions, where a count other than
-one is `near/actions`, then the action's variant index, where any index other than `FunctionCall`'s is
-`near/not-ft-transfer`, the bytes after it unread. Otherwise the bytes must be exactly the borsh encoding of what is
-read, every string in it UTF-8, the key and the signature each Ed25519 or secp256k1, and an Ed25519 signature's last
-byte below 0x20, as nearcore reads one, or they are `near/sda-malformed`. The arguments are strict UTF-8 JSON text
-whose leading byte-order mark is kept as a character, so arguments that begin with one are `near/args-malformed`.
+arguments whose `receiver_id` is a NEAR account id and whose `memo` is an LCP string. The bytes are read in the order
+nearcore reads them: the sender and the receiver, where one that is not UTF-8, or not a NEAR account id, is
+`near/sda-malformed`, then the count of actions, where a count other than one is `near/actions`, then the action's
+variant index, where any index other than `FunctionCall`'s is `near/not-ft-transfer`, the bytes after it unread.
+Otherwise the bytes must be exactly the borsh encoding of what is read, every string in it UTF-8, the key and the
+signature each Ed25519 or secp256k1, and an Ed25519 signature's last byte below 0x20, as nearcore reads one, or they
+are `near/sda-malformed`. The arguments are strict UTF-8 JSON text whose leading byte-order mark is kept as a
+character, so arguments that begin with one are `near/args-malformed`, as are arguments whose `receiver_id` is not a
+NEAR account id, which the token contract refuses; then a `memo` that is not a string is `near/memo-missing`. A NEAR
+account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`, where a separator (`-`, `_`
+or `.`) is never first, never last, and never follows another (near-account-id's `AccountId`).
 
 #### Parameters
 
@@ -220,7 +226,7 @@ True only when the delegate action can never execute: the final height, read fir
 the key's nonce, read at a block height at or past that final height, is below the action's. A key read that lags
 the final height read first is false. A key that does not exist is false, because a key deleted after the delegate
 executed gives the same answer. Two calls; a failed or malformed read, or a ref or reader that is not an object, is
-false.
+false. A ref whose payer is not a NEAR account id is false, with nothing read.
 
 #### Parameters
 
@@ -242,9 +248,12 @@ false.
 Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A transaction
 that carries no delegate action, or whose delegate calls another method, is `near/not-ft-transfer`, as `nearStatus`
 answers it failed `not-this-instrument`; one that no relayer the reader lists knows is `near/not-found`. A failed
-read, an outcome that is not well formed, or a delegate whose arguments are not base64 in its canonical form (RFC 4648
-§3.5), an answer out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref
-that names no `transaction` string is `near/wrong-reader`, with nothing read.
+read, an outcome that is not well formed (a delegate sender or receiver, or a receipt's executor, that is not a NEAR
+account id among them), or a delegate whose arguments are not base64 in its canonical form (RFC 4648 §3.5), an answer
+out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref that names no
+`transaction` string is `near/wrong-reader`, and a relayer list that is empty or whose first four are not each a NEAR
+account id is `near/no-relayer`, each with nothing read. The arguments are read for their `memo` alone: the hash a
+transaction carries is recovered whatever its transfer's outcome.
 
 #### Parameters
 
@@ -271,11 +280,15 @@ is settled. The delegate is that instrument when its sender, key and nonce are t
 `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
 on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
 the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
-every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, an
-empty relayer list, a reader for another network, or a delegate whose arguments are not base64 in its canonical form
-(RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed is pending
-`unreadable`, with nothing read: the asset and the payer must be account ids of 2 to 64 lowercase letters, digits,
-`.`, `_` or `-`, and the public key `ed25519:` and the base58 of 32 bytes or `secp256k1:` and of 64.
+every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, a
+reader for another network, an outcome that is not well formed (a delegate sender or receiver, or a receipt's
+executor, that is not a NEAR account id among them), or a delegate whose arguments are not base64 in its canonical
+form (RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed, or a relayer list
+that is empty or whose first four are not each a NEAR account id, is pending `unreadable`, with nothing read: the
+asset and the payer must be NEAR account ids, and the public key `ed25519:` and the base58 of 32 bytes or
+`secp256k1:` and of 64. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or
+`.`, where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
+`AccountId`).
 
 #### Parameters
 
