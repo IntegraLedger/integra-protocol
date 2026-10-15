@@ -140,7 +140,7 @@
   }
  ],
  "links": {
-  "about": "The one https-link rule every pairing's link check uses: the raw string holds no whitespace (Unicode White_Space), control character (Unicode Cc) or backslash; it parses as an absolute URL; its scheme is https, compared case-insensitively (RFC 3986 §3.1); it has a host, a DNS name (RFC 1123 labels) or an IP literal (RFC 3986 §3.2.2), and no userinfo (RFC 3986 §3.2.1). Each row gives the link and whether the rule accepts it. 'refusedAs' is what a pairing's reading gives the same value as the legalContextUrl and as the agreement URL, alike, so that one value has one meaning everywhere: link-not-https only for a string of at most 2048 characters that parses as an absolute URL whose scheme is not https, and legal-context-malformed for every other value the rule refuses (not a string, empty, unparseable, no host, over 2048 characters, or an https URL the rule refuses). Card's, ack's and ap2's reading give legal-context-malformed for every value the rule refuses. 'placedAs' is what a pairing's placement (advertise, and MPP's and A2A's place) gives the same value as the link and as the agreement URL: link-not-https for every value the rule refuses, since the link MUST be https:// (LCP §8.1). A link's length is counted in UTF-16 code units, as JavaScript's String length counts it; LK24 to LK26 end in U+10000, one code point of two UTF-16 code units.",
+  "about": "The one https-link rule every pairing's link check uses: the raw string holds no whitespace (Unicode White_Space), control character (Unicode Cc) or backslash; it parses as an absolute URL by the WHATWG URL Standard's basic URL parser with no base, whose host parser reads a domain by UTS #46 ToASCII over Unicode 17.0.0 data with the flags the Standard sets (CheckBidi, CheckJoiners, nontransitional processing); its scheme is https, compared case-insensitively (RFC 3986 §3.1); it has a host, a DNS name (RFC 1123 labels) or an IP literal (RFC 3986 §3.2.2), and no userinfo (RFC 3986 §3.2.1). Each row gives the link and whether the rule accepts it. 'refusedAs' is what a pairing's reading gives the same value as the legalContextUrl and as the agreement URL, alike, so that one value has one meaning everywhere: link-not-https only for a string of at most 2048 characters that parses as an absolute URL whose scheme is not https, and legal-context-malformed for every other value the rule refuses (not a string, empty, unparseable, no host, over 2048 characters, or an https URL the rule refuses). Card's, ack's and ap2's reading give legal-context-malformed for every value the rule refuses. 'placedAs' is what a pairing's placement (advertise, and MPP's and A2A's place) gives the same value as the link and as the agreement URL: link-not-https for every value the rule refuses, since the link MUST be https:// (LCP §8.1). A link's length is counted in UTF-16 code units, as JavaScript's String length counts it; LK24 to LK26 end in U+10000, one code point of two UTF-16 code units.",
   "rows": [
    {
     "name": "LK1",
@@ -351,6 +351,60 @@
     "accept": true,
     "refusedAs": "accepted",
     "placedAs": "accepted"
+   },
+   {
+    "name": "LK27",
+    "case": "an http link whose host is a bidi domain with a left-to-right label that starts with a digit",
+    "link": "http://0à.א/x",
+    "accept": false,
+    "refusedAs": "legal-context-malformed",
+    "placedAs": "link-not-https",
+    "note": "Unicode IdnaTestV2.txt 17.0.0 gives 0à.א the status [B1]: with CheckBidi, which the URL Standard's domain parser sets, RFC 5893 section 2 applies to every label of a domain that holds an R, AL or AN code point, and its rule 1 refuses a label that starts with a digit. The host parser fails, so the string is not a URL."
+   },
+   {
+    "name": "LK28",
+    "case": "an http link whose host holds a ZWNJ between joining letters, in a label that fails the bidi rule",
+    "link": "http://aب̈‌̈بb/x",
+    "accept": false,
+    "refusedAs": "legal-context-malformed",
+    "placedAs": "link-not-https",
+    "note": "Unicode IdnaTestV2.txt 17.0.0 gives aب̈‌̈بb the status [B5]: the ZWNJ meets ContextJ (RFC 5892 appendix A.1), and the label, which starts with L and holds AL, fails RFC 5893 section 2 rule 5. Every criterion is checked, whatever comes before it in the label."
+   },
+   {
+    "name": "LK29",
+    "case": "an http link whose host holds Arabic Letter U+0870 after a Latin letter",
+    "link": "http://aࡰ.com/x",
+    "accept": false,
+    "refusedAs": "legal-context-malformed",
+    "placedAs": "link-not-https",
+    "note": "U+0870 ARABIC LETTER ALEF WITH ATTACHED FATHA (Unicode 14.0) has Bidi_Class AL in DerivedBidiClass.txt 17.0.0, so the domain is a bidi domain, and the label aࡰ, which starts with L, fails RFC 5893 section 2 rule 5."
+   },
+   {
+    "name": "LK30",
+    "case": "an http link whose host label starts with the combining mark U+0897",
+    "link": "http://ࢗ.com/x",
+    "accept": false,
+    "refusedAs": "legal-context-malformed",
+    "placedAs": "link-not-https",
+    "note": "U+0897 ARABIC PEPET (Unicode 16.0) has General_Category Mn in DerivedGeneralCategory.txt 17.0.0, and UTS #46 section 4.1 refuses a label that begins with a combining mark."
+   },
+   {
+    "name": "LK31",
+    "case": "an http link whose host holds a right-to-left label of two Arabic Letter code points between left-to-right labels",
+    "link": "http://v.٭؝.com/x",
+    "accept": false,
+    "refusedAs": "link-not-https",
+    "placedAs": "link-not-https",
+    "note": "U+066D ARABIC FIVE POINTED STAR and U+061D ARABIC END OF TEXT MARK (Unicode 14.0) each have Bidi_Class AL in DerivedBidiClass.txt 17.0.0 and are valid in the IDNA Mapping Table 17.0.0, so every label meets RFC 5893 section 2 and the string is a URL whose scheme is http."
+   },
+   {
+    "name": "LK32",
+    "case": "an http link whose path, query and fragment hold spaces, a lone percent sign and a caret",
+    "link": "http://atr.seller.example/a b/%zz^?q r#f g",
+    "accept": false,
+    "refusedAs": "link-not-https",
+    "placedAs": "link-not-https",
+    "note": "The URL Standard's path, query and fragment states never return failure: they percent-encode what they do not keep, so the string is a URL whose scheme is http."
    }
   ]
  },

@@ -306,6 +306,8 @@ jobs:
       - run: pnpm -r --if-present run test
       - name: The shared vectors, byte-exact
         run: pnpm --filter @integraledger/lcp exec vitest run test/vectors.test.ts test/core.test.ts
+      - name: The Unicode tables the URL host parser reads equal what scripts/idna/idna-data.mjs writes from its pinned sources
+        run: node scripts/idna/idna-data.mjs --check
 
   docs:
     runs-on: ubuntu-24.04

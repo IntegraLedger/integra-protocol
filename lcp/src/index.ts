@@ -25,6 +25,7 @@ export {
   toRawBytes,
 } from "./core.js";
 export type { AtrHash, CoreRefusal, Json } from "./core.js";
+export { domainToAscii, parseHost } from "./core.js";
 export { isRefusal, readToRepeat } from "./refusal.js";
 export type { Refusal } from "./refusal.js";
 export type { LcpPattern } from "./x402.js";

@@ -180,7 +180,8 @@
     "dist",
     "profiles",
     "vectors",
-    "LICENSE"
+    "LICENSE",
+    "LICENSE-UNICODE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

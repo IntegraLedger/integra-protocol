@@ -272,6 +272,31 @@ SHA-256 over the RFC 8785 form of `v`. Takes any value and refuses, as `core/con
 
 ***
 
+### domainToAscii()
+
+> **domainToAscii**(`domain`, `beStrict?`): `string` \| `null`
+
+The URL Standard's domain parser (§3.3, "IDNA"): the ASCII form of a domain, or null for failure.
+
+With `beStrict` false, the URL parser's call: an ASCII domain is lowercased, and any other is read by UTS #46 ToASCII
+(Unicode 17.0.0) with CheckBidi and CheckJoiners, nontransitional processing, and CheckHyphens, UseSTD3ASCIIRules and
+VerifyDnsLength false; the result fails when it is empty or holds a forbidden domain code point. With `beStrict`
+true, every domain is read by ToASCII with CheckHyphens, UseSTD3ASCIIRules and VerifyDnsLength true as well, and its
+result is the answer. A lone surrogate is read as U+FFFD, which every domain parse refuses.
+
+#### Parameters
+
+| Parameter | Type | Default value |
+| ------ | ------ | ------ |
+| `domain` | `string` | `undefined` |
+| `beStrict` | `boolean` | `false` |
+
+#### Returns
+
+`string` \| `null`
+
+***
+
 ### fromBase64()
 
 > **fromBase64**(`s`): `Uint8Array`\<`ArrayBufferLike`\> \| `null`
@@ -414,8 +439,10 @@ Anything else is false.
 > **isHttpsLink**(`s`): `s is string`
 
 The one https-link rule. The raw string holds no whitespace, control character or backslash; it parses as an
-absolute URL; its scheme is `https`, compared case-insensitively (RFC 3986 §3.1); its authority has a host, a DNS
-name or an IP literal, and no userinfo.
+absolute URL by the WHATWG URL Standard's basic URL parser, with no base; its scheme is `https`, compared
+case-insensitively (RFC 3986 §3.1); its authority has a host, a DNS name or an IP literal, and no userinfo. The
+scheme, the authority, the host and the port are read by this package's own copy of the Standard's parser and host
+parser (`parseHost`), so the answer is the same on every runtime; the path, query and fragment never fail that parse.
 
 #### Parameters
 
@@ -433,8 +460,9 @@ name or an IP literal, and no userinfo.
 
 > **isOtherSchemeLink**(`s`): `s is string`
 
-True for a string of at most 2048 characters that parses as an absolute URL whose scheme is not `https`: the one
-failing link a pairing's `read` refuses as `link-not-https`, where every other failing link is
+True for a string of at most 2048 characters that parses as an absolute URL whose scheme is not `https`, by the WHATWG
+URL Standard's basic URL parser with no base, read by this package's own copy of it as `isHttpsLink` reads one: the
+one failing link a pairing's `read` refuses as `link-not-https`, where every other failing link is
 `legal-context-malformed`. Card's, ACK's and AP2's `read` refuse every link that is not `https` as
 `legal-context-malformed`. A pairing's `advertise`, and MPP's and A2A's `place`, refuse every link that is not
 `https` as `link-not-https`.
@@ -512,6 +540,33 @@ document holding the option, or its `bound`, on a presented payment, answers for
 #### Returns
 
 `PairingOn`\<`"x402"`\> \| `undefined`
+
+***
+
+### parseHost()
+
+> **parseHost**(`input`, `isOpaque?`): `string` \| `null`
+
+The URL Standard's host parser (§3.5), with the host serializer (§3.6): the serialized host, or null for failure.
+
+`[…]` is read by the IPv6 parser and serialized in brackets, compressed. With `isOpaque` true (the host of a URL
+whose scheme is not special) any other input is an opaque host: it fails on a forbidden host code point, and is
+otherwise UTF-8 percent-encoded with the C0 control percent-encode set. Otherwise the input is percent-decoded,
+decoded as UTF-8, and read by the domain parser (`domainToAscii` with `beStrict` false); a domain whose last label is
+a number is read by the IPv4 parser, in decimal, `0x` hex or `0`-led octal parts, and serialized as four decimal
+numbers. The empty string is an opaque host, and a failure otherwise. A lone surrogate is read as U+FFFD, and so are
+percent-encoded bytes that are not UTF-8, which the domain parser fails on.
+
+#### Parameters
+
+| Parameter | Type | Default value |
+| ------ | ------ | ------ |
+| `input` | `string` | `undefined` |
+| `isOpaque` | `boolean` | `false` |
+
+#### Returns
+
+`string` \| `null`
 
 ***
 

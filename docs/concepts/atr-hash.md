@@ -72,7 +72,7 @@ The link beside H is an `https` URL that serves the ATR's exact bytes. `isHttpsL
 applies to it:
 
 - the string holds no whitespace, control character or backslash;
-- it parses as an absolute URL whose scheme is `https`, in either case;
+- it parses as an absolute URL whose scheme is `https`, in either case, by the WHATWG URL Standard's basic URL parser;
 - its authority has a host, a DNS name or an IP literal, and no user information.
 
 A pairing's `advertise`, and MPP's and A2A's `place`, refuse any link that fails the rule as
@@ -83,12 +83,19 @@ scheme, at most 2048 characters long, as `<surface>/link-not-https`, and any oth
 `<surface>/legal-context-malformed`, or `<surface>/too-large` on ACP, AP2 and UCP. `isHttpsLink`, `toLegalContext` and
 `fromLegalContext` set no length.
 
+The package reads the scheme and the authority of a link with its own copy of the URL Standard's parser, not the
+runtime's `URL`, so `isHttpsLink` and `isOtherSchemeLink` give one answer on every runtime. Its host parser
+(`parseHost`) reads a domain with the Standard's domain parser (`domainToAscii`): an ASCII domain is lowercased, and any
+other is read by UTS #46 ToASCII with the flags the Standard sets, over the Unicode 17.0.0 data the package carries,
+with its own normalization, Punycode, ContextJ and bidi rule. The path, query and fragment never fail the parse.
+
 ## The core alone
 
 A Worker that needs only the core imports `@integraledger/lcp/core`. It exports the core functions the package root
 exports, each the root's own function: `assemble`, `newAtrId`, `hash`, `hashEquals`, the forms of H and their readers,
-`isHttpsLink`, `isOtherSchemeLink`, `canonicalJson`, `digestJson`, `parseJson`, `fromBase64`, `base64Bytes`,
-`toBase64`, `fromBase64Url`, `base64UrlBytes`, `toBase64Url`, `isRefusal` and `readToRepeat`. It imports no pairing,
+`isHttpsLink`, `isOtherSchemeLink`, `parseHost`, `domainToAscii`, `canonicalJson`, `digestJson`, `parseJson`,
+`fromBase64`, `base64Bytes`, `toBase64`, `fromBase64Url`, `base64UrlBytes`, `toBase64Url`, `isRefusal` and
+`readToRepeat`. It imports no pairing,
 no rail and no optional peer, so the Worker's bundle holds the core alone.
 
 ```ts

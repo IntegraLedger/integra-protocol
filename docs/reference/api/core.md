@@ -49,6 +49,12 @@ Re-exports [digestJson](index.md#digestjson)
 
 ***
 
+### domainToAscii
+
+Re-exports [domainToAscii](index.md#domaintoascii)
+
+***
+
 ### fromBase64
 
 Re-exports [fromBase64](index.md#frombase64)
@@ -118,6 +124,12 @@ Re-exports [Json](index.md#json)
 ### newAtrId
 
 Re-exports [newAtrId](index.md#newatrid)
+
+***
+
+### parseHost
+
+Re-exports [parseHost](index.md#parsehost)
 
 ***
 

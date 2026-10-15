@@ -7,6 +7,7 @@
  */
 
 import { refusal } from "../refusal.js";
+import { readUrl } from "./url-host.js";
 
 /** `0x` followed by 64 hex digits. Every hash this module emits is lowercase. */
 export type AtrHash = `0x${string}`;
@@ -488,8 +489,10 @@ const MAX_AUTHORITY = MAX_DNS_NAME + 1 + 6;
 
 /**
  * The one https-link rule. The raw string holds no whitespace, control character or backslash; it parses as an
- * absolute URL; its scheme is `https`, compared case-insensitively (RFC 3986 §3.1); its authority has a host, a DNS
- * name or an IP literal, and no userinfo.
+ * absolute URL by the WHATWG URL Standard's basic URL parser, with no base; its scheme is `https`, compared
+ * case-insensitively (RFC 3986 §3.1); its authority has a host, a DNS name or an IP literal, and no userinfo. The
+ * scheme, the authority, the host and the port are read by this package's own copy of the Standard's parser and host
+ * parser (`parseHost`), so the answer is the same on every runtime; the path, query and fragment never fail that parse.
  */
 export function isHttpsLink(s: unknown): s is string {
   if (typeof s !== "string" || !s.isWellFormed() || LINK_FORBIDDEN.test(s)) return false;
@@ -500,9 +503,8 @@ export function isHttpsLink(s: unknown): s is string {
   const host = hp[1] === undefined ? authority : authority.slice(0, authority.length - hp[1].length - 1);
   if (!host.startsWith("[") && host.replace(/\.$/, "").length > MAX_DNS_NAME) return false;
   if (hp[1] !== undefined && hp[1] !== "" && Number(hp[1]) > 65_535) return false;
-  if (!URL.canParse(s)) return false;
-  const u = new URL(s);
-  return u.protocol === "https:" && u.hostname !== "" && u.username === "" && u.password === "";
+  const u = readUrl(s);
+  return u !== null && u.scheme === "https" && u.host !== null && u.host !== "" && !u.credentials;
 }
 
 /** LCP §8.1 string form: `lcp:sha256:0x…`. Throws TypeError when `h` is not a 32-byte hash. */
@@ -558,14 +560,17 @@ export function fromLegalContext(o: unknown): { h: AtrHash; url: string } | null
 const MAX_LINK = 2048;
 
 /**
- * True for a string of at most 2048 characters that parses as an absolute URL whose scheme is not `https`: the one
- * failing link a pairing's `read` refuses as `link-not-https`, where every other failing link is
+ * True for a string of at most 2048 characters that parses as an absolute URL whose scheme is not `https`, by the WHATWG
+ * URL Standard's basic URL parser with no base, read by this package's own copy of it as `isHttpsLink` reads one: the
+ * one failing link a pairing's `read` refuses as `link-not-https`, where every other failing link is
  * `legal-context-malformed`. Card's, ACK's and AP2's `read` refuse every link that is not `https` as
  * `legal-context-malformed`. A pairing's `advertise`, and MPP's and A2A's `place`, refuse every link that is not
  * `https` as `link-not-https`.
  */
 export function isOtherSchemeLink(s: unknown): s is string {
-  return typeof s === "string" && s.length <= MAX_LINK && URL.canParse(s) && new URL(s).protocol !== "https:";
+  if (typeof s !== "string" || s.length > MAX_LINK) return false;
+  const u = readUrl(s);
+  return u !== null && u.scheme !== "https";
 }
 
 /**

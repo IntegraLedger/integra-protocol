@@ -203,6 +203,8 @@ Each entry point is imported by its subpath. The core:
 | `toRawBytes(h)`, `fromRawBytes(b)` | H as 32 raw bytes, and back. |
 | `isHttpsLink(s)` | The one rule every link to an ATR meets. |
 | `isOtherSchemeLink(s)` | True for a link of at most 2048 characters that parses as an absolute URL whose scheme is not `https`. |
+| `parseHost(input, isOpaque?)` | The WHATWG URL Standard's host parser: the serialized host (a domain, IPv4, IPv6 or opaque host), or null for failure. The link rules read a URL's host with it, so they answer alike on every runtime. |
+| `domainToAscii(domain, beStrict?)` | The URL Standard's domain parser: UTS #46 ToASCII with the Standard's flags, over Unicode 17.0.0 data, giving the ASCII domain or null. |
 | `digestJson(v)`, `canonicalJson(v)` | SHA-256 over the RFC 8785 form of a JSON value, and that form. Each takes a value of any type and refuses one that is not JSON (`core/content-not-json`). |
 | `parseJson(text)` | JSON reading capped at 64 levels of nesting. |
 | `fromBase64(s)`, `base64Bytes(s, maxBytes)`, `toBase64(b)` | Padded standard base64 (RFC 4648 §4) read in its canonical form only (RFC 4648 §3.5), or null; read with a bound on its size, checked before decoding, or `"too-large"` or `"malformed"`; and written: the one base64 rule every rail's bytes are read by. |

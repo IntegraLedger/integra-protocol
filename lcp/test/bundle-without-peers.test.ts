@@ -257,7 +257,9 @@ describe("each public entry point bundled for a Worker with no optional peer ins
     expect(modules["./core"]).toEqual([
       `${PKG.name}/dist/core.js`,
       `${PKG.name}/dist/internal/core.js`,
+      `${PKG.name}/dist/internal/idna-data.js`,
       `${PKG.name}/dist/internal/reads-to-repeat.js`,
+      `${PKG.name}/dist/internal/url-host.js`,
       `${PKG.name}/dist/rail-bytes.js`,
       `${PKG.name}/dist/refusal.js`,
     ]);

@@ -38,9 +38,18 @@ pnpm -r --if-present run build
 pnpm -r --if-present run typecheck
 pnpm -r --if-present run test
 pnpm --filter @integraledger/lcp exec vitest run test/vectors.test.ts test/core.test.ts
+node scripts/idna/idna-data.mjs --check
 node scripts/docs-samples.mjs
 node scripts/docs-reference.mjs --check
 ```
+
+- `idna-data.mjs --check` fetches the Unicode 17.0.0 files `scripts/idna/sources.tsv` lists, each checked against its
+  SHA-256 before it is read, retrying a failed download five times, and checks that `lcp/src/internal/idna-data.ts`, the
+  tables the URL Standard's host parser in `lcp/src/internal/url-host.ts` reads, and `scripts/idna/_idna_data.py`, the
+  same tables as a Python module, equal what it writes from them, byte for byte. Without `--check` it writes both files.
+  Each carries the Unicode License v3 (`lcp/LICENSE-UNICODE`), which the package ships. The host parser's tests,
+  `lcp/test/url-host-conformance.test.ts`, fetch Unicode's IdnaTestV2.txt and NormalizationTest.txt and the
+  web-platform-tests URL files the same way, pinned by SHA-256, and keep them in `lcp/node_modules/.cache/`.
 
 - `docs-samples.mjs` reads every `README.md` in the tree and every page in `docs/` as CommonMark reads them, with
   `mdast-util-from-markdown`. It compiles each TypeScript sample, a code block fenced `ts` with backticks or tildes and

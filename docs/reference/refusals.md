@@ -11,6 +11,8 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
+A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
+package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
 This page lists all 497 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
