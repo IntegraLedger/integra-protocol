@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/lcp-documents.mjs",
+    "build": "NEXT_TELEMETRY_DISABLED=1 __NEXT_AGENT_UPGRADE= next build && node scripts/lcp-documents.mjs",
     "api": "typedoc --options typedoc.config.mjs",
     "browser": "node scripts/browser.mjs",
     "typecheck": "fumadocs-mdx && tsc --noEmit",

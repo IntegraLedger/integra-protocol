@@ -58,6 +58,12 @@ could differ; on another platform the build stops and names the platform it is p
   configuration of its own with no font in it. A diagram with a character Inter does not draw fails the
   build. Both SVGs are in the page's HTML, and the page shows the one for the reader's theme; the site serves
   the same Inter files, and no diagram code runs in the browser.
+- Draws the social card at `/opengraph-image` with `next/og`, in Geist Regular, the one font `next/og` bundles, read
+  from the installed `next` package. A character of the card's text that Geist does not draw fails the build, named,
+  since `next/og` would fetch a font or an emoji for it.
+- Asks the network nothing: `next.config.ts` turns off the upgrade check `next build` makes under a coding agent
+  (`experimental.agentUpgrade: false`), and the build script empties `__NEXT_AGENT_UPGRADE`, the environment variable
+  that turns the check on whatever the configuration says, and sets `NEXT_TELEMETRY_DISABLED=1`.
 - Writes `/llms.txt`, `/llms-full.txt`, each page as Markdown at `/md/<path>.md`, the search index,
   `sitemap.xml`, `robots.txt` and `/.well-known/security.txt`.
 - Then `scripts/lcp-documents.mjs` writes each LCP document, byte for byte from `../lcp/profiles/`, at its

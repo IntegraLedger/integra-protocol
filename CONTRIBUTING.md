@@ -74,6 +74,10 @@ node scripts/docs-reference.mjs --check
   build for another platform measures text through that platform's own font engine, so the site is built in CI or on a
   maintainer's Linux x64 machine. After a change to a doc comment or an export in `lcp/src`, run `pnpm run api` there
   and commit the API pages it writes under `docs/reference/api/`; CI checks that they match the source.
+  `pnpm build` reads nothing from the network: `next build`'s upgrade check is off in `next.config.ts`, and the build
+  script empties `__NEXT_AGENT_UPGRADE`, which would turn it on, and sets `NEXT_TELEMETRY_DISABLED=1`. The social card
+  is drawn in the Geist font `next/og` bundles, and a character of its text that Geist does not draw fails the build,
+  so `next/og` fetches no font or emoji.
 - `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.

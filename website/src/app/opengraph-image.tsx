@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { cardFont, notInCardFont } from "@/lib/card-font";
 import { siteConfig } from "@/lib/site";
 
 export const dynamic = "force-static";
@@ -6,8 +7,16 @@ export const alt = siteConfig.ogImageAlt;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-/** The Open Graph card: the mark, the site name and the one-line description. */
+/**
+ * The Open Graph card: the mark, the site name and the one-line description, drawn in its one font, and only when the
+ * font draws every character of that text (src/lib/card-font.ts). A character it does not draw stops the build, named.
+ */
 export default function OpenGraphImage() {
+  const missing = notInCardFont([siteConfig.name, siteConfig.description].join("\n"));
+  if (missing.length > 0) {
+    const named = missing.join(", ");
+    throw new Error(`the social card at /opengraph-image has characters its font, Geist, does not draw: ${named}`);
+  }
   return new ImageResponse(
     <div
       style={{
@@ -30,6 +39,6 @@ export default function OpenGraphImage() {
         {siteConfig.description}
       </div>
     </div>,
-    size,
+    { ...size, fonts: [cardFont()] },
   );
 }

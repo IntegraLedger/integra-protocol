@@ -17,8 +17,8 @@ function git(args: string[]): Buffer {
  * `public/_headers` serves as immutable, so it changes whenever anything the site serves can change:
  * - from a commit with no uncommitted change, it is the commit's sha. The commit fixes the pages, the package the
  *   samples are checked against, the locked dependencies, each page's last-updated date (its file's last commit) and
- *   the browser build and the font the Mermaid diagrams are drawn in (src/mdx/mermaid.ts), so one commit gives one ID
- *   and one site, byte for byte;
+ *   the browser build and the font the Mermaid diagrams are drawn in (src/mdx/mermaid.ts) and the font the social card
+ *   is drawn in (src/lib/card-font.ts), so one commit gives one ID and one site, byte for byte;
  * - with uncommitted changes, it is the sha, a hyphen and 16 hex digits of a SHA-256 over the changes: the diff of
  *   the tracked files against the commit and each untracked file that is not ignored, by path and content;
  * - outside a git checkout, Next.js draws a random ID, and no page has a last-updated date.
@@ -54,6 +54,10 @@ const config: NextConfig = {
   // The pages are read from outside this folder (../docs), so the bundler's root is the protocol folder.
   outputFileTracingRoot: resolve(import.meta.dirname, ".."),
   turbopack: { root: resolve(import.meta.dirname, "..") },
+  // Under a coding agent, `next build` asks the npm registry for a newer Next.js (its upgrade nudge). The site builds
+  // from its lockfile and reads nothing from the network, so the nudge is off. The build script also empties
+  // __NEXT_AGENT_UPGRADE, which turns the nudge on whatever this says.
+  experimental: { agentUpgrade: false },
 };
 
 export default withMDX(config);
