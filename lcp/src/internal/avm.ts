@@ -391,13 +391,18 @@ function bytesFromItems(items: Node[]): Uint8Array {
 }
 const itemsOf = (node: Node): Node[] | null =>
   node.k === "array" ? node.items : node.k === "map" ? node.entries.flat() : null;
-/** The array behind each decoded slice, up to its capacity: the slice's elements, then any an earlier occurrence left. */
+/**
+ * The array behind each decoded slice, up to its capacity: the slice's elements, then any an earlier occurrence left.
+ * A repeat of the slice decodes into this array in place.
+ */
 const BACKING = new WeakMap<Value[], Value[]>();
 
 /**
- * Decodes `node` into `cur`, a value of `kind` (go-codec's decodeValue). A struct decodes into the struct it updates, so
- * a repeated member merges; a fixed-length byte array has only the bytes written replaced; a slice keeps and updates
- * the elements it already has. Refuses what go-codec refuses.
+ * Decodes `node` into `cur`, a value of `kind`, in place, as go-codec's decodeValue decodes into the value it holds. A
+ * struct decodes into the struct it updates, so a repeated member merges; a fixed-length byte array has only the bytes
+ * written replaced; a slice keeps and updates the elements it already has, and a map the entries. Each value has one
+ * holder, so a repeated member costs only its own items, never a copy of what an earlier occurrence left, and the
+ * decode is linear in the entry's bytes. Refuses what go-codec refuses.
  */
 function decodeInto(kind: Kind, node: Node, cur: Value): Value {
   switch (kind.t) {
@@ -419,7 +424,7 @@ function decodeInto(kind: Kind, node: Node, cur: Value): Value {
       return items === null ? refuse() : bytesFromItems(items);
     }
     case "fixed": {
-      const out = (cur as Uint8Array).slice();
+      const out = cur as Uint8Array;
       if (node.k === "str" || node.k === "bin") {
         out.set(node.b.subarray(0, kind.n));
         return out;
@@ -436,16 +441,18 @@ function decodeInto(kind: Kind, node: Node, cur: Value): Value {
       // earlier, longer occurrence left past the slice's length included; more items take a new array holding only
       // the slice's elements.
       const old = cur as Value[] | null;
-      const kept = old === null ? [] : items.length <= (BACKING.get(old) ?? old).length ? (BACKING.get(old) ?? old) : old;
-      const out = items.map((item, j) =>
-        item.k === "nil" ? zeroOf(kind.of) : decodeInto(kind.of, item, j < kept.length ? kept[j]! : zeroOf(kind.of)),
-      );
-      BACKING.set(out, kept.length > out.length ? [...out, ...kept.slice(out.length)] : out);
+      const kept = old === null ? null : (BACKING.get(old) ?? old);
+      const into = kept !== null && items.length <= kept.length ? kept : old === null ? [] : old.slice();
+      items.forEach((item, j) => {
+        into[j] = item.k === "nil" ? zeroOf(kind.of) : decodeInto(kind.of, item, j < into.length ? into[j]! : zeroOf(kind.of));
+      });
+      const out = into.slice(0, items.length);
+      BACKING.set(out, into);
       return out;
     }
     case "uintmap": {
       if (node.k !== "map") return refuse();
-      const m = new Map(cur as Map<bigint, Value> | null);
+      const m = (cur as Map<bigint, Value> | null) ?? new Map<bigint, Value>();
       for (const [key, value] of node.entries) {
         const k = uintOf(key, 64);
         m.set(k, value.k === "nil" ? zeroOf(kind.of) : decodeInto(kind.of, value, m.get(k) ?? zeroOf(kind.of)));
@@ -455,7 +462,7 @@ function decodeInto(kind: Kind, node: Node, cur: Value): Value {
     case "ptr":
       return decodeInto(kind.of, node, cur ?? zeroOf(kind.of));
     case "struct": {
-      const v: Fields = { ...(cur as Fields) };
+      const v = cur as Fields;
       const set = (name: string, k: Kind, x: Node) => {
         v[name] = x.k === "nil" ? zeroOf(k) : decodeInto(k, x, v[name]!);
       };
