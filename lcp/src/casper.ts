@@ -363,7 +363,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   return option;
 }
 
-/** The payment's shape as this pairing requires it, or `casper/payload-malformed`. */
+/**
+ * The payment's shape as this pairing requires it, or the refusal that names what is wrong: `acceptedBy`'s answer for
+ * an `accepted` the pairing's filter does not serve, and `casper/payload-malformed` for every other fault.
+ */
 function paymentOf(presented: unknown): CasperPaymentPayload | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("casper/payload-malformed");
   if (carriesRefused(presented)) return refusal("casper/payload-malformed");
