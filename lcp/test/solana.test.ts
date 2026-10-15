@@ -235,6 +235,12 @@ describe("x402-exact-solana.json", () => {
     const payment = u.complete(sig);
     if ("refused" in payment) throw new Error(payment.code);
     expect(await exactSvm.bound(payment)).toBe(H);
+    // The wire complete writes is held byte for byte to buildWireSha256, the Solana transaction format written by hand
+    // in Python; here it is written again from @solana/kit's message: the count 2, the fee payer's empty slot, the
+    // payer's signature, then the message.
+    const byHand = Uint8Array.from([2, ...new Uint8Array(64), ...ed25519.sign(byKit, fromHex(V.fixed.payerSeed)), ...byKit]);
+    expect(sha256(byHand)).toBe(V.V1.buildWireSha256);
+    expect(sha256(b64(payment.payload.transaction))).toBe(V.V1.buildWireSha256);
   });
 
   it("V1: L is 77 bytes and its hex is the vector's", () => {

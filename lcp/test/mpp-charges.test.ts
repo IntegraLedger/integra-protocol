@@ -178,6 +178,11 @@ describe("mpp-charge-solana.json", () => {
     const cr = u.complete(sig);
     if ("refused" in cr) throw new Error(cr.code);
     expect(await chargeSolana.bound(cr)).toBe(H);
+    // The wire complete writes is held byte for byte to buildWireSha256, the Solana transaction format written by hand
+    // in Python. The message and payer are x402-exact-solana.json V1's, whose test writes the same wire again from
+    // @solana/kit's message, so the two values are one.
+    expect(V.build.buildWireSha256).toBe(XS.V1.buildWireSha256);
+    expect(sha256(Uint8Array.from(Buffer.from(cr.payload["transaction"] as string, "base64")))).toBe(V.build.buildWireSha256);
   });
 
   it("refusals", async () => {

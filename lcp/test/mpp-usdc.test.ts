@@ -2,6 +2,7 @@
 // usdc/solana charge on the Solana charge's vectors. Expected values are the vector files'; canonicalize and js-sha3
 // recompute the derivations independently of the package.
 import { createHash } from "node:crypto";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import canonicalize from "canonicalize";
 import sha3 from "js-sha3";
 import { describe, expect, it } from "vitest";
@@ -214,8 +215,9 @@ describe("mpp/charge/usdc/solana", () => {
   });
 
   // build is the Solana charge's on the same request: it compiles mpp-charge-solana.json's build message, whose
-  // buildMessageSha256 is @solana/kit 8.4.0's compilation of that file's V2 wire message (that file's build.case).
-  it("build compiles the Solana charge's message, byte for byte its buildMessageSha256", async () => {
+  // buildMessageSha256 is @solana/kit 8.4.0's compilation of that file's V2 wire message (that file's build.case), and
+  // complete writes that file's wire, buildWireSha256, written by hand from the Solana transaction format.
+  it("build compiles the Solana charge's message and complete writes its wire, byte for byte its buildMessageSha256 and buildWireSha256", async () => {
     const CS = load("mpp-charge-solana.json");
     const p = placedWith(chargeUsdcSolana, c);
     const u = await chargeUsdcSolana.build(
@@ -224,6 +226,11 @@ describe("mpp/charge/usdc/solana", () => {
     );
     if ("refused" in u) throw new Error(u.code);
     expect(createHash("sha256").update(u.request.message).digest("hex")).toBe(CS.build.buildMessageSha256);
+    const seed = Uint8Array.from(Buffer.from(load("x402-exact-solana.json").fixed.payerSeed, "hex"));
+    const cred = u.complete(ed25519.sign(u.request.message, seed));
+    if ("refused" in cred) throw new Error(cred.code);
+    const wire = Buffer.from(cred.payload["transaction"] as string, "base64");
+    expect(createHash("sha256").update(wire).digest("hex")).toBe(CS.build.buildWireSha256);
   });
 
   it("bound and reference of the Solana charge's V2 wire are that file's", async () => {

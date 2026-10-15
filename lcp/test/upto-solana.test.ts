@@ -155,6 +155,12 @@ describe("x402-upto-solana.json", () => {
     if ("refused" in p) throw new Error(p.code);
     expect(await uptoSvm.bound(p)).toBe(H);
     expect(p.payload.channelId).toBe(V.EU1.channelPda);
+    // The opening wire complete writes is held byte for byte to buildWireSha256, the Solana transaction format written by
+    // hand in Python; here it is written again from @solana/kit's message: the count 2, the fee payer's empty slot, the
+    // payer's signature, then the message.
+    const byHand = Uint8Array.from([2, ...new Uint8Array(64), ...ed25519.sign(byKit, fromHex(V.fixed.payerSeed)), ...byKit]);
+    expect(sha256(byHand)).toBe(V.EU3.buildWireSha256);
+    expect(sha256(b64(p.payload.openTransaction))).toBe(V.EU3.buildWireSha256);
   });
 
   it("build refuses an H that is not a 32-byte hash as x402/payload-malformed (docs/reference/refusals.md)", async () => {

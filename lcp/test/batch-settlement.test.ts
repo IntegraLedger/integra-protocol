@@ -316,12 +316,21 @@ describe("x402-batch-settlement.json: SVM", () => {
     const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
     const kitClose = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(solders.subarray(1 + 64 * solders[0]!)));
     const kitNoMemo = { ...kitClose, instructions: kitClose.instructions.filter((ix) => ix.programAddress !== "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr") };
-    expect(sha256(Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitClose))))).toBe(S6.withMemo.buildMessageSha256);
-    expect(sha256(Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitNoMemo))))).toBe(S6.withoutMemo.buildMessageSha256);
+    const kitCloseBytes = Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitClose)));
+    const kitNoMemoBytes = Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(kitNoMemo)));
+    expect(sha256(kitCloseBytes)).toBe(S6.withMemo.buildMessageSha256);
+    expect(sha256(kitNoMemoBytes)).toBe(S6.withoutMemo.buildMessageSha256);
+    // Each wire complete writes is held byte for byte to buildWireSha256, the Solana transaction format written by hand
+    // in Python; here each is written again from @solana/kit's message: the count 2, the fee payer's empty slot, the
+    // payer's signature, then the message.
+    const wireByHand = (m: Uint8Array) => Uint8Array.from([2, ...new Uint8Array(64), ...ed25519.sign(m, seed), ...m]);
+    expect(sha256(wireByHand(kitCloseBytes))).toBe(S6.withMemo.buildWireSha256);
+    expect(sha256(wireByHand(kitNoMemoBytes))).toBe(S6.withoutMemo.buildWireSha256);
     expect(sha256(req.message)).toBe(S6.withMemo.buildMessageSha256);
     const sig = ed25519.sign(req.message, seed);
     const p = u.complete([base58.encode(sig), base58.encode(vs)]);
     if ("refused" in p) throw new Error(p.code);
+    expect(sha256(b64(p.payload["transaction"] as string))).toBe(S6.withMemo.buildWireSha256);
     expect(Object.keys(p.payload).sort()).toEqual(S6.withMemo.payloadMembers);
     expect(p.payload["type"]).toBe("refund");
     expect(p.payload["channelConfig"]).toEqual(V.ES4.config);
@@ -344,6 +353,9 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(d.feePayer).toBe(V.fixed.svm.feePayer);
     expect(d.blockhash).toBe(V.fixed.svm.blockhash);
     expect(d.instructions).toEqual(S6.withoutMemo.instructions);
+    const q = v.complete([base58.encode(ed25519.sign(wr.message, seed)), base58.encode(vs)]);
+    if ("refused" in q) throw new Error(q.code);
+    expect(sha256(b64(q.payload["transaction"] as string))).toBe(S6.withoutMemo.buildWireSha256);
 
     expect(await within(withMemo, { refund: { amount: 5n } })).toEqual(refused(S6.refundWithAmount.expect));
 
@@ -434,6 +446,12 @@ describe("x402-batch-settlement.json: SVM", () => {
     const payment = unwrap(u.complete([base58.encode(ed25519.sign(txReq.message, seed)), base58.encode(vs)]));
     expect(payment.payload["channelConfig"]).toEqual(V.ES4.config);
     expect(await batchSvm.bound(payment)).toBe(H);
+    // The opening wire complete writes is held byte for byte to buildWireSha256, the Solana transaction format written by
+    // hand in Python; here it is written again from @solana/kit's message: the count 2, the fee payer's empty slot, the
+    // payer's signature, then the message.
+    const byHand = Uint8Array.from([2, ...new Uint8Array(64), ...ed25519.sign(byKit, seed), ...byKit]);
+    expect(sha256(byHand)).toBe(V.ES2.buildWireSha256);
+    expect(sha256(b64((payment.payload["deposit"] as { transaction: string }).transaction))).toBe(V.ES2.buildWireSha256);
   });
 
   it("ES4: bound, the members, and the plants", async () => {
