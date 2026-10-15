@@ -116,26 +116,34 @@ dispatched by hand, and from the publish workflow before it packs. Its other ste
   a block scalar, so the text a block scalar holds is never read as a step.
 - **The install policy:** every `pnpm-workspace.yaml` git lists, the root's and the site's, sets
   `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade` and `strictDepBuilds: true`, and before the install
-  `pnpm config get` reads those three values in each folder that holds one, and every override and catalog entry as an
-  exact version. No other setting is admitted but `packages` (the root's alone: relative globs that exclude each folder
-  holding its own workspace file, here `"*"` and `"!website"`, so `pnpm -r` reaches every package), `permissions` (each
-  package's `build` and `skills` decisions, every one `false`), `minimumReleaseAgeExclude` (exact
-  `'@integraledger/<name>@<x.y.z>'` versions a lockfile installs), `overrides` (exact registry versions: no range,
-  prerelease, URL, `file:`, `link:`, git, `github:` or `npm:` alias), `catalog` and `catalogs` (the versions a manifest
-  names by `catalog:`, each an exact registry version by the same rule, and none a `catalog:` reference) and
-  `patchedDependencies` (exact versions, each patched by a file under `patches/` that git lists). In `permissions`,
-  `overrides` and the catalogs, a package name and a version may each be plain, single- or double-quoted.
-  `allowBuilds`, `allowSkills` and `ignoredBuiltDependencies` are refused, each by name, so every package decision is in
-  one place, and a line indented under a setting is refused too. Every `package.json`'s `pnpm.overrides`, `resolutions`
-  and `overrides`, npm's nested form included, name exact versions. Every package in every lockfile comes from the
-  registry by its integrity, a `link:` reaches only a workspace package, and no dependency is a file, directory, git or
-  tarball source. Every `.npmrc` git lists, at any depth, holds only comments, blank lines and
-  `registry=https://registry.npmjs.org/`, whatever pnpm reads from it; any other line is refused by its file and line.
-  No workflow sets pnpm's settings by a `pnpm_config_` environment variable, a `--config.` flag or the `pnpm config`
-  command, its alias or its shorthands; the one line admitted is the step's own `config get` read. The step reads the
-  committed files, pnpm's reading of them and the workflows' lines. A workflow step that rewrites a checked file before
-  the install, such as a `sed -i` on `pnpm-workspace.yaml`, or that builds a setting's name at run time, is code, like a
-  step that deletes this check, and this check does not read it.
+  `pnpm config get` reads those three values in each folder that holds one, every override as an exact version or a
+  removal below one, every catalog entry as an exact version, `resolvePeersFromWorkspaceRoot` unset or `false`, and no
+  `pnpmfile`, `globalPnpmfile` or `configDependencies`. No other setting is admitted but `packages` (the root's alone:
+  relative globs that exclude each folder holding its own workspace file, here `"*"` and `"!website"`, so `pnpm -r`
+  reaches every package), `permissions` (each package's `build` and `skills` decisions, every one `false`),
+  `minimumReleaseAgeExclude` (exact `'@integraledger/<name>@<x.y.z>'` versions a lockfile installs), `overrides` (exact
+  registry versions: no range, prerelease, URL, `file:`, `link:`, git, `github:` or `npm:` alias; or `"-"`, which
+  removes a dependency and adds no code, under a selector that names a parent at an exact version and a child with no
+  version, `"<name>@<x.y.z>><child>": "-"`, quoted either way), `catalog` and `catalogs` (the versions a manifest names
+  by `catalog:`, each an exact registry version by the same rule, and none a `catalog:` reference),
+  `patchedDependencies` (exact versions, each patched by a file under `patches/` that git lists) and
+  `resolvePeersFromWorkspaceRoot: false`, so that a missing peer is not linked to the root's copy. In `permissions`,
+  `overrides` and the catalogs, a package name and a version may each be plain, single- or double-quoted. Any line may
+  end in a comment, one or more spaces, `#` and any text, and what comes before it is held as the line would be without
+  one; a `#` with no space before it, or inside quotes, is part of the value. `allowBuilds`, `allowSkills`,
+  `ignoredBuiltDependencies`, `pnpmfile`, `globalPnpmfile`, `configDependencies` and every other key are refused, each
+  by name, so every package decision is in one place and no file of hooks is named, and a line indented under a setting
+  is refused too. Every `package.json`'s `pnpm.overrides`, `resolutions` and `overrides`, npm's nested form included,
+  name exact versions. Every package in every lockfile comes from the registry by its integrity, a `link:` reaches only
+  a workspace package, and no dependency is a file, directory, git or tarball source. Every `.npmrc` git lists, at any
+  depth, holds only comments, blank lines, `registry=https://registry.npmjs.org/` and `engine-strict=true`, whatever
+  pnpm reads from it; any other line is refused by its file and line. Git lists no `.pnpmfile.cjs` or `.pnpmfile.mjs`,
+  at any depth, since pnpm runs the hooks in the root's at install time; each is refused by its file. No workflow sets
+  pnpm's settings by a `pnpm_config_` environment variable, a `--config.` flag or the `pnpm config` command, its alias
+  or its shorthands; the one line admitted is the step's own `config get` read. The step reads the committed files,
+  pnpm's reading of them and the workflows' lines. A workflow step that rewrites a checked file before the install, such
+  as a `sed -i` on `pnpm-workspace.yaml`, or that builds a setting's name at run time, is code, like a step that deletes
+  this check, and this check does not read it.
 - **One-way imports:** no package here, nor the root `package.json`, depends on or names another `@integraledger`
   package, however the name is loaded or resolved; the site names only `@integraledger/lcp`. Each workspace package
   has a `build`, `typecheck` and `test` script that is not empty, since `pnpm -r` skips a package without one.

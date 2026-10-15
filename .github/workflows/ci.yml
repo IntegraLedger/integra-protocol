@@ -250,8 +250,8 @@ jobs:
       - name: The install policy, as pnpm reads it, in every workspace file, manifest, lockfile, .npmrc and workflow
         run: |
           set -eu
-          # First, the text of every pnpm-workspace.yaml, package.json, pnpm-lock.yaml and .npmrc git lists; the first
-          # three stand at the root.
+          # First, the text of every pnpm-workspace.yaml, package.json, pnpm-lock.yaml and .npmrc git lists, the first
+          # three at the root, and the names of the files git lists.
           node - <<'JS'
           const fs = require("node:fs");
           const path = require("node:path").posix;
@@ -272,44 +272,57 @@ jobs:
           const exact = new RegExp(`^${version}$`);
           // Every line of a workspace file is blank, a comment, one of these lines at its start, at most once, or an
           // entry of the block it opens, so no other setting is read, in any spelling. Any other key, such as
-          // allowBuilds, allowSkills or ignoredBuiltDependencies, is refused by name, and so is a line indented under a
-          // setting, which would continue its value. packages is the root's alone, and every block holds an entry.
+          // allowBuilds, allowSkills, ignoredBuiltDependencies, pnpmfile, globalPnpmfile or configDependencies, is
+          // refused by name, and so is a line indented under a setting, which would continue its value. packages is the
+          // root's alone, and every block holds an entry. resolvePeersFromWorkspaceRoot may stand, as false only, so
+          // that a missing peer is not linked to the root's copy. Each line may end in a comment, one or more spaces,
+          // "#" and any text, and what comes before it is held as the line would be without one; a "#" with no space
+          // before it, or inside quotes, is part of the value.
           const settings = ["minimumReleaseAge: 1440", "trustPolicy: no-downgrade", "strictDepBuilds: true"];
+          const optional = ["resolvePeersFromWorkspaceRoot: false"];
           const blocks = [
             "permissions:", "minimumReleaseAgeExclude:", "overrides:", "catalog:", "catalogs:", "patchedDependencies:",
           ];
+          const note = "(?: +#.*)?";
           // Under permissions each entry is a package name, plain, single- or double-quoted, mapped in flow style on
           // its line or in block style on the lines under it to build, skills or both, each false.
           const scoped = String.raw`(@[A-Za-z0-9._~-]+/)?[A-Za-z0-9][A-Za-z0-9._~-]*`;
           const name = String.raw`([A-Za-z0-9][A-Za-z0-9._~-]*|"${scoped}"|'${scoped}')`;
           const both = "(build: false(, ?skills: false)?|skills: false(, ?build: false)?)";
-          const decided = new RegExp(`^  ${name}: [{] ?${both} ?[}]$`);
-          const mapped = new RegExp(`^  ${name}:$`);
+          const decided = new RegExp(`^  ${name}: [{] ?${both} ?[}]${note}$`);
+          const mapped = new RegExp(`^  ${name}:${note}$`);
+          const choice = new RegExp(`^    (build|skills): false${note}$`);
           // Under packages each entry is a relative glob, plain, single- or double-quoted, with no ".." and no leading
           // "/", and a quoted "!" before a folder excludes it. Under minimumReleaseAgeExclude each entry is
           // '@integraledger/<name>@<x.y.z>', a version a lockfile installs. Under overrides each entry is a package,
           // plain, single- or double-quoted, and an exact registry version, plain, single- or double-quoted, which
           // minimumReleaseAge and trustPolicy read: no range, prerelease, URL, file:, link:, git, github: or npm:
-          // alias. Under catalog, which holds the versions a manifest names by catalog:, each entry is a package name
-          // and such a version, by the same rule, and no entry is a catalog: reference; under catalogs each catalog's
-          // name, plain, single- or double-quoted, opens such entries on the lines under it. Under patchedDependencies
-          // each entry is '<name>@<x.y.z>' and a file under the workspace's patches/ that git lists.
-          const glob = /^  - (?:"(!?)([^"\\!][^"\\]*)"|'(!?)([^'!][^']*)'|([A-Za-z0-9._][A-Za-z0-9._*/-]*))$/;
-          const excluded = new RegExp(`^  - '(@integraledger/[a-z0-9][a-z0-9._~-]*@${version})'$`);
+          // alias. An override may instead remove a dependency, "-", single- or double-quoted, when its selector,
+          // single- or double-quoted, names a parent at an exact version and a child with no version, so the removal
+          // adds no code. Under catalog, which holds the versions a manifest names by catalog:, each entry is a package
+          // name and an exact version, by the overrides rule, and no entry is a catalog: reference; under catalogs
+          // each catalog's name, plain, single- or double-quoted, opens such entries on the lines under it. Under
+          // patchedDependencies each entry is '<name>@<x.y.z>' and a file under the workspace's patches/ that git
+          // lists.
+          const quoted = String.raw`"(!?)([^"\\!][^"\\]*)"|'(!?)([^'!][^']*)'`;
+          const glob = new RegExp(`^  - (?:${quoted}|([A-Za-z0-9._][A-Za-z0-9._*/-]*))${note}$`);
+          const excluded = new RegExp(`^  - '(@integraledger/[a-z0-9][a-z0-9._~-]*@${version})'${note}$`);
           const pin = `("${version}"|'${version}'|${version})`;
-          const override = new RegExp(`^  ("[^"\\\\]+"|'[^']+'|[A-Za-z0-9][A-Za-z0-9._@/>-]*): ${pin}$`);
-          const pinned = new RegExp(`^  ${name}: ${pin}$`);
-          const catalogued = new RegExp(`^    ${name}: ${pin}$`);
-          const catalog = /^  ([A-Za-z0-9][A-Za-z0-9._~-]*|"[^"\\]+"|'[^']+'):$/;
+          const override = new RegExp(`^  ("[^"\\\\]+"|'[^']+'|[A-Za-z0-9][A-Za-z0-9._@/>-]*): ${pin}${note}$`);
+          const cut = `${scoped}@${version}>${scoped}`;
+          const removal = new RegExp(`^  ("${cut}"|'${cut}'): ("-"|'-')${note}$`);
+          const pinned = new RegExp(`^  ${name}: ${pin}${note}$`);
+          const catalogued = new RegExp(`^    ${name}: ${pin}${note}$`);
+          const catalog = new RegExp(`^  ([A-Za-z0-9][A-Za-z0-9._~-]*|"[^"\\\\]+"|'[^']+'):${note}$`);
           const file = "patches(/[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*)+";
-          const patch = new RegExp(`^  '(@[A-Za-z0-9._~-]+/)?[A-Za-z0-9._~-]+@${version}': (${file})$`);
+          const patch = new RegExp(`^  '(@[A-Za-z0-9._~-]+/)?[A-Za-z0-9._~-]+@${version}': (${file})${note}$`);
           const globs = [];
           const exclusions = [];
           for (const f of workspaces) {
             const lines = read(f);
             const at = (i) => `${f}:${i + 1}: ${lines[i]}`;
             const root = f === "pnpm-workspace.yaml";
-            const keys = [...settings, ...blocks, ...(root ? ["packages:"] : [])];
+            const keys = [...settings, ...optional, ...blocks, ...(root ? ["packages:"] : [])];
             const names = keys.map((k) => k.replace(/:.*/, ""));
             // A line at the start that is not admitted is refused, and named by its key when no line here admits it.
             const refused = (i) => {
@@ -334,9 +347,10 @@ jobs:
               if (/^ *(#|$)/.test(l)) return;
               if (!l.startsWith(" ")) {
                 end();
-                if (!keys.includes(l) || seen.has(l)) bad.push(refused(i));
-                seen.add(l);
-                [key, entries] = [{ line: l, at: i }, 0];
+                const bare = l.replace(/ +#.*$/, "");
+                if (!keys.includes(bare) || seen.has(bare)) bad.push(refused(i));
+                seen.add(bare);
+                [key, entries] = [{ line: bare, at: i }, 0];
                 return;
               }
               entries++;
@@ -344,7 +358,7 @@ jobs:
               else if (key.line === "permissions:" && l.startsWith("    ")) {
                 const decision = l.trim().replace(/:.*/, "");
                 const once = open !== null && !open.held.has(decision);
-                if (!once || !/^    (build|skills): false$/.test(l)) bad.push(at(i));
+                if (!once || !choice.test(l)) bad.push(at(i));
                 else open.held.add(decision);
               } else if (key.line === "permissions:") {
                 close();
@@ -359,7 +373,7 @@ jobs:
                 const m = excluded.exec(l);
                 if (m === null) bad.push(at(i));
                 else exclusions.push([at(i), m[1]]);
-              } else if (key.line === "overrides:" && !override.test(l)) bad.push(at(i));
+              } else if (key.line === "overrides:" && !override.test(l) && !removal.test(l)) bad.push(at(i));
               else if (key.line === "catalog:" && !pinned.test(l)) bad.push(at(i));
               else if (key.line === "catalogs:" && l.startsWith("    ")) {
                 if (open === null || !catalogued.test(l)) bad.push(at(i));
@@ -426,27 +440,33 @@ jobs:
             const fields = { "pnpm.overrides": m?.pnpm?.overrides, resolutions, overrides };
             for (const [field, value] of Object.entries(fields)) if (value !== undefined) walk(`${f} ${field}`, value);
           }
-          // Every .npmrc git lists, at any depth, holds only comments, blank lines and the line that names the npm
-          // registry, whatever pnpm reads from it.
+          // Every .npmrc git lists, at any depth, holds only comments, blank lines, the line that names the npm
+          // registry and engine-strict=true, whatever pnpm reads from it.
+          const npmrc = ["registry=https://registry.npmjs.org/", "engine-strict=true"];
           for (const f of named(".npmrc")) {
             read(f).forEach((l, i) => {
-              const admitted = /^[ \t]*([#;]|$)/.test(l) || l === "registry=https://registry.npmjs.org/";
+              const admitted = /^[ \t]*([#;]|$)/.test(l) || npmrc.includes(l);
               if (!admitted) bad.push(`${f}:${i + 1}: ${l}`);
             });
           }
+          // Git lists no .pnpmfile.cjs or .pnpmfile.mjs, at any depth: the hooks in the root's run at install time and
+          // can rewrite any manifest or setting this step reads.
+          for (const f of tracked) if (/^\.pnpmfile\.[cm]js$/.test(path.basename(f))) bad.push(f);
           if (bad.length > 0) {
             console.log(`these weaken the install policy:\n${bad.join("\n")}`);
             process.exit(1);
           }
           JS
           # Second, pnpm's own reading in each folder that holds a workspace file, before it installs anything: each of
-          # the three settings exactly, and every override and every catalog entry an exact version, whatever else pnpm
-          # reads besides the text.
+          # the three settings exactly, every override an exact version or a removal below an exact version, every
+          # catalog entry an exact version, resolvePeersFromWorkspaceRoot unset or false, and no pnpmfile,
+          # globalPnpmfile or configDependencies, whatever else pnpm reads besides the text.
           files=$(git ls-files -- pnpm-workspace.yaml '*/pnpm-workspace.yaml')
           for f in $files; do
             d=$(dirname "$f")
             for want in minimumReleaseAge=1440 trustPolicy=no-downgrade strictDepBuilds=true overrides=exact \
-              catalogs=exact; do
+              catalogs=exact resolvePeersFromWorkspaceRoot=false pnpmfile=undefined globalPnpmfile=undefined \
+              configDependencies=undefined; do
               key=${want%%=*}
               if ! have=$(pnpm --dir "$d" config get "$key"); then
                 printf 'pnpm cannot read %s in %s\n' "$key" "$d"
@@ -454,10 +474,12 @@ jobs:
               fi
               # pnpm prints overrides and catalogs as JSON, an entry to a line, or undefined when there are none, and
               # each catalog's entries under its name, the default catalog's under "default"; each other line is kept
-              # with its number.
-              pin='"[^"\]+": "[0-9]+\.[0-9]+\.[0-9]+",?'
+              # with its number. A removal is "-" from a parent at an exact version to a child with no version.
+              v='[0-9]+\.[0-9]+\.[0-9]+'
+              n='(@[A-Za-z0-9._~-]+/)?[A-Za-z0-9][A-Za-z0-9._~-]*'
+              pin='"[^"\]+": "'"$v"'",?'
               case $key in
-                overrides) exact="undefined|[{}]|  $pin" ;;
+                overrides) exact="undefined|[{}]|  $pin|  \"$n@$v>$n\": \"-\",?" ;;
                 catalogs) exact='undefined|[{}]|  "[^"\]+": [{]|  [}],?|    '"$pin" ;;
                 *) exact= ;;
               esac
@@ -465,6 +487,8 @@ jobs:
                 have=$(printf '%s\n' "$have" | grep -nvxE "$exact" || true)
                 have=${have:-exact}
               fi
+              # resolvePeersFromWorkspaceRoot is false wherever it is set, and may be unset.
+              if [ "$key" = resolvePeersFromWorkspaceRoot ] && [ "$have" = undefined ]; then continue; fi
               if [ "$have" != "${want#*=}" ]; then
                 printf 'pnpm reads %s in %s as "%s", not "%s"\n' "$key" "$d" "$have" "${want#*=}"
                 exit 1
@@ -494,7 +518,7 @@ jobs:
             printf 'these workflow lines set the install policy around the files:\n%s\n' "$around"
             exit 1
           fi
-          echo "$(printf '%s\n' "$files" | wc -l) workspace file(s), the root's and one in each folder its packages exclude: pnpm reads minimumReleaseAge 1440, trustPolicy no-downgrade and strictDepBuilds true in each, and every override and catalog entry as an exact version; each records build and skills decisions only as false, excludes from the age only exact @integraledger/<name>@<x.y.z> versions a lockfile installs, pins overrides and catalog entries only to exact registry versions, patches only exact versions from patches/ files git lists, and holds nothing else; the root's packages are relative globs; every manifest's overrides and resolutions are exact versions; every lockfile takes each package from the registry by its integrity and links only to a workspace package; every .npmrc holds only comments and registry=https://registry.npmjs.org/; none of the $# workflow(s) sets pnpm's settings"
+          echo "$(printf '%s\n' "$files" | wc -l) workspace file(s), the root's and one in each folder its packages exclude: pnpm reads minimumReleaseAge 1440, trustPolicy no-downgrade and strictDepBuilds true in each, every override as an exact version or a removal below one, every catalog entry as an exact version, resolvePeersFromWorkspaceRoot unset or false, and no pnpmfile, globalPnpmfile or configDependencies; each records build and skills decisions only as false, excludes from the age only exact @integraledger/<name>@<x.y.z> versions a lockfile installs, pins overrides and catalog entries only to exact registry versions, removes a dependency only below an exact parent version, patches only exact versions from patches/ files git lists, sets resolvePeersFromWorkspaceRoot only to false, and holds nothing else, a comment after a line included; the root's packages are relative globs; every manifest's overrides and resolutions are exact versions; every lockfile takes each package from the registry by its integrity and links only to a workspace package; every .npmrc holds only comments, registry=https://registry.npmjs.org/ and engine-strict=true; git lists no .pnpmfile.cjs or .pnpmfile.mjs; none of the $# workflow(s) sets pnpm's settings"
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r --if-present run build
       - run: pnpm -r --if-present run typecheck
