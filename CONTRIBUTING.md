@@ -121,7 +121,9 @@ dispatched by hand, and from the publish workflow before it packs. Its other ste
   `globalPnpmfile` or `configDependencies`. No other setting is admitted but `packages` (the root's alone:
   relative globs that exclude each folder holding its own workspace file, here `"*"` and `"!website"`, so `pnpm -r`
   reaches every package), `permissions` (each package's `build` and `skills` decisions, every one `false`),
-  `minimumReleaseAgeExclude` (exact `'@integraledger/<name>@<x.y.z>'` versions a lockfile installs), `overrides` (exact
+  `minimumReleaseAgeExclude` (exact `'@integraledger/<name>@<x.y.z>'` versions a lockfile installs, one to an entry, or
+  several of one package in pnpm's own form, `'@integraledger/<name>@<x.y.z> || <x.y.z>'`, single- or double-quoted
+  as pnpm writes them), `overrides` (exact
   registry versions: no range, prerelease, URL, `file:`, `link:`, git, `github:` or `npm:` alias; or `"-"`, which
   removes a dependency and adds no code, under a selector that names a parent at an exact version and a child with no
   version, `"<name>@<x.y.z>><child>": "-"`, quoted either way), `catalog` and `catalogs` (the versions a manifest names
