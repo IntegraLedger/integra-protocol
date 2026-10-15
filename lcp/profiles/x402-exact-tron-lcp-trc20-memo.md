@@ -2,7 +2,7 @@
 
 *Scope.* x402 v2, `scheme` `"exact"`, `network` `tron:<chain id in decimal>` (CAIP-2), `extra.assetTransferMethod` `"lcp-trc20-memo"` (required). It defines this transfer method until x402 or MPP defines Tron. The default flow is `authorization`, and `upfront` is allowed.
 
-1. The resource server's option gives `amount` in the token's atomic units, `asset` (the TRC-20 contract) and `payTo` in base58check, and `maxTimeoutSeconds` of at most 86,340. `PaymentRequired` carries `extensions.legalContext.info` = `{"type":"sha256","value":H,"legalContextUrl":L}`, where H is the SHA-256 of the ATR's exact bytes as `0x` lowercase hex and L is an `https` URL that serves them.
+1. The resource server's option gives `amount` in the token's atomic units as the canonical decimal of a positive integer (digits only, the first not `0`), `asset` (the TRC-20 contract) and `payTo` in base58check, and `maxTimeoutSeconds` as an integer from 1 to 86,340. `PaymentRequired` carries `extensions.legalContext.info` = `{"type":"sha256","value":H,"legalContextUrl":L}`, where H is the SHA-256 of the ATR's exact bytes as `0x` lowercase hex and L is an `https` URL that serves them.
 2. The client fetches L, computes SHA-256 over the bytes received, and compares the result with H as 32 decoded bytes. On a mismatch it does not sign.
 3. On a match, the client signs one transaction and sends it as `payload.transaction`, the serialized `Transaction` in lowercase hex. It echoes `extensions` unchanged. The transaction's `raw_data` holds:
    - exactly one `TriggerSmartContract`, from the payer to `asset`, calling `transfer(payTo, amount)` with no call value;
