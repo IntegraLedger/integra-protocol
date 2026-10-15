@@ -4,12 +4,15 @@
 // BINDINGS), docs/reference/entry-points.md (from package.json's exports, each module's doc comment, the runtime
 // exports and the emitted declarations) and docs/reference/vectors.md (from the vector files). It writes
 // lcp/src/internal/codes.ts, the set of codes docs/reference/refusals.md lists, by which `problem` tells the package's
-// own codes from a caller's. It also checks that page against the source both ways: the page lists every code the
-// source passes to refusal("…") as a string literal, and every code the page lists is passed that way. Any other use
-// of refusal, such as a call with another argument, an alias or an import that renames it, fails the check, since its
-// code cannot be read; a comment is not a use, nor is a word in a string literal that is not such a call's code. Each
-// total the page states ("This page lists all N codes") and each cell of its namespace table must count its rows, no
-// code may be listed twice, and the table gives each namespace once.
+// own codes from a caller's. It also checks that page against the source both ways, reading each file under lcp/src as
+// the syntax tree TypeScript's parser gives (typescript/unstable/sync, from the root devDependencies): the page lists
+// every code the source passes to refusal("…") as a string literal, and every code the page lists is passed that way.
+// Any other use of refusal, such as a call with another argument, an alias or an import that renames it, fails the
+// check, since its code cannot be read. A use is the identifier refusal in the tree, other than its declaration and an
+// import or `export … from` that keeps its name: a comment holds none, nor does the text of a string, template or
+// regular expression literal, nor a call written there. Each total the page states ("This page lists all N codes") and
+// each cell of its namespace table must count its rows, no code may be listed twice, and the table gives each
+// namespace once.
 // It marks each code in refusals.md that readToRepeat answers true for, from the set that function answers from
 // (lcp/src/internal/reads-to-repeat.ts): the meaning of each such code, and of no other, begins with "**Read to
 // repeat.**". Every code in that set must be one the page lists.
@@ -25,6 +28,8 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
+import { SyntaxKind } from "typescript/unstable/ast";
+import { API } from "typescript/unstable/sync";
 
 const root = join(import.meta.dirname, "..");
 const lcp = join(root, "lcp");
@@ -218,25 +223,23 @@ function readToRepeatMarks(text) {
 
 /** A code: a lowercase namespace, a slash, and a reason that may hold further slashes and dotted member paths. */
 const CODE = String.raw`[a-z0-9]+\/[A-Za-z0-9./-]+`;
-/**
- * The argument list of a call that passes one code written as a string literal, in double or single quotes, with an
- * optional `as const` and an optional trailing comma.
- */
-const CODE_ARGUMENT = String.raw`\(\s*(?:"(${CODE})"|'(${CODE})')(?:\s+as\s+const)?\s*,?\s*\)`;
+/** A string literal, in double or single quotes, whose text is one code. */
+const CODE_LITERAL = new RegExp(String.raw`^(?:"(${CODE})"|'(${CODE})')$`);
 
 /**
- * A source file with its comments, its import and `export … from` lists and the declaration of `refusal` blanked to
- * spaces, line breaks kept, so that each `refusal` left in it is a use. A string literal is kept whole, so a `//` or
- * `/*` inside one starts no comment. An import that renames `refusal` keeps that name, so the check sees it.
+ * The code a call to `refusal` passes when its one argument is a string literal written as one code, with an optional
+ * `as const`; undefined for any other call, such as one with another argument, more than one, type arguments or `?.`.
  */
-function codeOf(text) {
-  const blank = (s) => s.replace(/[^\n]/g, " ");
-  return text
-    .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m) => (m[0] === "/" ? blank(m) : m))
-    .replace(/\b(?:import|export)\s+(?:type\s+)?\{[^}]*\}\s*from\s*(?:"[^"\n]*"|'[^'\n]*')/g, (m) =>
-      m.replace(/\brefusal(?=\s+as\b)|[^\n]/g, (s) => (s.length > 1 ? s : " ")),
-    )
-    .replace(/\bexport function refusal\b/, blank);
+function codeArgument(call, file) {
+  if (call.typeArguments !== undefined || call.questionDotToken !== undefined || call.arguments.length !== 1) {
+    return undefined;
+  }
+  let argument = call.arguments[0];
+  const { type } = argument.kind === SyntaxKind.AsExpression ? argument : {};
+  if (type?.kind === SyntaxKind.TypeReference && type.typeName.text === "const") argument = argument.expression;
+  if (argument.kind !== SyntaxKind.StringLiteral) return undefined;
+  const m = CODE_LITERAL.exec(file.text.slice(argument.getStart(file), argument.end));
+  return m === null ? undefined : (m[1] ?? m[2]);
 }
 
 /**
@@ -244,30 +247,56 @@ function codeOf(text) {
  * uses `refusal` in any other way (another argument, no call, an alias, an import that renames it), whose code no check
  * can read; the codes refusals.md lists; and the faults in the page's counts: a stated total or namespace cell that
  * differs from its rows, a code listed more than once, a namespace the table lists more than once, or a table row for a
- * namespace with no codes. A comment is not a use, nor is a word in a string literal, such as a module specifier or a
- * registered symbol's key, once each `refusal("…")` call is read.
+ * namespace with no codes. Each file under lcp/src is read as the syntax tree TypeScript's parser gives for it in
+ * lcp/tsconfig.json's program, and a use is the identifier `refusal` in that tree, other than the name its function
+ * declaration declares and an import or `export … from` that takes `refusal` under its own name. A comment holds no
+ * use, nor does the text of a string, template or regular expression literal, such as a module specifier or a
+ * registered symbol's key, nor a call written there.
  */
 function refusalCodes() {
   const inSource = new Set();
   const unread = [];
-  const blank = (s) => s.replace(/[^\n]/g, " ");
-  const literal = new RegExp(String.raw`\brefusal${CODE_ARGUMENT}`, "g");
-  const walk = (dir) => {
-    for (const f of readdirSync(dir, { withFileTypes: true })) {
-      const p = join(dir, f.name);
-      if (f.isDirectory()) walk(p);
-      else if (f.name.endsWith(".ts")) {
-        const text = codeOf(readFileSync(p, "utf8"));
-        for (const m of text.matchAll(literal)) inSource.add(m[1] ?? m[2]);
-        // With each call read blanked, and the text of every other string literal, each `refusal` left is a use.
-        const rest = text
-          .replace(literal, blank)
-          .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (m) => m[0] + blank(m.slice(1, -1)) + m[0]);
-        for (const m of rest.matchAll(/\brefusal\b/g)) unread.push(`${relative(root, p)}:${rest.slice(0, m.index).split("\n").length}`);
+  const named = (node) => node.kind === SyntaxKind.Identifier && node.text === "refusal";
+  const config = join(lcp, "tsconfig.json");
+  const api = new API({ cwd: root });
+  try {
+    const program = api.updateSnapshot({ openProjects: [config] }).getProject(config).program;
+    const walk = (dir) => {
+      for (const f of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, f.name);
+        if (f.isDirectory()) walk(p);
+        else if (f.name.endsWith(".ts")) {
+          const file = program.getSourceFile(p);
+          if (file === undefined) throw new Error(`${relative(root, p)} is not in lcp/tsconfig.json's program`);
+          const use = (node) => {
+            unread.push(`${relative(root, p)}:${file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1}`);
+          };
+          const visit = (node) => {
+            if (node.kind === SyntaxKind.CallExpression && named(node.expression)) {
+              const c = codeArgument(node, file);
+              if (c !== undefined) {
+                inSource.add(c);
+                return;
+              }
+            } else if (
+              node.kind === SyntaxKind.ImportSpecifier ||
+              (node.kind === SyntaxKind.ExportSpecifier && node.parent.parent.moduleSpecifier !== undefined)
+            ) {
+              if ((node.propertyName ?? node.name).text === "refusal" && node.name.text !== "refusal") use(node);
+              return;
+            } else if (named(node)) {
+              if (!(node.parent.kind === SyntaxKind.FunctionDeclaration && node.parent.name === node)) use(node);
+            }
+            node.forEachChild(visit);
+          };
+          file.forEachChild(visit);
+        }
       }
-    }
-  };
-  walk(join(lcp, "src"));
+    };
+    walk(join(lcp, "src"));
+  } finally {
+    api.close();
+  }
   const page = REFUSALS;
   const listed = new Set();
   const counts = [];

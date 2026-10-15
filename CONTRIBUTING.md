@@ -49,10 +49,12 @@ node scripts/docs-reference.mjs --check
   package, `lcp/src/internal/codes.ts` against the codes `docs/reference/refusals.md` lists, that page's stated total
   and namespace table against its rows, that it lists no code twice, and the page against the source both ways: the page
   lists each code the source passes to `refusal("…")` as a string literal, and each code the page lists is passed that
-  way. Any other use of `refusal`, such as a call with another argument or through an alias, fails the check; a comment
-  is not a use. It also checks that the page marks as a read to repeat exactly the codes `readToRepeat` answers true
-  for. After a change to the registry, the exports, the vectors or the refusal codes, run
-  `node scripts/docs-reference.mjs` and commit what it writes.
+  way. Any other use of `refusal`, such as a call with another argument or through an alias, fails the check. It reads
+  each file under `lcp/src` as the syntax tree TypeScript's parser gives, so a use is the identifier `refusal`: a
+  comment is not a use, nor is a word in the text of a string, template or regular expression literal. It also checks
+  that the page marks as a read to repeat exactly the codes `readToRepeat` answers true for. After a change to the
+  registry, the exports, the vectors or the refusal codes, run `node scripts/docs-reference.mjs` and commit what it
+  writes.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm build` inside that folder. After a change
   to a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API pages it writes under
   `docs/reference/api/`; CI checks that they match the source.
