@@ -102,7 +102,7 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 | Code | Meaning |
 |---|---|
 | `x402/channel-id-mismatch` | The EVM batch pairing finds that the voucher's `channelId` is not the id computed from the payment's channel config, or `buildWithin` is given a channel config whose `salt` is not H. |
-| `x402/channel-kind-unknown` | The batch pairing's `channel.kind` cannot classify the payment as an opening, a payment within the channel, or a close (an unknown payload `type`, or an SVM deposit whose channel instruction is neither `open` nor `top_up`). |
+| `x402/channel-kind-unknown` | The batch pairing's `channel.kind` cannot classify the payment as an opening, a payment within the channel, or a close (an unknown payload `type`, or an SVM deposit whose channel instruction is neither `open` nor `top_up`); its `channel.ref` refuses such a payment with this code, as it refuses every payment `channel.kind` refuses with `channel.kind`'s code. |
 | `x402/delegation-empty` | At the ERC-7710 salt level, the payment's permission context decodes to no delegations. |
 | `x402/deposit-authorization` | The EVM batch opening's `deposit.authorization` is not an object carrying exactly one of `erc3009Authorization` and `permit2Authorization`. |
 | `x402/escrow-not-canonical` | An `auth-capture` option's `extra.authCaptureEscrow` is present but is not the address of the commerce-payments escrow's v1.1 or v1.0 deployment; an absent `authCaptureEscrow` means v1.1. |

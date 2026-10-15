@@ -141,7 +141,10 @@ export type SessionUnsigned = {
    * a keychain signature of type `0x03` (`tempo/tx-malformed`); one without the `open` call `funding.call` describes,
    * to its escrow with H as its salt; one whose sender is not the build's `from`, or whose `open` call names another
    * payee, operator, token or authorizedSigner, which the credential's descriptor or channel id names; and one whose
-   * credential is over the credential size bound (`mpp/credential-malformed`).
+   * credential is over the credential size bound (`mpp/credential-malformed`). On an `eip712` or `evm-calls` funding,
+   * `voucher` likewise gives what `complete` gives `funded` with a one-byte voucher signature where that is a refusal:
+   * a funding signature or hash not in the form `complete` takes, or a credential over the credential size bound,
+   * each `mpp/credential-malformed`.
    */
   voucher(funded: Hex): VoucherTypedData | Refusal;
   /**
@@ -877,8 +880,18 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
   const deadline = BigInt(expires);
   const challenge = { ...choice.challenge };
   const source = `did:pkh:eip155:${chainId}:${from}`;
-  const voucher = (funded: Hex): VoucherTypedData | Refusal =>
-    isHexBytes(funded, 1, MAX_WIRE) ? voucherData("EVM Payment Channel", "uint128", chainId, escrow, channelId) : refusal("mpp/credential-malformed");
+  /**
+   * The voucher's typed data for `funded`, once `complete` takes `funded` with the shortest voucher signature it takes,
+   * one byte; else what `complete` refuses. So `voucher` measures the credential as `complete` does, and refuses one
+   * over the credential size bound with `mpp/credential-malformed` before the voucher is signed, as the Tempo
+   * session's `voucher` does.
+   */
+  const voucherFor =
+    (complete: (funded: Hex, voucherSignature: Hex) => MppCredential | Refusal) =>
+    (funded: Hex): VoucherTypedData | Refusal => {
+      const c = complete(funded, "0x00");
+      return isRefusal(c) ? c : voucherData("EVM Payment Channel", "uint128", chainId, escrow, channelId);
+    };
   const base = { action: "open", channelId, cumulativeAmount: "0", authorizedSigner: signer, salt };
 
   if (type === "hash") {
@@ -889,15 +902,12 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
         data: words(OPEN_V1_SELECTOR, [addressWord(recipient), addressWord(currency), uintWord(deposit), bytes32Word(salt), addressWord(signer)]),
       },
     ];
-    return {
-      funding: { kind: "evm-calls", chainId, calls, broadcast: true },
-      voucher,
-      complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal {
-        if (normalHash(funded) === null || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
-        const payload = { ...base, type: "hash", hash: funded, signature: voucherSignature };
-        return measured({ challenge, source, payload });
-      },
+    const complete = (funded: Hex, voucherSignature: Hex): MppCredential | Refusal => {
+      if (normalHash(funded) === null || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      const payload = { ...base, type: "hash", hash: funded, signature: voucherSignature };
+      return measured({ challenge, source, payload });
     };
+    return { funding: { kind: "evm-calls", chainId, calls, broadcast: true }, voucher: voucherFor(complete), complete };
   }
 
   let typedData: ReceiveTypedData | Permit2TypedData | Refusal;
@@ -948,20 +958,17 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
     };
   }
   if (isRefusal(typedData)) return typedData;
-  return {
-    funding: { kind: "eip712", typedData },
-    voucher,
-    complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(funded, 1, MAX_SIGNATURE) || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) {
-        return refusal("mpp/credential-malformed");
-      }
-      return measured({
-        challenge,
-        source,
-        payload: { ...base, type, authorization, signature: funded, voucherSignature },
-      });
-    },
+  const complete = (funded: Hex, voucherSignature: Hex): MppCredential | Refusal => {
+    if (!isHexBytes(funded, 1, MAX_SIGNATURE) || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) {
+      return refusal("mpp/credential-malformed");
+    }
+    return measured({
+      challenge,
+      source,
+      payload: { ...base, type, authorization, signature: funded, voucherSignature },
+    });
   };
+  return { funding: { kind: "eip712", typedData }, voucher: voucherFor(complete), complete };
 }
 
 /** The transaction a `hash` opening presents, which the payer broadcast before the claim; undefined for any other. */

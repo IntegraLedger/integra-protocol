@@ -269,6 +269,7 @@ export interface BatchUnsigned {
 export interface ChannelMembers {
   channel: {
     kind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal;
+    /** The payment's channel; a payment `kind` refuses is refused with `kind`'s code, as every `channel.ref` does. */
     ref(p: BatchPaymentPayload): Promise<{ network: string; channel: string } | Refusal>;
     boundWithin(p: unknown): Promise<AtrHash | Refusal>;
     until(p: BatchPaymentPayload): number | undefined;
@@ -473,6 +474,12 @@ async function evmRef(p: unknown): Promise<{ network: string; channel: string } 
   if (isRefusal(id)) return id;
   if (!sameBytes(id, voucher["channelId"])) return refusal("x402/channel-id-mismatch");
   return { network: x.accepted.network, channel: id.toLowerCase() };
+}
+
+/** `channel.ref`: what `evmKind` refuses, with its code, then the channel id (`evmRef`). */
+async function evmChannelRef(p: unknown): Promise<{ network: string; channel: string } | Refusal> {
+  const k = evmKind(p as BatchPaymentPayload);
+  return isRefusal(k) ? k : evmRef(p);
 }
 
 /**
@@ -859,7 +866,7 @@ export const batchEvm = Object.freeze({
   recover: evmRecover,
   channel: Object.freeze({
     kind: evmKind,
-    ref: evmRef,
+    ref: evmChannelRef,
     boundWithin: evmBoundWithin,
     until: (_p: BatchPaymentPayload): number | undefined => undefined,
   }),
@@ -934,6 +941,12 @@ function svmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
     if (ix.kind === "top_up") return "within";
   }
   return refusal("x402/channel-kind-unknown");
+}
+
+/** `channel.ref`: what `svmKind` refuses, with its code, then the channel PDA (`svmRef`). */
+async function svmChannelRef(p: unknown): Promise<{ network: string; channel: string } | Refusal> {
+  const k = svmKind(p as BatchPaymentPayload);
+  return isRefusal(k) ? k : svmRef(p);
 }
 
 /**
@@ -1272,7 +1285,7 @@ export const batchSvm = Object.freeze({
   recover: svmBatchRecover,
   channel: Object.freeze({
     kind: svmKind,
-    ref: svmRef,
+    ref: svmChannelRef,
     boundWithin: async (_p: BatchPaymentPayload): Promise<AtrHash | Refusal> => refusal("x402/not-bound-within"),
     until: (_p: BatchPaymentPayload): number | undefined => undefined,
   }),

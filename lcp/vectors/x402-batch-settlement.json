@@ -1387,6 +1387,59 @@
      }
     ],
     "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "EVM channel.ref of a refund channel.kind refuses, whose amount is present and is not a positive decimal below 2^128 (row 26's amounts): channel.ref refuses a payment channel.kind refuses, with channel.kind's code, as every channel.ref does",
+    "pairing": "x402/batch-settlement/eip155",
+    "calls": [
+     "channel.ref"
+    ],
+    "refundAmounts": [
+     "0",
+     "340282366920938463463374607431768211456",
+     "1e3",
+     null
+    ],
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "EVM channel.kind and channel.ref of EB2 and EB3's opening whose payload type is none the scheme defines: use, or null",
+    "pairing": "x402/batch-settlement/eip155",
+    "calls": [
+     "channel.kind",
+     "channel.ref"
+    ],
+    "payloadTypes": [
+     "use",
+     null
+    ],
+    "expect": "x402/channel-kind-unknown"
+   },
+   {
+    "case": "Solana channel.kind and channel.ref of ES4's opening whose payload type is none the scheme defines: use, or null",
+    "pairing": "x402/batch-settlement/solana",
+    "calls": [
+     "channel.kind",
+     "channel.ref"
+    ],
+    "payloadTypes": [
+     "use",
+     null
+    ],
+    "expect": "x402/channel-kind-unknown"
+   },
+   {
+    "case": "Solana channel.kind and channel.ref of ES4's deposit without a transaction, or whose transaction is not a Solana transaction (AAAA, three zero bytes)",
+    "pairing": "x402/batch-settlement/solana",
+    "calls": [
+     "channel.kind",
+     "channel.ref"
+    ],
+    "depositTransactions": [
+     null,
+     "AAAA"
+    ],
+    "expect": "x402/payload-malformed"
    }
   ]
  },

@@ -485,7 +485,10 @@ byte. So both refuse a transaction that does not decode, an empty one among them
 a keychain signature of type `0x03` (`tempo/tx-malformed`); one without the `open` call `funding.call` describes,
 to its escrow with H as its salt; one whose sender is not the build's `from`, or whose `open` call names another
 payee, operator, token or authorizedSigner, which the credential's descriptor or channel id names; and one whose
-credential is over the credential size bound (`mpp/credential-malformed`).
+credential is over the credential size bound (`mpp/credential-malformed`). On an `eip712` or `evm-calls` funding,
+`voucher` likewise gives what `complete` gives `funded` with a one-byte voucher signature where that is a refusal:
+a funding signature or hash not in the form `complete` takes, or a credential over the credential size bound,
+each `mpp/credential-malformed`.
 
 ###### Parameters
 

@@ -584,3 +584,54 @@ describe("mpp-challenge.json completeOrder: a complete checks the credential in 
     });
   }
 });
+
+// voucherSize: a session build's voucher measures the credential its complete would give with a one-byte voucher
+// signature, as complete measures every credential, and refuses with complete's code before the voucher is signed.
+describe("mpp-challenge.json voucherSize: a session build's voucher measures as its complete does", () => {
+  type VoucherRow = { case: string; size: number; taken?: true; expect?: string };
+  const ROWS_VOUCHER = rowsOf<VoucherRow>(MC.voucherSize.rows, "mpp-challenge.json voucherSize.rows", { exact: 2 });
+  type Voucher = { voucher(funded: Hex): unknown; complete(funded: Hex, voucherSignature: Hex): unknown };
+  /** Each session build with a voucher: its build under a challenge, from its B2 row, and its B6 funding. */
+  const SESSIONS: Record<string, { build(challenge: Placed): Promise<Voucher>; funded: Hex }> = {
+    "mpp/session/evm": {
+      build: async (challenge) => {
+        const b2 = buyer("mpp-session-evm.json", "mpp/session/evm", "B2")!;
+        const i = b2.input.inputs!;
+        const choice = { challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0, deposit: BigInt(i.deposit!), credentialType: i.credentialType!, tokenDomain: i.tokenDomain! };
+        return built(await sessionEvm.build(choice, b2.advertised));
+      },
+      funded: buyer("mpp-session-evm.json", "mpp/session/evm", "B6")!.input.presented!.payload["signature"] as Hex,
+    },
+    "mpp/session/tempo": {
+      build: async (challenge) => {
+        const b2 = buyer("mpp-session-tempo.json", "mpp/session/tempo", "B2")!;
+        const choice = { challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0, deposit: BigInt(b2.input.inputs!.deposit!) };
+        return built(await sessionTempo.build(choice, b2.advertised));
+      },
+      funded: buyer("mpp-session-tempo.json", "mpp/session/tempo", "B6")!.input.presented!.payload["transaction"] as Hex,
+    },
+  };
+  for (const [id, session] of Object.entries(SESSIONS)) {
+    describe(id, () => {
+      for (const row of ROWS_VOUCHER) {
+        it(row.case, async () => {
+          const { placed } = setUp(id);
+          const shortest = (await session.build(placed)).complete(session.funded, "0x00") as MppCredential;
+          expect(shortest).not.toHaveProperty("refused");
+          const challenge = described(placed, descriptionFor(shortest, row.size));
+          const sized = { ...shortest, challenge };
+          expect(sizeOf(sized)).toBe(row.size);
+          const u = await session.build(challenge);
+          if (row.taken) {
+            expect(u.voucher(session.funded)).toEqual((await session.build(placed)).voucher(session.funded));
+            expect(u.voucher(session.funded)).toHaveProperty("primaryType", "Voucher");
+            expect(u.complete(session.funded, "0x00")).toEqual(sized);
+          } else {
+            expect(u.voucher(session.funded)).toEqual(refused(row.expect!));
+            expect(u.complete(session.funded, "0x00")).toEqual(refused(row.expect!));
+          }
+        });
+      }
+    });
+  }
+});

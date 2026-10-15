@@ -259,5 +259,12 @@
    { "case": "mpp/charge/lightning, a preimage that is not 64 hex digits, in a credential at the credential size bound", "pairing": "mpp/charge/lightning", "fault": "a preimage that is not 64 hex digits", "size": 65536, "expect": "ln/preimage-malformed", "boundTakes": true },
    { "case": "mpp/charge/lightning, a preimage that is not 64 hex digits, in a credential one over the credential size bound", "pairing": "mpp/charge/lightning", "fault": "a preimage that is not 64 hex digits", "size": 65537, "expect": "mpp/credential-malformed" }
   ]
+ },
+ "voucherSize": {
+  "about": "A session build's voucher measures the credential its complete would give with the shortest voucher signature complete takes, one byte, as complete measures every credential (credentialSize), and gives complete's code before the voucher is signed. Each row runs on mpp/session/evm (B2's authorization opening, B6's funding signature) and mpp/session/tempo (B2's opening, B6's signed transaction): the challenge is padded by a description so that the credential complete gives the row's funding with a one-byte voucher signature measures the row's size. A taken row's voucher gives the voucher's typed data, and complete that credential; otherwise both give the row's code.",
+  "rows": [
+   { "case": "a voucher whose credential is at the credential size bound", "size": 65536, "taken": true },
+   { "case": "a voucher whose credential is one over the credential size bound", "size": 65537, "expect": "mpp/credential-malformed" }
+  ]
  }
 }

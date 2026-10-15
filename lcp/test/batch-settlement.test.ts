@@ -749,6 +749,8 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     configMembers?: Record<string, unknown>[];
     refundAmounts?: unknown[];
     zeroMembers?: ("from" | "payTo" | "asset")[];
+    payloadTypes?: unknown[];
+    depositTransactions?: (string | null)[];
     expect: string;
   };
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "x402-batch-settlement.json agreedRefusals.rows", {
@@ -760,7 +762,17 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   });
   const pairings = { "x402/batch-settlement/eip155": batchEvm, "x402/batch-settlement/solana": batchSvm, "x402/batch-settlement/cloudflare": batchCloudflare } as const;
   /** The members a row carries its input in. Each row carries exactly one, and one test below runs the rows of each. */
-  const INPUTS = ["choice", "h", "depositAmount", "validBeforeOrDeadline", "configMembers", "refundAmounts", "zeroMembers"] as const;
+  const INPUTS = [
+    "choice",
+    "h",
+    "depositAmount",
+    "validBeforeOrDeadline",
+    "configMembers",
+    "refundAmounts",
+    "zeroMembers",
+    "payloadTypes",
+    "depositTransactions",
+  ] as const;
   const inputOf = (r: Row) => INPUTS.filter((k) => k in r);
   const carrying = (input: (typeof INPUTS)[number], exact: number, pairing?: string) => {
     const kept = (r: Row) => inputOf(r)[0] === input && (pairing === undefined || r.pairing === pairing);
@@ -1009,23 +1021,69 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
   // (x402-foundation/x402 751590a2, contracts/evm/src/x402BatchSettlement.sol L399, L418 and L555), and the facilitator
   // refuses an amount that is non-numeric or non-positive (scheme_batch_settlement_evm.md L641). A refund that names no
   // amount is a full refund (L194 there), the close.
-  it("the EVM channel.kind refuses a refund whose amount is 0, 2^128, not decimal or null, and reads 1 and 2^128 - 1 as within", async () => {
-    const amounts = carrying("refundAmounts", 1);
+  it("the EVM channel.kind and channel.ref refuse a refund whose amount is 0, 2^128, not decimal or null, and read 1 and 2^128 - 1 as within", async () => {
+    const amounts = carrying("refundAmounts", 2);
+    const listed = ["0", (2n ** 128n).toString(), "1e3", null];
     expect(amounts.map((r) => [r.pairing, r.calls, r.refundAmounts])).toEqual([
-      ["x402/batch-settlement/eip155", ["channel.kind"], ["0", (2n ** 128n).toString(), "1e3", null]],
+      ["x402/batch-settlement/eip155", ["channel.kind"], listed],
+      ["x402/batch-settlement/eip155", ["channel.ref"], listed],
     ]);
     const { payment } = await evmOpening();
     const p = payment.payload as Record<string, any>;
     const refund = (amount?: unknown): Payment =>
       ({ ...payment, payload: { type: "refund", channelConfig: p["channelConfig"], voucher: p["voucher"], ...(amount === undefined ? {} : { amount }) } }) as Payment;
-    const calls: Record<string, (p: Payment) => unknown> = { "channel.kind": (q) => batchEvm.channel.kind(q) };
+    const calls: Record<string, (p: Payment) => unknown> = {
+      "channel.kind": (q) => batchEvm.channel.kind(q),
+      "channel.ref": (q) => batchEvm.channel.ref(q),
+    };
     for (const r of amounts) {
       for (const amount of r.refundAmounts!) {
-        for (const call of r.calls!) expect(calls[call]!(refund(amount)), `${call} ${String(amount)}`).toEqual(refused(r.expect));
+        for (const call of r.calls!) expect(await calls[call]!(refund(amount)), `${call} ${String(amount)}`).toEqual(refused(r.expect));
       }
     }
     expect(batchEvm.channel.kind(refund())).toBe("close");
     for (const amount of ["1", (2n ** 128n - 1n).toString()]) expect(batchEvm.channel.kind(refund(amount)), amount).toBe("within");
+    // The channel the refunds name, which channel.ref reads once channel.kind takes the refund.
+    const channel = await batchEvm.channel.ref(payment);
+    expect(channel).toHaveProperty("channel");
+    for (const amount of [undefined, "1", (2n ** 128n - 1n).toString()]) expect(await batchEvm.channel.ref(refund(amount)), String(amount)).toEqual(channel);
+  });
+
+  // channel.ref refuses a payment channel.kind refuses, with channel.kind's code, as every channel.ref does: a payload
+  // type the scheme does not define, and on Solana a deposit whose transaction is absent or is not a transaction.
+  it("channel.kind and channel.ref refuse a payload type the scheme does not define, and a Solana deposit without a transaction", async () => {
+    const types = carrying("payloadTypes", 2);
+    const transactions = carrying("depositTransactions", 1);
+    expect([...types, ...transactions].map((r) => [r.pairing, r.calls])).toEqual([
+      ["x402/batch-settlement/eip155", ["channel.kind", "channel.ref"]],
+      ["x402/batch-settlement/solana", ["channel.kind", "channel.ref"]],
+      ["x402/batch-settlement/solana", ["channel.kind", "channel.ref"]],
+    ]);
+    const evm = (await evmOpening()).payment;
+    const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
+    const svmDeposit = (transaction?: string) =>
+      svmPayment({ type: "deposit", channelConfig: V.ES4.config, voucher, deposit: { amount: S.deposit, ...(transaction === undefined ? {} : { transaction }) } });
+    const svm = svmDeposit(V.ES2.wireBase64);
+    const members = { "x402/batch-settlement/eip155": [batchEvm, evm], "x402/batch-settlement/solana": [batchSvm, svm] } as const;
+    const answers = async (r: Row, payment: Payment) => {
+      const [pairing] = members[r.pairing as keyof typeof members];
+      const call = { "channel.kind": () => pairing.channel.kind(payment), "channel.ref": () => pairing.channel.ref(payment) } as Record<string, () => unknown>;
+      return Promise.all(r.calls!.map((c) => call[c]!()));
+    };
+    for (const r of types) {
+      const [pairing, opening] = members[r.pairing as keyof typeof members];
+      expect(pairing.channel.kind(opening)).toBe("open");
+      expect(await pairing.channel.ref(opening)).toHaveProperty("channel");
+      for (const type of r.payloadTypes!) {
+        const payment = { ...opening, payload: { ...opening.payload, type } } as Payment;
+        expect(await answers(r, payment), String(type)).toEqual(r.calls!.map(() => refused(r.expect)));
+      }
+    }
+    for (const r of transactions) {
+      for (const transaction of r.depositTransactions!) {
+        expect(await answers(r, svmDeposit(transaction ?? undefined)), String(transaction)).toEqual(r.calls!.map(() => refused(r.expect)));
+      }
+    }
   });
 
   it("the EVM build refuses a from, or an option's payTo or asset, that is the zero address, and builds with a zero payerAuthorizer; the filter refuses such an option at advertise and read too", async () => {
