@@ -788,9 +788,9 @@ describe("mpp-charge-tempo-push.json", () => {
 // splits.expectCalls: the calls the buyer gate builds for the splits request, in array order (draft-tempo-charge-00
 // L273): the primary recipient's transfer of amount minus the splits' sum (L233), carrying the challenge's attribution
 // memo, then one call per split, transferWithMemo where the split carries a memo (L313-315) and transfer where it does
-// not, each to the request's currency. memoCalldata writes the transferWithMemo calls; no export of the package writes
-// a split's plain transfer call.
-describe("mpp-charge-tempo-memo.json splits.expectCalls", () => {
+// not, each to the request's currency. They pin memoCalldata: it writes the transferWithMemo calls; no export of the
+// package writes a split's plain transfer call.
+describe("mpp-charge-tempo-memo.json splits.expectCalls: memoCalldata's transferWithMemo calls", () => {
   type Call = { to: string; data: string };
   const r = JSON.parse(M.splits.request);
   const splits = r.methodDetails.splits as { amount: string; recipient: ViemHex; memo?: ViemHex }[];
