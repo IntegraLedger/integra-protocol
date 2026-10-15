@@ -541,7 +541,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's EV1 payment, as the file holds it; no signature was made for this row."
+    "note": "presented is this file's EV1 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from x402-specification-v2.md \u00a75.2.1 and scheme_exact_evm.md L140-165 at x402-foundation/x402 751590a2: permitted the option's asset and amount, from fixed.payer, the x402ExactPermit2Proxy spender, nonce the uint256 of H, deadline now + maxTimeoutSeconds, witness {payTo, validAfter 0}, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of EV1.expectDigest. complete gives it whole."
    }
   ]
  },

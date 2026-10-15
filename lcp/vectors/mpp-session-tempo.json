@@ -273,7 +273,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is the v2 open, built from fixed.payerKey and TS1 to TS4: its transaction is TS2's wire, of length TS2.expectLength and SHA-256 TS2.expectSha256, and its signature signs the zero voucher, whose EIP-712 digest is TS4.expectVoucher0."
+    "note": "presented is the v2 open, built from fixed.payerKey and TS1 to TS4: its transaction is TS2's wire, of length TS2.expectLength and SHA-256 TS2.expectSha256, and its signature signs the zero voucher, whose EIP-712 digest is TS4.expectVoucher0. It is also written by hand in Python 3.12.3 from draft-tempo-session-00's open payload (L850-915 at tempoxyz/mpp-specs 08e7dd87): channelId TS3.expectChannelId; the descriptor of fixed.payer, the request's recipient and currency, a zero operator and authorizedSigner, salt H and TS2.expectNonceHash; the transaction, of TS2.expectLength bytes and SHA-256 TS2.expectSha256; authorizedSigner equal to the descriptor's (L872-873); cumulativeAmount 0; and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of TS4.expectVoucher0. complete gives the same members and values, written in another order than the draft's example."
    }
   ]
  }

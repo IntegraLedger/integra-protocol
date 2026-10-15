@@ -768,7 +768,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is the open by ReceiveWithAuthorization, built from fixed.payerKey and ES1 to ES5: its authorization's EIP-712 digest is ES4.expectDigest and its signature has ES4.expectSignature's prefix and suffix; voucherSignature signs the zero voucher, whose EIP-712 digest is ES5.expectVoucherDigest."
+    "note": "presented is the open by ReceiveWithAuthorization, built from fixed.payerKey and ES1 to ES5: its authorization's EIP-712 digest is ES4.expectDigest and its signature has ES4.expectSignature's prefix and suffix; voucherSignature signs the zero voucher, whose EIP-712 digest is ES5.expectVoucherDigest. It is also written by hand in Python 3.12.3 from draft-evm-session-00's open payload of type authorization (L1395-1420 at tempoxyz/mpp-specs 08e7dd87): channelId ES1.expectChannelId, the authorization to the escrow of ES2's deposit with nonce ES3.expectNonce and validBefore the challenge's expires, salt H, a zero authorizedSigner, cumulativeAmount 0, and the signature and voucherSignature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of ES4.expectDigest and of ES5.expectVoucherDigest. complete gives the same members and values, written in another order than the draft's example."
    }
   ]
  }

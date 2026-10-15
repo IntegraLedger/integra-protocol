@@ -64,6 +64,8 @@ import { H, challenge, link, load, readerFor, topicOf, withBigints, wordOf } fro
 const E = load("mpp-session-evm.json");
 const T = load("mpp-session-tempo.json");
 const U = load("mpp-subscription-tempo.json");
+/** The file's buyer B6 row's presented payment. */
+const b6 = (V: { buyer: { rows: { name: string; input: { presented: unknown } }[] } }) => V.buyer.rows.find((r) => r.name === "B6")!.input.presented as MppCredential;
 
 const H2 = E.fixed.H2 as `0x${string}`;
 const payer = privateKeyToAccount(E.fixed.payerKey);
@@ -173,6 +175,9 @@ describe("mpp-session-evm.json", () => {
     const signature = await payer.signTypedData(forViem(td));
     affix(signature, E.ES4.expectSignature);
     const cred = u.complete(signature, await voucherSig(u, signature)) as MppCredential;
+    // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
+    expect(cred).toStrictEqual(b6(E));
+    expect(JSON.stringify(cred.payload)).toBe(JSON.stringify(b6(E).payload));
     expect(cred.payload["salt"]).toBe(H);
     expect(cred.payload["authorizedSigner"]).toBe(ZERO);
     expect(await sessionEvm.bound(cred)).toBe(H);
@@ -420,6 +425,9 @@ describe("mpp-session-tempo.json", () => {
     affix(hashTypedData(forViem(v250)), T.TS4.expectVoucher250);
     expect(hashTypedData(forViem(v250))).toBe(T.TS4.expectVoucher250.whole);
     const cred = u.complete(toHex(wire), await payer.signTypedData(forViem(voucher))) as MppCredential;
+    // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
+    expect(cred).toStrictEqual(b6(T));
+    expect(JSON.stringify(cred.payload)).toBe(JSON.stringify(b6(T).payload));
     expect(cred.payload["channelId"]).toBe(T.TS3.expectChannelId);
     expect(cred.payload["descriptor"]).toEqual(d);
     expect(await sessionTempo.bound(cred)).toBe(H);
@@ -701,6 +709,9 @@ describe("mpp-subscription-tempo.json", () => {
     const rootSignature = await sig65(u.request.digest);
     expect(await recoverAddress({ hash: u.request.digest, signature: rootSignature })).toBe(f.payer);
     const cred = u.complete(rootSignature) as MppCredential;
+    // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
+    expect(cred).toStrictEqual(b6(U));
+    expect(JSON.stringify(cred.payload)).toBe(JSON.stringify(b6(U).payload));
     expect(toBytes(cred.payload["signature"] as ViemHex).length).toBe(U.SUB1.expectSignedLength);
     expect(toHex(encodeKeyAuthorization(a, rootSignature) as Uint8Array)).toBe(toRlp([fromRlp(viemRlp), rootSignature] as never).toLowerCase());
   });

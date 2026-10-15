@@ -228,7 +228,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented carries SUB1's key authorization signed with fixed.payerKey: its unsigned RLP has length SUB1.expectUnsignedLength and keccak256 SUB1.expectDigest, the signature is the payer key's RFC 6979 signature of that digest, and the signed RLP has length SUB1.expectSignedLength."
+    "note": "presented carries SUB1's key authorization signed with fixed.payerKey: its unsigned RLP has length SUB1.expectUnsignedLength and keccak256 SUB1.expectDigest, the signature is the payer key's RFC 6979 signature of that digest, and the signed RLP has length SUB1.expectSignedLength. It is also written by hand in Python 3.12.3 from draft-tempo-subscription-00's Key Authorization Payload (L303-345 at tempoxyz/mpp-specs 08e7dd87): signature is rlp 5.0.0's RLP of the list [the unsigned authorization, whose RLP has SUB1.expectUnsignedLength bytes and keccak256 SUB1.expectDigest, eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of SUB1.expectDigest]. complete gives it whole."
    }
   ]
  }

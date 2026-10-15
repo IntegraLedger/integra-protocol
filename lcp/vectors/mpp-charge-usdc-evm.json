@@ -149,7 +149,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is the payment built from fixed.payerKey and M3's inputs: its authorization's EIP-712 digest is M3.expectDigest, and its signature is the payer key's RFC 6979 signature of that digest."
+    "note": "presented is the payment built from fixed.payerKey and M3's inputs: its authorization's EIP-712 digest is M3.expectDigest, and its signature is the payer key's RFC 6979 signature of that digest. It is also written by hand in Python 3.12.3 from draft-usdc-charge-00's evm authorization credential (L1060-1095 at tempoxyz/mpp-specs 08e7dd87): from, to and value from fixed and the request, validAfter 0, validBefore the challenge's expires, nonce M3.expectNonce, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of M3.expectDigest. complete gives it whole."
    }
   ]
  }

@@ -325,7 +325,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is EV2's payment, built from fixed.payerKey and EV2: its Permit2 EIP-712 digest is EV2.expectDigest, and its signature is the payer key's RFC 6979 signature of that digest."
+    "note": "presented is EV2's payment, built from fixed.payerKey and EV2: its Permit2 EIP-712 digest is EV2.expectDigest, and its signature is the payer key's RFC 6979 signature of that digest. It is also written by hand in Python 3.12.3 from x402-specification-v2.md \u00a75.2.1 and scheme_upto_evm.md L112-137 at x402-foundation/x402 751590a2: permitted the option's asset and ceiling, from fixed.payer, spender EV2.expectSpender, nonce H, deadline now + maxTimeoutSeconds, witness {payTo, facilitatorAddress, validAfter 0}, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of EV2.expectDigest. complete gives it whole."
    }
   ]
  },

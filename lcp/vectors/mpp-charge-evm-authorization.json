@@ -119,7 +119,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's MV5 payment, as the file holds it; no signature was made for this row."
+    "note": "presented is this file's MV5 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from draft-evm-charge-00's Authorization Payload and source rule (L385-395, L600-680 at tempoxyz/mpp-specs 08e7dd87): from, to and value from fixed and the request, validAfter 0, validBefore the challenge's expires, nonce keccak256 of the challenge's id and realm with eth-utils 6.0.0, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of MV5.expectDigest. MV5's complete gives it whole."
    }
   ]
  }

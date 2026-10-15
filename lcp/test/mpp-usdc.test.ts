@@ -37,6 +37,8 @@ const EVM = load("mpp-charge-usdc-evm.json");
 const SOL = load("mpp-charge-usdc-solana.json");
 const GW = load("mpp-charge-usdc-gateway.json");
 const STX = load("mpp-charge-usdc-stacks.json");
+/** The file's buyer B6 row's presented payment. */
+const b6 = (V: { buyer: { rows: { name: string; input: { presented: unknown } }[] } }) => V.buyer.rows.find((r) => r.name === "B6")!.input.presented as MppCredential;
 const F = EVM.fixed;
 const keccakJcs = (v: unknown) => `0x${sha3.keccak256(canonicalize(v)!)}`;
 
@@ -92,6 +94,9 @@ describe("mpp/charge/usdc/evm (M3)", () => {
     const signature = await privateKeyToAccount(F.payerKey).signTypedData(typedData);
     const out = (u as { complete(s: `0x${string}`): MppCredential | { refused: true } }).complete(signature);
     if ("refused" in out) throw new Error("complete refused");
+    // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
+    expect(out).toStrictEqual(b6(EVM));
+    expect(JSON.stringify(out.payload)).toBe(JSON.stringify(b6(EVM).payload));
     return out;
   }
 

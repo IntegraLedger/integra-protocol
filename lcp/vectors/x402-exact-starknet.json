@@ -1654,7 +1654,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's S4 payment, as the file holds it; no signature was made for this row."
+    "note": "presented is this file's S4 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from x402-specification-v2.md \u00a75.2.1 and scheme_exact_starknet.md L95-160 at x402-foundation/x402 751590a2: from fixed.from; the typed data's types, primaryType and domain as the scheme gives them, Caller extra.feePayer, Nonce H below 2^251, Execute After 1, Execute Before now + maxTimeoutSeconds, and one Call to the asset with Selector sn_keccak(\"transfer\") (eth-utils 6.0.0's keccak, 250 bits) and Calldata [payTo, the amount's low and high 128 bits]; the signature S3.signature. Felts compare as integers, and the domain's version and revision as the integers 2 and 1 the scheme's hash-encoding note gives. complete gives it whole."
    }
   ]
  },

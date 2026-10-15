@@ -332,7 +332,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's EV4 payment, as the file holds it; no signature was made for this row."
+    "note": "presented is this file's EV4 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from x402-specification-v2.md \u00a75.2.1 and scheme_auth_capture_evm.md L160-205 at x402-foundation/x402 751590a2: the authorization from fixed.payer to EV4.expectTo of the option's amount, validAfter 0, validBefore now + maxTimeoutSeconds, nonce EV3.bound.expectSignatureNonce; salt EV3.expectBindSalt; saltNonce H; and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of EV4.expectDigest. complete gives the same members and values, the signature written first."
    }
   ]
  },

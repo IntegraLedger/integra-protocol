@@ -116,6 +116,14 @@ describe("x402-exact-starknet.json", () => {
     expect(snTypedData.getMessageHash(u.request.typedData as never, u.request.account)).toBe(V.S3.expectMessageHash);
   });
 
+  // B6's note says how its payment is written by hand from scheme_exact_starknet.md.
+  it("S4: complete's payment is buyer B6's, whole", async () => {
+    const presented = (V.buyer.rows as { name: string; input: { presented: unknown } }[]).find((r) => r.name === "B6")!.input.presented;
+    const p = await pay();
+    expect(p).toStrictEqual(presented);
+    expect(JSON.stringify(p)).toBe(JSON.stringify(presented));
+  });
+
   it("S4: bound and reference", async () => {
     const p = await pay();
     expect(await exactStarknet.bound(p)).toBe(V.S4.expectBound);

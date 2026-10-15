@@ -27,7 +27,7 @@
   "expectSignature": "0xd7869587988d7615afe8bbcb88ab66fc3882ec3f8b8014052b99c56ccdefb4772113d37911ef65d83991ac17fd344e5238ca6cc0f3d7651f3e7af256174c3b761c"
  },
  "MV6b": {
-  "case": "the batch form: C_E with one split, so primary = 9500",
+  "case": "the batch form: C_E with one split, so primary = 9500. expectTransferDetails is written by hand from draft-evm-charge-00's Transfer Details (L435-447 at tempoxyz/mpp-specs 08e7dd87): the primary recipient's amount less the split, then the split; complete's transferDetails are held to it",
   "expectPairings": [
    "mpp/charge/evm/permit2"
   ],
@@ -167,7 +167,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's MV6 payment, as the file holds it; no signature was made for this row."
+    "note": "presented is this file's MV6 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from draft-evm-charge-00's Permit2 Payload (L397-494 at tempoxyz/mpp-specs 08e7dd87): permitted and transferDetails from the request, the permit nonce the challengeHash (keccak256 of the challenge's id and realm, eth-utils 6.0.0) as a uint256, deadline the challenge's expires, witness {challengeHash, externalId \"\" when the request names none}, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of MV6.expectDigest. MV6's complete gives it whole."
    }
   ]
  }

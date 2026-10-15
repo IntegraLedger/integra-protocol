@@ -91,6 +91,24 @@ async function signed(b: { build: typeof exactPermit2.build }, f: Fixed, option 
   if ("refused" in p) throw new Error("complete refused");
   return p;
 }
+// Each Permit2 and auth-capture complete gives its file's buyer B6 payment, whole, and as JSON text. Each B6 note says
+// how the payment is written by hand from x402's specification and the scheme.
+describe("x402 EVM completes: each file's buyer B6 payment", () => {
+  const b6 = (V: { buyer: { rows: { name: string; input: { presented: unknown } }[] } }) => V.buyer.rows.find((r) => r.name === "B6")!.input.presented;
+  for (const [name, pairing, V] of [
+    ["x402-exact-eip155-permit2.json", exactPermit2, P2],
+    ["x402-upto-eip155-permit2.json", uptoPermit2, UP],
+    ["x402-auth-capture-eip155-eip3009.json", authCaptureEip3009, A3],
+    ["x402-auth-capture-eip155-permit2.json", authCapturePermit2, AP],
+  ] as const) {
+    it(name, async () => {
+      const p = await signed(pairing as { build: typeof exactPermit2.build }, V.fixed);
+      expect(p).toStrictEqual(b6(V));
+      expect(JSON.stringify(p)).toBe(JSON.stringify(b6(V)));
+    });
+  }
+});
+
 type FixtureReceipt = { status: 0 | 1; blockNumber: string; logs: EvmReceipt["logs"] } | null;
 /**
  * A reader answering one receipt and the finalized and safe marks. Each `eth_call` is recorded in `calls` and answered

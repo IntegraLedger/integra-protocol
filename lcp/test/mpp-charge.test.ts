@@ -75,6 +75,8 @@ const USDC = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 const RECIPIENT_E = "0x209693Bc6afc0C5328bA36FaF03C514EF312287C";
 const PATHUSD = M.fixed.pathUSD;
 const num = (n: number | bigint) => (BigInt(n) === 0n ? "0x" : toHex(BigInt(n)));
+/** The file's buyer B6 row's presented payment. */
+const b6 = (V: { buyer: { rows: { name: string; input: { presented: unknown } }[] } }) => V.buyer.rows.find((r) => r.name === "B6")!.input.presented as MppCredential;
 
 describe("mpp-charge-evm-authorization.json", () => {
   const ch = placedOf(C_E);
@@ -89,6 +91,9 @@ describe("mpp-charge-evm-authorization.json", () => {
     expect(signature).toBe(A.MV5.expectSignature);
     expect(await recoverTypedDataAddress({ ...forViem(u.request.typedData), signature })).toBe(A.fixed.payer);
     const cred = u.complete(signature) as MppCredential;
+    // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
+    expect(cred).toStrictEqual(b6(A));
+    expect(JSON.stringify(cred.payload)).toBe(JSON.stringify(b6(A).payload));
     expect(cred.source).toBe(A.MV5.expectSource);
     expect(cred.payload["nonce"]).toBe(A.MV5.expectNonce);
     expect(cred.payload["validBefore"]).toBe(A.MV5.expectValidBefore);
@@ -199,6 +204,9 @@ describe("mpp-charge-evm-permit2.json", () => {
     const signature = await payer.signTypedData(forViem(td));
     expect(signature).toBe(P.MV6.expectSignature);
     const cred = u.complete(signature) as MppCredential;
+    // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
+    expect(cred).toStrictEqual(b6(P));
+    expect(JSON.stringify(cred.payload)).toBe(JSON.stringify(b6(P).payload));
     expect(await evmPermit2.bound(cred)).toBe(H);
     expect(await evmPermit2.authorizer(cred)).toBe(A.fixed.payer.toLowerCase());
     expect(await evmPermit2.authorizer({ ...cred, source: undefined } as never)).toEqual({
