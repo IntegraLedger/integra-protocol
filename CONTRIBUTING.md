@@ -157,8 +157,8 @@ made in this order:
 2. It is merged to `main`.
 3. A maintainer tags that commit `v<version>` with an annotated tag (`git tag -a v<version> -m v<version> <commit>`)
    and pushes the tag.
-4. A maintainer dispatches the publish workflow from the tag. Its first job fails unless the run's ref is the tag
-   `v<version>` of the version `lcp/package.json` names and the tag's commit is on `main`. CI then runs every check on
+4. A maintainer dispatches the publish workflow from the tag. Its first job fails unless the run's ref is the
+   annotated tag `v<version>` of the version `lcp/package.json` names and the tag's commit is on `main`. CI then runs every check on
    that commit, and only then does the `pack` job pack the package and the `stage` job stage it on npm, where a
    maintainer approves it.
 

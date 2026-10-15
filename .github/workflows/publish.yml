@@ -12,7 +12,8 @@ on:
 permissions: {}
 
 jobs:
-  # A release is the tag v<version> on the version's commit on main: publish runs from that tag and no other ref.
+  # A release is the annotated tag v<version> on the version's commit on main: publish runs from that tag and no
+  # other ref.
   tag:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -22,7 +23,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # main's whole history, to know whether the tag's commit is on it.
+          # main's whole history, to know whether the tag's commit is on it, and every tag with its tag object.
           fetch-depth: 0
       - name: Fetch Node.js
         run: |
@@ -32,7 +33,7 @@ jobs:
           mkdir "$RUNNER_TEMP/node"
           tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
-      - name: The run's ref is the tag v<version> of lcp/package.json's version, and its commit is on main
+      - name: The run's ref is the annotated tag v<version> of lcp/package.json's version, and its commit is on main
         run: |
           set -eu
           version=$(node -p 'require("./lcp/package.json").version')
@@ -40,11 +41,15 @@ jobs:
             echo "publish runs from the tag v$version, lcp/package.json's version; this run's ref is $GITHUB_REF"
             exit 1
           fi
+          if [ "$(git cat-file -t "$GITHUB_REF")" != tag ]; then
+            echo "the tag v$version is not an annotated tag; a release is tagged with git tag -a"
+            exit 1
+          fi
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "the tag v$version names $GITHUB_SHA, which is not a commit on main"
             exit 1
           fi
-          echo "the tag v$version names $GITHUB_SHA, a commit on main"
+          echo "the annotated tag v$version names $GITHUB_SHA, a commit on main"
 
   # Every check CI makes, on the commit to be packed: the pack waits for all of them.
   ci:
