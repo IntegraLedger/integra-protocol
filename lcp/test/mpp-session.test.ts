@@ -178,6 +178,7 @@ describe("mpp-session-evm.json", () => {
     const signature = await payer.signTypedData(forViem(td));
     affix(signature, E.ES4.expectSignature);
     const cred = u.complete(signature, await voucherSig(u, signature)) as MppCredential;
+    expect(["broadcast" in u.funding, await sessionEvm.broadcaster(cred)]).toEqual([false, "payee"]);
     // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
     expect(cred).toStrictEqual(b6(E));
     expect(JSON.stringify(cred.payload)).toBe(JSON.stringify(b6(E).payload));
@@ -223,6 +224,7 @@ describe("mpp-session-evm.json", () => {
     const u = await build("hash");
     const hash = `0x${"55".repeat(32)}` as ViemHex;
     const cred = u.complete(hash, await voucherSig(u, hash)) as MppCredential;
+    expect([(u.funding as { broadcast?: boolean }).broadcast, await sessionEvm.broadcaster(cred)]).toEqual([true, "payer"]);
     expect(await sessionEvm.bound(cred)).toBe(H);
     // The payer broadcast the opening before the claim; the reference names the transaction the credential presents,
     // so the opening is read without the seller's report.
@@ -474,6 +476,7 @@ describe("mpp-session-tempo.json", () => {
     affix(hashTypedData(forViem(v250)), T.TS4.expectVoucher250);
     expect(hashTypedData(forViem(v250))).toBe(T.TS4.expectVoucher250.whole);
     const cred = u.complete(toHex(wire), await payer.signTypedData(forViem(voucher))) as MppCredential;
+    expect([(u.funding as { broadcast?: boolean }).broadcast, await sessionTempo.broadcaster(cred)]).toEqual([false, "payee"]);
     // complete's credential is buyer B6's presented, whole; B6's note says how it is written by hand from the draft.
     expect(cred).toStrictEqual(b6(T));
     expect(JSON.stringify(cred.payload)).toBe(JSON.stringify(b6(T).payload));

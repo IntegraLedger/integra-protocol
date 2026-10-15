@@ -90,6 +90,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { decimalBelow, toBase64 } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -98,6 +99,7 @@ import {
   type PaymentRequirements,
   type X402Choice,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 // ── EVM pieces ───────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -835,6 +837,11 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   return option;
 }
 
+/**
+ * `x402/batch-settlement/eip155`. The payee broadcasts (`broadcaster` answers `"payee"`): for every payment of the
+ * channel: the seller's facilitator executes the deposit's token authorization, redeems vouchers when it claims, and
+ * executes a refund; `status` reads them, and `channel.kind` classifies each payment.
+ */
 export const batchEvm = Object.freeze({
   id: EVM_ID,
   pattern: Object.freeze({
@@ -861,6 +868,7 @@ export const batchEvm = Object.freeze({
   build: evmBuild,
   buildWithin: evmBuildWithin,
   bound: evmBound,
+  broadcaster: broadcasts("payee"),
   reference: evmReference,
   status: evmDepositStatus,
   recover: evmRecover,
@@ -1255,6 +1263,12 @@ function svmUnplaced(option: PaymentRequirements): PaymentRequirements | Refusal
   return withoutExtra(option, "memo");
 }
 
+/**
+ * `x402/batch-settlement/solana`. The payee broadcasts (`broadcaster` answers `"payee"`): for every payment of the
+ * channel: the seller's facilitator, the `feePayer`, co-signs and sends the deposit and top-up transactions the payer
+ * signed, redeems vouchers when it settles, and sends the refund; `status` reads them, and `channel.kind` classifies
+ * each payment.
+ */
 export const batchSvm = Object.freeze({
   id: SVM_ID,
   pattern: Object.freeze({
@@ -1280,6 +1294,7 @@ export const batchSvm = Object.freeze({
   build: svmBuild,
   buildWithin: svmBuildWithin,
   bound: svmBound,
+  broadcaster: broadcasts("payee"),
   reference: svmReferenceOf,
   status: svmChannelStatus,
   recover: svmBatchRecover,
@@ -1320,6 +1335,10 @@ async function cfBound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(lc) ? lc : lc.h;
 }
 
+/**
+ * `x402/batch-settlement/cloudflare`. The payee broadcasts (`broadcaster` answers `"payee"`): Cloudflare, for the
+ * seller, verifies the agent's signed request and bills its registered identity off chain; no `status` reads it.
+ */
 export const batchCloudflare = Object.freeze({
   id: CF_ID,
   pattern: Object.freeze({
@@ -1344,4 +1363,5 @@ export const batchCloudflare = Object.freeze({
   read: (doc: PaymentRequired): X402Read | Refusal => readFor(FILTER[CF_ID])(doc),
   build: cfBuild,
   bound: cfBound,
+  broadcaster: broadcasts("payee"),
 });

@@ -16,6 +16,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import { isExternalId } from "./mpp-rail-checks.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -82,6 +83,11 @@ const pattern: LcpPattern = deepFreeze({
     "the buyer signed, links the deposit to the seller.",
 });
 
+/**
+ * `mpp/charge/nearintents`. The payer broadcasts (`broadcaster` answers `"payer"`): it sends its deposit before
+ * presenting the deposit's hash. Settlement is the seller's report: no `fetchPresented`, `status` or `recover` reads
+ * it.
+ */
 export const chargeNearIntents = Object.freeze({
   id: ID,
   pattern,
@@ -92,4 +98,5 @@ export const chargeNearIntents = Object.freeze({
   advertise,
   read,
   bound,
+  broadcaster: broadcasts("payer"),
 });

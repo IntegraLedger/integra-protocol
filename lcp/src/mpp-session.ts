@@ -72,6 +72,7 @@ import {
   transferParts,
   type ReceiveTypedData,
 } from "./internal/evm.js";
+import { broadcasts, broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readKeyAuthorization, type KeyAuthorizationRead } from "./internal/key-authorization.js";
 import { keyAccount } from "./internal/tempo.js";
@@ -820,6 +821,34 @@ function evmOpened(
     if (wSalt === null || !hashEquals(wSalt, e.h)) return refusal("mpp/salt-not-this-hash");
   }
   return { h: e.h, params, payee, token, opening, payer, escrow, auth };
+}
+
+/**
+ * Who broadcasts an EVM session funding whose payload `type` is `t`: the payer a `hash`, the seller's server an
+ * `authorization` or a `permit2`. Undefined for any other.
+ */
+function evmFunder(t: Json | undefined): Broadcaster | undefined {
+  if (t === "hash") return "payer";
+  return t === "authorization" || t === "permit2" ? "payee" : undefined;
+}
+
+/**
+ * Who broadcasts an EVM session payment, by its action, as draft-evm-session-00 has it: an opening or a top-up by its
+ * `type` (`evmFunder`); a voucher, which the seller's server redeems when it settles or closes, `"payee"`, or, carrying
+ * an opening `deposit`, by that deposit's `type`; a close, the escrow call the seller's server sends, `"payee"`.
+ * Undefined for a credential `credentialOf` refuses, any other action, or a type `evmFunder` does not name.
+ */
+function evmBroadcaster(presented: unknown): Broadcaster | undefined {
+  const c = credentialOf(presented);
+  if (isRefusal(c)) return undefined;
+  const p = c.payload;
+  const action = p["action"];
+  if (action === "open" || action === "topUp") return evmFunder(p["type"]);
+  if (action === "voucher") {
+    const deposit = p["deposit"];
+    return isObject(deposit) && deposit["action"] === "open" ? evmFunder(deposit["type"]) : "payee";
+  }
+  return action === "close" ? "payee" : undefined;
 }
 
 async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -1829,6 +1858,14 @@ function refFrom(pairing: typeof SESSION_EVM | typeof SESSION_TEMPO, kind: (pres
 
 const noEnd = (_presented: MppCredential): number | undefined => undefined;
 
+/**
+ * `mpp/session/evm`. `broadcaster` answers by the payment's action and type (`evmBroadcaster`). `"payer"`: an opening
+ * or a top-up of type `hash`, which the payer broadcast; for an opening, `landedTx` and `reference` name that
+ * transaction, and `status` reads it, and its `build` writes `broadcast: true`. `"payee"`: an opening or a top-up of
+ * type `authorization` or `permit2`, which the seller's server submits to the escrow, naming an opening's transaction
+ * to `status`; a voucher, which it redeems when it settles or closes; and the close, the escrow call it sends, which
+ * `closeRef` and `status` read. Any other payment gets `bound`'s refusal.
+ */
 export const sessionEvm = Object.freeze({
   id: SESSION_EVM,
   pattern: sessionPattern(
@@ -1852,6 +1889,7 @@ export const sessionEvm = Object.freeze({
   build: evmBuild,
   buildWithin: evmBuildWithin,
   bound: evmBound,
+  broadcaster: broadcastsByKind(evmBroadcaster, evmBound, () => refusal("mpp/session-action")),
   reference: evmReference,
   status: pairingStatus(SESSION_EVM),
   recover: evmRecover,
@@ -1865,6 +1903,12 @@ export const sessionEvm = Object.freeze({
   }),
 });
 
+/**
+ * `mpp/session/tempo`, whose `build` writes `broadcast: false`. The payee broadcasts every payment (`broadcaster`
+ * answers `"payee"`), as draft-tempo-session-00 has it: the seller's server broadcasts the signed transaction of an
+ * opening or a top-up, which `status` reads, redeems vouchers when it settles or closes, and sends the close, which
+ * `closeRef` and `status` read.
+ */
 export const sessionTempo = Object.freeze({
   id: SESSION_TEMPO,
   pattern: sessionPattern(
@@ -1883,6 +1927,7 @@ export const sessionTempo = Object.freeze({
   build: tempoBuild,
   buildWithin: tempoBuildWithin,
   bound: tempoBound,
+  broadcaster: broadcasts("payee"),
   reference: tempoReference,
   status: pairingStatus(SESSION_TEMPO),
   recover: tempoRecover,
@@ -1895,6 +1940,11 @@ export const sessionTempo = Object.freeze({
   }),
 });
 
+/**
+ * `mpp/subscription/tempo`. The payee broadcasts (`broadcaster` answers `"payee"`): the payer's root key signs a key
+ * authorization, and the seller's server sends the activation transaction that registers its access key, and each
+ * later transfer under that key; `status` reads the activation, and `keySearch` the transfers.
+ */
 export const subscriptionTempo = Object.freeze({
   id: SUBSCRIPTION,
   pattern: deepFreeze({
@@ -1920,6 +1970,7 @@ export const subscriptionTempo = Object.freeze({
   read,
   build: subscriptionBuild,
   bound: subscriptionBound,
+  broadcaster: broadcasts("payee"),
   reference: subscriptionReference,
   status: pairingStatus(SUBSCRIPTION),
   closeRef: subscriptionCloseRef,

@@ -24,6 +24,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { decimalBelow, fromBase64 } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /**
@@ -41,6 +42,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
 const peer: typeof TonCore | undefined = await import("@ton/core").then(
@@ -1339,6 +1341,10 @@ const pattern: LcpPattern = deepFreeze({
     "This does not show that amount, payee, asset or timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/tvm`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator sends the request
+ * the payer's W5 wallet signed; `status` reads the wallet's transaction and the Jetton transfers it led to.
+ */
 export const exactTvm = Object.freeze({
   id: ID,
   pattern,
@@ -1350,6 +1356,7 @@ export const exactTvm = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: tvmStatus,
   recover: tvmRecover,

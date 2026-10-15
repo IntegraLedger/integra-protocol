@@ -29,6 +29,7 @@ nothing of that pairing. The types differ per surface; the roles do not.
 | `read(doc)` | buyer | H, the link, the agreement URL when one is present, and the options from an advertised document: on x402, those this pairing can pay; on MPP, every challenge, whatever its method, and `build` refuses another method's challenge. |
 | `build(choice, h)` | buyer | What the buyer's signer signs, with H in its place, and a `complete` that turns the signature into the payment. |
 | `bound(presented)` | seller | H as it appears in what the buyer presented. |
+| `broadcaster(presented)` | seller | Who broadcasts what the buyer presented: `"payer"`, which sent it before presenting it, or `"payee"`, which sends or executes it after ([Who broadcasts](#who-broadcasts)). |
 
 Pairings that settle on a rail the package can read also have:
 
@@ -53,6 +54,52 @@ Some pairings carry members for their own shape of payment:
 | `keySearch`, `keyProves` | `mpp/subscription/tempo` | The read keys of a transfer made under the subscription's access key, from the receipt that registered the key, and what the record proves for that transfer. |
 | `network` | `mpp/charge/hedera` | The CAIP-2 network of a charge request: `methodDetails.chainId` 295 or 296, or, where it names none, the default it is given. |
 | `advertiseBeforeCarrier` | pairings whose carrier the seller writes after H | `advertise`'s checks and placement, without the checks on that carrier. |
+
+## Who broadcasts
+
+`broadcaster(presented)` answers who puts what the buyer presents on its rail, and so what the seller does next.
+`"payer"`: the payer sent the payment before presenting it, and the seller reads the landed payment, through
+`fetchPresented`, `status` or `recover` where the pairing has them. `"payee"`: the seller, or the facilitator or
+processor acting for it, sends or executes what was presented, such as the signed transaction `complete` returns or an
+authorization, and reads its settlement after. Each pairing's [API page](../reference/api/index.md) names the read or
+the execution that follows. The answer's type, `Broadcaster`, is exported from the package root and from every entry
+point with pairings.
+
+The members a pairing exports do not answer this. `mpp/session/solana` has `fetchPresented`, but it reads the
+opening's address lookup tables, and the seller broadcasts the opening; on `mpp/charge/evm/hash` and
+`mpp/charge/nearintents` the payer broadcasts, and neither has `landedTx` or `fetchPresented`.
+
+Most pairings take payments of one path, and `broadcaster` answers from the pairing alone, reading nothing presented.
+These take more than one, and answer by the payment's kind:
+
+| Pairing | `"payer"` | `"payee"` |
+|---|---|---|
+| `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | `type` `hash` | `type` `transaction` |
+| `mpp/charge/hedera`, `mpp/charge/stellar`, `mpp/charge/xrpl` | `type` `hash` | `type` `transaction` |
+| `mpp/charge/solana` | `type` `signature` | `type` `transaction` or `bundle` |
+| `mpp/session/evm` | An opening or a top-up of `type` `hash`. | An opening or a top-up of `type` `authorization` or `permit2`; a voucher, or, where it carries an opening `deposit`, by that deposit's `type`; the close. |
+| `mpp/session/hedera` | The opening; a top-up. | A voucher; the close. |
+| `mpp/session/lightning` | The opening; a top-up; a bearer proof, which draws on the deposit the payer paid. | The close, whose refund the seller's node pays. |
+
+A credential whose kind it cannot read is refused with the code `bound` gives the same credential, so where both
+refuse, they refuse with one code. `broadcaster` is pure: it takes no reader and loads no peer.
+
+```ts
+import { isRefusal } from "@integraledger/lcp";
+import { evmHash } from "@integraledger/lcp/mpp";
+
+const challenge = { id: "x", realm: "api.seller.example", method: "evm", intent: "charge", request: "e30" };
+console.log(await evmHash.broadcaster({ challenge, payload: { type: "hash", hash: `0x${"55".repeat(32)}` } }));
+console.log(await evmHash.broadcaster({ challenge, payload: { type: "transaction", signature: "0x02" } }));
+const refused = await evmHash.broadcaster("not a credential");
+console.log(isRefusal(refused) && refused.code);
+```
+
+```text
+payer
+payee
+mpp/credential-malformed
+```
 
 ## The registry
 

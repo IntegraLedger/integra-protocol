@@ -21,6 +21,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -28,6 +29,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `aptos:` and the numeric chain id. */
 export type AptosNetwork = `aptos:${number}`;
@@ -393,6 +395,11 @@ const pattern: LcpPattern = deepFreeze({
     "that the buyer's approval carried the hash, or that amount, payee, asset or timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/aptos`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
+ * transaction the payer signed and names its hash; `status` finds it by that hash, else by the payer's sender and
+ * sequence number.
+ */
 export const exactAptos = Object.freeze({
   id: ID,
   pattern,
@@ -404,6 +411,7 @@ export const exactAptos = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: aptosStatus,
 });

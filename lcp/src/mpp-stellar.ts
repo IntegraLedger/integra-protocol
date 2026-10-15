@@ -21,6 +21,7 @@ import {
   type SourcePayment,
 } from "./internal/stellar.js";
 import {
+  broadcasterByType,
   chosenFor,
   credentialOf,
   deepFreeze,
@@ -316,6 +317,11 @@ const pattern: LcpPattern = deepFreeze({
     "amount, asset or timing match the ATR's content.",
 });
 
+/**
+ * `mpp/charge/stellar`. `broadcaster` answers by the credential's `type`. `transaction`, `"payee"`: the seller's server
+ * submits the signed transaction, and `status` reads it. `hash`, `"payer"`: the payer broadcast the transaction, which
+ * `fetchPresented` reads, then `status`. Any other credential gets `bound`'s refusal.
+ */
 export const chargeStellar = Object.freeze({
   id: ID,
   pattern,
@@ -327,6 +333,7 @@ export const chargeStellar = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, bound),
   reference,
   status: stellarStatus,
   fetchPresented,

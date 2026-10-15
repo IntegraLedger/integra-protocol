@@ -10,6 +10,7 @@ import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
 import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -17,6 +18,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 const sdk: typeof Algosdk | null = await import("algosdk").then(
   (m) => m,
@@ -423,6 +425,10 @@ const pattern: LcpPattern = deepFreeze({
     "that amount, receiver, asset or timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/algorand`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
+ * signed transaction `complete` returns; `status` reads it by the transaction id computed from the signed bytes.
+ */
 export const exactAvm = Object.freeze({
   id: ID,
   pattern,
@@ -434,6 +440,7 @@ export const exactAvm = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: avmStatus,
   recover: avmRecover,

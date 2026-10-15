@@ -52,6 +52,7 @@ import {
   transferParts,
   type ReceiveTypedData,
 } from "./internal/evm.js";
+import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,
@@ -67,6 +68,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type { Eip3009TypedData } from "./evm.js";
 export { LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA } from "./internal/x402.js";
@@ -374,6 +376,10 @@ const pattern: LcpPattern = deepFreeze({
     "match the ATR's content.",
 });
 
+/**
+ * `x402/exact/eip155/eip3009`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits
+ * `transferWithAuthorization` with the authorization the payer signed, and names its transaction; `status` reads it.
+ */
 export const exactEip3009 = Object.freeze({
   id: ID,
   pattern,
@@ -384,6 +390,7 @@ export const exactEip3009 = Object.freeze({
   read: readFor(evmFilter(ID)),
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   authorizer,
   status: eip3009Status,
@@ -1289,6 +1296,7 @@ type BreadthBase<Id extends X402PairingId> = {
   readonly tie: typeof tie;
   readonly advertise: X402Advertise;
   readonly read: (doc: unknown) => X402Read | Refusal;
+  readonly broadcaster: (presented: unknown) => Promise<Broadcaster>;
 };
 
 /** The members each x402 EVM breadth pairing gives itself. */
@@ -1315,10 +1323,15 @@ function binding<Id extends X402PairingId, M extends BreadthMembers>(
     tie,
     advertise: advertiseFor(evmFilter(id)),
     read: readFor(evmFilter(id)),
+    broadcaster: broadcasts("payee"),
     ...members,
   });
 }
 
+/**
+ * `x402/exact/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator
+ * submits the Permit2 transfer the payer signed, and names its transaction; `status` reads it.
+ */
 export const exactPermit2 = binding(
   PERMIT2_EXACT,
   record({
@@ -1343,6 +1356,11 @@ export const exactPermit2 = binding(
   },
 );
 
+/**
+ * `x402/upto/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator,
+ * the witness's `facilitator`, submits the Permit2 transfer the payer signed for the amount it settles, and names its
+ * transaction; `status` reads it.
+ */
 export const uptoPermit2 = binding(
   PERMIT2_UPTO,
   record({
@@ -1371,8 +1389,10 @@ export const uptoPermit2 = binding(
 );
 
 /**
- * The unsigned ERC-7710 level has no `status`: its read keys identify any transfer from the delegator, and nothing in
- * the settlement transaction ties one to this payment, so a read of the chain alone never settles it.
+ * `x402/exact/eip155/erc7710`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator redeems
+ * the delegation the payer signed. This unsigned level has no `status`: its read keys identify any transfer from the
+ * delegator, and nothing in the settlement transaction ties one to this payment, so a read of the chain alone never
+ * settles it.
  */
 export const exactErc7710 = binding(
   ERC7710,
@@ -1394,6 +1414,10 @@ export const exactErc7710 = binding(
   { build: erc7710Build, bound: erc7710Bound, reference: erc7710Reference(ERC7710) },
 );
 
+/**
+ * `x402/exact/eip155/erc7710-salt`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
+ * facilitator redeems the delegation the payer signed, and names its transaction; `status` reads it.
+ */
 export const exactErc7710Salt = binding(
   ERC7710_SALT,
   record({
@@ -1424,6 +1448,11 @@ export const exactErc7710Salt = binding(
   },
 );
 
+/**
+ * `x402/auth-capture/eip155/eip3009`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
+ * facilitator submits the escrow call that executes the authorization the payer signed, and names its transaction;
+ * `status` reads it.
+ */
 export const authCaptureEip3009 = binding(
   AC_EIP3009,
   record({
@@ -1447,6 +1476,11 @@ export const authCaptureEip3009 = binding(
   },
 );
 
+/**
+ * `x402/auth-capture/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
+ * facilitator submits the escrow call that executes the Permit2 transfer the payer signed, and names its transaction;
+ * `status` reads it.
+ */
 export const authCapturePermit2 = binding(
   AC_PERMIT2,
   record({

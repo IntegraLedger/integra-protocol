@@ -18,6 +18,7 @@ import {
   optionChecks,
   type LnOption,
 } from "./internal/lightning.js";
+import { broadcasts, broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
 import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import {
   credentialOf,
@@ -42,6 +43,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /**
  * x402's `lnbtc` network ids, in CAIP-2 form: `lnbtc:` and the first 32 hex digits of the genesis block hash of
@@ -300,6 +302,11 @@ async function lnbtcBound(presented: unknown): Promise<AtrHash | Refusal> {
   return fieldHash(decode((accepted as LnOption).extra.invoice) as Bolt11, "m");
 }
 
+/**
+ * `x402/exact/lnbtc`. The payer broadcasts (`broadcaster` answers `"payer"`): its node pays the invoice before the
+ * preimage is presented. The seller's node, which received the payment, confirms it; `reference` names the invoice,
+ * and no `status` reads it.
+ */
 export const exactLnbtc = Object.freeze({
   id: LNBTC,
   pattern: deepFreeze({
@@ -326,6 +333,7 @@ export const exactLnbtc = Object.freeze({
   read: readFor(lnbtcFilter) as (doc: PaymentRequired) => X402Read | Refusal,
   build: lnbtcBuild,
   bound: lnbtcBound,
+  broadcaster: broadcasts("payer"),
   reference: (presented: unknown) => x402Reference(presented, true),
 });
 
@@ -387,6 +395,11 @@ async function namedBound(presented: unknown): Promise<AtrHash | Refusal> {
   return decoded === null ? refusal("ln/no-legal-context") : decoded.h;
 }
 
+/**
+ * `x402/exact/lnbtc/invoice-named`. The payer broadcasts (`broadcaster` answers `"payer"`): its node pays the invoice
+ * before the preimage is presented. The seller's node, which received the payment, confirms it; `reference` names the
+ * invoice, and no `status` reads it.
+ */
 export const exactLnbtcNamed = Object.freeze({
   id: NAMED,
   pattern: deepFreeze({
@@ -412,6 +425,7 @@ export const exactLnbtcNamed = Object.freeze({
   read: readFor(namedFilter) as (doc: PaymentRequired) => X402Read | Refusal,
   build: namedBuild,
   bound: namedBound,
+  broadcaster: broadcasts("payer"),
   reference: (presented: unknown) => x402Reference(presented, false),
 });
 
@@ -634,10 +648,16 @@ function lnMppBinding<P extends LnMppPairingId>(id: P, carrier: string, proves: 
     advertiseBeforeCarrier: lnAdvertiseBeforeCarrier(id),
     build: lnBuild(id),
     bound: lnBound(id),
+    broadcaster: broadcasts("payer"),
     reference: lnReference(id),
   });
 }
 
+/**
+ * `mpp/charge/lightning`. The payer broadcasts (`broadcaster` answers `"payer"`): its node pays the invoice before the
+ * preimage is presented. The seller's node, which received the payment, confirms it; `reference` names the invoice,
+ * and no `status` reads it.
+ */
 export const chargeLightning = lnMppBinding(LN_CHARGE, "request.methodDetails.invoice#h");
 /** The one network name every Lightning session channel key carries: a bearer or close challenge names no invoice. */
 const SESSION_CHANNEL_NETWORK = "lightning";
@@ -674,6 +694,20 @@ async function sessionRef(presented: unknown): Promise<{ network: string; channe
   return { network: SESSION_CHANNEL_NETWORK, channel: id.toLowerCase() };
 }
 
+/**
+ * Who sends a Lightning session payment, by its action, as draft-lightning-session-00 has it: the payer's node the
+ * deposit an opening presents the preimage of, and a top-up's new deposit; a bearer proof moves nothing, and draws on
+ * the deposit the payer sent; the seller's node the close's refund of the unspent balance to the return invoice.
+ * Undefined for a credential `credentialOf` refuses or any other action.
+ */
+function sessionBroadcaster(presented: unknown): Broadcaster | undefined {
+  const c = credentialOf(presented);
+  if (isRefusal(c)) return undefined;
+  const a = c.payload["action"];
+  if (a === OPEN || a === "bearer" || a === "topUp") return "payer";
+  return a === "close" ? "payee" : undefined;
+}
+
 /** A bearer proof carries no hash; a topUp is within the session and is found by `ref`. */
 async function sessionBoundWithin(_presented: unknown): Promise<AtrHash | Refusal> {
   return refusal("mpp/not-bound-within");
@@ -681,8 +715,15 @@ async function sessionBoundWithin(_presented: unknown): Promise<AtrHash | Refusa
 
 const MPP_LN_SESSION_PROVES = MPP_LN_PROVES + " The close is the seller's report.";
 
+/**
+ * `mpp/session/lightning`. `broadcaster` answers by the payment's action (`sessionBroadcaster`). `"payer"`: the opening
+ * and a top-up, whose deposits the payer's node paid, and a bearer proof, which draws on them; the seller's node, which
+ * received each deposit, confirms it, and no `status` reads it. `"payee"`: the close, whose refund the seller's node
+ * pays. Any other payment gets `bound`'s refusal.
+ */
 export const sessionLightning = Object.freeze({
   ...lnMppBinding(LN_SESSION, "request.depositInvoice#h", MPP_LN_SESSION_PROVES),
+  broadcaster: broadcastsByKind(sessionBroadcaster, lnBound(LN_SESSION), () => refusal("mpp/session-action")),
   channel: Object.freeze({
     kind: measuring(sessionKind),
     ref: measuringAsync(sessionRef),

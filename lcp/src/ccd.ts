@@ -14,6 +14,7 @@ import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
 import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -21,6 +22,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash. */
 export type CcdNetwork = `ccd:${string}`;
@@ -531,6 +533,10 @@ const pattern: LcpPattern = deepFreeze({
     "content.",
 });
 
+/**
+ * `x402/exact/ccd`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the sponsor,
+ * signs and submits the sponsored transaction the payer signed; `status` reads the finalized transfer.
+ */
 export const exactCcd = Object.freeze({
   id: ID,
   pattern,
@@ -541,6 +547,7 @@ export const exactCcd = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: ccdStatus,
   recover: ccdRecover,

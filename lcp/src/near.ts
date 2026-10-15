@@ -30,6 +30,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow, fromBase64, toBase64 } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -37,6 +38,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
 const borsh: typeof Borsh | undefined = await import("borsh").catch(() => undefined);
@@ -604,6 +606,10 @@ const pattern: LcpPattern = deepFreeze({
     "the ATR's content.",
 });
 
+/**
+ * `x402/exact/near`. The payee broadcasts (`broadcaster` answers `"payee"`): a relayer of the seller's facilitator
+ * submits the delegate action the payer signed; `status` reads the relayed transaction's receipts.
+ */
 export const exactNear = Object.freeze({
   id: ID,
   pattern,
@@ -615,6 +621,7 @@ export const exactNear = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: nearStatus,
   recover: nearRecover,

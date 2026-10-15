@@ -16,6 +16,7 @@ import {
   type XrplTxJson,
 } from "./internal/xrpl.js";
 import {
+  broadcasterByType,
   chosenFor,
   credentialOf,
   deepFreeze,
@@ -289,6 +290,11 @@ const pattern: LcpPattern = deepFreeze({
     "validated ledger with tesSUCCESS. This does not show that amount, destination, asset or timing match the ATR's content.",
 });
 
+/**
+ * `mpp/charge/xrpl`. `broadcaster` answers by the credential's `type`. `transaction`, `"payee"`: the seller's server
+ * submits the signed blob, and `status` reads it. `hash`, `"payer"`: the payer broadcast the transaction, which
+ * `fetchPresented` reads, then `status`. Any other credential gets `bound`'s refusal.
+ */
 export const chargeXrpl = Object.freeze({
   id: ID,
   pattern,
@@ -300,6 +306,7 @@ export const chargeXrpl = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, bound),
   reference,
   status: xrplStatus,
   recover: xrplInvoiceOf,

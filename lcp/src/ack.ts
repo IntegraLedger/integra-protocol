@@ -16,9 +16,11 @@ import {
 } from "./core.js";
 import { isObject, jsonBytes, normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import { decodeJsonSegment, jwsSegments, withinDepth } from "./sd-jwt.js";
 import type { LcpPattern } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** An ACK payment option as the seller wrote it. */
 export interface AckPaymentOption {
@@ -159,6 +161,11 @@ const pattern: LcpPattern = Object.freeze({
     "does not show that the buyer's approval carried the hash.",
 });
 
+/**
+ * `ack/payment-request`. The payer broadcasts (`broadcaster` answers `"payer"`): it pays the Payment Request through
+ * its payment service before presenting the receipt. Settlement is the seller's report: the seller verifies the
+ * receipt, and `fromReceipt` reads the hash from it; no `fetchPresented`, `status` or `recover` reads it.
+ */
 export const paymentRequest = Object.freeze({
   id: ID,
   pattern,
@@ -169,6 +176,7 @@ export const paymentRequest = Object.freeze({
   read,
   build: async (_doc: unknown, _h: AtrHash): Promise<Refusal> => refusal("ack/no-signed-place"),
   bound: async (_presented: unknown): Promise<Refusal> => refusal("ack/no-signed-place"),
+  broadcaster: broadcasts("payer"),
 });
 
 /**

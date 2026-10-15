@@ -18,6 +18,7 @@ import {
 import { deepFreeze, jsonBytes, normalHash, sameJson } from "./fields.js";
 import type { LcpPattern } from "./index.js";
 import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./internal/agreement.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   decodeJsonSegment,
@@ -29,6 +30,7 @@ import {
   type SdJwt,
   type SdJwtRefusals,
 } from "./sd-jwt.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const CHECKOUT_VCT = "mandate.checkout.1";
 
@@ -310,6 +312,10 @@ const pattern: LcpPattern = deepFreeze({
     "not show that amount, payee or timing match the ATR's content.",
 });
 
+/**
+ * `ap2/checkout-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment processor
+ * executes the payment the closed Checkout Mandate authorizes; nothing here reads it.
+ */
 export const checkoutMandate = Object.freeze({
   id: ID,
   pattern,
@@ -320,6 +326,7 @@ export const checkoutMandate = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
 });
 
 function isOption(o: unknown): o is CheckoutOption {

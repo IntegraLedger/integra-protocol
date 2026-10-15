@@ -234,12 +234,13 @@ The [entry point reference](https://github.com/IntegraLedger/integra-protocol/bl
 lists every export of every entry point, and the
 [API reference](https://github.com/IntegraLedger/integra-protocol/tree/main/docs/reference/api) gives each signature.
 
-Every pairing has these members, except that `mpp/charge/nearintents` has no `build`: `id`, `pattern` (what a
-payment through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the
-option as the seller issued it), `tie` (the ATR's binding slot), `advertise` and `read` (H into and out of the
-challenge), `build` (what the buyer signs, with H in its place), and `bound` (H back out of the payment). Pairings that
-settle on a readable rail add `reference`, `status` and, where the rail keeps H, `recover`. EVM pull pairings add
-`authorizer`, the account whose signature authorises the pull.
+Every pairing has these members, except that `mpp/charge/nearintents` has no `build`: `id`, `pattern` (what a payment
+through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the option as the
+seller issued it), `tie` (the ATR's binding slot), `advertise` and `read` (H into and out of the challenge), `build`
+(what the buyer signs, with H in its place), `bound` (H back out of the payment), and `broadcaster` (who broadcasts what
+the buyer presents: `"payer"`, which sent it before presenting it, or `"payee"`, which sends or executes it after).
+Pairings that settle on a readable rail add `reference`, `status` and, where the rail keeps H, `recover`. EVM pull
+pairings add `authorizer`, the account whose signature authorises the pull.
 
 ## Supported pairings
 

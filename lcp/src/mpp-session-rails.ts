@@ -8,6 +8,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
 import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmReceipt, type EvmRef } from "./evm.js";
+import { broadcasts, broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
 import { failedAt, finalAt, isLog, isReceipt, settledAt } from "./internal/evm.js";
 import { isAddress, normalHash } from "./fields.js";
 import {
@@ -596,6 +597,19 @@ async function hederaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Heder
  */
 function hederaKind(presented: MppCredential): Kind | Refusal {
   return actionKind(presented, ["voucher", "topUp"]);
+}
+
+/**
+ * Who broadcasts a Hedera session payment, by its action, as draft-hedera-session-00 has it: the payer an opening or a
+ * top-up, each a transaction it broadcast and names by `txHash`; the seller's server a voucher, which it redeems when
+ * it closes, and the close, which it sends. Undefined for a credential `credentialOf` refuses or any other action.
+ */
+function hederaBroadcaster(presented: unknown): Broadcaster | undefined {
+  const c = credentialOf(presented);
+  if (isRefusal(c)) return undefined;
+  const action = c.payload["action"];
+  if (action === "open" || action === "topUp") return "payer";
+  return action === "voucher" || action === "close" ? "payee" : undefined;
 }
 
 /**
@@ -1311,6 +1325,12 @@ function sessionPattern(p: Pick<LcpPattern, "pattern" | "buyerSigns" | "zeroPart
   } as LcpPattern);
 }
 
+/**
+ * `mpp/session/hedera`. `broadcaster` answers by the payment's action (`hederaBroadcaster`). `"payer"`: the opening,
+ * whose two calls the payer's signer broadcasts, and a top-up; `fetchPresented` reads the landed opening named by
+ * `txHash` (`landedTx`), then `status`. `"payee"`: a voucher, which the seller's server redeems when it closes, and the
+ * close, the escrow call it sends, which `closeRef` and `status` read. Any other payment gets `bound`'s refusal.
+ */
 export const sessionHedera = Object.freeze({
   id: HEDERA,
   pattern: sessionPattern(
@@ -1336,6 +1356,7 @@ export const sessionHedera = Object.freeze({
   build: hederaBuild,
   buildWithin: hederaBuildWithin,
   bound: hederaBound,
+  broadcaster: broadcastsByKind(hederaBroadcaster, hederaBound, () => refusal("mpp/session-action")),
   reference: hederaReference,
   status: hederaStatus,
   recover: hederaRecover,
@@ -1354,6 +1375,13 @@ export const sessionHedera = Object.freeze({
   }),
 });
 
+/**
+ * `mpp/session/solana`. The payee broadcasts every payment (`broadcaster` answers `"payee"`), as
+ * draft-solana-session-00 has it: the seller's server co-signs and broadcasts the opening and a top-up, each a
+ * transaction the payer signed, once `fetchPresented` has read the opening's address lookup tables (it reads no landed
+ * payment); it redeems vouchers and the operator's `use` metering when it settles, and broadcasts the close. `status`
+ * and `closeRef` read them.
+ */
 export const sessionSolana = Object.freeze({
   id: SOLANA,
   pattern: sessionPattern(
@@ -1379,6 +1407,7 @@ export const sessionSolana = Object.freeze({
   build: solanaBuild,
   buildWithin: solanaBuildWithin,
   bound: solanaBound,
+  broadcaster: broadcasts("payee"),
   reference: solanaReference,
   status: solanaStatus,
   fetchPresented: solanaFetchPresented,
@@ -1391,6 +1420,11 @@ export const sessionSolana = Object.freeze({
   }),
 });
 
+/**
+ * `mpp/session/xrpl`. The payee broadcasts every payment (`broadcaster` answers `"payee"`): the seller's server submits
+ * the signed `PaymentChannelCreate` the opening carries, which `status` reads, redeems claims when it closes, and sends
+ * the close, which `closeRef` and `status` read.
+ */
 export const sessionXrpl = Object.freeze({
   id: XRPL,
   pattern: sessionPattern(
@@ -1414,6 +1448,7 @@ export const sessionXrpl = Object.freeze({
   build: xrplBuild,
   buildWithin: xrplBuildWithin,
   bound: xrplBound,
+  broadcaster: broadcasts("payee"),
   reference: xrplReference,
   status: xrplStatusOf,
   recover: xrplRecover,

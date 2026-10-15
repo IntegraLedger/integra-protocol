@@ -118,6 +118,11 @@ describe("mpp-charge-hedera.json", () => {
     expect(asHex((await at("transaction")) as HederaUnsigned)).toEqual(P.expectPullRequest);
     expect(asHex((await at()) as HederaUnsigned)).toEqual(P.expectRequest);
     expect(await at(P.otherCredentialType)).toEqual({ refused: true, code: P.expectOther });
+    // Present each, then broadcaster: the push request's `broadcast: true` is the payer's; the pull request has none.
+    const pushed = credential({ type: "hash", transactionId: V.push.transactionId });
+    const pulled = credential({ type: "transaction", transaction: V.build.expectTransactionBase64 });
+    expect([((await at(P.credentialType)) as HederaUnsigned).request.broadcast, await chargeHedera.broadcaster(pushed)]).toEqual([true, "payer"]);
+    expect([((await at("transaction")) as HederaUnsigned).request.broadcast, await chargeHedera.broadcaster(pulled)]).toEqual([undefined, "payee"]);
   });
 
   const reader = (network: string, entries: unknown, throws = false) => ({

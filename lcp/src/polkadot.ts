@@ -11,6 +11,7 @@ import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -18,6 +19,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type PolkadotNetwork = "polkadot:68d56f15f85d3136970ec16946040bc1" | "polkadot:67f9723393ef76214df0118c34bbbd3d";
 const POLKADOT_NETWORKS: readonly PolkadotNetwork[] = Object.freeze([
@@ -668,6 +670,10 @@ const pattern: LcpPattern = deepFreeze({
     "asset or timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/polkadot/lcp-assets-remark`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
+ * facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by block and index.
+ */
 export const exactPolkadotRemark = Object.freeze({
   id: ID,
   pattern,
@@ -679,6 +685,7 @@ export const exactPolkadotRemark = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: polkadotStatus,
   recover: polkadotRecover,

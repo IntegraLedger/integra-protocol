@@ -8,6 +8,7 @@ import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fi
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
 import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -15,6 +16,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `casper:` and the chainspec name. */
 export type CasperNetwork = `casper:${string}`;
@@ -418,6 +420,10 @@ const pattern: LcpPattern = deepFreeze({
     "content.",
 });
 
+/**
+ * `x402/exact/casper`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
+ * call that executes the payer's signed authorization; `status` reads the executed call.
+ */
 export const exactCasper = Object.freeze({
   id: ID,
   pattern,
@@ -428,6 +434,7 @@ export const exactCasper = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: casperStatus,
   recover: casperRecover,

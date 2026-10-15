@@ -22,6 +22,7 @@ import {
   type MppPairingId,
 } from "./mpp-challenge.js";
 import { stripeMetadataValid } from "./mpp-method-checks.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -131,10 +132,19 @@ function pairingOf<Id extends ConfirmOnly>(id: Id, carrier: string, p: LcpPatter
     read,
     build,
     bound: boundAs(id),
+    broadcaster: broadcasts("payee"),
   });
 }
 
+/**
+ * `mpp/charge/card`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment the
+ * payer's credential authorizes to its processor; nothing here reads it.
+ */
 export const chargeCard = pairingOf("mpp/charge/card", "request.externalId");
+/**
+ * `mpp/charge/stripe`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server creates the Stripe
+ * payment with the payer's shared payment token; nothing here reads it.
+ */
 export const chargeStripe = pairingOf("mpp/charge/stripe", "request.methodDetails.metadata.legal_context");
 /**
  * The Stripe subscription's activation receipt: the `Payment-Receipt` payload the seller's server answered the opening
@@ -182,6 +192,10 @@ async function subscriptionBoundWithin(_presented: unknown): Promise<AtrHash | R
   return refusal("mpp/not-bound-within");
 }
 
+/**
+ * `mpp/subscription/stripe`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server creates the
+ * Stripe subscription with the payer's shared payment token and reports its activation; nothing here reads it.
+ */
 export const subscriptionStripe = Object.freeze({
   ...pairingOf("mpp/subscription/stripe", "request.methodDetails.metadata.legal_context", patternOf(SUBSCRIPTION_PROVES)),
   channel: Object.freeze({

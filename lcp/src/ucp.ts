@@ -19,7 +19,9 @@ import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
 import { checkoutBinding, checkoutJwtOf, type Presented } from "./ap2.js";
 import type { LcpPattern } from "./index.js";
 import { agreementFault, agreementUrlFault, isAgreementUrl } from "./internal/agreement.js";
+import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const LINK_TYPE = "legal_context";
 const AGREEMENT_LINK_TYPE = "legal_context_agreement";
@@ -109,6 +111,8 @@ export interface UcpBinding<Id extends string, O extends Option> {
   read(doc: Checkout): { h: AtrHash; link: string; agreement?: string; offer: UcpOffer } | Refusal;
   build(offer: UcpOffer, h: AtrHash): Promise<Unsigned | Refusal>;
   bound(presented: unknown): Promise<AtrHash | Refusal>;
+  /** Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`). */
+  broadcaster(presented: unknown): Promise<Broadcaster>;
 }
 
 /**
@@ -298,6 +302,10 @@ function unsignedPattern(noun: "checkout" | "booking"): LcpPattern {
   });
 }
 
+/**
+ * `ucp/checkout/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+ * executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+ */
 export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> = Object.freeze({
   id: "ucp/checkout/ap2-mandate",
   pattern: ap2Pattern("checkout"),
@@ -308,8 +316,13 @@ export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> 
   read: readShown(readAp2),
   build: buildAp2,
   bound: boundAp2,
+  broadcaster: broadcasts("payee"),
 });
 
+/**
+ * `ucp/checkout/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+ * executes the payment the checkout completed; nothing here reads it.
+ */
 export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Object.freeze({
   id: "ucp/checkout/unsigned",
   pattern: unsignedPattern("checkout"),
@@ -320,8 +333,13 @@ export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Obj
   read: readShown(readUnsigned),
   build: buildUnsigned,
   bound: boundUnsigned,
+  broadcaster: broadcasts("payee"),
 });
 
+/**
+ * `ucp/booking/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+ * executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+ */
 export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOption> = Object.freeze({
   id: "ucp/booking/ap2-mandate",
   pattern: ap2Pattern("booking"),
@@ -332,8 +350,13 @@ export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOpt
   read: readShown(readAp2),
   build: buildAp2,
   bound: boundAp2,
+  broadcaster: broadcasts("payee"),
 });
 
+/**
+ * `ucp/booking/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+ * executes the payment the booking completed; nothing here reads it.
+ */
 export const bookingUnsigned: UcpBinding<"ucp/booking/unsigned", BookingOption> = Object.freeze({
   id: "ucp/booking/unsigned",
   pattern: unsignedPattern("booking"),
@@ -344,6 +367,7 @@ export const bookingUnsigned: UcpBinding<"ucp/booking/unsigned", BookingOption> 
   read: readShown(readUnsigned),
   build: buildUnsigned,
   bound: boundUnsigned,
+  broadcaster: broadcasts("payee"),
 });
 
 function isOption(o: unknown, key: "checkout" | "booking"): boolean {

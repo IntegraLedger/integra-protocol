@@ -20,9 +20,11 @@ import {
 } from "./internal/hedera.js";
 import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
+  broadcasterByType,
   challengeBound,
   checkedFor,
   checkAttribution,
@@ -42,6 +44,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
 /** The four CAIP-2 Hedera networks. */
@@ -751,6 +754,11 @@ const exactPattern: LcpPattern = deepFreeze({
     "does not show that amount, recipient, token or timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/hedera`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the
+ * transaction's fee payer, adds its signature to the transaction the payer signed and submits it; `status` reads it by
+ * its transaction id.
+ */
 export const exactHedera = Object.freeze({
   id: EXACT,
   pattern: exactPattern,
@@ -762,6 +770,7 @@ export const exactHedera = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: hederaStatus,
   recover,
@@ -982,6 +991,11 @@ const executorPattern: LcpPattern = deepFreeze({
     "match the ATR's content.",
 });
 
+/**
+ * `x402/exact/hedera/transfer-executor`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
+ * facilitator submits the executor's transfer under the authorization the payer signed, and names its transaction;
+ * `status` reads it.
+ */
 export const exactHederaExecutor = Object.freeze({
   id: EXECUTOR,
   pattern: executorPattern,
@@ -992,6 +1006,7 @@ export const exactHederaExecutor = Object.freeze({
   read: readExecutor,
   build: buildExecutor,
   bound: boundExecutor,
+  broadcaster: broadcasts("payee"),
   reference: referenceExecutor,
   status: executorStatus,
 });
@@ -1284,6 +1299,13 @@ const chargePattern: LcpPattern = deepFreeze({
     "content.",
 });
 
+/**
+ * `mpp/charge/hedera`. `broadcaster` answers by the credential's `type`, as the charge's `build` writes the request:
+ * `hash`, the default, whose request carries `broadcast: true`, `"payer"`: the payer's signer broadcast the body and
+ * presents the transaction id, which `fetchPresented` reads, then `status`; `transaction`, whose request carries no
+ * `broadcast`, `"payee"`: the seller's server broadcasts the signed transaction, and `status` reads it. Any other
+ * credential gets `bound`'s refusal.
+ */
 export const chargeHedera = Object.freeze({
   id: CHARGE,
   pattern: chargePattern,
@@ -1303,6 +1325,7 @@ export const chargeHedera = Object.freeze({
     return isRefusal(id) ? undefined : txIdMirror(id);
   },
   bound: boundCharge,
+  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, boundCharge),
   reference: referenceCharge,
   status: hederaStatus,
 });

@@ -33,6 +33,7 @@ import {
   withOption,
   type X402Read,
 } from "./internal/x402.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -40,6 +41,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 const ID = "x402/exact/stellar" as const;
 const AMOUNT = /^(0|[1-9][0-9]{0,38})$/;
@@ -215,6 +217,10 @@ const pattern: LcpPattern = Object.freeze({
     "amount, asset or timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/stellar`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
+ * Soroban `transfer` the payer authorized; `status` reads it.
+ */
 export const exactStellar = Object.freeze({
   id: ID,
   pattern,
@@ -226,6 +232,7 @@ export const exactStellar = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: stellarStatus,
 });

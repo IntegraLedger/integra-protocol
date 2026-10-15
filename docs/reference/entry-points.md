@@ -57,7 +57,7 @@ import { assemble, base64Bytes, base64UrlBytes, … } from "@integraledger/lcp";
 
 **Values (29):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
-**Types (13):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `Presented`, `Refusal`, `UrlAuthority`, `X402Binding`.
+**Types (14):** `AtrHash`, `Authorizer`, `Binding`, `Broadcaster`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `Presented`, `Refusal`, `UrlAuthority`, `X402Binding`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -83,7 +83,7 @@ import { fromReceipt, paymentRequest, tie } from "@integraledger/lcp/ack";
 
 **Values (3):** `fromReceipt`, `paymentRequest`, `tie`.
 
-**Types (3):** `AckBody`, `AckPaymentOption`, `AckValues`.
+**Types (4):** `AckBody`, `AckPaymentOption`, `AckValues`, `Broadcaster`.
 
 ## `@integraledger/lcp/acp`
 
@@ -97,7 +97,7 @@ import { delegated, issuedDigest, METADATA_KEY, … } from "@integraledger/lcp/a
 
 **Values (5):** `delegated`, `issuedDigest`, `METADATA_KEY`, `tie`, `undelegated`.
 
-**Types (7):** `AcpBinding`, `AcpChoice`, `Allowance`, `HandlerOption`, `Presented`, `Session`, `Unsigned`.
+**Types (8):** `AcpBinding`, `AcpChoice`, `Allowance`, `Broadcaster`, `HandlerOption`, `Presented`, `Session`, `Unsigned`.
 
 ## `@integraledger/lcp/ap2`
 
@@ -111,7 +111,7 @@ import { CHECKOUT_VCT, checkoutBinding, checkoutJwtOf, … } from "@integraledge
 
 **Values (8):** `CHECKOUT_VCT`, `checkoutBinding`, `checkoutJwtOf`, `checkoutMandate`, `issuedDigest`, `jwsPayload`, `readMandate`, `tie`.
 
-**Types (7):** `Ap2Offer`, `CheckoutOption`, `Jws`, `MandateContent`, `Payload`, `Presented`, `Unsigned`.
+**Types (8):** `Ap2Offer`, `Broadcaster`, `CheckoutOption`, `Jws`, `MandateContent`, `Payload`, `Presented`, `Unsigned`.
 
 ## `@integraledger/lcp/aptos`
 
@@ -125,7 +125,7 @@ import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integrale
 
 **Values (5):** `aptosIdDigest`, `aptosStatus`, `committedInstrument`, `decodeAptosTx`, `exactAptos`.
 
-**Types (7):** `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`.
+**Types (8):** `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`, `Broadcaster`.
 
 ## `@integraledger/lcp/avm`
 
@@ -139,7 +139,7 @@ import { avmCarrier, avmRecover, avmStatus, … } from "@integraledger/lcp/avm";
 
 **Values (5):** `avmCarrier`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
 
-**Types (7):** `AlgorandNetwork`, `AvmParams`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmStatus`, `AvmUnsigned`.
+**Types (8):** `AlgorandNetwork`, `AvmParams`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmStatus`, `AvmUnsigned`, `Broadcaster`.
 
 ## `@integraledger/lcp/card`
 
@@ -153,7 +153,7 @@ import { disclosureDigest, sellerReference, TAP_FIELD, … } from "@integraledge
 
 **Values (7):** `disclosureDigest`, `sellerReference`, `TAP_FIELD`, `tie`, `viAutonomous`, `viImmediate`, `visaTap`.
 
-**Types (10):** `CardOption`, `CardPairing`, `CardPairingId`, `CardScheme`, `CardValues`, `TapPresented`, `TapUnsigned`, `ViAutonomous`, `ViImmediate`, `ViUnsigned`.
+**Types (11):** `Broadcaster`, `CardOption`, `CardPairing`, `CardPairingId`, `CardScheme`, `CardValues`, `TapPresented`, `TapUnsigned`, `ViAutonomous`, `ViImmediate`, `ViUnsigned`.
 
 ## `@integraledger/lcp/cardano`
 
@@ -167,7 +167,7 @@ import { auxiliaryData, cardanoRecover, cardanoStatus, … } from "@integraledge
 
 **Values (6):** `auxiliaryData`, `cardanoRecover`, `cardanoStatus`, `decodeCardanoTx`, `exactCardano`, `LCP_MARKER`.
 
-**Types (8):** `CardanoNetwork`, `CardanoOnChain`, `CardanoPayload`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`.
+**Types (9):** `Broadcaster`, `CardanoNetwork`, `CardanoOnChain`, `CardanoPayload`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`.
 
 ## `@integraledger/lcp/casper`
 
@@ -181,7 +181,7 @@ import { CASPER_DOMAIN_TYPEHASH, casperIdDigest, casperRecover, … } from "@int
 
 **Values (6):** `CASPER_DOMAIN_TYPEHASH`, `casperIdDigest`, `casperRecover`, `casperStatus`, `cep3009TypedData`, `exactCasper`.
 
-**Types (9):** `CasperAddress`, `CasperCall`, `CasperNetwork`, `CasperReader`, `CasperRef`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`.
+**Types (10):** `Broadcaster`, `CasperAddress`, `CasperCall`, `CasperNetwork`, `CasperReader`, `CasperRef`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`.
 
 ## `@integraledger/lcp/ccd`
 
@@ -195,7 +195,7 @@ import { accountBytes, ccdIdDigest, ccdMemo, … } from "@integraledger/lcp/ccd"
 
 **Values (8):** `accountBytes`, `ccdIdDigest`, `ccdMemo`, `ccdRecover`, `ccdStatus`, `exactCcd`, `memoCarrier`, `pltMemo`.
 
-**Types (7):** `CcdItem`, `CcdNetwork`, `CcdReader`, `CcdRef`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
+**Types (8):** `Broadcaster`, `CcdItem`, `CcdNetwork`, `CcdReader`, `CcdRef`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
 
 ## `@integraledger/lcp/core`
 
@@ -245,7 +245,7 @@ import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, chargeHedera, … } from "@
 
 **Values (15):** `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `chargeHedera`, `decodeHederaTx`, `ESCROW_OPEN_SELECTOR`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `FETCHED`, `hederaChannelId`, `hederaIdDigest`, `hederaStatus`, `hederaVoucher`, `txIdMirror`, `txIdText`.
 
-**Types (14):** `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaChargeChoice`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `MirrorEntry`.
+**Types (15):** `Broadcaster`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaChargeChoice`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `MirrorEntry`.
 
 ## `@integraledger/lcp/lightning`
 
@@ -259,7 +259,7 @@ import { atrNamesInvoice, chargeLightning, decodeBolt11, … } from "@integraled
 
 **Values (7):** `atrNamesInvoice`, `chargeLightning`, `decodeBolt11`, `exactLnbtc`, `exactLnbtcNamed`, `invoiceH`, `sessionLightning`.
 
-**Types (7):** `Bolt11`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
+**Types (8):** `Bolt11`, `Broadcaster`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
 
 ## `@integraledger/lcp/mpp`
 
@@ -273,7 +273,7 @@ import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lc
 
 **Values (51):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeHedera`, `chargeNearIntents`, `chargeSolana`, `chargeStellar`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `FETCHED`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHedera`, `sessionResume`, `sessionSolana`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `subscriptionStripe`, `subscriptionTempo`, `tempoMemo`, `tempoPush`, `tie`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
 
-**Types (23):** `GatewayPreimage`, `GatewaySaltInput`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `XrplChargeChoice`, `XrplChargeUnsigned`.
+**Types (24):** `Broadcaster`, `GatewayPreimage`, `GatewaySaltInput`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `XrplChargeChoice`, `XrplChargeUnsigned`.
 
 ## `@integraledger/lcp/near`
 
@@ -287,7 +287,7 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 **Values (8):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `nearCarrier`, `nearLapsed`, `nearRecover`, `nearStatus`, `NEP461_DELEGATE`.
 
-**Types (6):** `NearNetwork`, `NearOutcome`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
+**Types (7):** `Broadcaster`, `NearNetwork`, `NearOutcome`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
 
 ## `@integraledger/lcp/polkadot`
 
@@ -301,7 +301,7 @@ import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/
 
 **Values (11):** `CALL`, `decodeProfileCall`, `encodeProfileCall`, `exactPolkadotRemark`, `extrinsicHash`, `LCP_ASSETS_REMARK`, `polkadotLocate`, `polkadotRecover`, `polkadotStatus`, `splitSigned`, `ss58Decode`.
 
-**Types (7):** `PolkadotExtrinsic`, `PolkadotNetwork`, `PolkadotReader`, `PolkadotRef`, `PolkadotStatus`, `PolkadotUnsigned`, `ProfileCall`.
+**Types (8):** `Broadcaster`, `PolkadotExtrinsic`, `PolkadotNetwork`, `PolkadotReader`, `PolkadotRef`, `PolkadotStatus`, `PolkadotUnsigned`, `ProfileCall`.
 
 ## `@integraledger/lcp/stacks`
 
@@ -327,7 +327,7 @@ import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp
 
 **Values (13):** `ANY_CALLER`, `chainIdFelt`, `EVENT_TRANSFER`, `exactStarknet`, `FELT_P`, `MASK_250`, `outsideExecution`, `SELECTOR_EXECUTE_FROM_OUTSIDE_V2`, `SELECTOR_TRANSFER`, `snNonce`, `starknetIdDigest`, `starknetLandedNonce`, `starknetStatus`.
 
-**Types (11):** `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetEvent`, `StarknetInvocation`, `StarknetNetwork`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
+**Types (12):** `Broadcaster`, `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetEvent`, `StarknetInvocation`, `StarknetNetwork`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
 
 ## `@integraledger/lcp/stellar`
 
@@ -353,7 +353,7 @@ import { decodeSuiTx, exactSui, suiCarrier, … } from "@integraledger/lcp/sui";
 
 **Values (5):** `decodeSuiTx`, `exactSui`, `suiCarrier`, `suiRecover`, `suiStatus`.
 
-**Types (8):** `SuiExecuted`, `SuiNetwork`, `SuiPayload`, `SuiReader`, `SuiRef`, `SuiStatus`, `SuiTx`, `SuiUnsigned`.
+**Types (9):** `Broadcaster`, `SuiExecuted`, `SuiNetwork`, `SuiPayload`, `SuiReader`, `SuiRef`, `SuiStatus`, `SuiTx`, `SuiUnsigned`.
 
 ## `@integraledger/lcp/svm`
 
@@ -391,7 +391,7 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 
 **Values (12):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`.
 
-**Types (7):** `TronInfo`, `TronNetwork`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
+**Types (8):** `Broadcaster`, `TronInfo`, `TronNetwork`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
 
 ## `@integraledger/lcp/tvm`
 
@@ -405,7 +405,7 @@ import { exactTvm, lcpComment, OP, … } from "@integraledger/lcp/tvm";
 
 **Values (6):** `exactTvm`, `lcpComment`, `OP`, `tvmCarrier`, `tvmRecover`, `tvmStatus`.
 
-**Types (7):** `TonCell`, `TonTx`, `TvmNetwork`, `TvmReader`, `TvmRef`, `TvmStatus`, `TvmUnsigned`.
+**Types (8):** `Broadcaster`, `TonCell`, `TonTx`, `TvmNetwork`, `TvmReader`, `TvmRef`, `TvmStatus`, `TvmUnsigned`.
 
 ## `@integraledger/lcp/ucp`
 
@@ -419,7 +419,7 @@ import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, … } from "@integraled
 
 **Values (8):** `ap2Mandate`, `bookingAp2Mandate`, `bookingUnsigned`, `issuedDigest`, `legalContextLink`, `LINK_TYPE`, `tie`, `unsigned`.
 
-**Types (7):** `BookingOption`, `Checkout`, `CheckoutOption`, `Link`, `UcpBinding`, `UcpOffer`, `Unsigned`.
+**Types (8):** `BookingOption`, `Broadcaster`, `Checkout`, `CheckoutOption`, `Link`, `UcpBinding`, `UcpOffer`, `Unsigned`.
 
 ## `@integraledger/lcp/x402`
 
@@ -433,7 +433,7 @@ import { authCaptureEip3009, authCapturePermit2, exactEip3009, … } from "@inte
 
 **Values (13):** `authCaptureEip3009`, `authCapturePermit2`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `pairingOfPayment`, `requestCommitment`, `tie`, `uptoPermit2`.
 
-**Types (12):** `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
+**Types (13):** `Broadcaster`, `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
 
 ## `@integraledger/lcp/x402-batch-settlement`
 
@@ -447,7 +447,7 @@ import { BATCH_SETTLEMENT, batchChannelCreated, batchChannelId, … } from "@int
 
 **Values (13):** `BATCH_SETTLEMENT`, `batchChannelCreated`, `batchChannelId`, `batchCloudflare`, `batchEvm`, `batchSvm`, `CHANNEL_CONFIG_TYPEHASH`, `CHANNEL_CREATED_TOPIC`, `DEPOSITED_TOPIC`, `ERC3009_DEPOSIT_COLLECTOR`, `erc3009DepositNonce`, `PERMIT2_DEPOSIT_COLLECTOR`, `VOUCHER_TYPEHASH`.
 
-**Types (8):** `BatchEvmOpen`, `BatchSvmOpen`, `BatchUnsigned`, `BatchWithin`, `ChannelConfig`, `ChannelMembers`, `Eip712Request`, `SigningRequest`.
+**Types (9):** `BatchEvmOpen`, `BatchSvmOpen`, `BatchUnsigned`, `BatchWithin`, `Broadcaster`, `ChannelConfig`, `ChannelMembers`, `Eip712Request`, `SigningRequest`.
 
 ## `@integraledger/lcp/x402-exact-solana`
 
@@ -461,7 +461,7 @@ import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 
 **Values (1):** `exactSvm`.
 
-**Types (1):** `SvmUnsigned`.
+**Types (2):** `Broadcaster`, `SvmUnsigned`.
 
 ## `@integraledger/lcp/x402-exact-stellar`
 
@@ -475,6 +475,8 @@ import { exactStellar } from "@integraledger/lcp/x402-exact-stellar";
 
 **Values (1):** `exactStellar`.
 
+**Types (1):** `Broadcaster`.
+
 ## `@integraledger/lcp/x402-exact-xrpl`
 
 The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs with a single key as the Payment's `InvoiceID`, read back from the signed blob, and settlement read by the blob's hash.
@@ -486,6 +488,8 @@ import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
 **Pairings:** `x402/exact/xrpl`.
 
 **Values (1):** `exactXrpl`.
+
+**Types (1):** `Broadcaster`.
 
 ## `@integraledger/lcp/x402-upto-solana`
 
@@ -499,7 +503,7 @@ import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 
 **Values (1):** `uptoSvm`.
 
-**Types (2):** `UptoSvmChoice`, `UptoSvmPayload`.
+**Types (3):** `Broadcaster`, `UptoSvmChoice`, `UptoSvmPayload`.
 
 ## `@integraledger/lcp/xrpl`
 

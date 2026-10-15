@@ -44,6 +44,7 @@ import {
 } from "./mpp-challenge.js";
 import { isJcsRequest, stacksNetworkOf } from "./mpp-method-checks.js";
 import { solanaChargePairing } from "./mpp-solana.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { stacksRecover, stacksStatus, stacksTxid, type StacksRef } from "./stacks.js";
 import type { LcpPattern } from "./x402.js";
@@ -307,6 +308,10 @@ async function evmAuthorizer(input: unknown): Promise<Hex | Refusal> {
   return isAddress(from) ? (from.toLowerCase() as Hex) : refusal("mpp/credential-malformed");
 }
 
+/**
+ * `mpp/charge/usdc/evm`. The payee broadcasts (`broadcaster` answers `"payee"`): the payer signs an EIP-3009
+ * authorization, and the seller's server submits it and pays the gas; `status` reads that transaction.
+ */
 export const chargeUsdcEvm = Object.freeze({
   id: EVM,
   pattern: pattern({
@@ -332,6 +337,7 @@ export const chargeUsdcEvm = Object.freeze({
   read,
   build: evmBuild as (choice: MppChoice, h: AtrHash) => Promise<UsdcUnsigned | Refusal>,
   bound: evmBound,
+  broadcaster: broadcasts("payee"),
   reference: evmReference,
   authorizer: evmAuthorizer,
   status: boundStatus([AUTHORIZATION_USED_TOPIC]),
@@ -339,6 +345,10 @@ export const chargeUsdcEvm = Object.freeze({
 
 // ── mpp/charge/usdc/solana.
 
+/**
+ * `mpp/charge/usdc/solana`, which takes only `type="transaction"` credentials. The payee broadcasts (`broadcaster`
+ * answers `"payee"`): the seller's server broadcasts the transaction the payer signed, and `status` reads it.
+ */
 export const chargeUsdcSolana = solanaChargePairing({
   id: SOLANA,
   details: (c: Checked | Echoed) => profileOf(c),
@@ -517,6 +527,10 @@ async function stacksReference(input: unknown): Promise<StacksRef | Refusal> {
   return tx.standard ? { ...ref, transaction: stacksTxid(b.wire) } : ref;
 }
 
+/**
+ * `mpp/charge/usdc/stacks`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server sponsors and
+ * broadcasts the Stacks transaction the payer signed; `status` reads it.
+ */
 export const chargeUsdcStacks = Object.freeze({
   id: STACKS,
   pattern: pattern({
@@ -542,6 +556,7 @@ export const chargeUsdcStacks = Object.freeze({
   read,
   build: stacksBuild,
   bound: stacksBound,
+  broadcaster: broadcasts("payee"),
   reference: stacksReference,
   status: stacksStatus,
   recover: stacksRecover,
@@ -679,6 +694,10 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
   };
 }
 
+/**
+ * `mpp/charge/usdc/gateway`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server submits the
+ * burn intent the payer signed through Circle Gateway, which settles it; no `status` reads it.
+ */
 export const chargeUsdcGateway = Object.freeze({
   id: GATEWAY,
   pattern: pattern({
@@ -705,4 +724,5 @@ export const chargeUsdcGateway = Object.freeze({
   read,
   build: gatewayBuild,
   bound: gatewayBound,
+  broadcaster: broadcasts("payee"),
 });

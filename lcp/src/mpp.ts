@@ -29,6 +29,7 @@ import {
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
   attributionMemo,
+  broadcasterByType,
   challengeHash,
   checkAttribution,
   checkChallenge,
@@ -78,6 +79,7 @@ import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpDecode, rlpUint } from "./rlp.js";
 import { failedIfFinal, finalAt, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
@@ -101,6 +103,7 @@ export {
   tie,
 } from "./mpp-challenge.js";
 export type { MppChallenge, MppChoice, MppCredential, MppMethod, MppPairingId } from "./mpp-challenge.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 export { chargeHedera } from "./hedera.js";
 export { LEGAL_CONTEXT_METADATA_KEY, chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 export type { StripeSubscriptionReceipt } from "./mpp-card-stripe.js";
@@ -1037,6 +1040,10 @@ const CALL_PROVES =
   "and the settlement transaction it reported succeeded and moved the token. " +
   LIMIT;
 
+/**
+ * `mpp/charge/evm/authorization`. The payee broadcasts (`broadcaster` answers `"payee"`): the payer signs an EIP-3009
+ * authorization, and the seller's server submits `transferWithAuthorization` with it; `status` reads that transaction.
+ */
 export const evmAuthorization = Object.freeze({
   id: AUTHORIZATION,
   pattern: pattern({
@@ -1059,11 +1066,16 @@ export const evmAuthorization = Object.freeze({
   read,
   build: authorizationBuild,
   bound: authorizationBound,
+  broadcaster: broadcasts("payee"),
   reference: authorizationReference,
   authorizer: authorizationAuthorizer,
   status: boundStatus([AUTHORIZATION_USED_TOPIC]),
 });
 
+/**
+ * `mpp/charge/evm/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the payer signs a Permit2 transfer,
+ * and the seller's server, the `spender` it names, submits it to Permit2; `status` reads that transaction.
+ */
 export const evmPermit2 = Object.freeze({
   id: PERMIT2_ID,
   pattern: pattern({
@@ -1085,11 +1097,18 @@ export const evmPermit2 = Object.freeze({
   read,
   build: permit2Build,
   bound: permit2Bound,
+  broadcaster: broadcasts("payee"),
   reference: permit2Reference,
   authorizer: permit2Authorizer,
   status: permit2Status,
 });
 
+/**
+ * `mpp/charge/evm/transaction`, whose `build` writes `broadcast: false`. `broadcaster` answers by the credential's
+ * `type`, as `reference` and `status` take either: `transaction`, `"payee"`, a signed transaction the seller's server
+ * broadcasts, naming its hash to `status`; `hash`, `"payer"`, a transaction the payer broadcast, which `status` reads
+ * by that hash. Any other credential gets `bound`'s refusal.
+ */
 export const evmTransaction = Object.freeze({
   id: TRANSACTION,
   pattern: pattern({
@@ -1106,10 +1125,17 @@ export const evmTransaction = Object.freeze({
   read,
   build: evmCallBuild(TRANSACTION),
   bound: noSignedPlace(TRANSACTION),
+  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, noSignedPlace(TRANSACTION)),
   reference: networkReference(TRANSACTION),
   status: transferPresent,
 });
 
+/**
+ * `mpp/charge/evm/hash`, whose `build` writes `broadcast: true`. `broadcaster` answers by the credential's `type`, as
+ * `reference` and `status` take either: `hash`, `"payer"`, a transaction the payer broadcast, which `status` reads by
+ * that hash; `transaction`, `"payee"`, a signed transaction the seller's server broadcasts, naming its hash to
+ * `status`. Any other credential gets `bound`'s refusal.
+ */
 export const evmHash = Object.freeze({
   id: HASH,
   pattern: pattern({
@@ -1126,10 +1152,16 @@ export const evmHash = Object.freeze({
   read,
   build: evmCallBuild(HASH),
   bound: noSignedPlace(HASH),
+  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, noSignedPlace(HASH)),
   reference: networkReference(HASH),
   status: transferPresent,
 });
 
+/**
+ * `mpp/charge/tempo/memo`, the pull charge, whose `build` writes `broadcast: false`. The payee broadcasts
+ * (`broadcaster` answers `"payee"`): the seller's server broadcasts the signed transaction the credential carries, and
+ * `status` reads it.
+ */
 export const tempoMemo = Object.freeze({
   id: MEMO,
   pattern: pattern({
@@ -1146,10 +1178,15 @@ export const tempoMemo = Object.freeze({
   read,
   build: tempoBuild(MEMO),
   bound: memoBound,
+  broadcaster: broadcasts("payee"),
   reference: memoReference,
   status: boundStatus([TRANSFER_WITH_MEMO_TOPIC]),
 });
 
+/**
+ * `mpp/charge/tempo/push`, whose `build` writes `broadcast: true`. The payer broadcasts (`broadcaster` answers
+ * `"payer"`) and presents the transaction's hash: `fetchPresented` reads the landed transaction, then `status`.
+ */
 export const tempoPush = Object.freeze({
   id: PUSH,
   pattern: pattern({
@@ -1166,6 +1203,7 @@ export const tempoPush = Object.freeze({
   read,
   build: tempoBuild(PUSH),
   bound: pushBound,
+  broadcaster: broadcasts("payer"),
   reference: pushReference,
   landedTx: (presented: unknown): string | undefined => {
     const hash = pushedField(presented, "hash", "hash");

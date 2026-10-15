@@ -21,6 +21,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow, hexDigits } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -28,6 +29,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, tron:2494104990 Shasta. */
 export type TronNetwork = `tron:${number}`;
@@ -660,6 +662,10 @@ const pattern: LcpPattern = deepFreeze({
     "transaction. This does not show that amount, payee, token or timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/tron/lcp-trc20-memo`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator
+ * broadcasts the TRC-20 transfer the payer signed; `status` reads it by transaction id.
+ */
 export const exactTronMemo = Object.freeze({
   id: ID,
   pattern,
@@ -671,6 +677,7 @@ export const exactTronMemo = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: tronStatus,
   recover: tronRecover,

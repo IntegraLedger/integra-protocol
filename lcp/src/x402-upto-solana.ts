@@ -40,6 +40,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { toBase64 } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { SvmUnsigned } from "./x402-exact-solana.js";
 import {
@@ -48,6 +49,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 const ID = "x402/upto/solana" as const;
 const MAX_MEMO = 256;
@@ -269,6 +271,11 @@ const pattern: LcpPattern = Object.freeze({
     "returns to the payer. This does not show that amount, recipient, mint or timing match the ATR's content.",
 });
 
+/**
+ * `x402/upto/solana`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the option's
+ * `feePayer`, co-signs and sends the opening the payer signed, and settles the metered amount in a later transaction;
+ * `status` reads the opening.
+ */
 export const uptoSvm = Object.freeze({
   id: ID,
   pattern,
@@ -280,6 +287,7 @@ export const uptoSvm = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: svmChannelStatus,
   recover: svmRecover,

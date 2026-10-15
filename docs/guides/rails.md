@@ -146,6 +146,11 @@ rail needs nothing more than the package.
 
 ## Reading settlement
 
+Which read comes first depends on who broadcast the payment. Each pairing's `broadcaster(presented)` answers
+`"payer"` where the payer sent it before presenting it, so the seller reads the landed payment, and `"payee"` where the
+seller sends or executes what was presented, then reads its settlement; the [pairings page](../concepts/pairings.md#who-broadcasts)
+lists the pairings that answer by the kind of payment.
+
 `status(ref, reader)` reads a payment's settlement through a **reader** you supply: an object with a few read-only
 calls against one network's endpoint. The package makes those calls and nothing else, so the endpoint, the
 credentials, the timeouts and the retries are yours. Each `status` makes a bounded number of calls.

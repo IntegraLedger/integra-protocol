@@ -20,6 +20,7 @@ import {
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
+import { broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import { decode as decodeInvoice, FIELD } from "./internal/lightning.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
@@ -1048,6 +1049,24 @@ export function pushedField(presented: unknown, type: string, field: string): st
   if (isRefusal(c) || c.payload["type"] !== type) return undefined;
   const v = c.payload[field];
   return typeof v === "string" ? v : undefined;
+}
+
+/**
+ * The `broadcaster` of an MPP pairing that takes credentials of more than one payload `type`: the answer `types` gives
+ * the credential's `type`. A credential `credentialOf` refuses, or one of a type `types` does not name, gets the
+ * refusal `bound` gives it, else `mpp/credential-type`.
+ */
+export function broadcasterByType(
+  types: { readonly [type: string]: Broadcaster },
+  bound: (presented: unknown) => Promise<unknown>,
+): (presented: unknown) => Promise<Broadcaster | Refusal> {
+  const kindOf = (presented: unknown): Broadcaster | undefined => {
+    const c = credentialOf(presented);
+    if (isRefusal(c)) return undefined;
+    const t = c.payload["type"];
+    return typeof t === "string" && Object.hasOwn(types, t) ? types[t] : undefined;
+  };
+  return broadcastsByKind(kindOf, bound, () => refusal("mpp/credential-type"));
 }
 
 /**

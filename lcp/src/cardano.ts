@@ -20,6 +20,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { base64Bytes, hexOf, sameBytes } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -27,6 +28,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type CardanoNetwork = "cardano:mainnet" | "cardano:preprod" | "cardano:preview";
 
@@ -320,6 +322,10 @@ const pattern: LcpPattern = deepFreeze({
     "ATR's content.",
 });
 
+/**
+ * `x402/exact/cardano`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
+ * transaction the payer signed; `status` reads it by the id its body fixes.
+ */
 export const exactCardano = Object.freeze({
   id: ID,
   pattern,
@@ -331,6 +337,7 @@ export const exactCardano = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: cardanoStatus,
   recover: cardanoRecover,

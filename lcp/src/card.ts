@@ -15,6 +15,7 @@ import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash } 
 import { normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { fromBase64Url } from "./rail-bytes.js";
+import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import {
@@ -26,6 +27,7 @@ import {
   type SdJwt,
   type SdJwtRefusals,
 } from "./sd-jwt.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export { disclosureDigest } from "./sd-jwt.js";
 
@@ -89,6 +91,8 @@ export interface CardPairing<PairingId extends CardPairingId, U> {
   read(doc: unknown): { h: AtrHash; link: string; agreement?: string } | Refusal;
   build(doc: unknown, h: AtrHash): Promise<U | Refusal>;
   bound(presented: unknown): Promise<AtrHash | Refusal>;
+  /** Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`). */
+  broadcaster(presented: unknown): Promise<Broadcaster>;
 }
 
 const MAX_CHECKOUT_ID = 128;
@@ -496,6 +500,10 @@ const sellerReferencePattern: LcpPattern = deepFreeze({
     "record does not show that the buyer's approval carried the hash.",
 });
 
+/**
+ * `card/visa-tap`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment to its
+ * processor; nothing here reads it.
+ */
 export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze({
   id: "card/visa-tap",
   pattern: visaTapPattern,
@@ -506,8 +514,13 @@ export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze(
   read: readShown,
   build: tapBuild,
   bound: tapBound,
+  broadcaster: broadcasts("payee"),
 });
 
+/**
+ * `card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
+ * payment the mandate authorizes to its processor; nothing here reads it.
+ */
 export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned> = Object.freeze({
   id: "card/mastercard-vi/immediate",
   pattern: viImmediatePattern,
@@ -518,8 +531,13 @@ export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned
   read: readCheckoutShown,
   build: viBuild,
   bound: viImmediateBound,
+  broadcaster: broadcasts("payee"),
 });
 
+/**
+ * `card/mastercard-vi/autonomous`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
+ * payment the mandates authorize to its processor; nothing here reads it.
+ */
 export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsigned> = Object.freeze({
   id: "card/mastercard-vi/autonomous",
   pattern: viAutonomousPattern,
@@ -530,8 +548,13 @@ export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsign
   read: readCheckoutShown,
   build: viBuild,
   bound: viAutonomousBound,
+  broadcaster: broadcasts("payee"),
 });
 
+/**
+ * `card/seller-reference`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment
+ * to its processor, with H in its processor reference; nothing here reads it.
+ */
 export const sellerReference: CardPairing<"card/seller-reference", never> = Object.freeze({
   id: "card/seller-reference",
   pattern: sellerReferencePattern,
@@ -542,6 +565,7 @@ export const sellerReference: CardPairing<"card/seller-reference", never> = Obje
   read: readShown,
   build: noSignedPlace,
   bound: noSignedPlace,
+  broadcaster: broadcasts("payee"),
 });
 
 // ── RFC 9651: the subset TAP's two signature fields need ──

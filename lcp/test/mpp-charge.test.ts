@@ -427,6 +427,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(keccak256(raw)).toBe(TX.MV11.expectTxHash);
     expect(raw.split(H.slice(2)).length - 1).toBe(TX.MV11.expectHOccurrences);
     const cred = u.complete(raw) as MppCredential;
+    expect([u.request.broadcast, await evmTransaction.broadcaster(cred)]).toEqual([false, "payee"]);
     expect(cred.payload).toEqual({ type: "transaction", signature: raw });
     expect(await evmTransaction.bound(cred)).toEqual(TX.MV11.expectBound);
     expect(evmTransaction.claims).toBe(TX.MV11.expectClaims);
@@ -478,6 +479,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     if ("refused" in u) throw new Error(u.code);
     expect(u.request).toEqual({ kind: "evm-call", chainId: 84532, call: { to: USDC, data: HS.MV12.expectCalldata }, broadcast: true });
     const cred = u.complete(HS.MV12.hash) as MppCredential;
+    expect([(u.request as { broadcast?: boolean }).broadcast, await evmHash.broadcaster(cred)]).toEqual([true, "payer"]);
     expect(cred.payload).toEqual({ type: "hash", hash: HS.MV12.hash });
     // The reference names the read keys: the challenge's `currency`, and the payer's Transfer, identified by its sender
     // alone, the address of the credential's `did:pkh` source. It names no amount and no payee.
@@ -704,6 +706,7 @@ describe("mpp-charge-tempo-memo.json", () => {
     expect(decoded.chainId).toBe(42431n);
     expect(decoded.validBefore).toBe(1790000060n);
     const cred = u.complete(toHex(T)) as MppCredential;
+    expect([(u.request as { broadcast?: boolean }).broadcast, await tempoMemo.broadcaster(cred)]).toEqual([false, "payee"]);
     expect(cred.payload).toEqual({ type: "transaction", signature: toHex(T) });
     expect(await tempoMemo.bound(cred)).toBe(H);
     const ref = (await tempoMemo.reference(cred)) as EvmRef;
@@ -842,6 +845,7 @@ describe("mpp-charge-tempo-push.json", () => {
       broadcast: true,
     });
     const cred = u.complete(PU.MV13.T_P) as MppCredential;
+    expect([(u.request as { broadcast?: boolean }).broadcast, await tempoPush.broadcaster(cred)]).toEqual([true, "payer"]);
     expect(cred.payload).toEqual({ type: "hash", hash: PU.MV13.T_P });
     const landed = (await tempoPush.fetchPresented(cred, readerFor("eip155:42431", receipt))) as LandedCredential;
     expect(withBigints(landed[FETCHED])).toEqual({ transaction: PU.MV13.T_P, blockNumber: "100", logs: receipt.logs });

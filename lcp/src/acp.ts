@@ -17,8 +17,10 @@ import {
 } from "./internal/core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
 import { AGREEMENT_URL_SNAKE, agreementIn, agreementUrlFault } from "./internal/agreement.js";
+import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const METADATA_KEY = "legal_context";
 
@@ -65,6 +67,8 @@ export interface AcpBinding<Id extends string> {
   read(doc: Session): { h: AtrHash; link: string; agreement?: string; offer: { session: Session } } | Refusal;
   build(choice: AcpChoice, h: AtrHash): Promise<Unsigned | Refusal>;
   bound(presented: unknown): Promise<AtrHash | Refusal>;
+  /** Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`). */
+  broadcaster(presented: unknown): Promise<Broadcaster>;
 }
 
 const MAX_SESSION_BYTES = 1_048_576;
@@ -265,6 +269,10 @@ const undelegatedPattern: LcpPattern = Object.freeze({
     "payment names the hash. The seller tied the payment to the hash in its report.",
 });
 
+/**
+ * `acp/checkout/delegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's PSP charges the vault
+ * token the buyer's agent obtained; nothing here reads it.
+ */
 export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
   id: "acp/checkout/delegated",
   pattern: delegatedPattern,
@@ -275,8 +283,13 @@ export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
   read,
   build: buildDelegated,
   bound: boundDelegated,
+  broadcaster: broadcasts("payee"),
 });
 
+/**
+ * `acp/checkout/undelegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment handler
+ * charges the payment the checkout completed; nothing here reads it.
+ */
 export const undelegated: AcpBinding<"acp/checkout/undelegated"> = Object.freeze({
   id: "acp/checkout/undelegated",
   pattern: undelegatedPattern,
@@ -287,6 +300,7 @@ export const undelegated: AcpBinding<"acp/checkout/undelegated"> = Object.freeze
   read,
   build: async (): Promise<Refusal> => refusal("acp/nothing-to-sign"),
   bound: async (): Promise<Refusal> => refusal("acp/not-buyer-signed"),
+  broadcaster: broadcasts("payee"),
 });
 
 /** Exactly ACP's six allowance members, with `reason` "one_time", strings, and a non-negative safe integer amount. */

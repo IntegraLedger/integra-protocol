@@ -20,6 +20,7 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
+import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   LEGAL_CONTEXT,
@@ -28,6 +29,7 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type StarknetNetwork = "starknet:SN_MAIN" | "starknet:SN_SEPOLIA";
 /** Lowercase `0x` hex with no leading zero digit, below FELT_P. */
@@ -657,6 +659,10 @@ const pattern: LcpPattern = deepFreeze({
     "timing match the ATR's content.",
 });
 
+/**
+ * `x402/exact/starknet`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator executes the
+ * outside execution the payer signed and names its transaction; `status` reads the executed call's trace.
+ */
 export const exactStarknet = Object.freeze({
   id: ID,
   pattern,
@@ -667,6 +673,7 @@ export const exactStarknet = Object.freeze({
   read,
   build,
   bound,
+  broadcaster: broadcasts("payee"),
   reference,
   status: starknetStatus,
 });

@@ -30,6 +30,7 @@ export type { UrlAuthority } from "./core.js";
 export { isRefusal, readToRepeat } from "./refusal.js";
 export type { Refusal } from "./refusal.js";
 export { FETCHED } from "./mpp-challenge.js";
+export type { Broadcaster } from "./internal/broadcaster.js";
 export type { LcpPattern } from "./x402.js";
 
 import { paymentRequest } from "./ack.js";
