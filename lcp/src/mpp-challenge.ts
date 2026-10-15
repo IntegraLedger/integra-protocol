@@ -145,8 +145,9 @@ export type MppPairingId =
   | "mpp/charge/usdc/gateway";
 
 /**
- * The buyer's inputs to `build`. `build` checks their form and that the chosen challenge's id carries H; it compares no
- * deal value.
+ * The buyer's inputs to `build`. `build` holds the chosen challenge as `bound` holds an echoed one (`chosenHeld`),
+ * from a snapshot of its own members that the credential carries, checks the other inputs' form and that the
+ * challenge's id carries H; it compares no deal value.
  */
 export interface MppChoice {
   challenge: MppChallenge & { id: string };
@@ -1212,31 +1213,70 @@ export function requestAddress(e: Echoed, key: string): Hex | Refusal {
   return isAddress(v) ? v : refusal("mpp/request-malformed");
 }
 
+/** A chosen challenge as a `build` holds it: `Checked`, whose `challenge` is the snapshot `chosenHeld` holds. */
+export type Chosen = Checked & { challenge: MppChallenge & { id: string } };
+
 /**
- * The buyer's chosen challenge for `pairing` (`chosenHeld`), whose id derives from `h`, else `mpp/id-not-ours`. A value
- * that is not a challenge with a string id is `mpp/input-malformed`.
+ * The buyer's chosen challenge for `pairing` (`chosenHeld`), whose id derives from `h`, else `mpp/id-not-ours`. Every
+ * fault in the challenge, a value that is not a challenge with a string id included, gives `bound`'s code.
  */
-export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairingId): Checked | Refusal {
-  if (!isChallengeShape(challenge) || typeof challenge.id !== "string") return refusal("mpp/input-malformed");
+export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairingId): Chosen | Refusal {
   const held = chosenHeld(challenge, pairing);
   if (isRefusal(held)) return held;
   if (typeof h !== "string" || !hashEquals(held.h, h)) return refusal("mpp/id-not-ours");
   return held.checked;
 }
 
+/** MPP's challenge members, which `isChallengeShape` reads. */
+const CHALLENGE_MEMBERS: ReadonlySet<string> = new Set([
+  "realm",
+  "method",
+  "intent",
+  "request",
+  "id",
+  "expires",
+  "digest",
+  "description",
+  "header",
+  "opaque",
+]);
+
 /**
- * A chosen challenge, held for `pairing` as `bound` holds the challenge a credential echoes (`echoedFor`), with
- * `bound`'s code for each fault, in `bound`'s order: its shape, with a string id, and its size as the least credential
- * echoing it, `{ challenge, payload: {} }`, has it (`mpp/credential-malformed`); its realm; its id, which must derive
- * from an H in the form its intent and method take (`mpp/id-not-ours`); its `opaque`, which must be present and carry
- * a `legalContext` naming that H (`mpp/opaque-not-this-hash`, or `mpp/opaque-malformed` for one that is not a map of
- * strings); its request; its intent and method, which must be `pairing`'s; and `pairing`'s filter (`checkedFor`). Each
- * MPP `build` holds the chosen challenge through this one step before it builds anything, so no `complete` is handed a
- * challenge `bound` refuses. Each `build` checks the shape and the id's type itself first, with its own code.
+ * A plain copy of a challenge as its JSON form carries it: each own enumerable member among MPP's challenge members
+ * (`realm`, `method`, `intent`, `request`, `id`, `expires`, `digest`, `description`, `header` and `opaque`) whose value
+ * is not undefined, read once, in the challenge's own order. A member the challenge inherits, which `JSON.stringify`
+ * does not write, is absent, and so is every other member. Undefined for a value that is not an object.
  */
-export function chosenHeld(challenge: MppChallenge, pairing: MppPairingId): { h: AtrHash; checked: Checked } | Refusal {
-  const held = heldFor({ challenge, payload: {} }, pairing, true);
-  return isRefusal(held) ? held : { h: held.h!, checked: held.checked };
+export function challengeSnapshot(c: unknown): MppChallenge | undefined {
+  if (!isObject(c)) return undefined;
+  const own: { [k: string]: unknown } = {};
+  for (const k of Object.keys(c)) {
+    if (!CHALLENGE_MEMBERS.has(k)) continue;
+    const v = c[k];
+    if (v !== undefined) own[k] = v;
+  }
+  return own as unknown as MppChallenge;
+}
+
+/**
+ * A chosen challenge, held for `pairing` as `bound` holds the challenge a credential echoes (`echoedFor`), read as
+ * `bound` reads its JSON form: the snapshot `challengeSnapshot` takes of it, its own members only. That snapshot is held
+ * with `bound`'s code for each fault, in `bound`'s order: a value that is not an object, its shape, with a string id,
+ * and its size as the least credential echoing it, `{ challenge, payload: {} }`, has it (`mpp/credential-malformed`);
+ * its realm; its id, which must derive from an H in the form its intent and method take (`mpp/id-not-ours`); its
+ * `opaque`, which must be present and carry a `legalContext` naming that H (`mpp/opaque-not-this-hash`, or
+ * `mpp/opaque-malformed` for one that is not a map of strings); its request; its intent and method, which must be
+ * `pairing`'s; and `pairing`'s filter (`checkedFor`). It returns H and the checked snapshot. Each MPP `build` that takes
+ * a chosen challenge holds it through this one step before it builds anything, reads the challenge only from the
+ * snapshot, and puts the snapshot in the credential its `complete` returns: so no `complete` is handed a challenge
+ * `bound` refuses, a member the challenge inherits counts as absent, and a change made to the caller's challenge after
+ * `build` does not reach the credential.
+ */
+export function chosenHeld(challenge: unknown, pairing: MppPairingId): { h: AtrHash; checked: Chosen } | Refusal {
+  const own = challengeSnapshot(challenge);
+  if (own === undefined) return refusal("mpp/credential-malformed");
+  const held = heldFor({ challenge: own, payload: {} }, pairing, true);
+  return isRefusal(held) ? held : { h: held.h!, checked: held.checked as Chosen };
 }
 
 // ── Problem types.

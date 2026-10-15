@@ -369,7 +369,13 @@ describe("mpp-charge-evm-permit2.json", () => {
   it("build refuses splits that leave no primary amount", async () => {
     const r = JSON.parse(P.fixed.R_E6b);
     r.methodDetails.splits = [{ amount: "10000", recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72" }];
-    const ch = placedOf(challenge("evm", "charge", JSON.stringify(r)));
+    // `place` refuses this request (pairingsOf), so the challenge carrying it is R_E6b's placed challenge with the
+    // request replaced: its id and opaque carry H, and the filter reads the splits.
+    expect(place([challenge("evm", "charge", JSON.stringify(r))], H, link, challenge("evm", "charge", JSON.stringify(r)))).toEqual({
+      refused: true,
+      code: "mpp/input-malformed",
+    });
+    const ch = { ...placedOf(challenge("evm", "charge", P.fixed.R_E6b)), request: challenge("evm", "charge", JSON.stringify(r)).request };
     expect(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: 0, spender }, H)).toEqual({
       refused: true,
       code: "mpp/input-malformed",

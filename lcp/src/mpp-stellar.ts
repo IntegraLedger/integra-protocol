@@ -249,7 +249,7 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   if (s.payment.asset !== checked.request["currency"]) return refusal("stellar/asset-mismatch");
   if (s.payment.amount !== BigInt(checked.request["amount"] as string)) return refusal("stellar/amount-mismatch");
   if (s.payment.from !== choice.payer) return refusal("stellar/payer-mismatch");
-  const challenge = choice.challenge;
+  const challenge = checked.challenge;
   return {
     request: s.unsigned.request,
     complete(signature: Uint8Array): MppCredential | Refusal {

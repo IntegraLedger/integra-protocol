@@ -50,6 +50,27 @@ description: "The exports of @integraledger/lcp/hedera."
 
 ***
 
+### HederaChargeChoice
+
+The buyer's inputs to the Hedera charge's `build`: the chosen challenge, the payer, the node, the transaction's valid
+start and maximum fee, and, optionally, the client id the attribution memo carries and the credential type.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-challenge"></a> `challenge` | [`MppChallenge`](mpp.md#mppchallenge) & `object` |
+| <a id="property-clientid"></a> `clientId?` | `string` |
+| <a id="property-credentialtype"></a> `credentialType?` | `"transaction"` \| `"hash"` |
+| <a id="property-maxfee"></a> `maxFee` | `bigint` |
+| <a id="property-node"></a> `node` | `string` |
+| <a id="property-payer-1"></a> `payer` | `string` |
+| <a id="property-validstart"></a> `validStart` | `object` |
+| `validStart.nanos` | `number` |
+| `validStart.seconds` | `bigint` |
+
+***
+
 ### HederaReader
 
 Bounded, read-only calls against one network's Mirror Node. Every failure rejects.
@@ -240,7 +261,7 @@ read.
 
 ### chargeHedera
 
-> `const` **chargeHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`credentialChallenge`, `request`, `c`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `carrier`: `"challenge"`; `claims`: `boolean`; `fetchPresented`: (`input`, `reader`, `defaultNetwork?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `HederaLandedCharge`\>; `id`: `"mpp/charge/hedera"`; `landedTx`: (`presented`) => `string` \| `undefined`; `network`: (`request`, `defaultNetwork?`) => [`Refusal`](index.md#refusal) \| [`HederaNetwork`](#hederanetwork); `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}; \}; `reference`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge); \}\>
+> `const` **chargeHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `carrier`: `"challenge"`; `claims`: `boolean`; `fetchPresented`: (`input`, `reader`, `defaultNetwork?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `HederaLandedCharge`\>; `id`: `"mpp/charge/hedera"`; `landedTx`: (`presented`) => `string` \| `undefined`; `network`: (`request`, `defaultNetwork?`) => [`Refusal`](index.md#refusal) \| [`HederaNetwork`](#hederanetwork); `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}; \}; `reference`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge); \}\>
 
 ***
 

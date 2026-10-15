@@ -34,6 +34,7 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
+  challengeSnapshot,
   chosenHeld,
   credentialOf,
   decodeObject,
@@ -55,6 +56,7 @@ import {
   tie,
   unixOf,
   type Checked,
+  type Chosen,
   type Echoed,
   type MppChallenge,
   type MppChoice,
@@ -183,8 +185,9 @@ export type SessionStatus =
   | { state: "failed"; why: "open-call-not-found" };
 
 /**
- * The buyer's inputs to an in-channel payment: the within 402's challenge, echoed as given; the held opening, exactly
- * as signed; the cumulative amount to sign; and the action. On `mpp/session/solana`, the held opening is the credential
+ * The buyer's inputs to an in-channel payment: the within 402's challenge, which the in-channel credential echoes as
+ * `buildWithin` reads it, a snapshot of its own members (`withinChecks`); the held opening, exactly as signed; the
+ * cumulative amount to sign; and the action. On `mpp/session/solana`, the held opening is the credential
  * `fetchPresented` returned, with its tables under `FETCHED`, or a spread or `Object.assign` copy of it, kept for the
  * life of the channel: a later read gives each address lookup table as it stands then, and once the table's authority
  * deactivates or closes it no tables can be read.
@@ -213,25 +216,43 @@ export interface SessionWithinUnsigned {
   complete(signatures: readonly string[]): MppCredential | Refusal;
 }
 
+/** A within challenge as `buildWithin` holds it: the snapshot `challengeSnapshot` takes, with a string id. */
+export type WithinChallenge = MppChallenge & { id: string };
+
 /**
- * The checks `buildWithin` makes on its input before any channel value is read, in the input's member order: the
- * within challenge's shape and its intent and method; the opening, by `opened`, bound to `h`; the cumulative amount
- * below `limit`; and the action, `voucher` or `close`. `notBuilt` lists the actions the pairing's draft defines within
- * a channel that `buildWithin` does not build: each is `mpp/within-action-not-built`, and an action neither built nor
- * listed is `mpp/session-action`, as the pairing's `channel.kind` answers an action its draft does not define.
+ * The checks `buildWithin` makes on its input before any channel value is read, in the input's member order. First the
+ * within challenge, read as the pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that
+ * carries it, with their code for each fault: the snapshot `challengeSnapshot` takes of it, its own members only, which
+ * is the challenge the credential carries; a value that is not an object, a snapshot that is not challenge-shaped or
+ * has no string id, and one whose least credential, `{ challenge, payload: {} }`, is over the credential size bound,
+ * `mpp/credential-malformed`; another intent or method, `mpp/not-this-pairing`; then `read`, the readers' read of its
+ * request, with their codes. The seller issues the within challenge with its own id and the channel named, so it is
+ * not held to the pairing's filter, which refuses a challenge naming a channel, and its id is not read. Then the
+ * opening, by `opened`, bound to `h`; the cumulative amount below `limit`; and the action, `voucher` or `close`.
+ * `notBuilt` lists the actions the pairing's draft defines within a channel that `buildWithin` does not build: each is
+ * `mpp/within-action-not-built`, and an action neither built nor listed is `mpp/session-action`, as the pairing's
+ * `channel.kind` answers an action its draft does not define. Each `buildWithin` then compares the within challenge's
+ * channel parameters with the opening's where a reader refuses a payment whose challenge names others, with that
+ * reader's code.
  */
-export async function withinChecks<O>(
+export async function withinChecks<O, R>(
   w: SessionWithin,
   h: AtrHash,
   intentAndMethod: string,
+  read: (challenge: WithinChallenge) => R | Refusal,
   opened: (opening: MppCredential) => Promise<(O & { h: AtrHash }) | Refusal>,
   limit: bigint,
   notBuilt: readonly string[],
-): Promise<O | Refusal> {
+): Promise<{ opening: O; within: R; challenge: WithinChallenge } | Refusal> {
   if (!isObject(w)) return refusal("mpp/input-malformed");
-  const c = w.challenge;
-  if (!isChallengeShape(c) || typeof c.id !== "string") return refusal("mpp/input-malformed");
+  const c = challengeSnapshot(w.challenge);
+  if (c === undefined || !isChallengeShape(c) || typeof c.id !== "string") return refusal("mpp/credential-malformed");
+  const challenge = c as WithinChallenge;
+  const least = measured({ challenge, payload: {} });
+  if (isRefusal(least)) return least;
   if (`${c.intent}/${c.method}` !== intentAndMethod) return refusal("mpp/not-this-pairing");
+  const within = read(challenge);
+  if (isRefusal(within)) return within;
   const o = await opened(w.opening);
   if (isRefusal(o)) return o;
   if (typeof h !== "string" || normalHash(h) === null || !hashEquals(o.h, h)) return refusal("mpp/id-not-ours");
@@ -240,7 +261,7 @@ export async function withinChecks<O>(
   }
   if (notBuilt.includes(w.action as string)) return refusal("mpp/within-action-not-built");
   if (w.action !== "voucher" && w.action !== "close") return refusal("mpp/session-action");
-  return o;
+  return { opening: o, within, challenge };
 }
 
 /** The one signature of a within `complete`: `0x` and 1 to 8192 bytes of hex. */
@@ -395,15 +416,14 @@ export function sessionNetwork(c: MppChallenge): `eip155:${number}` | Refusal {
 // ── Shared steps.
 
 /**
- * The checked challenge `build` answers: a challenge (else `mpp/challenge-malformed`) with a string id (else
- * `mpp/id-not-ours`), held as `bound` holds an echoed one (`chosenHeld`), whose id carries `h`, and `from` an address.
+ * The checked challenge `build` answers: a choice that is an object (else `mpp/input-malformed`), whose challenge is
+ * held as `bound` holds an echoed one (`chosenHeld`), with `bound`'s code for each fault in it, and whose id carries
+ * `h`; then `from` an address. `build` reads the challenge from the snapshot `chosenHeld` returns, and its credential
+ * carries that snapshot.
  */
-function offerFor(choice: MppChoice, h: AtrHash, pairing: ChannelId): Checked | Refusal {
-  if (!isObject(choice) || !isObject(choice.challenge)) return refusal("mpp/input-malformed");
-  const c = choice.challenge;
-  if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
-  if (typeof c.id !== "string") return refusal("mpp/id-not-ours");
-  const held = chosenHeld(c, pairing);
+function offerFor(choice: MppChoice, h: AtrHash, pairing: ChannelId): Chosen | Refusal {
+  if (!isObject(choice)) return refusal("mpp/input-malformed");
+  const held = chosenHeld(choice.challenge, pairing);
   if (isRefusal(held)) return held;
   if (typeof h !== "string" || !hashEquals(held.h, h)) return refusal("mpp/id-not-ours");
   if (!isAddress(choice.from)) return refusal("mpp/input-malformed");
@@ -889,7 +909,7 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
   const expires = expiresOf(o);
   if (isRefusal(expires)) return expires;
   const deadline = BigInt(expires);
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const source = `did:pkh:eip155:${chainId}:${from}`;
   /**
    * The voucher's typed data for `funded`, once `complete` takes `funded` with the shortest voucher signature it takes,
@@ -1206,23 +1226,27 @@ function opensChannel(args: Uint8Array, payer: Hex, opens: NonNullable<SessionRe
  * `topUp` is not built; an action draft-evm-session-00 does not define, such as `use`, is `mpp/session-action`.
  */
 async function evmBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/evm", async (opening) => evmOpened(opening), U128, ["topUp"]);
-  if (isRefusal(o)) return o;
+  const held = await withinChecks(w, h, "session/evm", paramsOf, async (opening) => evmOpened(opening), U128, ["topUp"]);
+  if (isRefusal(held)) return held;
+  const o = held.opening;
   const channelId = normalHash(w.opening.payload["channelId"]);
   if (channelId === null) return refusal("mpp/credential-malformed");
   const chainId = o.params.chainId;
   const typedData = voucherData("EVM Payment Channel", "uint128", chainId, o.escrow, channelId as Hex, w.cumulativeAmount);
-  return withinUnsigned(w, typedData, channelId as Hex);
+  return withinUnsigned(held.challenge, w, typedData, channelId as Hex);
 }
 
-/** The one `eip712` voucher request, and the credential of the draft's members: action, channel, amount, signature. */
+/**
+ * The one `eip712` voucher request, and the credential of the draft's members: action, channel, amount, signature;
+ * its challenge is the snapshot `withinChecks` holds.
+ */
 function withinUnsigned(
+  challenge: WithinChallenge,
   w: SessionWithin,
   typedData: VoucherTypedData,
   channelId: Hex,
   descriptor?: Json,
 ): SessionWithinUnsigned {
-  const challenge = { ...w.challenge };
   const action = w.action;
   const cumulativeAmount = w.cumulativeAmount.toString();
   return {
@@ -1416,7 +1440,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
   if (isRefusal(o)) return o;
   const validBefore = expiresOf(o);
   if (isRefusal(validBefore)) return validBefore;
-  const p = paramsOf(choice.challenge);
+  const p = paramsOf(o.challenge);
   if (isRefusal(p)) return p;
   const deposit = choice.deposit;
   if (typeof deposit !== "bigint" || deposit <= 0n || deposit >= (p.version === "v2" ? U96 : U128)) {
@@ -1433,7 +1457,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
     p.version === "v2"
       ? words(OPEN_V2_SELECTOR, [addressWord(recipient), addressWord(operator), addressWord(currency), uintWord(deposit), bytes32Word(salt), addressWord(signer)])
       : words(OPEN_V1_SELECTOR, [addressWord(recipient), addressWord(currency), uintWord(deposit), bytes32Word(salt), addressWord(signer)]);
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const source = `did:pkh:eip155:${p.chainId}:${from}`;
 
   /**
@@ -1520,21 +1544,34 @@ function tempoCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refu
 /**
  * A voucher, or a close's final voucher, on the channel the held opening opened: under "Tempo Stream Channel" with
  * `uint128` on v1, and under "TIP20 Channel Reserve" with `uint96` on v2, whose credential also carries the opening's
- * descriptor. The channel id, the escrow, the chain and the descriptor come from the opening. A `topUp` is not built;
- * an action draft-tempo-session-00 does not define, such as `use`, is `mpp/session-action`.
+ * descriptor. The channel id, the escrow, the chain and the descriptor come from the opening. The within challenge is
+ * read as `channel.boundWithin` reads it beside that payload: under `v2`, its escrow, chain and operator must give the
+ * opening's channel id with the opening's descriptor, else `tempo/descriptor-mismatch` (so a v2 within challenge over a
+ * v1 opening, whose payment carries no descriptor, too); under `v1` over a v2 opening, `mpp/not-bound-within`. A
+ * `topUp` is not built; an action draft-tempo-session-00 does not define, such as `use`, is `mpp/session-action`.
  */
 async function tempoBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
   const version = isObject(w) && isObject(w.opening) ? paramsOf(w.opening.challenge) : refusal("mpp/input-malformed");
   const limit = !isRefusal(version) && version.version === "v2" ? U96 : U128;
-  const o = await withinChecks(w, h, "session/tempo", async (opening) => tempoOpened(opening), limit, ["topUp"]);
-  if (isRefusal(o)) return o;
+  const held = await withinChecks(w, h, "session/tempo", paramsOf, async (opening) => tempoOpened(opening), limit, ["topUp"]);
+  if (isRefusal(held)) return held;
+  const o = held.opening;
   const p = o.params;
+  const descriptor = p.version === "v2" ? w.opening.payload["descriptor"] : undefined;
+  // The within challenge's channel parameters, as `channel.boundWithin` reads them beside the payload the credential
+  // carries: a v2 challenge's escrow, chain and operator give the descriptor's channel id (`descriptorSalt`), and a v1
+  // challenge carries no hash, which a v2 channel's payment must.
+  const pw = held.within;
+  if (pw.version === "v2") {
+    const salt = descriptorSalt(descriptor === undefined ? { channelId: o.channel } : { channelId: o.channel, descriptor }, pw);
+    if (isRefusal(salt)) return salt;
+  } else if (p.version === "v2") return refusal("mpp/not-bound-within");
   if (p.version === "v2") {
     const typedData = voucherData("TIP20 Channel Reserve", "uint96", p.chainId, p.escrow, o.channel, w.cumulativeAmount);
-    return withinUnsigned(w, typedData, o.channel, w.opening.payload["descriptor"]);
+    return withinUnsigned(held.challenge, w, typedData, o.channel, descriptor);
   }
   const typedData = voucherData("Tempo Stream Channel", "uint128", p.chainId, p.escrow, o.channel, w.cumulativeAmount);
-  return withinUnsigned(w, typedData, o.channel);
+  return withinUnsigned(held.challenge, w, typedData, o.channel);
 }
 
 // ── mpp/subscription/tempo.
@@ -1708,7 +1745,7 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
   };
   const unsigned = encodeKeyAuthorization(authorization);
   if (!(unsigned instanceof Uint8Array)) return unsigned;
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const source = `did:pkh:eip155:${chainId}:${choice.from}`;
   return {
     request: { kind: "tempo-key-authorization", authorization, digest: keccakHex(unsigned) },

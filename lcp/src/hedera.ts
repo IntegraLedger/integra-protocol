@@ -26,6 +26,7 @@ import {
   challengeBound,
   checkedFor,
   checkAttribution,
+  chosenFor,
   credentialOf,
   FETCHED,
   fetchedOf,
@@ -1020,35 +1021,42 @@ function chargeNetwork(request: MppHederaRequest, defaultNetwork?: HederaNetwork
 }
 
 /**
+ * The buyer's inputs to the Hedera charge's `build`: the chosen challenge, the payer, the node, the transaction's valid
+ * start and maximum fee, and, optionally, the client id the attribution memo carries and the credential type.
+ */
+export interface HederaChargeChoice {
+  challenge: MppChallenge & { id: string };
+  payer: string;
+  node: string;
+  validStart: { seconds: bigint; nanos: number };
+  maxFee: bigint;
+  clientId?: string;
+  credentialType?: "hash" | "transaction";
+}
+
+/**
  * The body the payer signs for an MPP Hedera charge: the payer's own transaction id, MPP's attribution memo for this
  * challenge as the memo, and the token transfers of `currency`: the payer's debit, the recipient's remainder and each
- * split. `credentialType` names the credential the payer returns. `hash` is the default when the caller names none, as
- * MPP's Hedera charge makes it (draft-hedera-charge-00: "`type="hash"` (default)"): the request carries
- * `broadcast: true`, for a signer that signs and broadcasts the body and presents the transaction id. With
+ * split. The chosen challenge is held as `bound` holds an echoed one (`chosenFor`), with `bound`'s code for each
+ * fault, in `bound`'s order, and its id must derive from `h`, else `mpp/id-not-ours`; the request, id and realm are
+ * read from the snapshot it holds. A choice that is not an object, and every other input the choice carries, is
+ * `hedera/option-malformed`. `credentialType` names the credential the payer returns. `hash` is the default when the
+ * caller names none, as MPP's Hedera charge makes it (draft-hedera-charge-00: "`type="hash"` (default)"): the request
+ * carries `broadcast: true`, for a signer that signs and broadcasts the body and presents the transaction id. With
  * `transaction` (pull) the request carries no `broadcast`, and the signature completes the transaction for the server
  * to broadcast. Any other value is `hedera/option-malformed`.
  */
-async function buildCharge(
-  credentialChallenge: { id: string; realm: string },
-  request: MppHederaRequest,
-  c: {
-    payer: string;
-    node: string;
-    validStart: { seconds: bigint; nanos: number };
-    maxFee: bigint;
-    clientId?: string;
-    credentialType?: "hash" | "transaction";
-  },
-): Promise<HederaUnsigned | Refusal> {
-  const { id, realm }: { id?: unknown; realm?: unknown } = isObject(credentialChallenge) ? credentialChallenge : {};
-  if (typeof id !== "string" || typeof realm !== "string" || !id.isWellFormed() || !realm.isWellFormed()) {
-    return refusal("mpp/challenge-malformed");
-  }
+async function buildCharge(choice: HederaChargeChoice, h: AtrHash): Promise<HederaUnsigned | Refusal> {
+  if (!isObject(choice)) return refusal("hedera/option-malformed");
+  const checked = chosenFor(choice.challenge, h, CHARGE);
+  if (isRefusal(checked)) return checked;
+  const { id, realm } = checked.challenge;
+  const request = checked.request;
+  const c = choice;
   const legs = chargeRequestLegs(request);
   if (isRefusal(legs)) return legs;
-  const vs = isObject(c) ? c.validStart : undefined;
+  const vs = c.validStart;
   if (
-    !isObject(c) ||
     !isEntity(c.payer) ||
     !isEntity(c.node) ||
     !isObject(vs) ||

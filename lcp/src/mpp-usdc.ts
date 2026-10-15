@@ -204,9 +204,9 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
     return refusal("mpp/input-malformed");
   }
   if (!isAddress(choice.from)) return refusal("mpp/input-malformed");
-  const requestHash = await usdcRequestHash(choice.challenge.request);
+  const requestHash = await usdcRequestHash(o.challenge.request);
   if (isRefusal(requestHash)) return requestHash;
-  const nonce = usdcNonce(choice.challenge.id, choice.challenge.realm, requestHash);
+  const nonce = usdcNonce(o.challenge.id, o.challenge.realm, requestHash);
   if (isRefusal(nonce)) return nonce;
   const chainId = profileOf(o)["chainId"] as number;
   const expires = expiresOf(o);
@@ -225,7 +225,7 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
     nonce,
   });
   if (isRefusal(typedData)) return typedData;
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const from = choice.from;
   return {
     request: { kind: "eip712" as const, typedData },
@@ -429,7 +429,7 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
   const p = profileOf(o);
   const memo = normalHash(h)!;
   const chainId = str(p["chainId"]);
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const from = choice.from;
   return {
     request: {
@@ -644,9 +644,9 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
   const o = chosenFor(choice.challenge, h, GATEWAY);
   if (isRefusal(o)) return o;
-  const requestHash = await usdcRequestHash(choice.challenge.request);
+  const requestHash = await usdcRequestHash(o.challenge.request);
   if (isRefusal(requestHash)) return requestHash;
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const preimage: GatewayPreimage = { id: challenge.id, realm: challenge.realm, requestHash, recipient: str(o.request["recipient"]) };
   return {
     request: { kind: "gateway-burn-intent" as const, preimage },

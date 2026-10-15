@@ -55,6 +55,7 @@ import {
   tempoSplits,
   tie,
   type Checked,
+  type Chosen,
   type Echoed,
   type MppChallenge,
   type MppChoice,
@@ -294,15 +295,14 @@ function identifiesSender(t: unknown, asset: unknown): t is TransferLog {
 // ── Shared steps.
 
 /**
- * The checked challenge `build` answers: a challenge (else `mpp/challenge-malformed`) with a string id (else
- * `mpp/id-not-ours`), held as `bound` holds an echoed one (`chosenHeld`), whose id carries `h`, and `from` an address.
+ * The checked challenge `build` answers: a choice that is an object (else `mpp/input-malformed`), whose challenge is
+ * held as `bound` holds an echoed one (`chosenHeld`), with `bound`'s code for each fault in it, and whose id carries
+ * `h`; then `from` an address. `build` reads the challenge from the snapshot `chosenHeld` returns, and its credential
+ * carries that snapshot.
  */
-function offerFor(choice: MppChoice, h: AtrHash, pairing: ChargeId): Checked | Refusal {
-  if (!isObject(choice) || !isObject(choice.challenge)) return refusal("mpp/input-malformed");
-  const c = choice.challenge;
-  if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
-  if (typeof c.id !== "string") return refusal("mpp/id-not-ours");
-  const held = chosenHeld(c, pairing);
+function offerFor(choice: MppChoice, h: AtrHash, pairing: ChargeId): Chosen | Refusal {
+  if (!isObject(choice)) return refusal("mpp/input-malformed");
+  const held = chosenHeld(choice.challenge, pairing);
   if (isRefusal(held)) return held;
   if (typeof h !== "string" || !hashEquals(held.h, h)) return refusal("mpp/id-not-ours");
   if (!isAddress(choice.from)) return refusal("mpp/input-malformed");
@@ -435,7 +435,7 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
     return refusal("mpp/input-malformed");
   }
   const chainId = chainOf(o);
-  const nonce = challengeHash(choice.challenge.id, choice.challenge.realm);
+  const nonce = challengeHash(o.challenge.id, o.challenge.realm);
   const expires = expiresOf(o);
   if (isRefusal(expires)) return expires;
   const validBefore = BigInt(expires);
@@ -452,7 +452,7 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
     nonce,
   });
   if (isRefusal(typedData)) return typedData;
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const from = choice.from;
   return {
     request: { kind: "eip712", typedData },
@@ -543,7 +543,7 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
     ? (o.details["splits"] as { recipient: Hex; amount: string }[]).map((s) => ({ to: s.recipient, amount: BigInt(s.amount) }))
     : undefined;
   const primary = amount - (splits ?? []).reduce((sum, s) => sum + s.amount, 0n);
-  const challengeHashValue = challengeHash(choice.challenge.id, choice.challenge.realm);
+  const challengeHashValue = challengeHash(o.challenge.id, o.challenge.realm);
   const externalId = str(o.request["externalId"]);
   const expires = expiresOf(o);
   if (isRefusal(expires)) return expires;
@@ -565,7 +565,7 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
     },
   });
   if (isRefusal(typedData)) return typedData;
-  const challenge = { ...choice.challenge };
+  const challenge = o.challenge;
   const from = choice.from;
   return {
     request: { kind: "eip712", typedData },
@@ -702,7 +702,7 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
     if (isRefusal(o)) return o;
     const chainId = chainOf(o);
     const data = transferCalldata(str(o.request["recipient"]) as Hex, BigInt(str(o.request["amount"])));
-    const challenge = { ...choice.challenge };
+    const challenge = o.challenge;
     const source = did(chainId, choice.from);
     const broadcast = pairing === HASH;
     return {
@@ -800,7 +800,7 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
     const splits = tempoSplits(o.details) as TempoSplit[] | undefined;
     const amount = BigInt(str(o.request["amount"]));
     const primary = amount - (splits ?? []).reduce((sum, s) => sum + s.amount, 0n);
-    const memo = attributionMemo(choice.challenge.realm, choice.challenge.id, clientId);
+    const memo = attributionMemo(o.challenge.realm, o.challenge.id, clientId);
     const data = memoCalldata(str(o.request["recipient"]) as Hex, primary, memo);
     if (typeof data !== "string") return data;
     const currency = str(o.request["currency"]) as Hex;
@@ -810,7 +810,7 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
       if (typeof split !== "string") return split;
       calls.push({ to: currency, data: split });
     }
-    const challenge = { ...choice.challenge };
+    const challenge = o.challenge;
     const source = did(chainId, choice.from);
     const broadcast = pairing === PUSH;
     const complete = (signedTxOrHash: Hex): MppCredential | Refusal => {

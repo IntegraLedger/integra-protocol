@@ -404,7 +404,7 @@ async function build(
   }
   if (isRefusal(message)) return message;
   const signedMessage = message;
-  const challenge = choice.challenge;
+  const challenge = checked.challenge;
   return {
     request: { kind: "solana-message", message: signedMessage },
     complete(signature: Uint8Array): MppCredential | Refusal {

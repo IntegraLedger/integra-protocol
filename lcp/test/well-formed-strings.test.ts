@@ -96,22 +96,32 @@ describe("MPP: a challenge's realm and id, and the payer's client id", () => {
     }
   });
 
-  it("the Hedera charge build refuses such a realm or id (mpp/challenge-malformed) and client id (hedera/option-malformed)", async () => {
-    const build = (challenge: { id: string; realm: string }, clientId?: string) =>
-      chargeHedera.build(challenge, HD.fixed.request, {
-        payer: HD.fixed.payer,
-        node: HD.fixed.node,
-        validStart: { seconds: BigInt(HD.fixed.validStart.seconds), nanos: HD.fixed.validStart.nanos },
-        maxFee: BigInt(HD.fixed.maxFee),
-        ...(clientId === undefined ? {} : { clientId }),
-      });
-    const id = HD.fixed.challengeId as string;
-    const r = HD.fixed.realm as string;
-    expect(await build({ id, realm: r + LONE })).toEqual(refused("mpp/challenge-malformed"));
-    expect(await build({ id: id + LONE, realm: r })).toEqual(refused("mpp/challenge-malformed"));
-    expect(await build({ id, realm: r }, `c${LONE}`)).toEqual(refused("hedera/option-malformed"));
-    expect("refused" in (await build({ id, realm: r + FFFD }))).toBe(false);
-    expect("refused" in (await build({ id, realm: r }, `c${FFFD}`))).toBe(false);
+  it("the Hedera charge build refuses such a realm or id with bound's code, and such a client id (hedera/option-malformed)", async () => {
+    const own = placed(issued(HD.fixed.realm as string, "hedera", JSON.stringify(HD.fixed.request)));
+    const build = (challenge: MppChallenge, clientId?: string) =>
+      chargeHedera.build(
+        {
+          challenge: challenge as MppChallenge & { id: string },
+          payer: HD.fixed.payer,
+          node: HD.fixed.node,
+          validStart: { seconds: BigInt(HD.fixed.validStart.seconds), nanos: HD.fixed.validStart.nanos },
+          maxFee: BigInt(HD.fixed.maxFee),
+          ...(clientId === undefined ? {} : { clientId }),
+        },
+        H,
+      );
+    // The build holds the challenge as bound holds an echoed one: a realm that is not well-formed is
+    // mpp/challenge-malformed, and an id that is not is no id derived from H, mpp/id-not-ours.
+    for (const [challenge, code] of [
+      [{ ...own, realm: own.realm + LONE }, "mpp/challenge-malformed"],
+      [{ ...own, id: own.id + LONE }, "mpp/id-not-ours"],
+    ] as const) {
+      expect(await build(challenge)).toEqual(refused(code));
+      expect(await chargeHedera.bound({ challenge, payload: { type: "hash", transactionId: "0.0.5555@1700000000.0" } })).toEqual(refused(code));
+    }
+    expect(await build(own, `c${LONE}`)).toEqual(refused("hedera/option-malformed"));
+    expect("refused" in (await build({ ...own, realm: own.realm + FFFD }))).toBe(false);
+    expect("refused" in (await build(own, `c${FFFD}`))).toBe(false);
   });
 });
 

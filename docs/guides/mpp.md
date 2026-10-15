@@ -138,7 +138,8 @@ specifies. The `mppx` SDK from 0.13.1 hashes `JSON.stringify([id, realm])` inste
 The challenge's `id` and `realm`, and the client id a Tempo or Hedera payer may add to the attribution memo, are hashed
 as UTF-8. A string holding a lone surrogate has no UTF-8 form, so a challenge whose `realm` is not a well-formed string
 is `mpp/challenge-malformed` in `pairingsOf`, `place` and `build`, and in every `bound`, and in each `reference` and
-`fetchPresented` that reads H from a credential's echoed challenge; the Hedera charge `build` refuses such an `id` too.
+`fetchPresented` that reads H from a credential's echoed challenge. An `id` that is not a well-formed string derives
+from no H: every `bound`, and every `build`, the Hedera charge's among them, refuses it `mpp/id-not-ours`.
 The build that takes such a client id refuses it (`mpp/input-malformed` on Tempo, `hedera/option-malformed` on
 Hedera).
 
@@ -183,11 +184,22 @@ gives H there and `reference` gives `hedera/chain-id-unnamed` without it.
 the pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which
 must name the pairing (`pairingsOfPlaced`). A challenge those checks refuse gives their code, and one that offers only
 other pairings (another credential type, mode or `usdc` profile, or no `expires` where the pairing needs it) is
-`mpp/not-this-pairing`, as `advertise` and `build` answer for the same challenge. `build` holds the chosen challenge
-as `bound` holds an echoed one, with `bound`'s code for each fault, in `bound`'s order, before it builds anything: the
-least credential echoing it, `{ challenge, payload: {} }`, within the credential size bound, its realm, an id that
-derives from H, an `opaque` that names that H (else `mpp/opaque-not-this-hash`), its request, its intent and method,
-and the same filter. So no `complete` is handed a challenge `bound` refuses. `pairingsOf` makes every check `build`,
+`mpp/not-this-pairing`, as `advertise` and `build` answer for the same challenge. Every MPP `build` that takes a
+chosen challenge, the Hedera charge's among them, holds it as `bound` holds an echoed one, before it builds anything.
+It reads the challenge as `bound` reads its JSON form: a snapshot of its own members (`realm`, `method`, `intent`,
+`request`, `id`, `expires`, `digest`, `description`, `header` and `opaque`), so a member the challenge inherits counts
+as absent. It reads the challenge only from that snapshot, and the credential its `complete` returns carries the
+snapshot, so a change made to the caller's challenge after `build` does not reach the credential. Each fault in the
+challenge gets `bound`'s code, in `bound`'s order: a challenge that is not an object, is not challenge-shaped or has no
+string id, or whose least credential, `{ challenge, payload: {} }`, is over the credential size bound
+(`mpp/credential-malformed`); its realm; an id that derives from H; an `opaque` that names that H (else
+`mpp/opaque-not-this-hash`); its request; its intent and method; and the same filter. An id that derives from an H
+other than the one `build` is given is then `mpp/id-not-ours`. A fault in an argument other than the challenge keeps
+the build's own code: a choice that is not an object (`mpp/input-malformed`, or `svm/input-malformed` on the Solana
+charges and session, `stellar/tx-malformed` on the Stellar charge, `mpp/credential-malformed` on Lightning and
+`hedera/option-malformed` on the Hedera charge), and the payer, token domain, spender, deposit, client id and each
+other value the choice carries. So no `complete` is handed a challenge `bound` refuses, and the Hedera charge's
+`build`, whose `complete` returns the signed transaction, signs no body under such a challenge. `pairingsOf` makes every check `build`,
 `bound` and `reference` make on the challenge alone: on Lightning, that the invoice decodes with one `h` field and no
 `d`, carries the request's payment hash and the currency
 of the `network` the challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or

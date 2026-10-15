@@ -38,7 +38,7 @@ import {
 import { chargeLightning, sessionLightning } from "../src/lightning.js";
 import { rlpBytes, rlpList } from "../src/rlp.js";
 import { encodeKeyAuthorization } from "../src/tempo.js";
-import { described, descriptionFor, sizeOf } from "./credential-size.js";
+import { described, descriptionFor, sizeOf, withFault, type ChallengeRow } from "./credential-size.js";
 import { load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -105,9 +105,12 @@ class BuildRefused extends Error {
     super(`build refused: ${refusal.code}`);
   }
 }
-/** A build's answer, which these rows' inputs never have refused. */
+/** What a test does to the caller's objects once build has answered and before complete runs; none by default. */
+let afterBuild: (() => void) | undefined;
+/** A build's answer, which these rows' inputs never have refused; then `afterBuild`, where a test sets one. */
 function built<U>(u: U | Refused): U {
   if (typeof u === "object" && u !== null && "refused" in u) throw new BuildRefused(u as Refused);
+  afterBuild?.();
   return u as U;
 }
 /** What a run of build and complete gives: build's refusal, or complete's answer. */
@@ -330,7 +333,10 @@ const P: Record<string, Pairing> = {
 function solanaRun(build: (choice: never, h: never) => Promise<unknown>, own: (details: { [k: string]: Json }) => { [k: string]: Json }): Run {
   return async (challenge, b2) => {
     const i = b2.input.inputs!;
-    const d = own(decoded(challenge)["methodDetails"] as { [k: string]: Json });
+    // The buyer's own values are those of the challenge it is given, else, where that challenge has no request to read,
+    // those of B2's.
+    const readable = typeof challenge === "object" && challenge !== null && typeof challenge.request === "string";
+    const d = own(decoded(readable ? challenge : b2.input.doc![0]!)["methodDetails"] as { [k: string]: Json });
     const choice = {
       challenge,
       payer: accountOf(b2),
@@ -687,25 +693,13 @@ describe("mpp-challenge.json inChannelSize: the channel members of the sessions 
 // bound's code for each fault, in bound's order, before it builds anything, so no complete is handed a challenge bound
 // refuses.
 describe("mpp-challenge.json buildChallenge: each build holds the chosen challenge as bound holds an echoed one", () => {
-  type ChallengeRow = { case: string; opaque?: string | null; legalContext?: string; leastSize?: number; expect: string };
-  const ROWS_CHALLENGE = rowsOf<ChallengeRow>(MC.buildChallenge.rows, "mpp-challenge.json buildChallenge.rows", { exact: 5 });
-  /** `placed` with the row's fault. */
-  const faulty = (placed: Placed, row: ChallengeRow): Placed => {
-    if (row.opaque === null) {
-      const { opaque: _, ...rest } = placed;
-      return rest;
-    }
-    if (row.opaque !== undefined) return { ...placed, opaque: row.opaque };
-    if (row.legalContext !== undefined) {
-      const map = JSON.parse(Buffer.from(placed.opaque!, "base64url").toString("utf8")) as Record<string, string>;
-      return { ...placed, opaque: Buffer.from(JSON.stringify({ ...map, legalContext: row.legalContext })).toString("base64url") };
-    }
-    return described(placed, descriptionFor({ challenge: placed, payload: {} }, row.leastSize!));
-  };
+  const ROWS_CHALLENGE = rowsOf<ChallengeRow>(MC.buildChallenge.rows, "mpp-challenge.json buildChallenge.rows", { exact: 8 });
+  const faulty = withFault;
 
   it("each row makes one fault", () => {
     for (const row of ROWS_CHALLENGE) {
-      expect([row.opaque !== undefined, row.legalContext !== undefined, row.leastSize !== undefined].filter(Boolean)).toHaveLength(1);
+      const faults = [row.opaque, row.legalContext, row.leastSize, row.id, row.digest, row.challenge];
+      expect(faults.filter((f) => f !== undefined)).toHaveLength(1);
     }
   });
   for (const id of PAIRINGS) {
@@ -742,6 +736,50 @@ describe("mpp-challenge.json buildChallenge: each build holds the chosen challen
       });
     }
   });
+});
+
+// Each build reads the chosen challenge as bound reads its JSON form, its own members only, and holds a snapshot of
+// them: its complete's credential carries that snapshot, never the caller's object or a spread of it. So an `opaque`
+// the challenge inherits counts as absent, as JSON reads it, and a change to the caller's challenge after build does
+// not reach the credential.
+describe("each build holds a snapshot of the chosen challenge's own members", () => {
+  for (const id of PAIRINGS) {
+    describe(id, () => {
+      it("an inherited opaque is absent: build gives mpp/opaque-not-this-hash, as bound gives the JSON form", async () => {
+        const { placed, complete } = setUp(id);
+        const plain = (await complete(placed)) as MppCredential;
+        const { opaque, ...rest } = placed;
+        expect(opaque).toBeDefined();
+        const inherited = Object.assign(Object.create({ opaque }) as object, rest) as Placed;
+        expect(inherited.opaque).toBe(opaque);
+        expect(Object.hasOwn(inherited, "opaque")).toBe(false);
+        expect(await answered(complete(inherited))).toEqual({ by: "build", answer: refused("mpp/opaque-not-this-hash") });
+        const wire = JSON.parse(JSON.stringify({ ...plain, challenge: inherited })) as unknown;
+        expect(await P[id]!.bound(wire)).toEqual(refused("mpp/opaque-not-this-hash"));
+      });
+
+      it("a change to the caller's challenge after build does not reach the credential", async () => {
+        const { placed, h, complete } = setUp(id);
+        const plain = (await complete(placed)) as MppCredential;
+        const mine: Partial<Placed> = { ...placed };
+        afterBuild = () => {
+          delete mine.opaque;
+          mine.realm = "another.example";
+        };
+        try {
+          const made = (await complete(mine as Placed)) as MppCredential;
+          expect(mine.opaque).toBeUndefined();
+          expect(made).toEqual(plain);
+          expect(made.challenge).not.toBe(mine);
+          const answer = P[id]!.answer === undefined ? h : refused(P[id]!.answer!);
+          expect(await P[id]!.bound(made)).toEqual(answer);
+          expect(await P[id]!.bound(JSON.parse(JSON.stringify(made)))).toEqual(await P[id]!.bound(JSON.parse(JSON.stringify(plain))));
+        } finally {
+          afterBuild = undefined;
+        }
+      });
+    });
+  }
 });
 
 // A session complete reads the opening it is given as bound reads it, in bound's order. The Solana session's complete

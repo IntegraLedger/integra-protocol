@@ -65,7 +65,7 @@ const BUILD: Record<string, Build> = {
   "mpp/charge/hedera": (row, challenge) => {
     const i = row.input.inputs as { node: string; validStart: { seconds: string; nanos: number }; maxFee: string };
     const c = { payer: account(row), node: i.node, validStart: { seconds: BigInt(i.validStart.seconds), nanos: i.validStart.nanos }, maxFee: BigInt(i.maxFee) };
-    return chargeHedera.build(challenge as MppChallenge & { id: string }, decoded(challenge), c);
+    return chargeHedera.build({ challenge: challenge as MppChallenge & { id: string }, ...c }, row.advertised as never);
   },
 };
 /** The Solana charges' build, given the buyer's own decimals, token program and blockhash: those of B2's challenge. */
@@ -198,7 +198,6 @@ describe("a placed challenge whose opaque does not read", () => {
     const own = row.input.doc.find((c) => pairingsOfPlaced(c).includes(pairing as never))!;
     const changed = { ...own, opaque: "!!" };
     expect(pairingsOfPlaced(changed)).toEqual([]);
-    if (pairing === "mpp/charge/hedera") return;
     expect(await BUILD[pairing]!(row, changed)).toEqual({ refused: true, code: "mpp/opaque-malformed" });
   });
 });

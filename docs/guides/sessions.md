@@ -119,6 +119,23 @@ On MPP it builds a voucher or the close. It does not build a top-up, which is a 
 `use` (`mpp/within-action-not-built`). An action the pairing's draft does not define, such as a `topUp` on the XRP
 Ledger, is `mpp/session-action`, as `channel.kind` answers it.
 
+On MPP, `buildWithin` reads the within challenge, the challenge of the seller's 402 within the channel, as the
+pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that carries it, with their code for
+each fault. It reads a snapshot of the challenge's own members, which the in-channel credential carries. A challenge
+that is not an object, is not challenge-shaped or has no string id, or whose least credential is over the credential
+size bound, is `mpp/credential-malformed`, and another intent or method `mpp/not-this-pairing`. Then come the request
+members the readers read: on the EVM and Tempo sessions its request, `sessionProtocol`, `chainId` and `escrowContract`,
+and on the Hedera, Solana and XRP Ledger sessions its `methodDetails` and the network they name. The seller issues
+that challenge with its own id and the channel named, so it is not held to the pairing's filter, which refuses a
+challenge naming a channel. Where a reader refuses a payment whose within challenge names channel parameters other
+than the opening's, `buildWithin` gives that reader's code. On Tempo, a v2 within challenge whose escrow, chain or
+operator does not give the opening's channel, or one over a v1 opening, is `tempo/descriptor-mismatch`, and a v1 within
+challenge over a v2 opening is `mpp/not-bound-within`, as `channel.boundWithin` answers. On Solana, a within challenge
+whose `voucherSigner` is `operator` over a `client` opening is `mpp/session-action` for a voucher and
+`mpp/credential-malformed` for a close, as `channel.kind` answers. The readers do not compare the network or escrow a
+within challenge names with the opening's on the EVM session, a Tempo v1 session or the Hedera, Solana and XRP Ledger
+sessions, and neither does `buildWithin`.
+
 `mpp/subscription/stripe`'s `channel.ref` takes the payment's receipt as a second argument: the Stripe subscription
 it names is the channel.
 

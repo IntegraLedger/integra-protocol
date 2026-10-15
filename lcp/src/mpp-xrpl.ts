@@ -231,7 +231,7 @@ async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUn
     Sequence: choice.sequence,
     LastLedgerSequence: choice.lastLedgerSequence,
   };
-  const challenge = choice.challenge;
+  const challenge = checked.challenge;
   return {
     request: { kind: "xrpl-tx", txJson },
     async complete(signedBlob: string): Promise<MppCredential | Refusal> {

@@ -43,6 +43,7 @@ import {
 } from "../src/mpp.js";
 import type { SessionWithinUnsigned } from "../src/mpp-session.js";
 import { described, descriptionFor, sizeOf } from "./credential-size.js";
+import type { Json } from "../src/index.js";
 import { H, challenge, link, load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -406,4 +407,134 @@ describe("mpp/session/xrpl: buildWithin", () => {
       expect(await sessionXrpl.buildWithin(w(1n, action), H)).toEqual(refused("mpp/session-action"));
     }
   });
+});
+
+// withinChallenge (mpp-challenge.json): each buildWithin reads the within challenge as the pairing's channel.kind,
+// channel.ref and channel.boundWithin read the payment that carries it, with their code for each fault, and gives a
+// reader's code where that reader refuses a payment whose within challenge names channel parameters other than the
+// opening's. So buildWithin and complete return no in-channel credential a reader refuses for its challenge.
+describe("mpp-challenge.json withinChallenge: buildWithin reads the within challenge as the channel members do", async () => {
+  type WithinRow = {
+    case: string;
+    pairing: string;
+    opening?: "v1" | "v2";
+    within?: "v1" | "v2";
+    request?: string;
+    methodDetails?: Record<string, Json>;
+    drop?: string;
+    id?: null;
+    action?: "voucher" | "close";
+    expect: string;
+  };
+  const ROWS_WITHIN = rowsOf<WithinRow>(load("mpp-challenge.json").withinChallenge.rows, "mpp-challenge.json withinChallenge.rows", { exact: 18 });
+  type Pairing = ChannelMembers & { buildWithin(w: SessionWithin, h: typeof H): Promise<unknown> };
+  type Within = MppChallenge & { id: string };
+  /** The pairing, the opening, the within challenge of the opening's request (`control`) and of the row's, and a signature. */
+  type SetUp = { pairing: Pairing; opening: MppCredential; control: Within; within: Within; signature: string };
+  /** A placed challenge as the seller issues it within the channel: no `opaque`, and the seller's own id. */
+  const issuedOf = (c: MppChallenge): Within => {
+    const { id: _id, opaque: _opaque, ...rest } = c;
+    return { ...rest, id: "seller-own-id" };
+  };
+  const hex65 = `0x${"11".repeat(65)}`;
+  const f = E.fixed;
+  const evmChoice = { challenge: placed(challenge("evm", "session", f.request)), from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType: "hash" as const };
+  const evm = (await sessionEvm.build(evmChoice, H)) as SessionUnsigned;
+  const funded = `0x${"55".repeat(32)}` as ViemHex;
+  const evmOpening = evm.complete(funded, await payer.signTypedData(forViem(evm.voucher(funded)))) as MppCredential;
+  const tempoOpening = async (request: string, escrow: string) => {
+    const choice = { challenge: placed(challenge("tempo", "session", request)), from: T.fixed.payer, now: T.fixed.now, deposit: BigInt(T.fixed.deposit) };
+    const u = (await sessionTempo.build(choice, H)) as SessionUnsigned;
+    const wire = await openWire(escrow, (u.funding as { call: { data: ViemHex } }).call.data);
+    return u.complete(wire, await payer.signTypedData(forViem(u.voucher(wire)))) as MppCredential;
+  };
+  const tempo = { v2: await tempoOpening(T.fixed.requestV2, T.fixed.escrowV2), v1: await tempoOpening(T.fixed.requestV1, T.fixed.escrowV1) };
+  const rail = (pairing: Pairing, opening: MppCredential, signature: string): SetUp => ({
+    pairing,
+    opening,
+    control: issuedOf(opening.challenge),
+    within: issuedOf(opening.challenge),
+    signature,
+  });
+  const setUps: Record<string, (row: WithinRow) => SetUp> = {
+    "mpp/session/evm": () => rail(sessionEvm, evmOpening, hex65),
+    "mpp/session/tempo": (row) => {
+      const opening = row.opening ?? "v2";
+      const within = issuedOf(tempo[row.within ?? opening].challenge);
+      return { pairing: sessionTempo, opening: tempo[opening], control: issuedOf(tempo[opening].challenge), within, signature: hex65 };
+    },
+    "mpp/session/hedera": () => {
+      const payload = { action: "open", channelId: R.HS1.expectChannelId, txHash: R.HS3.txHash, cumulativeAmount: "0", signature: "0x00" };
+      return rail(sessionHedera, { challenge: R.SS1.hedera.placed, payload }, hex65);
+    },
+    "mpp/session/solana": () => {
+      const payload = { action: "open", channelId: R.SV2.channel, transaction: R.SV2.wireBase64 };
+      return rail(sessionSolana, { challenge: R.SS1.solana.placed, payload }, base58.encode(new Uint8Array(64).fill(1)));
+    },
+    "mpp/session/xrpl": () => {
+      const payload = { action: "open", transaction: R.XS2.blob, amount: "100", signature: "00" };
+      return rail(sessionXrpl, { challenge: R.SS1.xrpl.placed, payload }, "C0".repeat(64));
+    },
+  };
+  /** The within challenge with the row's change. */
+  const changed = (within: Within, row: WithinRow): MppChallenge => {
+    if (row.id === null) {
+      const { id: _, ...rest } = within;
+      return rest;
+    }
+    if (row.request !== undefined) return { ...within, request: row.request };
+    if (row.methodDetails === undefined && row.drop === undefined) return within;
+    const r = JSON.parse(Buffer.from(within.request, "base64url").toString("utf8")) as Record<string, Json>;
+    const details: Record<string, Json> = { ...(r["methodDetails"] as Record<string, Json>), ...row.methodDetails };
+    if (row.drop !== undefined) delete details[row.drop];
+    return { ...within, request: Buffer.from(JSON.stringify({ ...r, methodDetails: details })).toString("base64url") };
+  };
+
+  // A within challenge names the channel it resumes (sessionResume reads it); the pairing's filter, which holds an
+  // issued opening challenge (closeRef's hold), refuses one naming a channel. buildWithin reads the within challenge as
+  // the readers do, so it builds under it, and the readers take the payment.
+  for (const pairing of Object.keys(setUps)) {
+    it(`${pairing}: a within challenge naming the channel builds, as the readers take it; the filter refuses it`, async () => {
+      const s = setUps[pairing]!({ case: "", pairing, expect: "" });
+      const w = (c: MppChallenge): SessionWithin => ({ challenge: c, opening: s.opening, cumulativeAmount: 100n, action: "voucher" }) as SessionWithin;
+      const plain = unsigned(await s.pairing.buildWithin(w(s.control), H)).complete([s.signature]) as MppCredential;
+      const channel = plain.payload["channelId"] as string;
+      const r = JSON.parse(Buffer.from(s.control.request, "base64url").toString("utf8")) as Record<string, Json>;
+      const request =
+        pairing === "mpp/session/xrpl"
+          ? { ...r, channelId: channel }
+          : { ...r, methodDetails: { ...(r["methodDetails"] as Record<string, Json>), channelId: channel } };
+      const named = { ...s.control, request: Buffer.from(JSON.stringify(request)).toString("base64url") };
+      const made = unsigned(await s.pairing.buildWithin(w(named), H)).complete([s.signature]) as MppCredential;
+      expect(made).toEqual({ ...plain, challenge: named });
+      const answers = async (c: MppCredential) => [s.pairing.channel.kind(c), await s.pairing.channel.ref(c), await s.pairing.channel.boundWithin(c)];
+      expect(await answers(made)).toEqual(await answers(plain));
+      const closeRef = (s.pairing as unknown as { closeRef(c: MppChallenge, channel: string): unknown }).closeRef;
+      expect(closeRef(named, channel)).toEqual(refused("mpp/channel-named"));
+    });
+  }
+
+  it("each row makes one change", () => {
+    for (const row of ROWS_WITHIN) {
+      const changes = [row.request, row.methodDetails, row.drop, row.id, row.within !== undefined && row.within !== (row.opening ?? "v2") ? row.within : undefined];
+      expect(changes.filter((c) => c !== undefined), row.case).toHaveLength(1);
+    }
+  });
+  for (const row of ROWS_WITHIN) {
+    it(`${row.pairing}: ${row.case}`, async () => {
+      const s = setUps[row.pairing]!(row);
+      const w = (c: MppChallenge): SessionWithin => ({ challenge: c, opening: s.opening, cumulativeAmount: 100n, action: row.action ?? "voucher" }) as SessionWithin;
+      // The within challenge of the opening's request builds; its credential is the readers' control.
+      const plain = unsigned(await s.pairing.buildWithin(w(s.control), H)).complete([s.signature]) as MppCredential;
+      expect(plain).not.toHaveProperty("refused");
+      const answers = async (c: MppCredential) => [s.pairing.channel.kind(c), await s.pairing.channel.ref(c), await s.pairing.channel.boundWithin(c)];
+      const taken = await answers(plain);
+      const c = changed(s.within, row);
+      expect(c).not.toEqual(s.control);
+      expect(await s.pairing.buildWithin(w(c), H)).toEqual(refused(row.expect));
+      const read = await answers({ ...plain, challenge: c } as MppCredential);
+      expect(read).toContainEqual(refused(row.expect));
+      read.forEach((answer, i) => expect([taken[i], refused(row.expect)], `${row.case}: reader ${i}`).toContainEqual(answer));
+    });
+  }
 });

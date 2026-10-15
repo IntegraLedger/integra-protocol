@@ -7,6 +7,7 @@ import { keccak_256 } from "@noble/hashes/sha3.js";
 import { canonicalJson, toLcpString, type AtrHash } from "../src/index.js";
 import { chargeHedera, FETCHED, hederaStatus, type HederaUnsigned } from "../src/hedera.js";
 import { attributionMemo, checkAttribution, type MppChallenge, type MppCredential } from "../src/mpp.js";
+import { withFault, type ChallengeRow } from "./credential-size.js";
 import { readsOnlyFetched } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -65,12 +66,13 @@ describe("mpp-charge-hedera.json", () => {
   });
 
   it("build writes the attribution memo and the legs; the signature completes the transaction", async () => {
-    const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, V.fixed.request, {
+    const u = (await chargeHedera.build({
+      challenge: placed(),
       payer: V.fixed.payer,
       node: V.fixed.node,
       validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
       maxFee: BigInt(V.fixed.maxFee),
-    })) as HederaUnsigned;
+    }, H)) as HederaUnsigned;
     expect(hex(u.request.bodyBytes)).toBe(V.build.expectBodyBytes);
     const publicKey = Buffer.from(V.fixed.publicKey, "hex");
     const signature = Buffer.from(V.fixed.signature, "hex");
@@ -83,12 +85,13 @@ describe("mpp-charge-hedera.json", () => {
   // Its signature verifies over Keccak-256 of the body under that key (@noble/curves), and complete's Transaction is held
   // to the one written by hand in the protobuf wire format (build.ecdsa's case).
   it("build.ecdsa: complete with an ECDSA(secp256k1) signature gives the Transaction written by hand", async () => {
-    const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, V.fixed.request, {
+    const u = (await chargeHedera.build({
+      challenge: placed(),
       payer: V.fixed.payer,
       node: V.fixed.node,
       validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
       maxFee: BigInt(V.fixed.maxFee),
-    })) as HederaUnsigned;
+    }, H)) as HederaUnsigned;
     const E = V.build.ecdsa;
     const publicKey = Uint8Array.from(Buffer.from(E.publicKey, "hex"));
     const signature = Uint8Array.from(Buffer.from(E.signature, "hex"));
@@ -102,13 +105,14 @@ describe("mpp-charge-hedera.json", () => {
   it("build with credentialType hash, or none, hands the same body over as a push; transaction, as a pull", async () => {
     const P = V.build.push;
     const at = (credentialType?: string) =>
-      chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, V.fixed.request, {
+      chargeHedera.build({
+        challenge: placed(),
         payer: V.fixed.payer,
         node: V.fixed.node,
         validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
         maxFee: BigInt(V.fixed.maxFee),
         ...(credentialType !== undefined ? { credentialType: credentialType as never } : {}),
-      });
+      }, H);
     const asHex = (u: HederaUnsigned) => ({ ...u.request, bodyBytes: hex(u.request.bodyBytes) });
     expect(asHex((await at(P.credentialType)) as HederaUnsigned)).toEqual(P.expectRequest);
     expect(asHex((await at("transaction")) as HederaUnsigned)).toEqual(P.expectPullRequest);
@@ -256,12 +260,13 @@ describe("mpp-charge-hedera.json", () => {
   it("a split of amount 0 is accepted, and built as its own token transfer entry", async () => {
     const request = { ...V.fixed.request, splits: [{ recipient: "0.0.67890", amount: "0" }] };
     expect(advertised(placed(request))).toEqual([placed(request)]);
-    const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, request, {
+    const u = (await chargeHedera.build({
+      challenge: placed(request),
       payer: V.fixed.payer,
       node: V.fixed.node,
       validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
       maxFee: BigInt(V.fixed.maxFee),
-    })) as HederaUnsigned;
+    }, H)) as HederaUnsigned;
     const entries = lengthDelimited(u.request.bodyBytes, 14)
       .flatMap((t) => lengthDelimited(t, 2))
       .flatMap((l) => lengthDelimited(l, 2));
@@ -275,12 +280,13 @@ describe("mpp-charge-hedera.json", () => {
     const splits = Array.from({ length: 8 }, (_, i) => ({ recipient: `0.0.${70000 + i}`, amount: "1" }));
     const request = { ...V.fixed.request, splits };
     expect(advertised(placed(request))).toEqual([placed(request)]);
-    const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, request, {
+    const u = (await chargeHedera.build({
+      challenge: placed(request),
       payer: V.fixed.payer,
       node: V.fixed.node,
       validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
       maxFee: BigInt(V.fixed.maxFee),
-    })) as HederaUnsigned;
+    }, H)) as HederaUnsigned;
     // TransactionBody.cryptoTransfer (14) → CryptoTransferTransactionBody.tokenTransfers (2) → TokenTransferList.transfers (2)
     const entries = lengthDelimited(u.request.bodyBytes, 14)
       .flatMap((t) => lengthDelimited(t, 2))
@@ -298,5 +304,48 @@ describe("mpp-charge-hedera.json", () => {
   // public ledger, so the binding is visible there (§8.3's On-chain property) but H is not recovered from it.
   it("the record is id-reuse and on chain, and not recoverable from the chain alone", () => {
     expect(chargeHedera.pattern).toMatchObject({ pattern: "id-reuse", onChain: true, zeroPartyRecoverable: false });
+  });
+});
+
+// The build takes the chosen challenge and the H, and holds the challenge as bound holds the challenge a credential
+// echoes (mpp-challenge.json buildChallenge), with bound's code for each fault, in bound's order, before it builds
+// anything: so no body is signed under a challenge whose credential bound refuses. It reads the challenge as bound reads
+// its JSON form, its own members only.
+describe("mpp/charge/hedera: build holds the chosen challenge as bound holds an echoed one", () => {
+  const MC = JSON.parse(readFileSync(new URL("../vectors/mpp-challenge.json", import.meta.url), "utf8"));
+  const ROWS = rowsOf<ChallengeRow>(MC.buildChallenge.rows, "mpp-challenge.json buildChallenge.rows", { exact: 8 });
+  const build = (challenge: unknown, h: AtrHash = H) =>
+    chargeHedera.build(
+      {
+        challenge: challenge as MppChallenge & { id: string },
+        payer: V.fixed.payer,
+        node: V.fixed.node,
+        validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
+        maxFee: BigInt(V.fixed.maxFee),
+      },
+      h,
+    );
+  const pushed = (challenge: unknown) => ({ challenge, payload: { type: "hash", transactionId: V.push.transactionId } });
+
+  it("the placed challenge builds, and bound reads its push credential as one to land first", async () => {
+    expect("refused" in (await build(placed()))).toBe(false);
+    expect(await chargeHedera.bound(pushed(placed()))).toEqual({ refused: true, code: V.push.expectWithout });
+  });
+  for (const row of ROWS) {
+    it(`buildChallenge: ${row.case}`, async () => {
+      const challenge = withFault(placed(), row);
+      expect(await build(challenge)).toEqual({ refused: true, code: row.expect });
+      expect(await chargeHedera.bound(pushed(challenge))).toEqual({ refused: true, code: row.expect });
+    });
+  }
+  it("an id derived from another H is mpp/id-not-ours", async () => {
+    const other = `0x${"11".repeat(32)}` as AtrHash;
+    expect(await build(placed(), other)).toEqual({ refused: true, code: "mpp/id-not-ours" });
+  });
+  it("an inherited opaque is absent, as JSON reads it: mpp/opaque-not-this-hash", async () => {
+    const { opaque, ...rest } = placed();
+    const inherited = Object.assign(Object.create({ opaque }) as object, rest);
+    expect(await build(inherited)).toEqual({ refused: true, code: "mpp/opaque-not-this-hash" });
+    expect(await chargeHedera.bound(JSON.parse(JSON.stringify(pushed(inherited))))).toEqual({ refused: true, code: "mpp/opaque-not-this-hash" });
   });
 });

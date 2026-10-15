@@ -92,7 +92,7 @@ import {
 } from "./mpp-challenge.js";
 import { hederaSessionNetworkOf, solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
 import type { LandedCredential } from "./mpp.js";
-import { withinChecks, type SessionWithin, type SessionWithinUnsigned } from "./mpp-session.js";
+import { withinChecks, type SessionWithin, type SessionWithinUnsigned, type WithinChallenge } from "./mpp-session.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -222,6 +222,26 @@ function echoedDetails(presented: MppCredential, method: "hedera" | "solana" | "
   const md = request["methodDetails"];
   if (md === undefined) return {};
   return isObject(md) ? (md as { [k: string]: Json }) : refusal("mpp/request-malformed");
+}
+
+/**
+ * A within challenge as the pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that
+ * carries it, with their codes: its `methodDetails` (`echoedDetails`), then the network they name, as `channel.ref`
+ * reads it (`svm/network-undeclared` for a Solana challenge naming `localnet`).
+ */
+function withinDetails(
+  challenge: WithinChallenge,
+  method: "hedera" | "solana" | "xrpl",
+): { details: { [k: string]: Json }; network: string } | Refusal {
+  const details = echoedDetails({ challenge, payload: {} }, method);
+  if (isRefusal(details)) return details;
+  const network =
+    method === "hedera"
+      ? hederaSessionNetworkOf(details)
+      : method === "solana"
+        ? (solanaNetworkOf(details, true) ?? refusal("svm/network-undeclared"))
+        : xrplNetworkOf(details);
+  return isRefusal(network) ? network : { details, network };
 }
 
 /**
@@ -547,7 +567,7 @@ async function hederaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Heder
     escrow,
     chainId,
   });
-  const challenge = choice.challenge;
+  const challenge = checked.challenge;
   return {
     request: {
       kind: "hedera-session-open",
@@ -607,8 +627,11 @@ async function hederaRef(presented: MppCredential): Promise<{ network: string; c
  * define, such as `use`, is `mpp/session-action`.
  */
 async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/hedera", async (p) => opening(p, HEDERA), U128, ["topUp"]);
-  if (isRefusal(o)) return o;
+  const held = await withinChecks(w, h, "session/hedera", (c) => withinDetails(c, "hedera"), async (p) => opening(p, HEDERA), U128, [
+    "topUp",
+  ]);
+  if (isRefusal(held)) return held;
+  const o = held.opening;
   const network = hederaSessionNetworkOf(o.checked.details);
   if (isRefusal(network)) return network;
   const channelId = normalHash(o.payload["channelId"]);
@@ -616,7 +639,7 @@ async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
   const escrow = hederaEscrow(o.checked);
   if (isRefusal(escrow)) return escrow;
   const typedData = hederaVoucher({ channelId: channelId as Hex, escrow, chainId: hederaChain(network) }, w.cumulativeAmount);
-  const challenge = { ...w.challenge };
+  const challenge = held.challenge;
   const { action } = w;
   const cumulativeAmount = w.cumulativeAmount.toString();
   return {
@@ -876,7 +899,7 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
   const network = solanaNetworkOf(checked.details, true);
   if (network === null) return refusal("svm/network-undeclared");
   if (isRefusal(network)) return network;
-  const challenge = choice.challenge;
+  const challenge = checked.challenge;
   return {
     request: {
       kind: "solana-session-open",
@@ -901,13 +924,28 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
  * `bound` reads it: for a message with address table lookups, through the tables that `fetchPresented` writes under
  * `FETCHED`, else `svm/read-first`, so the opening is the credential `fetchPresented` returned, or a spread or
  * `Object.assign` copy of it, kept for the life of the channel: a table read again after its authority deactivates or
- * closes it gives no tables. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp`
- * or a `use`; an action draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
+ * closes it gives no tables. The voucher signer is read as `channel.kind` reads it, from the within challenge: one
+ * naming `operator` over a `client` opening gives `channel.kind`'s code for the payment this would build
+ * (`mpp/session-action` for a voucher, `mpp/credential-malformed` for a close, which carries `voucher`). An `operator`
+ * channel's vouchers are the operator's, and are not built, nor are a `topUp` or a `use`; an action
+ * draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
  */
 async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64, ["topUp", "use"]);
-  if (isRefusal(o)) return o;
-  if (o.checked.details["voucherSigner"] === "operator") return refusal("mpp/within-action-not-built");
+  const held = await withinChecks(w, h, "session/solana", (c) => withinDetails(c, "solana"), async (p) => solanaOpening(p), U64, [
+    "topUp",
+    "use",
+  ]);
+  if (isRefusal(held)) return held;
+  const o = held.opening;
+  // The voucher signer the readers read, the within challenge's. Under `operator`, over a `client` opening, the payment
+  // this builds is one `channel.kind` refuses, with its code; an `operator` channel's vouchers are the operator's.
+  const operator = held.within.details["voucherSigner"] === "operator";
+  const operatorChannel = o.checked.details["voucherSigner"] === "operator";
+  if (operator && !operatorChannel) {
+    const k = solanaKind({ challenge: held.challenge, payload: { action: w.action, voucher: {} } });
+    if (isRefusal(k)) return k;
+  }
+  if (operator || operatorChannel) return refusal("mpp/within-action-not-built");
   const signer = o.signer;
   if (signer === undefined) return refusal("svm/open-not-found");
   const channel = keyBytes(w.opening.payload["channelId"]);
@@ -915,7 +953,7 @@ async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
   const channelId = keyString(channel);
   const message = solanaVoucher(channelId, w.cumulativeAmount);
   if (isRefusal(message)) return message;
-  const challenge = { ...w.challenge };
+  const challenge = held.challenge;
   const { action } = w;
   const cumulativeAmount = w.cumulativeAmount.toString();
   return {
@@ -1174,7 +1212,7 @@ async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSes
     Sequence: x.sequence,
     LastLedgerSequence: x.lastLedgerSequence,
   };
-  const challenge = choice.challenge;
+  const challenge = checked.challenge;
   const source = `did:pkh:xrpl:${network.slice("xrpl:".length)}:${choice.from}`;
   const amount = checked.request["amount"] as string;
   return {
@@ -1200,14 +1238,15 @@ async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSes
  * is `mpp/session-action`.
  */
 async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/xrpl", (p) => xrplOpening(p), U64, []);
-  if (isRefusal(o)) return o;
+  const held = await withinChecks(w, h, "session/xrpl", (c) => withinDetails(c, "xrpl"), (p) => xrplOpening(p), U64, []);
+  if (isRefusal(held)) return held;
+  const o = held.opening;
   const channelId = xrplOpeningChannel(o.tx);
   if (isRefusal(channelId)) return channelId;
   const drops = w.cumulativeAmount;
   const bytes = xrplClaim(channelId, drops);
   if (isRefusal(bytes)) return bytes;
-  const challenge = { ...w.challenge };
+  const challenge = held.challenge;
   const { action } = w;
   return {
     requests: [{ kind: "xrpl-claim", channelId, drops, bytes }],
