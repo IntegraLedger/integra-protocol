@@ -429,3 +429,9 @@ fits a uint128.
 #### Returns
 
 `string`
+
+## References
+
+### FETCHED
+
+Re-exports [FETCHED](index.md#fetched)

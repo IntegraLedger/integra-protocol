@@ -166,6 +166,22 @@ An x402 pairing of scheme and rail.
 
 Every pairing this package implements.
 
+***
+
+### FETCHED
+
+> `const` **FETCHED**: unique `symbol`
+
+The key of the one member that holds what a seller's reader wrote onto a credential: `fetchPresented` writes the
+credential with its read under this key, and `bound`, `reference` and `buildWithin` read a rail's read from this
+member and from no other. A string-keyed member of any name, such as `landed` or `tables`, is never read as a read:
+a credential carrying one gives the answer the same credential without it gives. The registered symbol
+`Symbol.for("@integraledger/lcp/fetched")` is the same in every copy of the package in a process. No wire form
+carries it: `JSON.parse` and `structuredClone` make no symbol-keyed member, and `JSON.stringify` and
+`structuredClone` drop it, so the seller keeps the object `fetchPresented` returned, or a spread or `Object.assign`
+copy of it, both of which copy the member. One symbol, exported from `@integraledger/lcp`, `@integraledger/lcp/mpp`
+and `@integraledger/lcp/hedera`, the entry points whose pairings write it.
+
 ## Functions
 
 ### assemble()
