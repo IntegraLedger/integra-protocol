@@ -119,8 +119,11 @@ const depth: (t: ClarityType) => number = once((t) => {
   switch (t.k) {
     case "list":
       return 1 + depth(t.item);
-    case "tuple":
-      return 1 + Math.max(...[...t.fields.values()].map(depth));
+    case "tuple": {
+      let most = 0;
+      for (const f of t.fields.values()) most = Math.max(most, depth(f));
+      return 1 + most;
+    }
     case "optional":
       return 1 + depth(t.inner);
     case "response":
