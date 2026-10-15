@@ -153,3 +153,31 @@ describe("pairingsOf makes each check build makes on the challenge alone", () =>
     expect(await BUILD[pairing]!(row, changed)).toEqual({ refused: true, code });
   });
 });
+
+// draft-lightning-charge-00: the seller's node writes the invoice after the payment hash, so `pairingsOf` takes a
+// challenge without it, and the pairing's filter requires it once placed. A challenge without the invoice that
+// `pairingsOf` refuses for another reason gives that refusal from `build` and `bound` too; one it names gives
+// `ln/invoice-malformed`.
+const INVOICELESS = rowsOf<[string, string, (r: Record<string, Json>) => void, string]>(
+  [
+    ["without the invoice", "mpp/charge/lightning", (r) => void delete details(r)["invoice"], "ln/invoice-malformed"],
+    ["without the invoice, with a request description", "mpp/charge/lightning", (r) => void (delete details(r)["invoice"], (r["description"] = "Weather")), "ln/description-present"],
+    ["without the invoice, network testnet, which MPP Lightning does not define", "mpp/charge/lightning", (r) => void (delete details(r)["invoice"], (details(r)["network"] = "testnet")), "ln/currency-network"],
+    ["without the deposit invoice, with a request description", "mpp/session/lightning", (r) => void (delete r["depositInvoice"], (r["description"] = "Weather")), "ln/description-present"],
+  ],
+  "the Lightning challenges without their invoice",
+  { exact: 4 },
+);
+
+describe("a Lightning challenge without its invoice: build and bound give the code pairingsOf gives, else ln/invoice-malformed", () => {
+  it.each(INVOICELESS.map((c) => [`${c[1]}: ${c[0]}`, c] as const))("%s", async (_, [, pairing, edit, code]) => {
+    const row = b2(FILE[pairing]!, pairing);
+    const own = row.input.doc.find((c) => pairingsOfPlaced(c).includes(pairing as never))!;
+    const changed = withRequest(own, edit);
+    expect(pairingsOf(issued(changed))).toEqual(code === "ln/invoice-malformed" ? [pairing] : { refused: true, code });
+    expect(pairingsOfPlaced(changed)).toEqual([]);
+    expect(await BUILD[pairing]!(row, changed)).toEqual({ refused: true, code });
+    const binding = pairing === "mpp/charge/lightning" ? chargeLightning : sessionLightning;
+    expect(await binding.bound({ challenge: changed, payload: { action: "open", preimage: "00".repeat(32) } })).toEqual({ refused: true, code });
+  });
+});

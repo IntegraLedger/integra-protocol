@@ -696,7 +696,7 @@ const LN_CURRENCIES: { readonly [network: string]: string } = Object.freeze({ ma
  * whose currency is the one `network` names, when it names one (`ln/currency-network`), and whose expiry is no earlier
  * than `expires`, when the challenge carries one (`ln/expires-after-invoice`). The seller's node writes the invoice
  * after the hash, so `pairingsOf` takes a challenge without it; the pairing's filter (`checkedFor`, `pairingsOfPlaced`)
- * refuses one without it, `ln/invoice-malformed`.
+ * refuses one without it that passes the checks that do not read the invoice, `ln/invoice-malformed`.
  * `amount` and `currency` are not read.
  */
 function lightningPairings(pairing: "mpp/charge/lightning" | "mpp/session/lightning"): PairingCheck {
@@ -706,12 +706,12 @@ function lightningPairings(pairing: "mpp/charge/lightning" | "mpp/session/lightn
     if (typeof hash !== "string" || !/^[0-9a-f]{64}$/.test(hash)) return refusal("ln/payment-hash-required");
     const invoice = charge ? d["invoice"] : r["depositInvoice"];
     if (invoice !== undefined && typeof invoice !== "string") return refusal("mpp/request-malformed");
-    if (invoice === undefined && carried) return refusal("ln/invoice-malformed");
     const network = d["network"];
     const currency = typeof network === "string" && Object.hasOwn(LN_CURRENCIES, network) ? LN_CURRENCIES[network] : undefined;
     if (invoice === undefined) {
       if (r["description"] !== undefined) return refusal("ln/description-present");
-      return network !== undefined && currency === undefined ? refusal("ln/currency-network") : [pairing];
+      if (network !== undefined && currency === undefined) return refusal("ln/currency-network");
+      return carried ? refusal("ln/invoice-malformed") : [pairing];
     }
     const b = decodeInvoice(invoice);
     if (isRefusal(b)) return b;
