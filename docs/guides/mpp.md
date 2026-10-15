@@ -197,7 +197,7 @@ On the EVM, Tempo and `usdc` EVM charges, `status` answers failed, such as `reve
 reader's `finalized` mark. Above that mark, where the block can be replaced, or where the mark cannot be read, it
 answers pending with the same reason ([Reading settlement](./rails.md#reading-settlement)).
 
-The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states these rules in full.
+The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states where each charge carries H.
 
 ## Answering the buyer
 
