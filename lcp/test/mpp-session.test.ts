@@ -339,9 +339,10 @@ async function openWire(
   calldata: ViemHex,
   signer: (hash: ViemHex) => Promise<ViemHex> = sig65,
   escrow: string = T.fixed.escrowV2,
+  chainId = 42431,
 ): Promise<Uint8Array> {
   const fields = [
-    num(42431),
+    num(chainId),
     num(1),
     num(2),
     num(200000),
@@ -711,6 +712,7 @@ describe("mpp-session-tempo.json", () => {
     type Row = {
       case: string;
       sessionProtocol?: string;
+      transactionChainId?: number;
       payer?: Address;
       payee?: Address;
       token?: Address;
@@ -720,8 +722,11 @@ describe("mpp-session-tempo.json", () => {
     };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 5,
-      keep: ["the v2 rows, which carry no sessionProtocol", (r) => r.sessionProtocol === undefined],
-      leave: ['the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs', (r) => r.sessionProtocol === "v1"],
+      keep: ["the v2 descriptor rows, which carry no sessionProtocol and no transactionChainId", (r) => r.sessionProtocol === undefined && r.transactionChainId === undefined],
+      leave: [
+        'the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs, and the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs',
+        (r) => r.sessionProtocol === "v1" || r.transactionChainId !== undefined,
+      ],
     });
     const Tx = TempoTransaction.z_TxEnvelopeTempo;
     const nine = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
@@ -822,11 +827,14 @@ describe("mpp-session-tempo.json", () => {
   // computeChannelId (:299-312) does. A row's channelId is that keccak256 over the row's payer, encoded with viem; the
   // transaction's sender is fixed.payer.
   it("agreedRefusals: a v1 opening whose channelId is not its transaction's", async () => {
-    type Row = { case: string; sessionProtocol?: string; payer: `0x${string}`; channelId: `0x${string}`; expect: string };
+    type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; payer: `0x${string}`; channelId: `0x${string}`; expect: string };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 1,
-      keep: ["the v1 rows", (r) => r.sessionProtocol === "v1"],
-      leave: ['the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs', (r) => r.sessionProtocol === undefined],
+      keep: ["the v1 channelId rows", (r) => r.sessionProtocol === "v1" && r.transactionChainId === undefined],
+      leave: [
+        'the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs, and the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs',
+        (r) => r.sessionProtocol === undefined || r.transactionChainId !== undefined,
+      ],
     });
     const seven = ["address", "address", "address", "bytes32", "address", "address", "uint256"].map((type) => ({ type }));
     const low = (a: string) => a.toLowerCase() as `0x${string}`;
@@ -931,6 +939,48 @@ describe("mpp-session-tempo.json", () => {
       const dirty = u.complete(toHex(await openWire(`${data.slice(0, at)}01${data.slice(at + 2)}` as ViemHex)), `0x${"66".repeat(65)}`) as MppCredential;
       expect(await sessionTempo.bound(dirty), `word ${word}`).toEqual({ refused: true, code: "tempo/tx-malformed" });
     }
+  });
+
+  // Tempo's session draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-session-00.md :315-316, :356-357 and :1227-1228)
+  // binds the channel to the escrow and the chain, methodDetails.chainId, which is 4217 where a v1 challenge names none
+  // (:613), and the server broadcasts the signed open transaction (:859-862). The chain id is the first field of that
+  // transaction, read here with viem's fromRlp. A row's opening is build's for its protocol's challenge, both for chain
+  // 42431, completed with that open call in a transaction signed for the row's chain; signed for 42431, it gives H.
+  it("agreedRefusals: an opening whose transaction is signed for another chain than the challenge's", async () => {
+    type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; expect: string };
+    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
+      exact: 2,
+      keep: ["the transactionChainId rows", (r) => r.transactionChainId !== undefined],
+      leave: ["the descriptor and channelId rows, which the two tests above run", (r) => r.transactionChainId === undefined],
+    });
+    const openedOn = async (ch: ReturnType<typeof placed>, escrow: string, chainId: number) => {
+      const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+      if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+      const wire = await openWire(u.funding.call.data, sig65, escrow, chainId);
+      expect(fromRlp(toHex(wire.subarray(1)))[0]).toBe(num(chainId));
+      return { chain: u.funding.chainId, cred: u.complete(toHex(wire), `0x${"66".repeat(65)}`) as MppCredential };
+    };
+    for (const row of rows) {
+      const v1 = row.sessionProtocol === "v1";
+      const ch = placed(v1 ? V1 : V2);
+      const escrow = v1 ? f.escrowV1 : f.escrowV2;
+      const own = await openedOn(ch, escrow, 42431);
+      expect(own.chain, row.case).toBe(42431);
+      expect(await sessionTempo.bound(own.cred), row.case).toBe(H);
+      const { cred } = await openedOn(ch, escrow, row.transactionChainId!);
+      const refused = { refused: true, code: row.expect };
+      expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
+      expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
+      const within = { challenge: { ...(v1 ? V1 : V2), id: "seller-own-id" }, opening: cred, cumulativeAmount: 1n, action: "voucher" };
+      expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
+    }
+    const bare = JSON.parse(f.requestV1);
+    delete bare.methodDetails.chainId;
+    const v1Bare = placed(challenge("tempo", "session", JSON.stringify(bare)));
+    const onDefault = await openedOn(v1Bare, f.escrowV1, 4217);
+    expect(onDefault.chain).toBe(4217);
+    expect(await sessionTempo.bound(onDefault.cred)).toBe(H);
+    expect(await sessionTempo.bound((await openedOn(v1Bare, f.escrowV1, 42431)).cred)).toEqual({ refused: true, code: "tempo/tx-malformed" });
   });
 
   it("the record", () => {

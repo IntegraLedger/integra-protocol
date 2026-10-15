@@ -733,7 +733,11 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   };
 }
 
-/** The one signed `transferWithMemo` call to `currency` whose memo is this challenge's attribution memo. */
+/**
+ * The one signed `transferWithMemo` call to `currency` whose memo is this challenge's attribution memo, in a transaction
+ * signed for the challenge's chain (`echoedChain`): draft-tempo-charge-00 binds a Tempo transaction to its chain id, and
+ * a transaction whose chain id is another is `tempo/tx-malformed`.
+ */
 function signedMemoCall(
   presented: MppCredential,
 ): { h: AtrHash; checked: Echoed; memo: Hex; to: Hex; value: bigint; validBefore: bigint | null } | Refusal {
@@ -749,6 +753,9 @@ function signedMemoCall(
   if ((sig.length - 2) / 2 > MAX_WIRE) return refusal("tempo/tx-too-large");
   const tx = decodeTempoTx(bytesOf(sig)!);
   if (isRefusal(tx)) return tx;
+  const chainId = echoedChain(e.checked);
+  if (isRefusal(chainId)) return chainId;
+  if (tx.chainId !== BigInt(chainId)) return refusal("tempo/tx-malformed");
   const { realm, id } = presented.challenge;
   const found: { memo: Hex; to: Hex; value: bigint }[] = [];
   for (const call of tx.calls) {

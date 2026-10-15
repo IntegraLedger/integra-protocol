@@ -1248,7 +1248,10 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The one `open` call to the escrow in the signed transaction, with its salt word equal to H. On v2, the payload's
+ * The one `open` call to the escrow in the signed transaction, with its salt word equal to H. The transaction is signed
+ * for the challenge's chain, `methodDetails.chainId` (4217 where a v1 challenge names none): draft-tempo-session-00
+ * binds the channel to the escrow and the chain, and the server broadcasts this transaction there. A transaction whose
+ * chain id is another is `tempo/tx-malformed`. On v2, the payload's
  * descriptor matches that transaction, as draft-tempo-session-00 requires: it carries H as its salt (`descriptorSalt`),
  * the call's payee, operator, token and authorizedSigner (words 0, 1, 2 and 5 of `open(payee, operator, token,
  * deposit, salt, authorizedSigner)`), the transaction's sender as its `payer` (`tempoSender`, the payer the draft
@@ -1274,6 +1277,7 @@ function tempoOpened(
   const raw = bytesOf(wire)!;
   const tx = decodeTempoTx(raw);
   if (isRefusal(tx)) return tx;
+  if (tx.chainId !== BigInt(p.chainId)) return refusal("tempo/tx-malformed");
   const selector = p.version === "v2" ? OPEN_V2_SELECTOR : OPEN_V1_SELECTOR;
   const opens = tx.calls.filter(
     (c) => c.to !== null && sameBytes(c.to, p.escrow) && c.input.length >= 4 && hexOf(c.input.subarray(0, 4)) === selector,

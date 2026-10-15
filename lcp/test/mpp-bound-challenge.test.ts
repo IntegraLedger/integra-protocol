@@ -168,7 +168,10 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   },
   "mpp/charge/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/usdc/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
-  "mpp/charge/tempo/memo": { "tempo/memo-not-bound": "the signed transferWithMemo calls the request's currency" },
+  "mpp/charge/tempo/memo": {
+    "tempo/memo-not-bound": "the signed transferWithMemo calls the request's currency",
+    "tempo/tx-malformed": "the signed transaction is for the request's chain",
+  },
   "mpp/charge/tempo/push": { "tempo/memo-not-bound": "the landed transferWithMemo is the request's currency's" },
   "mpp/charge/usdc/evm": { "mpp/nonce-not-usdc-derivation": "the signed nonce derives from the challenge's id, realm and request" },
   "mpp/charge/usdc/gateway": { "mpp/salt-not-usdc-derivation": "the burn intent's salt derives from the challenge's id, realm and request" },
@@ -181,8 +184,8 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   "mpp/session/solana": { "svm/open-not-found": "the opening calls the request's channel program" },
   "mpp/subscription/tempo": { "tempo/key-not-authorized": "the key authorization names the request's chain" },
   "mpp/session/tempo": {
-    "tempo/descriptor-mismatch": "the opening's descriptor names the request's chain",
     "tempo/open-not-found": "the opening calls the request's escrow with its session protocol's open",
+    "tempo/tx-malformed": "the opening's transaction is for the request's chain",
   },
 };
 /** What a pairing's `reference` reads beyond what `bound` compares, as the refusal it gives when it cannot. */
@@ -292,7 +295,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([2024, 218]);
+    expect([bindings, named.length - bindings]).toEqual([2023, 219]);
     const listed = [COMPARES, REFERENCE_READS].flatMap((m) => Object.entries(m).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`)));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);
