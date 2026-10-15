@@ -401,8 +401,9 @@ const BACKING = new WeakMap<Value[], Value[]>();
  * Decodes `node` into `cur`, a value of `kind`, in place, as go-codec's decodeValue decodes into the value it holds. A
  * struct decodes into the struct it updates, so a repeated member merges; a fixed-length byte array has only the bytes
  * written replaced; a slice keeps and updates the elements it already has, and a map the entries. Each value has one
- * holder, so a repeated member costs only its own items, never a copy of what an earlier occurrence left, and the
- * decode is linear in the entry's bytes. Refuses what go-codec refuses.
+ * holder, so a repeated member costs only its own items: a slice that grows past its array copies only its own
+ * elements, fewer than the items it then holds. The decode is linear in the entry's bytes. Refuses what go-codec
+ * refuses.
  */
 function decodeInto(kind: Kind, node: Node, cur: Value): Value {
   switch (kind.t) {
