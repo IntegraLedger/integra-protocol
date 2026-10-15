@@ -225,9 +225,9 @@ async function fetchPresented(
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
  * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
- * Without @stellar/stellar-sdk the recipient and the transaction cannot be read: `stellar/peer-missing`, after the
- * choice, its challenge, H, the current ledger, the clock, the expiration ledger and the simulated transaction's form
- * (`signingInput`) are checked, which need no peer.
+ * Without @stellar/stellar-sdk the transaction cannot be read: `stellar/peer-missing`, after the choice, its challenge,
+ * H, the current ledger, the clock, the expiration ledger, the simulated transaction's form (`signingInput`) and the
+ * recipient's muxed id are checked, which need no peer.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
@@ -242,10 +242,10 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   const expiration = choice.currentLedger + Math.max(0, Math.ceil((expires - choice.now) / 5));
   const input = signingInput(choice.simulatedXdr, network, expiration);
   if (isRefusal(input)) return input;
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   const recipient = checked.request["recipient"];
   const m = unmux(recipient);
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   const s = signingFor(choice.simulatedXdr, network, expiration, checked.details["feePayer"] === true);
   if (isRefusal(s)) return s;
   if (s.payment.to !== recipient) return refusal("stellar/carrier-mismatch");
@@ -270,18 +270,19 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
  * The placed challenge with only the muxed id taken out: `request`'s muxed `recipient` back to its base `G…`
  * account, the member that stays in the digest, and `request` re-encoded as base64url of the core's `canonicalJson`.
  * `id`, `opaque` and every other member stay as placed. A challenge that carries a `refused` member is
- * `mpp/challenge-malformed`. Without @stellar/stellar-sdk no `recipient` can be read, so any other challenge is
- * `stellar/peer-missing`. A value that is not an object comes back as it is.
+ * `mpp/challenge-malformed`. The recipient is read without @stellar/stellar-sdk, so every answer is the same with the
+ * SDK and without it: a challenge whose request does not decode, or whose `recipient` is not a muxed address, comes
+ * back as it is, as does a value that is not an object.
  */
 function unplaced(option: MppChallenge): MppChallenge | Refusal {
   if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
-  if (isObject(option) && !hasPeer()) return refusal("stellar/peer-missing");
   return withoutCarrier(option, unmux);
 }
 
 /**
- * The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. Without
- * @stellar/stellar-sdk the recipient cannot be placed: `stellar/peer-missing`.
+ * The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. An
+ * issued recipient that is already a muxed address is `stellar/carrier-occupied`, which needs no peer. Without
+ * @stellar/stellar-sdk any other recipient cannot be placed: `stellar/peer-missing`.
  */
 function advertise(
   doc: readonly MppChallenge[],
@@ -296,8 +297,8 @@ function advertise(
     link,
     offer,
     (issued) => {
-      if (!hasPeer()) return refusal("stellar/peer-missing");
       if (unmux(issued) !== null) return refusal("stellar/carrier-occupied");
+      if (!hasPeer()) return refusal("stellar/peer-missing");
       return isAccount(issued) ? muxedFor(issued, h) : refusal("stellar/option-malformed");
     },
     agreementUrl,

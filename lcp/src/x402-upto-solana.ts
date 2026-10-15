@@ -10,7 +10,9 @@ import {
   channelPda,
   decodeSvmTx,
   isKey,
+  isPayerInput,
   isSolanaNetwork,
+  isU64,
   staticNonce,
   svmCarrier,
   svmChannelStatus,
@@ -154,25 +156,35 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /**
  * The `open` message the payer signs: the channel escrows the option's amount, and its one memo is `extra.memo`. The
- * payload carries `openSlot` as a JSON number, so an `openSlot` above 2^53 − 1 is `svm/input-malformed`.
+ * payload carries `openSlot` as a JSON number, so an `openSlot` above 2^53 − 1 is `svm/input-malformed`. H is checked
+ * first, then the form of the choice's payer, token program, blockhash and compute budget (`isPayerInput`), nonce,
+ * `openSlot` and `now`, then its document and option, then the option's memo against H and its token program against
+ * the choice's.
  */
 async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmPaymentPayload> | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
+  if (
+    !isPayerInput(c) ||
+    !isU64(c.nonce) ||
+    !isU64(c.openSlot) ||
+    c.openSlot > BigInt(Number.MAX_SAFE_INTEGER) ||
+    !Number.isSafeInteger(c.now) ||
+    c.now < 0
+  ) {
+    return refusal("svm/input-malformed");
+  }
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   const extra = accepted.extra!;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
-  if (c.tokenProgram !== extra["tokenProgram"] || !Number.isSafeInteger(c.now) || c.now < 0) {
-    return refusal("svm/input-malformed");
-  }
+  if (c.tokenProgram !== extra["tokenProgram"]) return refusal("svm/input-malformed");
   const feePayer = extra["feePayer"] as string;
   const signer = extra["receiverAuthorizer"] as string;
   const channel = channelPda({ payer: c.payer, payee: feePayer, mint: accepted.asset, signer, salt: c.nonce, openSlot: c.openSlot });
   if (typeof channel !== "string") return channel;
-  if (c.openSlot > BigInt(Number.MAX_SAFE_INTEGER)) return refusal("svm/input-malformed");
   const amount = BigInt(accepted.amount);
   const message = await buildChannelMessage({
     feePayer,

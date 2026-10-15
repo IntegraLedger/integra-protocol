@@ -168,20 +168,22 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /**
  * The Payment for the wallet to sign, with `InvoiceID` = SHA-256 of the option's `extra.invoiceId`, and `NetworkID` the
- * network's id where it is above 1024. `complete` reads the signed blob's `NetworkID` as `bound` does.
+ * network's id where it is above 1024. `complete` reads the signed blob's `NetworkID` as `bound` does. H is checked
+ * first, then the form of the choice's account, fee and last ledger sequence, then its document and option, then the
+ * sequence or ticket the option's transfer method names.
  */
 async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymentPayload> | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
+  const u32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
+  if (typeof c.account !== "string" || typeof c.fee !== "string" || !DROPS.test(c.fee) || !u32(c.lastLedgerSequence)) {
+    return refusal("x402/option-malformed");
+  }
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (accepted.extra!["invoiceId"] !== toLcpString(h)) return refusal("xrpl/carrier-mismatch");
-  const u32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
   const ticket = accepted.extra!["assetTransferMethod"] === "ticketSequence";
-  if (typeof c.account !== "string" || typeof c.fee !== "string" || !DROPS.test(c.fee) || !u32(c.lastLedgerSequence)) {
-    return refusal("x402/option-malformed");
-  }
   if (ticket ? !u32(c.ticketSequence) : !u32(c.sequence)) return refusal("x402/option-malformed");
   const extra = accepted.extra!;
   const amount =

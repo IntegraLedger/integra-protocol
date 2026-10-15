@@ -101,13 +101,12 @@ function payable(o: PaymentRequirements): boolean {
 
 /**
  * The option with `payTo` back to its base `G…` account: the option as the seller issued it. An option that carries a
- * `refused` member is `x402/option-malformed`. Without @stellar/stellar-sdk the option's `payTo` cannot be read, so any
- * other option is `stellar/peer-missing`, a refusal of that one option. A value that is not an object comes back as it
- * is.
+ * `refused` member is `x402/option-malformed`. The `payTo` is read without @stellar/stellar-sdk, so every answer is the
+ * same with the SDK and without it: an option whose `payTo` is not a muxed address comes back as it is, as does a value
+ * that is not an object.
  */
 function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
-  if (isObject(option) && !hasPeer()) return refusal("stellar/peer-missing");
   const m = unmux(option?.payTo);
   return m === null ? option : { ...option, payTo: m.base };
 }
@@ -147,18 +146,20 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * `currentLedger + ceil(maxTimeoutSeconds / 5)`. The option's `payTo` must carry `muxedId(h)` and equal the `to` of
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the option's `asset`, its amount the option's `amount` exactly, and its `from` the choice's `payer`.
- * Nothing reaches the signer unless every one holds.
+ * Nothing reaches the signer unless every one holds. H is checked first, then the current ledger, the choice member
+ * whose form needs neither the document nor the SDK (`stellar/tx-malformed`), then the document and the option, so
+ * without @stellar/stellar-sdk the filter refuses a Stellar option `stellar/peer-missing` only after those.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
+  if (!Number.isSafeInteger(c.currentLedger) || c.currentLedger < 0) return refusal("stellar/tx-malformed");
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   const { accepted } = c;
-  if (!Number.isSafeInteger(c.currentLedger) || c.currentLedger < 0) return refusal("stellar/tx-malformed");
   const m = unmux(accepted.payTo);
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   const expiration = c.currentLedger + Math.ceil(accepted.maxTimeoutSeconds / 5);
   const s = signingFor(c.simulatedXdr, accepted.network as "stellar:pubnet", expiration, false);
   if (isRefusal(s)) return s;

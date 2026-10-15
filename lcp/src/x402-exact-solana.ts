@@ -7,6 +7,7 @@ import {
   buildSvmMessage,
   decodeSvmTx,
   isKey,
+  isPayerInput,
   isSolanaNetwork,
   svmCarrier,
   svmRecover,
@@ -15,8 +16,6 @@ import {
   svmSigning,
   svmStatus,
   wireOf,
-  TOKEN,
-  TOKEN_2022,
   type SolanaNetwork,
   type SvmPaymentPayload,
   type SvmRef,
@@ -135,16 +134,22 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(filter)(doc);
 }
 
-/** The v0 message the payer signs for the chosen option, whose one memo is the option's `extra.memo`. */
+/**
+ * The v0 message the payer signs for the chosen option, whose one memo is the option's `extra.memo`. H is checked
+ * first, then the form of the choice's payer, token program, decimals, blockhash and compute budget (`isPayerInput`),
+ * then its document and option, then the option's memo against H.
+ */
 async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
+  if (!isPayerInput(c) || !Number.isInteger(c.decimals) || c.decimals < 0 || c.decimals > 255) {
+    return refusal("svm/input-malformed");
+  }
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   const memo = accepted.extra!["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
-  if (c.tokenProgram !== TOKEN && c.tokenProgram !== TOKEN_2022) return refusal("svm/input-malformed");
   const message = await buildSvmMessage({
     feePayer: accepted.extra!["feePayer"] as string,
     payer: c.payer,

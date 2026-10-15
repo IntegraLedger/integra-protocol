@@ -2,15 +2,17 @@
 // import, and each function that needs a peer refuses `<rail>/peer-missing` (the vectors' refusal), never
 // throwing; a status that needs one reads as pending `unreadable`, and nothing is read. A check that needs no peer
 // comes first and gives the code it gives with the peer: TON's option filter checks the addresses last, both
-// pairings' build check H, then read the choice's document and the option's place in it, and NEAR's the choice's own
-// members, TON's recover reads the ref, the reader, the transaction and its body's size and layout before it decodes
-// the body's cells, and tvmCarrier and nearCarrier check their input's size and form before they decode it.
+// pairings' build check H, then the form of the choice's own members, then read the choice's document and the
+// option's place in it, TON's recover reads the ref, the reader, the transaction and its body's size and layout before
+// it decodes the body's cells, and tvmCarrier and nearCarrier check their input's size and form before they decode it.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildChoices } from "./build-choices.js";
 import {
   BAD_H,
   hFirstChoices,
+  memberFirstChoices,
+  membersOf,
   nearBuildChoices,
   nearCarrierInputs,
   nearChoice,
@@ -60,7 +62,7 @@ describe("without the TON and NEAR peers", () => {
     const payment = { x402Version: 2, accepted: O, payload: { settlementBoc: "te6ccgEBAQEAAgAAAA==", asset: O.asset } };
     expect(await exactTvm.bound(payment)).toEqual(refused);
     expect(await exactTvm.reference(payment)).toEqual(refused);
-    expect(await exactTvm.build({ required: doc, accepted: O } as never, TVM.fixed.H)).toEqual(refused);
+    expect(await exactTvm.build({ ...membersOf(exactTvm.id), required: doc, accepted: O } as never, TVM.fixed.H)).toEqual(refused);
     let calls = 0;
     const reader = new Proxy({ network: "tvm:-3" }, { get: (t, k) => (k in t ? t[k as "network"] : async () => (calls++, null)) });
     expect(await exactTvm.status({ network: "tvm:-3" } as never, reader as never)).toEqual({ state: "pending", why: "unreadable" });
@@ -120,7 +122,7 @@ describe("without the TON and NEAR peers", () => {
 
   it("TON: build answers a choice of another pairing's option, or of a document that is not v2, as it does with the peer", { timeout: IMPORT_MS }, async () => {
     const { exactTvm } = await import("../src/tvm.js");
-    for (const row of rowsOf(buildChoices(TVM.fixed.O, TVM.fixed.resource), "build-choices.ts", { exact: 2 })) {
+    for (const row of rowsOf(buildChoices(TVM.fixed.O, TVM.fixed.resource, membersOf("x402/exact/tvm")), "build-choices.ts", { exact: 2 })) {
       expect(await exactTvm.build(row.choice as never, TVM.fixed.H)).toEqual({ refused: true, code: row.expect });
     }
   });
@@ -146,6 +148,20 @@ describe("without the TON and NEAR peers", () => {
     }
   });
 
+  it("TON and NEAR: build answers a malformed choice member as it does with the peer, whatever the option", { timeout: IMPORT_MS }, async () => {
+    const { exactTvm } = await import("../src/tvm.js");
+    const { exactNear } = await import("../src/near.js");
+    for (const [pairing, V, count] of [[exactTvm, TVM, 18], [exactNear, NEAR, 12]] as const) {
+      for (const row of rowsOf(memberFirstChoices(pairing.id, V.fixed.O), "peer-free-inputs.ts", { exact: count })) {
+        expect([pairing.id, row.case, await pairing.build(row.choice as never, V.fixed.H)]).toEqual([
+          pairing.id,
+          row.case,
+          { refused: true, code: row.expect },
+        ]);
+      }
+    }
+  });
+
   it("NEAR: nearCarrier and build answer a form, size or choice member they refuse as they do with the peer", { timeout: IMPORT_MS }, async () => {
     const { exactNear, nearCarrier } = await import("../src/near.js");
     for (const row of rowsOf(nearCarrierInputs(), "peer-free-inputs.ts", { exact: 4 })) {
@@ -159,7 +175,7 @@ describe("without the TON and NEAR peers", () => {
 
   it("NEAR: build answers a choice of another pairing's option, or of a document that is not v2, as it does with the peer", { timeout: IMPORT_MS }, async () => {
     const { exactNear } = await import("../src/near.js");
-    for (const row of rowsOf(buildChoices(NEAR.fixed.O, NEAR.fixed.resource), "build-choices.ts", { exact: 2 })) {
+    for (const row of rowsOf(buildChoices(NEAR.fixed.O, NEAR.fixed.resource, membersOf("x402/exact/near")), "build-choices.ts", { exact: 2 })) {
       expect(await exactNear.build(row.choice as never, NEAR.fixed.H)).toEqual({ refused: true, code: row.expect });
     }
   });

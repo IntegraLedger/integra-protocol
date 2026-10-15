@@ -230,10 +230,13 @@ function urlSafe(s: string): string {
  * transaction's `gen`, a msgpack string, so one holding a lone surrogate, which UTF-8 cannot encode, is
  * `avm/option-malformed`. The payment entry is read as `avmCarrier` reads it, with a 64-byte signature in place, as
  * `complete` writes it, so `build` writes no payment `bound` refuses: an entry `avmCarrier` would refuse, one whose
- * base64 is longer than 8,192 characters included, is `avm/option-malformed`. H is checked first. Without algosdk the
- * filter refuses the chosen option `avm/peer-missing` after H, the choice's document and the option's place in it are
- * checked, so a choice that fails those checks, or whose option is another pairing's, gets the answer it gets with
- * algosdk.
+ * base64 is longer than 8,192 characters included, is `avm/option-malformed`. H is checked first, then the form of
+ * the choice's payer and suggested parameters, which needs no algosdk: a payer that is not a string of 58 characters,
+ * or a parameter outside its type, is `avm/option-malformed`, and a genesis hash that is not the base64 of 32 bytes
+ * `avm/network-mismatch`. Then the choice's document and the option's place in it are checked, and without algosdk the
+ * filter refuses the chosen option `avm/peer-missing`, so a choice that fails an earlier check, or whose option is
+ * another pairing's, gets the answer it gets with algosdk. The payer's checksum, which algosdk checks, and the genesis
+ * hash against the option's network come after.
  */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; payer: string; params: AvmParams },
@@ -242,12 +245,10 @@ async function build(
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("avm/option-malformed");
-  const ok = chosen(c.required, c.accepted, check);
-  if (ok !== true) return ok;
-  if (sdk === null) return refusal("avm/peer-missing");
   const pr = c.params;
   if (
-    !isAddress(c.payer) ||
+    typeof c.payer !== "string" ||
+    c.payer.length !== 58 ||
     !isObject(pr) ||
     typeof pr.firstValid !== "bigint" ||
     typeof pr.minFee !== "bigint" ||
@@ -262,6 +263,10 @@ async function build(
   }
   const gh = fromBase64(pr.genesisHash);
   if (gh === null || gh.length !== 32) return refusal("avm/network-mismatch");
+  const ok = chosen(c.required, c.accepted, check);
+  if (ok !== true) return ok;
+  if (sdk === null) return refusal("avm/peer-missing");
+  if (!isAddress(c.payer)) return refusal("avm/option-malformed");
   const { required, accepted } = c;
   if (urlSafe(pr.genesisHash).slice(0, 32) !== NETWORK.exec(accepted.network)![1]) return refusal("avm/network-mismatch");
 

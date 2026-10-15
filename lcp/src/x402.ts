@@ -252,15 +252,18 @@ function evmFilter(id: X402PairingId): OptionFilter {
   };
 }
 
-/** The `TransferWithAuthorization` the payer signs for the chosen option, with the hash as its nonce. */
+/**
+ * The `TransferWithAuthorization` the payer signs for the chosen option, with the hash as its nonce. H is checked
+ * first, then the choice's `from` and `now`, then its document and option.
+ */
 async function build(choice: X402Choice, h: AtrHash): Promise<Unsigned | Refusal> {
   const nonce = normalHash(h);
   if (nonce === null) return refusal("x402/payload-malformed");
   if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
+  if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
   const wrong = chosen(required, accepted, evmFilter(ID));
   if (wrong !== true) return wrong;
-  if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
 
   const validBefore = BigInt(now) + BigInt(accepted.maxTimeoutSeconds);
   const typedData = eip3009TypedData({
@@ -607,8 +610,8 @@ function isBreadthPayable(id: X402PairingId) {
 }
 
 /**
- * The checks every breadth `build` makes, H first, then the choice, giving the chain id, the `now + maxTimeoutSeconds`
- * bound and H.
+ * The checks every breadth `build` makes: H first, then the choice's `from` and `now`, then its document and option.
+ * Gives the chain id, the `now + maxTimeoutSeconds` bound and H.
  */
 function choiceOf(
   id: X402PairingId,
@@ -619,9 +622,9 @@ function choiceOf(
   if (nonce === null) return refusal("x402/payload-malformed");
   if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
+  if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
   const wrong = chosen(required, accepted, evmFilter(id));
   if (wrong !== true) return wrong;
-  if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
   return { chainId: chainIdOf(accepted.network)!, deadline: BigInt(now) + BigInt(accepted.maxTimeoutSeconds), h: nonce };
 }
 

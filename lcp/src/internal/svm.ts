@@ -628,6 +628,31 @@ function concat(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+/**
+ * True when the members a payer passes to every x402 Solana `build` have their rail form: the payer and the recent
+ * blockhash base58 public keys, the token program Token's or Token-2022's, and the compute unit limit and price, when
+ * given, a u32 and a u64. Each `build` checks them before the choice's document and option, so a malformed one is
+ * `svm/input-malformed`, the code the message builders give it, whatever the document holds.
+ */
+export function isPayerInput(c: {
+  payer?: unknown;
+  tokenProgram?: unknown;
+  recentBlockhash?: unknown;
+  computeUnitLimit?: unknown;
+  computeUnitPrice?: unknown;
+}): boolean {
+  const limit = c.computeUnitLimit ?? 0;
+  return (
+    isKey(c.payer) &&
+    (c.tokenProgram === TOKEN || c.tokenProgram === TOKEN_2022) &&
+    isKey(c.recentBlockhash) &&
+    Number.isInteger(limit) &&
+    (limit as number) >= 0 &&
+    (limit as number) <= 0xffffffff &&
+    isU64(c.computeUnitPrice ?? 0n)
+  );
+}
+
 /** True when every field of a build input has its rail form. */
 function isBuildInput(i: SvmBuildInput): boolean {
   return (
@@ -1295,7 +1320,8 @@ export function channelPda(a: {
   return isRefusal(pda) ? pda : pda.address;
 }
 
-function isU64(v: unknown): v is bigint {
+/** A bigint from 0 to 2^64 − 1. */
+export function isU64(v: unknown): v is bigint {
   return typeof v === "bigint" && v >= 0n && v < U64_LIMIT;
 }
 

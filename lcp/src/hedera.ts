@@ -636,7 +636,8 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /**
  * The `TransactionBody` the payer signs: the fee payer's transaction id, the hash's LCP string as the memo, and the
- * payer's debit and the payee's credit of the option's amount, in HBAR or the option's token.
+ * payer's debit and the payee's credit of the option's amount, in HBAR or the option's token. H is checked first, then
+ * the form of the choice's payer, node, valid start, maximum fee and decimals, then its document and option.
  */
 async function build(
   c: {
@@ -653,8 +654,6 @@ async function build(
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("hedera/option-malformed");
-  const ok = chosen(c.required, c.accepted, checkExact);
-  if (ok !== true) return ok;
   const vs = c.validStart;
   if (
     !isEntity(c.payer) ||
@@ -673,6 +672,8 @@ async function build(
   ) {
     return refusal("hedera/option-malformed");
   }
+  const ok = chosen(c.required, c.accepted, checkExact);
+  if (ok !== true) return ok;
   const a = c.accepted;
   const bodyBytes = writeBody({
     feePayer: (a.extra as Record<string, string>)["feePayer"]!,
@@ -815,7 +816,8 @@ function readExecutor(doc: PaymentRequired): X402Read | Refusal {
  * What the buyer's wallet or executor tooling needs to obtain an authorization, and how that authorization completes
  * the payment. Nothing here carries the hash. `validBefore` is `now` plus the option's `maxTimeoutSeconds`; a `now`
  * that is not a non-negative safe integer, or whose sum with `maxTimeoutSeconds` is not a safe integer, is
- * `hedera/option-malformed`.
+ * `hedera/option-malformed`. H is checked first, then the form of `now`, then the choice's document and option, then
+ * the sum.
  */
 async function buildExecutor(
   c: { required: PaymentRequired; accepted: PaymentRequirements; now: number },
@@ -837,9 +839,9 @@ async function buildExecutor(
 > {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("hedera/option-malformed");
+  if (!Number.isSafeInteger(c.now) || c.now < 0) return refusal("hedera/option-malformed");
   const ok = chosen(c.required, c.accepted, checkExecutor);
   if (ok !== true) return ok;
-  if (!Number.isSafeInteger(c.now) || c.now < 0) return refusal("hedera/option-malformed");
   const validBefore = c.now + c.accepted.maxTimeoutSeconds;
   if (!Number.isSafeInteger(validBefore)) return refusal("hedera/option-malformed");
   const { required, accepted } = c;

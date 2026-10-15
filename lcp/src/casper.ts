@@ -279,15 +279,18 @@ const filter = filterOf(casperOption);
 const advertise = advertiseFor(filter);
 const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filter);
 
-/** The CEP-3009 authorization the payer signs for the chosen option, with the hash as its nonce. */
+/**
+ * The CEP-3009 authorization the payer signs for the chosen option, with the hash as its nonce. H is checked first,
+ * then the form of the choice's `from` and `now`, then its document and option.
+ */
 async function build(c: CasperChoice, h: AtrHash): Promise<CasperUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("casper/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
-  const wrong = chosen(c.required, c.accepted, filter);
-  if (wrong !== true) return wrong;
   const { required, accepted, from, now } = c;
   if (!isAddress(from)) return refusal("casper/address-malformed");
   if (!Number.isSafeInteger(now) || now < 0) return refusal("casper/option-malformed");
+  const wrong = chosen(required, accepted, filter);
+  if (wrong !== true) return wrong;
   const validBefore = BigInt(now) + BigInt(accepted.maxTimeoutSeconds);
   const typedData = cep3009TypedData({
     network: accepted.network as CasperNetwork,

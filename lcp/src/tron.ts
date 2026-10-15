@@ -537,26 +537,30 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(check)(doc);
 }
 
-/** The unsigned transaction for the chosen option, with the hash's LCP string as its memo. */
+/**
+ * The unsigned transaction for the chosen option, with the hash's LCP string as its memo. H is checked first, then the
+ * form of the choice's payer, fee limit, reference block and `now`, then its document and option, then the expiration
+ * `now` and the option's timeout give.
+ */
 async function build(c: TronChoice, h: AtrHash): Promise<TronUnsigned | Refusal> {
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, payer, refBlock, now, feeLimit } = c;
-  const ok = chosen(required, accepted, check);
-  if (ok !== true) return ok;
   const owner = await tronAddress(payer);
   if (isRefusal(owner)) return owner;
-  const asset = await tronAddress(accepted.asset);
-  if (isRefusal(asset)) return asset;
-  const payTo = await tronAddress(accepted.payTo);
-  if (isRefusal(payTo)) return payTo;
   if (typeof feeLimit !== "bigint" || feeLimit < 1n || feeLimit > MAX_FEE_LIMIT) return refusal("tron/fee-limit");
   if (!isObject(refBlock) || typeof refBlock.number !== "bigint" || refBlock.number < 0n || refBlock.number >= INT64_LIMIT) {
     return refusal("tron/tx-malformed");
   }
   if (typeof refBlock.id !== "string" || !BLOCK_ID.test(refBlock.id)) return refusal("tron/tx-malformed");
   if (typeof now !== "bigint" || now < 1n) return refusal("tron/tx-malformed");
+  const ok = chosen(required, accepted, check);
+  if (ok !== true) return ok;
+  const asset = await tronAddress(accepted.asset);
+  if (isRefusal(asset)) return asset;
+  const payTo = await tronAddress(accepted.payTo);
+  if (isRefusal(payTo)) return payTo;
   const expiration = now + BigInt(accepted.maxTimeoutSeconds) * 1000n;
   if (expiration >= INT64_LIMIT) return refusal("tron/tx-malformed");
 

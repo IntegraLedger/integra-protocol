@@ -23,7 +23,7 @@ import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
 import { broadcasterOf, type Broadcaster } from "./internal/broadcaster.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import { decode as decodeInvoice, FIELD } from "./internal/lightning.js";
-import type { unmux as StellarUnmux } from "./internal/stellar.js";
+import { unmux as stellarUnmux } from "./internal/stellar-strkey.js";
 import {
   cardChargePairings,
   stripeChargePairings,
@@ -774,15 +774,14 @@ export function tie(options: readonly MppChallenge[]): ["mpp", { challenges: Mpp
 /**
  * the core's `digestJson` over the bound members, with `request` decoded and its carrier removed (`asIssued`), and
  * `opaque` decoded without the LCP members (omitted when that leaves it empty). A value that does not decode is its
- * string.
+ * string. A Stellar charge's muxed `recipient` is read without @stellar/stellar-sdk, so a challenge has one digest
+ * with the SDK and without it.
  */
 export async function issuedDigest(c: MppChallenge): Promise<Hex | Refusal> {
   if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
   const out: { [k: string]: Json } = { realm: c.realm, method: c.method, intent: c.intent };
   const request = decodeObject(c.request);
-  // The Stellar module is imported when a Stellar charge is digested, so loading this module never waits on its peer.
-  const unmux = isStellarCharge(c) ? (await import("./internal/stellar.js")).unmux : undefined;
-  out["request"] = request === undefined ? c.request : asIssued(c, request, unmux);
+  out["request"] = request === undefined ? c.request : asIssued(c, request, stellarUnmux);
   if (c.expires !== undefined) out["expires"] = c.expires;
   if (c.digest !== undefined) out["digest"] = c.digest;
   if (c.header !== undefined) out["header"] = c.header;
@@ -905,7 +904,7 @@ export function carrierOf(c: MppChallenge, request: { [k: string]: Json }): read
  * The challenge with its carrier removed from `request` (`asIssued`, with `unmux` for a Stellar charge), re-encoded as
  * base64url of the core's `canonicalJson`. A challenge whose request holds no carrier is returned unchanged.
  */
-export function withoutCarrier(c: MppChallenge, unmux?: typeof StellarUnmux): MppChallenge {
+export function withoutCarrier(c: MppChallenge, unmux?: typeof stellarUnmux): MppChallenge {
   if (!isChallengeShape(c)) return c;
   const request = decodeObject(c.request);
   if (request === undefined) return c;
@@ -925,7 +924,7 @@ export function withoutCarrier(c: MppChallenge, unmux?: typeof StellarUnmux): Mp
 function asIssued(
   c: MppChallenge,
   request: { [k: string]: Json },
-  unmux: typeof StellarUnmux | undefined,
+  unmux: typeof stellarUnmux | undefined,
 ): { [k: string]: Json } {
   const path = carrierOf(c, request);
   if (path === null || memberAt(request, path) === undefined) return request;

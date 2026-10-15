@@ -481,7 +481,8 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /**
  * The delegate action for the chosen option: one `ft_transfer` whose memo is the hash's LCP string. H is checked first,
- * then the choice; borsh writes the delegate action, so without it the choice is `near/peer-missing` once every check
+ * then the form of the choice's payer, key, nonce and height, then its document and option, then the height with the
+ * option's timeout; borsh writes the delegate action, so without it the choice is `near/peer-missing` once every check
  * that needs no peer has passed.
  */
 async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal> {
@@ -489,20 +490,21 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, payer, publicKey, accessKeyNonce, finalHeight } = c;
-  const ok = chosen(required, accepted, check);
-  if (ok !== true) return ok;
   if (!isNearAccountId(payer)) return refusal("x402/option-malformed");
   const key = nearKeyOf(publicKey);
   if (key === null) return refusal("x402/option-malformed");
   if (typeof accessKeyNonce !== "bigint" || accessKeyNonce < 0n || accessKeyNonce + 1n >= U64_LIMIT) {
     return refusal("x402/option-malformed");
   }
+  if (typeof finalHeight !== "bigint" || finalHeight < 0n || finalHeight >= U64_LIMIT) {
+    return refusal("x402/option-malformed");
+  }
+  const ok = chosen(required, accepted, check);
+  if (ok !== true) return ok;
   // x402's NEAR scheme opens max(1, ceil(maxTimeoutSeconds / estimatedBlockSeconds)) blocks; with one-second blocks and
   // the positive timeout the filter holds, that is maxTimeoutSeconds blocks.
   const window = BigInt(accepted.maxTimeoutSeconds);
-  if (typeof finalHeight !== "bigint" || finalHeight < 0n || finalHeight + window >= U64_LIMIT) {
-    return refusal("x402/option-malformed");
-  }
+  if (finalHeight + window >= U64_LIMIT) return refusal("x402/option-malformed");
   const args = ftTransferArgs(accepted.payTo, accepted.amount, nh);
   if (isRefusal(args)) return args;
   if (borsh === undefined) return refusal("near/peer-missing");

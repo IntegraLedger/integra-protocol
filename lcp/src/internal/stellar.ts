@@ -4,8 +4,8 @@
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
  * needs it refuses `stellar/peer-missing`, after the checks that need no peer (an envelope's network, size, base64 and
  * union tags, an event's form), which give the codes they give with it, except the reads: `stellarStatus` is pending
- * `unreadable` and `stellarLocate` `complete: false`, with nothing read. The public names are re-exported by
- * `../stellar.ts`.
+ * `unreadable` and `stellarLocate` `complete: false`, with nothing read. `unmux` and `isMuxed` read a muxed account
+ * without it (`stellar-strkey.ts`). The public names are re-exported by `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
 import type {
@@ -26,6 +26,9 @@ import type { Hex } from "../evm.js";
 import { fromBase64, toBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
+import { unmux } from "./stellar-strkey.js";
+
+export { unmux };
 
 const peer: typeof StellarBase | undefined = await import("@stellar/stellar-sdk/base").then(
   (m) => m,
@@ -206,17 +209,6 @@ export function muxedFor(base: string, h: AtrHash): string | Refusal {
   raw.set(S.StrKey.decodeEd25519PublicKey(base), 0);
   new DataView(raw.buffer).setBigUint64(32, muxedId(h), false);
   return S.StrKey.encodeMed25519PublicKey(raw);
-}
-
-/** The `G…` base and the id of an `M…` strkey, or null. */
-export function unmux(m: unknown): { base: string; id: bigint } | null {
-  const S = need();
-  if (S === null || typeof m !== "string" || !S.StrKey.isValidMed25519PublicKey(m)) return null;
-  const raw = S.StrKey.decodeMed25519PublicKey(m);
-  return {
-    base: S.StrKey.encodeEd25519PublicKey(raw.subarray(0, 32)),
-    id: new DataView(raw.buffer, raw.byteOffset, raw.byteLength).getBigUint64(32, false),
-  };
 }
 
 export function isAccount(s: unknown): s is string {

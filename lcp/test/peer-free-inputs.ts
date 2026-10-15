@@ -11,10 +11,12 @@
 //   as it needs no peer.
 // - `mpp/charge/stellar`'s `build`: a choice, challenge, H, current ledger, clock, expiration ledger or simulated
 //   transaction form it refuses. `x402/exact/near`'s `build`: a payer, key, nonce or height it refuses.
-// - Every x402 `build`: a malformed H, which each checks first, before the choice and its document.
+// - Every x402 `build`: a malformed H, which each checks first, before the choice and its document; then each choice
+//   member the caller passes whose form needs neither the document nor the peer, before the document and the option.
 // - x402 XRPL's `bound` and `reference`: an option whose `invoiceId` is not an LCP string, read before the blob.
 // - `mpp/session/xrpl`'s `buildWithin`: an H, cumulative amount or action it refuses, before it decodes the opening.
 // - `muxedFor`: a base that is not a string, and an H that is not a 32-byte hash.
+// - The Stellar pairings' `unplaced`, `issuedDigest` and MPP `advertise`, which read a muxed address without the SDK.
 import { readFileSync } from "node:fs";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base58 } from "@scure/base";
@@ -29,6 +31,9 @@ const AVM = vector("x402-exact-algorand.json");
 const XRPL = vector("x402-exact-xrpl.json");
 const SESSION = vector("mpp-session-hedera-solana-xrpl.json");
 const EVM = vector("x402-exact-eip155-eip3009.json");
+const TRON = vector("x402-exact-tron-lcp-trc20-memo.json");
+const CASPER = vector("x402-exact-casper.json");
+const SOLANA = vector("x402-exact-solana.json");
 
 const bytes = (b64: string) => Uint8Array.from(Buffer.from(b64, "base64"));
 const b64 = (b: ArrayLike<number>) => Buffer.from(Uint8Array.from(b)).toString("base64");
@@ -220,8 +225,21 @@ export function stellarChargeChoices(): { case: string; choice: unknown; h: unkn
     { case: "a simulated transaction that is not base64", choice: { ...choice, simulatedXdr: "AA=A" }, h, expect: "stellar/tx-malformed" },
     { case: "a simulated transaction over 8,192 characters", choice: { ...choice, simulatedXdr: "A".repeat(8196) }, h, expect: "stellar/tx-too-large" },
     { case: "a simulated fee bump", choice: { ...choice, simulatedXdr: feeBump }, h, expect: "stellar/tx-malformed" },
+    { case: "a recipient that is not a muxed address", choice: { ...choice, challenge: withRecipient(choice.challenge, issuedRecipient()) }, h, expect: "stellar/carrier-mismatch" },
+    { case: "a recipient whose M strkey's checksum does not match", choice: { ...choice, challenge: withRecipient(choice.challenge, badChecksum(recipientOf(choice.challenge))) }, h, expect: "stellar/carrier-mismatch" },
   ];
 }
+
+const requestOf = (c: { request: string }) => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
+const recipientOf = (c: { request: string }): string => requestOf(c).recipient;
+/** The issued challenge's `recipient`: the base `G…` account the vectors' placement muxes. */
+const issuedRecipient = (): string => recipientOf(CHARGE.challenge);
+/** The challenge with its request's `recipient` replaced, the request re-encoded as base64url of its JSON. */
+function withRecipient<C extends { request: string }>(c: C, recipient: string): C {
+  return { ...c, request: Buffer.from(JSON.stringify({ ...requestOf(c), recipient }), "utf8").toString("base64url") };
+}
+/** A strkey with one character in its payload changed, so that its checksum does not match. */
+const badChecksum = (s: string) => s.slice(0, 10) + (s[10] === "A" ? "B" : "A") + s.slice(11);
 
 /** A base and H `muxedFor` refuses with the code given, before it reads the base's strkey. */
 export function muxedForArgs(): { case: string; base: unknown; h: unknown; expect: string }[] {
@@ -409,4 +427,267 @@ export function xrplWithinTwoFaults(): { case: string; within: unknown; h: unkno
     { case: "an opening blob that is not hex, and a topUp", within: xrplWithin(1n, "topUp", "ZZ"), h: H, expect: "mpp/session-action" },
     { case: "an H the opening is not bound to, and an amount of 2^64", within: xrplWithin(2n ** 64n, "voucher"), h: H2, expect: "mpp/input-malformed" },
   ];
+}
+
+/** A malformed value of one choice member, and the code `build` gives it. */
+interface BadMember {
+  case: string;
+  member: string;
+  value: unknown;
+  expect: string;
+}
+
+/** The Token program, one of the two an x402 Solana choice may name. */
+const TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
+/**
+ * Each x402 pairing whose `build` reads members of the choice beyond its document and option, with those members in
+ * their own form and malformed values of each. `build` checks each member's form after H and before the document and
+ * the option; the form needs neither of those nor the rail's peer, so each value gets its code whatever the document
+ * holds. A member compared with the option (a timeout sum, a fee payer, a token program, a transfer method) or read
+ * with the peer is checked after the option, and is not here.
+ */
+export function choiceMembers(): { id: string; members: Record<string, unknown>; bad: BadMember[] }[] {
+  const malformed = "x402/option-malformed";
+  const evm: Record<string, unknown> = { from: `0x${"11".repeat(20)}`, now: 1_790_000_000 };
+  const evmBad: BadMember[] = [
+    { case: "a from of one byte", member: "from", value: "0x12", expect: malformed },
+    { case: "a now below 0", member: "now", value: -1, expect: malformed },
+  ];
+  const svm: Record<string, unknown> = { payer: SOLANA.fixed.payer, tokenProgram: TOKEN, recentBlockhash: SOLANA.fixed.blockhash };
+  const svmBad = (more: BadMember[]): BadMember[] =>
+    [
+      { case: "a payer that is not a key", member: "payer", value: "x" },
+      { case: "a token program that is neither Token's nor Token-2022's", member: "tokenProgram", value: SOLANA.fixed.payer },
+      { case: "a recent blockhash that is not a string", member: "recentBlockhash", value: 7 },
+      { case: "a compute unit limit of 2^32", member: "computeUnitLimit", value: 2 ** 32 },
+      { case: "a compute unit price below 0", member: "computeUnitPrice", value: -1n },
+    ]
+      .map((b) => ({ ...b, expect: "svm/input-malformed" }))
+      .concat(more);
+  const params = AVM.fixed.params;
+  const avmParams = {
+    firstValid: BigInt(params.firstValid),
+    minFee: BigInt(params.minFee),
+    feePerByte: BigInt(params.feePerByte),
+    genesisId: params.genesisId,
+    genesisHash: params.genesisHash,
+  };
+  const { choice: near } = nearChoice();
+  return [
+    ...[
+      "x402/exact/eip155/eip3009",
+      "x402/exact/eip155/permit2",
+      "x402/upto/eip155/permit2",
+      "x402/exact/eip155/erc7710",
+      "x402/exact/eip155/erc7710-salt",
+      "x402/auth-capture/eip155/eip3009",
+      "x402/auth-capture/eip155/permit2",
+    ].map((id) => ({ id, members: evm, bad: evmBad })),
+    {
+      id: "x402/batch-settlement/eip155",
+      members: { ...evm, payerAuthorizer: `0x${"22".repeat(20)}`, authSalt: `0x${"33".repeat(32)}`, deposit: 1n },
+      bad: [
+        ...evmBad,
+        { case: "a payer authorizer that is not an address", member: "payerAuthorizer", value: 7, expect: malformed },
+        { case: "an auth salt of one byte", member: "authSalt", value: "0x12", expect: malformed },
+        { case: "a deposit of 0", member: "deposit", value: 0n, expect: malformed },
+      ],
+    },
+    {
+      id: "x402/exact/near",
+      members: { payer: near.payer, publicKey: near.publicKey, accessKeyNonce: near.accessKeyNonce, finalHeight: near.finalHeight },
+      bad: [
+        { case: "a payer that is not an account id", member: "payer", value: "A", expect: malformed },
+        { case: "a public key that is not one", member: "publicKey", value: "ed25519:0", expect: malformed },
+        { case: "an access key nonce below 0", member: "accessKeyNonce", value: -1n, expect: malformed },
+        { case: "a final height of 2^64", member: "finalHeight", value: 2n ** 64n, expect: malformed },
+      ],
+    },
+    {
+      id: "x402/exact/tvm",
+      members: {
+        wallet: TVM.fixed.wallet,
+        walletId: TVM.fixed.walletId,
+        seqno: TVM.fixed.seqno,
+        jettonWallet: TVM.fixed.jettonWallet,
+        attachNanotons: BigInt(TVM.fixed.attachNanotons),
+        now: TVM.fixed.now,
+      },
+      bad: [
+        { case: "a wallet that is not a raw address", member: "wallet", value: "0:12", expect: malformed },
+        { case: "a Jetton wallet on workchain 128", member: "jettonWallet", value: `128:${"11".repeat(32)}`, expect: malformed },
+        { case: "a walletId of 2^32", member: "walletId", value: 2 ** 32, expect: malformed },
+        { case: "a seqno below 0", member: "seqno", value: -1, expect: malformed },
+        { case: "a now that is not an integer", member: "now", value: 1.5, expect: malformed },
+        { case: "an attached value of 2^120 nanotons", member: "attachNanotons", value: 2n ** 120n, expect: malformed },
+      ],
+    },
+    {
+      id: "x402/exact/algorand",
+      members: { payer: AVM.fixed.payer, params: avmParams },
+      bad: [
+        { case: "a payer of one character", member: "payer", value: "A", expect: "avm/option-malformed" },
+        { case: "no suggested parameters", member: "params", value: null, expect: "avm/option-malformed" },
+        { case: "a first valid round below 0", member: "params", value: { ...avmParams, firstValid: -1n }, expect: "avm/option-malformed" },
+        { case: "a genesis id holding a lone surrogate", member: "params", value: { ...avmParams, genesisId: "\uD800" }, expect: "avm/option-malformed" },
+        { case: "a genesis hash of 2 bytes", member: "params", value: { ...avmParams, genesisHash: "AAA=" }, expect: "avm/network-mismatch" },
+      ],
+    },
+    {
+      id: "x402/exact/stellar",
+      members: { currentLedger: STELLAR.V2.currentLedger },
+      bad: [
+        { case: "a current ledger below 0", member: "currentLedger", value: -1, expect: "stellar/tx-malformed" },
+        { case: "a current ledger that is not an integer", member: "currentLedger", value: 1.5, expect: "stellar/tx-malformed" },
+      ],
+    },
+    {
+      id: "x402/exact/starknet",
+      members: { from: "0x1", now: 1_790_000_000 },
+      bad: [
+        { case: "a from that is not a felt", member: "from", value: "0xZZ", expect: "starknet/felt-malformed" },
+        { case: "a now below 0", member: "now", value: -1, expect: "starknet/option-malformed" },
+      ],
+    },
+    {
+      id: "x402/exact/tron/lcp-trc20-memo",
+      members: {
+        payer: TRON.fixed.payer,
+        feeLimit: BigInt(TRON.fixed.feeLimit),
+        refBlock: { number: BigInt(TRON.fixed.refBlock.number), id: TRON.fixed.refBlock.id },
+        now: BigInt(TRON.fixed.now),
+      },
+      bad: [
+        { case: "a payer that is not an address", member: "payer", value: "T", expect: "tron/address-malformed" },
+        { case: "a fee limit of 0", member: "feeLimit", value: 0n, expect: "tron/fee-limit" },
+        { case: "no reference block", member: "refBlock", value: null, expect: "tron/tx-malformed" },
+        { case: "a reference block id of one byte", member: "refBlock", value: { number: 1n, id: "0x12" }, expect: "tron/tx-malformed" },
+        { case: "a now of 0", member: "now", value: 0n, expect: "tron/tx-malformed" },
+      ],
+    },
+    {
+      id: "x402/exact/hedera",
+      members: { payer: "0.0.1001", node: "0.0.3", validStart: { seconds: 1_790_000_000n, nanos: 0 }, maxFee: 100_000_000n },
+      bad: [
+        { case: "a payer that is not an entity id", member: "payer", value: "1001", expect: "hedera/option-malformed" },
+        { case: "a node that is not an entity id", member: "node", value: 3, expect: "hedera/option-malformed" },
+        { case: "a valid start of 10^9 nanoseconds", member: "validStart", value: { seconds: 0n, nanos: 1_000_000_000 }, expect: "hedera/option-malformed" },
+        { case: "a maximum fee below 0", member: "maxFee", value: -1n, expect: "hedera/option-malformed" },
+        { case: "decimals below 0", member: "decimals", value: -1, expect: "hedera/option-malformed" },
+      ],
+    },
+    {
+      id: "x402/exact/hedera/transfer-executor",
+      members: { now: 1_790_000_000 },
+      bad: [{ case: "a now below 0", member: "now", value: -1, expect: "hedera/option-malformed" }],
+    },
+    {
+      id: "x402/exact/casper",
+      members: { from: CASPER.fixed.from, now: CASPER.fixed.now },
+      bad: [
+        { case: "a from that is not an address", member: "from", value: "00", expect: "casper/address-malformed" },
+        { case: "a now below 0", member: "now", value: -1, expect: "casper/option-malformed" },
+      ],
+    },
+    {
+      id: "x402/exact/ccd",
+      members: { now: 1_790_000_000 },
+      bad: [{ case: "a now below 0", member: "now", value: -1, expect: "ccd/option-malformed" }],
+    },
+    {
+      id: "x402/exact/xrpl",
+      members: { account: XRPL.V2.build.account, fee: XRPL.V2.build.fee, lastLedgerSequence: XRPL.V2.build.lastLedgerSequence },
+      bad: [
+        { case: "an account that is not a string", member: "account", value: 7, expect: malformed },
+        { case: "a fee that is not drops", member: "fee", value: "1.5", expect: malformed },
+        { case: "a last ledger sequence of 2^32", member: "lastLedgerSequence", value: 2 ** 32, expect: malformed },
+      ],
+    },
+    {
+      id: "x402/exact/solana",
+      members: { ...svm, decimals: SOLANA.fixed.decimals },
+      bad: svmBad([{ case: "decimals of 256", member: "decimals", value: 256, expect: "svm/input-malformed" }]),
+    },
+    {
+      id: "x402/upto/solana",
+      members: { ...svm, nonce: 1n, openSlot: 1n, now: 1_790_000_000 },
+      bad: svmBad([
+        { case: "a nonce of 2^64", member: "nonce", value: 2n ** 64n, expect: "svm/input-malformed" },
+        { case: "an openSlot of 2^53", member: "openSlot", value: 2n ** 53n, expect: "svm/input-malformed" },
+        { case: "a now below 0", member: "now", value: -1, expect: "svm/input-malformed" },
+      ]),
+    },
+    {
+      id: "x402/batch-settlement/solana",
+      members: { ...svm, deposit: 1n, payerAuthorizer: SOLANA.fixed.payer, salt: 1n, openSlot: 1n },
+      bad: svmBad([
+        { case: "a deposit of 0", member: "deposit", value: 0n, expect: "svm/input-malformed" },
+        { case: "a payer authorizer that is not a key", member: "payerAuthorizer", value: "x", expect: "svm/input-malformed" },
+        { case: "a salt below 0", member: "salt", value: -1n, expect: "svm/input-malformed" },
+        { case: "an openSlot of 2^53", member: "openSlot", value: 2n ** 53n, expect: "svm/input-malformed" },
+      ]),
+    },
+  ];
+}
+
+/** The choice members of x402 pairing `id` in their own form (`choiceMembers`); none for a pairing that reads none. */
+export function membersOf(id: string): Record<string, unknown> {
+  return choiceMembers().find((m) => m.id === id)?.members ?? {};
+}
+
+/**
+ * Choices with one malformed member, which each x402 `build` reaches after H and before the document: each malformed
+ * value of `choiceMembers`, under another pairing's option and under a document that is not x402 v2, and, with `own`,
+ * under the pairing's own option in a v2 document. Each is the member's code, with the rail's peer and without it.
+ */
+export function memberFirstChoices(id: string, own?: unknown): { case: string; choice: unknown; expect: string }[] {
+  const p = choiceMembers().find((m) => m.id === id);
+  if (p === undefined) return [];
+  const documents = hFirstChoices(id, own).filter((r) => r.choice !== null);
+  return p.bad.flatMap((b) =>
+    documents.map((d) => ({
+      case: `${b.case}, with ${d.case}`,
+      choice: { ...(d.choice as object), ...p.members, [b.member]: b.value },
+      expect: b.expect,
+    })),
+  );
+}
+
+/**
+ * Options and challenges the Stellar pairings' `unplaced` answers, and the answer: it reads a muxed `payTo` or
+ * `recipient` without the SDK, so each answer is the same with it and without it.
+ */
+export function stellarUnplacedRows(): { case: string; pairing: "x402/exact/stellar" | "mpp/charge/stellar"; option: unknown; expect: unknown }[] {
+  const placed = CHARGE.place.expect;
+  const muxedPayTo = STELLAR.V3.accepted;
+  return [
+    { case: "an option whose payTo is muxed", pairing: "x402/exact/stellar", option: muxedPayTo, expect: { ...muxedPayTo, payTo: STELLAR.fixed.seller } },
+    { case: "an option whose payTo is an account", pairing: "x402/exact/stellar", option: STELLAR.fixed.option, expect: STELLAR.fixed.option },
+    { case: "an option whose payTo's checksum does not match", pairing: "x402/exact/stellar", option: { ...muxedPayTo, payTo: badChecksum(muxedPayTo.payTo) }, expect: { ...muxedPayTo, payTo: badChecksum(muxedPayTo.payTo) } },
+    { case: "an option that carries a refused member", pairing: "x402/exact/stellar", option: { ...muxedPayTo, refused: true }, expect: { refused: true, code: "x402/option-malformed" } },
+    { case: "a placed challenge", pairing: "mpp/charge/stellar", option: placed, expect: { ...placed, request: CHARGE.challenge.request } },
+    { case: "an issued challenge", pairing: "mpp/charge/stellar", option: CHARGE.challenge, expect: CHARGE.challenge },
+    { case: "a challenge that carries a refused member", pairing: "mpp/charge/stellar", option: { ...placed, refused: true }, expect: { refused: true, code: "mpp/challenge-malformed" } },
+  ];
+}
+
+/**
+ * Challenges whose `issuedDigest` the vectors give, muxed recipients among them: the issued challenge, the placed one,
+ * and the placed one echoed with the payer's muxed account. The digest is the same with the SDK and without it.
+ */
+export function stellarDigestRows(): { case: string; challenge: unknown; expect: string }[] {
+  const D = CHARGE.issuedDigest;
+  const placed = CHARGE.place.expect;
+  return [
+    { case: "the issued challenge", challenge: CHARGE.challenge, expect: D.expectIssued },
+    { case: "the placed challenge, whose recipient is the seller's muxed account", challenge: placed, expect: D.expectIssued },
+    { case: "the placed challenge echoed with the payer's muxed account", challenge: { ...placed, request: D.echoedRequest }, expect: D.expectEchoed },
+  ];
+}
+
+/** A challenge MPP Stellar's `advertise` refuses before it needs the SDK: one whose recipient is already muxed. */
+export function stellarOccupied(): { challenge: unknown; h: `0x${string}`; link: string; expect: string } {
+  const challenge = withRecipient(CHARGE.challenge, recipientOf(CHARGE.place.expect));
+  return { challenge, h: CHARGE.fixed.H, link: CHARGE.fixed.link, expect: CHARGE.occupied.expect };
 }

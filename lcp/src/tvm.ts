@@ -984,14 +984,22 @@ function sameAccount(a: string, b: string): boolean {
  * outside it, no `addr_std` can hold it, and every address this pairing writes is an `addr_std`.
  */
 function rawAddress(s: unknown): Address | null {
-  if (peer === undefined || typeof s !== "string" || !RAW_ADDRESS.test(s)) return null;
-  const workchain = Number(s.slice(0, s.indexOf(":")));
-  if (workchain < -128 || workchain > 127) return null;
+  if (peer === undefined || !isRawAddress(s)) return null;
   try {
     return peer.Address.parseRaw(s);
   } catch {
     return null;
   }
+}
+
+/**
+ * A raw address in the form `rawAddress` reads, which needs no peer: a workchain from -128 to 127, a colon, then 64 hex
+ * digits.
+ */
+function isRawAddress(s: unknown): s is string {
+  if (typeof s !== "string" || !RAW_ADDRESS.test(s)) return false;
+  const workchain = Number(s.slice(0, s.indexOf(":")));
+  return workchain >= -128 && workchain <= 127;
 }
 
 // ── The pairing.
@@ -1074,12 +1082,23 @@ function carries(option: PaymentRequirements, payload: Cell): boolean {
   return !isRefusal(cell) && cell.equals(payload);
 }
 
-/** The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. */
+/**
+ * The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. H is checked
+ * first, then the form of the choice's wallets, `walletId`, `seqno`, `now` and `attachNanotons`, each
+ * `x402/option-malformed`, then its document and option, so without @ton/core the filter refuses a TON option
+ * `tvm/peer-missing` only after those. The wallets' workchains, `now` with the option's timeout, the state init, which
+ * needs @ton/core, and the attached value against the option's forward amount come after.
+ */
 async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, wallet, walletId, seqno, jettonWallet, attachNanotons, now, stateInit } = c;
+  if (!isRawAddress(wallet) || !isRawAddress(jettonWallet)) return refusal("x402/option-malformed");
+  if (!isUint32(walletId) || !isUint32(seqno) || !Number.isSafeInteger(now) || now < 0) {
+    return refusal("x402/option-malformed");
+  }
+  if (typeof attachNanotons !== "bigint" || attachNanotons >= COINS_LIMIT) return refusal("x402/option-malformed");
   const ok = chosen(required, accepted, check);
   if (ok !== true) return ok;
   if (peer === undefined) return refusal("tvm/peer-missing");
@@ -1093,16 +1112,12 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   if (!config.workchains.has(walletAddress.workChain) || !config.workchains.has(jettonAddress.workChain)) {
     return refusal("x402/option-malformed");
   }
-  if (!isUint32(walletId) || !isUint32(seqno) || !Number.isSafeInteger(now) || now < 0) {
-    return refusal("x402/option-malformed");
-  }
   const validUntil = now + accepted.maxTimeoutSeconds;
   if (!isUint32(validUntil)) return refusal("x402/option-malformed");
   const initCell = stateInit === undefined || stateInit instanceof peer.Cell ? stateInit : rootOf(stateInit);
   if (isRefusal(initCell)) return initCell;
   const extra = accepted.extra!;
   const forwardTon = extra["forwardTonAmount"] === undefined ? 0n : BigInt(extra["forwardTonAmount"] as string);
-  if (typeof attachNanotons !== "bigint" || attachNanotons >= COINS_LIMIT) return refusal("x402/option-malformed");
   if (attachNanotons <= forwardTon) return refusal("tvm/value-too-low");
   const response = extra["responseDestination"] === undefined ? null : rawAddress(extra["responseDestination"]);
 

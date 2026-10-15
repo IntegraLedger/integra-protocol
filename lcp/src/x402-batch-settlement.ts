@@ -55,6 +55,8 @@ import {
   decodeSvmTx,
   isCurveKey,
   isKey,
+  isPayerInput,
+  isU64,
   isSolanaNetwork,
   landedTransaction,
   memoCarrier,
@@ -515,7 +517,9 @@ function evmPayloadKind(payload: Record<string, unknown>): "open" | "within" | "
  * The opening's two authorizations: the deposit's token authorization, then the voucher. A `from` or `payerAuthorizer`
  * that is not an address string, an `authSalt` that is not a string of `0x` and 64 hex digits, or a `deposit` or `now`
  * out of range is `x402/option-malformed`, as is a `from` that is the zero address: the channel contract's `deposit`
- * refuses a configuration whose payer is. The option filter refuses an option whose `payTo` or asset is.
+ * refuses a configuration whose payer is. The option filter refuses an option whose `payTo` or asset is. H is checked
+ * first, then the form of those members, then the choice's document and option, then an option amount of `"0"`, then
+ * the channel configuration they make with the option.
  *
  * An option whose amount is `"0"` is `x402/option-malformed` here, though the filter takes it. On the channel a deposit
  * opens, `totalClaimed` and the server's `chargedCumulativeAmount` are 0: the scheme's server requires the opening
@@ -527,15 +531,15 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   const salt = normalHash(h);
   if (salt === null) return refusal("x402/option-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, FILTER[EVM_ID]);
-  if (ok !== true) return ok;
-  if (c.accepted.amount === "0") return refusal("x402/option-malformed");
-  const { accepted, required } = c;
   if (!isAddress(c.from) || !isAddress(c.payerAuthorizer) || !isHash32(c.authSalt)) {
     return refusal("x402/option-malformed");
   }
   if (typeof c.deposit !== "bigint" || c.deposit <= 0n || c.deposit >= U128_LIMIT) return refusal("x402/option-malformed");
   if (!Number.isSafeInteger(c.now) || c.now < 0) return refusal("x402/option-malformed");
+  const ok = chosen(c.required, c.accepted, FILTER[EVM_ID]);
+  if (ok !== true) return ok;
+  if (c.accepted.amount === "0") return refusal("x402/option-malformed");
+  const { accepted, required } = c;
   const extra = accepted.extra!;
   const chainId = chainIdOf(accepted.network)!;
   const config: ChannelConfig = {
@@ -1110,21 +1114,32 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
  * The opening: the `open` transaction, then the first voucher, each for the payer or its authorizer to sign. The
  * transaction ends with two v3 Memo instructions: `extra.memo`, then x402's binding memo for `extra.receiverAuthorizer`.
  * A `payerAuthorizer` that is not a point on the Ed25519 curve, which the program's `open` refuses as the authorized
- * signer, is `svm/input-malformed`.
+ * signer, is `svm/input-malformed`. H is checked first, then the form of the choice's payer, token program, blockhash
+ * and compute budget (`isPayerInput`), deposit, `payerAuthorizer`, salt and `openSlot`, then its document and option,
+ * then the option's memo against H and its token program against the choice's.
  */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
+  if (
+    !isPayerInput(c) ||
+    typeof c.deposit !== "bigint" ||
+    c.deposit <= 0n ||
+    c.deposit >= U64_LIMIT ||
+    !isCurveKey(c.payerAuthorizer) ||
+    !isU64(c.salt) ||
+    !isU64(c.openSlot) ||
+    c.openSlot > BigInt(Number.MAX_SAFE_INTEGER)
+  ) {
+    return refusal("svm/input-malformed");
+  }
   const ok = chosen(c.required, c.accepted, FILTER[SVM_ID]);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   const extra = accepted.extra!;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
-  if (c.tokenProgram !== extra["tokenProgram"] || typeof c.deposit !== "bigint" || c.deposit <= 0n || c.deposit >= U64_LIMIT) {
-    return refusal("svm/input-malformed");
-  }
-  if (!isCurveKey(c.payerAuthorizer)) return refusal("svm/input-malformed");
+  if (c.tokenProgram !== extra["tokenProgram"]) return refusal("svm/input-malformed");
   const feePayer = extra["feePayer"] as string;
   const channel = channelPda({
     payer: c.payer,
@@ -1135,7 +1150,6 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
     openSlot: c.openSlot,
   });
   if (isRefusal(channel)) return channel;
-  if (c.openSlot > BigInt(Number.MAX_SAFE_INTEGER)) return refusal("svm/input-malformed");
   const receiverAuthorizer = extra["receiverAuthorizer"] as string;
   const message = await channelMessage(
     {

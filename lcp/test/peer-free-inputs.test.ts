@@ -3,11 +3,12 @@
 // values. Each rail's peer-missing test gives the same inputs the same codes without the peer.
 import { describe, expect, it } from "vitest";
 import { avmCarrier } from "../src/avm.js";
-import { chargeStellar, sessionXrpl } from "../src/mpp.js";
+import { chargeStellar, issuedDigest, sessionXrpl, type MppChallenge } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
 import { decodeStellarTx, transferEventOf, transferEventTopics } from "../src/stellar.js";
 import { decodeSuiTx, exactSui } from "../src/sui.js";
 import { exactTvm, tvmCarrier } from "../src/tvm.js";
+import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import {
   avmCarrierRows,
@@ -15,8 +16,11 @@ import {
   nearCarrierInputs,
   nearChoice,
   stellarChargeChoices,
+  stellarDigestRows,
   stellarEnvelopeInputs,
   stellarEventInputs,
+  stellarOccupied,
+  stellarUnplacedRows,
   suiDecodeInputs,
   suiRecoverDecodes,
   suiRecoverReads,
@@ -55,10 +59,31 @@ describe("recover with each rail's optional peer", () => {
 });
 
 describe("mpp/charge/stellar's build with @stellar/stellar-sdk", () => {
-  it("each choice and H it refuses before it reads the recipient", async () => {
-    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 9 })) {
+  it("each choice and H it refuses before it reads the transaction", async () => {
+    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 11 })) {
       expect([row.case, await chargeStellar.build(row.choice as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
+  });
+});
+
+describe("the Stellar pairings' reads of a muxed address with @stellar/stellar-sdk", () => {
+  it("unplaced, x402 and MPP", () => {
+    const unplaced = { "x402/exact/stellar": exactStellar.unplaced, "mpp/charge/stellar": chargeStellar.unplaced } as const;
+    for (const row of rowsOf(stellarUnplacedRows(), "peer-free-inputs.ts", { exact: 7 })) {
+      expect([row.case, unplaced[row.pairing](row.option as never)]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  it("issuedDigest of the vectors' challenges", async () => {
+    for (const row of rowsOf(stellarDigestRows(), "peer-free-inputs.ts", { exact: 3 })) {
+      expect([row.case, await issuedDigest(row.challenge as MppChallenge)]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  it("mpp/charge/stellar's advertise of a challenge whose recipient is already muxed", () => {
+    const { challenge, h, link, expect: code } = stellarOccupied();
+    const c = challenge as MppChallenge;
+    expect(chargeStellar.advertise([c], h, link, c)).toEqual(refused(code));
   });
 });
 

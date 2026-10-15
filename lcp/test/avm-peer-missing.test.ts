@@ -4,13 +4,14 @@
 // malformed-input code. avmCarrier needs no algosdk, and gives every input the answer it gives with it. read,
 // advertise, build, bound and reference need algosdk only for an Algorand option: the option filter refuses each one
 // whose addresses it would check `avm/peer-missing`, and a document, offer, choice or payment with no such option gets
-// the answer it gets with algosdk, as does a malformed H, which build checks first. The documents, options and payments are
-// the vector file's own, which the pairing reads, builds and binds with algosdk (avm.test.ts).
+// the answer it gets with algosdk, as does a malformed H, which build checks first, and a malformed payer or suggested
+// parameter, which it checks next. The documents, options and payments are the vector file's own, which the pairing
+// reads, builds and binds with algosdk (avm.test.ts).
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { buildChoices } from "./build-choices.js";
-import { avmCarrierRows, BAD_H, hFirstChoices } from "./peer-free-inputs.js";
+import { avmCarrierRows, BAD_H, hFirstChoices, memberFirstChoices, membersOf } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8"));
@@ -82,8 +83,16 @@ describe("without algosdk", () => {
     const choice = { required, accepted: O, payer: V.fixed.payer, params: PARAMS };
     expect(await avm.exactAvm.build(choice, V.fixed.H)).toEqual(REFUSED);
     expect(await avm.exactAvm.build(null as never, V.fixed.H)).toEqual({ refused: true, code: "avm/option-malformed" });
-    for (const row of rowsOf(buildChoices(O, V.fixed.resource), "build-choices.ts", { exact: 2 })) {
+    for (const row of rowsOf(buildChoices(O, V.fixed.resource, membersOf("x402/exact/algorand")), "build-choices.ts", { exact: 2 })) {
       expect(await avm.exactAvm.build(row.choice as never, V.fixed.H)).toEqual({ refused: true, code: row.expect });
+    }
+  });
+
+  // The payer's length and the suggested parameters' form are checked after H and before the document, which needs no
+  // algosdk, so a malformed one gets the code it gets with algosdk whatever the option, the pairing's own included.
+  it("build answers a malformed payer or suggested parameter as it does with algosdk, whatever the option", async () => {
+    for (const row of rowsOf(memberFirstChoices(avm.exactAvm.id, O), "peer-free-inputs.ts", { exact: 15 })) {
+      expect([row.case, await avm.exactAvm.build(row.choice as never, V.fixed.H)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });
 

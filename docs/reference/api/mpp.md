@@ -994,7 +994,8 @@ keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainI
 
 the core's `digestJson` over the bound members, with `request` decoded and its carrier removed (`asIssued`), and
 `opaque` decoded without the LCP members (omitted when that leaves it empty). A value that does not decode is its
-string.
+string. A Stellar charge's muxed `recipient` is read without @stellar/stellar-sdk, so a challenge has one digest
+with the SDK and without it.
 
 #### Parameters
 

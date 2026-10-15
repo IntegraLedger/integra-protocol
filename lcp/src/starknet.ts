@@ -517,7 +517,10 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(check)(doc);
 }
 
-/** x402's typed data for the chosen option, with `Nonce` the hash's low 250 bits. */
+/**
+ * x402's typed data for the chosen option, with `Nonce` the hash's low 250 bits. H is checked first, then the form of
+ * the choice's `from` and `now`, then its document and option, then `from` against the option's fee payer.
+ */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; from: Felt; now: number },
   h: AtrHash,
@@ -526,13 +529,13 @@ async function build(
   if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("starknet/option-malformed");
   const { required, accepted, from, now } = c;
-  const ok = chosen(required, accepted, check);
-  if (ok !== true) return ok;
   const account = feltValue(from);
   if (account === undefined) return refusal("starknet/felt-malformed");
+  if (!Number.isSafeInteger(now) || now < 0) return refusal("starknet/option-malformed");
+  const ok = chosen(required, accepted, check);
+  if (ok !== true) return ok;
   const feePayer = accepted.extra!["feePayer"] as Felt;
   if (account === feltValue(feePayer)) return refusal("starknet/caller-forbidden");
-  if (!Number.isSafeInteger(now) || now < 0) return refusal("starknet/option-malformed");
   const nonce = snNonce(nh);
   if (isRefusal(nonce)) return nonce;
   const typedData = outsideExecution({
