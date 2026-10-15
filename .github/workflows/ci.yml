@@ -173,6 +173,21 @@ jobs:
               if (l.includes(PATH_FILE) && !paths.has(l)) bad.push(`${at(i)}: a PATH entry other than the fetched Node.js and pnpm`);
               if (l.includes(ENV_FILE)) bad.push(`${at(i)}: a step sets the environment of the steps after it`);
             });
+            // These patterns read YAML's plain block style, so every workflow is written in it: outside a block scalar
+            // (`run: |`), each line is blank, a comment, or one plain key and its value, and no value is a flow mapping
+            // other than {}, a flow sequence of anything but plain words, an anchor, an alias or a tag.
+            let scalar = -1;
+            lines.forEach((l, i) => {
+              const indent = l.length - l.trimStart().length;
+              if (scalar >= 0 && (l.trim() === "" || indent > scalar)) return;
+              scalar = -1;
+              if (blank(l)) return;
+              const key = /^( *)(- )?[A-Za-z0-9_-]+:(?: +(.*))?$/.exec(l);
+              const value = (key?.[3] ?? "").replace(/(^| +)#.*$/, "");
+              if (key === null || /^[&*!]/.test(value) || (value.startsWith("{") && value !== "{}") || (value.startsWith("[") && !/^\[[^\][{}:#"']*\]$/.test(value))) {
+                bad.push(`${at(i)}: not one plain key and value: ${l.trim()}`);
+              } else if (/^[|>][-+1-9]*$/.test(value)) scalar = key[1].length + (key[2] ? 2 : 0);
+            });
             const start = lines.indexOf("jobs:");
             if (start < 0 || lines.lastIndexOf("jobs:") !== start) {
               bad.push(`${f}: no single line "jobs:"`);

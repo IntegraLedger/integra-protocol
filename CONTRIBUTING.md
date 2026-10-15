@@ -88,7 +88,8 @@ dispatched by hand, and from the publish workflow before it packs. Its other ste
 - **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in
   one step, byte for byte the same in every job, before its first other step that runs. No workflow uses
   `setup-node`, `continue-on-error`, `if:`, `container:`, `shell:` or a `PATH:` key, or writes `$GITHUB_ENV`, and only
-  the Node.js and pnpm fetches write `$GITHUB_PATH`.
+  the Node.js and pnpm fetches write `$GITHUB_PATH`. Every workflow is written in YAML's plain block style: outside a
+  `run: |` block, each line is one plain key and its value, with no flow mapping, anchor, alias or tag.
 - **The install policy:** both `pnpm-workspace.yaml` files set `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade`
   and `strictDepBuilds: true`, and no other setting but `packages` (`"*"` and `"!website"`, so `pnpm -r` reaches every
   package), `allowBuilds` (denials only), `minimumReleaseAgeExclude` (`@integraledger/*` only) and `overrides`
