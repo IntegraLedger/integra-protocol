@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except agreedRefusals' row 15, V2's with a bit set past the last byte in its last base64 character before the padding, and row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; and row 28, V1's with two parts changed, the receiver's first bytes and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -690,13 +690,13 @@
     "expect": "near/args-malformed"
    },
    {
-    "case": "build with a publicKey that is base58 alone, with no key type",
-    "publicKey": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "case": "build with a publicKey that is the base58 of 64 bytes alone, with no key type (the secp256k1 vector's key): a key with no type is Ed25519 (nearcore's PublicKey::from_str), and an Ed25519 key is 32 bytes",
+    "publicKey": "Yupq21BV61j6SMaWtDW5wtnq48cnFVcJQk4h3Nh4qNH2GBzqasSkjTTTMuRsjMKVKpYd6ECNHYx7DLoGtK8tgic",
     "expect": "x402/option-malformed"
    },
    {
-    "case": "build with a publicKey whose key type is written in capitals",
-    "publicKey": "ED25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "case": "build with a publicKey whose key type is secp256k1 written with U+212A KELVIN SIGN for its k, and the secp256k1 vector's key: nearcore lowercases a key type in ASCII letters only (to_ascii_lowercase), so this names no key type",
+    "publicKey": "secp256\u212a1:Yupq21BV61j6SMaWtDW5wtnq48cnFVcJQk4h3Nh4qNH2GBzqasSkjTTTMuRsjMKVKpYd6ECNHYx7DLoGtK8tgic",
     "expect": "x402/option-malformed"
    },
    {
@@ -715,9 +715,40 @@
     "expect": "near/not-ft-transfer"
    },
    {
-    "case": "a signedDelegateAction whose one action has variant index 11, past the eleven action variants near-api-js 7.3.1 reads",
+    "case": "a signedDelegateAction whose one action has variant index 11, nearcore's DeterministicStateInit (core/primitives/src/action/mod.rs): every variant index other than FunctionCall's is near/not-ft-transfer",
     "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAsLAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "expect": "near/not-ft-transfer"
+   },
+   {
+    "case": "a signedDelegateAction whose sender begins C3 41, which is not UTF-8, and whose delegate action counts two actions: the sender is read before the count, as nearcore reads an account id",
+    "signedDelegateAction": "QAAAAMNBODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/sda-malformed"
+   },
+   {
+    "case": "a signedDelegateAction whose sender begins C0 80, an overlong encoding of U+0000 and not UTF-8, and whose delegate action counts two actions: the sender is read before the count",
+    "signedDelegateAction": "QAAAAMCAODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/sda-malformed"
+   },
+   {
+    "case": "a signedDelegateAction whose sender begins ED A0 80, the surrogate U+D800 encoded and not UTF-8, and whose delegate action counts two actions: the sender is read before the count",
+    "signedDelegateAction": "QAAAAO2ggDhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/sda-malformed"
+   },
+   {
+    "case": "a signedDelegateAction whose Ed25519 signature is 63 zero bytes and 0x20: nearcore reads an Ed25519 signature only when its last byte is below 0x20 (core/crypto/src/signature.rs)",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACA=",
+    "expect": "near/sda-malformed"
+   },
+   {
+    "case": "complete with a 64-byte Ed25519 signature of 63 zero bytes and 0x20: nearcore reads an Ed25519 signature only when its last byte is below 0x20",
+    "signatureBytes": 64,
+    "signatureLastByte": 32,
+    "expect": "x402/signature-malformed"
+   },
+   {
+    "case": "a signedDelegateAction whose receiver begins C3 41, which is not UTF-8, and whose delegate action counts two actions: the receiver is read before the count, as nearcore reads an account id",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAw0FkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/sda-malformed"
    }
   ]
  },
@@ -931,5 +962,30 @@
   "expectRequestHash": "a0beffd6212763e2cf7887aceaeabd10a56164ebf02f45a53cb66a4f05f5f368",
   "signature": "92e4bb0f80316fcdc7ad34a7e40436ba58016bbd7064f566f6d8f39ef817bf2d57d8c3a9ed859d0cad7123938448c16dfcc904faa705fe6b18ed39d3d4ef84f300",
   "expectSignedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAARuExVZ7EmRAmV0+1aq6BWXXHhg0YEgZ/5wX9enV3QePcL6vj1iLVBUH/tamQsWrQt/fgSCn9jneUSLUemmo6NEBkuS7D4Axb83HrTSn5AQ2ulgBa71wZPVm9tjznvgXvy1X2MOp7YWdDK1xI5OESMFt/MkE+qcF/msY7TnT1O+E8wA="
+ },
+ "keyForms": {
+  "case": "build with the payer's key written in each form nearcore's PublicKey::from_str reads (core/crypto/src/signature.rs): a key type before the first colon, matched once its ASCII letters are lowercased, or no key type, which is Ed25519; then the base58 of exactly that type's key size. Each request hash is V1's for fixed.publicKey's key and the secp256k1 vector's for its key.",
+  "rows": [
+   {
+    "case": "fixed.publicKey's base58 alone, with no key type",
+    "publicKey": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "expectRequestHash": "f251e7e7e1bb09c9de87857e37ddaf98ebd7b2af2caf32cd2220aa4b21c27dea"
+   },
+   {
+    "case": "fixed.publicKey's key with its key type written ED25519",
+    "publicKey": "ED25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "expectRequestHash": "f251e7e7e1bb09c9de87857e37ddaf98ebd7b2af2caf32cd2220aa4b21c27dea"
+   },
+   {
+    "case": "fixed.publicKey's key with its key type written Ed25519",
+    "publicKey": "Ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "expectRequestHash": "f251e7e7e1bb09c9de87857e37ddaf98ebd7b2af2caf32cd2220aa4b21c27dea"
+   },
+   {
+    "case": "the secp256k1 vector's key with its key type written SECP256K1",
+    "publicKey": "SECP256K1:Yupq21BV61j6SMaWtDW5wtnq48cnFVcJQk4h3Nh4qNH2GBzqasSkjTTTMuRsjMKVKpYd6ECNHYx7DLoGtK8tgic",
+    "expectRequestHash": "a0beffd6212763e2cf7887aceaeabd10a56164ebf02f45a53cb66a4f05f5f368"
+   }
+  ]
  }
 }

@@ -38,7 +38,7 @@ export interface SignedFunctionCallDelegate {
   signature: { keyType: 0 | 1; data: Uint8Array };
 }
 
-/** Why bytes are not a `SignedFunctionCallDelegate`, in the order they are read. */
+/** Why bytes are not a `SignedFunctionCallDelegate`. */
 export type DelegateRefused = "malformed" | "action-count" | "not-function-call";
 
 const KEY_SIZES = [32, 64] as const;
@@ -132,17 +132,29 @@ export function encodeSignedDelegate(borsh: typeof Borsh, s: SignedFunctionCallD
 }
 
 /**
- * Reads a signed delegate action in the order of its bytes. The sender and receiver are read first, then the count of
- * actions: a count other than one is "action-count", and a first action whose variant index is not `FunctionCall`'s is
- * "not-function-call", the bytes after it unread. Otherwise the bytes must be exactly the borsh of the one-action
- * delegate and its signature, each key and signature Ed25519 or secp256k1, or they are "malformed". The borsh package
- * reads a string's bytes without checking them, so bytes that are not UTF-8 read as text whose encoding differs from
- * them, and the comparison with the re-encoding refuses them.
+ * True when nearcore reads these bytes as an Ed25519 signature: 64 bytes whose last byte is below 0x20, the top three
+ * bits clear (core/crypto/src/signature.rs, `Signature`'s borsh reader). The last 32 bytes are S, little-endian, and a
+ * valid signature's S is below the group order, under 2^253, so every valid signature is read.
+ */
+export function isNearEd25519Signature(data: Uint8Array): boolean {
+  return data.length === SIGNATURE_SIZES[0] && data[SIGNATURE_SIZES[0] - 1]! < 0x20;
+}
+
+/**
+ * Reads a signed delegate action in the order nearcore reads its bytes. The sender, the receiver and the count of
+ * actions come first, and must be exactly their own borsh, or they are "malformed": the borsh package reads a string's
+ * bytes without checking them, so a sender or receiver that is not UTF-8 reads as text whose encoding differs from its
+ * bytes, where nearcore refuses it as an account id. Then a count other than one is "action-count", and a first action
+ * whose variant index is not `FunctionCall`'s is "not-function-call", the bytes after it unread. Otherwise the bytes
+ * must be exactly the borsh of the one-action delegate and its signature, each key and signature Ed25519 or secp256k1,
+ * and an Ed25519 signature one nearcore reads, or they are "malformed".
  */
 export function decodeSignedDelegate(borsh: typeof Borsh, bytes: Uint8Array): SignedFunctionCallDelegate | DelegateRefused {
   let read: { delegateAction: DelegateValue; signature: KeyValue };
   try {
-    const head = borsh.deserialize(HEAD, bytes) as { actionCount: number };
+    const head = borsh.deserialize(HEAD, bytes) as { senderId: string; receiverId: string; actionCount: number };
+    const written = borsh.serialize(HEAD, head);
+    if (!sameBytes(written, bytes.subarray(0, written.length))) return "malformed";
     if (head.actionCount !== 1) return "action-count";
     const first = borsh.deserialize(HEAD_AND_VARIANT, bytes) as { variant: number };
     if (first.variant !== FUNCTION_CALL) return "not-function-call";
@@ -151,6 +163,8 @@ export function decodeSignedDelegate(borsh: typeof Borsh, bytes: Uint8Array): Si
   } catch {
     return "malformed";
   }
+  const signature = keyOf(read.signature);
+  if (signature.keyType === 0 && !isNearEd25519Signature(signature.data)) return "malformed";
   const da = read.delegateAction;
   const call = da.functionCall;
   return {
@@ -162,25 +176,34 @@ export function decodeSignedDelegate(borsh: typeof Borsh, bytes: Uint8Array): Si
       maxBlockHeight: da.maxBlockHeight,
       publicKey: keyOf(da.publicKey),
     },
-    signature: keyOf(read.signature),
+    signature,
   };
 }
 
-/** A public key written `ed25519:` and the base58 of its 32 bytes, or `secp256k1:` and the base58 of its 64; else null. */
+/**
+ * A public key as nearcore's `PublicKey::from_str` reads it (core/crypto/src/signature.rs): the key type before the
+ * first `:`, `ed25519` or `secp256k1`, matched once its ASCII letters are lowercased (`to_ascii_lowercase`, so a letter
+ * outside ASCII matches none), or no `:`, which is Ed25519; then the base58 of exactly that type's key size, 32 bytes
+ * or 64. Null for anything else, an ML-DSA-65 key included, since the pairing takes Ed25519 and secp256k1 keys alone.
+ * Base58 of 64 bytes is at most 88 characters, and a longer text always decodes to more.
+ */
 export function nearKeyOf(text: unknown): NearKey | null {
-  const m = typeof text === "string" ? /^(ed25519|secp256k1):([1-9A-HJ-NP-Za-km-z]{1,88})$/.exec(text) : null;
-  if (m === null) return null;
-  const keyType = m[1] === "ed25519" ? 0 : 1;
+  if (typeof text !== "string") return null;
+  const at = text.indexOf(":");
+  const type = at < 0 ? "ed25519" : text.slice(0, at).replace(/[A-Z]/g, (c) => c.toLowerCase());
+  const keyType = type === "ed25519" ? 0 : type === "secp256k1" ? 1 : null;
+  const encoded = at < 0 ? text : text.slice(at + 1);
+  if (keyType === null || !/^[1-9A-HJ-NP-Za-km-z]{1,88}$/.test(encoded)) return null;
   let data: Uint8Array;
   try {
-    data = base58.decode(m[2]!);
+    data = base58.decode(encoded);
   } catch {
     return null;
   }
   return data.length === KEY_SIZES[keyType] ? { keyType, data } : null;
 }
 
-/** A public key as NEAR writes it: its type's name, `:`, and the base58 of its bytes. */
+/** A public key as nearcore writes it: its type's name in lowercase, `:`, and the base58 of its bytes. */
 export function nearKeyText(k: NearKey): string {
   return `${k.keyType === 0 ? "ed25519" : "secp256k1"}:${base58.encode(k.data)}`;
 }

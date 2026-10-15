@@ -5,8 +5,12 @@
 // sweeps of 2,048 cases each: the delegate itself (accounts, method names, arguments, gas, deposit, nonces, heights,
 // keys and signatures of both types), and the pairing's build and complete (accounts, amounts, nonces, heights,
 // timeouts, and keys of both types). The sweeps draw their bytes from SHA-256 of a label and a counter.
+// Where near-api-js reads more than nearcore does, the pairing reads as nearcore does: an Ed25519 signature whose last
+// byte is 0x20 or more is refused (core/crypto/src/signature.rs), and public keys are read as nearcore's
+// PublicKey::from_str reads them, which a last test holds to a transcription of that function.
 import { readFileSync } from "node:fs";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { base58 } from "@scure/base";
 import * as borsh from "borsh";
 import {
   actions,
@@ -37,6 +41,9 @@ const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-near.json", imp
 const SWEEP = 2048;
 /** Each sweep's bound: its time grows with the machine's load. */
 const SWEEP_MS = 300_000;
+/** The keys the spelling test draws, and the spellings it writes of each. */
+const KEYS = 20_000;
+const SPELLINGS = 10;
 
 /** A byte source: SHA-256 of `${label}:${counter}`, one digest after another. */
 function bytesFrom(label: string): (n: number) => Uint8Array {
@@ -58,6 +65,13 @@ function bytesFrom(label: string): (n: number) => Uint8Array {
 }
 
 const unsigned = (b: Uint8Array) => b.reduceRight((v, x) => (v << 8n) | BigInt(x), 0n);
+
+/**
+ * 64 bytes as an Ed25519 signature nearcore reads: the top three bits of the last byte cleared. nearcore's Signature
+ * reader refuses one with any of them set (core/crypto/src/signature.rs: `array[63] & 0b1110_0000 != 0`); a valid
+ * signature's S is below the group order, under 2^253, so it never has one.
+ */
+const readableEd25519 = (b: Uint8Array) => Uint8Array.from(b, (x, i) => (i === 63 ? x & 0x1f : x));
 
 /** Random draws over a byte source. */
 function draws(label: string) {
@@ -167,9 +181,10 @@ function signedDelegatesIn(v: unknown, path: string, out: [string, string][]): [
 
 describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
   it("every signed delegate action in x402-exact-near.json: each reader reads what the other reads, and both write its bytes", () => {
-    // V2's and the secp256k1 vector's, V2's four refusals, eleven agreedRefusals rows and one buyer row.
-    const all = rowsOf(signedDelegatesIn(V, "", []), "x402-exact-near.json, every signedDelegateAction", { exact: 17 });
+    // V2's and the secp256k1 vector's, V2's four refusals, fifteen agreedRefusals rows and one buyer row.
+    const all = rowsOf(signedDelegatesIn(V, "", []), "x402-exact-near.json, every signedDelegateAction", { exact: 22 });
     const read: string[] = [];
+    const nearcoreRefuses: string[] = [];
     for (const [where, text] of all) {
       const bytes = fromBase64(text);
       if (bytes === null || text === "") continue;
@@ -177,6 +192,12 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       const theirs = nearApiRead(bytes);
       if (theirs === null) {
         expect([where, typeof ours]).toEqual([where, "string"]);
+        continue;
+      }
+      // near-api-js reads an Ed25519 signature whatever its last byte; nearcore does not, nor does the pairing.
+      if (theirs.signature.keyType === 0 && theirs.signature.data[63]! >= 0x20) {
+        expect([where, ours]).toEqual([where, "malformed"]);
+        nearcoreRefuses.push(where);
         continue;
       }
       expect([where, ours]).toEqual([where, theirs]);
@@ -196,6 +217,7 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       "/buyer/rows/1/input/presented/payload/signedDelegateAction",
       "/secp256k1/expectSignedDelegateAction",
     ]);
+    expect(nearcoreRefuses).toEqual(["/agreedRefusals/rows/26/signedDelegateAction"]);
   });
 
   it(`a sweep of ${SWEEP} delegates: the same bytes from both writers, and each reads the other's`, { timeout: SWEEP_MS }, () => {
@@ -204,7 +226,7 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
     const names = ["payer-é.near", "\u{1F600}.near"];
     for (let i = 0; i < SWEEP; i++) {
       const key = r.key();
-      const sig = r.below(2) === 0 ? { keyType: 0 as const, data: r.take(64) } : { keyType: 1 as const, data: r.take(65) };
+      const sig = r.below(2) === 0 ? { keyType: 0 as const, data: readableEd25519(r.take(64)) } : { keyType: 1 as const, data: r.take(65) };
       const d: FunctionCallDelegate = {
         senderId: i % 64 === 0 ? names[(i / 64) % 2]! : r.account(),
         receiverId: r.account(),
@@ -226,6 +248,13 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       expect([i, ours]).toEqual([i, theirs]);
       expect([i, decodeSignedDelegate(borsh, theirs)]).toEqual([i, s]);
       expect([i, nearApiRead(ours)]).toEqual([i, s]);
+      if (sig.keyType === 0) {
+        const high = Uint8Array.from(sig.data);
+        high[63] = high[63]! | (0x20 << r.below(3));
+        const unread = nearApiSigned({ delegateAction: d, signature: { keyType: 0, data: high } });
+        expect([i, decodeSignedDelegate(borsh, unread)]).toEqual([i, "malformed"]);
+        expect([i, nearApiRead(unread)?.signature.data]).toEqual([i, high]);
+      }
       const text = nearKeyText(key);
       expect([i, text]).toEqual([i, new PublicKey(key).toString()]);
       expect([i, nearKeyOf(text)]).toEqual([i, key]);
@@ -263,7 +292,7 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
         publicKey: PublicKey.fromString(publicKey),
       });
       expect([i, u.request.hash]).toEqual([i, sha256(encodeDelegateAction(delegate))]);
-      const signature = r.take(key.keyType === 0 ? 64 : 65);
+      const signature = key.keyType === 0 ? readableEd25519(r.take(64)) : r.take(65);
       const p = u.complete({ keyType: key.keyType, bytes: signature });
       if ("refused" in p) throw new Error(`${i}: ${p.code}`);
       const theirs = encodeSignedDelegate({ delegateAction: delegate, signature: new Signature({ keyType: key.keyType, data: signature }) } as never);
@@ -275,5 +304,90 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
         { h: H, payer, publicKey, nonce: accessKeyNonce + 1n, maxBlockHeight: finalHeight + BigInt(option.maxTimeoutSeconds), asset: option.asset },
       ]);
     }
+  });
+});
+
+/** Base58 in the Bitcoin alphabet as the bs58 crate decodes it: each leading 1 a zero byte, then one big-endian number. */
+function bs58Decode(text: string): Uint8Array | null {
+  const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  let n = 0n;
+  let zeros = 0;
+  let leading = true;
+  for (const c of text) {
+    const digit = alphabet.indexOf(c);
+    if (digit < 0) return null;
+    if (leading && digit === 0) zeros++;
+    else leading = false;
+    n = n * 58n + BigInt(digit);
+  }
+  const body: number[] = [];
+  for (; n > 0n; n >>= 8n) body.unshift(Number(n & 0xffn));
+  return Uint8Array.from([...new Array<number>(zeros).fill(0), ...body]);
+}
+
+/**
+ * nearcore's PublicKey::from_str (core/crypto/src/signature.rs at c9b26926fb52477a159452f53acfc864d14cd47c), written
+ * out: split_key_type_data splits at the first ':' and reads a key with none as ED25519; KeyType::from_str lowercases
+ * the type with to_ascii_lowercase, which changes A to Z alone, and knows ed25519, secp256k1 and ml-dsa-65; decode_bs58
+ * requires exactly the type's size, 32, 64 or 1952 bytes. Null where it answers an error.
+ */
+function nearcoreFromStr(value: string): { keyType: number; data: Uint8Array } | null {
+  const at = value.indexOf(":");
+  const type =
+    at < 0 ? "ed25519" : Array.from(value.slice(0, at), (c) => (c >= "A" && c <= "Z" ? String.fromCharCode(c.charCodeAt(0) + 32) : c)).join("");
+  const keyType = ["ed25519", "secp256k1", "ml-dsa-65"].indexOf(type);
+  if (keyType < 0) return null;
+  const data = bs58Decode(at < 0 ? value : value.slice(at + 1));
+  return data !== null && data.length === [32, 64, 1952][keyType] ? { keyType, data } : null;
+}
+
+describe("public keys as nearcore reads them", () => {
+  // Each key is 32 or 64 bytes with up to three leading zero bytes, under either type's name, so the type and the size
+  // disagree in half of them. Its spellings: base58 alone; the type in random case; the type as written; ml-dsa-65 in
+  // random case; x and the base58; a ':' after it or before it; a 0, outside base58, after it; and the type written
+  // with U+017F for its s or U+212A for its k, which Unicode case mapping folds and to_ascii_lowercase leaves. The
+  // pairing takes Ed25519 and secp256k1 keys alone (x402's NEAR scheme), so where nearcore reads an ML-DSA-65 key,
+  // nearKeyOf answers null.
+  it(`nearKeyOf answers as PublicKey::from_str over ${KEYS * SPELLINGS} spellings`, { timeout: SWEEP_MS }, () => {
+    const r = draws("near-key-spellings");
+    const anyCase = (s: string) => Array.from(s, (c) => (r.below(2) === 0 ? c.toUpperCase() : c)).join("");
+    const differ: string[] = [];
+    const read = new Array<number>(SPELLINGS).fill(0);
+    let n = 0;
+    for (let i = 0; i < KEYS; i++) {
+      const name = ["ed25519", "secp256k1"][r.below(2)]!;
+      const size = [32, 64][r.below(2)]!;
+      const zeros = r.below(4);
+      const bytes = new Uint8Array(size);
+      bytes.set(r.take(size - zeros), zeros);
+      const b58 = base58.encode(bytes);
+      const spellings = [
+        b58,
+        `${anyCase(name)}:${b58}`,
+        `${name}:${b58}`,
+        `${anyCase("ml-dsa-65")}:${b58}`,
+        `x${b58}`,
+        `${b58}:`,
+        `:${b58}`,
+        `ed25519:${b58}0`,
+        `\u017fecp256k1:${b58}`,
+        `secp256\u212a1:${b58}`,
+      ];
+      for (const [j, text] of rowsOf(spellings, "the spellings of one key", { exact: SPELLINGS }).entries()) {
+        n++;
+        const theirs = nearcoreFromStr(text);
+        const want = theirs === null || theirs.keyType === 2 ? null : theirs;
+        const ours = nearKeyOf(text);
+        if (want !== null) read[j] = read[j]! + 1;
+        const same =
+          ours === null ? want === null : want !== null && ours.keyType === want.keyType && Buffer.compare(Buffer.from(ours.data), Buffer.from(want.data)) === 0;
+        if (!same && differ.length < 10) differ.push(text);
+      }
+    }
+    expect(n).toBe(KEYS * SPELLINGS);
+    expect(differ).toEqual([]);
+    // Base58 alone and each written type read keys of their size, and the forms nearcore refuses read none.
+    expect(read.slice(0, 3).every((k) => k > KEYS / 8)).toBe(true);
+    expect([read[3], read[5], read[6], read[7], read[8], read[9]]).toEqual([0, 0, 0, 0, 0, 0]);
   });
 });

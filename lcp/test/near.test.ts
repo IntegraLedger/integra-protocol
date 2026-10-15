@@ -126,6 +126,26 @@ describe("x402-exact-near.json", () => {
     expect(await exactNear.bound(p)).toBe(H);
   });
 
+  // nearcore's PublicKey::from_str (core/crypto/src/signature.rs) splits at the first ':', reads a key with no type as
+  // Ed25519, lowercases the type in ASCII letters only, and decodes base58 of exactly the type's key size. Each spelling
+  // in keyForms builds the request hash of its key, V1's or the secp256k1 vector's, and the payment it completes
+  // carries the key as NEAR writes it.
+  it("keyForms: build reads each spelling of the payer's key that nearcore reads", async () => {
+    for (const row of rowsOf(V.keyForms.rows, "x402-exact-near.json keyForms.rows", { exact: 4 })) {
+      const u = await exactNear.build({ ...choice(), publicKey: row.publicKey }, H);
+      if ("refused" in u) throw new Error(`${row.case}: ${u.code}`);
+      expect([row.case, Buffer.from(u.request.hash).toString("hex")]).toEqual([row.case, row.expectRequestHash]);
+      const secp = row.expectRequestHash === V.secp256k1.expectRequestHash;
+      const p = secp
+        ? u.complete({ keyType: 1, bytes: Uint8Array.from(Buffer.from(V.secp256k1.signature, "hex")) })
+        : u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) });
+      if ("refused" in p) throw new Error(`${row.case}: ${p.code}`);
+      const ref = await exactNear.reference(p);
+      if ("refused" in ref) throw new Error(`${row.case}: ${ref.code}`);
+      expect([row.case, ref.publicKey]).toEqual([row.case, secp ? V.secp256k1.publicKey : V.fixed.publicKey]);
+    }
+  });
+
   it("V2: complete with keyType written 0.0 gives V2's payment", async () => {
     expect(V.V2.keyTypeWritten.keyType).toBe(0);
     const u = await exactNear.build(choice(), H);
@@ -185,6 +205,62 @@ describe("x402-exact-near.json", () => {
     const c = nearCarrier(named.toString("base64"));
     if ("refused" in c) throw new Error(c.code);
     expect([c.payer, c.h]).toEqual([payer, H]);
+  });
+
+  // nearcore reads a delegate action's sender and receiver as AccountIds, each a borsh String that must be UTF-8
+  // (near-account-id src/borsh.rs), before the Vec of actions and its length. A sender or receiver whose bytes are not
+  // UTF-8 is refused there, whatever the count of actions says: C3 41 (a lead byte without its continuation), C0 80 (an
+  // overlong NUL), ED A0 80 (the surrogate U+D800) and FF. A sender in UTF-8 beyond ASCII reads, and the count follows.
+  it("V2: a sender or receiver that is not UTF-8 is near/sda-malformed before the count of actions", async () => {
+    const bytes = v2Bytes();
+    const senderEnd = 4 + bytes.readUInt32LE(0);
+    const receiverAt = senderEnd + 4;
+    const countAt = receiverAt + bytes.readUInt32LE(senderEnd);
+    const leads = [[0xc3, 0x41], [0xc0, 0x80], [0xed, 0xa0, 0x80], [0xff]];
+    const refused = { refused: true, code: "near/sda-malformed" };
+    for (const at of [4, receiverAt]) {
+      for (const lead of leads) {
+        const changed = Buffer.from(bytes);
+        Buffer.from(lead).copy(changed, at);
+        changed.writeUInt32LE(2, countAt);
+        const sda = changed.toString("base64");
+        expect([at, lead, nearCarrier(sda)]).toEqual([at, lead, refused]);
+        expect([at, lead, await exactNear.bound(payment(sda))]).toEqual([at, lead, refused]);
+      }
+    }
+    const utf8Sender = Buffer.from(bytes);
+    Buffer.from([0xc3, 0xa9]).copy(utf8Sender, 4);
+    utf8Sender.writeUInt32LE(2, countAt);
+    expect(nearCarrier(utf8Sender.toString("base64"))).toEqual({ refused: true, code: "near/actions" });
+  });
+
+  // nearcore's Signature reader refuses an Ed25519 signature whose last byte has any of its top three bits set
+  // (core/crypto/src/signature.rs: `array[63] & 0b1110_0000 != 0`), so a relayer cannot submit one. The last 32 bytes
+  // are S, little-endian, and RFC 8032 §5.1.7 requires S below the group order L, which is below 2^253: every valid
+  // signature's last byte is below 0x20, as V2's is.
+  it("an Ed25519 signature whose last byte is 0x20 or more is near/sda-malformed when read, and x402/signature-malformed in complete", async () => {
+    const bytes = v2Bytes();
+    expect(bytes[bytes.length - 1]! < 0x20).toBe(true);
+    const u = await exactNear.build(choice(), H);
+    if ("refused" in u) throw new Error(u.code);
+    const signature = ed25519.sign(u.request.hash, seed);
+    for (const bit of [0x20, 0x40, 0x80]) {
+      const changed = Buffer.from(bytes);
+      changed[changed.length - 1] = changed[changed.length - 1]! | bit;
+      expect([bit, nearCarrier(changed.toString("base64"))]).toEqual([bit, { refused: true, code: "near/sda-malformed" }]);
+      expect([bit, await exactNear.bound(payment(changed.toString("base64")))]).toEqual([bit, { refused: true, code: "near/sda-malformed" }]);
+      const high = Uint8Array.from(signature);
+      high[63] = high[63]! | bit;
+      expect([bit, u.complete({ keyType: 0, bytes: high })]).toEqual([bit, { refused: true, code: "x402/signature-malformed" }]);
+    }
+    const edge = Buffer.from(bytes);
+    edge[edge.length - 1] = 0x1f;
+    const c = nearCarrier(edge.toString("base64"));
+    if ("refused" in c) throw new Error(c.code);
+    expect(c.h).toBe(H);
+    const atEdge = Uint8Array.from(signature);
+    atEdge[63] = 0x1f;
+    expect("refused" in u.complete({ keyType: 0, bytes: atEdge })).toBe(false);
   });
 
   // NEAR's key and signature enums give type 0 to Ed25519 and 1 to secp256k1, the two x402's NEAR scheme admits
@@ -309,7 +385,9 @@ describe("x402-exact-near.json", () => {
   });
 
   // A ref that cannot name the delegate is pending before any read. NEAR account ids are lowercase (nearcore's account id
-  // rules); a public key is written `ed25519:` and the base58 of its 32 bytes (near-api-js PublicKey.toString).
+  // rules); a public key is written `ed25519:` and the base58 of its 32 bytes (near-api-js PublicKey.toString), as
+  // nearCarrier and nearcore's RPC write it. build reads the other spellings keyForms lists, but status compares the
+  // ref's key as text with the delegate's, so a ref holds only the written form.
   it("V3: a ref whose nonce, asset, payer, public key or digest is malformed is pending unreadable, with nothing read", async () => {
     const settled = V.V3.status[0];
     const [, key] = REF.publicKey.split(":") as [string, string];
@@ -359,7 +437,7 @@ describe("x402-exact-near.json", () => {
   it("refusal codes left to the implementation", async () => {
     for (const row of rowsOf(V.agreedRefusals.rows, "x402-exact-near.json agreedRefusals.rows", {
       keep: ["the rows this test runs at advertise, build, complete, bound or recover", (r) => !r.expect.endsWith("/peer-missing")],
-      leave: ["the peer-missing row, which ton-near-peer-missing.test.ts runs with the NEAR SDK and borsh absent", (r) => r.expect.endsWith("/peer-missing")],
+      leave: ["the peer-missing row, which ton-near-peer-missing.test.ts runs with borsh absent", (r) => r.expect.endsWith("/peer-missing")],
     })) {
       const want = { refused: true, code: row.expect };
       if (row.option !== undefined) {
@@ -373,7 +451,9 @@ describe("x402-exact-near.json", () => {
       } else if (row.signatureBytes !== undefined) {
         const u = await exactNear.build(choice(), H);
         if ("refused" in u) throw new Error(u.code);
-        expect(u.complete({ keyType: 0, bytes: new Uint8Array(row.signatureBytes) })).toEqual(want);
+        const bytes = new Uint8Array(row.signatureBytes);
+        if (row.signatureLastByte !== undefined) bytes[bytes.length - 1] = row.signatureLastByte;
+        expect([row.case, u.complete({ keyType: 0, bytes })]).toEqual([row.case, want]);
       } else if (row.case.startsWith("recover when the reader fails")) {
         const r = readerFor({ outcome: "reader-error" });
         expect(await exactNear.recover({ network: REF.network, transaction: REF.transaction }, r)).toEqual(want);

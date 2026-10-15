@@ -11,6 +11,7 @@ import {
   decodeSignedDelegate,
   delegateMessage,
   encodeSignedDelegate,
+  isNearEd25519Signature,
   nearKeyOf,
   nearKeyText,
   type FunctionCallDelegate,
@@ -105,7 +106,11 @@ interface NearChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   payer: string;
-  /** `ed25519:…` or `secp256k1:…`. */
+  /**
+   * The access key, read as nearcore's `PublicKey::from_str` reads it: the key type before the first `:`, `ed25519` or
+   * `secp256k1` in ASCII letters of either case, or no key type, which is Ed25519; then the base58 of exactly that
+   * type's key size, 32 bytes or 64. Any other text is `x402/option-malformed`.
+   */
   publicKey: string;
   /** `view_access_key`'s nonce for the key. */
   accessKeyNonce: bigint;
@@ -116,7 +121,10 @@ interface NearChoice {
 export interface NearUnsigned {
   /** SHA-256 of the NEP-461-prefixed delegate action: what the key signs. */
   request: { kind: "near-delegate"; hash: Uint8Array };
-  /** Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature. */
+  /**
+   * Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature. An Ed25519 signature whose last byte
+   * is 0x20 or more is `x402/signature-malformed`: nearcore reads none, and a valid signature never has one.
+   */
   complete(signature: { keyType: 0 | 1; bytes: Uint8Array }): NearPayment | Refusal;
 }
 
@@ -144,12 +152,13 @@ export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8
 
 /**
  * Reads a base64 `SignedDelegateAction` whose one action is a `FunctionCall` of `ft_transfer` with a JSON object of
- * arguments whose `memo` is an LCP string. The bytes are read in order: the sender and the receiver, then the count of
- * actions, where a count other than one is `near/actions`, then the action's variant index, where any action other
- * than a `FunctionCall` is `near/not-ft-transfer`, the bytes after it unread. Otherwise the bytes must be exactly the
- * borsh encoding of what is read, every string in it UTF-8 and the key and the signature each Ed25519 or secp256k1, or
- * they are `near/sda-malformed`. The arguments are strict UTF-8 JSON text whose leading byte-order mark is kept as a
- * character, so arguments that begin with one are `near/args-malformed`.
+ * arguments whose `memo` is an LCP string. The bytes are read in the order nearcore reads them: the sender and the
+ * receiver, where one that is not UTF-8 is `near/sda-malformed`, then the count of actions, where a count other than
+ * one is `near/actions`, then the action's variant index, where any index other than `FunctionCall`'s is
+ * `near/not-ft-transfer`, the bytes after it unread. Otherwise the bytes must be exactly the borsh encoding of what is
+ * read, every string in it UTF-8, the key and the signature each Ed25519 or secp256k1, and an Ed25519 signature's last
+ * byte below 0x20, as nearcore reads one, or they are `near/sda-malformed`. The arguments are strict UTF-8 JSON text
+ * whose leading byte-order mark is kept as a character, so arguments that begin with one are `near/args-malformed`.
  */
 export function nearCarrier(signedDelegateAction: string): {
   h: AtrHash;
@@ -413,7 +422,7 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
     complete(signature: { keyType: 0 | 1; bytes: Uint8Array }): NearPayment | Refusal {
       if (!isObject(signature) || !(signature.bytes instanceof Uint8Array)) return refusal("x402/signature-malformed");
       const { keyType, bytes } = signature;
-      if (!((keyType === 0 && bytes.length === 64) || (keyType === 1 && bytes.length === 65))) {
+      if (!((keyType === 0 && isNearEd25519Signature(bytes)) || (keyType === 1 && bytes.length === 65))) {
         return refusal("x402/signature-malformed");
       }
       const signedDelegateAction = toBase64(
@@ -481,9 +490,15 @@ function isAccount(s: unknown): s is string {
   return typeof s === "string" && ACCOUNT.test(s);
 }
 
-/** True for a public key as NEAR writes it: `ed25519:` and the base58 of 32 bytes, or `secp256k1:` and of 64. */
+/**
+ * True for a public key as nearcore writes it: `ed25519:` and the base58 of 32 bytes, or `secp256k1:` and of 64.
+ * `nearStatus` compares a ref's key as text with the key the reader's delegate carries, which nearcore's RPC writes in
+ * this form, so a ref holds it in this form alone: another spelling `build` reads, such as `ED25519:` or no key type,
+ * names the same key but would compare unequal, and is unreadable here.
+ */
 function isPublicKey(s: unknown): boolean {
-  return nearKeyOf(s) !== null;
+  const k = nearKeyOf(s);
+  return k !== null && nearKeyText(k) === s;
 }
 
 const pattern: LcpPattern = deepFreeze({
