@@ -4,7 +4,7 @@
 // the placements and refusal codes are the vectors' and the entry point's closed codes.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BINDINGS, canonicalJson, type AtrHash, type Json } from "../src/index.js";
+import { BINDINGS, canonicalJson, pairingOf, type AtrHash, type Json } from "../src/index.js";
 import type { MppChallenge } from "../src/mpp.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { chargeLightning, exactLnbtc, exactLnbtcNamed, sessionLightning } from "../src/lightning.js";
@@ -65,9 +65,10 @@ describe("x402/exact/lnbtc before its invoice", () => {
     ["a payment flow other than upfront", { "extra.paymentFlow": "authorization" }, "x402/option-malformed"],
     ["a payTo that is not 66 lowercase hex", { payTo: "02" }, "x402/option-malformed"],
     ["a request hash that is not 64 hex digits", { "extra.requestHash": "0d66" }, "ln/request-hash-mismatch"],
-  ])("still refuses %s", (_, changes, code) => {
+  ])("still refuses %s, and pairingOf names no pairing for it", (_, changes, code) => {
     const o = set(O, changes as Record<string, unknown>);
     expect(exactLnbtc.advertiseBeforeCarrier(doc(o), H, V.fixed.link, o)).toEqual({ refused: true, code });
+    expect(pairingOf(o)).toBeUndefined();
   });
 
   it("invoice-named has no such member: its invoice exists before H", () => {
