@@ -1221,13 +1221,17 @@ function depthOf(v: unknown, d: number): number {
   return max;
 }
 
-/** True when `v` is a JSON-like value (bigints allowed) of at most `max` bytes as JSON and depth 16. */
+/**
+ * True when `v` is a JSON-like value (bigints allowed) of at most `max` bytes as JSON with at most 16 arrays and objects
+ * nested, the outermost counting 1, whatever the innermost holds: the depth `depthOf` counts.
+ */
 function jsonWithin(v: unknown, max: number): boolean {
   let budget = max;
+  // `d` is the number of arrays and objects around `x`.
   const walk = (x: unknown, d: number): boolean => {
-    if (d > MAX_JSON_DEPTH) return false;
     if (typeof x === "string") budget -= x.length + 2;
     else if (typeof x === "number" || typeof x === "bigint" || typeof x === "boolean" || x === null) budget -= 8;
+    else if (typeof x === "object" && d + 1 > MAX_JSON_DEPTH) return false;
     else if (Array.isArray(x)) {
       budget -= 2;
       for (const y of x) if (!walk(y, d + 1)) return false;

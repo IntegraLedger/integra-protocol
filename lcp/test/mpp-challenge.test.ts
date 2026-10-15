@@ -698,6 +698,12 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
   const chT = placed(C_T);
   /** C_E's request without credentialTypes: the transaction and hash pairings. */
   const chCalls = placed(evmCharge({ ...R_E, methodDetails: { chainId: R_E.methodDetails.chainId } }));
+  /** `inner` inside `n` arrays. */
+  const nested = (n: number, inner: unknown): unknown => {
+    let v = inner;
+    for (let k = 0; k < n; k++) v = [v];
+    return v;
+  };
   /** C_T's request without supportedModes: the memo and push pairings. */
   const chPush = placed(tempoCharge({ ...R_T, methodDetails: { chainId: R_T.methodDetails.chainId } }));
   const from = A.fixed.payer as `0x${string}`;
@@ -848,6 +854,10 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       return [
         await evmAuthorization.bound({ ...c, payload: { ...c.payload, pad: "x".repeat(70_000) } }),
         await evmAuthorization.bound({ ...c, payload: { ...c.payload, deep: deep as never } }),
+        // The credential and its payload are levels 1 and 2, so 15 more arrays and objects make 17, whatever the
+        // innermost holds.
+        await evmAuthorization.bound({ ...c, payload: { ...c.payload, deep: nested(14, []) as never } }),
+        await evmAuthorization.bound({ ...c, payload: { ...c.payload, deep: nested(14, {}) as never } }),
         await evmAuthorization.bound({ challenge: c.challenge } as MppCredential),
         await evmAuthorization.bound({ payload: c.payload } as unknown as MppCredential),
       ];
@@ -932,6 +942,16 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
   it("read with a legalContextAgreementUrl that is not a string reads no challenge", () => {
     for (const a of [7, null, [link], { url: link }]) {
       expect(read(withOpaque({ legalContextAgreementUrl: a, legalContextUrl: link }))).toEqual(refused("mpp/no-legal-context"));
+    }
+  });
+
+  // A credential is held to one depth: 16 arrays and objects nested, the outermost counting 1, whatever the innermost
+  // holds. At 16 the depth changes no answer.
+  it("a credential nested 16 levels deep is answered as a shallow one", async () => {
+    const c = await credential();
+    const shallow = await evmAuthorization.bound({ ...c, payload: { ...c.payload, deep: "x" as never } });
+    for (const deep of [nested(13, []), nested(13, {}), nested(14, "x")]) {
+      expect(await evmAuthorization.bound({ ...c, payload: { ...c.payload, deep: deep as never } })).toEqual(shallow);
     }
   });
 
