@@ -82,7 +82,7 @@ export interface CardanoPayload {
 }
 
 export interface CardanoUnsigned {
-  request: { kind: "cardano-transaction"; accepted: PaymentRequirements; auxiliaryData: Uint8Array };
+  request: { kind: "cardano-transaction"; accepted: PaymentRequirements; auxiliaryData: Uint8Array<ArrayBuffer> };
   complete(signed: CardanoPayload): Promise<CardanoPaymentPayload | Refusal>;
 }
 
@@ -108,7 +108,7 @@ const TAG_ALONZO_AUX = 259n;
  * The exact auxiliary data the payer attaches: `#6.259({0: {674: {"msg": [LCP_MARKER, <64 hex>]}}})`. A value that is
  * not a 32-byte hash is `x402/payload-malformed`.
  */
-export function auxiliaryData(h: AtrHash): Uint8Array | Refusal {
+export function auxiliaryData(h: AtrHash): Uint8Array<ArrayBuffer> | Refusal {
   const hex = normalHash(h);
   if (hex === null) return refusal("x402/payload-malformed");
   const enc = new TextEncoder();

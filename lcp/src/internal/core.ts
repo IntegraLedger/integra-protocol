@@ -73,7 +73,7 @@ export async function assemble(
   binding: readonly [slot: string, value: unknown],
   content: readonly (readonly [slot: string, bytes: Uint8Array])[],
   limits?: { maxBytes?: number },
-): Promise<{ bytes: Uint8Array; atrHash: AtrHash } | CoreRefusal> {
+): Promise<{ bytes: Uint8Array<ArrayBuffer>; atrHash: AtrHash } | CoreRefusal> {
   const maxBytes = limits?.maxBytes ?? MIB;
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) return refusal("core/too-large");
   const limit = Math.min(maxBytes, MIB);
@@ -452,7 +452,7 @@ export function hashEquals(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function decodeHash(s: unknown): Uint8Array | null {
+function decodeHash(s: unknown): Uint8Array<ArrayBuffer> | null {
   if (typeof s !== "string" || !HASH.test(s)) return null;
   const out = new Uint8Array(32);
   for (let i = 0; i < 32; i++) out[i] = Number.parseInt(s.slice(2 + 2 * i, 4 + 2 * i), 16);
@@ -466,7 +466,7 @@ function toHex(b: Uint8Array): AtrHash {
   return s as AtrHash;
 }
 
-function mustDecode(h: AtrHash): Uint8Array {
+function mustDecode(h: AtrHash): Uint8Array<ArrayBuffer> {
   const b = decodeHash(h);
   if (b === null) throw new TypeError("not a 32-byte hash");
   return b;
@@ -586,7 +586,7 @@ export function isHashWithNonHttpsLink(info: unknown): boolean {
 }
 
 /** The raw 32 bytes of a hash. Throws TypeError when `h` is not a 32-byte hash. */
-export function toRawBytes(h: AtrHash): Uint8Array {
+export function toRawBytes(h: AtrHash): Uint8Array<ArrayBuffer> {
   return mustDecode(h);
 }
 

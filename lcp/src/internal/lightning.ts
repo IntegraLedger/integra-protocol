@@ -31,7 +31,7 @@ export const NETWORKS: { readonly [n in LnNetwork]: Bolt11["currency"] } = {
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** A BOLT11 invoice decoded, up to 8 KiB. The signature is not verified. */
-export function decode(invoice: string): Bolt11 | Refusal {
+export function decode(invoice: string): Bolt11<ArrayBuffer> | Refusal {
   if (typeof invoice !== "string") return refusal("ln/invoice-malformed");
   if (invoice.length > MAX_INVOICE) return refusal("ln/invoice-too-large");
   const lower = invoice.toLowerCase();
@@ -161,7 +161,7 @@ function uint(words: readonly number[]): number {
 }
 
 /** 5-bit words as bytes; trailing bits short of a byte are dropped. */
-function toBytes(words: readonly number[]): Uint8Array {
+function toBytes(words: readonly number[]): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(Math.floor((words.length * 5) / 8));
   let acc = 0;
   let bits = 0;

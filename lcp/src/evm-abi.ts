@@ -58,7 +58,7 @@ export function bytes32Word(h: Hex): Uint8Array {
   return bytesOf(h)!;
 }
 
-export function concat(parts: readonly Uint8Array[]): Uint8Array {
+export function concat(parts: readonly Uint8Array[]): Uint8Array<ArrayBuffer> {
   let n = 0;
   for (const p of parts) n += p.length;
   const out = new Uint8Array(n);

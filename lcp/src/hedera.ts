@@ -87,7 +87,7 @@ export interface HederaBody {
   /** `transactionValidDuration`, in seconds. */
   validDuration: number;
   memo: string;
-  bodyBytes: Uint8Array;
+  bodyBytes: Uint8Array<ArrayBuffer>;
 }
 
 /** The Mirror Node's `Transaction` entry: the fields read here. */
@@ -133,7 +133,7 @@ export type HederaStatus =
 /** The body the payer signs, and how its signature completes the wire transaction. */
 export interface HederaUnsigned {
   /** `broadcast: true` when the payer's signer signs and broadcasts the body itself (a push). */
-  request: { kind: "hedera-body"; bodyBytes: Uint8Array; broadcast?: true };
+  request: { kind: "hedera-body"; bodyBytes: Uint8Array<ArrayBuffer>; broadcast?: true };
   /** The signed `Transaction`, base64. */
   complete(s: { publicKey: Uint8Array; signature: Uint8Array; type: "ed25519" | "ecdsa-secp256k1" }): string | Refusal;
 }
@@ -244,7 +244,7 @@ function int64Of(v: bigint): bigint {
 
 /**
  * Reads a wire `Transaction`, or the SDK's `TransactionList` of them (a top-level field 1): each body's transaction
- * id, valid duration, memo and exact bytes. Every body of a list must share id and memo.
+ * id, valid duration, memo and exact bytes, the bytes a copy of `wire`'s. Every body of a list must share id and memo.
  */
 export function decodeHederaTx(wire: Uint8Array): { bodies: readonly HederaBody[] } | Refusal {
   if (!(wire instanceof Uint8Array)) return refusal("hedera/tx-malformed");
@@ -329,7 +329,7 @@ function bodyOf(bodyBytes: Uint8Array, depth: number): HederaBody | null {
       return null;
     }
   }
-  return { id: { account, seconds: s, nanos: Number(ns) }, validDuration, memo, bodyBytes: bodyBytes.slice() };
+  return { id: { account, seconds: s, nanos: Number(ns) }, validDuration, memo, bodyBytes: Uint8Array.from(bodyBytes) };
 }
 
 /** `AccountID` {shardNum 1, realmNum 2, accountNum 3} as "shard.realm.num"; an alias account is not read. */
@@ -405,7 +405,7 @@ function writeBody(b: {
   payTo: string;
   amount: bigint;
   decimals?: number;
-}): Uint8Array {
+}): Uint8Array<ArrayBuffer> {
   const txId = [
     ...lenField(1, [...vField(1, b.seconds), ...vField(2, BigInt(b.nanos))]),
     ...lenField(2, entity(b.feePayer)),

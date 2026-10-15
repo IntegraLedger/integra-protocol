@@ -63,12 +63,12 @@ const MAX_CALLS = 64;
 export interface TempoCall {
   to: Hex | null;
   value: bigint;
-  input: Uint8Array;
+  input: Uint8Array<ArrayBuffer>;
 }
 
 /**
  * The chain id, the calls and `valid_before` of a signed `0x76` transaction. Each call is `rlp([to, value, input])`,
- * with an empty `to` read as null. `valid_before` written empty is null.
+ * with an empty `to` read as null and `input` a copy of `wire`'s bytes. `valid_before` written empty is null.
  */
 export function decodeTempoTx(
   wire: Uint8Array,
@@ -84,7 +84,7 @@ export function decodeTempoTx(
     const v = rlpUint(value);
     if (to.kind !== "bytes" || input.kind !== "bytes" || v === undefined) return refusal("tempo/tx-malformed");
     if (to.bytes.length !== 0 && to.bytes.length !== 20) return refusal("tempo/tx-malformed");
-    calls.push({ to: to.bytes.length === 0 ? null : hexOf(to.bytes), value: v, input: input.bytes.slice() });
+    calls.push({ to: to.bytes.length === 0 ? null : hexOf(to.bytes), value: v, input: Uint8Array.from(input.bytes) });
   }
   const validBeforeItem = items[VALID_BEFORE] as Extract<RlpItem, { kind: "bytes" }>;
   return {
@@ -173,7 +173,7 @@ export interface KeyAuthorizationUnsigned {
  * item is written, the empty ones included: an `expiry` of 0 as `0x80`, which Tempo reads as no expiry, and an empty
  * `limits` or `allowedCalls` as an empty list, which Tempo reads as no spending or no calls, never as the absent item.
  */
-export function encodeKeyAuthorization(a: TempoKeyAuthorization, signature?: Hex): Uint8Array | Refusal {
+export function encodeKeyAuthorization(a: TempoKeyAuthorization, signature?: Hex): Uint8Array<ArrayBuffer> | Refusal {
   const bad = refusal("tempo/key-authorization-malformed");
   if (typeof a !== "object" || a === null) return bad;
   const witness = normalHash(a.witness);

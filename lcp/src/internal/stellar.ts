@@ -158,7 +158,7 @@ export type StellarStatus =
 
 /** What the payer signs (the signer signs SHA-256 of `preimage`), and how the signature completes the transaction. */
 export interface StellarUnsigned {
-  request: { kind: "stellar-auth"; preimage: Uint8Array };
+  request: { kind: "stellar-auth"; preimage: Uint8Array<ArrayBuffer> };
   /** The base64 XDR of the transaction with the entry signed. */
   complete(signature: Uint8Array): string | Refusal;
 }
@@ -608,7 +608,7 @@ export function signingFor(
   if (wire.type !== 2) return refusal("stellar/tx-malformed");
   if (zeroSource) wire.v1.tx.sourceAccount = { type: 0, ed25519: new Uint8Array(32) };
   cred.c.signatureExpirationLedger = expiration;
-  const preimage = preimageOf(S, network, entry, cred);
+  const preimage = Uint8Array.from(preimageOf(S, network, entry, cred));
   const publicKey = S.StrKey.decodeEd25519PublicKey(payment.from);
   const x = S.xdr;
   return {

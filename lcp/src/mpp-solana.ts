@@ -86,7 +86,7 @@ export interface SolanaChargeChoice {
 }
 
 export interface SolanaChargeUnsigned {
-  request: { kind: "solana-message"; message: Uint8Array };
+  request: { kind: "solana-message"; message: Uint8Array<ArrayBuffer> };
   /** The payer's 64-byte Ed25519 signature over `message`. */
   complete(signature: Uint8Array): MppCredential | Refusal;
 }
@@ -305,7 +305,7 @@ async function buildSolMessage(i: {
   memo: string;
   computeUnitLimit: number;
   computeUnitPrice: bigint;
-}): Promise<Uint8Array | Refusal> {
+}): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   if (typeof i.memo !== "string" || !i.memo.isWellFormed()) return refusal("svm/input-malformed");
   let kit: typeof import("@solana/kit");
   try {
@@ -362,7 +362,7 @@ async function build(
     return refusal("svm/input-malformed");
   }
   const amount = BigInt(r["amount"] as string);
-  let message: Uint8Array | Refusal;
+  let message: Uint8Array<ArrayBuffer> | Refusal;
   if (r["currency"] === "sol") {
     message = await buildSolMessage({
       feePayer,

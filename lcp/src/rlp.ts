@@ -90,7 +90,7 @@ export function rlpUintBytes(v: bigint): Uint8Array {
 }
 
 /** The encoding of a list whose items are already encoded. */
-export function rlpList(encodedItems: readonly Uint8Array[]): Uint8Array {
+export function rlpList(encodedItems: readonly Uint8Array[]): Uint8Array<ArrayBuffer> {
   const body = concat(encodedItems);
   return concat([prefix(0xc0, body.length), body]);
 }

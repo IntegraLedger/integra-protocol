@@ -35,11 +35,15 @@ export const CALL = Object.freeze({
   remarkWithEvent: Object.freeze([0, 7]),
 } as const);
 
-export interface ProfileCall {
+/**
+ * The profile's call. `B` is what its bytes are backed by: `decodeProfileCall` gives `ProfileCall<ArrayBuffer>`, each
+ * byte field in its own fresh `ArrayBuffer`, and `encodeProfileCall` takes any backing.
+ */
+export interface ProfileCall<B extends ArrayBufferLike = ArrayBufferLike> {
   assetId: number;
-  dest: Uint8Array;
+  dest: Uint8Array<B>;
   amount: bigint;
-  remark: Uint8Array;
+  remark: Uint8Array<B>;
 }
 
 export interface PolkadotExtrinsic {
@@ -87,7 +91,7 @@ export type PolkadotStatus =
 
 /** The call the payer's signer wraps in an extrinsic, and how that extrinsic completes the payment. */
 export interface PolkadotUnsigned {
-  request: { kind: "substrate-call"; network: PolkadotNetwork; call: Uint8Array };
+  request: { kind: "substrate-call"; network: PolkadotNetwork; call: Uint8Array<ArrayBuffer> };
   complete(extrinsic: Uint8Array): PolkadotPaymentPayload | Refusal;
 }
 
@@ -121,7 +125,7 @@ function fromHex(h: string): Uint8Array {
   return out;
 }
 
-function concat(...parts: readonly (Uint8Array | readonly number[])[]): Uint8Array {
+function concat(...parts: readonly (Uint8Array | readonly number[])[]): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let at = 0;
   for (const p of parts) {
@@ -186,7 +190,7 @@ function blake256(b: Uint8Array): Uint8Array {
 // ── SS58, SCALE and the extrinsic ────────────────────────────────────────────────────────────────────────────────────
 
 /** A simple-format SS58 address: one prefix byte 0–63, a 32-byte account, and a two-byte checksum. */
-export function ss58Decode(address: string): Uint8Array | Refusal {
+export function ss58Decode(address: string): Uint8Array<ArrayBuffer> | Refusal {
   if (typeof address !== "string" || address.length > 64) return refusal("polkadot/address-malformed");
   let raw: Uint8Array;
   try {
@@ -197,7 +201,7 @@ export function ss58Decode(address: string): Uint8Array | Refusal {
   if (raw.length !== 35 || raw[0]! > 63) return refusal("polkadot/address-malformed");
   const sum = blake2b(concat(SS58_PREFIX, raw.subarray(0, 33)), { dkLen: 64 });
   if (sum[0] !== raw[33] || sum[1] !== raw[34]) return refusal("polkadot/address-malformed");
-  return raw.slice(1, 33);
+  return Uint8Array.from(raw.subarray(1, 33));
 }
 
 /**
@@ -205,7 +209,7 @@ export function ss58Decode(address: string): Uint8Array | Refusal {
  * `decodeProfileCall`. Throws TypeError on a call that `decodeProfileCall` never gives: `assetId` must be an integer
  * from 0 to 2^32 − 1, `dest` 32 bytes, `amount` a bigint from 0 to 2^128 − 1, and `remark` 77 bytes.
  */
-export function encodeProfileCall(c: ProfileCall): Uint8Array {
+export function encodeProfileCall(c: ProfileCall): Uint8Array<ArrayBuffer> {
   if (!isObject(c)) throw new TypeError("not a profile call");
   // Each member is read once, so what is checked is what is encoded.
   const { assetId, dest, amount, remark } = c;
@@ -235,8 +239,8 @@ export function encodeProfileCall(c: ProfileCall): Uint8Array {
   );
 }
 
-/** The profile's call, exactly, with canonical compacts and no trailing byte. */
-export function decodeProfileCall(call: Uint8Array): ProfileCall | Refusal {
+/** The profile's call, exactly, with canonical compacts and no trailing byte. Its bytes are copies of `call`'s. */
+export function decodeProfileCall(call: Uint8Array): ProfileCall<ArrayBuffer> | Refusal {
   const no = refusal("polkadot/call-not-profile");
   if (!(call instanceof Uint8Array)) return no;
   const head = concat(CALL.batchAll, [0x08], CALL.transferKeepAlive);
@@ -254,17 +258,17 @@ export function decodeProfileCall(call: Uint8Array): ProfileCall | Refusal {
   if (length === null || length.value !== BigInt(REMARK_LENGTH) || length.next + REMARK_LENGTH !== call.length) return no;
   return {
     assetId: Number(asset.value),
-    dest: dest.slice(),
+    dest: Uint8Array.from(dest),
     amount: amount.value,
-    remark: call.slice(length.next),
+    remark: Uint8Array.from(call.subarray(length.next)),
   };
 }
 
 /**
  * The preamble of a signed v4 extrinsic: the length prefix, `0x84`, `MultiAddress::Id` and a `MultiSignature`. Gives
- * the signer and the index after the signature; the extension bytes that follow are not decoded.
+ * the signer, a copy, and the index after the signature; the extension bytes that follow are not decoded.
  */
-export function splitSigned(xt: Uint8Array): { signer: Uint8Array; end: number } | Refusal {
+export function splitSigned(xt: Uint8Array): { signer: Uint8Array<ArrayBuffer>; end: number } | Refusal {
   if (!(xt instanceof Uint8Array)) return refusal("polkadot/extrinsic-malformed");
   if (xt.length > MAX_EXTRINSIC) return refusal("polkadot/extrinsic-too-large");
   const length = compactAt(xt, 0);
@@ -273,7 +277,7 @@ export function splitSigned(xt: Uint8Array): { signer: Uint8Array; end: number }
   if (xt[at] !== 0x84) return refusal("polkadot/not-signed-v4");
   at += 1;
   if (xt[at] !== 0x00 || at + 33 > xt.length) return refusal("polkadot/address-not-id");
-  const signer = xt.slice(at + 1, at + 33);
+  const signer = Uint8Array.from(xt.subarray(at + 1, at + 33));
   at += 33;
   const variant = xt[at];
   const size = variant === 0 || variant === 1 ? 64 : variant === 2 || variant === 3 ? 65 : -1;

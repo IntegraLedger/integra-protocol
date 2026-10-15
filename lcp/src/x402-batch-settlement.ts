@@ -254,8 +254,8 @@ export function batchChannelCreated(log: EvmLog, chainId: number): { channelId: 
 /** A request to the buyer's signer. */
 export type SigningRequest =
   | { kind: "eip712"; typedData: Eip712Request | ReceiveTypedData | Permit2TypedData }
-  | { kind: "solana-message"; message: Uint8Array }
-  | { kind: "ed25519-raw"; message: Uint8Array; signer: string };
+  | { kind: "solana-message"; message: Uint8Array<ArrayBuffer> }
+  | { kind: "ed25519-raw"; message: Uint8Array<ArrayBuffer>; signer: string };
 
 /**
  * Several signing requests, signed in order. `complete` takes one signature per request: `0x` hex for `eip712`,

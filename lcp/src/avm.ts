@@ -66,7 +66,7 @@ export type AvmStatus =
 /** The bytes the payer signs, and how the signature completes the payment. */
 export interface AvmUnsigned {
   /** "TX" ‖ msgpack(txn) */
-  request: { kind: "algorand-txn"; bytes: Uint8Array };
+  request: { kind: "algorand-txn"; bytes: Uint8Array<ArrayBuffer> };
   /**
    * Completes the payment with the payer's 64-byte Ed25519 signature over `request.bytes`; a signature of any other
    * length is `avm/signature-malformed`.
@@ -298,7 +298,7 @@ async function build(
   const signed = sdk.encodeMsgpack(new sdk.SignedTransaction({ txn: payment, sig: FULL_SIGNATURE }));
   if (isRefusal(paymentEntry(toBase64(signed)))) return refusal("avm/option-malformed");
   return {
-    request: { kind: "algorand-txn", bytes: payment.bytesToSign() },
+    request: { kind: "algorand-txn", bytes: Uint8Array.from(payment.bytesToSign()) },
     complete(signature: Uint8Array): AvmPaymentPayload | Refusal {
       if (!(signature instanceof Uint8Array) || signature.length !== 64) return refusal("avm/signature-malformed");
       const paymentGroup = group.map((txn, i) =>

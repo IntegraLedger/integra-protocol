@@ -54,7 +54,7 @@ const DECIMAL = /^[0-9]{1,20}$/;
 
 /** What the payer signs, and how its signature completes the payment. */
 export interface SvmUnsigned<P = SvmPaymentPayload> {
-  request: { kind: "solana-message"; message: Uint8Array };
+  request: { kind: "solana-message"; message: Uint8Array<ArrayBuffer> };
   /** A 64-byte Ed25519 signature by the payer. */
   complete(signature: Uint8Array): P | Refusal;
 }

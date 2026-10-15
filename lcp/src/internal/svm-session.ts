@@ -112,7 +112,11 @@ export function openAccounts(
  * The 50 bytes a voucher signs: `56 01` ‖ channel id ‖ cumulative u64 LE ‖ expiresAt i64 LE (0 when absent). A
  * malformed channel id or an out-of-range number is `svm/input-malformed`.
  */
-export function solanaVoucher(channelId: string, cumulative: bigint, expiresAt?: bigint): Uint8Array | Refusal {
+export function solanaVoucher(
+  channelId: string,
+  cumulative: bigint,
+  expiresAt?: bigint,
+): Uint8Array<ArrayBuffer> | Refusal {
   try {
     return channelVoucherMessage(channelId, cumulative, expiresAt ?? 0n);
   } catch {
@@ -125,7 +129,7 @@ export function solanaVoucher(channelId: string, cumulative: bigint, expiresAt?:
  * Throws TypeError when `p` is not an object, or when its `channelId`, `payer` or `challengeId` is not a well-formed
  * string (one holding a lone surrogate has no UTF-8 form): it never returns a message the caller did not write.
  */
-export function sessionProof(p: { channelId: string; payer: string; challengeId: string }): Uint8Array {
+export function sessionProof(p: { channelId: string; payer: string; challengeId: string }): Uint8Array<ArrayBuffer> {
   const { channelId, payer, challengeId }: { channelId: unknown; payer: unknown; challengeId: unknown } = p;
   if (!isWellFormed(channelId) || !isWellFormed(payer) || !isWellFormed(challengeId)) {
     throw new TypeError("sessionProof: channelId, payer and challengeId must be well-formed strings");

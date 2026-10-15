@@ -43,12 +43,16 @@ const peer:
 
 export type SuiNetwork = "sui:mainnet" | "sui:testnet" | "sui:devnet";
 
-/** A decoded `TransactionData`: the bytes as received, their digest, the unused `Pure` inputs, and the epoch bound. */
-export interface SuiTx {
-  bytes: Uint8Array;
+/**
+ * A decoded `TransactionData`: the bytes as received, their digest, the unused `Pure` inputs, and the epoch bound. `B`
+ * is what its bytes are backed by: `decodeSuiTx` gives `SuiTx<ArrayBuffer>`, each byte field in its own fresh
+ * `ArrayBuffer`, and `suiCarrier` takes any backing.
+ */
+export interface SuiTx<B extends ArrayBufferLike = ArrayBufferLike> {
+  bytes: Uint8Array<B>;
   /** Base58 of Blake2b-256 over `"TransactionData::"` followed by the bytes. */
   digest: string;
-  unusedPure: readonly Uint8Array[];
+  unusedPure: readonly Uint8Array<B>[];
   untilEpoch: bigint | null;
 }
 
@@ -91,7 +95,12 @@ export interface SuiPayload {
 
 /** What `build` hands the payer's wallet, and how it checks what comes back. */
 export interface SuiUnsigned {
-  request: { kind: "sui-transaction"; accepted: PaymentRequirements; pureInput: Uint8Array; expiration: "epoch-bounded" };
+  request: {
+    kind: "sui-transaction";
+    accepted: PaymentRequirements;
+    pureInput: Uint8Array<ArrayBuffer>;
+    expiration: "epoch-bounded";
+  };
   complete(signed: SuiPayload): SuiPaymentPayload | Refusal;
 }
 
@@ -120,7 +129,7 @@ const STRUCT_TYPE = /^([^:]+)::([^:]+)::([^<]+)(<(.+)>)?/;
  * bound gives the same answer whether this host's stack would hold the type or not. A V1 `TransactionData` of another
  * kind is `sui/not-programmable`, answered from its kind's tag before its body is decoded.
  */
-export function decodeSuiTx(base64: string): SuiTx | Refusal {
+export function decodeSuiTx(base64: string): SuiTx<ArrayBuffer> | Refusal {
   if (peer === undefined) return refusal("sui/peer-missing");
   const { bcs } = peer;
   const bytes = base64Bytes(base64, MAX_TX_BYTES);
@@ -160,7 +169,7 @@ export function decodeSuiTx(base64: string): SuiTx | Refusal {
       if (arg.$kind === "Input") used.add(arg.Input);
     }
   }
-  const unusedPure: Uint8Array[] = [];
+  const unusedPure: Uint8Array<ArrayBuffer>[] = [];
   for (let i = 0; i < inputs.length; i++) {
     const input = inputs[i]!;
     if (input.$kind !== "Pure" || used.has(i)) continue;

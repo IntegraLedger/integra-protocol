@@ -76,7 +76,7 @@ export interface CcdUnsigned {
     toAddress: string;
     asset: string;
     amount: string;
-    memo: Uint8Array;
+    memo: Uint8Array<ArrayBuffer>;
     expiresBy: number;
   };
   /**
@@ -107,12 +107,12 @@ const utf8 = new TextEncoder();
  * The CBOR text string of `toLcpString(h)`: `78 4d` and the 77 ASCII bytes. Throws TypeError when `h` is not a 32-byte
  * hash.
  */
-export function ccdMemo(h: AtrHash): Uint8Array {
+export function ccdMemo(h: AtrHash): Uint8Array<ArrayBuffer> {
   return concat(TEXT_PREFIX, utf8.encode(toLcpString(h)));
 }
 
 /** CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 bytes. Throws as `ccdMemo` does. */
-export function pltMemo(h: AtrHash): Uint8Array {
+export function pltMemo(h: AtrHash): Uint8Array<ArrayBuffer> {
   return concat(TAG24_PREFIX, ccdMemo(h));
 }
 
@@ -132,7 +132,7 @@ export function memoCarrier(memo: Uint8Array): AtrHash | Refusal {
  * The 32 bytes of a base58check account address whose version byte is 1: its last four bytes are the first four of
  * the double SHA-256 of the 33 before them.
  */
-export function accountBytes(address: string): Uint8Array | Refusal {
+export function accountBytes(address: string): Uint8Array<ArrayBuffer> | Refusal {
   const raw = accountShape(address);
   if (raw === null) return refusal("ccd/address-malformed");
   const twice = sha256(sha256(raw.subarray(0, 33)));
@@ -455,7 +455,7 @@ function isAccount(v: unknown): boolean {
 }
 
 /** The 37 bytes a base58 account address decodes to, when their version byte is 1; the checksum is not checked. */
-function accountShape(s: unknown): Uint8Array | null {
+function accountShape(s: unknown): Uint8Array<ArrayBuffer> | null {
   if (typeof s !== "string" || s.length === 0 || s.length > MAX_ADDRESS) return null;
   let n = 0n;
   for (const c of s) {
@@ -502,7 +502,7 @@ function hexToBytes(s: string): Uint8Array {
   return out;
 }
 
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
+function concat(a: Uint8Array, b: Uint8Array): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
   out.set(b, a.length);

@@ -150,7 +150,7 @@ export function parse(bytes: Uint8Array): { document: LegalContextDocument; igno
 }
 
 /** The document's bytes: its checked members in table order, `atrHash` in lowercase, and no other member. */
-export function emit(document: LegalContextDocument): Uint8Array | Refusal {
+export function emit(document: LegalContextDocument): Uint8Array<ArrayBuffer> | Refusal {
   if (!isObject(document)) return refusal("discovery/not-json-object");
   const checked = check(document, DOCUMENT);
   if (isRefusal(checked)) return checked;

@@ -87,7 +87,7 @@ export function xrplChannelId(account: string, destination: string, sequence: nu
  * The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as u64 big-endian. A channel id that is not
  * 64 hex digits, or drops that are not a `bigint` UInt64, is `mpp/input-malformed`.
  */
-export function xrplClaim(channelId: string, drops: bigint): Uint8Array | Refusal {
+export function xrplClaim(channelId: string, drops: bigint): Uint8Array<ArrayBuffer> | Refusal {
   if (typeof channelId !== "string" || !HASH256.test(channelId) || typeof drops !== "bigint" || drops < 0n || drops >= 1n << 64n) {
     return refusal("mpp/input-malformed");
   }

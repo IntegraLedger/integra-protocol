@@ -168,7 +168,7 @@ export interface XrplSessionUnsigned {
   request: {
     kind: "xrpl-session-open";
     txJson: XrplTxJson;
-    claim: { channelId: string; drops: bigint; bytes: Uint8Array };
+    claim: { channelId: string; drops: bigint; bytes: Uint8Array<ArrayBuffer> };
   };
   complete(signed: { signedBlob: string; claimSignature: string }): Promise<MppCredential | Refusal>;
 }

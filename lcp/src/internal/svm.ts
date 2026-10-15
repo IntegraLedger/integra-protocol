@@ -70,20 +70,25 @@ const NONCE_SETTLED_SLOTS = 150n;
 /** The System program's nonce account: version u32, state u32, authority, durable nonce, lamports per signature. */
 const NONCE_ACCOUNT_BYTES = 80;
 
-export interface SvmInstruction {
+/** One compiled instruction of an `SvmTx`; `B` is what its data is backed by, as for `SvmTx`. */
+export interface SvmInstruction<B extends ArrayBufferLike = ArrayBufferLike> {
   program: number;
   accounts: readonly number[];
-  data: Uint8Array;
+  data: Uint8Array<B>;
 }
 
-export interface SvmTx {
-  signatures: readonly Uint8Array[];
+/**
+ * A decoded wire transaction. `B` is what its bytes are backed by: `decodeSvmTx` gives `SvmTx<ArrayBuffer>`, each byte
+ * field in its own fresh `ArrayBuffer`, and a function that reads one takes any backing.
+ */
+export interface SvmTx<B extends ArrayBufferLike = ArrayBufferLike> {
+  signatures: readonly Uint8Array<B>[];
   /** Exactly the bytes every signer signed. */
-  message: Uint8Array;
+  message: Uint8Array<B>;
   /** The static account keys, in order. */
-  keys: readonly Uint8Array[];
-  instructions: readonly SvmInstruction[];
-  blockhash: Uint8Array;
+  keys: readonly Uint8Array<B>[];
+  instructions: readonly SvmInstruction<B>[];
+  blockhash: Uint8Array<B>;
 }
 
 /** A landed transaction as `getTransaction` returns it with encoding `base64` and `maxSupportedTransactionVersion` 0. */
@@ -202,7 +207,7 @@ export interface SvmBuildInput {
 
 /** What the payer signs, and how the signature becomes the wire transaction. */
 export interface SvmSigning {
-  request: { kind: "solana-message"; message: Uint8Array };
+  request: { kind: "solana-message"; message: Uint8Array<ArrayBuffer> };
   /** The partially signed wire: the payer's 64-byte Ed25519 signature in its slot, zeros in every other. */
   wire(signature: Uint8Array): Uint8Array | Refusal;
 }
@@ -328,13 +333,24 @@ class Cursor {
 /**
  * Decodes a legacy or v0 wire transaction of at most 1,232 bytes; a longer one is `svm/tx-too-large`. Bytes that are not
  * one well-formed transaction are `svm/tx-malformed`, as is a v0 message with an address table lookup that names no
- * index, which the runtime refuses ("each lookup table must be used to load at least one account").
+ * index, which the runtime refuses ("each lookup table must be used to load at least one account"). Each byte field is
+ * a copy, so none shares memory with `wire`.
  */
-export function decodeSvmTx(wire: Uint8Array): SvmTx | Refusal {
+export function decodeSvmTx(wire: Uint8Array): SvmTx<ArrayBuffer> | Refusal {
   const d = decode(wire);
   if (isRefusal(d)) return d;
-  const { requiredSignatures: _, loads: __, lookups: ___, ...tx } = d;
-  return tx;
+  return {
+    signatures: d.signatures.map(copyOf),
+    message: copyOf(d.message),
+    keys: d.keys.map(copyOf),
+    instructions: d.instructions.map((ix) => ({ program: ix.program, accounts: ix.accounts, data: copyOf(ix.data) })),
+    blockhash: copyOf(d.blockhash),
+  };
+}
+
+/** The bytes in a fresh `ArrayBuffer` of their own, whatever backs `b`. */
+function copyOf(b: Uint8Array): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(b);
 }
 
 /** `decodeSvmTx`, with the message's address table lookups in order (none for a legacy message). */
@@ -587,19 +603,19 @@ function writeCompact(out: Uint8Array, at: number, v: number): number {
 
 const U64_LIMIT = 1n << 64n;
 
-function u32le(v: number): Uint8Array {
+function u32le(v: number): Uint8Array<ArrayBuffer> {
   const b = new Uint8Array(4);
   new DataView(b.buffer).setUint32(0, v, true);
   return b;
 }
 
-function u64le(v: bigint): Uint8Array {
+function u64le(v: bigint): Uint8Array<ArrayBuffer> {
   const b = new Uint8Array(8);
   new DataView(b.buffer).setBigUint64(0, v, true);
   return b;
 }
 
-function concat(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let at = 0;
   for (const p of parts) {
@@ -643,7 +659,7 @@ function isBuildInput(i: SvmBuildInput): boolean {
  * is the memo's UTF-8 bytes. No lookup tables. A memo that is not a well-formed string (one holding a lone surrogate
  * has no UTF-8 form) is `svm/input-malformed`, with nothing built.
  */
-export async function buildSvmMessage(i: SvmBuildInput): Promise<Uint8Array | Refusal> {
+export async function buildSvmMessage(i: SvmBuildInput): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   if (!isBuildInput(i)) return refusal("svm/input-malformed");
   const memo = new TextEncoder().encode(i.memo);
   let kit: Kit;
@@ -693,7 +709,7 @@ export async function compileV0(
   feePayer: string,
   recentBlockhash: string,
   instructions: readonly KitInstruction[],
-): Promise<Uint8Array | Refusal> {
+): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   let kit: Kit;
   try {
     kit = await import("@solana/kit");
@@ -720,7 +736,7 @@ export async function compileV0(
 }
 
 /** A signing request for message bytes, whose signature by `signer` makes the wire. */
-export function svmSigning(message: Uint8Array, signer: string): SvmSigning {
+export function svmSigning(message: Uint8Array<ArrayBuffer>, signer: string): SvmSigning {
   return {
     request: { kind: "solana-message", message },
     wire: (signature) => signedWire(message, signer, signature),
@@ -1290,7 +1306,7 @@ export function openInstructionData(a: {
   gracePeriod: number;
   openSlot: bigint;
   recipient: string;
-}): Uint8Array {
+}): Uint8Array<ArrayBuffer> {
   const recipient = keyBytes(a.recipient);
   if (
     recipient === null ||
@@ -1319,7 +1335,11 @@ export function openInstructionData(a: {
  * The 50 bytes a channel voucher signs: `56 01` ‖ channelId ‖ cumulative u64 LE ‖ expiresAt i64 LE. Throws TypeError
  * when the channel id is not a base58 key or a number is out of range.
  */
-export function channelVoucherMessage(channelId: string, cumulative: bigint, expiresAt: bigint): Uint8Array {
+export function channelVoucherMessage(
+  channelId: string,
+  cumulative: bigint,
+  expiresAt: bigint,
+): Uint8Array<ArrayBuffer> {
   const id = keyBytes(channelId);
   if (id === null || !isU64(cumulative) || typeof expiresAt !== "bigint" || BigInt.asIntN(64, expiresAt) !== expiresAt) {
     throw new TypeError("voucher value out of range");
@@ -1332,7 +1352,8 @@ export function channelVoucherMessage(channelId: string, cumulative: bigint, exp
 export interface ChannelIx {
   kind: "open" | "top_up" | "request_close";
   channel: string;
-  data: Uint8Array;
+  /** A copy of the instruction's data. */
+  data: Uint8Array<ArrayBuffer>;
 }
 
 /** Each channel instruction: its discriminator, its account count, and the position of the `channel` account. */
@@ -1356,7 +1377,7 @@ export function channelInstruction(tx: SvmTx): ChannelIx | Refusal {
   if (shape === undefined || ix.accounts.length !== shape[1]) return refusal("svm/channel-instruction");
   const channel = tx.keys[ix.accounts[shape[2]]!];
   if (channel === undefined) return refusal("svm/channel-instruction");
-  return { kind: shape[0], channel: keyString(channel), data: ix.data };
+  return { kind: shape[0], channel: keyString(channel), data: copyOf(ix.data) };
 }
 
 export type ChannelStatus = SvmStatus | { state: "failed"; why: "no-channel-instruction" };
@@ -1408,13 +1429,16 @@ export interface ChannelBuildInput {
  * payer is also the `open`'s rent payer and payee. A memo that is not a well-formed string (one holding a lone
  * surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
  */
-export async function buildChannelMessage(i: ChannelBuildInput): Promise<Uint8Array | Refusal> {
+export async function buildChannelMessage(i: ChannelBuildInput): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   const memo = typeof i === "object" && i !== null ? i.memo : undefined;
   return channelMessage(i, memo === undefined ? [] : [memo]);
 }
 
 /** `buildChannelMessage` with one v3 Memo instruction per entry of `memos`, in order, in place of `i.memo`. */
-export async function channelMessage(i: ChannelBuildInput, memos: readonly unknown[]): Promise<Uint8Array | Refusal> {
+export async function channelMessage(
+  i: ChannelBuildInput,
+  memos: readonly unknown[],
+): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   const ix = i?.instruction;
   if (
     typeof i !== "object" ||

@@ -29,7 +29,7 @@ const ascii = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
  * The bytes the first `n` characters of `s` spell in `alphabet`, or null when one of them is outside it, when `n` is
  * one more than a multiple of four, or when the last character has a bit set past the last whole byte (RFC 4648 §3.5).
  */
-function decode(s: string, n: number, alphabet: Alphabet): Uint8Array | null {
+function decode(s: string, n: number, alphabet: Alphabet): Uint8Array<ArrayBuffer> | null {
   if (n % 4 === 1) return null;
   const out = new Uint8Array(Math.floor((n * 3) / 4));
   let acc = 0;
@@ -82,7 +82,7 @@ function encode(b: Uint8Array, alphabet: Alphabet, pad: boolean): string {
  * character before the padding. A text whose last character before the padding has a bit set past the last byte is not
  * that form. Every rail's standard base64 is read by this one function, in one pass over the text.
  */
-export function fromBase64(s: unknown): Uint8Array | null {
+export function fromBase64(s: unknown): Uint8Array<ArrayBuffer> | null {
   if (typeof s !== "string" || s.length % 4 !== 0) return null;
   return decode(s, s.endsWith("==") ? s.length - 2 : s.endsWith("=") ? s.length - 1 : s.length, STANDARD);
 }
@@ -91,7 +91,7 @@ export function fromBase64(s: unknown): Uint8Array | null {
  * The bytes of `s` as `fromBase64` reads them, or "too-large" when they would be more than `maxBytes`, or "malformed".
  * The size is read from the text's length before anything is decoded, so a text past the bound is never decoded.
  */
-export function base64Bytes(s: unknown, maxBytes: number): Uint8Array | "too-large" | "malformed" {
+export function base64Bytes(s: unknown, maxBytes: number): Uint8Array<ArrayBuffer> | "too-large" | "malformed" {
   if (typeof s !== "string") return "malformed";
   if (s.length % 4 !== 0) return "malformed";
   const pad = s.endsWith("==") ? 2 : s.endsWith("=") ? 1 : 0;
@@ -112,7 +112,7 @@ export function toBase64(b: Uint8Array): string {
  * multiple of four, and zero bits past the last whole byte in the last character. Every base64url this package reads,
  * a JWS or SD-JWT segment's and an MPP challenge's included, is read by this one function, in one pass over the text.
  */
-export function fromBase64Url(s: unknown): Uint8Array | null {
+export function fromBase64Url(s: unknown): Uint8Array<ArrayBuffer> | null {
   return typeof s === "string" ? decode(s, s.length, URL_SAFE) : null;
 }
 
@@ -121,7 +121,7 @@ export function fromBase64Url(s: unknown): Uint8Array | null {
  * "malformed". The size is read from the text's length before anything is decoded, so a text past the bound is never
  * decoded.
  */
-export function base64UrlBytes(s: unknown, maxBytes: number): Uint8Array | "too-large" | "malformed" {
+export function base64UrlBytes(s: unknown, maxBytes: number): Uint8Array<ArrayBuffer> | "too-large" | "malformed" {
   if (typeof s !== "string") return "malformed";
   if (s.length % 4 === 1) return "malformed";
   if (Math.floor((s.length * 3) / 4) > maxBytes) return "too-large";
@@ -167,7 +167,7 @@ export function hexDigits(b: Uint8Array): string {
 }
 
 /** The bytes of an even-length hex string in either case, without a prefix, or null. */
-export function bytesOfHexDigits(s: string): Uint8Array | null {
+export function bytesOfHexDigits(s: string): Uint8Array<ArrayBuffer> | null {
   if (s.length % 2 !== 0 || !/^[0-9a-fA-F]*$/.test(s)) return null;
   const out = new Uint8Array(s.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(s.slice(2 * i, 2 * i + 2), 16);

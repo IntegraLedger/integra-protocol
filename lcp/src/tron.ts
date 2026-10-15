@@ -39,15 +39,19 @@ export const TRANSFER_SELECTOR = "a9059cbb";
 /** keccak256("Transfer(address,address,uint256)") */
 export const TRANSFER_TOPIC = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-/** The `Transaction.raw` fields this profile uses. */
-export interface TronRaw {
-  refBlockBytes: Uint8Array;
-  refBlockHash: Uint8Array;
+/**
+ * The `Transaction.raw` fields this profile uses. `B` is what its bytes are backed by: `decodeTronTx` gives
+ * `TronRaw<ArrayBuffer>`, each byte field in its own fresh `ArrayBuffer`, and `encodeTronRaw` and `tronCarrier` take
+ * any backing.
+ */
+export interface TronRaw<B extends ArrayBufferLike = ArrayBufferLike> {
+  refBlockBytes: Uint8Array<B>;
+  refBlockHash: Uint8Array<B>;
   expiration: bigint;
-  data: Uint8Array;
-  owner: Uint8Array;
-  contractAddress: Uint8Array;
-  callData: Uint8Array;
+  data: Uint8Array<B>;
+  owner: Uint8Array<B>;
+  contractAddress: Uint8Array<B>;
+  callData: Uint8Array<B>;
   timestamp: bigint;
   feeLimit: bigint;
 }
@@ -111,7 +115,7 @@ interface TronChoice {
 
 export interface TronUnsigned {
   /** The 32-byte transaction id the payer signs. */
-  request: { kind: "tron-txid"; txid: Uint8Array };
+  request: { kind: "tron-txid"; txid: Uint8Array<ArrayBuffer> };
   /** Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}. */
   complete(signature: Uint8Array): TronPayment | Refusal;
 }
@@ -161,7 +165,7 @@ function pushInt(out: number[], no: number, v: bigint): void {
   pushVarint(out, v);
 }
 
-function message(build: (out: number[]) => void): Uint8Array {
+function message(build: (out: number[]) => void): Uint8Array<ArrayBuffer> {
   const out: number[] = [];
   build(out);
   return Uint8Array.from(out);
@@ -208,7 +212,7 @@ function fieldsOf(b: Uint8Array): Field[] | null {
  * when `r` is not an object, a bytes field is not a `Uint8Array`, or `expiration`, `timestamp` or `feeLimit` is not a
  * bigint from 0 below 2^63, the values `decodeTronTx` reads back.
  */
-export function encodeTronRaw(r: TronRaw): Uint8Array {
+export function encodeTronRaw(r: TronRaw): Uint8Array<ArrayBuffer> {
   if (!isTronRaw(r)) throw new TypeError("not a TronRaw");
   const trigger = message((o) => {
     pushBytes(o, 1, r.owner);
@@ -255,7 +259,9 @@ function encodeTransaction(rawBytes: Uint8Array, signatures: readonly Uint8Array
  * fields TronRaw names, and 1 to 5 signatures of 65 bytes. The raw bytes must be exactly what `encodeTronRaw` writes
  * for the fields read.
  */
-export function decodeTronTx(hex: string): { raw: TronRaw; rawBytes: Uint8Array; signatures: Uint8Array[] } | Refusal {
+export function decodeTronTx(
+  hex: string,
+): { raw: TronRaw<ArrayBuffer>; rawBytes: Uint8Array<ArrayBuffer>; signatures: Uint8Array<ArrayBuffer>[] } | Refusal {
   if (typeof hex !== "string") return refusal("tron/tx-malformed");
   if (hex.length > MAX_TX_HEX) return refusal("tron/tx-too-large");
   if (hex.length === 0 || !LOWER_HEX.test(hex)) return refusal("tron/tx-malformed");
@@ -276,10 +282,10 @@ export function decodeTronTx(hex: string): { raw: TronRaw; rawBytes: Uint8Array;
   return { raw, rawBytes: Uint8Array.from(rawBytes), signatures: signatures.map((s) => Uint8Array.from(s)) };
 }
 
-function decodeRaw(rawBytes: Uint8Array): TronRaw | Refusal {
+function decodeRaw(rawBytes: Uint8Array): TronRaw<ArrayBuffer> | Refusal {
   const fields = fieldsOf(rawBytes);
   if (fields === null) return refusal("tron/tx-malformed");
-  const raw: TronRaw = {
+  const raw: TronRaw<ArrayBuffer> = {
     refBlockBytes: new Uint8Array(0),
     refBlockHash: new Uint8Array(0),
     expiration: 0n,
@@ -340,7 +346,7 @@ function decodeRaw(rawBytes: Uint8Array): TronRaw | Refusal {
 // ── Addresses.
 
 /** Decodes a base58check address to its 21 bytes, which begin 0x41. The checksum is SHA-256 twice. */
-export async function tronAddress(address: string): Promise<Uint8Array | Refusal> {
+export async function tronAddress(address: string): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   return addressBytes(address) ?? refusal("tron/address-malformed");
 }
 
@@ -350,7 +356,7 @@ const BASE58CHECK = createBase58check(sha256);
  * The 21 bytes of a base58check string of 34 characters whose first byte is 0x41 and whose last four bytes are the
  * first four of SHA-256 twice over the 21, or null.
  */
-function addressBytes(address: unknown): Uint8Array | null {
+function addressBytes(address: unknown): Uint8Array<ArrayBuffer> | null {
   if (typeof address !== "string" || address.length !== BASE58_ADDRESS_CHARS) return null;
   let b: Uint8Array;
   try {

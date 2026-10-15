@@ -121,7 +121,7 @@ interface NearChoice {
 
 export interface NearUnsigned {
   /** SHA-256 of the NEP-461-prefixed delegate action: what the key signs. */
-  request: { kind: "near-delegate"; hash: Uint8Array };
+  request: { kind: "near-delegate"; hash: Uint8Array<ArrayBuffer> };
   /**
    * Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature. An Ed25519 signature whose last byte
    * is 0x20 or more is `x402/signature-malformed`: nearcore reads none, and a valid signature never has one.
@@ -145,7 +145,7 @@ const strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
  * `ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A value
  * that is not a 32-byte hash is `x402/payload-malformed`.
  */
-export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8Array | Refusal {
+export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8Array<ArrayBuffer> | Refusal {
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   return utf8.encode(JSON.stringify({ receiver_id: payTo, amount, memo: toLcpString(nh) }));

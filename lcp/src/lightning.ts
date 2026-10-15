@@ -45,16 +45,20 @@ import {
  */
 export type LnNetwork = "lnbtc:000000000019d6689c085ae165831e93" | "lnbtc:000000000933ea01ad0ee984209779ba";
 
-export interface Bolt11 {
+/**
+ * A decoded BOLT11 invoice. `B` is what its bytes are backed by: `decodeBolt11` gives `Bolt11<ArrayBuffer>`, each byte
+ * field in its own fresh `ArrayBuffer`, and a function that reads one takes any backing.
+ */
+export interface Bolt11<B extends ArrayBufferLike = ArrayBufferLike> {
   currency: "bc" | "tb" | "tbs" | "bcrt";
   amountMsat: bigint | null;
   timestamp: number;
   expiry: number;
-  paymentHash: Uint8Array;
-  descriptionHash: Uint8Array | null;
+  paymentHash: Uint8Array<B>;
+  descriptionHash: Uint8Array<B> | null;
   /** The `d` field as strict UTF-8, a leading byte-order mark kept as a character; null when the invoice has none. */
   description: string | null;
-  metadata: Uint8Array | null;
+  metadata: Uint8Array<B> | null;
   /** Every tagged field's type, in invoice order. */
   tags: readonly number[];
 }
@@ -91,7 +95,7 @@ const atrText = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
  * Decodes a BOLT11 invoice of up to 8,192 characters, past Bech32's 90-character limit, which BOLT 11 lets an invoice
  * exceed. The signature is not verified.
  */
-export async function decodeBolt11(invoice: string): Promise<Bolt11 | Refusal> {
+export async function decodeBolt11(invoice: string): Promise<Bolt11<ArrayBuffer> | Refusal> {
   return decode(invoice);
 }
 

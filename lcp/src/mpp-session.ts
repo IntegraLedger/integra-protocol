@@ -182,8 +182,8 @@ export interface SessionWithin {
 /** A request to the buyer's signer for an in-channel payment. */
 export type WithinSigningRequest =
   | { kind: "eip712"; typedData: VoucherTypedData | HederaVoucherTypedData }
-  | { kind: "ed25519-raw"; message: Uint8Array; signer: string }
-  | { kind: "xrpl-claim"; channelId: string; drops: bigint; bytes: Uint8Array };
+  | { kind: "ed25519-raw"; message: Uint8Array<ArrayBuffer>; signer: string }
+  | { kind: "xrpl-claim"; channelId: string; drops: bigint; bytes: Uint8Array<ArrayBuffer> };
 
 /** One signing request; `complete` takes its one signature and returns the in-channel credential. */
 export interface SessionWithinUnsigned {

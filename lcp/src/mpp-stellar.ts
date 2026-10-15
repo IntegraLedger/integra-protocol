@@ -55,7 +55,7 @@ export interface StellarChargeChoice {
 }
 
 export interface StellarChargeUnsigned {
-  request: { kind: "stellar-auth"; preimage: Uint8Array };
+  request: { kind: "stellar-auth"; preimage: Uint8Array<ArrayBuffer> };
   /** The payer's Ed25519 signature over SHA-256 of `preimage`. */
   complete(signature: Uint8Array): MppCredential | Refusal;
 }

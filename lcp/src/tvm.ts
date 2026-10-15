@@ -144,7 +144,7 @@ interface TvmChoice {
 
 export interface TvmUnsigned {
   /** The 32-byte representation hash of the W5 request the wallet key signs. */
-  request: { kind: "ton-w5"; hash: Uint8Array };
+  request: { kind: "ton-w5"; hash: Uint8Array<ArrayBuffer> };
   /** Takes the 64-byte Ed25519 signature. */
   complete(signature: Uint8Array): TvmPayment | Refusal;
 }
