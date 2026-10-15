@@ -437,7 +437,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 
 | Code | Meaning |
 |---|---|
-| `xrpl/blob-malformed` | An XRPL signed blob is not a string of hex, nests fields deeper than `XRPL_MAX_DEPTH` (checked before it is decoded), does not decode, is not the canonical serialization of what it decodes to, lacks `TransactionType` or `Account`, or a credential or `complete` call carries no string blob. |
+| `xrpl/blob-malformed` | An XRPL signed blob is not a string of hex, holds a field deeper than `XRPL_MAX_DEPTH` (10 levels, as rippled counts them; checked before it is decoded), does not decode, is not the canonical serialization of what it decodes to, lacks `TransactionType` or `Account`, or a credential or `complete` call carries no string blob. |
 | `xrpl/blob-too-large` | An XRPL signed blob exceeds 4096 hex characters (2048 bytes). |
 | `xrpl/carrier-mismatch` | The option's `extra.invoiceId` or the challenge's `invoiceId` is not the one derived from H when `build` is called, or the signed `Payment`'s `InvoiceID` is not the one the option or challenge names. |
 | `xrpl/carrier-not-lcp` | The x402 XRPL option's `extra.invoiceId` is not an ATR hash in LCP string form. |

@@ -32,9 +32,14 @@ type Row = { name: string; case: string; accept: boolean };
 /** How x402-exact-algorand.json V3.refusals ends the case of the row whose entry has bytes after its value. */
 const AFTER_THE_VALUE = "bytes after its one value";
 
-describe("XRPL binary: STObject and STArray nesting", () => {
-  it("the cap is the vectors'", () => {
+describe("XRPL binary: the level of every field", () => {
+  // rippled 3.4.1 refuses a field whose depth is above 10 (src/libxrpl/protocol/STVar.cpp L104-108).
+  it("the cap is the vectors' and rippled's, and a row is admitted exactly when its deepest field is within it", () => {
     expect(XRPL_MAX_DEPTH).toBe(V.xrpl.maxDepth);
+    expect(XRPL_MAX_DEPTH).toBe(10);
+    for (const r of rowsOf(V.xrpl.rows as (Row & { depth: number })[], "decoder-caps.json xrpl.rows")) {
+      expect(r.accept, r.name).toBe(r.depth <= XRPL_MAX_DEPTH);
+    }
   });
   for (const r of rowsOf(V.xrpl.rows as (Row & { blob: string })[], "decoder-caps.json xrpl.rows")) {
     it(`${r.name}: ${r.case} → ${r.accept ? "decoded" : "xrpl/blob-malformed"}`, async () => {

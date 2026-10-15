@@ -1,42 +1,118 @@
 {
- "about": "Decoder caps. XRPL: STObject and STArray fields nest at most 64 levels inside a transaction (an object or array field one level below its container, an array's member object one level below the array); the blobs were written by ripple-binary-codec 2.11.0's encode, each a Payment whose depth is by construction. The cap is checked in one pass over the blob's fields before the codec decodes it, so XC5, the largest blob decodeBlob takes (4096 hex characters) nesting to level 1010, is refused in time linear in its length. msgpack: arrays and maps nest at most 32 levels, the outermost container being level 1, every declared length is at most the bytes left, and the bytes are exactly one value; the scan does not judge a string's bytes, a key or a format, which the Algorand reader reads as each member's type is read; each row is hand-written from the msgpack specification's formats, and Python 3.12.3's strict UTF-8 codec refuses the string of each row whose case says it is not well-formed. ScVal: vectors and maps (a contract instance's storage counting as a map) nest at most 64 levels within one ScVal, the outermost container being level 1; each ScVal is hand-written XDR (RFC 4506). Authorized invocations nest at most 64 levels within one authorization entry, the root invocation being level 1. In an envelope the cap applies to what decodeStellarTx reads, the operation and the payer's authorization entry; every other part (another entry, a delegate, the footprint, another operation, a claim predicate) is not walked and is decoded whatever its depth. The envelopes are x402-exact-stellar.json V2's signed envelope edited with @stellar/stellar-sdk 17.2.1's XDR types: SE1 and SE2 wrap the payer's signature (a vector of one map, 2 levels) in vectors, SE3 and SE4 add a second authorization entry under the source account's credentials, SE5 gives the payer's transfer a chain of sub-invocations, SE6 gives the operation a fourth argument, SE7 adds a second authorization entry under address credentials with delegates (the account key of 32 bytes of 04, a void signature, and x(void) on the contract of 32 bytes of 06 as its invocation) whose delegates nest 66 deep, and SE8 replaces the operation with a create-claimable-balance of 1 stroop of the native asset whose one claimant (the account key of 32 bytes of 05) has a predicate nesting 66 deep, 65 not-predicates around an unconditional one. SE9 to SE75 hold each recursive shape at 64 and 65 levels in each place it can sit, and in each place lcp does not read, at the least level js-xdr 5.0.0's default depth (1,500) refuses where that fits in 8,192 characters, as each row's case says. The places are the payer's signature (replaced), a fourth argument of the operation, the payer's invocations, a second entry as SE3's (its argument or invocations), as SE7's (its one delegate's signature, or its delegates) or under the address credentials of the account key of 32 bytes of 08 with a void signature (its signature or invocations), a footprint of one read-only persistent contract-data key on the contract of 32 bytes of 07, a second operation (x(value) on the contract of 32 bytes of 06, or a create-claimable-balance as SE8's), and SE8's operation. Each map and contract instance storage holds one entry whose key is void, each contract instance's executable is the Stellar asset, and each and-predicate's first operand is unconditional. Past the cap in what is read is refused; every other row reads as V2's envelope reads without its nesting. A row's expect, where it has one, is decodeStellarTx's refusal. 'accept' says whether the caps admit the input.",
+ "about": "Decoder caps. XRPL: every field of a transaction sits at most 10 levels deep, the limit past which rippled's deserializer refuses a field (rippled 3.4.1, src/libxrpl/protocol/STVar.cpp L104-108: depth > 10): a top-level field is at level 1, each field inside an object or array field one level below it, and an array's member object one level below the array; an end marker sits at no level, so an object or array at level 10 holds no field. Each row's depth is its deepest field's level. The blobs were written by ripple-binary-codec 2.11.0's encode, each by construction: XC1 to XC9 a Payment with only the nesting, XC10 to XC15 a pairing's signed blob with a Memo field added (XC10 and XC11 x402-exact-xrpl.json V2's, XC12 and XC13 its V3's, which mpp-charge-xrpl.json V3 presents, XC14 and XC15 mpp-session-hedera-solana-xrpl.json XS2's); Python 3.12.3's walk of the field headers gives each row's depth, and its hashlib gives each hash, SHA-512Half over 54584E00 and the blob. The rows bound nesting only: rippled also holds each object to its field's template, which a Memo inside a Memo does not meet. The cap is checked in one pass over the blob's fields before the codec decodes it, so XC5, the largest blob decodeBlob takes (4096 hex characters), is refused in time linear in its length. msgpack: arrays and maps nest at most 32 levels, the outermost container being level 1, every declared length is at most the bytes left, and the bytes are exactly one value; the scan does not judge a string's bytes, a key or a format, which the Algorand reader reads as each member's type is read; each row is hand-written from the msgpack specification's formats, and Python 3.12.3's strict UTF-8 codec refuses the string of each row whose case says it is not well-formed. ScVal: vectors and maps (a contract instance's storage counting as a map) nest at most 64 levels within one ScVal, the outermost container being level 1; each ScVal is hand-written XDR (RFC 4506). Authorized invocations nest at most 64 levels within one authorization entry, the root invocation being level 1. In an envelope the cap applies to what decodeStellarTx reads, the operation and the payer's authorization entry; every other part (another entry, a delegate, the footprint, another operation, a claim predicate) is not walked and is decoded whatever its depth. The envelopes are x402-exact-stellar.json V2's signed envelope edited with @stellar/stellar-sdk 17.2.1's XDR types: SE1 and SE2 wrap the payer's signature (a vector of one map, 2 levels) in vectors, SE3 and SE4 add a second authorization entry under the source account's credentials, SE5 gives the payer's transfer a chain of sub-invocations, SE6 gives the operation a fourth argument, SE7 adds a second authorization entry under address credentials with delegates (the account key of 32 bytes of 04, a void signature, and x(void) on the contract of 32 bytes of 06 as its invocation) whose delegates nest 66 deep, and SE8 replaces the operation with a create-claimable-balance of 1 stroop of the native asset whose one claimant (the account key of 32 bytes of 05) has a predicate nesting 66 deep, 65 not-predicates around an unconditional one. SE9 to SE75 hold each recursive shape at 64 and 65 levels in each place it can sit, and in each place lcp does not read, at the least level js-xdr 5.0.0's default depth (1,500) refuses where that fits in 8,192 characters, as each row's case says. The places are the payer's signature (replaced), a fourth argument of the operation, the payer's invocations, a second entry as SE3's (its argument or invocations), as SE7's (its one delegate's signature, or its delegates) or under the address credentials of the account key of 32 bytes of 08 with a void signature (its signature or invocations), a footprint of one read-only persistent contract-data key on the contract of 32 bytes of 07, a second operation (x(value) on the contract of 32 bytes of 06, or a create-claimable-balance as SE8's), and SE8's operation. Each map and contract instance storage holds one entry whose key is void, each contract instance's executable is the Stellar asset, and each and-predicate's first operand is unconditional. Past the cap in what is read is refused; every other row reads as V2's envelope reads without its nesting. A row's expect, where it has one, is decodeStellarTx's refusal. 'accept' says whether the caps admit the input.",
  "xrpl": {
-  "maxDepth": 64,
+  "maxDepth": 10,
   "rows": [
    {
     "name": "XC1",
-    "case": "a Memo field nesting 64 STObjects",
-    "depth": 64,
-    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1",
+    "case": "a Memo field nesting 9 STObjects, the innermost holding a MemoType: a field at level 10",
+    "depth": 10,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1",
     "accept": true
    },
    {
     "name": "XC2",
-    "case": "a Memo field nesting 65 STObjects",
-    "depth": 65,
-    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1",
+    "case": "a Memo field nesting 10 STObjects, the innermost holding a MemoType: a field at level 11",
+    "depth": 11,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1",
     "accept": false
    },
    {
     "name": "XC3",
-    "case": "a Memos array (level 1) whose member object (level 2) nests to level 64",
-    "depth": 64,
-    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8F9EAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1F1",
+    "case": "a Memos array (level 1) whose member object (level 2) nests objects to level 9, the innermost holding a MemoType at level 10",
+    "depth": 10,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8F9EAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1F1",
     "accept": true
    },
    {
     "name": "XC4",
-    "case": "a Memos array (level 1) whose member object (level 2) nests to level 65",
-    "depth": 65,
-    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8F9EAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1F1",
+    "case": "a Memos array (level 1) whose member object (level 2) nests objects to level 10, the innermost holding a MemoType at level 11",
+    "depth": 11,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8F9EAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1F1",
     "accept": false
    },
    {
     "name": "XC5",
-    "case": "a Memos array (level 1) whose member object (level 2) nests to level 1010: 4096 hex characters",
-    "depth": 1010,
+    "case": "a Memos array (level 1) whose member object (level 2) nests objects to level 1010, the innermost holding a MemoType at level 1011: 4096 hex characters",
+    "depth": 1011,
     "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8F9EAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1E1F1",
     "accept": false
+   },
+   {
+    "name": "XC6",
+    "case": "a Memo field nesting 10 STObjects, the innermost empty: an object at level 10 that holds no field",
+    "depth": 10,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEAEAE1E1E1E1E1E1E1E1E1E1",
+    "accept": true
+   },
+   {
+    "name": "XC7",
+    "case": "a Memo field nesting 11 STObjects, the innermost empty: an object at level 11",
+    "depth": 11,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEAEAEAE1E1E1E1E1E1E1E1E1E1E1",
+    "accept": false
+   },
+   {
+    "name": "XC8",
+    "case": "a Memo field nesting 9 STObjects, the innermost holding an empty Memos array: an array at level 10 that holds no member",
+    "depth": 10,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEAF9F1E1E1E1E1E1E1E1E1E1",
+    "accept": true
+   },
+   {
+    "name": "XC9",
+    "case": "a Memo field nesting 10 STObjects, the innermost holding an empty Memos array: an array at level 11",
+    "depth": 11,
+    "blob": "1200008114B5F762798A53D543A014CAF8B297CFF8F2F937E8EAEAEAEAEAEAEAEAEAEAF9F1E1E1E1E1E1E1E1E1E1E1",
+    "accept": false
+   },
+   {
+    "name": "XC10",
+    "case": "x402-exact-xrpl.json V2's signed Payment with a Memo field nesting 9 STObjects, the innermost holding a MemoType: a field at level 10",
+    "depth": 10,
+    "blob": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1",
+    "accept": true,
+    "hash": "E8AFCB804DAF5AEF907FE96E509D276340EDFB614B475CF19BF1124B01CA6BE5"
+   },
+   {
+    "name": "XC11",
+    "case": "x402-exact-xrpl.json V2's signed Payment with a Memo field nesting 10 STObjects, the innermost holding a MemoType: a field at level 11",
+    "depth": 11,
+    "blob": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1",
+    "accept": false,
+    "hash": "DE1E908C54A18FE62F6AF5A35A74AD20B6BF6FF8ADEE977D512363DEE6506F8B"
+   },
+   {
+    "name": "XC12",
+    "case": "x402-exact-xrpl.json V3's signed Payment, which mpp-charge-xrpl.json V3 presents, with a Memo field nesting 9 STObjects, the innermost holding a MemoType: a field at level 10",
+    "depth": 10,
+    "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1",
+    "accept": true,
+    "hash": "0C187AA06F96164B05A740D4BA9F522AEEB1104E0F75485D70BED3B503B83F3C"
+   },
+   {
+    "name": "XC13",
+    "case": "x402-exact-xrpl.json V3's signed Payment, which mpp-charge-xrpl.json V3 presents, with a Memo field nesting 10 STObjects, the innermost holding a MemoType: a field at level 11",
+    "depth": 11,
+    "blob": "12000022000000002400000007201B000003E85011BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD6140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744053155F82A1090837314D857F1792BC0CAECC586B46B3558BD8444663993CA8A295C5545488DD477C725C6C73FB265EFA4C91EBDCF153630A26D94BF4AE95A10081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1",
+    "accept": false,
+    "hash": "EE69818DB769303AB2A221FEAC43C17F84A06F50647E99414391DFED25473E7C"
+   },
+   {
+    "name": "XC14",
+    "case": "mpp-session-hedera-solana-xrpl.json XS2's signed PaymentChannelCreate with a Memo field nesting 9 STObjects, the innermost holding a MemoType: a field at level 10",
+    "depth": 10,
+    "blob": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440FD659811F48201E3336E668DE891D117AAFA477D2BC0C0B45045952A9533EF53D9DE6408E697B91EC800926C335AA44FB2AD9C18EB875368524EBC791517230B81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1F9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
+    "accept": true,
+    "hash": "9A1B292474E56CD4F7968CBB5763C92F3DF987BA68A566DCDAB477123A4ED6F9"
+   },
+   {
+    "name": "XC15",
+    "case": "mpp-session-hedera-solana-xrpl.json XS2's signed PaymentChannelCreate with a Memo field nesting 10 STObjects, the innermost holding a MemoType: a field at level 11",
+    "depth": 11,
+    "blob": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440FD659811F48201E3336E668DE891D117AAFA477D2BC0C0B45045952A9533EF53D9DE6408E697B91EC800926C335AA44FB2AD9C18EB875368524EBC791517230B81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AEAEAEAEAEAEAEAEAEAEA7C01ABE1E1E1E1E1E1E1E1E1E1F9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
+    "accept": false,
+    "hash": "FCCF3CE779FA697CB6804FFEBB8EDCA9769C728F3ACADD290B40A4F0663D547A"
    }
   ]
  },
