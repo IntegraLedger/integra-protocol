@@ -592,13 +592,14 @@ export function decodeStellarTx(xdrB64: string, network: StellarNetwork): Stella
  * that entry signs, whether the operation invokes exactly that, and a completion that writes the payer's signature as
  * `authorizeEntry` does for an account: a vector of one map `{public_key, signature}`. The completion refuses a signed
  * envelope over `MAX_XDR` (8,192) characters with `stellar/tx-too-large`, as `readSignedTransfer` refuses it.
+ * `written` writes the same envelope without that bound, for a caller that measures what carries it first.
  */
 export function signingFor(
   simulatedXdr: string,
   network: StellarNetwork,
   expiration: number,
   zeroSource: boolean,
-): { payment: StellarPayment; agrees: boolean; unsigned: StellarUnsigned } | Refusal {
+): { payment: StellarPayment; agrees: boolean; unsigned: StellarUnsigned; written(signature: Uint8Array): string | Refusal } | Refusal {
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
   if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
@@ -615,31 +616,35 @@ export function signingFor(
   const preimage = Uint8Array.from(preimageOf(S, network, entry, cred));
   const publicKey = S.StrKey.decodeEd25519PublicKey(payment.from);
   const x = S.xdr;
+  const written = (signature: Uint8Array): string | Refusal => {
+    if (!(signature instanceof Uint8Array) || signature.length !== 64) return refusal("stellar/tx-malformed");
+    cred.c.signature = {
+      type: 16,
+      vec: [
+        {
+          type: 17,
+          map: [
+            { key: { type: 15, sym: new x.XdrString("public_key") }, val: { type: 13, bytes: Uint8Array.from(publicKey) } },
+            { key: { type: 15, sym: new x.XdrString("signature") }, val: { type: 13, bytes: new Uint8Array(signature) } },
+          ],
+        },
+      ],
+    };
+    try {
+      return toBase64(writeXdr(x.TransactionEnvelope, wire));
+    } catch {
+      return refusal("stellar/tx-malformed");
+    }
+  };
   return {
     payment,
     agrees: parsed.agrees,
+    written,
     unsigned: {
       request: { kind: "stellar-auth", preimage },
       complete(signature: Uint8Array): string | Refusal {
-        if (!(signature instanceof Uint8Array) || signature.length !== 64) return refusal("stellar/tx-malformed");
-        cred.c.signature = {
-          type: 16,
-          vec: [
-            {
-              type: 17,
-              map: [
-                { key: { type: 15, sym: new x.XdrString("public_key") }, val: { type: 13, bytes: Uint8Array.from(publicKey) } },
-                { key: { type: 15, sym: new x.XdrString("signature") }, val: { type: 13, bytes: new Uint8Array(signature) } },
-              ],
-            },
-          ],
-        };
-        let signed: string;
-        try {
-          signed = toBase64(writeXdr(x.TransactionEnvelope, wire));
-        } catch {
-          return refusal("stellar/tx-malformed");
-        }
+        const signed = written(signature);
+        if (isRefusal(signed)) return signed;
         return signed.length > MAX_XDR ? refusal("stellar/tx-too-large") : signed;
       },
     },

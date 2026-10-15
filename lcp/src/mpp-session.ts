@@ -75,6 +75,7 @@ import { keyAccount } from "./internal/tempo.js";
 import { authorizationSignatures, tempoSender } from "./internal/tempo-envelope.js";
 import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { rlpBytes, rlpList } from "./rlp.js";
 import {
   ACCESS_KEY_SPEND_TOPIC,
   ACCOUNT_KEYCHAIN,
@@ -1696,8 +1697,12 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
     complete(rootSignature: Hex): MppCredential | Refusal {
       if (!isHexBytes(rootSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       const signed = encodeKeyAuthorization(authorization, rootSignature);
-      if (!(signed instanceof Uint8Array)) return signed;
-      return measured({ challenge, source, payload: { type: "keyAuthorization", signature: hexOf(signed) } });
+      // A key authorization over its own bound is still measured in its credential first, as `bound` reads them: the
+      // same RLP list, rlp([authorization, signature]), that `encodeKeyAuthorization` writes within the bound.
+      const carried = signed instanceof Uint8Array ? signed : rlpList([unsigned, rlpBytes(bytesOf(rootSignature)!)]);
+      const credential = measured({ challenge, source, payload: { type: "keyAuthorization", signature: hexOf(carried) } });
+      if (isRefusal(credential)) return credential;
+      return signed instanceof Uint8Array ? credential : signed;
     },
   };
 }

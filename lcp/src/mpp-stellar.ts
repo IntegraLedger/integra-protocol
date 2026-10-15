@@ -5,6 +5,7 @@
 import type { AtrHash, Json } from "./core.js";
 import {
   hasPeer,
+  MAX_XDR,
   isAccount,
   muxedFor,
   muxedId,
@@ -60,8 +61,10 @@ export interface StellarChargeChoice {
 export interface StellarChargeUnsigned {
   request: { kind: "stellar-auth"; preimage: Uint8Array<ArrayBuffer> };
   /**
-   * The payer's Ed25519 signature over SHA-256 of `preimage`. A credential over the credential size bound, 64 KiB, its
-   * echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses it.
+   * The payer's Ed25519 signature over SHA-256 of `preimage`. `complete` checks the credential in `bound`'s order: a
+   * credential over the credential size bound, 64 KiB, its echoed challenge included, is `mpp/credential-malformed`,
+   * then a signed envelope over 8,192 characters is `stellar/tx-too-large`, as `bound` refuses each, so a credential
+   * with both faults is `mpp/credential-malformed`.
    */
   complete(signature: Uint8Array): MppCredential | Refusal;
 }
@@ -250,9 +253,11 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   return {
     request: s.unsigned.request,
     complete(signature: Uint8Array): MppCredential | Refusal {
-      const xdr = s.unsigned.complete(signature);
+      const xdr = s.written(signature);
       if (isRefusal(xdr)) return xdr;
-      return measured({ challenge, payload: { type: "transaction", transaction: xdr } });
+      const credential = measured({ challenge, payload: { type: "transaction", transaction: xdr } });
+      if (isRefusal(credential)) return credential;
+      return xdr.length > MAX_XDR ? refusal("stellar/tx-too-large") : credential;
     },
   };
 }

@@ -415,10 +415,10 @@ function onNetwork(tx: StacksTransaction, chainId: number): boolean {
 /**
  * The SIP-010 `transfer` for the buyer's Stacks wallet to build and sign: `(amount, sender, recipient, (some H))` on
  * the profile's token contract, one `SentEq` post-condition, post-condition mode Deny and anchor mode OnChainOnly, for
- * the profile's `chainId`. `complete` reads the signed transaction as `bound` reads it: bytes that are empty, over the
- * size bound or that a Stacks node does not decode are `mpp/stacks-tx-malformed`, and a transaction a node of the
- * challenge's network does not take (`onNetwork`) is `stacks/chain-mismatch`. It returns the credential through
- * `measured`: one over the credential size bound is `mpp/credential-malformed`, the code `bound` gives it.
+ * the profile's `chainId`. `complete` reads the credential as `bound` reads it, in its order: a credential over the
+ * credential size bound is `mpp/credential-malformed` (`measured`); then bytes that are empty, over the size bound or
+ * that a Stacks node does not decode are `mpp/stacks-tx-malformed`, and a transaction a node of the challenge's network
+ * does not take (`onNetwork`) is `stacks/chain-mismatch`.
  */
 async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
@@ -443,15 +443,16 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
     },
     complete(serializedTx: Uint8Array): MppCredential | Refusal {
       if (!(serializedTx instanceof Uint8Array)) return refusal("mpp/credential-malformed");
-      if (serializedTx.length === 0 || serializedTx.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
-      const tx = readStacksTransaction(serializedTx);
-      if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
-      if (!onNetwork(tx, Number(chainId))) return refusal("stacks/chain-mismatch");
-      return measured({
+      const credential = measured({
         challenge,
         source: `stacks:${chainId}:${from}`,
         payload: { type: "transaction", transaction: base64.encode(serializedTx), transactionFormat: STACKS_FORMAT },
       });
+      if (isRefusal(credential)) return credential;
+      if (serializedTx.length === 0 || serializedTx.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
+      const tx = readStacksTransaction(serializedTx);
+      if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
+      return onNetwork(tx, Number(chainId)) ? credential : refusal("stacks/chain-mismatch");
     },
   };
 }

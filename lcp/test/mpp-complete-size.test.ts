@@ -35,6 +35,8 @@ import {
   type MppCredential,
 } from "../src/mpp.js";
 import { chargeLightning, sessionLightning } from "../src/lightning.js";
+import { rlpBytes, rlpList } from "../src/rlp.js";
+import { encodeKeyAuthorization } from "../src/tempo.js";
 import { load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -476,4 +478,109 @@ describe("x402 exact Stellar: complete refuses a signed envelope over 8,192 char
     expect(over.length).toBeGreaterThan(8192);
     expect(await exactStellar.bound(paid(over))).toEqual(refused("stellar/tx-too-large"));
   });
+});
+
+// completeOrder: a complete checks the credential in its bound's order. bound measures a credential before it reads the
+// payment it carries, so a payment fault in a credential over the credential size bound is mpp/credential-malformed
+// from complete as from bound, and at the bound each gives the fault's own code (bound the row's bound code, or H, where
+// it reads nothing of the payment).
+describe("mpp-challenge.json completeOrder: a complete checks the credential in its bound's order", () => {
+  type OrderRow = { case: string; pairing: string; fault: string; size: number; expect: string; bound?: string; boundTakes?: true };
+  const ROWS_ORDER = rowsOf<OrderRow>(MC.completeOrder.rows, "mpp-challenge.json completeOrder.rows", { exact: 12 });
+  /** The pairing's credential, completed from its B2 and B6 rows under its credentialSize challenge. */
+  const taken = async (pairing: string) => {
+    const { placed, complete } = setUp(pairing);
+    return (await complete(placed)) as MppCredential;
+  };
+  /** The credential complete would make under `challenge`: the pairing's own, its payload's `field` set to `value`. */
+  const swapped = async (pairing: string, challenge: Placed, field: string, value: string): Promise<MppCredential> => {
+    const c = await taken(pairing);
+    return { ...c, challenge, payload: { ...c.payload, [field]: value } };
+  };
+  const stellarB2 = buyer("mpp-charge-stellar.json", "mpp/charge/stellar", "B2")!;
+  /** The Stellar build's complete under `challenge`, B2's simulated envelope given a footprint key of `keyBytes` bytes. */
+  const stellarComplete = async (challenge: Placed, keyBytes: number) => {
+    const i = stellarB2.input.inputs!;
+    const simulatedXdr = footprinted(i.simulatedXdr!, keyBytes);
+    const choice = { challenge, payer: accountOf(stellarB2), now: stellarB2.input.now ?? 0, simulatedXdr, currentLedger: i.currentLedger! };
+    return built(await chargeStellar.build(choice, stellarB2.advertised)).complete(SIGNATURE);
+  };
+  const stacksWire = rowsOf(load("mpp-charge-usdc-stacks.json").agreedRefusals.rows as { wireHex: string; bytes?: number }[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", { min: 49 })[48]!;
+  const subscriptionB2 = buyer("mpp-subscription-tempo.json", "mpp/subscription/tempo", "B2")!;
+  const subscriptionUnsigned = (challenge: Placed) =>
+    subscriptionTempo.build({ challenge, from: accountOf(subscriptionB2) as Hex, now: subscriptionB2.input.now ?? 0 }, subscriptionB2.advertised).then(built);
+  const rootSignature = `0x${"11".repeat(8192)}` as Hex;
+  const evmTransactionB2 = buyer("mpp-charge-evm-transaction.json", "mpp/charge/evm/transaction", "B2")!;
+  const otherChain = (TX.agreedRefusals.rows[0].transactions as Hex[])[0]!;
+  const xrplB2 = buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B2")!;
+  const lightningB2 = buyer("mpp-charge-lightning.json", "mpp/charge/lightning", "B2")!;
+
+  type Fault = { complete(challenge: Placed): Promise<unknown>; credential(challenge: Placed): Promise<MppCredential> };
+  const FAULTS: Record<string, Fault> = {
+    // complete writes and signs the envelope; bound is given completeXdr's way of it, a taken envelope given the key.
+    "a signed envelope of 8,200 characters": {
+      complete: (challenge) => stellarComplete(challenge, 5405),
+      credential: async (challenge) => {
+        const within = (await stellarComplete(setUp("mpp/charge/stellar").placed, 5401)) as MppCredential;
+        const over = footprinted(within.payload["transaction"] as string, 5405);
+        expect(over.length).toBe(8200);
+        return swapped("mpp/charge/stellar", challenge, "transaction", over);
+      },
+    },
+    "a transaction of 16,385 bytes": {
+      complete: async (challenge) => {
+        const u = built(await chargeUsdcStacks.build({ challenge, from: accountOf(buyer("mpp-charge-usdc-stacks.json", "mpp/charge/usdc/stacks", "B2")!) }, setUp("mpp/charge/usdc/stacks").h)) as { complete(tx: Uint8Array): unknown };
+        return u.complete(Uint8Array.from(Buffer.from(stacksWire.wireHex.replace(/^0x/, ""), "hex")));
+      },
+      credential: async (challenge) => {
+        expect(stacksWire.bytes).toBe(16_385);
+        return swapped("mpp/charge/usdc/stacks", challenge, "transaction", Buffer.from(stacksWire.wireHex.replace(/^0x/, ""), "hex").toString("base64"));
+      },
+    },
+    "a signed key authorization over 8,192 bytes": {
+      complete: async (challenge) => (await subscriptionUnsigned(challenge)).complete(rootSignature),
+      credential: async (challenge) => {
+        const u = await subscriptionUnsigned(setUp("mpp/subscription/tempo").placed);
+        const unsigned = encodeKeyAuthorization(u.request.authorization) as Uint8Array;
+        const signed = rlpList([unsigned, rlpBytes(Buffer.from(rootSignature.slice(2), "hex"))]);
+        expect(signed.length).toBeGreaterThan(8192);
+        return swapped("mpp/subscription/tempo", challenge, "signature", toHex(signed));
+      },
+    },
+    "a blob of 2,049 bytes": {
+      complete: async (challenge) => {
+        const i = xrplB2.input.inputs!;
+        const choice = { challenge, account: accountOf(xrplB2), fee: i.fee!, sequence: i.sequence!, lastLedgerSequence: i.lastLedgerSequence! };
+        return built(await chargeXrpl.build(choice, xrplB2.advertised)).complete("00".repeat(2049));
+      },
+      credential: (challenge) => swapped("mpp/charge/xrpl", challenge, "blob", "00".repeat(2049)),
+    },
+    "an EIP-1559 transaction for chain 1": {
+      complete: async (challenge) =>
+        built(await evmTransaction.build({ challenge, from: accountOf(evmTransactionB2) as Hex, now: evmTransactionB2.input.now ?? 0 }, evmTransactionB2.advertised)).complete(otherChain),
+      credential: (challenge) => swapped("mpp/charge/evm/transaction", challenge, "signature", otherChain),
+    },
+    "a preimage that is not 64 hex digits": {
+      complete: async (challenge) => built(await chargeLightning.build({ challenge }, lightningB2.advertised)).complete("00"),
+      credential: (challenge) => swapped("mpp/charge/lightning", challenge, "preimage", "00"),
+    },
+  };
+
+  it("each row names a pairing of credentialSize and a fault this test makes", () => {
+    for (const row of ROWS_ORDER) {
+      expect(PAIRINGS).toContain(row.pairing);
+      expect(Object.keys(FAULTS)).toContain(row.fault);
+    }
+  });
+  for (const row of ROWS_ORDER) {
+    it(row.case, async () => {
+      const { placed, h } = setUp(row.pairing);
+      const fault = FAULTS[row.fault]!;
+      const challenge = described(placed, descriptionFor(await fault.credential(placed), row.size));
+      const presented = await fault.credential(challenge);
+      expect(sizeOf(presented)).toBe(row.size);
+      expect(await fault.complete(challenge)).toEqual(refused(row.expect));
+      expect(await P[row.pairing]!.bound(presented)).toEqual(row.boundTakes ? h : refused(row.bound ?? row.expect));
+    });
+  }
 });

@@ -24,8 +24,9 @@ description: "The exports of @integraledger/lcp/tempo."
 
 > **complete**(`rootSignature`): [`Refusal`](index.md#refusal) \| [`MppCredential`](mpp.md#mppcredential)
 
-The credential for the root key's signature over `digest`. A credential over the credential size bound, 64 KiB,
-its echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses it.
+The credential for the root key's signature over `digest`, checked in `bound`'s order: a credential over the
+credential size bound, 64 KiB, its echoed challenge included, is `mpp/credential-malformed`, then a signed key
+authorization over 8,192 bytes is `tempo/key-authorization-malformed`, as `bound` refuses each.
 
 ###### Parameters
 
