@@ -253,8 +253,9 @@ jobs:
           exotic="$exotic$(grep -nE '^ +version: ' pnpm-lock.yaml website/pnpm-lock.yaml | grep -vE ':[0-9]+: +version: [0-9]' || true)"
           # No workflow sets pnpm's settings around the files: by an environment variable, a command-line setting or the
           # configuration command, by its name, its alias or its shorthands for reading and writing one key, each of which
-          # may follow options. The patterns are bracketed so that this step does not match itself.
-          around=$(grep -niE 'pnpm[_]config_|--config[.]|\bpnpm[[:space:]].*[[:space:]](config|c|get|set)([[:space:]]|$)' .github/workflows/*.yml || true)
+          # may follow options, with pnpm called by name, by path, as pnpm.cjs or with a version. The patterns are
+          # bracketed so that this step does not match itself.
+          around=$(grep -niE 'pnpm[_]config_|--config[.]|\bpnpm(\.[cm]?js|@[^[:space:]]*)?[^[:alnum:][:space:]_.([-]*[[:space:]](.*[[:space:]])?(config|c|get|set)([[:space:]]|$)' .github/workflows/*.yml || true)
           if [ "$workspace" != "$(printf '  - "*"\n  - "!website"')" ] || [ -n "$exotic$around" ]; then
             printf 'the install policy is weakened outside the settings:\npnpm-workspace.yaml packages:\n%s\n%s\n' "$workspace" "$(printf '%s\n' "$exotic" "$around" | grep . || true)"
             exit 1
