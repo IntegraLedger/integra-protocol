@@ -369,18 +369,21 @@ one nonce are `starknet/ambiguous`. A `PRE_CONFIRMED` receipt, or one with no bl
 
 Reads the named transaction's receipt. A receipt that is `PRE_CONFIRMED`, or names no block, is pending
 `pre-confirmed`: a pre-confirmed block can change. From a receipt accepted on L2 or L1, a `REVERTED` one is failed
-`reverted`, and a `SUCCEEDED` one must emit exactly one `Transfer` event from `ref.asset` whose sender is
-`ref.from`, and that transfer must have this payment's identity, else failed `not-this-instrument`. Then its trace
-must hold exactly one `transfer` call on `ref.asset` with this identity nested, at any depth, below an
-`execute_from_outside_v2` whose calldata carries this nonce, no invocation on the path to either having reverted. A
-trace that holds none, or more than one, or that is nested deeper than 16 levels or holds more than 512
-invocations, which the walk reads no further, is failed `not-this-instrument`: an accepted transaction's trace does
-not change, and `starknetLandedNonce` gives `starknet/no-transfer` for none and for a trace beyond those bounds. A
-call below such a `transfer` is the token's own execution of it (a library call repeats the frame) and is not read
-as another transfer. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout, or a
-reader for another network is pending. A ref whose `from`, `asset` or `nonce` is not `0x` and 1 to 64 hex digits
-below `FELT_P`, or whose `idDigest` is not `0x` and 64 hex digits, is pending `unreadable`, with nothing read; felts
-compare as numbers and the digest as a hash, in either case. Two calls.
+`reverted`, and a `SUCCEEDED` one must emit exactly one `Transfer` event from `ref.asset` whose sender is `ref.from`,
+and that transfer must have this payment's identity, else failed `not-this-instrument`. An asset `Transfer` event of
+neither standard layout, or with an amount limb of 2^128 or more, is the token's own event as the chain holds it,
+which a re-read gives again, and is failed `not-this-instrument` too. Then its trace must hold exactly one `transfer`
+call on `ref.asset` with this identity nested, at any depth, below an `execute_from_outside_v2` whose calldata
+carries this nonce, no invocation on the path to either having reverted. A trace that holds none, or more than one,
+or that is nested deeper than 16 levels or holds more than 512 invocations, which the walk reads no further, is
+failed `not-this-instrument`: an accepted transaction's trace does not change, and `starknetLandedNonce` gives
+`starknet/no-transfer` for none and for a trace beyond those bounds. A call below such a `transfer` is the token's
+own execution of it (a library call repeats the frame) and is not read as another transfer. A failed read, a
+malformed answer (an asset `Transfer` event with a key or data member that is not `0x` and 1 to 64 hex digits below
+`FELT_P`, whatever the other events hold, among them), or a reader for another network is pending. A ref whose
+`from`, `asset` or `nonce` is not `0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64
+hex digits, is pending `unreadable`, with nothing read; felts compare as numbers and the digest as a hash, in either
+case. Two calls.
 
 #### Parameters
 

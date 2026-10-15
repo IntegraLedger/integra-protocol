@@ -257,18 +257,21 @@ function word(v: bigint): Uint8Array {
 /**
  * Reads the named transaction's receipt. A receipt that is `PRE_CONFIRMED`, or names no block, is pending
  * `pre-confirmed`: a pre-confirmed block can change. From a receipt accepted on L2 or L1, a `REVERTED` one is failed
- * `reverted`, and a `SUCCEEDED` one must emit exactly one `Transfer` event from `ref.asset` whose sender is
- * `ref.from`, and that transfer must have this payment's identity, else failed `not-this-instrument`. Then its trace
- * must hold exactly one `transfer` call on `ref.asset` with this identity nested, at any depth, below an
- * `execute_from_outside_v2` whose calldata carries this nonce, no invocation on the path to either having reverted. A
- * trace that holds none, or more than one, or that is nested deeper than 16 levels or holds more than 512
- * invocations, which the walk reads no further, is failed `not-this-instrument`: an accepted transaction's trace does
- * not change, and `starknetLandedNonce` gives `starknet/no-transfer` for none and for a trace beyond those bounds. A
- * call below such a `transfer` is the token's own execution of it (a library call repeats the frame) and is not read
- * as another transfer. A failed read, a malformed answer, an asset `Transfer` event of neither standard layout, or a
- * reader for another network is pending. A ref whose `from`, `asset` or `nonce` is not `0x` and 1 to 64 hex digits
- * below `FELT_P`, or whose `idDigest` is not `0x` and 64 hex digits, is pending `unreadable`, with nothing read; felts
- * compare as numbers and the digest as a hash, in either case. Two calls.
+ * `reverted`, and a `SUCCEEDED` one must emit exactly one `Transfer` event from `ref.asset` whose sender is `ref.from`,
+ * and that transfer must have this payment's identity, else failed `not-this-instrument`. An asset `Transfer` event of
+ * neither standard layout, or with an amount limb of 2^128 or more, is the token's own event as the chain holds it,
+ * which a re-read gives again, and is failed `not-this-instrument` too. Then its trace must hold exactly one `transfer`
+ * call on `ref.asset` with this identity nested, at any depth, below an `execute_from_outside_v2` whose calldata
+ * carries this nonce, no invocation on the path to either having reverted. A trace that holds none, or more than one,
+ * or that is nested deeper than 16 levels or holds more than 512 invocations, which the walk reads no further, is
+ * failed `not-this-instrument`: an accepted transaction's trace does not change, and `starknetLandedNonce` gives
+ * `starknet/no-transfer` for none and for a trace beyond those bounds. A call below such a `transfer` is the token's
+ * own execution of it (a library call repeats the frame) and is not read as another transfer. A failed read, a
+ * malformed answer (an asset `Transfer` event with a key or data member that is not `0x` and 1 to 64 hex digits below
+ * `FELT_P`, whatever the other events hold, among them), or a reader for another network is pending. A ref whose
+ * `from`, `asset` or `nonce` is not `0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64
+ * hex digits, is pending `unreadable`, with nothing read; felts compare as numbers and the digest as a hash, in either
+ * case. Two calls.
  */
 export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetStatus> {
   if (
@@ -304,8 +307,10 @@ export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, r
 /**
  * Whether the receipt emits exactly one `Transfer` from `ref.asset` whose sender is `ref.from`, with this payment's
  * identity. A `Transfer` is an event from the asset whose first key is `EVENT_TRANSFER`, in either standard layout:
- * keyed (keys `[selector, from, to]`, data `[low, high]`) or unkeyed (keys `[selector]`, data `[from, to, low, high]`).
- * Such an event of neither layout, or a malformed reference, is unreadable.
+ * keyed (keys `[selector, from, to]`, data `[low, high]`) or unkeyed (keys `[selector]`, data `[from, to, low, high]`),
+ * each limb below 2^128. Such an event of neither layout, or with a limb of 2^128 or more, makes it false. Such an
+ * event with a key or data member that is not a felt, wherever it stands among the events, or a malformed reference,
+ * is unreadable.
  */
 async function transferEmitted(
   ref: { asset: Felt; from: Felt; idDigest: Hex },
@@ -316,21 +321,26 @@ async function transferEmitted(
   if (asset === undefined || payer === undefined) return "unreadable";
   const selector = BigInt(EVENT_TRANSFER);
   const sent: { to: bigint; amount: bigint }[] = [];
+  let unstandard = false;
   for (const e of events) {
     if (feltValue(e.fromAddress) !== asset || feltValue(e.keys[0]) !== selector) continue;
-    const fields =
-      e.keys.length === 3 && e.data.length === 2
-        ? [e.keys[1], e.keys[2], e.data[0], e.data[1]]
-        : e.keys.length === 1 && e.data.length === 4
-          ? e.data
-          : null;
-    if (fields === null) return "unreadable";
-    const [from, to, low, high] = fields.map(feltValue);
-    if (from === undefined || to === undefined || low === undefined || high === undefined) return "unreadable";
-    if (low >= U128 || high >= U128) return "unreadable";
-    if (from === payer) sent.push({ to, amount: low + high * U128 });
+    const keys = e.keys.map((k) => feltValue(k));
+    const data = e.data.map((d) => feltValue(d));
+    if (keys.includes(undefined) || data.includes(undefined)) return "unreadable";
+    // Every member is a felt here, so a field is undefined only in an event of neither layout.
+    const [from, to, low, high] =
+      keys.length === 3 && data.length === 2
+        ? [keys[1], keys[2], data[0], data[1]]
+        : keys.length === 1 && data.length === 4
+          ? data
+          : [];
+    if (from === undefined || to === undefined || low === undefined || high === undefined || low >= U128 || high >= U128) {
+      unstandard = true;
+    } else if (from === payer) {
+      sent.push({ to, amount: low + high * U128 });
+    }
   }
-  if (sent.length !== 1) return false;
+  if (unstandard || sent.length !== 1) return false;
   const digest = await starknetIdDigest(feltOf(payer), feltOf(sent[0]!.to), sent[0]!.amount);
   return !isRefusal(digest) && hashEquals(digest, ref.idDigest);
 }

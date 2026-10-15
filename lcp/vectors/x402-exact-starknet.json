@@ -651,8 +651,8 @@
      ]
     },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "failed",
+     "why": "not-this-instrument"
     }
    },
    {

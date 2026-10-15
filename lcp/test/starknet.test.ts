@@ -12,6 +12,7 @@ import { counting } from "./fixtures/counting-reader.js";
 import { rowsOf } from "./rows.js";
 import {
   EVENT_TRANSFER,
+  FELT_P,
   MASK_250,
   SELECTOR_EXECUTE_FROM_OUTSIDE_V2,
   SELECTOR_TRANSFER,
@@ -277,6 +278,53 @@ describe("x402-exact-starknet.json", () => {
     expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: twice }))).toEqual(two.expect);
     expect(await starknetLandedNonce(REF, readerFor({ receipt: landed.receipt, trace: twice }))).toBe(landed.expect);
     expect(plain(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: landed.trace })))).toEqual(V.S5.status[0].expect);
+  });
+
+  // A Transfer's amount is Cairo's u256, two u128 limbs, low then high (the file's two layouts end in them), and
+  // starknet_getTransactionReceipt gives each event key and data member as a FELT (Starknet JSON-RPC specification,
+  // EVENT_CONTENT). An asset Transfer event of neither layout, or with a limb of 2^128 or more, is the token's own event
+  // as the chain holds it, and a re-read of an accepted receipt gives it again: status answers it failed
+  // not-this-instrument, as the file's S5 row for that layout, wherever it stands beside the payer's transfer. A member
+  // that is not a felt is a reader answer out of its documented form: pending unreadable, whichever event comes first.
+  it("status answers an asset Transfer of neither layout or with a limb of 2^128 or more failed not-this-instrument, and one with a member that is not a felt pending unreadable", async () => {
+    const row = V.S5.status[0];
+    const transfer = row.receipt.events[0];
+    const byCase = (c: string) => V.S5.status.find((r: { case: string }) => r.case === c);
+    const neither = byCase("an asset Transfer event of neither layout");
+    expect(neither.expect).toEqual({ state: "failed", why: "not-this-instrument" });
+    const fee = byCase("the fee payer's Transfer on the same asset beside the payer's").receipt.events[0];
+    const limb = `0x${(2n ** 128n).toString(16)}`;
+    const maxLimb = `0x${(2n ** 128n - 1n).toString(16)}`;
+    const unstandard = [
+      neither.receipt.events[0],
+      { ...transfer, data: [limb, "0x0"] },
+      { ...transfer, data: ["0x2710", limb] },
+      { ...transfer, keys: [transfer.keys[0]], data: [transfer.keys[1], transfer.keys[2], "0x2710", limb] },
+      { ...fee, data: ["0x5", limb] },
+    ];
+    const notFelt = [
+      { ...transfer, data: ["0x2710", "0xg"] },
+      { ...transfer, data: ["0x2710", `0x${FELT_P.toString(16)}`] },
+      { ...neither.receipt.events[0], data: [...neither.receipt.events[0].data, "2710"] },
+    ];
+    const receipt = (events: unknown[], finality = "ACCEPTED_ON_L2") => ({ ...row.receipt, finality, events });
+    const status = async (events: unknown[], finality?: string) =>
+      plain(await exactStarknet.status(REF, readerFor({ receipt: receipt(events, finality), trace: row.trace })));
+    expect(await status([transfer])).toEqual(row.expect);
+    expect(await status([{ ...fee, data: [maxLimb, maxLimb] }, transfer])).toEqual(row.expect);
+    for (const e of rowsOf(unstandard, "asset Transfer events of neither layout or with a limb of 2^128", { exact: 5 })) {
+      for (const finality of ["ACCEPTED_ON_L2", "ACCEPTED_ON_L1"]) {
+        expect(await status([e], finality)).toEqual(neither.expect);
+        expect(await status([transfer, e], finality)).toEqual(neither.expect);
+        expect(await status([e, transfer], finality)).toEqual(neither.expect);
+      }
+      expect(await status([e], "PRE_CONFIRMED")).toEqual({ state: "pending", why: "pre-confirmed" });
+    }
+    for (const e of rowsOf(notFelt, "asset Transfer events with a member that is not a felt", { exact: 3 })) {
+      expect(await status([e])).toEqual({ state: "pending", why: "unreadable" });
+      expect(await status([unstandard[0], e])).toEqual({ state: "pending", why: "unreadable" });
+      expect(await status([e, unstandard[0]])).toEqual({ state: "pending", why: "unreadable" });
+    }
   });
 
   // A missing or malformed idDigest cannot name the landed transfer, so the read is pending, never failed
