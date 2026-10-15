@@ -22,7 +22,7 @@ import type {
 import { toRawBytes, type AtrHash } from "../core.js";
 import { isObject } from "../fields.js";
 import type { Hex } from "../evm.js";
-import { fromBase64 } from "../rail-bytes.js";
+import { fromBase64, toBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 
@@ -44,10 +44,24 @@ export const MAX_XDR = 8192;
  * The deepest nesting of ScVal vectors and maps (a contract instance's storage counting as a map) within one ScVal,
  * the outermost container being level 1, and of authorized invocations within one authorization entry, the root
  * invocation being level 1. It bounds what is read of an envelope, the operation and the payer's authorization entry,
- * and an event's topics and data. It does not apply to other authorization entries, so another entry's nesting does
- * not make the envelope unreadable.
+ * and an event's topics and data. It does not apply to the rest of an envelope (another authorization entry, a
+ * delegate, the footprint, another operation), which is decoded whatever its depth, so nesting there does not make the
+ * envelope unreadable.
  */
 export const SCVAL_MAX_DEPTH = 64;
+/**
+ * The schema levels js-xdr may enter to read or write an envelope: more than any envelope of at most `MAX_XDR`
+ * characters reaches, so the decoder's own depth refuses none of them. js-xdr enters one level for each union, struct,
+ * array, fixed array, optional value and named type it reads. `MAX_XDR` characters are at most 6,144 bytes, and in
+ * @stellar/stellar-sdk 17.2.1's XDR each pass through a recursive type enters these levels in at least these bytes: a
+ * contract instance in the storage of the one above, 8 in 20 (the most levels per byte); a map, 6 in 16; a vector, 4
+ * in 12; a claim predicate, 3 in 8; an authorized invocation, 3 in 20; a delegate, 3 in 44. Every path through the
+ * envelope's other types enters at most 37 levels. So no envelope reaches more than 37 + ⌊6,144 × 8 / 20⌋ = 2,494
+ * levels, and this value is that bound rounded up to the next hundred, 6 levels above it. The deepest envelope of
+ * `MAX_XDR` characters reaches 2,427: contract instances, each in the storage of the one above, as a contract
+ * creation's constructor argument. js-xdr's default depth, 1,500, is below the bound.
+ */
+export const XDR_MAX_DEPTH = 2500;
 const MAX_LOCATE_PAGES = 10;
 const MAX_CANDIDATES = 50;
 /** The symbols read here, as bytes: a symbol is compared byte for byte, so one led by a byte-order mark is another. */
@@ -265,13 +279,31 @@ function preimageOf(
   const wire: HashIdPreimageWire = a.v2
     ? { type: 10, sorobanAuthorizationWithAddress: { ...common, address: a.c.address, invocation: e.rootInvocation } }
     : { type: 9, sorobanAuthorization: { ...common, invocation: e.rootInvocation } };
-  return S.xdr.HashIdPreimage.fromXdrObject(wire).toXdr("raw");
+  return writeXdr(S.xdr.HashIdPreimage, wire);
 }
 
 function hexOf(b: Uint8Array): string {
   let out = "";
   for (const x of b) out += x.toString(16).padStart(2, "0");
   return out;
+}
+
+/** An XDR type of @stellar/stellar-sdk: its js-xdr schema. */
+type XdrOf<T> = {
+  readonly schema: {
+    decode(bytes: Uint8Array, options: { maxDepth: number }): T;
+    encode(value: T, options: { maxDepth: number }): Uint8Array;
+  };
+};
+
+/** `bytes` read whole as one `type`, js-xdr entering at most `XDR_MAX_DEPTH` levels; throws when they are not one. */
+function readXdr<T>(type: XdrOf<T>, bytes: Uint8Array): T {
+  return type.schema.decode(bytes, { maxDepth: XDR_MAX_DEPTH });
+}
+
+/** `value` written as `type`, js-xdr entering at most `XDR_MAX_DEPTH` levels. */
+function writeXdr<T>(type: XdrOf<T>, value: T): Uint8Array {
+  return type.schema.encode(value, { maxDepth: XDR_MAX_DEPTH });
 }
 
 /** The v1 transaction envelope of a `TransactionEnvelope`: itself, or a fee bump's inner transaction. */
@@ -363,17 +395,18 @@ type Operation = {
 
 /**
  * The envelope's one `transfer` operation: strict base64 of a v1 envelope (or a fee bump's inner v1) holding exactly
- * one `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract. The operation's host
- * function nests within `SCVAL_MAX_DEPTH` (`stellar/tx-malformed` past it); its authorization entries are left to the
- * caller: `parse` walks the one entry it reads, and the entry `readSourceTransfer` reads is the operation's call, byte
- * for byte, with no sub-invocations.
+ * one `invokeHostFunction` operation that calls `transfer(from, to, amount)` on a contract. The envelope is decoded
+ * whole, whatever the nesting of what is not read (`XDR_MAX_DEPTH`). The operation's host function nests within
+ * `SCVAL_MAX_DEPTH` (`stellar/tx-malformed` past it); its authorization entries are left to the caller: `parse` walks
+ * the one entry it reads, and the entry `readSourceTransfer` reads is the operation's call, byte for byte, with no
+ * sub-invocations.
  */
 function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal {
   const bytes = fromBase64(xdrB64);
   if (bytes === null) return refusal("stellar/tx-malformed");
   let wire: TransactionEnvelopeWire;
   try {
-    wire = S.xdr.TransactionEnvelope.fromXdr(bytes).toXdrObject();
+    wire = readXdr(S.xdr.TransactionEnvelope, bytes);
   } catch {
     return refusal("stellar/tx-malformed");
   }
@@ -390,11 +423,11 @@ function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal
     const call = op.hostFunction.invokeContract;
     const operation = transferOf(S, call);
     if (operation === null) return refusal("stellar/not-one-transfer");
-    const callBytes = S.xdr.InvokeContractArgs.fromXdrObject(call).toXdr("raw");
+    const callBytes = writeXdr(S.xdr.InvokeContractArgs, call);
     const carries = (e: SorobanAuthorizationEntryWire): boolean =>
       e.rootInvocation.function.type === 0 &&
       e.rootInvocation.subInvocations.length === 0 &&
-      equalBytes(callBytes, S.xdr.InvokeContractArgs.fromXdrObject(e.rootInvocation.function.contractFn).toXdr("raw"));
+      equalBytes(callBytes, writeXdr(S.xdr.InvokeContractArgs, e.rootInvocation.function.contractFn));
     return { wire, v1, op, operation, carries };
   } catch {
     return refusal("stellar/tx-malformed");
@@ -421,7 +454,8 @@ function isAddressEntryOf(S: typeof StellarBase, e: SorobanAuthorizationEntryWir
  * without `landed`.
  *
  * The entry read nests within `SCVAL_MAX_DEPTH` (`stellar/tx-malformed` past it), as the operation does. No other entry
- * is walked, so an unused entry nested deeper does not make the transaction unreadable.
+ * is walked, and each is decoded whatever its depth, so an unused entry nested deeper does not make the transaction
+ * unreadable.
  */
 function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, landed: boolean): Parsed | Refusal {
   const o = operationOf(S, xdrB64);
@@ -534,7 +568,8 @@ export function readSourceTransfer(xdrB64: string, network: StellarNetwork): Sou
  * The entry's `rootInvocation` must be that same `transfer`, byte for byte, with no sub-invocations; the payment's
  * contract, `to` and amount are the signed invocation's. The base64 is read strictly (RFC 4648 §4, zero padding bits),
  * and the XDR must be consumed whole. The operation and that entry nest ScVals and authorized invocations at most
- * `SCVAL_MAX_DEPTH` levels (`stellar/tx-malformed` past it); the cap does not apply to another entry, so its nesting
+ * `SCVAL_MAX_DEPTH` levels (`stellar/tx-malformed` past it); the cap does not apply to the rest of the envelope
+ * (another entry, a delegate, the footprint, another operation), which is decoded whatever its depth, so its nesting
  * does not refuse the envelope. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
  * passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
  * without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `mpp/charge/stellar`'s push
@@ -594,7 +629,7 @@ export function signingFor(
           ],
         };
         try {
-          return x.TransactionEnvelope.fromXdrObject(wire).toXdr("base64");
+          return toBase64(writeXdr(x.TransactionEnvelope, wire));
         } catch {
           return refusal("stellar/tx-malformed");
         }
