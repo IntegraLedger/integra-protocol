@@ -400,6 +400,8 @@ export type UsdcUnsigned =
  * another chain id, then one of version 0x00 on a node that is not mainnet's and one of version 0x80 on mainnet's
  * (stackslib/src/chainstate/stacks/db/transactions/processing/validation.rs:49-79), and a mainnet node's chain id is
  * `CHAIN_ID_MAINNET`, 1, and no other (stackslib/src/config/mod.rs:1844-1857; stacks-common/src/libcommon.rs:58).
+ * That source ties mainnet to chain id 1; the reverse, that chain id 1 names mainnet, is the CAIP-2 convention, under
+ * which `stacks:1` is Stacks mainnet (`StacksNetwork`). So a challenge's `chainId` 1 is read as mainnet, version 0x00.
  */
 function onNetwork(tx: StacksTransaction, chainId: number): boolean {
   return tx.chainId === chainId && tx.version === (chainId === STACKS_MAINNET_CHAIN ? 0x00 : 0x80);
