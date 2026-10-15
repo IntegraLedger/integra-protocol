@@ -40,12 +40,15 @@
   "unbound": {
    "expectSignatureNonce": {
     "prefix": "0xeb939539",
-    "suffix": "1d3a"
+    "suffix": "1d3a",
+    "whole": "0xeb939539ad1f947097c9deed5479966887611c0899f4bc180ee54109f71e1d3a"
    },
    "expectPaymentHash": {
     "prefix": "0xb878f92c",
-    "suffix": "9092"
-   }
+    "suffix": "9092",
+    "whole": "0xb878f92cd74aa6f77e14974098dc30ad259c1c90b3f3af824daa7c50e9759092"
+   },
+   "case": "build with the option's extra without receiverAuthorizer: the salt is H, unbound. Each value's whole is AuthCaptureEscrow.getHash (base/commerce-payments 6b0a5ef3, src/AuthCaptureEscrow.sol L383-386, keccak256(abi.encode(chainId, escrow, keccak256(abi.encode(PAYMENT_INFO_TYPEHASH, paymentInfo))))) of the option's PaymentInfo with salt H, payer the zero address for expectSignatureNonce (the payer-agnostic hash the signed nonce is) and fixed.payer for expectPaymentHash, computed in Python 3.12.3 with eth-abi 6.0.0's abi.encode and eth-utils 6.0.0's keccak256; prefix and suffix are its first ten and last four characters."
   },
   "expectPaymentInfoTypeHash": "0xae68ac7ce30c86ece8196b61a7c486d8f0061f575037fbd34e7fe4e2820c6591"
  },

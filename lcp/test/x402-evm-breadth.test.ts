@@ -993,6 +993,12 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     expect(paymentHash(84532, esc, info(f.payer, s))).toBe(A3.EV3.bound.expectPaymentHash);
     expect(matches(paymentHash(84532, esc, info(ZERO, H)) as string, A3.EV3.unbound.expectSignatureNonce)).toBe(true);
     expect(matches(paymentHash(84532, esc, info(f.payer, H)) as string, A3.EV3.unbound.expectPaymentHash)).toBe(true);
+    // The unbound pair whole: eth-abi's and eth-utils' getHash with salt H (EV3.unbound.case); viem's words above
+    // re-derive each, and paymentHash is held to each.
+    expect(getHash(ZERO, H)).toBe(A3.EV3.unbound.expectSignatureNonce.whole);
+    expect(getHash(f.payer, H)).toBe(A3.EV3.unbound.expectPaymentHash.whole);
+    expect(paymentHash(84532, esc, info(ZERO, H))).toBe(A3.EV3.unbound.expectSignatureNonce.whole);
+    expect(paymentHash(84532, esc, info(f.payer, H))).toBe(A3.EV3.unbound.expectPaymentHash.whole);
     expect(PAYMENT_INFO_TYPEHASH).toBe(A3.EV3.expectPaymentInfoTypeHash);
     expect(
       keccak256(
@@ -1139,6 +1145,13 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     expect(plain(await evmStatus({ ...refc, transaction: tx }, readerFor(only, A3.EV6.reader)))).toEqual(
       A3.EV6.authorizationFlowOnlyAuthorized.expect,
     );
+  });
+  it("EV3 unbound: build with an option whose extra names no receiverAuthorizer signs the payer-agnostic hash of salt H", async () => {
+    const unbound = structuredClone(f.option) as any;
+    delete unbound.extra.receiverAuthorizer;
+    const u = await unsigned(authCaptureEip3009, f, unbound);
+    if (u.request.kind !== "eip712") throw new Error("kind");
+    expect((u.request.typedData.message as any).nonce).toBe(A3.EV3.unbound.expectSignatureNonce.whole);
   });
   it("plant: a signed nonce committing to another salt is not this payment", async () => {
     const p = (await signed(authCaptureEip3009, f)) as any;
