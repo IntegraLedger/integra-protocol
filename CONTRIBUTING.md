@@ -60,8 +60,10 @@ node scripts/docs-reference.mjs --check
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm run browser && pnpm build` inside that
   folder, on Linux x64. `pnpm run browser` fetches the browser build the Mermaid diagrams are drawn in, Chrome Headless
   Shell, which `website/scripts/browser.mjs` pins by version and by the SHA-256 of its archive, and the build refuses
-  any other. After a change to a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API
-  pages it writes under `docs/reference/api/`; CI checks that they match the source.
+  any other. The build is pinned for Linux x64 alone, since a browser build for another platform measures text through
+  that platform's own font engine, so the site is built in CI or on a maintainer's Linux x64 machine. After a change to
+  a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API pages it writes under
+  `docs/reference/api/`; CI checks that they match the source.
 - `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.

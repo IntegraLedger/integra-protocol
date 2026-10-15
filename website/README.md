@@ -27,11 +27,15 @@ pnpm build       # write the static site to out/
 pnpm dev         # serve it locally with live reload
 ```
 
-The diagrams are drawn in one browser build on every machine: Chrome Headless Shell 156.0.8078.4 for Linux x64, the
-build the locked `playwright-core` names, from Chrome for Testing's
+The diagrams are drawn in one browser build: Chrome Headless Shell 156.0.8078.4 for Linux x64, the build the locked
+`playwright-core` names, from Chrome for Testing's
 [download bucket](https://googlechromelabs.github.io/chrome-for-testing/). `scripts/browser.mjs` holds its version, its
 address and the SHA-256 of its archive; `pnpm run browser` fetches the archive, checks it and unpacks it. The build
-uses no other browser, and on a machine without it, or on another platform, it stops and names the command.
+uses no other browser: on a machine without it, it stops and names that command.
+
+The site is built on Linux x64, in CI or on a maintainer's Linux x64 machine. The browser build is pinned for that one
+platform because a build for another platform measures text through that platform's own font engine, so its diagrams
+could differ; on another platform the build stops and names the platform it is pinned for.
 
 ## What the build does
 
@@ -79,7 +83,8 @@ their `.md` addresses only:
 Each page names `/llms.txt` with `<link rel="describedby">` and its Markdown with `<link rel="alternate"
 type="text/markdown">`. `pnpm dev` does not run `worker.js`.
 
-No workflow deploys the site. A maintainer deploys it after a build, at the repository root:
+No workflow deploys the site. A maintainer deploys it after a build on Linux x64 (see "Run it"), at the repository
+root:
 
 ```sh
 npx wrangler deploy -c website/wrangler.toml
