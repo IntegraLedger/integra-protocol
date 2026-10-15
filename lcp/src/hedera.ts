@@ -18,7 +18,7 @@ import {
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
 import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
-import { fromBase64 } from "./rail-bytes.js";
+import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
@@ -445,14 +445,6 @@ function completeWith(
   const pair = [...lenField(1, s.publicKey), ...lenField(s.type === "ed25519" ? 3 : 6, s.signature)];
   const signed = [...lenField(1, bodyBytes), ...lenField(2, lenField(1, pair))];
   return toBase64(Uint8Array.from(lenField(5, signed)));
-}
-
-// ── base64 ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-
-function toBase64(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
 }
 
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────────

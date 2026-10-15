@@ -63,7 +63,6 @@ import {
   staticNonce,
   svmChannelStatus,
   svmReference,
-  toBase64,
   wireOf,
   TOKEN,
   TOKEN_2022,
@@ -88,7 +87,7 @@ import {
   type OptionFilter,
   type X402Read,
 } from "./internal/x402.js";
-import { decimalBelow } from "./rail-bytes.js";
+import { decimalBelow, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,

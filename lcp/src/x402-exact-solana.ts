@@ -14,7 +14,6 @@ import {
   staticNonce,
   svmSigning,
   svmStatus,
-  toBase64,
   wireOf,
   TOKEN,
   TOKEN_2022,
@@ -37,6 +36,7 @@ import {
   withoutExtra,
   type X402Read,
 } from "./internal/x402.js";
+import { toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,

@@ -423,12 +423,6 @@ export function wireOf(b64: unknown): Uint8Array | Refusal {
   return bytes;
 }
 
-export function toBase64(b: Uint8Array): string {
-  let s = "";
-  for (const x of b) s += String.fromCharCode(x);
-  return btoa(s);
-}
-
 /**
  * The read keys of a signed transaction: its message digest, the fee payer (static key 0), the fee payer's signature
  * as the transaction id when that slot is signed, and what bounds the message's life: the recent blockhash, or, for a

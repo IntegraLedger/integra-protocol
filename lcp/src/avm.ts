@@ -9,7 +9,7 @@ import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { readEntry, type AvmPaymentPayload } from "./internal/avm.js";
 import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
-import { fromBase64 } from "./rail-bytes.js";
+import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -130,12 +130,6 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
     return refusal("avm/option-malformed");
   }
   return true;
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
 }
 
 /**

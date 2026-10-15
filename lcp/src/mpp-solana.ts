@@ -18,7 +18,6 @@ import {
   keyBytes,
   svmReference,
   svmStatus,
-  toBase64,
   signedWire,
   staticNonce,
   wireOf,
@@ -44,6 +43,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import { isSolanaExternalId, solanaNetworkOf } from "./mpp-rail-checks.js";
+import { toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
