@@ -1,6 +1,8 @@
 // Composes, with @solana/kit, version-0 messages whose channel-program accounts come from an address lookup table:
 // compressTransactionMessageUsingAddressLookupTables moves every non-signer account one table holds past the static
-// keys. The table's address is the one kit's documentation of that function uses; nothing reads the table itself.
+// keys. The table's address is the one kit's documentation of that function uses; nothing here reads a table. TABLE_B, a
+// second table's address, is one the address lookup table program gave a table in LiteSVM
+// (mpp-session-hedera-solana-xrpl.json SV6.tables.channel21.madeAt).
 import { ed25519 } from "@noble/curves/ed25519.js";
 import {
   AccountRole,
@@ -22,6 +24,7 @@ import {
 } from "@solana/kit";
 
 export const TABLE = "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW";
+export const TABLE_B = "2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj";
 const PROGRAM = "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX";
 const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
@@ -62,14 +65,17 @@ export function tableClose(payee: string, channel: string, recentBlockhash: stri
  * An opening written from `openingBase64` (an opening of two signers whose third instruction is the channel program's
  * `open`): the open's account 4 set to `signer`, read-only, and accounts 5 and 7 to the channel and escrow derived for
  * it (the channel over the seeds "channel", payer, payee, mint, signer, salt and openSlot; the escrow the channel's
- * associated token account for the mint), with `tabled` (account 4 or account 5) taken from the table, or none. The
- * payer, Ed25519 seed `payerSeed`, signs the message in the second signature slot; the fee payer's slot is zero.
+ * associated token account for the mint), with `tabled` (account 4 or account 5) taken from TABLE, or none, or, for
+ * "both", account 4 from TABLE_B and account 5 from TABLE. TABLE holds `before` ahead of its account (none by default),
+ * so that account is its entry `before.length`.
+ * The payer, Ed25519 seed `payerSeed`, signs the message in the second signature slot; the fee payer's slot is zero.
  */
 export async function tableOpening(
   openingBase64: string,
   signer: string,
-  tabled: "signer" | "channel" | null,
+  tabled: "signer" | "channel" | "both" | null,
   payerSeed: Uint8Array,
+  before: readonly string[] = [],
 ): Promise<{ wireBase64: string; channel: string; staticKeys: number }> {
   const opening = Buffer.from(openingBase64, "base64");
   const plain = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(opening.subarray(1 + 64 * opening[0]!)));
@@ -88,8 +94,10 @@ export async function tableOpening(
     i === 4 ? { address: address(signer), role: AccountRole.READONLY } : i === 5 ? { ...a, address: channel } : i === 7 ? { ...a, address: escrow } : a,
   );
   const changed = { ...plain, instructions: [plain.instructions[0]!, plain.instructions[1]!, { ...ix, accounts }] } as typeof plain;
-  const inTable: Address[] = tabled === "signer" ? [address(signer)] : tabled === "channel" ? [channel] : [];
-  const compressed = compressTransactionMessageUsingAddressLookupTables(changed, { [address(TABLE)]: inTable });
+  const tabledAccount: Address[] = tabled === "signer" ? [address(signer)] : tabled === "channel" || tabled === "both" ? [channel] : [];
+  const inTable: Address[] = tabledAccount.length === 0 ? [] : [...before.map((a) => address(a)), ...tabledAccount];
+  const tables = tabled === "both" ? { [address(TABLE)]: inTable, [address(TABLE_B)]: [address(signer)] } : { [address(TABLE)]: inTable };
+  const compressed = compressTransactionMessageUsingAddressLookupTables(changed, tables);
   const compiled = compileTransactionMessage(compressed);
   const bytes = new Uint8Array(getCompiledTransactionMessageEncoder().encode(compiled));
   const wire = new Uint8Array(1 + 128 + bytes.length);

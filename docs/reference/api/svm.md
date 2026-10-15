@@ -564,7 +564,7 @@ The `open` instruction's data: `01` ‖ salt u64 ‖ deposit u64 ‖ gracePeriod
 The one top-level instruction of `program` whose data starts with `OPEN_DISCRIMINATOR`, with at least 33 bytes of
 data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`,
 as is a channel named through an address lookup table: the message holds the table's address and an index, not the
-account, and this function reads no table.
+account, and this function reads no table. `mpp/session/solana`'s `fetchPresented` reads an opening's tables.
 
 #### Parameters
 

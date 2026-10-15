@@ -40,20 +40,22 @@ export function isRefusal(v: unknown): v is Refusal {
  * True when `code` is a read to repeat: a refusal whose answer rests on a read of the rail that may answer differently
  * later, with nothing the caller must change. The caller asks again later, since the payment may already have moved.
  * These are each reader's `<rail>/unreadable` (the reader failed, or answered out of its documented form) and
- * `<rail>/not-found` (the reader holds no landed transaction for the reference yet), and the codes of a transaction that
- * is not final yet: `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final` and
- * `hedera/not-final` (a revert, or a receipt without what the read looks for, in a block above the reader's `finalized`
- * mark, which can be replaced by one in which the transaction succeeds or holds other logs), `polkadot/not-final` (an
- * extrinsic not dispatched as the payment, in a block above the finalized height), `stacks/not-final` (a failure in a
- * Stacks block fewer than two tenures below the tip, which can be replaced), `starknet/not-final` (a revert, or no
- * single matching transfer, in a pre-confirmed block, which can change), `svm/not-final` (an error at Solana's
- * `confirmed`, with the transaction not found at `finalized`) and `tempo/not-final` (as `evm/not-final`, on Tempo). The
- * refusal code reference marks each of them.
+ * `<rail>/not-found` (the reader holds no landed transaction for the reference yet; on Solana, also no address lookup
+ * table account, or entry, that an `mpp/session/solana` opening names at `finalized` yet), and the codes of a
+ * transaction that is not final yet: `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final`
+ * and `hedera/not-final` (a revert, or a receipt without what the read looks for, in a block above the reader's
+ * `finalized` mark, which can be replaced by one in which the transaction succeeds or holds other logs),
+ * `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above the finalized height),
+ * `stacks/not-final` (a failure in a Stacks block fewer than two tenures below the tip, which can be replaced),
+ * `starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block, which can change),
+ * `svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`) and
+ * `tempo/not-final` (as `evm/not-final`, on Tempo). The refusal code reference marks each of them.
  *
  * False for every other string. A verdict is not a read to repeat: a later read gives the same answer. Nor is a call the
  * caller must change before it can succeed: `<rail>/wrong-reader` (a reader for another network, or a ref the rail
  * cannot read) and `<rail>/read-first` (`bound` or `reference` on a push credential before `fetchPresented` has read
- * it), a missing peer dependency, and malformed input. A string the package does not return is false.
+ * it, or on an `mpp/session/solana` opening whose address lookup tables it has not read), a missing peer dependency,
+ * and malformed input. A string the package does not return is false.
  */
 export function readToRepeat(code: string): boolean {
   return READS_TO_REPEAT.has(code);

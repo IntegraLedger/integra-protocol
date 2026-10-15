@@ -23,7 +23,8 @@ export const READS_TO_REPEAT: ReadonlySet<string> = new Set([
   "tron/unreadable",
   "tvm/unreadable",
   "xrpl/unreadable",
-  // The reader holds no landed transaction for the reference yet.
+  // The reader holds no landed transaction for the reference yet, or, on Solana, no address lookup table account or
+  // entry that a session opening names at `finalized` yet.
   "avm/not-found",
   "cardano/not-found",
   "casper/not-found",

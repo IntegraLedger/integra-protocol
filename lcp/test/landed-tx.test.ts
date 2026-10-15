@@ -28,9 +28,14 @@ const ROWS: readonly [id: string, payload: Record<string, unknown>, landed: stri
   ["mpp/session/hedera", { action: "open", txHash: RAILS.HS3.txHash }, RAILS.HS3.txHash],
 ];
 
+// mpp/session/solana's fetchPresented reads the address lookup tables its opening's message names, not a landed payment:
+// that opening is a signed transaction the seller broadcasts, and it names no transaction.
+const READS_TABLES = ["mpp/session/solana"];
+
 describe("landedTx on push-mode pairings", () => {
   it("is exactly on the pairings that read a landed payment", () => {
-    const push = BINDINGS.filter((b) => "fetchPresented" in b).map((b) => b.id);
+    for (const id of READS_TABLES) expect(["fetchPresented" in byId(id), byId(id).landedTx], id).toEqual([true, undefined]);
+    const push = BINDINGS.filter((b) => "fetchPresented" in b && !READS_TABLES.includes(b.id)).map((b) => b.id);
     const landed = BINDINGS.filter((b) => typeof b.landedTx === "function").map((b) => b.id);
     expect(landed.filter((id) => (push as readonly string[]).includes(id))).toEqual(push);
     expect([...landed].sort()).toEqual(ROWS.map(([id]) => id).sort());

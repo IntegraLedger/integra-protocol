@@ -1,10 +1,11 @@
 // Each refusal code the package returns, and whether it is a read to repeat. Each class is decided from the code's
 // meaning in docs/reference/refusals.md and from the code that returns it, never read from `readToRepeat`. A read to
 // repeat rests on a read of the rail that may answer differently later, with nothing the caller must change: a reader
-// that failed or answered out of its documented form, no landed transaction yet, or a transaction not final yet. Every
-// other code is a verdict that a later read answers the same way, or a call the caller must change before it can
-// succeed: a reader for another network or a ref it cannot read, a push credential read before `fetchPresented`, a
-// missing peer dependency, or malformed input.
+// that failed or answered out of its documented form, no landed transaction yet (or, on Solana, no address lookup
+// table account or entry yet), or a transaction not final yet. Every other code is a verdict that a later read answers
+// the same way, or a call the caller must change before it can succeed: a reader for another network or a ref it cannot
+// read, a push credential or a Solana session opening read before `fetchPresented`, a missing peer dependency, or
+// malformed input.
 
 /** The reads to repeat. */
 export const READS_TO_REPEAT: readonly string[] = [
@@ -171,7 +172,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "channel-instruction", "channel-mismatch", "err", "input-malformed", "memo-count", "memo-not-lcp", "memo-not-utf8",
     "network-malformed", "network-undeclared", "no-carrier", "no-channel-instruction", "nonce-account-not-static",
     "open-not-found", "pda-not-found", "peer-missing", "proof-not-challenge", "read-first", "signer-not-operator",
-    "tx-malformed", "tx-too-large", "wrong-reader",
+    "table-unusable", "tx-malformed", "tx-too-large", "wrong-reader",
   ],
   tempo: [
     "ambiguous", "descriptor-mismatch", "key-authorization-malformed", "key-not-authorized", "memo-not-bound",

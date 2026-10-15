@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 500 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 501 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -37,7 +37,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 17 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
 | [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
-| [`svm`](#svm) | 29 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
+| [`svm`](#svm) | 30 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 23 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`). |
@@ -396,16 +396,17 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/no-channel-instruction` | The Solana transaction has no top-level payment-channels instruction. |
 | `svm/nonce-account-not-static` | The Solana message's first instruction is `AdvanceNonceAccount` and names its nonce account through an address lookup table: a durable message names its nonce account as a static key (SIMD-0242), and the message alone cannot show the nonce account a reference records. |
 | `svm/not-final` | **Read to repeat.** The Solana transaction landed with an error at `confirmed` and is not found at `finalized`: a read to repeat, since a block that is not finalized can be replaced. |
-| `svm/not-found` | **Read to repeat.** The Solana reader answers that the node holds no transaction for the signature (its not-found answer). |
-| `svm/open-not-found` | The MPP Solana session transaction has no single `open` instruction of the challenge's channel program with the required data and accounts, or the program key is invalid, or the `open` names its channel (account 5) through an address lookup table; `buildWithin` also refuses a client channel whose `open` names its `authorizedSigner` (account 4) through a table. These functions take no reader and read no table. |
+| `svm/not-found` | **Read to repeat.** The Solana reader answers that the node holds no transaction for the signature (its not-found answer); or, to `mpp/session/solana`'s `fetchPresented`, the read at `finalized` holds no account at an address lookup table's address the opening's message names, or no entry at an index it names in a table whose authority can still extend it: a table, or an entry, written in a block that is not finalized is not in that read. |
+| `svm/open-not-found` | The MPP Solana session transaction has no single `open` instruction of the challenge's channel program with the required data and accounts, or the program key is invalid, or the `open`'s channel (account 5) is past the keys read: `openOf`, which reads no table, reads the static keys, and the pairing reads the static keys and the addresses its message's lookups load (`tables`, which `fetchPresented` writes); `buildWithin` also refuses a client channel whose `authorizedSigner` (account 4) is past them. |
 | `svm/pda-not-found` | `findPda` is given an invalid program key or too many or too long seeds, or no bump yields an off-curve address. |
 | `svm/peer-missing` | The optional peer dependency `@solana/kit` cannot be loaded to build a Solana message. |
 | `svm/proof-not-challenge` | The MPP Solana session credential's `authentication.challengeId` is not the echoed challenge's id, or a `use` credential carries no such proof. |
-| `svm/read-first` | An MPP Solana `signature` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
-| `svm/signer-not-operator` | The MPP Solana session opening's `open` instruction names an `authorizedSigner` (account 4) other than the echoed challenge's `operator`, or names it through an address lookup table, which these functions do not read, when the challenge's `voucherSigner` is `operator` (`bound`, `reference`, `build`'s `complete` and `buildWithin`). |
+| `svm/read-first` | An MPP Solana `signature` credential carries no transaction yet; or an MPP Solana session opening whose message has address table lookups carries no `tables`, or `tables` that are not, for each lookup in order, its table's address with as many base58 keys as it names writable and read-only indexes (`bound`, `reference`, `build`'s `complete` and `buildWithin`). The seller reads it with `fetchPresented` before `bound`. |
+| `svm/signer-not-operator` | The MPP Solana session opening's `open` instruction names an `authorizedSigner` (account 4), a static key or an address its message's lookups load (`tables`), other than the echoed challenge's `operator`, when the challenge's `voucherSigner` is `operator` (`bound`, `reference`, `build`'s `complete` and `buildWithin`). |
+| `svm/table-unusable` | An address lookup table an MPP Solana session opening's message names cannot resolve it, as the runtime refuses its lookup: read at `finalized` by `fetchPresented`, the table account is owned by a program other than the address lookup table program, holds data that is not an initialized table, has its deactivation slot set, or holds no entry at an index the message names while it has no authority to extend it; or an address its lookups load repeats a static key or another loaded address (`fetchPresented`, and `bound`, `reference` and `buildWithin` reading `tables`). |
 | `svm/tx-malformed` | A Solana transaction is not non-empty base64 of a well-formed unversioned or v0 wire transaction (signature count, header, keys, instructions and lookup tables consistent and fully consumed), or an MPP `bundle` credential's `transactions` is not an array within the bound, or `svmCarrier` or `channelInstruction` is given a transaction that is not a decoded one. |
 | `svm/tx-too-large` | A Solana transaction, or its base64 text, exceeds the wire size bound. |
-| `svm/unreadable` | **Read to repeat.** The Solana reader threw, gave an answer of neither documented shape (a landed transaction, or a not-found answer), or returned a landed transaction that is not well formed. |
+| `svm/unreadable` | **Read to repeat.** The Solana reader threw, gave an answer of neither documented shape (a landed transaction, or a not-found answer; to `mpp/session/solana`'s `fetchPresented`, an account read with a bigint context slot and no account or an owner string and data bytes), or returned a landed transaction that is not well formed. |
 | `svm/wrong-reader` | The Solana reader answers for a different network than the reference or challenge names, or the reference given to a Solana `recover` names a `transaction` that is not a signature, base58 of 64 bytes. |
 
 ## stellar

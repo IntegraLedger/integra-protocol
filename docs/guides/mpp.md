@@ -222,7 +222,8 @@ whose `transaction` is not in its rail's form (a 32-byte hash on Tempo and the H
 64 bytes, on Solana, 64 hex digits on XRPL), or on the Hedera session one that names a `bindingLog` that is not an
 object with an address `address` and a 32-byte `value`, an `escrow` that is not an address, or neither or both of them
 (`<rail>/wrong-reader`), or `bound` or `reference` on a push
-credential before `fetchPresented` has read it (`<rail>/read-first`). The same call gives the same code until the
+credential before `fetchPresented` has read it, or on an `mpp/session/solana` opening whose address lookup tables it
+has not read (`<rail>/read-first`). The same call gives the same code until the
 seller changes it. In both, the payment may already have moved, so the seller sends no fresh challenge the buyer could
 pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a 402, and
 neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem` gives it 500

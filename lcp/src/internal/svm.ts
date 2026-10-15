@@ -271,6 +271,25 @@ interface Decoded extends SvmTx {
   requiredSignatures: number;
   /** How many addresses the message's lookups load: the writable indexes, then the read-only ones. */
   loads: { writable: number; readonly: number };
+  /** The message's address table lookups, in order; none for a legacy message. */
+  lookups: SvmLookup[];
+}
+
+/** One address table lookup of a v0 message: the table's address, and the indexes it loads, writable and read-only. */
+export interface SvmLookup {
+  table: string;
+  writable: readonly number[];
+  readonly: readonly number[];
+}
+
+/**
+ * The addresses one address table lookup loads: the table's address, and the table's entries at the lookup's writable
+ * and read-only indexes, in order, each a base58 key.
+ */
+export interface SvmTableLoad {
+  address: string;
+  writable: readonly string[];
+  readonly: readonly string[];
 }
 
 class Cursor {
@@ -308,8 +327,16 @@ class Cursor {
 export function decodeSvmTx(wire: Uint8Array): SvmTx | Refusal {
   const d = decode(wire);
   if (isRefusal(d)) return d;
-  const { requiredSignatures: _, loads: __, ...tx } = d;
+  const { requiredSignatures: _, loads: __, lookups: ___, ...tx } = d;
   return tx;
+}
+
+/** `decodeSvmTx`, with the message's address table lookups in order (none for a legacy message). */
+export function decodeWithLookups(wire: Uint8Array): { tx: SvmTx; lookups: readonly SvmLookup[] } | Refusal {
+  const d = decode(wire);
+  if (isRefusal(d)) return d;
+  const { requiredSignatures: _, loads: __, lookups, ...tx } = d;
+  return { tx, lookups };
 }
 
 function decode(wire: Uint8Array): Decoded | Refusal {
@@ -353,16 +380,20 @@ function decode(wire: Uint8Array): Decoded | Refusal {
       instructions.push({ program, accounts, data });
     }
     const loads = { writable: 0, readonly: 0 };
+    const lookups: SvmLookup[] = [];
     if (versioned) {
       const nLookups = c.compact();
       for (let i = 0; i < nLookups; i++) {
-        c.bytes(32);
-        loads.writable += c.bytes(c.compact()).length;
-        loads.readonly += c.bytes(c.compact()).length;
+        const table = keyString(c.bytes(32));
+        const writable = Array.from(c.bytes(c.compact()));
+        const readonly = Array.from(c.bytes(c.compact()));
+        loads.writable += writable.length;
+        loads.readonly += readonly.length;
+        lookups.push({ table, writable, readonly });
       }
     }
     if (c.at !== wire.length) return refusal("svm/tx-malformed");
-    return { signatures, message: wire.subarray(start), keys, instructions, blockhash, requiredSignatures, loads };
+    return { signatures, message: wire.subarray(start), keys, instructions, blockhash, requiredSignatures, loads, lookups };
   } catch {
     return refusal("svm/tx-malformed");
   }
@@ -687,6 +718,131 @@ export function svmSigning(message: Uint8Array, signer: string): SvmSigning {
   };
 }
 
+// ── address lookup tables ────────────────────────────────────────────────────────────────────────────────────────
+
+/** The address lookup table program id, which owns every address lookup table account. */
+const ADDRESS_LOOKUP_TABLE = "AddressLookupTab1e1111111111111111111111111";
+/** The table account's header: `ProgramState::LookupTable` and its metadata, as bincode writes them, in 56 bytes. */
+const TABLE_META = 56;
+/** The deactivation slot of a table that has not been deactivated: `Slot::MAX`. */
+const NOT_DEACTIVATED = 0xffff_ffff_ffff_ffffn;
+
+/**
+ * An address lookup table account, read as the runtime reads one when it loads a version-0 message's addresses
+ * (anza-xyz/agave f516a892, tag v3.0.14, `accounts-db/src/accounts.rs:105-162`, with `AddressLookupTable` from
+ * solana-address-lookup-table-interface 3.0.0, anza-xyz/solana-sdk 3d8dc1f3,
+ * `address-lookup-table-interface/src/state.rs`): an owner other than the program is `InvalidAccountOwner`
+ * (`accounts.rs:118`, `:159-160`), and data that does not deserialize as an initialized table is `InvalidAccountData`
+ * (`accounts.rs:120-121`; `state.rs:225-252`): a u32 `ProgramState` of 1 (0 is an uninitialized account,
+ * `state.rs:121-131`), then a u64 deactivation slot, a u64 last-extended slot, a u8 start index, an `Option` of the
+ * 32-byte authority (tag 0 or 1) and u16 padding (`state.rs:42-63`), the header taking 56 bytes (`state.rs:31-32`), and
+ * then the entries, 32 bytes each. A table whose deactivation slot is set is deactivating or deactivated: the runtime
+ * loads nothing from it once that slot leaves the `SlotHashes` sysvar (`LookupTableAccountNotFound`, `state.rs:85-118`
+ * and `:157-180`), and no instruction makes it active again (`instruction.rs:12-67`), so this read, which reads no
+ * `SlotHashes`, takes it as deactivated. Each answer of those is `svm/table-unusable`. An answer naming no account is
+ * `svm/not-found`, and an answer of neither documented shape is `svm/unreadable`.
+ */
+function tableOf(read: unknown): { entries: Uint8Array[]; frozen: boolean } | Refusal {
+  if (!isObject(read) || typeof read["slot"] !== "bigint" || !("value" in read)) return refusal("svm/unreadable");
+  const value = read["value"];
+  if (value === null) return refusal("svm/not-found");
+  if (!isObject(value) || typeof value["owner"] !== "string" || !(value["data"] instanceof Uint8Array)) {
+    return refusal("svm/unreadable");
+  }
+  if (value["owner"] !== ADDRESS_LOOKUP_TABLE) return refusal("svm/table-unusable");
+  const data = value["data"];
+  if (data.length < TABLE_META || (data.length - TABLE_META) % 32 !== 0) return refusal("svm/table-unusable");
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const authority = data[21];
+  if (view.getUint32(0, true) !== 1 || (authority !== 0 && authority !== 1)) return refusal("svm/table-unusable");
+  if (view.getBigUint64(4, true) !== NOT_DEACTIVATED) return refusal("svm/table-unusable");
+  const entries: Uint8Array[] = [];
+  for (let at = TABLE_META; at < data.length; at += 32) entries.push(data.subarray(at, at + 32));
+  return { entries, frozen: authority === 0 };
+}
+
+/**
+ * The addresses each of a message's address table lookups loads, in the message's order: each table account read
+ * once through `reader.account` (`getAccountInfo` at `finalized`), one call per distinct table, and read as `tableOf`
+ * reads it. An index past the table's entries is `InvalidLookupIndex` to the runtime (`state.rs:196-212`;
+ * `accounts.rs:145-156`): it is `svm/table-unusable` when the table has no authority, since a table without one is
+ * frozen and takes no new entry (`instruction.rs:33-50`; the authority signs each change, `state.rs:57`), and
+ * `svm/not-found`, a read to repeat, when its authority can still extend it in a block that is not finalized. A
+ * rejected read is `svm/unreadable`.
+ *
+ * A read at `finalized` fixes what each index names. The program only appends entries (`ExtendLookupTable`,
+ * `instruction.rs:40-50`; no instruction rewrites one, `instruction.rs:12-67`); a table is closed only once deactivated
+ * (`state.rs:47-49`); and a closed table's address, derived from its authority and a recent slot, can never hold a
+ * table again (`instruction.rs:21-26`, `state.rs:108-111`). So an entry that a block at `finalized` holds is the entry
+ * the runtime loads at that index in every later block for as long as the table is active, while an entry written in a
+ * block that is not finalized can differ on another fork.
+ */
+export async function readLookupTables(reader: SvmReader, lookups: readonly SvmLookup[]): Promise<SvmTableLoad[] | Refusal> {
+  const tables = new Map<string, { entries: Uint8Array[]; frozen: boolean }>();
+  for (const { table } of lookups) {
+    if (tables.has(table)) continue;
+    let read: unknown;
+    try {
+      read = await reader.account(table);
+    } catch {
+      return refusal("svm/unreadable");
+    }
+    const t = tableOf(read);
+    if (isRefusal(t)) return t;
+    tables.set(table, t);
+  }
+  const loads: SvmTableLoad[] = [];
+  for (const { table, writable, readonly } of lookups) {
+    const { entries, frozen } = tables.get(table)!;
+    if ([...writable, ...readonly].some((i) => i >= entries.length)) {
+      return frozen ? refusal("svm/table-unusable") : refusal("svm/not-found");
+    }
+    const at = (i: number) => keyString(entries[i]!);
+    loads.push({ address: table, writable: writable.map(at), readonly: readonly.map(at) });
+  }
+  return loads;
+}
+
+/**
+ * Every key a message's instructions may index once its address table lookups are resolved, in the runtime's order:
+ * the static keys, then each lookup's writable entries, then each lookup's read-only entries, as `decodeLanded` reads a
+ * landed transaction's (`runtime/src/bank/address_lookup_table.rs:41-68` appends lookup by lookup, writable to writable
+ * and read-only to read-only, `accounts.rs:145-156`). `loads` must hold, for each lookup in order, its table's address
+ * and as many base58 keys as the lookup names writable and read-only indexes, as `readLookupTables` writes them; any
+ * other value is `svm/read-first`. A loaded key that repeats a static key or another loaded key is
+ * `svm/table-unusable`: the runtime refuses a transaction that loads one account twice (`AccountLoadedTwice`, from
+ * `validate_account_locks` over the static keys and the resolved addresses; `accounts-db/src/account_locks.rs:160-170`,
+ * `accounts-db/src/accounts.rs:510`, `transaction-view/src/resolved_transaction_view.rs:194-198`).
+ */
+export function loadedKeys(tx: SvmTx, lookups: readonly SvmLookup[], loads: unknown): Uint8Array[] | Refusal {
+  if (!Array.isArray(loads) || loads.length !== lookups.length) return refusal("svm/read-first");
+  const writable: Uint8Array[] = [];
+  const readonly: Uint8Array[] = [];
+  for (const [i, lookup] of lookups.entries()) {
+    const load: unknown = loads[i];
+    if (!isObject(load) || load["address"] !== lookup.table) return refusal("svm/read-first");
+    const w = keyList(load["writable"], lookup.writable.length);
+    const r = keyList(load["readonly"], lookup.readonly.length);
+    if (w === null || r === null) return refusal("svm/read-first");
+    writable.push(...w);
+    readonly.push(...r);
+  }
+  const seen = new Set(tx.keys.map(keyString));
+  for (const key of [...writable, ...readonly]) {
+    const k = keyString(key);
+    if (seen.has(k)) return refusal("svm/table-unusable");
+    seen.add(k);
+  }
+  return [...tx.keys, ...writable, ...readonly];
+}
+
+/** The 32-byte keys of an array of exactly `n` base58 keys, else null. */
+function keyList(v: unknown, n: number): Uint8Array[] | null {
+  if (!Array.isArray(v) || v.length !== n) return null;
+  const keys = v.map(keyBytes);
+  return keys.every((k) => k !== null) ? (keys as Uint8Array[]) : null;
+}
+
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** A named transaction's lookup: landed at a commitment, or not found, with the slot the last lookup names. */
@@ -753,7 +909,7 @@ export function decodeLanded(landed: SvmLanded): { tx: SvmTx; keys: readonly Uin
   const isKeyList = (list: readonly unknown[], n: number) =>
     list.length === n && list.every((k) => k instanceof Uint8Array && k.length === 32);
   if (!isKeyList(writable, d.loads.writable) || !isKeyList(readonly, d.loads.readonly)) return null;
-  const { requiredSignatures: _, loads: __, ...tx } = d;
+  const { requiredSignatures: _, loads: __, lookups: ___, ...tx } = d;
   const seen = new Set(tx.keys.map(keyString));
   for (const key of [...writable, ...readonly]) {
     const k = keyString(key);

@@ -1142,7 +1142,7 @@ const INVALID_CHALLENGE = ["mpp/id-not-ours"];
 /**
  * The codes of a call that cannot read the payment: a reader that is not for the network the challenge or reference
  * names, or a ref `recover` cannot read, and `bound` or `reference` on a push credential before `fetchPresented` has
- * read it.
+ * read it, or on a Solana session opening whose address lookup tables it has not read.
  */
 const CANNOT_READ = [
   "tempo/wrong-reader",
@@ -1169,8 +1169,9 @@ const CANNOT_READ = [
  * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
  *   changes the call: a reader that is not for the network the challenge or reference names, or a ref `recover`
  *   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader` and
- *   `hedera/wrong-reader`), and `bound` or `reference` on a push credential before `fetchPresented` has read it
- *   (`tempo/read-first`, `svm/read-first`, `stellar/read-first`, `xrpl/read-first` and `hedera/read-first`);
+ *   `hedera/wrong-reader`), and `bound` or `reference` on a push credential before `fetchPresented` has read it, or on
+ *   a Solana session opening whose address lookup tables it has not read (`tempo/read-first`, `svm/read-first`,
+ *   `stellar/read-first`, `xrpl/read-first` and `hedera/read-first`);
  * - 402 `verification-failed`: every other code this package returns;
  * - 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
  *

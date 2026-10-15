@@ -53,7 +53,7 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
  * The one top-level instruction of `program` whose data starts with `OPEN_DISCRIMINATOR`, with at least 33 bytes of
  * data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`,
  * as is a channel named through an address lookup table: the message holds the table's address and an index, not the
- * account, and this function reads no table.
+ * account, and this function reads no table. `mpp/session/solana`'s `fetchPresented` reads an opening's tables.
  */
 export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: string } | Refusal {
   const open = readOpen(tx, program);
@@ -61,10 +61,15 @@ export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: str
 }
 
 /**
- * `openOf`'s read, with the instruction's `authorizedSigner` (account 4): its key when the message names it as a static
- * key, else undefined (an account from an address lookup table, which the message alone does not resolve).
+ * `openOf`'s read, with the instruction's `authorizedSigner` (account 4), each account read from `keys`: the message's
+ * static keys, or every key its instructions may index once its address table lookups are resolved (`loadedKeys`). The
+ * signer is undefined for an index past `keys`.
  */
-export function readOpen(tx: SvmTx, program: string): { salt: bigint; signer: string | undefined; channel: string } | Refusal {
+export function readOpen(
+  tx: SvmTx,
+  program: string,
+  keys: readonly Uint8Array[] = tx.keys,
+): { salt: bigint; signer: string | undefined; channel: string } | Refusal {
   const programKey = keyBytes(program);
   if (programKey === null) return refusal("svm/open-not-found");
   const opens = tx.instructions.filter(
@@ -76,11 +81,11 @@ export function readOpen(tx: SvmTx, program: string): { salt: bigint; signer: st
   );
   if (opens.length !== 1) return refusal("svm/open-not-found");
   const ix = opens[0]!;
-  const channel = tx.keys[ix.accounts[OPEN_CHANNEL_ACCOUNT]!];
+  const channel = keys[ix.accounts[OPEN_CHANNEL_ACCOUNT]!];
   if (channel === undefined) return refusal("svm/open-not-found");
   let salt = 0n;
   for (let i = 8; i >= 1; i--) salt = (salt << 8n) | BigInt(ix.data[i]!);
-  const signer = tx.keys[ix.accounts[OPEN_SIGNER_ACCOUNT]!];
+  const signer = keys[ix.accounts[OPEN_SIGNER_ACCOUNT]!];
   return { salt, signer: signer === undefined ? undefined : keyString(signer), channel: keyString(channel) };
 }
 

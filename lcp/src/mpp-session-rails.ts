@@ -32,14 +32,17 @@ import {
   type SvmCloseStatus,
 } from "./internal/svm-session.js";
 import {
-  decodeSvmTx,
+  decodeWithLookups,
   keyBytes,
   keyString,
+  loadedKeys,
+  readLookupTables,
   staticNonce,
   svmReference,
   svmStatus,
   wireOf,
   type SolanaNetwork,
+  type SvmLookup,
   type SvmReader,
   type SvmRef,
   type SvmStatus,
@@ -102,6 +105,15 @@ type Kind = "open" | "within" | "close";
 
 /** A Hedera session opening with the landed receipt's logs from the escrow. */
 export type HederaLandedCredential = LandedCredential;
+
+/** A Solana session opening with what `fetchPresented` read of its message's address lookup tables. */
+export interface SolanaTablesCredential extends MppCredential {
+  /**
+   * For each address table lookup of the opening's message, in order: the table's address, and the table's entries at
+   * the lookup's writable and read-only indexes, in order, each a base58 key. Empty for a message without lookups.
+   */
+  tables: readonly { address: string; writable: readonly string[]; readonly: readonly string[] }[];
+}
 
 /** The buyer's inputs to a session opening's `build`. The deposit and the XRPL channel terms are the funder's. */
 export interface RailSessionChoice {
@@ -591,9 +603,9 @@ async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
 
 // ── mpp/session/solana.
 
-function solanaOpenTx(payload: { [k: string]: Json }): SvmTx | Refusal {
+function solanaOpenTx(payload: { [k: string]: Json }): { tx: SvmTx; lookups: readonly SvmLookup[] } | Refusal {
   const wire = wireOf(payload["transaction"]);
-  return isRefusal(wire) ? wire : decodeSvmTx(wire);
+  return isRefusal(wire) ? wire : decodeWithLookups(wire);
 }
 
 /**
@@ -601,14 +613,15 @@ function solanaOpenTx(payload: { [k: string]: Json }): SvmTx | Refusal {
  * then `authentication`, which draft-solana-session-00's open action requires for an `operator` voucher signer and
  * forbids for `client`, the default: missing for `operator`, or present for `client`, is `mpp/credential-malformed`;
  * present, it names the echoed challenge's id, else `svm/proof-not-challenge`. For `operator`, the draft requires the
- * open's `authorizedSigner` (account 4) to equal the challenged `operator`: a static key other than the challenge's
- * `operator`, or an account from an address lookup table, is `svm/signer-not-operator`. For `client`, the client
- * chooses that signer. The draft has the server resolve a version-0 message's address lookup table entries before it
- * broadcasts (Settlement Procedure, Open, step 9). These checks take no reader and read no table: an `open` that names
- * its channel (account 5) through a table is `svm/open-not-found`, and one that names its `authorizedSigner` (account 4)
- * through a table is `svm/signer-not-operator` for `operator`. For `client`, `bound`, `reference` and `complete` do not
- * read account 4, and `buildWithin`, which names it as the voucher signer, refuses such an opening with
- * `svm/open-not-found`. `status` reads a landed transaction's table addresses.
+ * open's `authorizedSigner` (account 4) to equal the challenged `operator`, else `svm/signer-not-operator`. For
+ * `client`, the client chooses that signer. The draft has the server validate the complete compiled message, resolving
+ * any version-0 address-lookup-table entries (Settlement Procedure, Open, step 9), and a table can supply account 4 or
+ * account 5. So the accounts are read from the static keys and, for a message with address table lookups, from the
+ * `tables` member `fetchPresented` writes, in the runtime's order (`loadedKeys`): such an opening without `tables`, or
+ * whose `tables` are not one entry per lookup naming its table with as many keys as it names indexes, is
+ * `svm/read-first`, and one whose loaded keys repeat a static key or each other is `svm/table-unusable`. A message
+ * without lookups is read from its static keys, whatever members the credential carries. `status` reads a landed
+ * transaction's table addresses.
  */
 function solanaOpening(
   presented: MppCredential,
@@ -617,11 +630,14 @@ function solanaOpening(
   if (isRefusal(e)) return e;
   const program = channelProgram(e.checked);
   if (isRefusal(program)) return program;
-  const tx = solanaOpenTx(e.payload);
-  if (isRefusal(tx)) return tx;
+  const decoded = solanaOpenTx(e.payload);
+  if (isRefusal(decoded)) return decoded;
+  const { tx, lookups } = decoded;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
-  const open = readOpen(tx, program);
+  const keys = lookups.length === 0 ? tx.keys : loadedKeys(tx, lookups, (presented as Partial<SolanaTablesCredential>).tables);
+  if (isRefusal(keys)) return keys;
+  const open = readOpen(tx, program, keys);
   if (isRefusal(open)) return open;
   if (open.salt !== sessionSalt(e.h)) return refusal("mpp/carrier-not-challenge");
   const declared = keyBytes(e.payload["channelId"]);
@@ -637,6 +653,40 @@ function solanaOpening(
     if (operator === null || open.signer !== keyString(operator)) return refusal("svm/signer-not-operator");
   }
   return { h: e.h, checked: e.checked, tx, signer: open.signer, channel: open.channel };
+}
+
+/**
+ * The opening with `tables` added: for each address table lookup of its message, in order, the table's address and the
+ * table's entries at the lookup's writable and read-only indexes, as the runtime loads them when the opening executes
+ * (draft-solana-session-00, Settlement Procedure, Open, step 9: the server validates the complete compiled message,
+ * resolving any version-0 address-lookup-table entries). `bound`, `reference` and `buildWithin` read the open's
+ * accounts through them; `build`'s `complete`, which takes the payload alone, refuses such an open with
+ * `svm/read-first`. Each table account is read once, at `finalized`, through `reader.account` (`readLookupTables`),
+ * which fixes what each index names: an entry that a finalized block holds is never rewritten, while one written in a
+ * block that is not finalized can differ on another fork. A table owned by another program, whose data is not an
+ * initialized table, that is deactivating or deactivated, or that holds no entry at an index the message names and has
+ * no authority to extend it, is `svm/table-unusable`, as is a loaded key that repeats a static key or another loaded
+ * key; each is a lookup the runtime refuses. No account at a table's address, or no entry at an index while the table's
+ * authority can still extend it, is `svm/not-found`, and a rejected read or an answer of neither documented shape
+ * `svm/unreadable`: reads to repeat. A reader that is missing or for another network than the challenge's is
+ * `svm/wrong-reader`. A message without lookups gets `tables` empty, with nothing read. One call per distinct table the
+ * message names.
+ */
+async function solanaFetchPresented(presented: MppCredential, reader: SvmReader): Promise<SolanaTablesCredential | Refusal> {
+  const e = opening(presented, SOLANA);
+  if (isRefusal(e)) return e;
+  const network = solanaNetworkOf(e.checked.details, true);
+  if (network === null) return refusal("svm/network-undeclared");
+  if (isRefusal(network)) return network;
+  if (!isObject(reader) || reader.network !== network) return refusal("svm/wrong-reader");
+  const decoded = solanaOpenTx(e.payload);
+  if (isRefusal(decoded)) return decoded;
+  const { tx, lookups } = decoded;
+  if (lookups.length === 0) return { ...presented, tables: [] };
+  const tables = await readLookupTables(reader, lookups);
+  if (isRefusal(tables)) return tables;
+  const keys = loadedKeys(tx, lookups, tables);
+  return isRefusal(keys) ? keys : { ...presented, tables };
 }
 
 async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -750,7 +800,9 @@ function solanaCloseRef(chosen: MppChallenge, channel: string): Omit<SvmCloseRef
 
 /**
  * The values the buyer's channel client composes the `open` from: the salt (H's first 8 bytes), the program, the
- * network and the request's blockhash and slot. `complete` checks the composed open before returning the credential.
+ * network and the request's blockhash and slot. `complete` checks the composed open as `bound` does before returning
+ * the credential: an open whose message has address table lookups is `svm/read-first`, since `complete` reads no table;
+ * its credential, `{challenge, payload}`, is checked through `fetchPresented` and `bound`.
  */
 async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<SolanaSessionUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("svm/input-malformed");
@@ -781,9 +833,10 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
 /**
  * A voucher, or a close's voucher, on the channel the held opening opened, for its `client` voucher signer: one
  * `ed25519-raw` request over `solanaVoucher(channelId, cumulativeAmount)`, for the signer the opening's `open`
- * instruction named; a signer named through an address lookup table is `svm/open-not-found`, since no table is read
- * here. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a `use`; an action
- * draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
+ * instruction named (account 4), the key vouchers "MUST verify under" (draft-solana-session-00). The opening is read as
+ * `bound` reads it: for a message with address table lookups, through the `tables` that `fetchPresented` writes, else
+ * `svm/read-first`. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a
+ * `use`; an action draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
  */
 async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
   const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64, ["topUp", "use"]);
@@ -1211,6 +1264,7 @@ export const sessionSolana = Object.freeze({
   bound: solanaBound,
   reference: solanaReference,
   status: solanaStatus,
+  fetchPresented: solanaFetchPresented,
   closeRef: solanaCloseRef,
   channel: Object.freeze({
     kind: (p: MppCredential) => solanaKind(p),

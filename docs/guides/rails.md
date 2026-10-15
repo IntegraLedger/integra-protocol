@@ -221,7 +221,8 @@ address lookup table, such as an inner instruction's program or a session close'
 the landed transaction's tables loaded (`SvmLanded.loaded`, `getTransaction`'s `meta.loadedAddresses`), so no table is
 read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups name, or
 repeat a static key or each other (the runtime refuses a transaction that loads one account twice), reads as pending
-`unreadable`. The signature fixes a table's address and an index into it, not the entry there, so a session close
+`unreadable`. An `mpp/session/solana` opening, which the seller reads before it lands, is read through its tables
+instead: `fetchPresented` reads each table account at `finalized` ([Sessions](./sessions.md)). The signature fixes a table's address and an index into it, not the entry there, so a session close
 whose `settleAndSeal` or `seal` names its channel account through a table, and does not name the channel, is
 `not-a-close` only from the read at `finalized`, and pending `not-final` from the read at `confirmed` alone. The Solana
 `recover`s and `fetchPresented` read an error by the same rule: `svm/err` from the read at `finalized`, and
@@ -328,7 +329,8 @@ message lands only while the nonce account holds that value. Its reference recor
 and an empty `blockhash`. The sysvar may come from an address lookup table: the runtime resolves it and checks it when
 `AdvanceNonceAccount` runs, and the reference records the nonce the same way. A durable message names its nonce account
 as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose `AdvanceNonceAccount` takes its nonce
-account from a lookup table with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at
+account from a lookup table with `svm/nonce-account-not-static`. On `mpp/session/solana`, an opening whose sysvar
+comes from a table is read, as any opening with lookups is, once `fetchPresented` has read its tables. `svmNonceMoved(ref, reader)` reads the nonce account at
 `finalized` and answers that read's context slot once the account holds another value, or is not a nonce account, at a
 read at least 150 slots past `fromSlot`, and null otherwise. A named transaction then not found, by a lookup whose node
 had reached that slot, is failed, with the reason `nonce-moved`; a lookup from a node behind it, or naming no slot,

@@ -48,7 +48,7 @@ import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocat
 import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
-import { TABLE, tableClose, tableOpening } from "./fixtures/svm-lookup-table.js";
+import { TABLE, TABLE_B, tableClose, tableOpening } from "./fixtures/svm-lookup-table.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
 import { rowsOf } from "./rows.js";
 
@@ -119,6 +119,33 @@ const asReceipt = (r: { status: number; blockNumber: string; logs: EvmReceipt["l
   blockNumber: BigInt(r.blockNumber),
   logs: r.logs,
 });
+
+/**
+ * A Solana reader whose `account` answers, at a context slot of 5000, the table account SV6.tables names for each
+ * address in `served`: by its name, or as `{ table, owner }` or `{ table, dataBytes }`, that account with another owner
+ * or its data cut to that many bytes; null, or an address not in `served`, holds no account. It lists each address
+ * read.
+ */
+function tableReader(served: Record<string, unknown>, network = V.SV2.expectReference.network): { reader: SvmReader; calls: string[] } {
+  const calls: string[] = [];
+  const reader: SvmReader = {
+    network,
+    transaction: async () => Promise.reject(new Error("no transaction is read")),
+    signatures: async () => Promise.reject(new Error("no signature is read")),
+    blockhashValid: async () => Promise.reject(new Error("no blockhash is read")),
+    firstAvailableBlock: async () => Promise.reject(new Error("no block is read")),
+    account: async (address) => {
+      calls.push(address);
+      const spec = served[address] ?? null;
+      if (spec === null) return { slot: 5000n, value: null };
+      const s = (typeof spec === "string" ? { table: spec } : spec) as { table: string; owner?: string; dataBytes?: number };
+      const t = V.SV6.tables[s.table] as { owner: string; dataBase64: string };
+      const data = Uint8Array.from(Buffer.from(t.dataBase64, "base64"));
+      return { slot: 5000n, value: { owner: s.owner ?? t.owner, data: s.dataBytes === undefined ? data : data.subarray(0, s.dataBytes) } };
+    },
+  };
+  return { reader, calls };
+}
 
 describe("mpp/session/hedera", () => {
   // HS1's ids are eth-abi 6.0.0's encoding and eth-utils 6.0.0's keccak of the escrow's computeChannelId
@@ -421,12 +448,25 @@ describe("mpp/session/solana", () => {
     expect(await sessionSolana.channel.ref(open(V.SV2.wireBase64))).toEqual({ network: V.SV2.expectReference.network, channel: V.SV2.channel });
   });
 
-  it("SV2's opening made durable: a sysvar from a lookup table is bound and recorded; a nonce account from one is refused", async () => {
+  // The sysvar's table is SV6.tables.sysvar, the address lookup table program's account holding that sysvar, served at
+  // the address the durable message names; @solana/kit's message decoder gives the lookup's indexes.
+  it("SV2's opening made durable: a sysvar from a lookup table is read first, then bound and recorded; a nonce account from one is refused", async () => {
     const sysvar = durableWire(V.SV2.wireBase64, [DURABLE.sysvar]);
     expect(sysvar.instruction0Accounts[0]).toBeLessThan(sysvar.staticKeys);
     expect(sysvar.instruction0Accounts[1]).toBeGreaterThanOrEqual(sysvar.staticKeys);
-    expect(await sessionSolana.bound(open(sysvar.wireBase64))).toBe(V.SV2.expectBound);
-    expect(await sessionSolana.reference(open(sysvar.wireBase64))).toEqual({
+    expect(await sessionSolana.bound(open(sysvar.wireBase64))).toEqual(refused("svm/read-first"));
+    expect(await sessionSolana.reference(open(sysvar.wireBase64))).toEqual(refused("svm/read-first"));
+    const w = Buffer.from(sysvar.wireBase64, "base64");
+    const message = getCompiledTransactionMessageDecoder().decode(w.subarray(1 + 64 * w[0]!));
+    if (message.version !== 0) throw new Error("the durable opening is a v0 message");
+    const lookups = message.addressTableLookups!;
+    expect(lookups.map((l) => [l.lookupTableAddress, l.writableIndexes, l.readonlyIndexes])).toEqual([[DURABLE.table, [], [0]]]);
+    const { reader, calls } = tableReader({ [DURABLE.table]: "sysvar" });
+    const fetched = await sessionSolana.fetchPresented(open(sysvar.wireBase64), reader);
+    expect(fetched).toEqual({ ...open(sysvar.wireBase64), tables: [{ address: DURABLE.table, writable: [], readonly: [DURABLE.sysvar] }] });
+    expect(calls).toEqual([DURABLE.table]);
+    expect(await sessionSolana.bound(fetched)).toBe(V.SV2.expectBound);
+    expect(await sessionSolana.reference(fetched)).toEqual({
       ...V.SV2.expectReference,
       digest: sysvar.digest,
       blockhash: "",
@@ -925,6 +965,160 @@ describe("mpp/session/solana", () => {
     if ("refused" in built) throw new Error(built.code);
     expect(Object.keys(built.payload)).toEqual(["action", "channelId", "voucher"]);
     expect(await calls(built)).toEqual(closed);
+  });
+});
+
+// SV6: an opening that names account 4 or account 5 through an address lookup table, and fetchPresented, which reads
+// each table at finalized and writes `tables`. Each table account is the address lookup table program's own, written in
+// the LiteSVM bundled with solders 0.26.0; each row's expected tables are @solana/kit 8.4.0's message decoder's lookups
+// mapped over the table's entries, and its liteSvm the runtime's answer to the opening with those accounts (SV6.about).
+describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
+  type Row = {
+    case: string;
+    opening: string;
+    challenges: string[];
+    accounts?: Record<string, unknown>;
+    expect?: { tables: unknown[] } | string;
+    bound?: string;
+    channel?: string;
+    signer?: string;
+    given?: unknown[];
+  };
+  const S = V.SV6;
+  const R = V.agreedRefusals.rows;
+  const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
+  const operator = solanaPlaced((d) => Object.assign(d, { voucherSigner: "operator", operator: R[21].operator }));
+  const challenges: Record<string, MppChallenge & { id: string }> = { operator, client, C_S };
+  const openings: Record<string, { wireBase64: string; channel: string }> = {
+    "agreedRefusals.rows[21]": R[21],
+    "agreedRefusals.rows[22]": R[22],
+    "agreedRefusals.rows[23]": R[23],
+    "SV6.openings.channelAtOne": { wireBase64: S.openings.channelAtOne.wireBase64, channel: R[22].channel },
+    "SV6.openings.bothTables": { wireBase64: S.openings.bothTables.wireBase64, channel: R[21].channel },
+  };
+  /** The row's opening answering challenge `c`, with authentication naming the challenge's id for operator. */
+  const presentedOf = (row: Row, c: string): MppCredential => {
+    const o = openings[row.opening]!;
+    const challenge = challenges[c]!;
+    const auth = c === "operator" ? { authentication: { type: "proof", challengeId: challenge.id, payer: V.SV3.payer, signature: "x" } } : {};
+    return cred(challenge, { action: "open", channelId: o.channel, transaction: o.wireBase64, ...auth });
+  };
+  const rows = rowsOf(S.rows as Row[], "mpp-session-hedera-solana-xrpl.json SV6.rows", { exact: 13 });
+
+  it("the openings SV6 adds are @solana/kit's, byte for byte, and each table account holds its entries under the program's header", async () => {
+    const seed = new Uint8Array(32).fill(1);
+    const atOne = await tableOpening(V.SV5.opening.wireBase64, V.SV3.payer, "channel", seed, [R[21].operator]);
+    const both = await tableOpening(V.SV5.opening.wireBase64, R[21].operator, "both", seed);
+    expect([atOne.wireBase64, atOne.channel]).toEqual([S.openings.channelAtOne.wireBase64, R[22].channel]);
+    expect([both.wireBase64, both.channel]).toEqual([S.openings.bothTables.wireBase64, R[21].channel]);
+    expect(S.tables.channel21.madeAt).toBe(TABLE_B);
+    for (const [name, t] of Object.entries(S.tables) as [string, { owner: string; entries: string[]; dataBase64: string }][]) {
+      const d = Buffer.from(t.dataBase64, "base64");
+      expect(t.owner, name).toBe("AddressLookupTab1e1111111111111111111111111");
+      expect([d.readUInt32LE(0), d.readBigUInt64LE(4), d[21], d.length], name).toEqual([
+        1,
+        name === "deactivated" ? 1000n : 0xffff_ffff_ffff_ffffn,
+        name === "frozen" ? 0 : 1,
+        56 + 32 * t.entries.length,
+      ]);
+      expect(t.entries.map((_, i) => base58.encode(d.subarray(56 + 32 * i, 88 + 32 * i))), name).toEqual(t.entries);
+    }
+  });
+
+  // The runtime loads a version-0 message's addresses lookup by lookup, each lookup's writable entries to the writable
+  // list and its read-only entries to the read-only list, after the static keys (agave v3.0.14,
+  // runtime/src/bank/address_lookup_table.rs L41-68 and accounts-db/src/accounts.rs L145-156). bothTables's first lookup
+  // loads account 4 read-only and its second account 5 writable, so that order differs from lookup by lookup in turn.
+  // @solana/kit's decompile, given the tables, names the operator at account 4 and the channel at account 5.
+  it("SV6.openings.bothTables: kit's decompile with the tables names account 4 and account 5 as bound reads them", () => {
+    const w = Buffer.from(S.openings.bothTables.wireBase64, "base64");
+    const compiled = getCompiledTransactionMessageDecoder().decode(w.subarray(1 + 64 * w[0]!));
+    if (compiled.version !== 0) throw new Error("the opening is a v0 message");
+    expect(compiled.addressTableLookups!.map((l) => [l.lookupTableAddress, l.writableIndexes, l.readonlyIndexes])).toEqual([
+      [TABLE_B, [], [0]],
+      [TABLE, [0], []],
+    ]);
+    const tables = { [address(TABLE)]: S.tables.channel21.entries.map(address), [address(TABLE_B)]: S.tables.signer.entries.map(address) };
+    const ix = decompileTransactionMessage(compiled, { addressesByLookupTableAddress: tables }).instructions[2]!;
+    expect([ix.accounts![4]!.address, ix.accounts![5]!.address]).toEqual([R[21].operator, R[21].channel]);
+  });
+
+  for (const row of rows) {
+    it(row.case, async () => {
+      for (const c of rowsOf(row.challenges, `${row.case}: challenges`)) {
+        const presented = presentedOf(row, c);
+        expect(await sessionSolana.bound(presented), c).toEqual(refused("svm/read-first"));
+        expect(await sessionSolana.reference(presented), c).toEqual(refused("svm/read-first"));
+        if (row.given !== undefined) {
+          for (const tables of rowsOf(row.given, `${row.case}: given`)) {
+            expect(await sessionSolana.bound({ ...presented, tables } as MppCredential), JSON.stringify(tables)).toEqual(refused(row.bound!));
+            expect(await sessionSolana.reference({ ...presented, tables } as MppCredential), JSON.stringify(tables)).toEqual(refused(row.bound!));
+          }
+          continue;
+        }
+        const { reader, calls } = tableReader(row.accounts!);
+        const fetched = await sessionSolana.fetchPresented(presented, reader);
+        expect(calls.sort(), c).toEqual(Object.keys(row.accounts!).sort());
+        if (typeof row.expect === "string") {
+          expect(fetched, c).toEqual(refused(row.expect));
+          continue;
+        }
+        expect(fetched, c).toEqual({ ...presented, tables: row.expect!.tables });
+        if ("refused" in fetched) throw new Error(fetched.code);
+        const u = await sessionSolana.build({ challenge: challenges[c]!, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
+        if ("refused" in u) throw new Error(u.code);
+        expect(u.complete(presented.payload), c).toEqual(refused("svm/read-first"));
+        if (row.bound !== undefined) {
+          expect(await sessionSolana.bound(fetched), c).toEqual(row.bound === "H" ? H : refused(row.bound));
+        }
+        if (row.channel !== undefined) {
+          expect(await sessionSolana.reference(fetched), c).toMatchObject({ network: V.SV2.expectReference.network, channel: row.channel });
+        }
+        if (row.signer !== undefined) {
+          for (const action of ["voucher", "close"] as const) {
+            const built = await sessionSolana.buildWithin({ challenge: challenges[c]!, opening: fetched, cumulativeAmount: 100n, action } as SessionWithin, H);
+            expect(built, `${c} ${action}`).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: row.signer }] });
+          }
+        }
+      }
+    });
+  }
+
+  it("fetchPresented of an opening without lookups adds tables empty and reads nothing", async () => {
+    const { reader, calls } = tableReader({});
+    const c = cred(C_S, { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 });
+    const fetched = await sessionSolana.fetchPresented(c, reader);
+    expect(fetched).toEqual({ ...c, tables: [] });
+    expect(calls).toEqual([]);
+    expect(await sessionSolana.bound(fetched)).toBe(V.SV2.expectBound);
+    // A message without lookups is read from its static keys, whatever tables member the credential carries.
+    expect(await sessionSolana.bound({ ...c, tables: "x" } as MppCredential)).toBe(V.SV2.expectBound);
+  });
+
+  it("fetchPresented reads each distinct table once, refuses a reader for another network, and reads a failed or malformed answer as svm/unreadable", async () => {
+    const both = presentedOf(rows[3]!, "operator");
+    const { reader, calls } = tableReader(rows[3]!.accounts!);
+    expect(await sessionSolana.fetchPresented(both, reader)).toEqual({ ...both, tables: (rows[3]!.expect as { tables: unknown[] }).tables });
+    expect(calls).toEqual([TABLE_B, TABLE]);
+    const opening = presentedOf(rows[1]!, "C_S");
+    const counted = tableReader({ [TABLE]: "channel" });
+    for (const other of [tableReader({}, "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z").reader, null, "x"]) {
+      expect(await sessionSolana.fetchPresented(opening, other as SvmReader)).toEqual(refused("svm/wrong-reader"));
+    }
+    const answering = (answer: () => Promise<unknown>): SvmReader => ({ ...counted.reader, account: answer as SvmReader["account"] });
+    const table = Uint8Array.from(Buffer.from(S.tables.channel.dataBase64, "base64"));
+    for (const answer of [
+      () => Promise.reject(new Error("transport")),
+      async () => null,
+      async () => ({ slot: 5000, value: { owner: S.tables.channel.owner, data: table } }),
+      async () => ({ slot: 5000n }),
+      async () => ({ slot: 5000n, value: { owner: S.tables.channel.owner, data: S.tables.channel.dataBase64 } }),
+      async () => ({ slot: 5000n, value: { data: table } }),
+    ]) {
+      expect(await sessionSolana.fetchPresented(opening, answering(answer)), String(answer)).toEqual(refused("svm/unreadable"));
+    }
+    expect(await sessionSolana.fetchPresented(cred(C_S, { action: "close", channelId: V.SV2.channel }), counted.reader)).toEqual(refused("mpp/session-action"));
+    expect(counted.calls).toEqual([]);
   });
 });
 
@@ -1604,11 +1798,11 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
         const within = await sessionSolana.buildWithin({ challenge: operator, opening: cred(operator, opening), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
         return [...(await solanaCalls(operator, opening)), within];
       },
-    "a solana opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, that key its challenge's operator and its challenge's voucherSigner operator (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete take no reader and read no table)":
+    "a solana opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, that key its challenge's operator and its challenge's voucherSigner operator, without the tables fetchPresented writes (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete read the open's accounts through the tables fetchPresented reads)":
       async () => solanaCalls(tableOperator, { ...tableOpen(V.agreedRefusals.rows[21]), authentication: proofFor(tableOperator) }),
-    "a solana opening whose open instruction names its channel (account 5) through an address lookup table (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete take no reader and read no table)":
+    "a solana opening whose open instruction names its channel (account 5) through an address lookup table, without the tables fetchPresented writes (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete read the open's accounts through the tables fetchPresented reads)":
       async () => [...(await solanaCalls(client, tableOpen(V.agreedRefusals.rows[22]))), ...(await solanaCalls(C_S, tableOpen(V.agreedRefusals.rows[22])))],
-    "a solana voucher built on a client opening whose open instruction names its authorizedSigner (account 4) through an address lookup table (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; buildWithin takes no reader and reads no table, so it has no signer to name)":
+    "a solana voucher built on a client opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, without the tables fetchPresented writes (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; buildWithin reads the voucher signer through the tables fetchPresented reads)":
       async () => [
         await sessionSolana.buildWithin({ challenge: client, opening: cred(client, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H),
         await sessionSolana.buildWithin({ challenge: C_S, opening: cred(C_S, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "close" } as SessionWithin, H),
