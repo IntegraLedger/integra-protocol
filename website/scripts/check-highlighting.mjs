@@ -8,9 +8,9 @@
 //   `variable.other.constant` scope is #0550AE (primer/github-vscode-theme): `const` in a checked TypeScript block
 //   and `myObject` in a JavaScript one;
 // - those options are the only way the site highlights code. No source under website/ imports a module that
-//   highlights (Shiki, fumadocs-core's highlighter and rehype-code, fumadocs-ui's code blocks that call that
-//   highlighter, the Twoslash transformer) except source.config.ts, which gives rehype-code these options, and this
-//   check. The imports are read as TypeScript's parser reads them, so a comment or a string is not an import.
+//   highlights (Shiki, fumadocs-core's highlighter and rehype-code, the MDX presets of fumadocs-core and fumadocs-mdx
+//   that run rehype-code with their caller's options, fumadocs-ui's code blocks that call that highlighter, the
+//   Twoslash transformer) except source.config.ts, which gives rehype-code these options, and this check. The imports are read as TypeScript's parser reads them, so a comment or a string is not an import.
 //
 // Usage, from website/, after `pnpm build` there (the TypeScript block is checked against ../lcp/dist):
 //   node scripts/check-highlighting.mjs
@@ -27,13 +27,15 @@ const HIGHLIGHTERS = [
   /^@shikijs\//,
   /^fumadocs-core\/highlight(\/|$)/,
   /^fumadocs-core\/mdx-plugins(\/rehype-code(\.core)?)?$/,
+  /^fumadocs-core\/content\/mdx\/preset-(bundler|runtime)$/,
+  /^fumadocs-mdx\/config$/,
   /^fumadocs-ui\/components\/(codeblock\.rsc|dynamic-codeblock(\.core)?)$/,
   /^fumadocs-twoslash(\/|$)/,
 ];
 
 /** The sources that may import them: the configuration that gives rehype-code its options, and this check. */
 const ALLOWED = new Map([
-  ["source.config.ts", new Set(["fumadocs-core/mdx-plugins", "fumadocs-twoslash"])],
+  ["source.config.ts", new Set(["fumadocs-core/mdx-plugins", "fumadocs-mdx/config", "fumadocs-twoslash"])],
   ["scripts/check-highlighting.mjs", new Set(["fumadocs-core/mdx-plugins"])],
 ]);
 
