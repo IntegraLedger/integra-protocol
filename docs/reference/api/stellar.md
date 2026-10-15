@@ -138,7 +138,8 @@ What the payer signs (the signer signs SHA-256 of `preimage`), and how the signa
 
 > **complete**(`signature`): `string` \| [`Refusal`](index.md#refusal)
 
-The base64 XDR of the transaction with the entry signed.
+The base64 XDR of the transaction with the entry signed. One over 8,192 characters is `stellar/tx-too-large`, as
+the read of a signed transfer refuses it.
 
 ###### Parameters
 

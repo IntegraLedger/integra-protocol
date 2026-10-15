@@ -61,6 +61,10 @@ field in its own fresh `ArrayBuffer`, and a function that reads one takes any ba
 
 > **complete**(`preimage`): [`Refusal`](index.md#refusal) \| [`MppCredential`](mpp.md#mppcredential)
 
+The credential for the paid invoice's preimage. A credential over the credential size bound, 64 KiB, its echoed
+challenge included, is `mpp/credential-malformed`, as `bound` refuses it, and is read first; a preimage that is not
+64 lowercase hex digits is `ln/preimage-malformed`.
+
 ###### Parameters
 
 | Parameter | Type |

@@ -347,5 +347,35 @@
     "expect": "xrpl/memos-not-carried"
    }
   ]
+ },
+ "completeBlob": {
+  "about": "complete reads the signed blob it is given as bound reads the credential it makes, in bound's order: the credential's size (mpp-challenge.json credentialSize), then the blob as decodeBlob reads it: hex bytes, else xrpl/blob-malformed, of at most 4,096 hex digits, else xrpl/blob-too-large, that decode as a transaction, else xrpl/blob-malformed. Each row's blob is the row's blobBytes zero bytes in hex, and its credential is B6's payment with that blob. complete refuses each row's blob with the row's code, and bound refuses the credential with it: zero bytes within both bounds do not decode as a transaction. At 32,400 bytes the credential measures 65,535 and at 32,401 bytes 65,537, so the credential bound is read first there.",
+  "rows": [
+   {
+    "case": "a blob of 2,047 bytes, one under the blob bound",
+    "blobBytes": 2047,
+    "expect": "xrpl/blob-malformed"
+   },
+   {
+    "case": "a blob of 2,048 bytes, 4,096 hex digits, at the blob bound",
+    "blobBytes": 2048,
+    "expect": "xrpl/blob-malformed"
+   },
+   {
+    "case": "a blob of 2,049 bytes, one over the blob bound",
+    "blobBytes": 2049,
+    "expect": "xrpl/blob-too-large"
+   },
+   {
+    "case": "a blob of 32,400 bytes, whose credential is within the credential size bound",
+    "blobBytes": 32400,
+    "expect": "xrpl/blob-too-large"
+   },
+   {
+    "case": "a blob of 32,401 bytes, whose credential is over the credential size bound",
+    "blobBytes": 32401,
+    "expect": "mpp/credential-malformed"
+   }
+  ]
  }
 }

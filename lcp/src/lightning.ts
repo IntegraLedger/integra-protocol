@@ -24,6 +24,7 @@ import {
   checkChallenge,
   decodeObject,
   echoedFor,
+  measured,
   place,
   read as mppRead,
   tie as mppTie,
@@ -432,6 +433,11 @@ export interface LnMppChoice {
 
 export interface LnMppUnsigned {
   request: { kind: "bolt11-pay"; invoice: string };
+  /**
+   * The credential for the paid invoice's preimage. A credential over the credential size bound, 64 KiB, its echoed
+   * challenge included, is `mpp/credential-malformed`, as `bound` refuses it, and is read first; a preimage that is not
+   * 64 lowercase hex digits is `ln/preimage-malformed`.
+   */
   complete(preimage: string): MppCredential | Refusal;
 }
 
@@ -532,9 +538,13 @@ function lnBuild(pairing: LnMppPairingId) {
     return {
       request: { kind: "bolt11-pay", invoice: invoice as string },
       complete(preimage: string): MppCredential | Refusal {
-        if (typeof preimage !== "string" || !PREIMAGE.test(preimage)) return refusal("ln/preimage-malformed");
-        if (pairing === LN_CHARGE) return { challenge, payload: { preimage } };
-        return { challenge, payload: { action: OPEN, preimage, returnInvoice: returnInvoice as string } };
+        const credential = measured(
+          pairing === LN_CHARGE
+            ? { challenge, payload: { preimage } }
+            : { challenge, payload: { action: OPEN, preimage, returnInvoice: returnInvoice as string } },
+        );
+        if (isRefusal(credential)) return credential;
+        return typeof preimage === "string" && PREIMAGE.test(preimage) ? credential : refusal("ln/preimage-malformed");
       },
     };
   };

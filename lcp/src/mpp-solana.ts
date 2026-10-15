@@ -34,6 +34,7 @@ import {
   FETCHED,
   fetchedOf,
   isObject,
+  measured,
   placeCarrier,
   pushedField,
   read,
@@ -89,7 +90,10 @@ export interface SolanaChargeChoice {
 
 export interface SolanaChargeUnsigned {
   request: { kind: "solana-message"; message: Uint8Array<ArrayBuffer> };
-  /** The payer's 64-byte Ed25519 signature over `message`. */
+  /**
+   * The payer's 64-byte Ed25519 signature over `message`. A credential over the credential size bound, 64 KiB, its
+   * echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses it.
+   */
   complete(signature: Uint8Array): MppCredential | Refusal;
 }
 
@@ -406,7 +410,7 @@ async function build(
     complete(signature: Uint8Array): MppCredential | Refusal {
       const wire = signedWire(signedMessage, choice.payer, signature);
       if (isRefusal(wire)) return wire;
-      return { challenge, payload: { type: "transaction", transaction: toBase64(wire) } };
+      return measured({ challenge, payload: { type: "transaction", transaction: toBase64(wire) } });
     },
   };
 }

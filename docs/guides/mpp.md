@@ -199,6 +199,14 @@ derivation use, such as the network or chain, the currency, the recipient, the e
 the invoice's currency. The EVM `transaction` and `hash` charges' `bound` then refuses (`mpp/no-signed-place`), and a
 `fetchPresented` given a signed transaction returns it as given.
 
+The `complete` of each `build` that makes a credential measures it as `bound` measures every credential, its echoed
+challenge included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code
+`bound` gives it, whatever the challenge's own size. It holds the payment it carries to the size `bound` reads it at
+too: the XRP Ledger charge's signed blob to 4,096 hex digits (`xrpl/blob-too-large`), and the Stellar charge's signed
+envelope to 8,192 base64 characters (`stellar/tx-too-large`). So no `build`'s `complete` returns a credential `bound`
+refuses for its size. A `buildWithin`'s `complete` does not measure its credential, as `channel.kind`, `channel.ref`
+and `channel.boundWithin`, which read an in-channel payment, do not.
+
 `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
 authorises the pull, and its reference's `authorization` names the nonce the payer signed (the challenge-derived value,

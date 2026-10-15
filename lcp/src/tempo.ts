@@ -164,6 +164,10 @@ export interface TempoKeyAuthorization {
 export interface KeyAuthorizationUnsigned {
   /** `digest` is keccak256(rlp(authorization)); the root key signs it. */
   request: { kind: "tempo-key-authorization"; authorization: TempoKeyAuthorization; digest: Hex };
+  /**
+   * The credential for the root key's signature over `digest`. A credential over the credential size bound, 64 KiB,
+   * its echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses it.
+   */
   complete(rootSignature: Hex): MppCredential | Refusal;
 }
 

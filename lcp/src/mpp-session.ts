@@ -46,6 +46,7 @@ import {
   isHexBytes,
   isObject,
   issuedFor,
+  measured,
   place,
   read,
   requestAddress,
@@ -142,6 +143,11 @@ export type SessionUnsigned = {
    * credential is over the credential size bound (`mpp/credential-malformed`).
    */
   voucher(funded: Hex): VoucherTypedData | Refusal;
+  /**
+   * The opening's credential for `funded` and the voucher signature. On every funding it is measured as `bound`
+   * measures every credential, its echoed challenge included: one over the credential size bound, 64 KiB, is
+   * `mpp/credential-malformed`, the code `bound` gives it.
+   */
   complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal;
 };
 
@@ -887,7 +893,8 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
       voucher,
       complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal {
         if (normalHash(funded) === null || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
-        return { challenge, source, payload: { ...base, type: "hash", hash: funded, signature: voucherSignature } };
+        const payload = { ...base, type: "hash", hash: funded, signature: voucherSignature };
+        return measured({ challenge, source, payload });
       },
     };
   }
@@ -947,11 +954,11 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
       if (!isHexBytes(funded, 1, MAX_SIGNATURE) || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) {
         return refusal("mpp/credential-malformed");
       }
-      return {
+      return measured({
         challenge,
         source,
         payload: { ...base, type, authorization, signature: funded, voucherSignature },
-      };
+      });
     },
   };
 }
@@ -1690,7 +1697,7 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
       if (!isHexBytes(rootSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
       const signed = encodeKeyAuthorization(authorization, rootSignature);
       if (!(signed instanceof Uint8Array)) return signed;
-      return { challenge, source, payload: { type: "keyAuthorization", signature: hexOf(signed) } };
+      return measured({ challenge, source, payload: { type: "keyAuthorization", signature: hexOf(signed) } });
     },
   };
 }

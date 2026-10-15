@@ -30,6 +30,7 @@ import {
   expiresOf,
   isHexBytes,
   isObject,
+  measured,
   pairingsOf,
   place,
   read,
@@ -230,7 +231,7 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
     request: { kind: "eip712" as const, typedData },
     complete(signature: Hex): MppCredential | Refusal {
       if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
-      return {
+      return measured({
         challenge,
         source: `did:pkh:eip155:${chainId}:${from}`,
         payload: {
@@ -243,7 +244,7 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
           nonce,
           signature,
         },
-      };
+      });
     },
   };
 }
@@ -353,7 +354,11 @@ export interface StacksChargeChoice {
   from: string;
 }
 
-/** What the signer is handed for each `usdc` profile, and how its answer completes the credential. */
+/**
+ * What the signer is handed for each `usdc` profile, and how its answer completes the credential. Each `complete`
+ * measures the credential it would return as `bound` measures every credential, its echoed challenge included, and
+ * refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code `bound` gives it.
+ */
 export type UsdcUnsigned =
   | {
       request: { kind: "eip712"; typedData: Eip3009TypedData };
@@ -412,7 +417,8 @@ function onNetwork(tx: StacksTransaction, chainId: number): boolean {
  * the profile's token contract, one `SentEq` post-condition, post-condition mode Deny and anchor mode OnChainOnly, for
  * the profile's `chainId`. `complete` reads the signed transaction as `bound` reads it: bytes that are empty, over the
  * size bound or that a Stacks node does not decode are `mpp/stacks-tx-malformed`, and a transaction a node of the
- * challenge's network does not take (`onNetwork`) is `stacks/chain-mismatch`.
+ * challenge's network does not take (`onNetwork`) is `stacks/chain-mismatch`. It returns the credential through
+ * `measured`: one over the credential size bound is `mpp/credential-malformed`, the code `bound` gives it.
  */
 async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
@@ -441,11 +447,11 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
       const tx = readStacksTransaction(serializedTx);
       if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
       if (!onNetwork(tx, Number(chainId))) return refusal("stacks/chain-mismatch");
-      return {
+      return measured({
         challenge,
         source: `stacks:${chainId}:${from}`,
         payload: { type: "transaction", transaction: base64.encode(serializedTx), transactionFormat: STACKS_FORMAT },
-      };
+      });
     },
   };
 }
@@ -656,7 +662,7 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
       for (const k of ["source", "sourceNetwork", "destinationNetwork", "maxFee"] as const) {
         if (typeof c[k] !== "string" || c[k] === "") return refusal("mpp/credential-malformed");
       }
-      return {
+      return measured({
         challenge,
         source: c.source,
         payload: {
@@ -666,7 +672,7 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
           maxFee: c.maxFee,
           authorization: { format: GATEWAY_FORMAT, transfer: { burnIntent: c.burnIntent, signature: c.signature } },
         },
-      };
+      });
     },
   };
 }

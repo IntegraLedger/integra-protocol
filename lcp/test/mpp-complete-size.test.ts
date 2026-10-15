@@ -1,0 +1,479 @@
+// Every MPP pairing whose build returns a `complete` that makes a credential measures that credential as `bound`
+// measures every credential, its echoed challenge included, and refuses one over the credential size bound with the
+// code `bound` gives it. mpp-challenge.json's credentialSize rows are the sizes; each pairing's credential is the one its
+// build and complete give on its vector file's B2 inputs and the payment its B6 row carries, under that file's placed
+// challenge with a description of as many characters as bring the credential to the row's size.
+import { xdr } from "@stellar/stellar-sdk/base";
+import { describe, expect, it } from "vitest";
+import { concat, toHex, type Hex } from "viem";
+import { privateKeyToAccount, sign } from "viem/accounts";
+import type { Json } from "../src/index.js";
+import type { StellarPaymentPayload } from "../src/internal/stellar.js";
+import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { exactStellar } from "../src/x402-exact-stellar.js";
+import {
+  chargeSolana,
+  chargeStellar,
+  chargeUsdcEvm,
+  chargeUsdcGateway,
+  chargeUsdcSolana,
+  chargeUsdcStacks,
+  chargeXrpl,
+  evmAuthorization,
+  evmHash,
+  evmPermit2,
+  evmTransaction,
+  sessionEvm,
+  sessionHedera,
+  sessionSolana,
+  sessionTempo,
+  sessionXrpl,
+  subscriptionTempo,
+  tempoMemo,
+  tempoPush,
+  type MppChallenge,
+  type MppCredential,
+} from "../src/mpp.js";
+import { chargeLightning, sessionLightning } from "../src/lightning.js";
+import { load } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
+
+type Placed = MppChallenge & { id: string };
+type Payload = MppCredential["payload"];
+/** The B2 inputs the pairings' builds take, as the vector files write them. */
+type Inputs = {
+  tokenDomain?: { name: string; version: string };
+  spender?: Hex;
+  returnInvoice?: string;
+  computeUnitLimit?: number;
+  computeUnitPrice?: string;
+  simulatedXdr?: string;
+  currentLedger?: number;
+  fee?: string;
+  sequence?: number;
+  lastLedgerSequence?: number;
+  deposit?: string;
+  credentialType?: "authorization" | "permit2" | "hash";
+  xrpl?: { publicKey: string; settleDelay: number; fee: string; sequence: number; lastLedgerSequence: number };
+};
+/** A buyer row of an MPP vector file: B2's build inputs, or B6's payment. */
+type BuyerRow = {
+  name: string;
+  pairing: string;
+  advertised: Hex;
+  input: { account: string; now?: number; inputs?: Inputs; doc?: Placed[]; presented?: MppCredential & { challenge: Placed } };
+};
+type Refused = { refused: true; code: string };
+
+const MC = load("mpp-challenge.json");
+const A = load("mpp-charge-evm-authorization.json");
+const TX = load("mpp-charge-evm-transaction.json");
+
+/**
+ * MV11's EIP-1559 transaction, signed by the payer key with viem as mpp-charge.test.ts signs it: the EVM transaction
+ * charge's complete reads the transaction's chain id, so it takes a transaction of the challenge's chain only.
+ */
+async function mv11Transaction(): Promise<Hex> {
+  const t = TX.MV11.transaction;
+  const signed = await privateKeyToAccount(TX.fixed.payerKey).signTransaction({
+    type: "eip1559",
+    chainId: t.chainId,
+    nonce: t.nonce,
+    gas: BigInt(t.gas),
+    to: t.to as Hex,
+    data: TX.MV11.expectCalldata as Hex,
+    maxPriorityFeePerGas: BigInt(t.maxPriorityFeePerGas),
+    maxFeePerGas: BigInt(t.maxFeePerGas),
+  });
+  if ((signed.length - 2) / 2 !== TX.MV11.expectRawLength) throw new Error("not MV11's transaction");
+  return signed;
+}
+
+/** The buyer row `name` of `file` for `pairing`. */
+const buyer = (file: string, pairing: string, name: "B2" | "B6"): BuyerRow | undefined =>
+  (load(file).buyer.rows as BuyerRow[]).find((r) => r.name === name && r.pairing === pairing);
+/** The address of a CAIP-10 account: what follows its namespace and reference. */
+const accountOf = (row: BuyerRow) => row.input.account.split(":").slice(2).join(":");
+const refused = (code: string): Refused => ({ refused: true, code });
+/** A build's answer, which these rows' inputs never have refused. */
+function built<U>(u: U | Refused): U {
+  if (typeof u === "object" && u !== null && "refused" in u) throw new Error(`build refused: ${(u as Refused).code}`);
+  return u as U;
+}
+const decoded = (c: MppChallenge): { [k: string]: Json } => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
+
+/** A credential's size as credentialSize's about measures it, and as `bound` does. */
+function sizeOf(v: unknown): number {
+  if (typeof v === "string") return v.length + 2;
+  if (typeof v === "number" || typeof v === "bigint" || typeof v === "boolean" || v === null) return 8;
+  if (Array.isArray(v)) return v.reduce((n: number, x) => n + sizeOf(x), 2);
+  if (typeof v === "object") return Object.entries(v).reduce((n, [k, x]) => n + k.length + 3 + sizeOf(x), 2);
+  throw new Error(`a credential holds ${typeof v}, which is not JSON`);
+}
+
+/** How a pairing's build and complete run on its B2 row and its B6 payment's payload and source, under `challenge`. */
+type Run = (challenge: Placed, b2: BuyerRow, b6: { payload: Payload; source?: string }) => Promise<unknown>;
+type Pairing = { file: string; bound: (c: unknown) => Promise<unknown>; run: Run; answer?: string };
+/**
+ * Each pairing whose build returns a `complete` that makes a credential: its vector file, `bound`, how it builds and
+ * completes, and the code `bound` gives its credential where that is not H (`answer`).
+ */
+const P: Record<string, Pairing> = {
+  "mpp/charge/evm/authorization": {
+    file: "mpp-charge-evm-authorization.json",
+    bound: evmAuthorization.bound,
+    run: async (challenge, b2, b6) => {
+      const choice = { challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0, tokenDomain: b2.input.inputs!.tokenDomain! };
+      return built(await evmAuthorization.build(choice, b2.advertised)).complete(b6.payload["signature"] as Hex);
+    },
+  },
+  "mpp/charge/evm/permit2": {
+    file: "mpp-charge-evm-permit2.json",
+    bound: evmPermit2.bound,
+    run: async (challenge, b2, b6) => {
+      const choice = { challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0, spender: b2.input.inputs!.spender! };
+      return built(await evmPermit2.build(choice, b2.advertised)).complete(b6.payload["signature"] as Hex);
+    },
+  },
+  // No B6 row: the credential has no signed place for H. complete takes MV11's signed transaction, and H.
+  "mpp/charge/evm/transaction": {
+    file: "mpp-charge-evm-transaction.json",
+    bound: evmTransaction.bound,
+    answer: "mpp/no-signed-place",
+    run: async (challenge, b2) =>
+      built(await evmTransaction.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(
+        await mv11Transaction(),
+      ),
+  },
+  "mpp/charge/evm/hash": {
+    file: "mpp-charge-evm-hash.json",
+    bound: evmHash.bound,
+    answer: "mpp/no-signed-place",
+    run: async (challenge, b2) =>
+      built(await evmHash.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(b2.advertised),
+  },
+  "mpp/charge/tempo/memo": {
+    file: "mpp-charge-tempo-memo.json",
+    bound: tempoMemo.bound,
+    run: async (challenge, b2, b6) =>
+      built(await tempoMemo.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(
+        b6.payload["signature"] as Hex,
+      ),
+  },
+  // bound reads the push payment once fetchPresented has landed it.
+  "mpp/charge/tempo/push": {
+    file: "mpp-charge-tempo-push.json",
+    bound: tempoPush.bound,
+    answer: "tempo/read-first",
+    run: async (challenge, b2, b6) =>
+      built(await tempoPush.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(
+        b6.payload["hash"] as Hex,
+      ),
+  },
+  "mpp/charge/lightning": {
+    file: "mpp-charge-lightning.json",
+    bound: chargeLightning.bound,
+    run: async (challenge, b2, b6) => built(await chargeLightning.build({ challenge }, b2.advertised)).complete(b6.payload["preimage"] as string),
+  },
+  "mpp/session/lightning": {
+    file: "mpp-session-lightning.json",
+    bound: sessionLightning.bound,
+    run: async (challenge, b2, b6) =>
+      built(await sessionLightning.build({ challenge, returnInvoice: b2.input.inputs!.returnInvoice! }, b2.advertised)).complete(
+        b6.payload["preimage"] as string,
+      ),
+  },
+  "mpp/charge/solana": { file: "mpp-charge-solana.json", bound: chargeSolana.bound, run: solanaRun(chargeSolana.build, (r) => r) },
+  "mpp/charge/usdc/solana": {
+    file: "mpp-charge-usdc-solana.json",
+    bound: chargeUsdcSolana.bound,
+    run: solanaRun(chargeUsdcSolana.build, (r) => r["solana"] as { [k: string]: Json }),
+  },
+  // complete takes the payer's 64-byte signature, which it does not verify.
+  "mpp/charge/stellar": {
+    file: "mpp-charge-stellar.json",
+    bound: chargeStellar.bound,
+    run: async (challenge, b2) => {
+      const i = b2.input.inputs!;
+      const choice = { challenge, payer: accountOf(b2), now: b2.input.now ?? 0, simulatedXdr: i.simulatedXdr!, currentLedger: i.currentLedger! };
+      return built(await chargeStellar.build(choice, b2.advertised)).complete(new Uint8Array(64).fill(0x11));
+    },
+  },
+  "mpp/charge/xrpl": {
+    file: "mpp-charge-xrpl.json",
+    bound: chargeXrpl.bound,
+    run: async (challenge, b2, b6) => {
+      const i = b2.input.inputs!;
+      const choice = { challenge, account: accountOf(b2), fee: i.fee!, sequence: i.sequence!, lastLedgerSequence: i.lastLedgerSequence! };
+      return built(await chargeXrpl.build(choice, b2.advertised)).complete(b6.payload["blob"] as string);
+    },
+  },
+  "mpp/charge/usdc/evm": {
+    file: "mpp-charge-usdc-evm.json",
+    bound: chargeUsdcEvm.bound,
+    run: async (challenge, b2, b6) => {
+      const choice = { challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0, tokenDomain: b2.input.inputs!.tokenDomain! };
+      const u = built(await chargeUsdcEvm.build(choice, b2.advertised)) as { complete(signature: Hex): unknown };
+      return u.complete(b6.payload["signature"] as Hex);
+    },
+  },
+  "mpp/charge/usdc/stacks": {
+    file: "mpp-charge-usdc-stacks.json",
+    bound: chargeUsdcStacks.bound,
+    run: async (challenge, b2, b6) => {
+      const u = built(await chargeUsdcStacks.build({ challenge, from: accountOf(b2) }, b2.advertised)) as { complete(tx: Uint8Array): unknown };
+      return u.complete(Uint8Array.from(Buffer.from(b6.payload["transaction"] as string, "base64")));
+    },
+  },
+  "mpp/charge/usdc/gateway": {
+    file: "mpp-charge-usdc-gateway.json",
+    bound: chargeUsdcGateway.bound,
+    run: async (challenge, b2, b6) => {
+      const u = built(await chargeUsdcGateway.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)) as {
+        complete(c: unknown): unknown;
+      };
+      const transfer = (b6.payload["authorization"] as { transfer: { burnIntent: Json; signature: Hex } }).transfer;
+      return u.complete({
+        source: b6.source,
+        sourceNetwork: b6.payload["sourceNetwork"],
+        destinationNetwork: b6.payload["destinationNetwork"],
+        maxFee: b6.payload["maxFee"],
+        burnIntent: transfer.burnIntent,
+        signature: transfer.signature,
+      });
+    },
+  },
+  "mpp/session/evm": {
+    file: "mpp-session-evm.json",
+    bound: sessionEvm.bound,
+    run: async (challenge, b2, b6) => {
+      const i = b2.input.inputs!;
+      const choice = {
+        challenge,
+        from: accountOf(b2) as Hex,
+        now: b2.input.now ?? 0,
+        deposit: BigInt(i.deposit!),
+        credentialType: i.credentialType!,
+        tokenDomain: i.tokenDomain!,
+      };
+      return built(await sessionEvm.build(choice, b2.advertised)).complete(b6.payload["signature"] as Hex, b6.payload["voucherSignature"] as Hex);
+    },
+  },
+  "mpp/session/tempo": {
+    file: "mpp-session-tempo.json",
+    bound: sessionTempo.bound,
+    run: async (challenge, b2, b6) => {
+      const choice = { challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0, deposit: BigInt(b2.input.inputs!.deposit!) };
+      return built(await sessionTempo.build(choice, b2.advertised)).complete(b6.payload["transaction"] as Hex, b6.payload["signature"] as Hex);
+    },
+  },
+  // The root key signs the digest: the B2 account's key, which is the authorization file's payer key.
+  "mpp/subscription/tempo": {
+    file: "mpp-subscription-tempo.json",
+    bound: subscriptionTempo.bound,
+    run: async (challenge, b2) => {
+      const u = built(await subscriptionTempo.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised));
+      const s = await sign({ hash: u.request.digest, privateKey: A.fixed.payerKey });
+      return u.complete(concat([s.r, s.s, toHex(Number(s.v), { size: 1 })]));
+    },
+  },
+  // bound reads the opening once fetchPresented has landed it.
+  "mpp/session/hedera": {
+    file: "mpp-session-hedera-solana-xrpl.json",
+    bound: sessionHedera.bound,
+    answer: "hedera/read-first",
+    run: async (challenge, b2, b6) => {
+      const choice = { challenge, from: accountOf(b2), now: b2.input.now ?? 0, deposit: BigInt(b2.input.inputs!.deposit!) };
+      const u = built(await sessionHedera.build(choice, b2.advertised)) as { complete(s: { openTx: Hex; signature: Hex }): unknown };
+      return u.complete({ openTx: b6.payload["txHash"] as Hex, signature: b6.payload["signature"] as Hex });
+    },
+  },
+  // The Solana session's build reads no deposit: the channel client composes the open payload.
+  "mpp/session/solana": {
+    file: "mpp-session-hedera-solana-xrpl.json",
+    bound: sessionSolana.bound,
+    run: async (challenge, b2, b6) => {
+      const u = built(await sessionSolana.build({ challenge, from: accountOf(b2), now: b2.input.now ?? 0, deposit: 1n }, b2.advertised)) as {
+        complete(open: Payload): unknown;
+      };
+      return u.complete(b6.payload);
+    },
+  },
+  "mpp/session/xrpl": {
+    file: "mpp-session-hedera-solana-xrpl.json",
+    bound: sessionXrpl.bound,
+    run: async (challenge, b2, b6) => {
+      const i = b2.input.inputs!;
+      const xrpl = { ...i.xrpl!, publicKey: i.xrpl!.publicKey.replace(/^0x/, "") };
+      const choice = { challenge, from: accountOf(b2), now: b2.input.now ?? 0, deposit: BigInt(i.deposit!), xrpl };
+      const u = built(await sessionXrpl.build(choice, b2.advertised)) as { complete(s: { signedBlob: string; claimSignature: string }): Promise<unknown> };
+      return u.complete({ signedBlob: b6.payload["transaction"] as string, claimSignature: b6.payload["signature"] as string });
+    },
+  },
+};
+
+/**
+ * The Solana charges' build, given the buyer's own decimals, token program and blockhash: those `own` reads from the
+ * challenge's methodDetails. complete takes the payer's 64-byte signature, which it does not verify.
+ */
+function solanaRun(build: (choice: never, h: never) => Promise<unknown>, own: (details: { [k: string]: Json }) => { [k: string]: Json }): Run {
+  return async (challenge, b2) => {
+    const i = b2.input.inputs!;
+    const d = own(decoded(challenge)["methodDetails"] as { [k: string]: Json });
+    const choice = {
+      challenge,
+      payer: accountOf(b2),
+      computeUnitLimit: i.computeUnitLimit,
+      computeUnitPrice: BigInt(i.computeUnitPrice!),
+      decimals: d["decimals"],
+      tokenProgram: d["tokenProgram"],
+      recentBlockhash: d["recentBlockhash"],
+    };
+    const u = built(await build(choice as never, b2.advertised as never)) as { complete(signature: Uint8Array): unknown };
+    return u.complete(new Uint8Array(64).fill(0x11));
+  };
+}
+
+/** The pairing's placed challenge and its complete under a given challenge: B6's challenge, else B2's first. */
+function setUp(id: string) {
+  const p = P[id]!;
+  const b2 = buyer(p.file, id, "B2")!;
+  const b6 = buyer(p.file, id, "B6")?.input.presented;
+  const placed = b6?.challenge ?? b2.input.doc![0]!;
+  const payment = { payload: b6?.payload ?? {}, ...(b6?.source === undefined ? {} : { source: b6.source }) };
+  return { placed, h: b2.advertised, complete: (challenge: Placed) => p.run(challenge, b2, payment) };
+}
+
+/** The challenge with a description of `n` characters, a member no pairing reads or hashes. */
+const described = (c: Placed, n: number): Placed => ({ ...c, description: "d".repeat(n) });
+/** The description length that brings `credential`, made under a challenge with none, to `size`. */
+const descriptionFor = (credential: unknown, size: number) => size - sizeOf(credential) - ("description".length + 3) - 2;
+
+type SizeRow = { case: string; size: number; taken?: true; expect?: string };
+const ROWS = rowsOf<SizeRow>(MC.credentialSize.rows, "mpp-challenge.json credentialSize.rows", { exact: 3 });
+const PAIRINGS = rowsOf(Object.keys(P), "the pairings whose build returns a complete that makes a credential", { exact: 21 });
+
+describe("mpp-challenge.json credentialSize: every complete measures its credential as bound does", () => {
+  for (const id of PAIRINGS) {
+    describe(id, () => {
+      for (const row of ROWS) {
+        it(row.case, async () => {
+          const { placed, h, complete } = setUp(id);
+          const bound = P[id]!.bound;
+          expect(placed.description).toBeUndefined();
+          const plain = (await complete(placed)) as MppCredential;
+          const answer = P[id]!.answer === undefined ? h : refused(P[id]!.answer!);
+          expect(await bound(plain)).toEqual(answer);
+          const challenge = described(placed, descriptionFor(plain, row.size));
+          const sized = { ...plain, challenge };
+          expect(sizeOf(sized)).toBe(row.size);
+          const made = await complete(challenge);
+          if (row.taken) {
+            expect(made).toEqual(sized);
+            expect(await bound(made)).toEqual(answer);
+          } else {
+            expect(made).toEqual(refused(row.expect!));
+            expect(await bound(sized)).toEqual(refused(row.expect!));
+          }
+        });
+      }
+    });
+  }
+});
+
+describe("mpp-charge-xrpl.json completeBlob: complete reads the blob as bound reads it, after the credential's size", () => {
+  type BlobRow = { case: string; blobBytes: number; expect: string };
+  const ROWS_BLOB = rowsOf<BlobRow>(load("mpp-charge-xrpl.json").completeBlob.rows, "mpp-charge-xrpl.json completeBlob.rows", { exact: 5 });
+  const { placed } = setUp("mpp/charge/xrpl");
+  const b2 = buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B2")!;
+  const i = b2.input.inputs!;
+  const choice = { challenge: placed, account: accountOf(b2), fee: i.fee!, sequence: i.sequence!, lastLedgerSequence: i.lastLedgerSequence! };
+  const credentialOf = (blob: string) => ({ challenge: placed, payload: { type: "transaction", blob } });
+
+  it("the credential measures 65,535 with a blob of 32,400 bytes and 65,537 with one of 32,401", () => {
+    expect([sizeOf(credentialOf("00".repeat(32_400))), sizeOf(credentialOf("00".repeat(32_401)))]).toEqual([65_535, 65_537]);
+  });
+  for (const row of ROWS_BLOB) {
+    it(row.case, async () => {
+      const blob = "00".repeat(row.blobBytes);
+      const made = await built(await chargeXrpl.build(choice, b2.advertised)).complete(blob);
+      expect(made).toEqual(refused(row.expect));
+      expect(await chargeXrpl.bound(credentialOf(blob))).toEqual(refused(row.expect));
+    });
+  }
+});
+
+/**
+ * `envelope` with its transaction's ext set to Soroban transaction data whose footprint holds one read-only contract-data
+ * key: contract id 32 bytes of 0x07, key an ScVal of `keyBytes` zero bytes, persistent; zero resources and fee.
+ */
+function footprinted(envelope: string, keyBytes: number): string {
+  const env = xdr.TransactionEnvelope.fromXdr(envelope, "base64").toXdrObject();
+  if (env.type !== 2) throw new Error("not a v1 envelope");
+  const key = { type: 6, contractData: { contract: { type: 1, contractId: new Uint8Array(32).fill(7) }, key: { type: 13, bytes: new Uint8Array(keyBytes) }, durability: 1 } };
+  const resources = { footprint: { readOnly: [key], readWrite: [] }, instructions: 0, diskReadBytes: 0, writeBytes: 0 };
+  (env.v1.tx as { ext: unknown }).ext = { v: 1, sorobanData: { ext: { v: 0 }, resources, resourceFee: 0n } };
+  return Buffer.from(xdr.TransactionEnvelope.schema.encode(env, { maxDepth: 1_000_000 })).toString("base64");
+}
+const SIGNATURE = new Uint8Array(64).fill(0x11);
+
+describe("mpp-charge-stellar.json completeXdr: complete refuses a signed envelope bound refuses for its length", () => {
+  type XdrRow = { case: string; keyBytes: number; simulatedLength: number; signedLength: number; taken?: true; expect?: string };
+  const ROWS_XDR = rowsOf<XdrRow>(load("mpp-charge-stellar.json").completeXdr.rows, "mpp-charge-stellar.json completeXdr.rows", { exact: 3 });
+  const { placed } = setUp("mpp/charge/stellar");
+  const b2 = buyer("mpp-charge-stellar.json", "mpp/charge/stellar", "B2")!;
+  const completed = async (keyBytes: number) => {
+    const simulatedXdr = footprinted(b2.input.inputs!.simulatedXdr!, keyBytes);
+    const choice = { challenge: placed, payer: accountOf(b2), now: b2.input.now ?? 0, simulatedXdr, currentLedger: b2.input.inputs!.currentLedger! };
+    return { simulatedXdr, made: built(await chargeStellar.build(choice, b2.advertised)).complete(SIGNATURE) };
+  };
+  const credentialOf = (transaction: string) => ({ challenge: placed, payload: { type: "transaction", transaction } });
+
+  for (const row of ROWS_XDR) {
+    it(row.case, async () => {
+      const { simulatedXdr, made } = await completed(row.keyBytes);
+      expect(simulatedXdr.length).toBe(row.simulatedLength);
+      if (row.taken) {
+        const transaction = (made as MppCredential).payload["transaction"] as string;
+        expect(transaction.length).toBe(row.signedLength);
+        expect(made).toEqual(credentialOf(transaction));
+        expect(await chargeStellar.bound(made)).toBe(b2.advertised);
+      } else {
+        expect(made).toEqual(refused(row.expect!));
+        // The envelope complete would write: a taken row's signed envelope with this row's key, which the payer does not sign.
+        const taken = (await completed(ROWS_XDR.find((r) => r.taken)!.keyBytes)).made as MppCredential;
+        const over = footprinted(taken.payload["transaction"] as string, row.keyBytes);
+        expect(over.length).toBe(row.signedLength);
+        expect(await chargeStellar.bound(credentialOf(over))).toEqual(refused(row.expect!));
+      }
+    });
+  }
+});
+
+// x402-exact-stellar.json V2's simulated envelope, with a footprint key as completeXdr's rows make it: the x402 build's
+// complete writes the signature as the MPP one does, and refuses the same lengths its bound refuses.
+describe("x402 exact Stellar: complete refuses a signed envelope over 8,192 characters, as bound does", () => {
+  const X = load("x402-exact-stellar.json");
+  const accepted: PaymentRequirements = X.V3.accepted;
+  const required: PaymentRequired = { x402Version: 2, resource: X.fixed.resource, accepts: [accepted] };
+  const complete = async (keyBytes: number) => {
+    const simulatedXdr = footprinted(X.V2.simulatedXdr, keyBytes);
+    expect(simulatedXdr.length).toBeLessThanOrEqual(8192);
+    const choice = { required, accepted, simulatedXdr, currentLedger: X.V2.currentLedger, payer: X.fixed.payer };
+    return built(await exactStellar.build(choice, X.fixed.H)).complete(SIGNATURE);
+  };
+  const paid = (transaction: string): StellarPaymentPayload => ({ x402Version: 2, accepted, payload: { transaction }, extensions: X.V3.extensions });
+
+  it("the longest signed envelope within the bound is taken, and the next is refused stellar/tx-too-large", async () => {
+    let n = 5000;
+    while (typeof (await complete(n + 4)) === "string") n += 4;
+    const within = (await complete(n)) as string;
+    expect(within.length).toBeLessThanOrEqual(8192);
+    expect(within.length).toBeGreaterThan(8184);
+    expect(await exactStellar.bound(paid(within))).toBe(X.V3.expectBound);
+    expect(await complete(n + 4)).toEqual(refused("stellar/tx-too-large"));
+    const over = footprinted(within, n + 4);
+    expect(over.length).toBeGreaterThan(8192);
+    expect(await exactStellar.bound(paid(over))).toEqual(refused("stellar/tx-too-large"));
+  });
+});

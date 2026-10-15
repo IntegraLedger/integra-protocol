@@ -388,5 +388,31 @@
     "expect": "stellar/option-malformed"
    }
   ]
+ },
+ "completeXdr": {
+  "about": "complete writes the payer's signature into the simulated envelope, and refuses a signed envelope over 8,192 base64 characters with stellar/tx-too-large, as bound refuses it. A row's simulated envelope is B2's simulatedXdr with its transaction's ext set to Soroban transaction data: a footprint of one read-only contract-data key, whose contract is the contract id of 32 bytes of 0x07, whose key is an ScVal of bytes holding the row's keyBytes zero bytes, and whose durability is persistent, no read-write key, and zero instructions, read bytes, write bytes and resource fee, written with @stellar/stellar-sdk 17.2.1. simulatedLength is that envelope's length in base64 characters, and signedLength the length of the envelope complete writes into it with a signature of 64 bytes of 0x11, which complete does not verify. The payer does not sign the footprint. build takes each row's simulated envelope, which is within 8,192 characters. At a length marked taken, complete returns the credential, B6's challenge with that envelope, and bound gives H; over the bound, complete refuses with the row's code, and bound refuses with it the credential carrying the envelope complete would have written.",
+  "rows": [
+   {
+    "case": "a signed envelope of 8,188 characters, the longest under the bound",
+    "keyBytes": 5397,
+    "simulatedLength": 7960,
+    "signedLength": 8188,
+    "taken": true
+   },
+   {
+    "case": "a signed envelope of 8,192 characters, at the bound",
+    "keyBytes": 5401,
+    "simulatedLength": 7964,
+    "signedLength": 8192,
+    "taken": true
+   },
+   {
+    "case": "a signed envelope of 8,200 characters, the shortest over the bound: an envelope of whole 4-byte XDR words is 6,144 bytes at 8,192 characters and 6,148 at the next length, 8,200",
+    "keyBytes": 5405,
+    "simulatedLength": 7968,
+    "signedLength": 8200,
+    "expect": "stellar/tx-too-large"
+   }
+  ]
  }
 }

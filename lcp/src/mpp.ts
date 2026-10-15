@@ -46,6 +46,7 @@ import {
   isChallengeShape,
   isHexBytes,
   isObject,
+  measured,
   pairingsOf,
   place,
   pushedField,
@@ -143,6 +144,12 @@ export type {
   VoucherTypedData,
   WithinSigningRequest,
 } from "./mpp-session.js";
+/**
+ * What the buyer's signer is handed for each EVM and Tempo charge, and how its answer completes the credential. Each
+ * `complete` measures the credential it would return as `bound` measures every credential, its echoed challenge
+ * included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code `bound`
+ * gives it.
+ */
 export type MppUnsigned =
   | {
       request: { kind: "eip712"; typedData: Eip3009TypedData | Permit2TypedData };
@@ -449,7 +456,7 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
     request: { kind: "eip712", typedData },
     complete(signature: Hex): MppCredential | Refusal {
       if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
-      return {
+      return measured({
         challenge,
         source: did(chainId, from),
         payload: {
@@ -462,7 +469,7 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
           nonce,
           signature,
         },
-      };
+      });
     },
   };
 }
@@ -562,7 +569,7 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
     request: { kind: "eip712", typedData },
     complete(signature: Hex): MppCredential | Refusal {
       if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
-      return {
+      return measured({
         challenge,
         source: did(chainId, from),
         payload: {
@@ -576,7 +583,7 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
           witness: { challengeHash: challengeHashValue, externalId },
           signature,
         },
-      };
+      });
     },
   };
 }
@@ -701,7 +708,7 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
         if (broadcast) {
           const hash = normalHash(signedTxOrHash);
           if (hash === null) return refusal("mpp/credential-malformed");
-          return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
+          return measured({ challenge, source, payload: { type: "hash", hash: signedTxOrHash } });
         }
         if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
         const credential: MppCredential = { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
@@ -806,7 +813,7 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
     const complete = (signedTxOrHash: Hex): MppCredential | Refusal => {
       if (broadcast) {
         if (normalHash(signedTxOrHash) === null) return refusal("mpp/credential-malformed");
-        return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
+        return measured({ challenge, source, payload: { type: "hash", hash: signedTxOrHash } });
       }
       const credential: MppCredential = { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
       const m = signedMemoCall(credential);

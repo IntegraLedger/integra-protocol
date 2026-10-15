@@ -79,6 +79,7 @@ import {
   fetchedOf,
   isObject,
   issuedFor,
+  measured,
   place,
   read,
   tie,
@@ -150,6 +151,11 @@ export interface HederaSessionUnsigned {
     calls: { to: Hex; data: Hex; gas: bigint }[];
     voucher: HederaVoucherTypedData;
   };
+  /**
+   * The opening's credential for the broadcast transaction's hash and the zero voucher's signature. A credential over
+   * the credential size bound, 64 KiB, its echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses
+   * it.
+   */
   complete(signed: { openTx: Hex; signature: Hex }): MppCredential | Refusal;
 }
 
@@ -552,10 +558,10 @@ async function hederaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Heder
       if (!isObject(signed) || normalHash(signed.openTx) === null || typeof signed.signature !== "string" || bytesOf(signed.signature) === undefined) {
         return refusal("mpp/credential-malformed");
       }
-      return {
+      return measured({
         challenge,
         payload: { action: "open", channelId, txHash: signed.openTx, cumulativeAmount: "0", signature: signed.signature },
-      };
+      });
     },
   };
 }

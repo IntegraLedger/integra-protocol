@@ -159,7 +159,10 @@ export type StellarStatus =
 /** What the payer signs (the signer signs SHA-256 of `preimage`), and how the signature completes the transaction. */
 export interface StellarUnsigned {
   request: { kind: "stellar-auth"; preimage: Uint8Array<ArrayBuffer> };
-  /** The base64 XDR of the transaction with the entry signed. */
+  /**
+   * The base64 XDR of the transaction with the entry signed. One over 8,192 characters is `stellar/tx-too-large`, as
+   * the read of a signed transfer refuses it.
+   */
   complete(signature: Uint8Array): string | Refusal;
 }
 
@@ -586,8 +589,9 @@ export function decodeStellarTx(xdrB64: string, network: StellarNetwork): Stella
 
 /**
  * Sets the `from` entry's expiration ledger in a simulated envelope and returns its `HashIDPreimage` bytes, the payment
- * that entry signs, whether the operation invokes exactly that, and a completion that writes the payer's signature as `authorizeEntry` does for an account: a vector of one map
- * `{public_key, signature}`.
+ * that entry signs, whether the operation invokes exactly that, and a completion that writes the payer's signature as
+ * `authorizeEntry` does for an account: a vector of one map `{public_key, signature}`. The completion refuses a signed
+ * envelope over `MAX_XDR` (8,192) characters with `stellar/tx-too-large`, as `readSignedTransfer` refuses it.
  */
 export function signingFor(
   simulatedXdr: string,
@@ -630,11 +634,13 @@ export function signingFor(
             },
           ],
         };
+        let signed: string;
         try {
-          return toBase64(writeXdr(x.TransactionEnvelope, wire));
+          signed = toBase64(writeXdr(x.TransactionEnvelope, wire));
         } catch {
           return refusal("stellar/tx-malformed");
         }
+        return signed.length > MAX_XDR ? refusal("stellar/tx-too-large") : signed;
       },
     },
   };

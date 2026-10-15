@@ -304,9 +304,11 @@ The buyer's inputs to `build`: the paying account and the buyer's own reads of f
 
 > **complete**(`signedBlob`): `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)\>
 
-The wallet's signed blob, hex, read as `bound` reads it: a blob that does not decode, or is multi-signed, gets the
-refusal `bound` gives it, and one whose `NetworkID` the challenge's network does not take is
-`xrpl/network-mismatch`.
+The wallet's signed blob, hex, read as `bound` reads the credential, in its order: a credential over the
+credential size bound, 64 KiB, its echoed challenge included, is `mpp/credential-malformed`; a blob that does not
+decode, or is multi-signed, gets the refusal `bound` gives it (one that is not hex bytes is `xrpl/blob-malformed`,
+and one over 4,096 hex digits is `xrpl/blob-too-large`); and one whose `NetworkID` the challenge's network does not
+take is `xrpl/network-mismatch`.
 
 ###### Parameters
 
@@ -345,6 +347,11 @@ The id of each MPP pairing `pairingsOf` can name.
 ### MppUnsigned
 
 > **MppUnsigned** = \{ `request`: \{ `kind`: `"eip712"`; `typedData`: [`Eip3009TypedData`](evm.md#eip3009typeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `calls`: readonly `object`[]; `chainId`: `number`; `kind`: `"tempo-calls"`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"evm-call"`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}
+
+What the buyer's signer is handed for each EVM and Tempo charge, and how its answer completes the credential. Each
+`complete` measures the credential it would return as `bound` measures every credential, its echoed challenge
+included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code `bound`
+gives it.
 
 #### Union Members
 
@@ -450,6 +457,10 @@ EIP-3009's `ReceiveWithAuthorization`: the same fields as `TransferWithAuthoriza
 
 > **complete**(`funded`, `voucherSignature`): [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
 
+The opening's credential for `funded` and the voucher signature. On every funding it is measured as `bound`
+measures every credential, its echoed challenge included: one over the credential size bound, 64 KiB, is
+`mpp/credential-malformed`, the code `bound` gives it.
+
 ###### Parameters
 
 | Parameter | Type |
@@ -492,7 +503,9 @@ credential is over the credential size bound (`mpp/credential-malformed`).
 
 > **UsdcUnsigned** = \{ `request`: \{ `kind`: `"eip712"`; `typedData`: [`Eip3009TypedData`](evm.md#eip3009typeddata); \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `anchorMode`: `"onChainOnly"`; `args`: \{ `amount`: `string`; `memo`: [`AtrHash`](index.md#atrhash); `recipient`: `string`; `sender`: `string`; \}; `chainId`: `number`; `contract`: `string`; `functionName`: `"transfer"`; `kind`: `"stacks-contract-call"`; `postCondition`: `"SentEq"`; `postConditionMode`: `"deny"`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `kind`: `"gateway-burn-intent"`; `preimage`: [`GatewayPreimage`](#gatewaypreimage); \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}
 
-What the signer is handed for each `usdc` profile, and how its answer completes the credential.
+What the signer is handed for each `usdc` profile, and how its answer completes the credential. Each `complete`
+measures the credential it would return as `bound` measures every credential, its echoed challenge included, and
+refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code `bound` gives it.
 
 #### Union Members
 

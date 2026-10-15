@@ -234,5 +234,13 @@
     "source": "this package's refusal code"
    }
   ]
+ },
+ "credentialSize": {
+  "about": "The credential size bound, as bound measures a credential before it reads it and as each pairing's complete measures the credential it would return. A credential is measured as JSON: a string counts its UTF-16 code units plus 2; a number, boolean or null 8; an array 2 plus its items; and an object 2 plus, for each member, its name's UTF-16 code units plus 3 and its value. A credential of at most 65,536 is within the bound, and one over it is mpp/credential-malformed. Each row is a size, run against every pairing whose build returns a complete that makes a credential: the EVM authorization, permit2, transaction and hash charges, the Tempo memo and push charges, the Lightning charge and session, the Solana, Stellar and XRPL charges, the usdc evm, solana, stacks and gateway profiles, the EVM, Tempo, Hedera, Solana and XRPL sessions and the Tempo subscription. A pairing's credential is the one its build and complete give on its vector file's B2 inputs and the complete input that file's B6 payment carries; the EVM transaction and hash charges, which have no B6 row, complete a transaction of 100 bytes of 0x11 and H; the Solana and Stellar charges complete a signature of 64 bytes of 0x11, which they do not verify; and the Tempo subscription completes the root key's signature over its digest. The challenge is the file's placed challenge, B6's where there is one, with a description of as many characters as bring that credential to the row's size: no pairing reads or hashes the description, so it leaves the challenge's id, H and every value the payer signs as they are. At a size marked taken, complete returns the credential, and bound answers it as it answers that credential without the description: H, or mpp/no-signed-place on the EVM transaction and hash charges, and tempo/read-first and hedera/read-first on the Tempo push charge and the Hedera session, whose payment bound reads only once it has landed; over the bound, complete refuses with the row's code, and bound refuses the credential complete would have given with it.",
+  "rows": [
+   { "case": "a credential one under the credential size bound", "size": 65535, "taken": true },
+   { "case": "a credential at the credential size bound", "size": 65536, "taken": true },
+   { "case": "a credential one over the credential size bound", "size": 65537, "expect": "mpp/credential-malformed" }
+  ]
  }
 }

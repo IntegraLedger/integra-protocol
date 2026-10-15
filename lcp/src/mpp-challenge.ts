@@ -1090,6 +1090,16 @@ function echoedRead(c: unknown, bound: boolean): { h: AtrHash | undefined; reque
 }
 
 /**
+ * The credential a pairing's `complete` returns, measured as `bound` measures every credential before it reads it
+ * (`echoedFor`): the whole credential, its echoed challenge included. One over the credential size bound, 64 KiB, or
+ * nested more than 16 arrays and objects deep, is `mpp/credential-malformed`, the code `bound` gives it, so no
+ * `complete` returns a credential `bound` refuses for its size, whatever the challenge's own size.
+ */
+export function measured<C extends MppCredential>(credential: C): C | Refusal {
+  return jsonWithin(credential, MAX_CREDENTIAL) ? credential : refusal("mpp/credential-malformed");
+}
+
+/**
  * An echoed challenge as a credential presents it, held to its pairing's filter (`checkedFor`): the request decoded,
  * and each pairing reads the request members its own read keys or derivation use.
  */

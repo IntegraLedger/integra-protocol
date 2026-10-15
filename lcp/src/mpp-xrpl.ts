@@ -23,6 +23,7 @@ import {
   FETCHED,
   fetchedOf,
   isObject,
+  measured,
   placeCarrier,
   pushedField,
   read,
@@ -53,9 +54,11 @@ export interface XrplChargeChoice {
 export interface XrplChargeUnsigned {
   request: { kind: "xrpl-tx"; txJson: XrplTxJson };
   /**
-   * The wallet's signed blob, hex, read as `bound` reads it: a blob that does not decode, or is multi-signed, gets the
-   * refusal `bound` gives it, and one whose `NetworkID` the challenge's network does not take is
-   * `xrpl/network-mismatch`.
+   * The wallet's signed blob, hex, read as `bound` reads the credential, in its order: a credential over the
+   * credential size bound, 64 KiB, its echoed challenge included, is `mpp/credential-malformed`; a blob that does not
+   * decode, or is multi-signed, gets the refusal `bound` gives it (one that is not hex bytes is `xrpl/blob-malformed`,
+   * and one over 4,096 hex digits is `xrpl/blob-too-large`); and one whose `NetworkID` the challenge's network does not
+   * take is `xrpl/network-mismatch`.
    */
   complete(signedBlob: string): Promise<MppCredential | Refusal>;
 }
@@ -232,12 +235,14 @@ async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUn
   return {
     request: { kind: "xrpl-tx", txJson },
     async complete(signedBlob: string): Promise<MppCredential | Refusal> {
-      if (typeof signedBlob !== "string" || !HEX.test(signedBlob)) return refusal("xrpl/blob-malformed");
       const payload = { type: "transaction", blob: signedBlob };
+      const credential = measured({ challenge, payload });
+      if (isRefusal(credential)) return credential;
+      if (typeof signedBlob !== "string" || !HEX.test(signedBlob)) return refusal("xrpl/blob-malformed");
       const decoded = await decodePresented(payload, signedBlob);
       if (isRefusal(decoded)) return decoded;
       if (!networkIdHeld(decoded.tx, network)) return refusal("xrpl/network-mismatch");
-      return { challenge, payload };
+      return credential;
     },
   };
 }

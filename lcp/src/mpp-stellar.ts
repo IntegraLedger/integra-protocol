@@ -28,6 +28,7 @@ import {
   FETCHED,
   fetchedOf,
   isObject,
+  measured,
   placeCarrier,
   pushedField,
   read,
@@ -58,7 +59,10 @@ export interface StellarChargeChoice {
 
 export interface StellarChargeUnsigned {
   request: { kind: "stellar-auth"; preimage: Uint8Array<ArrayBuffer> };
-  /** The payer's Ed25519 signature over SHA-256 of `preimage`. */
+  /**
+   * The payer's Ed25519 signature over SHA-256 of `preimage`. A credential over the credential size bound, 64 KiB, its
+   * echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses it.
+   */
   complete(signature: Uint8Array): MppCredential | Refusal;
 }
 
@@ -248,7 +252,7 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
     complete(signature: Uint8Array): MppCredential | Refusal {
       const xdr = s.unsigned.complete(signature);
       if (isRefusal(xdr)) return xdr;
-      return { challenge, payload: { type: "transaction", transaction: xdr } };
+      return measured({ challenge, payload: { type: "transaction", transaction: xdr } });
     },
   };
 }
