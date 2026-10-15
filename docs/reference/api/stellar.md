@@ -74,12 +74,14 @@ Bounded, read-only calls against one network's RPC. Every failure rejects, for e
 One page of SEP-41 `transfer` events of `asset` to `toBase` from `fromLedger` through `toLedger`, both inclusive,
 with each event's `to_muxed_id`. `stellarLocate` passes the authorization entry's expiration ledger as `toLedger`,
 and the entry can still be used in that ledger. `cursor` is present while more pages remain: until the search has
-read through `toLedger`. `complete` is false when the RPC reports events disabled. `oldestLedger` is the oldest
+read through `toLedger`, or through the `latestLedger` the node reported where that is lower (a short page, which
+`stellarLocate` reads as behind). `complete` is false when the RPC reports events disabled. `oldestLedger` is the oldest
 ledger the RPC still holds, and `latestLedger` the latest ledger it held when it answered (`getEvents`'
 `latestLedger`). Stellar RPC's `getEvents` treats `endLedger` as exclusive, takes a cursor or a ledger range but
 not both, and scans a bounded number of ledgers per call (10,000 in stellar-rpc), so a reader over it sends
 `startLedger: fromLedger` and `endLedger: toLedger + 1` on the first page and only the cursor on later pages, and
-returns a `cursor` until `getEvents` has scanned through `toLedger`, whether or not a page holds events. A cursor
+returns a `cursor` until `getEvents` has scanned through `toLedger` or its own `latestLedger`, whichever is lower,
+whether or not a page holds events. A cursor
 page can scan past `toLedger`, so the reader keeps only the events through `toLedger`.
 
 ###### Parameters
