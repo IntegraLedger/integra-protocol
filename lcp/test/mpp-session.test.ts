@@ -118,6 +118,12 @@ describe("mpp-session-evm.json", () => {
       E.ES1.expectChannelId,
     );
     affix(evmChannelId({ ...c, salt: H2 }) as string, E.ES1.expectChannelIdH2);
+    // ES1.expectChannelIdH2.whole is eth-abi's and eth-utils' computeChannelId with salt H2 (ES1's case); viem
+    // re-derives it, and evmChannelId is held to it.
+    expect(keccak256(encodeAbiParameters(types, [f.payer, f.recipient, f.usdc, H2, ZERO, f.escrow, BigInt(f.chainId)]))).toBe(
+      E.ES1.expectChannelIdH2.whole,
+    );
+    expect(evmChannelId({ ...c, salt: H2 })).toBe(E.ES1.expectChannelIdH2.whole);
   });
 
   // ES2's calldata is eth-abi 6.0.0's approve(address,uint256) and draft-evm-session-00's open(address payee, address
@@ -412,6 +418,7 @@ describe("mpp-session-tempo.json", () => {
     expect(hashTypedData(forViem(voucher))).toBe(T.TS4.expectVoucher0);
     const v250 = { ...(voucher as object), message: { channelId: T.TS3.expectChannelId, cumulativeAmount: 250n } };
     affix(hashTypedData(forViem(v250)), T.TS4.expectVoucher250);
+    expect(hashTypedData(forViem(v250))).toBe(T.TS4.expectVoucher250.whole);
     const cred = u.complete(toHex(wire), await payer.signTypedData(forViem(voucher))) as MppCredential;
     expect(cred.payload["channelId"]).toBe(T.TS3.expectChannelId);
     expect(cred.payload["descriptor"]).toEqual(d);
@@ -439,6 +446,11 @@ describe("mpp-session-tempo.json", () => {
     const dH2 = descriptor(H2, T.TS2.expectNonceHash);
     const idH2 = tempoChannelId({ ...dH2, escrow: f.escrowV2, chainId: 42431 }) as string;
     affix(idH2, T.TS4.expectChannelIdH2);
+    // TS4.expectChannelIdH2.whole is eth-abi's and eth-utils' v2 channel id with salt H2 (TS4's case); viem re-derives
+    // it, and tempoChannelId is held to it.
+    expect(keccak256(encodeAbiParameters(nine, [dH2.payer, dH2.payee.toLowerCase(), dH2.operator, dH2.token, dH2.salt, dH2.authorizedSigner, dH2.expiringNonceHash, f.escrowV2.toLowerCase(), 42431n])))
+      .toBe(T.TS4.expectChannelIdH2.whole);
+    expect(idH2).toBe(T.TS4.expectChannelIdH2.whole);
     expect(await sessionTempo.channel.boundWithin(v(dH2, idH2))).toBe(H2);
     expect(await sessionTempo.channel.boundWithin(v(dH2, T.TS3.expectChannelId))).toEqual(T.TS4.expectMismatch);
     expect(await sessionTempo.channel.ref(v(d, T.TS3.expectChannelId))).toEqual({ network: "eip155:42431", channel: T.TS3.expectChannelId });
@@ -487,6 +499,7 @@ describe("mpp-session-tempo.json", () => {
     const voucher = u.voucher(toHex(await openWire(u.funding.call.data)));
     expect(voucher).toMatchObject({ domain: { name: "Tempo Stream Channel" }, message: { channelId: T.TS5.expectChannelId } });
     affix(hashTypedData(forViem(voucher)), T.TS5.expectVoucher);
+    expect(hashTypedData(forViem(voucher))).toBe(T.TS5.expectVoucher.whole);
     expect(sessionTempo.closeRef(V1, T.TS5.expectChannelId)).toEqual(T.TS5.expectCloseRef);
     expect(T.TS5.expectCloseRef.bindingLog.topic0).toBe(CHANNEL_CLOSED_V1_TOPIC);
   });

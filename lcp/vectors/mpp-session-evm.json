@@ -22,8 +22,10 @@
   "expectChannelId": "0x4b7bf82cb18e1d03359e3f1aa2fb6a61d0fe2efed33a2999bb71ce5d856c0f08",
   "expectChannelIdH2": {
    "prefix": "0x73b26c7a",
-   "suffix": "172de5"
-  }
+   "suffix": "172de5",
+   "whole": "0x73b26c7af493659bbbe106d761c29c3d1540fefdc33d01a0022dd421bd172de5"
+  },
+  "case": "the channel id of draft-evm-session-00's computeChannelId (tempoxyz/mpp-specs 08e7dd87, specs/methods/evm/draft-evm-session-00.md L402-414: keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainId))) with fixed.payer, fixed.recipient, fixed.usdc, the zero authorizedSigner, fixed.escrow and fixed.chainId; expectChannelIdH2.whole is the same with salt fixed.H2, computed in Python 3.12.3 with eth-abi 6.0.0's abi.encode and eth-utils 6.0.0's keccak256, and its prefix and suffix are its first ten and last six characters."
  },
  "ES2": {
   "case": "The hash opening's two calls, which the payer's signer broadcasts in order: approve(escrow, deposit) to the currency, then the escrow's open with H as the salt and the zero address as authorizedSigner (draft-evm-session-00, tempoxyz/mpp-specs 08e7dd87, specs/methods/evm/draft-evm-session-00.md L494 and L517-523, and its client-paid path L1069-1070). expectApproveCalldata is approve(address,uint256) of fixed.escrow and fixed.deposit; expectOpenCalldata is open(address,address,uint128,bytes32,address) of fixed.recipient, fixed.usdc, fixed.deposit, fixed.H and the zero address. Each is computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of the signature followed by encode of its argument types; expectOpenCalldata is the same bytes as ES9's first case's input, viem 2.57.4's encodeFunctionData",

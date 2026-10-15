@@ -154,6 +154,7 @@ describe("mpp/session/tempo: buildWithin", async () => {
     const at = unsigned(await sessionTempo.buildWithin(w(v2, f.requestV2, 250n), H));
     const td = eip712Of(at);
     affix(hashTypedData(forViem(td)), T.TS4.expectVoucher250);
+    expect(hashTypedData(forViem(td))).toBe(T.TS4.expectVoucher250.whole);
     expect(hashTypedData(forViem(td))).toBe(draftVoucher("TIP20 Channel Reserve", "uint96", 42431, f.escrowV2, T.TS3.expectChannelId, 250n));
     const signature = await payer.signTypedData(forViem(td));
     const done = at.complete([signature]) as MppCredential;
@@ -173,6 +174,7 @@ describe("mpp/session/tempo: buildWithin", async () => {
     const zero = unsigned(await sessionTempo.buildWithin(w(v1, f.requestV1, 0n, "close"), H));
     const td = eip712Of(zero);
     affix(hashTypedData(forViem(td)), T.TS5.expectVoucher);
+    expect(hashTypedData(forViem(td))).toBe(T.TS5.expectVoucher.whole);
     expect(hashTypedData(forViem(td))).toBe(draftVoucher("Tempo Stream Channel", "uint128", 42431, f.escrowV1, T.TS5.expectChannelId, 0n));
     const signature = await payer.signTypedData(forViem(td));
     expect((zero.complete([signature]) as MppCredential).payload).toEqual({

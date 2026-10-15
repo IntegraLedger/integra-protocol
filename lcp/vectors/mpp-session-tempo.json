@@ -63,24 +63,28 @@
   "expectVoucher0": "0xb2a79d8389daa604f7cf9db4f30ad62d09deef119dcb69507ce9616c9fd96627",
   "expectVoucher250": {
    "prefix": "0x5468cba3",
-   "suffix": "ecffa2"
+   "suffix": "ecffa2",
+   "whole": "0x5468cba378d5ba38fe5136ac4f2917f6d201bfc1b1b96fa81c7ad9cfaaecffa2"
   },
   "expectChannelIdH2": {
    "prefix": "0xc54bb01f",
-   "suffix": "803a8c"
+   "suffix": "803a8c",
+   "whole": "0xc54bb01f232edceff3e7b5af584366e2f7a73fd77b3a9069216221c073803a8c"
   },
   "expectMismatch": {
    "refused": true,
    "code": "tempo/descriptor-mismatch"
-  }
+  },
+  "case": "the v2 vouchers and the channel id with salt fixed.H2. expectVoucher250.whole is the EIP-712 signing hash of draft-tempo-session-00's voucher (tempoxyz/mpp-specs 08e7dd87, specs/methods/tempo/draft-tempo-session-00.md L1111-1157: the domain {name \"TIP20 Channel Reserve\", version \"1\", chainId 42431, verifyingContract fixed.escrowV2}, Voucher(bytes32 channelId,uint96 cumulativeAmount)) for TS3.expectChannelId and cumulativeAmount 250; expectChannelIdH2.whole is the v2 channel id (L341-353) of the descriptor with salt fixed.H2 and TS2.expectNonceHash, the zero operator and authorizedSigner, on fixed.escrowV2 and chain 42431. Both are computed in Python 3.12.3 with eth-abi 6.0.0's abi.encode and eth-utils 6.0.0's keccak256 (the same arithmetic gives TS4.expectVoucher0 and TS3.expectChannelId); prefix and suffix are each value's first ten and last six characters."
  },
  "TS5": {
-  "case": "The v1 opening, on the TempoStreamChannel escrow fixed.escrowV1, and its channel id, voucher and close reference. expectOpenCalldata is the opening's call to the escrow: open(address,address,uint128,bytes32,address), constants.OPEN_V1 (draft-tempo-session-00, tempoxyz/mpp-specs 08e7dd87, specs/methods/tempo/draft-tempo-session-00.md L429-435, open(payee, token, deposit, salt, authorizedSigner)), of fixed.recipient, fixed.pathUSD, fixed.deposit, fixed.H and the zero address, computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of OPEN_V1 followed by encode of its argument types",
+  "case": "The v1 opening, on the TempoStreamChannel escrow fixed.escrowV1, and its channel id, voucher and close reference. expectOpenCalldata is the opening's call to the escrow: open(address,address,uint128,bytes32,address), constants.OPEN_V1 (draft-tempo-session-00, tempoxyz/mpp-specs 08e7dd87, specs/methods/tempo/draft-tempo-session-00.md L429-435, open(payee, token, deposit, salt, authorizedSigner)), of fixed.recipient, fixed.pathUSD, fixed.deposit, fixed.H and the zero address, computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of OPEN_V1 followed by encode of its argument types. expectVoucher.whole is the EIP-712 signing hash of the v1 voucher (L1111-1157: the domain {name \"Tempo Stream Channel\", version \"1\", chainId 42431, verifyingContract fixed.escrowV1}, Voucher(bytes32 channelId,uint128 cumulativeAmount)) for expectChannelId and cumulativeAmount 0, computed in Python 3.12.3 with eth-abi 6.0.0's abi.encode and eth-utils 6.0.0's keccak256; its prefix and suffix are its first ten and last six characters",
   "expectChannelId": "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84",
   "expectOpenCalldata": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000020c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000",
   "expectVoucher": {
    "prefix": "0x6032c3bd",
-   "suffix": "8fafde"
+   "suffix": "8fafde",
+   "whole": "0x6032c3bd0175dc0f86f8e31b5e94e2bd486171929d0f10e46c75564dfb8fafde"
   },
   "expectCloseRef": {
    "network": "eip155:42431",
