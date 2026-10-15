@@ -4,7 +4,8 @@
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
  * needs it refuses `stellar/peer-missing`, after the checks that need no peer (an envelope's network, size, base64 and
  * union tags, an event's form, a strkey), which give the codes they give with it, except the reads: `stellarStatus` is
- * pending `unreadable` and `stellarLocate` `complete: false`, with nothing read, after the ref's form is checked.
+ * pending `unreadable`, with nothing read, after the ref's form is checked, and `stellarLocate` searches as it does with
+ * the SDK, its one step that needs it being the decode of a candidate's transaction that succeeded.
  * Strkeys (`G…`, `C…` and `M…`) are read and written without it (`stellar-strkey.ts`), so `isAccount`, `isContract`,
  * `isMuxed`, `unmux` and `muxedFor` need no peer. The public names are re-exported by `../stellar.ts`.
  */
@@ -782,7 +783,9 @@ function refWellFormed(ref: StellarRef): boolean {
  * `transfer` has the preimage digest and `to` id the ref records. A transaction that failed, or succeeded with another
  * entry, is `other`: the entry was not used there. For a ref without `authDigest`, settled when it succeeded as a
  * transfer the payer authorized as its source account (`readSourceTransfer`) whose `to` carries the ref's `toId`. One
- * call.
+ * call. Only a transaction that succeeded is decoded: without @stellar/stellar-sdk the decode refuses
+ * `stellar/peer-missing` and such a transaction is pending `unreadable`, while one not found or failed reads as it does
+ * with the SDK.
  */
 async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): Promise<Named> {
   let r: Awaited<ReturnType<StellarReader["transaction"]>>;
@@ -880,8 +883,10 @@ export async function stellarStatus(
  * incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
  * has no entry to search for: `complete` is false. A ref or reader that is not an object, a reader for another network,
  * or a ref with a field the search uses in another form than `stellarStatus` reads (an `authDigest`, `expiration`,
- * `asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read, as is any ref without
- * @stellar/stellar-sdk, which decodes each candidate's transaction.
+ * `asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read. The search needs no
+ * @stellar/stellar-sdk but to decode a candidate's transaction that succeeded, so without it every answer that decodes
+ * none is the answer with it (a search that lists no candidate, for one); a candidate whose transaction succeeded
+ * cannot be read without it (`stellar/peer-missing` at the decode), which leaves the search incomplete.
  */
 export async function stellarLocate(
   ref: StellarRef,
@@ -889,7 +894,7 @@ export async function stellarLocate(
 ): Promise<{ found?: string; complete: boolean }> {
   if (!isObject(ref) || !isObject(reader)) return { complete: false };
   if (reader.network !== ref.network || typeof ref.authDigest !== "string" || ref.expiration === undefined) return { complete: false };
-  if (!refWellFormed(ref) || !hasPeer()) return { complete: false };
+  if (!refWellFormed(ref)) return { complete: false };
   const l = await locate(ref, ref.expiration, reader, ref.expiration);
   return l.found !== undefined ? { found: l.found.hash, complete: true } : { complete: l.complete };
 }

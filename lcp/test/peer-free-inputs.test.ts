@@ -6,9 +6,9 @@ import { StrKey } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 import { avmCarrier, exactAvm } from "../src/avm.js";
 import { isAccount, isContract } from "../src/internal/stellar.js";
-import { chargeStellar, issuedDigest, sessionXrpl, type MppChallenge } from "../src/mpp.js";
+import { chargeStellar, issuedDigest, pairingsOf, pairingsOfPlaced, sessionXrpl, type MppChallenge } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
-import { decodeStellarTx, muxedFor, transferEventOf, transferEventTopics } from "../src/stellar.js";
+import { decodeStellarTx, muxedFor, stellarLocate, transferEventOf, transferEventTopics } from "../src/stellar.js";
 import { decodeSuiTx, exactSui } from "../src/sui.js";
 import { exactTvm, tvmCarrier } from "../src/tvm.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
@@ -20,9 +20,12 @@ import {
   nearCarrierInputs,
   nearChoice,
   stellarChargeChoices,
+  stellarChargeStrkeyAnswers,
+  stellarChargeStrkeyRows,
   stellarDigestRows,
   stellarEnvelopeInputs,
   stellarEventInputs,
+  stellarLocateRows,
   stellarOccupied,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
@@ -40,6 +43,8 @@ import {
 import { rowsOf } from "./rows.js";
 
 const refused = (code: string) => ({ refused: true, code });
+/** x402-exact-stellar.json's V5 ref, which stellarLocate's searches read. */
+const STELLAR_V5_REF = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8")).V5.ref;
 /** x402-exact-algorand.json's H. */
 const AVM_H = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8")).fixed.H as `0x${string}`;
 
@@ -103,6 +108,30 @@ describe("the Stellar strkeys with @stellar/stellar-sdk", () => {
       const { s, member: _member, ...expected } = row;
       expect([row.case, StrKey.isValidEd25519PublicKey(s as string), StrKey.isValidContract(s as string)]).toEqual([row.case, row.isAccount, row.isContract]);
       expect(await stellarStrkeyAnswers(row, f as never)).toEqual(expected);
+    }
+  });
+});
+
+// The rows are held to the SDK's StrKey too: a recipient or currency is offered exactly when the SDK takes it as an
+// account or a muxed account, or as a contract.
+describe("mpp/charge/stellar's strkeys with @stellar/stellar-sdk", () => {
+  it("pairingsOf, the filter, advertise, build and bound of a challenge holding each recipient or currency", async () => {
+    const f = { pairingsOf, pairingsOfPlaced, advertise: chargeStellar.advertise, build: chargeStellar.build, bound: chargeStellar.bound };
+    for (const row of rowsOf(stellarChargeStrkeyRows(), "peer-free-inputs.ts", { exact: 14 })) {
+      const { s, member, ...expected } = row;
+      const valid = member === "recipient" ? StrKey.isValidEd25519PublicKey(s) || StrKey.isValidMed25519PublicKey(s) : StrKey.isValidContract(s);
+      expect([row.case, valid]).toEqual([row.case, row.filter.length > 0]);
+      expect(await stellarChargeStrkeyAnswers(row, f as never, null)).toEqual(expected);
+    }
+  });
+});
+
+describe("stellarLocate with @stellar/stellar-sdk", () => {
+  it("each search, its answer and its calls", async () => {
+    for (const row of rowsOf(stellarLocateRows(), "peer-free-inputs.ts", { exact: 13 })) {
+      const { reader, calls } = row.reader();
+      const got = await stellarLocate(STELLAR_V5_REF, reader as never);
+      expect([row.case, got, calls()]).toEqual([row.case, row.expect, row.calls]);
     }
   });
 });

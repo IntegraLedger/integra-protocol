@@ -129,6 +129,10 @@
    {
     "case": "a payload type other than transaction or hash",
     "expect": "mpp/credential-type"
+   },
+   {
+    "case": "pairingsOf, advertise, build and bound with a G or M recipient, or a C currency, whose strkey checksum does not match (SEP-23: the CRC16-XModem of the version byte and the payload)",
+    "expect": "stellar/option-malformed"
    }
   ]
  },

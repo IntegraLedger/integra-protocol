@@ -20,6 +20,9 @@
 // - `muxedFor`: every base and H, as it reads and writes a strkey without the SDK.
 // - The Stellar pairings' `unplaced`, `issuedDigest` and MPP `advertise`, which read a muxed address without the SDK,
 //   and the strkeys the x402 option filter, `advertise`, `read` and `build` read (`stellarStrkeyRows`).
+// - `mpp/charge/stellar`'s `pairingsOf`, filter, `advertise`, `build` and `bound` of a `recipient` or `currency` strkey,
+//   read whole (`stellarChargeStrkeyRows`).
+// - `stellarLocate`'s search, which decodes only a candidate's transaction that succeeded (`stellarLocateRows`).
 import { readFileSync } from "node:fs";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base32, base58 } from "@scure/base";
@@ -210,9 +213,10 @@ export function stellarChargeChoice() {
 }
 
 /**
- * A choice and H `mpp/charge/stellar`'s `build` refuses with the code given, before it reads the recipient: the
- * expiration ledger and the simulated transaction's form (`signingInput`) among them. The fee bump wraps V2's simulated
- * envelope whole.
+ * A choice and H `mpp/charge/stellar`'s `build` refuses with the code given, before it reads the transaction: the
+ * expiration ledger and the simulated transaction's form (`signingInput`) among them, and the recipient, whose strkey
+ * the pairing's filter reads whole and whose muxed id `build` reads after the simulated transaction's form. The fee
+ * bump wraps V2's simulated envelope whole.
  */
 export function stellarChargeChoices(): { case: string; choice: unknown; h: unknown; expect: string }[] {
   const { choice, h } = stellarChargeChoice();
@@ -229,7 +233,7 @@ export function stellarChargeChoices(): { case: string; choice: unknown; h: unkn
     { case: "a simulated transaction over 8,192 characters", choice: { ...choice, simulatedXdr: "A".repeat(8196) }, h, expect: "stellar/tx-too-large" },
     { case: "a simulated fee bump", choice: { ...choice, simulatedXdr: feeBump }, h, expect: "stellar/tx-malformed" },
     { case: "a recipient that is not a muxed address", choice: { ...choice, challenge: withRecipient(choice.challenge, issuedRecipient()) }, h, expect: "stellar/carrier-mismatch" },
-    { case: "a recipient whose M strkey's checksum does not match", choice: { ...choice, challenge: withRecipient(choice.challenge, badChecksum(recipientOf(choice.challenge))) }, h, expect: "stellar/carrier-mismatch" },
+    { case: "a recipient whose M strkey's checksum does not match", choice: { ...choice, challenge: withRecipient(choice.challenge, badChecksum(recipientOf(choice.challenge))) }, h, expect: "stellar/option-malformed" },
   ];
 }
 
@@ -829,4 +833,149 @@ export async function stellarStrkeyAnswers(
     advertise: advertise as string,
     build: row.build === null ? null : (code(await f.build(choice as never, H as never)) as string),
   };
+}
+
+/** The challenge with its request's `member` replaced, the request re-encoded as base64url of its JSON. */
+function withRequestMember<C extends { request: string }>(c: C, member: string, value: unknown): C {
+  return { ...c, request: Buffer.from(JSON.stringify({ ...requestOf(c), [member]: value }), "utf8").toString("base64url") };
+}
+
+/**
+ * Strkeys in the two places `mpp/charge/stellar` reads one, the request's `recipient` and `currency`, and each answer,
+ * which needs no SDK: `pairingsOf` of the issued challenge holding the strkey (the pairings, or a code), the filter
+ * (`pairingsOfPlaced`) of the placed challenge holding it, `advertise` of the issued challenge (the placed `recipient`,
+ * or a code), and `build` and `bound` under the placed challenge holding it, with x402-exact-stellar.json's V2 simulated
+ * transaction and V3's envelope: a code, or null where the call reaches the transaction, which only the SDK reads
+ * (without it, `stellar/peer-missing`). A strkey whose checksum does not match is refused as one of another form is.
+ */
+export function stellarChargeStrkeyRows(): {
+  case: string;
+  member: "recipient" | "currency";
+  s: string;
+  pairingsOf: readonly string[] | string;
+  filter: readonly string[];
+  advertise: string;
+  build: string | null;
+  bound: string | null;
+}[] {
+  const { recipient, currency } = CHARGE.fixed.request as { recipient: string; currency: string };
+  const muxed: string = CHARGE.fixed.muxed;
+  const key = base32.decode(recipient).subarray(1, 33);
+  const id = base32.decode(currency).subarray(1, 33);
+  const muxedRaw = base32.decode(`${muxed}===`).subarray(1, 41);
+  const offered = { pairingsOf: ["mpp/charge/stellar"], filter: ["mpp/charge/stellar"] };
+  const refused = { pairingsOf: "stellar/option-malformed", filter: [], advertise: "stellar/option-malformed", build: "stellar/option-malformed", bound: "stellar/option-malformed" };
+  const to = "recipient" as const;
+  const asset = "currency" as const;
+  return [
+    { case: "the seller's account", member: to, s: recipient, ...offered, advertise: muxed, build: "stellar/carrier-mismatch", bound: null },
+    { case: "the seller's account muxed with H", member: to, s: muxed, ...offered, advertise: "stellar/carrier-occupied", build: null, bound: null },
+    { case: "the asset's contract", member: asset, s: currency, ...offered, advertise: muxed, build: null, bound: null },
+    { case: "an account whose checksum does not match", member: to, s: strkey(6 << 3, key, 1), ...refused },
+    { case: "an account whose checksum's high byte does not match", member: to, s: strkey(6 << 3, key, 0x100), ...refused },
+    { case: "the seller's account with a payload character changed", member: to, s: badChecksum(recipient), ...refused },
+    { case: "a muxed account whose checksum does not match", member: to, s: strkey(12 << 3, muxedRaw, 1), ...refused },
+    { case: "a muxed account whose checksum's high byte does not match", member: to, s: strkey(12 << 3, muxedRaw, 0x100), ...refused },
+    { case: "the seller's muxed account with a payload character changed", member: to, s: badChecksum(muxed), ...refused },
+    { case: "a contract as recipient", member: to, s: currency, ...refused },
+    { case: "a contract whose checksum does not match", member: asset, s: strkey(2 << 3, id, 1), ...refused },
+    { case: "a contract whose checksum's high byte does not match", member: asset, s: strkey(2 << 3, id, 0x100), ...refused },
+    { case: "the asset's contract with a payload character changed", member: asset, s: badChecksum(currency), ...refused },
+    { case: "an account as currency", member: asset, s: recipient, ...refused },
+  ];
+}
+
+type ChargeStrkeyRow = ReturnType<typeof stellarChargeStrkeyRows>[number];
+
+/**
+ * The answers a `stellarChargeStrkeyRows` row states, given by the functions passed: each test file passes the ones it
+ * imports, with the SDK or without it. A refusal is its code. `build` and `bound` are called for a row that states
+ * null only when `reached` is given, and then answer it (without the SDK, `stellar/peer-missing`).
+ */
+export async function stellarChargeStrkeyAnswers(
+  row: ChargeStrkeyRow,
+  f: {
+    pairingsOf: (c: never) => Answer;
+    pairingsOfPlaced: (c: never) => Answer;
+    advertise: (doc: never, h: never, link: string, offer: never) => Answer;
+    build: (choice: never, h: never) => Promise<Answer>;
+    bound: (credential: never) => Promise<Answer>;
+  },
+  reached: string | null,
+): Promise<Omit<ChargeStrkeyRow, "s" | "member">> {
+  const { H, link } = CHARGE.fixed;
+  const code = (r: Answer) => (typeof r === "object" && r !== null && "refused" in r ? (r as unknown as { code: string }).code : r);
+  const issued = withRequestMember(CHARGE.challenge, row.member, row.s);
+  const placed = withRequestMember(CHARGE.place.expect, row.member, row.s);
+  const advertised = f.advertise([issued] as never, H as never, link, issued as never);
+  const { choice } = stellarChargeChoice();
+  const call = async (stated: string | null, answer: () => Promise<Answer>) =>
+    stated === null && reached === null ? null : (code(await answer()) as string);
+  return {
+    case: row.case,
+    pairingsOf: code(f.pairingsOf(issued as never)) as readonly string[] | string,
+    filter: f.pairingsOfPlaced(placed as never) as readonly string[],
+    advertise: (Array.isArray(advertised) ? recipientOf(advertised[0]) : code(advertised)) as string,
+    build: await call(row.build, () => f.build({ ...choice, challenge: placed } as never, H as never)),
+    bound: await call(row.bound, () => f.bound({ challenge: placed, payload: { type: "transaction", transaction: CHARGE.V3.envelope } } as never)),
+  };
+}
+
+/**
+ * Searches `stellarLocate` makes for x402-exact-stellar.json's V5 ref, each through a reader whose calls are counted,
+ * and its answer and calls with @stellar/stellar-sdk. A search that lists a candidate the ref's `toId` names reads its
+ * transaction; only one that succeeded is decoded (`decodes`), which needs the SDK: without it that search is
+ * incomplete after the same calls. Every other search gives the same answer, after the same calls, without the SDK.
+ */
+export function stellarLocateRows(): {
+  case: string;
+  reader: () => { reader: unknown; calls: () => number };
+  expect: { found?: string; complete: boolean };
+  calls: number;
+  decodes: boolean;
+}[] {
+  const ref = STELLAR.V5.ref as { network: string; fromLedger: number; expiration: number; toId: string };
+  const candidate = "bb".repeat(32);
+  type Page = { events: { txHash: string; toMuxedId: bigint }[]; complete: boolean; oldestLedger: number; latestLedger: number; cursor?: string };
+  const page = (p: Partial<Page> = {}): Page => ({ events: [], complete: true, oldestLedger: ref.fromLedger, latestLedger: ref.expiration + 1, ...p });
+  const listed = [{ txHash: candidate, toMuxedId: BigInt(ref.toId) }];
+  /** A reader whose `transfers` answers each page in turn (a function throws) and whose `transaction` answers `tx`. */
+  const readerOf = (pages: (Page | (() => never))[], tx?: () => unknown) => () => {
+    let calls = 0;
+    let at = 0;
+    const reader = {
+      network: ref.network,
+      transfers: async () => {
+        calls++;
+        const p = pages[at++]!;
+        return typeof p === "function" ? p() : p;
+      },
+      transaction: async () => {
+        calls++;
+        if (tx === undefined) throw new Error("no transaction is read");
+        return tx();
+      },
+      latestLedger: async () => (calls++, ref.expiration + 1),
+    };
+    return { reader, calls: () => calls };
+  };
+  const fails = (): never => {
+    throw new Error("transport");
+  };
+  const succeeded = (envelopeXdr: string) => () => ({ status: "SUCCESS", envelopeXdr, ledger: 995, oldestLedger: 1 });
+  return [
+    { case: "a search that lists no transfer, with every ledger held", reader: readerOf([page()]), expect: { complete: true }, calls: 1, decodes: false },
+    { case: "a search through the expiration ledger itself", reader: readerOf([page({ latestLedger: ref.expiration })]), expect: { complete: true }, calls: 1, decodes: false },
+    { case: "two pages that list no transfer", reader: readerOf([page({ cursor: "c1" }), page()]), expect: { complete: true }, calls: 2, decodes: false },
+    { case: "a transfer whose muxed id is another", reader: readerOf([page({ events: [{ txHash: candidate, toMuxedId: BigInt(ref.toId) + 1n }] })]), expect: { complete: true }, calls: 1, decodes: false },
+    { case: "events the RPC reports disabled", reader: readerOf([page({ complete: false })]), expect: { complete: false }, calls: 1, decodes: false },
+    { case: "an RPC whose oldest ledger is above fromLedger", reader: readerOf([page({ oldestLedger: ref.fromLedger + 1 })]), expect: { complete: false }, calls: 1, decodes: false },
+    { case: "an events index below the expiration ledger", reader: readerOf([page({ latestLedger: ref.expiration - 1 })]), expect: { complete: false }, calls: 1, decodes: false },
+    { case: "an events read that fails", reader: readerOf([fails]), expect: { complete: false }, calls: 1, decodes: false },
+    { case: "a candidate whose transaction is not found", reader: readerOf([page({ events: listed })], () => ({ status: "NOT_FOUND", oldestLedger: 1 })), expect: { complete: false }, calls: 2, decodes: false },
+    { case: "a candidate whose transaction failed", reader: readerOf([page({ events: listed })], () => ({ status: "FAILED", ledger: 995, oldestLedger: 1 })), expect: { complete: true }, calls: 2, decodes: false },
+    { case: "a candidate whose transaction read fails", reader: readerOf([page({ events: listed })], fails), expect: { complete: false }, calls: 2, decodes: false },
+    { case: "a candidate that succeeded with the ref's entry", reader: readerOf([page({ events: listed })], succeeded(STELLAR.V5.rebuilt.envelope)), expect: { found: candidate, complete: true }, calls: 2, decodes: true },
+    { case: "a candidate that succeeded with another entry", reader: readerOf([page({ events: listed })], succeeded(STELLAR.plant.envelope)), expect: { complete: true }, calls: 2, decodes: true },
+  ];
 }

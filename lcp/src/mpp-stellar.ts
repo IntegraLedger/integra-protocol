@@ -1,9 +1,10 @@
 /**
  * `mpp/charge/stellar`: the request's `recipient` placed as the seller's muxed address whose 8-byte id is the ATR
  * hash's first 8 bytes, which the payer signs as the Soroban `transfer`'s `to`. The full hash rides in the challenge.
- * Strkeys are read and written without @stellar/stellar-sdk, so `unplaced` and `advertise` need no peer. The SDK reads
- * and writes the transaction's XDR: without it `build`, `bound` and `reference` refuse `stellar/peer-missing` only
- * after every check that needs no peer.
+ * Strkeys are read and written without @stellar/stellar-sdk: the pairing's filter reads the request's `recipient` and
+ * `currency` whole (version byte, length and checksum), and `unplaced` and `advertise` need no peer. The SDK reads and
+ * writes the transaction's XDR: without it `build`, `bound` and `reference` refuse `stellar/peer-missing` only after
+ * every check that needs no peer.
  */
 import type { AtrHash, Json } from "./core.js";
 import {
@@ -99,8 +100,9 @@ function networkOf(e: Echoed): StellarNetwork | Refusal {
 }
 
 /**
- * The echoed challenge's binding: its `network` and its request's `recipient`, an account or its muxed form, read as
- * `advertise` reads them (else `stellar/option-malformed`), and the payment read from its transaction. A `hash`
+ * The echoed challenge's binding: its `network` and its request's `recipient`, an account or its muxed form whose
+ * strkey's checksum matches, read as `advertise` reads them (else `stellar/option-malformed`), and the payment read
+ * from its transaction. A `hash`
  * credential under a request with `feePayer` true is `mpp/credential-type`: MPP's Stellar charge forbids push mode
  * when the server sponsors the fee. A `hash` credential whose transaction carries no address entry of the payer, under
  * a request with `feePayer` false or absent, is read as a payer that authorized the transfer as the transaction's
@@ -227,9 +229,10 @@ async function fetchPresented(
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
  * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
- * Without @stellar/stellar-sdk the transaction cannot be read (`signingFor`): `stellar/peer-missing`, after the choice,
- * its challenge, H, the current ledger, the clock, the expiration ledger, the simulated transaction's form
- * (`signingInput`) and the recipient's muxed id are checked, which need no peer.
+ * The chosen challenge is held to the pairing's filter, so a `recipient` or `currency` whose strkey's checksum does not
+ * match is `stellar/option-malformed`. Without @stellar/stellar-sdk the transaction cannot be read (`signingFor`):
+ * `stellar/peer-missing`, after the choice, its challenge, H, the current ledger, the clock, the expiration ledger, the
+ * simulated transaction's form (`signingInput`) and the recipient's muxed id are checked, which need no peer.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
@@ -281,10 +284,11 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 }
 
 /**
- * The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. An
- * issued recipient that is a muxed address is `stellar/carrier-occupied`, and one that is not an account
- * `stellar/option-malformed`. The recipient is read and written without @stellar/stellar-sdk, so every answer is the
- * same with it and without it.
+ * The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. `place`
+ * holds the offer to the pairing's filter, so a `recipient` that is not a well-formed `G…` or `M…` strkey, or a
+ * `currency` that is not a well-formed `C…` strkey, a checksum that does not match included, is
+ * `stellar/option-malformed`; an issued recipient that is a muxed address is `stellar/carrier-occupied`. The strkeys are
+ * read and written without @stellar/stellar-sdk, so every answer is the same with it and without it.
  */
 function advertise(
   doc: readonly MppChallenge[],

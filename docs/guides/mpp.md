@@ -205,7 +205,8 @@ other value the choice carries. So no `complete` is handed a challenge `bound` r
 of the `network` the challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or
 `confidential` transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the build writes; on
 Permit2 and the Tempo charges, an `amount` above its `splits`, and on Tempo their form; on the Stellar charge, an
-`amount` below 2^127, the `i128` of a SEP-41 `transfer`; on the XRP Ledger charge, no `memos`; the XRPL session
+`amount` below 2^127, the `i128` of a SEP-41 `transfer`, and the `recipient` and `currency` strkeys whole, version
+byte, length and checksum, without `@stellar/stellar-sdk`; on the XRP Ledger charge, no `memos`; the XRPL session
 recipient's checksum;
 the Tempo subscription's period and expiry within the key authorization's uint64; and, on `usdc`'s EVM and Gateway
 profiles, a request in its RFC 8785 form. So no pairing binds a payment presented under a challenge `pairingsOf` would

@@ -145,9 +145,13 @@ Without its peer, a rail's function that returns refusals gives `<rail>/peer-mis
 to answer, and a `status` that needs the peer is pending `unreadable`, with nothing read. An x402 pairing refuses a
 missing peer only through an option of its own: its `read`, `advertise`, `build`, `bound` and `reference` give a
 document, choice, offer or payment holding none the answer they give with the peer. Stellar and Algorand read their
-addresses without the peer (Stellar's strkeys, Algorand's address text), so their option filters, `read` and
-`advertise` need none, nor do Algorand's `bound` and `reference`: those rails' other functions need the peer only to
-read or write the transaction, and check everything else first. Every other rail needs nothing more than the package.
+addresses without the peer (Stellar's strkeys, version byte, length and checksum, and Algorand's address text), so
+their option filters, `read` and `advertise` need none, nor do Algorand's `bound` and `reference`, nor MPP Stellar's
+filter, which reads a challenge's `recipient` and `currency` whole: those rails' other functions need the peer only to
+read or write the transaction, and check everything else first. `stellarLocate` searches without the peer and gives
+the answer it gives with it wherever it decodes no transaction, a search that lists no candidate among them; only a
+candidate's transaction that succeeded needs the peer, and without it that search is incomplete. Every other rail
+needs nothing more than the package.
 
 ## Reading settlement
 

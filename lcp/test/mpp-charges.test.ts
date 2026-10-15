@@ -1095,6 +1095,14 @@ describe("mpp-charge-stellar.json agreedRefusals: every row runs", () => {
     Promise.all(pushes.map((p) => chargeStellar.fetchPresented(p, readerOf(answer))));
   /** The seller's account with the last character of its checksum changed: G and 55 base32 characters, not a valid strkey. */
   const badAccount = `${V.fixed.request.recipient.slice(0, -1)}${V.fixed.request.recipient.endsWith("A") ? "B" : "A"}`;
+  /** A strkey with one payload character changed: the version byte and the length hold, the checksum does not. */
+  const badChecksum = (s: string) => s.slice(0, 10) + (s[10] === "A" ? "B" : "A") + s.slice(11);
+  /** The request members whose strkey checksum does not match: a `G…` and an `M…` recipient, and a `C…` currency. */
+  const badStrkeys: [string, string][] = [
+    ["recipient", badChecksum(V.fixed.request.recipient)],
+    ["recipient", badChecksum(V.fixed.muxed)],
+    ["currency", badChecksum(V.fixed.request.currency)],
+  ];
 
   const cases: Record<string, () => Promise<unknown[]>> = {
     "pairingsOf with a network other than stellar:pubnet or stellar:testnet, a currency not a C strkey, a recipient neither G nor M, or amount not decimal":
@@ -1121,6 +1129,22 @@ describe("mpp-charge-stellar.json agreedRefusals: every row runs", () => {
       await chargeStellar.bound(credential(placed, { type: "signature", transaction: V.V3.envelope })),
       await chargeStellar.reference(credential(placed, { type: "signature", transaction: V.V3.envelope })),
     ],
+    "pairingsOf, advertise, build and bound with a G or M recipient, or a C currency, whose strkey checksum does not match (SEP-23: the CRC16-XModem of the version byte and the payload)":
+      async () => {
+        const now = Date.parse(V.fixed.expires) / 1000 - 60;
+        const out: unknown[] = [];
+        for (const [member, s] of badStrkeys) {
+          const issued = editedRequest(V.challenge, (r) => (r[member] = s));
+          const echoed = editedRequest(placed, (r) => (r[member] = s));
+          out.push(
+            pairingsOf(issued),
+            chargeStellar.advertise([issued], H, V.fixed.link, issued),
+            await chargeStellar.build({ challenge: echoed, simulatedXdr: XST.V2.simulatedXdr, currentLedger: 988, now, payer: XST.fixed.payer }, H),
+            await chargeStellar.bound(credential(echoed, { type: "transaction", transaction: V.V3.envelope })),
+          );
+        }
+        return out;
+      },
   };
 
   agreedRows(

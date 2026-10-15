@@ -277,8 +277,10 @@ candidate was read: a listed candidate whose transaction is not found, or cannot
 incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
 has no entry to search for: `complete` is false. A ref or reader that is not an object, a reader for another network,
 or a ref with a field the search uses in another form than `stellarStatus` reads (an `authDigest`, `expiration`,
-`asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read, as is any ref without
-@stellar/stellar-sdk, which decodes each candidate's transaction.
+`asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read. The search needs no
+@stellar/stellar-sdk but to decode a candidate's transaction that succeeded, so without it every answer that decodes
+none is the answer with it (a search that lists no candidate, for one); a candidate whose transaction succeeded
+cannot be read without it (`stellar/peer-missing` at the decode), which leaves the search incomplete.
 
 #### Parameters
 

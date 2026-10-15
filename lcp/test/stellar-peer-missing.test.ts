@@ -2,9 +2,10 @@
 // absent, the stellar entry points and the package root still import, and each function whose type carries a refusal
 // and needs the XDR refuses `stellar/peer-missing` (the vectors' refusal), never throwing, after every check that needs
 // none, each of which gives the code it gives with the peer. Strkeys (`G…`, `C…` and `M…`) are read and written
-// without the SDK, so x402/exact/stellar's option filter, pairingOf, x402 read and advertise, MPP advertise, both
-// pairings' unplaced, issuedDigest and muxedFor give every input the answer they give with it. build, bound and
-// reference refuse it only once they read the transaction, and stellarStatus and stellarLocate read nothing.
+// without the SDK, so x402/exact/stellar's option filter, pairingOf, x402 read and advertise, MPP's filter,
+// pairingsOf and advertise, both pairings' unplaced, issuedDigest and muxedFor give every input the answer they give
+// with it. build, bound and reference refuse it only once they read the transaction; stellarStatus reads nothing, and
+// stellarLocate searches as it does with the SDK, incomplete only where it must decode a candidate's transaction.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequirements } from "../src/x402.js";
@@ -17,9 +18,12 @@ import {
   muxedForArgs,
   stellarChargeChoice,
   stellarChargeChoices,
+  stellarChargeStrkeyAnswers,
+  stellarChargeStrkeyRows,
   stellarDigestRows,
   stellarEnvelopeInputs,
   stellarEventInputs,
+  stellarLocateRows,
   stellarOccupied,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
@@ -292,9 +296,9 @@ describe("without @stellar/stellar-sdk", () => {
     }
   });
 
-  // The ref is V5's, in the form reference writes; without the SDK no transaction can be decoded, so nothing is read.
-  it("stellarStatus is pending unreadable and stellarLocate incomplete for a ref in its form, with nothing read", { timeout: IMPORT_MS }, async () => {
-    const { stellarLocate, stellarStatus } = await import("../src/stellar.js");
+  // The ref is V5's, in the form reference writes. stellarStatus reads nothing without the SDK.
+  it("stellarStatus is pending unreadable for a ref in its form, with nothing read", { timeout: IMPORT_MS }, async () => {
+    const { stellarStatus } = await import("../src/stellar.js");
     let calls = 0;
     const reader = {
       network: V.V5.ref.network,
@@ -303,7 +307,29 @@ describe("without @stellar/stellar-sdk", () => {
       transfers: async () => (calls++, { events: [], complete: true, oldestLedger: 0, latestLedger: 0 }),
     };
     expect(await stellarStatus(V.V5.ref, reader as never)).toEqual({ state: "pending", why: "unreadable" });
-    expect(await stellarLocate(V.V5.ref, reader as never)).toEqual({ complete: false });
     expect(calls).toBe(0);
+  });
+
+  // peer-free-inputs.test.ts gives the same searches with the SDK. Only a candidate's transaction that succeeded is
+  // decoded: without the SDK that decode refuses stellar/peer-missing, and the search is incomplete after the same calls.
+  it("stellarLocate searches as it does with the peer, incomplete only where it must decode a candidate's transaction", { timeout: IMPORT_MS }, async () => {
+    const { stellarLocate } = await import("../src/stellar.js");
+    for (const row of rowsOf(stellarLocateRows(), "peer-free-inputs.ts", { exact: 13 })) {
+      const { reader, calls } = row.reader();
+      const got = await stellarLocate(V.V5.ref, reader as never);
+      expect([row.case, got, calls()]).toEqual([row.case, row.decodes ? { complete: false } : row.expect, row.calls]);
+    }
+  });
+
+  // peer-free-inputs.test.ts gives the same rows the same answers with the SDK, held to its StrKey. A call that reaches
+  // the transaction refuses peer-missing.
+  it("mpp/charge/stellar's pairingsOf, filter, advertise, build and bound read each recipient or currency strkey as with the peer", { timeout: IMPORT_MS }, async () => {
+    const { chargeStellar, pairingsOf, pairingsOfPlaced } = await import("../src/mpp.js");
+    const f = { pairingsOf, pairingsOfPlaced, advertise: chargeStellar.advertise, build: chargeStellar.build, bound: chargeStellar.bound };
+    for (const row of rowsOf(stellarChargeStrkeyRows(), "peer-free-inputs.ts", { exact: 14 })) {
+      const { s: _s, member: _member, ...stated } = row;
+      const expected = { ...stated, build: row.build ?? CODE, bound: row.bound ?? CODE };
+      expect(await stellarChargeStrkeyAnswers(row, f as never, CODE)).toEqual(expected);
+    }
   });
 });

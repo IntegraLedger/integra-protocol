@@ -7,6 +7,7 @@ import type { Json } from "./core.js";
 import { isAddress } from "./fields.js";
 import type { HederaNetwork } from "./hedera.js";
 import { hederaChargeRequest } from "./internal/hedera.js";
+import { isAccount, isContract, unmux } from "./internal/stellar-strkey.js";
 import { keyBytes, TOKEN, TOKEN_2022, type SolanaNetwork } from "./internal/svm.js";
 import { accountIdOf } from "./internal/xrpl-session.js";
 import type { XrplNetwork } from "./internal/xrpl.js";
@@ -23,9 +24,6 @@ const XRPL_ADDRESS = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 const XRPL_CURRENCY = /^(?:[A-Za-z0-9?!@#$%^&*<>(){}[\]|]{3}|[0-9A-Fa-f]{40})$/;
 const XRPL_MPT = /^[0-9A-Fa-f]{48}$/;
 const HEX64 = /^[0-9A-Fa-f]{64}$/;
-const STELLAR_ACCOUNT = /^G[A-Z2-7]{55}$/;
-const STELLAR_MUXED = /^M[A-Z2-7]{68}$/;
-const STELLAR_CONTRACT = /^C[A-Z2-7]{55}$/;
 const CAIP2 = /^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$/;
 const MAX_MEMO_BYTES = 566;
 
@@ -175,9 +173,12 @@ export function isFeePayer(v: unknown): v is boolean | undefined {
   return v === undefined || typeof v === "boolean";
 }
 
-/** A Stellar account (`G…`) or its muxed form (`M…`), as a `charge` challenge's `recipient` is. */
+/**
+ * A Stellar account (`G…`) or its muxed form (`M…`), as a `charge` challenge's `recipient` is: a strkey whose version
+ * byte, length and CRC16 checksum hold, read without @stellar/stellar-sdk (`stellar-strkey.ts`).
+ */
 export function isStellarRecipient(v: unknown): v is string {
-  return typeof v === "string" && (STELLAR_ACCOUNT.test(v) || STELLAR_MUXED.test(v));
+  return isAccount(v) || unmux(v) !== null;
 }
 
 /** The bound of a SEP-41 `transfer` amount, an `i128`. */
@@ -186,7 +187,9 @@ const I128_LIMIT = 1n << 127n;
 /**
  * `charge` on `stellar`: `methodDetails.network` `stellar:pubnet` or `stellar:testnet`, `amount` a decimal below 2^127
  * (the token contract's SEP-41 `transfer` takes an `i128`, which `build` writes and the payer signs), `currency` a
- * contract, and `recipient` an account, or its muxed form once placed.
+ * contract, and `recipient` an account, or its muxed form once placed. `currency` and `recipient` are read whole, as
+ * strkeys whose version byte, length and checksum hold, without @stellar/stellar-sdk: one whose checksum does not match
+ * is `stellar/option-malformed`, as one of another form is, with the SDK and without it.
  */
 export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const n = d["network"];
@@ -195,8 +198,7 @@ export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairingId[] |
   if (
     !isDecimal(r["amount"]) ||
     BigInt(r["amount"] as string) >= I128_LIMIT ||
-    typeof r["currency"] !== "string" ||
-    !STELLAR_CONTRACT.test(r["currency"]) ||
+    !isContract(r["currency"]) ||
     !isStellarRecipient(to)
   ) {
     return refusal("stellar/option-malformed");
