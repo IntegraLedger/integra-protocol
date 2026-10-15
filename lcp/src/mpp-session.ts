@@ -946,8 +946,13 @@ function evmLandedTx(presented: unknown): string | undefined {
   return normalHash(opening.o["hash"]) ?? undefined;
 }
 
-/** The close keys of an EVM session: the network, and the escrow the issued challenge names with the channel. */
+/**
+ * The close keys of an EVM session: the network, and the escrow the issued challenge names with the channel. The
+ * challenge is held to the pairing's filter (`checkedFor`), whose refusal it gives.
+ */
 function evmCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refusal {
+  const held = checkedFor(chosen, SESSION_EVM);
+  if (isRefusal(held)) return held;
   const p = paramsOf(chosen);
   if (isRefusal(p)) return p;
   const c = normalHash(channel);
@@ -1362,8 +1367,13 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
   };
 }
 
-/** The close's read keys: the escrow's `ChannelClosed` naming the channel, as the binding log and as the search filter. */
+/**
+ * The close's read keys: the escrow's `ChannelClosed` naming the channel, as the binding log and as the search filter.
+ * The challenge is held to the pairing's filter (`checkedFor`), whose refusal it gives.
+ */
 function tempoCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refusal {
+  const held = checkedFor(chosen, SESSION_TEMPO);
+  if (isRefusal(held)) return held;
   const p = paramsOf(chosen);
   if (isRefusal(p)) return p;
   const c = normalHash(channel);
@@ -1528,6 +1538,8 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
  * from the activation's receipt as `accessKey.account`; without an address it is refused `mpp/input-malformed`.
  */
 function subscriptionCloseRef(chosen: MppChallenge, _channel: string, account?: Hex): SessionRef | Refusal {
+  const held = checkedFor(chosen, SUBSCRIPTION);
+  if (isRefusal(held)) return held;
   const p = paramsOf(chosen);
   if (isRefusal(p)) return p;
   const key = p.details["accessKey"];

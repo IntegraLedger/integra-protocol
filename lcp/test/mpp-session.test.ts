@@ -60,6 +60,7 @@ import {
   type TempoKeyAuthorization,
 } from "../src/tempo.js";
 import { H, challenge, link, load, readerFor, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const E = load("mpp-session-evm.json");
 const T = load("mpp-session-tempo.json");
@@ -994,5 +995,30 @@ describe("mpp-subscription-tempo.json", () => {
       expect(p.endsWith(` ${end}`)).toBe(true);
       expect(p).not.toMatch(/later billing|renewal|paid under this ATR/i);
     }
+  });
+});
+
+// Each session pairing's `closeRef` holds the issued challenge to the pairing's filter, as its `bound` and `reference`
+// hold the opening's: a challenge `pairingsOf` refuses gives that refusal. The EVM and Tempo sessions need `expires`,
+// which their `build` writes into the opening the payer signs; Tempo's key authorization takes `subscriptionExpires` as
+// a uint64 expiry, from 1970.
+describe("closeRef holds the issued challenge to the pairing's filter", () => {
+  const { expires: _e, ...esNoExpires } = challenge("evm", "session", E.fixed.request);
+  const { expires: _t, ...tsNoExpires } = challenge("tempo", "session", T.fixed.requestV2);
+  const sub = challenge("tempo", "subscription", JSON.stringify({ ...JSON.parse(U.fixed.request), subscriptionExpires: "1969-12-31T23:59:59Z" }));
+  const CASES = rowsOf<[string, () => unknown, string]>(
+    [
+      ["mpp/session/evm without expires", () => sessionEvm.closeRef(esNoExpires as never, E.ES1.expectChannelId), "mpp/expires-required"],
+      ["mpp/session/tempo without expires", () => sessionTempo.closeRef(tsNoExpires as never, T.TS3.expectChannelId), "mpp/expires-required"],
+      ["mpp/subscription/tempo with subscriptionExpires in 1969", () => subscriptionTempo.closeRef(sub, U.SUB2.expectRefChannel, U.fixed.payer), "mpp/request-malformed"],
+    ],
+    "the challenges each session pairing's filter refuses",
+    { exact: 3 },
+  );
+  it.each(CASES)("%s", (_, close, code) => {
+    expect(close()).toEqual({ refused: true, code });
+  });
+  it("pairingsOf gives each the same refusal", () => {
+    expect([pairingsOf(esNoExpires as never), pairingsOf(tsNoExpires as never), pairingsOf(sub)].map((r) => (r as { code: string }).code)).toEqual(CASES.map((c) => c[2]));
   });
 });
