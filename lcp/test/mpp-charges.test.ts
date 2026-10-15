@@ -587,6 +587,33 @@ describe("mpp-charge-stellar.json", () => {
     }
   });
 
+  // V3source's simulation has the payer as its transaction source, not the all-zeros account. The vector's values are
+  // written by hand from the XDR layout; @stellar/stellar-sdk's XDR re-derives them here by setting tx.sourceAccount of
+  // V2's simulation and of V3's envelope.
+  it("V3source: complete sets the all-zeros source when feePayer is true, and keeps the simulated source when it is false", async () => {
+    const payerKey = Keypair.fromPublicKey(XST.fixed.payer).rawPublicKey();
+    const sourced = (b64: string) => {
+      const env = stellarXdr.TransactionEnvelope.fromXdr(b64, "base64").toXdrObject();
+      if (env.type !== 2) throw new Error("not a v1 envelope");
+      env.v1.tx.sourceAccount = { type: 0, ed25519: Uint8Array.from(payerKey) };
+      return stellarXdr.TransactionEnvelope.fromXdrObject(env).toXdr("base64");
+    };
+    expect(sourced(XST.V2.simulatedXdr)).toBe(V.V3source.simulatedXdr);
+    expect(sourced(V.V3.envelope)).toBe(V.V3source.expectEnvelopeFeePayerFalse);
+    const now = Date.parse(V.fixed.expires) / 1000 - 60;
+    const modes = [
+      [placed, V.V3.envelope],
+      [V.sourceAccount.challenge, V.V3source.expectEnvelopeFeePayerFalse],
+    ] as const;
+    for (const [challenge, envelope] of modes) {
+      const u = await chargeStellar.build({ challenge, simulatedXdr: V.V3source.simulatedXdr, currentLedger: 988, now, payer: XST.fixed.payer }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const digest = createHash("sha256").update(u.request.preimage).digest();
+      expect(digest.toString("hex")).toBe(XST.V2.expectPreimageSha256);
+      expect(u.complete(ed25519.sign(digest, fromHex(XST.fixed.payerSeed)))).toStrictEqual({ challenge, payload: { type: "transaction", transaction: envelope } });
+    }
+  });
+
   it("plant: a transfer to the plain seller account is refused, never H", async () => {
     expect(await chargeStellar.bound(credential(placed, { type: "transaction", transaction: V.plant.envelope }))).toEqual(
       refused(V.plant.expect),
