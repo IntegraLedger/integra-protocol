@@ -56,8 +56,9 @@ an opening challenge, whose `channelId` is absent or empty, and on it `build` si
 cumulative total, a big-endian u64. `pairingsOf`, and so `build`, `bound` and `reference`, refuses an `amount` that is
 not a u64 written in decimal with no sign, point or leading zero, or a `recipient` that is not a classic address whose
 checksum holds (the channel id derives from its AccountID), with `mpp/request-malformed`. Each session pairing's
-`bound` and `reference` hold the opening's echoed challenge to its filter, as the [MPP guide](./mpp.md) says, and its
-`closeRef` the issued challenge it is given; a within or close payment's challenge, which the seller issues naming the
+`bound` and `reference` hold the opening's echoed challenge to its filter, as the [MPP guide](./mpp.md) says, and so
+does its `channel.ref` given an opening (the Stripe subscription's reads the activation receipt alone); its `closeRef`
+holds the issued challenge it is given. A within or close payment's challenge, which the seller issues naming the
 channel, is read without it.
 
 This example lists them from the registry:

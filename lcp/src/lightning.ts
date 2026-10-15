@@ -22,6 +22,7 @@ import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type 
 import {
   credentialOf,
   checkChallenge,
+  checkedFor,
   decodeObject,
   echoedFor,
   place,
@@ -629,11 +630,19 @@ function sessionKind(presented: unknown): "open" | "within" | "close" | Refusal 
   return refusal("mpp/session-action");
 }
 
-/** The session's id: the open's challenge `paymentHash`, else the payload's `sessionId`, as lowercase hex. */
+/**
+ * The session's id: the open's challenge `paymentHash`, else the payload's `sessionId`, as lowercase hex. The open's
+ * echoed challenge is held to the pairing's filter (`checkedFor`), whose refusal it gives, as `bound` holds it; a bearer,
+ * top-up or close payment is read from its payload alone.
+ */
 async function sessionRef(presented: unknown): Promise<{ network: string; channel: string } | Refusal> {
   const k = sessionKind(presented);
   if (isRefusal(k)) return k;
   const c = presented as MppCredential;
+  if (k === "open") {
+    const held = checkedFor(c.challenge, LN_SESSION);
+    if (isRefusal(held)) return held;
+  }
   const request = typeof c.challenge.request === "string" ? decodeObject(c.challenge.request) : undefined;
   const id = k === "open" ? request?.["paymentHash"] : c.payload["sessionId"];
   if (typeof id !== "string" || !PAYMENT_HASH.test(id)) return refusal("mpp/credential-malformed");

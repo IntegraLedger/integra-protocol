@@ -37,8 +37,10 @@ import {
   usdcRequestHash,
   type MppCredential,
 } from "../src/mpp.js";
+import { sessionLightning } from "../src/lightning.js";
 import { gatewayAccount } from "../src/mpp-usdc.js";
 import { load } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 type Edit = (request: { [k: string]: Json }, challenge: { [k: string]: unknown }) => void;
 
@@ -347,5 +349,51 @@ describe("fetchPresented holds the echoed challenge to the filter before it read
     const c = presented("mpp-session-hedera-solana-xrpl.json", 1, noExpires);
     expect(await sessionHedera.fetchPresented(c, evmReader("hedera:testnet", calls) as HederaEvmReader)).toEqual(refused("hedera/unreadable"));
     expect(calls).toEqual(["receipt"]);
+  });
+});
+
+// channel.ref names the channel of an opening from its echoed challenge, so it holds that challenge to the pairing's
+// filter as bound does: a challenge pairingsOf refuses gives that refusal. The EVM and Tempo sessions need expires,
+// which build writes into the opening the payer signs; Tempo's key authorization takes subscriptionExpires as a uint64
+// expiry, from 1970; and the Lightning session's paymentHash is the "SHA-256 hash of the deposit invoice preimage"
+// (draft-lightning-session-00), so the deposit invoice carries it. A within payment's challenge, which the seller
+// issues naming the channel, is read without the filter.
+describe("channel.ref holds an opening's echoed challenge to the pairing's filter", () => {
+  type Ref = (c: MppCredential) => Promise<unknown>;
+  const lowerChannel = (c: MppCredential) => String(c.payload["channelId"]).toLowerCase();
+  const chainOf = (c: MppCredential) =>
+    JSON.parse(Buffer.from(c.challenge.request, "base64url").toString("utf8")).methodDetails.chainId as number;
+  const CASES = rowsOf<[string, { bound: Ref; channel: { ref: Ref } }, string, Edit, (c: MppCredential) => unknown, string]>(
+    [
+      ["session/evm, no expires", sessionEvm, "mpp-session-evm.json", noExpires, (c) => ({ network: `eip155:${chainOf(c)}`, channel: lowerChannel(c) }), "mpp/expires-required"],
+      ["session/tempo, no expires", sessionTempo, "mpp-session-tempo.json", noExpires, (c) => ({ network: `eip155:${chainOf(c)}`, channel: lowerChannel(c) }), "mpp/expires-required"],
+      ["subscription/tempo, subscriptionExpires in 1969", subscriptionTempo, "mpp-subscription-tempo.json", (r) => (r["subscriptionExpires"] = "1969-12-31T23:59:59Z"),
+        (c) => ({ network: `eip155:${chainOf(c)}`, channel: load("mpp-subscription-tempo.json").SUB2.expectRefChannel }), "mpp/request-malformed"],
+      ["session/lightning, a paymentHash the deposit invoice does not carry", sessionLightning, "mpp-session-lightning.json", (r) => (r["paymentHash"] = "11".repeat(32)),
+        (c) => ({ network: "lightning", channel: JSON.parse(Buffer.from(c.challenge.request, "base64url").toString("utf8")).paymentHash }), "ln/payment-hash-mismatch"],
+    ],
+    "the openings each session pairing's filter refuses",
+    { exact: 4 },
+  );
+  it.each(CASES)("%s", async (_, pairing, file, edit, keys, code) => {
+    const own = presented(file, 1);
+    expect(await pairing.channel.ref(own)).toEqual(keys(own));
+    const c = presented(file, 1, edit);
+    expect(pairingsOf(offerOf(c))).toEqual(refused(code));
+    expect(await pairing.bound(c)).toEqual(refused(code));
+    expect(await pairing.channel.ref(c)).toEqual(refused(code));
+  });
+
+  it("a within payment's challenge is read without the filter", async () => {
+    for (const [pairing, file] of [[sessionEvm, "mpp-session-evm.json"], [sessionTempo, "mpp-session-tempo.json"]] as const) {
+      const c = presented(file, 1, noExpires);
+      const voucher = { ...c, payload: { action: "voucher", channelId: c.payload["channelId"]!, cumulativeAmount: "1", signature: "0x11" } };
+      expect(await pairing.channel.kind(voucher), file).toBe("within");
+      expect(await pairing.channel.ref(voucher), file).toEqual({ network: `eip155:${chainOf(c)}`, channel: lowerChannel(c) });
+    }
+    const bearer = presented("mpp-session-lightning.json", 1, (r) => (r["paymentHash"] = "11".repeat(32)));
+    const sessionId = "22".repeat(32);
+    const within = { ...bearer, payload: { action: "bearer", sessionId, preimage: "33".repeat(32) } };
+    expect(await sessionLightning.channel.ref(within)).toEqual({ network: "lightning", channel: sessionId });
   });
 });

@@ -1570,11 +1570,14 @@ async function subscriptionReference(input: unknown): Promise<SessionRef | Refus
 
 /**
  * The network and the key authorization's digest, for a key authorization that authorizes the challenge's issued key
- * (`authorizedKey`).
+ * (`authorizedKey`). The key authorization is the opening, and its echoed challenge is held to the pairing's filter
+ * (`checkedFor`), whose refusal it gives, as `bound` and `closeRef` hold theirs.
  */
 async function subscriptionRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
   const payload = payloadOf(presented);
   if (isRefusal(payload)) return payload;
+  const held = checkedFor(presented.challenge, SUBSCRIPTION);
+  if (isRefusal(held)) return held;
   const p = paramsOf(presented.challenge);
   if (isRefusal(p)) return p;
   if (typeof payload["signature"] !== "string") return refusal("tempo/key-authorization-malformed");
@@ -1662,14 +1665,24 @@ async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refu
   return refusal("mpp/not-bound-within");
 }
 
-/** The network and the payload's `channelId`, lowercase. */
-async function refFrom(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
-  const payload = payloadOf(presented);
-  if (isRefusal(payload)) return payload;
-  const p = paramsOf(presented.challenge);
-  if (isRefusal(p)) return p;
-  const channel = channelOf(payload);
-  return typeof channel === "string" ? { network: p.network, channel } : channel;
+/**
+ * The network and the payload's `channelId`, lowercase. An opening's echoed challenge is held to `pairing`'s filter
+ * (`checkedFor`), whose refusal it gives, as `bound` and `closeRef` hold theirs; a within or close payment's challenge,
+ * which the seller issues naming the channel, is read without it.
+ */
+function refFrom(pairing: typeof SESSION_EVM | typeof SESSION_TEMPO, kind: (presented: MppCredential) => "open" | "within" | "close" | Refusal) {
+  return async (presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> => {
+    const payload = payloadOf(presented);
+    if (isRefusal(payload)) return payload;
+    if (kind(presented) === "open") {
+      const held = checkedFor(presented.challenge, pairing);
+      if (isRefusal(held)) return held;
+    }
+    const p = paramsOf(presented.challenge);
+    if (isRefusal(p)) return p;
+    const channel = channelOf(payload);
+    return typeof channel === "string" ? { network: p.network, channel } : channel;
+  };
 }
 
 const noEnd = (_presented: MppCredential): number | undefined => undefined;
@@ -1702,7 +1715,7 @@ export const sessionEvm = Object.freeze({
   recover: evmRecover,
   landedTx: evmLandedTx,
   closeRef: evmCloseRef,
-  channel: Object.freeze({ kind: evmKind, ref: refFrom, boundWithin: notBoundWithin, until: noEnd }),
+  channel: Object.freeze({ kind: evmKind, ref: refFrom(SESSION_EVM, evmKind), boundWithin: notBoundWithin, until: noEnd }),
 });
 
 export const sessionTempo = Object.freeze({
@@ -1727,7 +1740,7 @@ export const sessionTempo = Object.freeze({
   status: pairingStatus(SESSION_TEMPO),
   recover: tempoRecover,
   closeRef: tempoCloseRef,
-  channel: Object.freeze({ kind: tempoKind, ref: refFrom, boundWithin: tempoBoundWithin, until: noEnd }),
+  channel: Object.freeze({ kind: tempoKind, ref: refFrom(SESSION_TEMPO, tempoKind), boundWithin: tempoBoundWithin, until: noEnd }),
 });
 
 export const subscriptionTempo = Object.freeze({
