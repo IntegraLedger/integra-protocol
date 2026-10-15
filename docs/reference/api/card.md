@@ -74,7 +74,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 
 ##### broadcaster()
 
-> **broadcaster**(`presented`): `Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+> **broadcaster**(`presented`): `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>
 
 Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`).
 
@@ -86,7 +86,7 @@ Who broadcasts what the payer presents: the seller, which completes the payment 
 
 ###### Returns
 
-`Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>
 
 ##### build()
 
@@ -253,7 +253,8 @@ to its processor, with H in its processor reference; nothing here reads it.
 > `const` **viAutonomous**: [`CardPairing`](#cardpairing)\<`"card/mastercard-vi/autonomous"`, [`ViUnsigned`](#viunsigned)\>
 
 `card/mastercard-vi/autonomous`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
-payment the mandates authorize to its processor; nothing here reads it.
+payment the mandates authorize to its processor; nothing here reads it. A value that is not an object gets
+`card/vi-malformed`, as `bound` refuses it.
 
 ***
 
@@ -262,7 +263,8 @@ payment the mandates authorize to its processor; nothing here reads it.
 > `const` **viImmediate**: [`CardPairing`](#cardpairing)\<`"card/mastercard-vi/immediate"`, [`ViUnsigned`](#viunsigned)\>
 
 `card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
-payment the mandate authorizes to its processor; nothing here reads it.
+payment the mandate authorizes to its processor; nothing here reads it. A value that is not an object gets
+`card/vi-malformed`, as `bound` refuses it.
 
 ***
 
@@ -271,7 +273,8 @@ payment the mandate authorizes to its processor; nothing here reads it.
 > `const` **visaTap**: [`CardPairing`](#cardpairing)\<`"card/visa-tap"`, [`TapUnsigned`](#tapunsigned)\>
 
 `card/visa-tap`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment to its
-processor; nothing here reads it.
+processor; nothing here reads it. A value that is not an object gets `card/tap-signature-input-malformed`, as
+`bound` refuses it.
 
 ## Functions
 

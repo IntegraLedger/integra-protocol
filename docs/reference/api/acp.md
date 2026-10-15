@@ -60,7 +60,7 @@ description: "The exports of @integraledger/lcp/acp."
 
 ##### broadcaster()
 
-> **broadcaster**(`presented`): `Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+> **broadcaster**(`presented`): `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>
 
 Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`).
 
@@ -72,7 +72,7 @@ Who broadcasts what the payer presents: the seller, which completes the payment 
 
 ###### Returns
 
-`Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>
 
 ##### build()
 
@@ -227,8 +227,9 @@ A CheckoutSession. Every member other than `id` and `metadata.legal_context` is 
 
 > `const` **delegated**: [`AcpBinding`](#acpbinding)\<`"acp/checkout/delegated"`\>
 
-`acp/checkout/delegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's PSP charges the vault
-token the buyer's agent obtained; nothing here reads it.
+`acp/checkout/delegated`. The payee broadcasts (`broadcaster` answers `"payee"` for a payment within `bound`'s shape
+gate, `allowanceShape`): the seller's PSP charges the vault token the buyer's agent obtained; nothing here reads it.
+Any other value gets `acp/allowance-malformed`, as `bound` refuses it.
 
 ***
 

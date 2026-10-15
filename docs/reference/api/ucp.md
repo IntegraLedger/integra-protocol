@@ -60,7 +60,7 @@ description: "The exports of @integraledger/lcp/ucp."
 
 ##### broadcaster()
 
-> **broadcaster**(`presented`): `Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+> **broadcaster**(`presented`): `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>
 
 Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`).
 
@@ -72,7 +72,7 @@ Who broadcasts what the payer presents: the seller, which completes the payment 
 
 ###### Returns
 
-`Promise`\<[`Broadcaster`](index.md#broadcaster)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>
 
 ##### build()
 
@@ -230,7 +230,8 @@ A checkout's own `id`, 1–256 characters.
 > `const` **ap2Mandate**: [`UcpBinding`](#ucpbinding)\<`"ucp/checkout/ap2-mandate"`, [`CheckoutOption`](#checkoutoption)\>
 
 `ucp/checkout/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
-executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+executes the payment the buyer's checkout mandate authorizes; nothing here reads it. A value that is not a JSON
+object gets `ap2/mandate-malformed`, as `bound` refuses it.
 
 ***
 
@@ -239,7 +240,8 @@ executes the payment the buyer's checkout mandate authorizes; nothing here reads
 > `const` **bookingAp2Mandate**: [`UcpBinding`](#ucpbinding)\<`"ucp/booking/ap2-mandate"`, [`BookingOption`](#bookingoption)\>
 
 `ucp/booking/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
-executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+executes the payment the buyer's checkout mandate authorizes; nothing here reads it. A value that is not a JSON
+object gets `ap2/mandate-malformed`, as `bound` refuses it.
 
 ***
 

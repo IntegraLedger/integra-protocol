@@ -80,7 +80,9 @@ A pairing of protocol, scheme and rail.
 > **Broadcaster** = `"payer"` \| `"payee"`
 
 Who broadcasts what a payer presents under a pairing: `"payer"`, which sent the payment before presenting it, or
-`"payee"`, the seller, or the facilitator or processor acting for it, which sends or executes it after.
+`"payee"`, the seller, or the facilitator or processor acting for it, which sends or executes it after. A pairing's
+`broadcaster` gives this only for a payment of a type and kind the pairing takes, within the shape gate its `bound`
+applies first; any other payment gets the refusal `bound` gives it.
 
 ***
 
