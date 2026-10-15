@@ -1,10 +1,13 @@
 // Functions whose work is linear in their input, held without a clock: each shape is read at two sizes, and the work
 // test/work.ts counts at the larger size is at most two and a half times the work at the smaller, where work quadratic
 // in the input would be about four times.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { BINDINGS } from "../src/index.js";
+import { DELEGATION_MANAGER, REDEEMED_DELEGATION_TOPIC, TRANSFER_TOPIC, type EvmLog, type EvmReader, type Hex } from "../src/evm.js";
 import { readEntry } from "../src/internal/avm.js";
-import { workOf } from "./work.js";
+import { workOf, workOfAsync } from "./work.js";
 
 describe("readEntry: an Algorand payment entry is decoded in time linear in its bytes", () => {
   // V2's payment entry of x402-exact-algorand.json, {sig, txn}, and its transaction id (py-algorand-sdk).
@@ -61,4 +64,53 @@ describe("readEntry: an Algorand payment entry is decoded in time linear in its 
       expect(atLarge).toBeLessThanOrEqual(2.5 * atSmall);
     });
   }
+});
+
+describe("evmStatus: a delegation payment's receipt is read in time linear in its logs", () => {
+  // x402/exact/eip155/erc7710-salt: the binding is data word 5 of a leaf's RedeemedDelegation log from the
+  // DelegationManager, and a transfer counts when its `from` is a leaf's root delegator (topic 1).
+  const PAYER = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" as Hex;
+  const PAYEE = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as Hex;
+  const REDEEMER = "0x00000000000000000000000000000000000000ee" as Hex;
+  const TOKEN = "0x036cbd53842c5426634e7929541ec2318f3dcf7e" as Hex;
+  const H = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" as Hex;
+  const word = (h: string) => h.slice(2).toLowerCase().padStart(64, "0");
+  const topic = (a: string) => `0x${word(a)}` as Hex;
+  // A leaf: its delegate (data word 1) is its redeemer (topic 2).
+  const leaf = (root: string): EvmLog => ({
+    address: DELEGATION_MANAGER,
+    topics: [REDEEMED_DELEGATION_TOPIC, topic(root), topic(REDEEMER)],
+    data: `0x${[root, REDEEMER, "0x0", "0x0", "0x0", H].map(word).join("")}` as Hex,
+  });
+  const transfer: EvmLog = { address: TOKEN, topics: [TRANSFER_TOPIC, topic(PAYER), topic(PAYEE)], data: topic("0x2710") };
+  const ref = {
+    network: "eip155:84532",
+    transaction: `0x${"11".repeat(32)}`,
+    bindingLog: { address: DELEGATION_MANAGER, topic0: REDEEMED_DELEGATION_TOPIC, dataWord: 5, value: H },
+    // SHA-256 of the transfer's `from`, the one field the transfer log names.
+    transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from", digest: `0x${createHash("sha256").update(Buffer.from(PAYER.slice(2), "hex")).digest("hex")}` },
+  };
+  const status = (BINDINGS.find((b) => b.id === "x402/exact/eip155/erc7710-salt") as unknown as {
+    status: (ref: object, reader: EvmReader) => Promise<{ state: string }>;
+  }).status;
+  /** A receipt of `k` leaves, of `k` root delegators the payer last, and `k` transfers from the payer. */
+  const readerOf = (k: number): EvmReader => {
+    const logs = [...Array.from({ length: k - 1 }, (_, j) => leaf(`0x${(j + 1).toString(16)}`)), leaf(PAYER), ...new Array<EvmLog>(k).fill(transfer)];
+    return {
+      network: "eip155:84532",
+      receipt: async () => ({ status: 1, blockNumber: 100n, logs }),
+      blockNumber: async () => 200n,
+      transaction: async () => null,
+      call: async () => topic("0x0"),
+    };
+  };
+
+  it("many leaves and many transfers: the work at twice the logs is at most two and a half times the work", async () => {
+    const [small, large] = [readerOf(500), readerOf(1000)];
+    for (const reader of [small, large]) expect(await status(ref, reader)).toMatchObject({ state: "settled" });
+    const atSmall = await workOfAsync(() => status(ref, small));
+    const atLarge = await workOfAsync(() => status(ref, large));
+    expect(atSmall).toBeGreaterThan(1000);
+    expect(atLarge).toBeLessThanOrEqual(2.5 * atSmall);
+  });
 });

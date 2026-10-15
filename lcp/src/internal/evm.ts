@@ -726,8 +726,8 @@ async function matchedTransfers(
         ? await pairedTransfers(receipt.logs, binding, t)
         : await transfersOf(oneLog ? carriers : receipt.logs, t);
     if (redemption) {
-      const roots = carriers.map((l) => topicAddress(l.topics[1]));
-      transfers = transfers.filter((t) => roots.includes(t.from));
+      const roots = new Set(carriers.map((l) => topicAddress(l.topics[1])));
+      transfers = transfers.filter((t) => roots.has(t.from));
     }
     if (transfers.length === 0) missing = "transfer-not-found";
   }
