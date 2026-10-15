@@ -361,8 +361,34 @@ describe("x402-exact-eip155-permit2.json", () => {
 
 describe("x402-upto-eip155-permit2.json", () => {
   const f: Fixed = UP.fixed;
-  it("EV2: digest, witness, bound and the from,to identity", async () => {
+  // EV2's digest is eth-account's, over types written from Permit2's PermitHash.sol and EIP712.sol (Uniswap/permit2
+  // cc56ad0f) and the x402 upto proxy's Witness (x402 751590a2, contracts/evm/src/x402UptoPermit2Proxy.sol L23-27).
+  // viem re-derives it from the same types written here, and build's typed data is held to it.
+  it("EV2: digest as Permit2's witness types and the upto proxy's witness give it, witness, bound and the from,to identity", async () => {
     expect(pairingOf(f.option)).toBe("x402/upto/eip155/permit2");
+    const written = {
+      domain: { name: "Permit2", chainId: 84532, verifyingContract: "0x000000000022D473030F116dDEE9F6B43aC78BA3" },
+      types: {
+        TokenPermissions: [{ name: "token", type: "address" }, { name: "amount", type: "uint256" }],
+        Witness: [{ name: "to", type: "address" }, { name: "facilitator", type: "address" }, { name: "validAfter", type: "uint256" }],
+        PermitWitnessTransferFrom: [
+          { name: "permitted", type: "TokenPermissions" },
+          { name: "spender", type: "address" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+          { name: "witness", type: "Witness" },
+        ],
+      },
+      primaryType: "PermitWitnessTransferFrom",
+      message: {
+        permitted: { token: f.option.asset, amount: BigInt(f.option.amount) },
+        spender: UP.EV2.expectSpender,
+        nonce: BigInt(H),
+        deadline: BigInt(f.now + f.option.maxTimeoutSeconds),
+        witness: { to: f.option.payTo, facilitator: (f.option.extra as { facilitatorAddress: string }).facilitatorAddress, validAfter: 0n },
+      },
+    } as TypedDataDefinition;
+    expect(hashTypedData(written)).toBe(UP.EV2.expectDigest);
     const u = await unsigned(uptoPermit2, f);
     if (u.request.kind !== "eip712") throw new Error("kind");
     expect(hashTypedData(u.request.typedData as TypedDataDefinition)).toBe(UP.EV2.expectDigest);
@@ -1028,8 +1054,32 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     });
     expect(await authCaptureEip3009.authorizer(p)).toBe(f.payer.toLowerCase());
   });
-  it("EV4 permit2: the collector's PermitTransferFrom, bound and the escrow search", async () => {
+  // EV4's permit2 digest is eth-account's, over Permit2's PermitTransferFrom (Uniswap/permit2 cc56ad0f, PermitHash.sol
+  // and EIP712.sol) with the permit the v1.1 Permit2 collector spends (commerce-payments 6b0a5ef3,
+  // Permit2PaymentCollector.sol L43-48). viem re-derives it from the types written here, and build's typed data is held
+  // to it.
+  it("EV4 permit2: the collector's PermitTransferFrom, its digest as written from the collector's call, bound and the escrow search", async () => {
     const g: Fixed = AP.fixed;
+    const written = {
+      domain: { name: "Permit2", chainId: 84532, verifyingContract: "0x000000000022D473030F116dDEE9F6B43aC78BA3" },
+      types: {
+        TokenPermissions: [{ name: "token", type: "address" }, { name: "amount", type: "uint256" }],
+        PermitTransferFrom: [
+          { name: "permitted", type: "TokenPermissions" },
+          { name: "spender", type: "address" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+        ],
+      },
+      primaryType: "PermitTransferFrom",
+      message: {
+        permitted: { token: g.option.asset, amount: BigInt(g.option.amount) },
+        spender: AP.EV4.expectSpender,
+        nonce: BigInt(A3.EV3.bound.expectSignatureNonce),
+        deadline: BigInt(g.now + g.option.maxTimeoutSeconds),
+      },
+    } as TypedDataDefinition;
+    expect(hashTypedData(written)).toBe(AP.EV4.expectDigest);
     expect(pairingOf(g.option)).toBe("x402/auth-capture/eip155/permit2");
     const u = await unsigned(authCapturePermit2, g);
     if (u.request.kind !== "eip712") throw new Error("kind");

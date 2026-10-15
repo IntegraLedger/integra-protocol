@@ -24,7 +24,7 @@
   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
  },
  "EV2": {
-  "case": "build(choice, H): ceiling 5000000, deadline 1790000300, witness {to, facilitator: F, validAfter: 0}, spender the upto proxy",
+  "case": "build(choice, H): ceiling 5000000, deadline 1790000300, witness {to, facilitator: F, validAfter: 0}, spender the upto proxy. expectDigest is the EIP-712 digest of that typed data, computed with eth-account 0.14.0 encode_typed_data over types written from Permit2's witness hashing (Uniswap/permit2 cc56ad0f, src/libraries/PermitHash.sol L19, L31-32 and L85-94, the spender msg.sender; the domain {name \"Permit2\", chainId, verifyingContract} of src/EIP712.sol L15-17) and the x402 upto Permit2 proxy's witness, Witness(address to,address facilitator,uint256 validAfter) (x402-foundation/x402 751590a2, contracts/evm/src/x402UptoPermit2Proxy.sol L23-27), with chain id 84532 and Permit2 at 0x000000000022D473030F116dDEE9F6B43aC78BA3; it equals keccak256(0x1901, the domain separator, hashWithWitness's struct hash) computed with eth-abi 6.0.0",
   "expectDigest": "0xba1b93f12786a4e31fd4dca016d1b48f2d0f72df9df896efb00543a94aedd993",
   "expectSpender": "0x4020A4f3b7b90ccA423B9fabCc0CE57C6C240002",
   "expectNonceHex": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",

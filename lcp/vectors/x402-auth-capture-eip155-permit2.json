@@ -50,7 +50,7 @@
   "expectPaymentInfoTypeHash": "0xae68ac7ce30c86ece8196b61a7c486d8f0061f575037fbd34e7fe4e2820c6591"
  },
  "EV4": {
-  "case": "build(choice, H), bound mode: Permit2 PermitTransferFrom to the v1.1 Permit2 collector, nonce uint256(signatureNonce), deadline preApprovalExpiry, no witness",
+  "case": "build(choice, H), bound mode: Permit2 PermitTransferFrom to the v1.1 Permit2 collector, nonce uint256(signatureNonce), deadline preApprovalExpiry, no witness. expectDigest is the EIP-712 digest of that typed data, computed with eth-account 0.14.0 encode_typed_data over types written from the permit the v1.1 Permit2 collector spends (base/commerce-payments 6b0a5ef3, src/collectors/Permit2PaymentCollector.sol L43-48: permitted {token, maxAmount}, nonce uint256 of the payer-agnostic hash, deadline preApprovalExpiry) and Permit2's PermitTransferFrom (Uniswap/permit2 cc56ad0f, src/libraries/PermitHash.sol L19-23 and L59-64, the spender msg.sender, the collector; the domain of src/EIP712.sol L15-17), with chain id 84532, Permit2 at 0x000000000022D473030F116dDEE9F6B43aC78BA3 and the nonce x402-auth-capture-eip155-eip3009.json's EV3.bound.expectSignatureNonce, the same option terms; it equals keccak256(0x1901, the domain separator, hash's struct hash) computed with eth-abi 6.0.0",
   "expectSpender": "0xD69831Aed5bfe262067ec4c751f4F830EcdD446e",
   "expectDigest": "0x0dc48483e670022cad2d80d286d56ea13093ad020ba90eaf2fd3ac735a55645d",
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
