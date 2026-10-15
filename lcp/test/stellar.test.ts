@@ -89,7 +89,7 @@ describe("x402-exact-stellar.json", () => {
     expect(muxedId(H).toString(16)).toBe(V.V1.muxedIdHex);
     const m = muxedFor(V.fixed.seller, H);
     expect(m).toBe(V.V1.M);
-    expect(m.length).toBe(V.V1.Mlength);
+    expect((m as string).length).toBe(V.V1.Mlength);
     const env = TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
     if (env.type !== 2) throw new Error("not a v1 envelope");
     const body = env.v1.tx.operations[0]!.body;

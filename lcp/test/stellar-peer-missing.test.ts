@@ -1,13 +1,14 @@
 // @stellar/stellar-sdk is an optional peer. With it absent, the stellar entry points and the package root still import,
 // the root pairingOf names no Stellar option, and each function whose type carries a refusal and needs the peer refuses
-// `stellar/peer-missing` (the vectors' refusal), never throwing. muxedFor, a writer whose type carries no refusal,
-// throws TypeError. x402/exact/stellar's read, advertise, build, bound and reference need the peer only for a Stellar
-// option: the option filter refuses each one `stellar/peer-missing`, and a document, offer, choice or payment with no
-// Stellar option gets the answer it gets with the peer.
+// `stellar/peer-missing` (the vectors' refusal), never throwing. x402/exact/stellar's read, advertise, build, bound and
+// reference need the peer only for a Stellar option: the option filter refuses each one `stellar/peer-missing`, and a
+// document, offer, choice or payment with no Stellar option gets the answer it gets with the peer. mpp/charge/stellar's
+// build and muxedFor check what needs no peer first, and give it the code they give with the peer.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequirements } from "../src/x402.js";
 import { buildChoices } from "./build-choices.js";
+import { muxedForArgs, stellarChargeChoice, stellarChargeChoices } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
@@ -171,14 +172,20 @@ describe("without @stellar/stellar-sdk", () => {
     expect(await chargeStellar.reference(credential)).toEqual(refused);
   });
 
-  // The choice is the vectors' placed challenge with x402-exact-stellar.json's V2 simulated transaction and ledger, at a
-  // clock 60 seconds before the challenge expires: with the peer the pairing builds it, its entry expiring at V3's
-  // ledger 1000 (mpp-charges.test.ts).
+  // The choice is one the pairing builds with the peer (peer-free-inputs.ts). Without it the recipient cannot be read.
   it("mpp/charge/stellar's build refuses peer-missing, as its advertise does", { timeout: IMPORT_MS }, async () => {
     const { chargeStellar } = await import("../src/mpp.js");
-    const now = Date.parse(M.fixed.expires) / 1000 - 60;
-    const choice = { challenge: M.place.expect, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, now, payer: V.fixed.payer };
-    expect(await chargeStellar.build(choice, M.fixed.H)).toEqual({ refused: true, code: CODE });
+    const { choice, h } = stellarChargeChoice();
+    expect(await chargeStellar.build(choice, h)).toEqual({ refused: true, code: CODE });
+  });
+
+  // build checks the choice, its challenge, H, the current ledger and the clock before it reads the recipient: each
+  // fault gets the code it gets with the peer (peer-free-inputs.test.ts).
+  it("mpp/charge/stellar's build answers a choice it refuses before the recipient as it does with the peer", { timeout: IMPORT_MS }, async () => {
+    const { chargeStellar } = await import("../src/mpp.js");
+    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 5 })) {
+      expect([row.case, await chargeStellar.build(row.choice as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
+    }
   });
 
   // The placed challenge is the vectors' placement: with the peer, unplaced sets its muxed recipient back to the base
@@ -192,13 +199,21 @@ describe("without @stellar/stellar-sdk", () => {
     expect(chargeStellar.unplaced(M.fixed.H)).toBe(M.fixed.H);
   });
 
-  it("the stellar entry point's decoders refuse peer-missing, and muxedFor throws TypeError", { timeout: IMPORT_MS }, async () => {
+  it("the stellar entry point's decoders and muxedFor refuse peer-missing", { timeout: IMPORT_MS }, async () => {
     const st = await import("../src/stellar.js");
     const refused = { refused: true, code: CODE };
     expect(st.decodeStellarTx(V.V3.envelope, V.fixed.network)).toEqual(refused);
     expect(st.transferEventTopics(V.fixed.seller)).toEqual(refused);
     expect(st.transferEventOf(V.events.rows[0].topic, V.events.rows[0].value)).toEqual(refused);
-    expect(() => st.muxedFor(V.fixed.seller, V.fixed.H)).toThrow(TypeError);
-    expect(() => st.muxedFor(V.fixed.seller, V.fixed.H)).toThrow("@stellar/stellar-sdk is not installed");
+    expect(st.muxedFor(V.fixed.seller, V.fixed.H)).toEqual(refused);
+  });
+
+  // A base that is not a string and an H that is not a 32-byte hash need no SDK: each gets the code it gets with the SDK
+  // (failures-are-values.test.ts).
+  it("muxedFor answers a base or H it refuses before the strkey as it does with the peer", { timeout: IMPORT_MS }, async () => {
+    const { muxedFor } = await import("../src/stellar.js");
+    for (const row of rowsOf(muxedForArgs(), "peer-free-inputs.ts", { exact: 4 })) {
+      expect([row.case, muxedFor(row.base as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
+    }
   });
 });

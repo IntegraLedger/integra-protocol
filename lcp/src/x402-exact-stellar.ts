@@ -128,7 +128,9 @@ function advertise(
   const placed = advertiseFor(filter)(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   if (!isAccount(offer.payTo)) return refusal("stellar/carrier-occupied");
-  return withOption(placed, offeredAt(placed.accepts, offer), { ...offer, payTo: muxedFor(offer.payTo, h) });
+  const payTo = muxedFor(offer.payTo, h);
+  if (isRefusal(payTo)) return payTo;
+  return withOption(placed, offeredAt(placed.accepts, offer), { ...offer, payTo });
 }
 
 /**

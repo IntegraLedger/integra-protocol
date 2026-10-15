@@ -224,21 +224,22 @@ async function fetchPresented(
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
  * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
- * Without @stellar/stellar-sdk the recipient and the transaction cannot be read: `stellar/peer-missing`.
+ * Without @stellar/stellar-sdk the recipient and the transaction cannot be read: `stellar/peer-missing`, after the
+ * choice, its challenge, H, the current ledger and the clock are checked, which need no peer.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
   const checked = chosenFor(choice.challenge, h, ID);
   if (isRefusal(checked)) return checked;
-  const recipient = checked.request["recipient"];
-  const m = unmux(recipient);
-  if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
   if (!Number.isSafeInteger(choice.currentLedger) || choice.currentLedger < 0 || !Number.isSafeInteger(choice.now)) {
     return refusal("stellar/tx-malformed");
   }
   const expires = expiresOf(checked);
   if (isRefusal(expires)) return expires;
+  if (!hasPeer()) return refusal("stellar/peer-missing");
+  const recipient = checked.request["recipient"];
+  const m = unmux(recipient);
+  if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
   const expiration = choice.currentLedger + Math.max(0, Math.ceil((expires - choice.now) / 5));
   const s = signingFor(
     choice.simulatedXdr,

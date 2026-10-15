@@ -2,10 +2,12 @@
  * Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction
  * that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash
  * stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed
- * bytes fix before any money moves. BCS decoding and base58 use @mysten/sui, loaded once when this module is; without it
- * every function that needs it refuses `sui/peer-missing`, and `status` reads as pending `unreadable`.
+ * bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is; without it every
+ * function that needs it refuses `sui/peer-missing`, and `status` reads as pending `unreadable`. A digest is base58,
+ * read and written with the package's own dependency @scure/base, so it is checked without the peer.
  */
 import { blake2b } from "@noble/hashes/blake2.js";
+import { base58 } from "@scure/base";
 import type { bcs as SuiBcs } from "@mysten/sui/bcs";
 import { fromRawBytes, toRawBytes, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
@@ -32,15 +34,9 @@ import {
 } from "./x402.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
-const peer:
-  | { bcs: typeof SuiBcs; toBase58: (b: Uint8Array) => string; isTransactionDigest: (d: string) => boolean }
-  | undefined = await Promise.all([
-  import("@mysten/sui/bcs").catch(() => undefined),
-  import("@mysten/sui/utils").catch(() => undefined),
-]).then(([b, u]) =>
-  b === undefined || u === undefined
-    ? undefined
-    : { bcs: b.bcs, toBase58: u.toBase58, isTransactionDigest: u.isValidTransactionDigest },
+const peer: { bcs: typeof SuiBcs } | undefined = await import("@mysten/sui/bcs").then(
+  (b) => ({ bcs: b.bcs }),
+  () => undefined,
 );
 
 export type SuiNetwork = "sui:mainnet" | "sui:testnet" | "sui:devnet";
@@ -186,7 +182,7 @@ export function decodeSuiTx(base64: string): SuiTx<ArrayBuffer> | Refusal {
   else if (exp.$kind === "ValidDuring" && exp.ValidDuring.maxEpoch !== null) untilEpoch = BigInt(exp.ValidDuring.maxEpoch);
   else if (exp.$kind === "Validity" && exp.Validity.maxEpoch !== null) untilEpoch = BigInt(exp.Validity.maxEpoch);
 
-  return { bytes, digest: suiDigest(bytes)!, unusedPure, untilEpoch };
+  return { bytes, digest: suiDigest(bytes), unusedPure, untilEpoch };
 }
 
 /**
@@ -242,14 +238,14 @@ export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader,
 /**
  * Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
  * bytes is `sui/wrong-reader`, with nothing read. Bytes that do not hash to the digest are `sui/unreadable`; bytes that
- * do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` answers them failed `not-this-instrument`. One
- * call.
+ * do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` answers them failed `not-this-instrument`.
+ * Without @mysten/sui the transaction cannot be decoded: bytes that hash to the digest, of a transaction that did not
+ * abort, are `sui/peer-missing`, after the ref, the reader and the read are checked, which need no peer. One call.
  */
 export async function suiRecover(
   ref: { network: SuiNetwork; digest: string },
   reader: SuiReader,
 ): Promise<AtrHash | Refusal> {
-  if (peer === undefined) return refusal("sui/peer-missing");
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("sui/wrong-reader");
   if (!isDigest(ref.digest)) return refusal("sui/wrong-reader");
   const answer = await readOnce(reader, ref.digest);
@@ -487,20 +483,24 @@ function typeParameters(s: string): string[] {
 }
 
 /**
- * True for a transaction digest as `suiDigest` writes one: base58 of 32 bytes, at most 44 characters. False without the
- * peer.
+ * True for a transaction digest as `suiDigest` writes one: base58 of 32 bytes, at most 44 characters, as @mysten/sui's
+ * `isValidTransactionDigest` reads it with the same base58.
  */
 function isDigest(d: unknown): d is string {
-  return peer !== undefined && typeof d === "string" && d.length <= 44 && peer.isTransactionDigest(d);
+  if (typeof d !== "string" || d.length > 44) return false;
+  try {
+    return base58.decode(d).length === 32;
+  } catch {
+    return false;
+  }
 }
 
-/** The digest, or undefined without the peer. */
-function suiDigest(bytes: Uint8Array): string | undefined {
-  if (peer === undefined) return undefined;
+/** The digest: base58 of the BLAKE2b-256 of `TransactionData::` and the bytes. */
+function suiDigest(bytes: Uint8Array): string {
   const m = new Uint8Array(DIGEST_PREFIX.length + bytes.length);
   m.set(DIGEST_PREFIX, 0);
   m.set(bytes, DIGEST_PREFIX.length);
-  return peer.toBase58(blake2b(m, { dkLen: 32 }));
+  return base58.encode(blake2b(m, { dkLen: 32 }));
 }
 
 /** One read, with its answer's shape checked; null for a failed read or a malformed answer. */

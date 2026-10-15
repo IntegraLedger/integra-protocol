@@ -200,8 +200,9 @@ object whose `unusedPure` is an array of `Uint8Array`s, is `sui/tx-malformed`.
 
 Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
 bytes is `sui/wrong-reader`, with nothing read. Bytes that do not hash to the digest are `sui/unreadable`; bytes that
-do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` answers them failed `not-this-instrument`. One
-call.
+do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` answers them failed `not-this-instrument`.
+Without @mysten/sui the transaction cannot be decoded: bytes that hash to the digest, of a transaction that did not
+abort, are `sui/peer-missing`, after the ref, the reader and the read are checked, which need no peer. One call.
 
 #### Parameters
 

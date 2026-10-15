@@ -56,7 +56,7 @@ import {
 import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
-import { stellarLocate, stellarStatus } from "../src/stellar.js";
+import { muxedFor, stellarLocate, stellarStatus } from "../src/stellar.js";
 import { decodeSuiTx, suiCarrier, suiRecover, suiStatus } from "../src/sui.js";
 import {
   channelInstruction,
@@ -87,6 +87,7 @@ import {
   uptoPermit2,
 } from "../src/x402.js";
 import { xrplOpenStatus, xrplStatus } from "../src/xrpl.js";
+import { muxedForArgs } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
@@ -577,6 +578,19 @@ describe("stellar", () => {
       expect(await stellarLocate(bad, reader as never), String(authDigest)).toEqual({ complete: false });
       expect(reader.reads(), String(authDigest)).toBe(0);
     }
+  });
+  // muxedFor's type carries a refusal: a base or H it cannot write from is refused, never thrown. The rows of
+  // peer-free-inputs.ts get the same codes without the SDK (stellar-peer-missing.test.ts); a string that is not a `G…`
+  // account, here a muxed address and the account's text cut short, needs the SDK to be read.
+  it("muxedFor: a base that is not a G account is stellar/option-malformed, and an H that is not a 32-byte hash x402/payload-malformed", () => {
+    const V = load("x402-exact-stellar.json");
+    for (const row of rowsOf(muxedForArgs(), "peer-free-inputs.ts", { exact: 4 })) {
+      expect([row.case, muxedFor(row.base as never, row.h as never)]).toEqual([row.case, refused(row.expect)]);
+    }
+    for (const base of ["", V.V1.M, V.fixed.seller.slice(0, -1)]) {
+      expect(muxedFor(base, V.fixed.H), base).toEqual(refused("stellar/option-malformed"));
+    }
+    expect(muxedFor(V.fixed.seller, V.fixed.H)).toBe(V.V1.M);
   });
 });
 

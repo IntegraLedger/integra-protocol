@@ -2,9 +2,8 @@
  * Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8
  * bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. XDR, strkeys and
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
- * needs it refuses `stellar/peer-missing`, except the writer `muxedFor`, which throws TypeError, and the reads:
- * `stellarStatus` is pending `unreadable` and `stellarLocate` `complete: false`, with nothing read. The public names
- * are re-exported by `../stellar.ts`.
+ * needs it refuses `stellar/peer-missing`, except the reads: `stellarStatus` is pending `unreadable` and
+ * `stellarLocate` `complete: false`, with nothing read. The public names are re-exported by `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
 import type {
@@ -20,7 +19,7 @@ import type {
   TransactionV1EnvelopeWire,
 } from "@stellar/stellar-sdk/xdr";
 import { toRawBytes, type AtrHash } from "../core.js";
-import { isObject } from "../fields.js";
+import { isObject, normalHash } from "../fields.js";
 import type { Hex } from "../evm.js";
 import { fromBase64, toBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
@@ -189,13 +188,18 @@ export function muxedId(h: AtrHash): bigint {
 }
 
 /**
- * The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `base` is not a `G…` strkey or `h` is not a
- * 32-byte hash, and when @stellar/stellar-sdk is not installed.
+ * The `M…` strkey of a `G…` account and `muxedId(h)`. A `base` that is not a `G…` strkey is `stellar/option-malformed`,
+ * the code of a recipient that cannot take a muxed id, and an `h` that is not a 32-byte hash is
+ * `x402/payload-malformed`, as the other rails' carrier writers answer one. Without @stellar/stellar-sdk the strkeys
+ * cannot be read: `stellar/peer-missing`, after a `base` that is not a string and the hash are checked, which need no
+ * peer.
  */
-export function muxedFor(base: string, h: AtrHash): string {
+export function muxedFor(base: string, h: AtrHash): string | Refusal {
+  if (typeof base !== "string") return refusal("stellar/option-malformed");
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const S = need();
-  if (S === null) throw new TypeError("@stellar/stellar-sdk is not installed");
-  if (!S.StrKey.isValidEd25519PublicKey(base)) throw new TypeError("not a G account strkey");
+  if (S === null) return refusal("stellar/peer-missing");
+  if (!S.StrKey.isValidEd25519PublicKey(base)) return refusal("stellar/option-malformed");
   const raw = new Uint8Array(40);
   raw.set(S.StrKey.decodeEd25519PublicKey(base), 0);
   new DataView(raw.buffer).setBigUint64(32, muxedId(h), false);

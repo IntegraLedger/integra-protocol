@@ -226,10 +226,13 @@ account.
 
 ### muxedFor()
 
-> **muxedFor**(`base`, `h`): `string`
+> **muxedFor**(`base`, `h`): `string` \| [`Refusal`](index.md#refusal)
 
-The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `base` is not a `G…` strkey or `h` is not a
-32-byte hash, and when @stellar/stellar-sdk is not installed.
+The `M…` strkey of a `G…` account and `muxedId(h)`. A `base` that is not a `G…` strkey is `stellar/option-malformed`,
+the code of a recipient that cannot take a muxed id, and an `h` that is not a 32-byte hash is
+`x402/payload-malformed`, as the other rails' carrier writers answer one. Without @stellar/stellar-sdk the strkeys
+cannot be read: `stellar/peer-missing`, after a `base` that is not a string and the hash are checked, which need no
+peer.
 
 #### Parameters
 
@@ -240,7 +243,7 @@ The `M…` strkey of a `G…` account and `muxedId(h)`. Throws TypeError when `b
 
 #### Returns
 
-`string`
+`string` \| [`Refusal`](index.md#refusal)
 
 ***
 

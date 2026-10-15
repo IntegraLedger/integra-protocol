@@ -284,7 +284,9 @@ is read, and TON sends it when that account relays it. `wallet` and `jettonWalle
 Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A
 transaction with no inbound message body, or whose body is not a Jetton `transfer`, is `tvm/not-jetton-transfer`. A
 body that is not a bag of cells with one root is an answer out of the reader's documented form, `tvm/unreadable`. A
-ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. One call.
+ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body cannot be
+read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader and the read are
+checked, which need no peer. One call.
 
 #### Parameters
 

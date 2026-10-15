@@ -1,11 +1,13 @@
 // TON's SDK and NEAR's borsh are optional peers. With them absent, the entry points and the package root still
 // import, and each function that needs a peer refuses `<rail>/peer-missing` (the vectors' refusal), never
 // throwing; a status that needs one reads as pending `unreadable`, and nothing is read. A check that needs no peer
-// comes first and gives the code it gives with the peer: TON's option filter checks the addresses last, and both
-// pairings' build read the choice's document and the option's place in it first.
+// comes first and gives the code it gives with the peer: TON's option filter checks the addresses last, both
+// pairings' build read the choice's document and the option's place in it first, and TON's recover reads the ref, the
+// reader and the transaction before it decodes the transaction's body.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildChoices } from "./build-choices.js";
+import { tvmRecoverDecodes, tvmRecoverReads } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const TVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-tvm.json", import.meta.url), "utf8"));
@@ -51,9 +53,23 @@ describe("without the TON and NEAR peers", () => {
     expect(await exactTvm.build({ required: doc, accepted: O } as never, TVM.fixed.H)).toEqual(refused);
     let calls = 0;
     const reader = new Proxy({ network: "tvm:-3" }, { get: (t, k) => (k in t ? t[k as "network"] : async () => (calls++, null)) });
-    expect(await exactTvm.recover({ network: "tvm:-3", transaction: "x" }, reader as never)).toEqual(refused);
     expect(await exactTvm.status({ network: "tvm:-3" } as never, reader as never)).toEqual({ state: "pending", why: "unreadable" });
     expect(calls).toBe(0);
+  });
+
+  // Each case peer-free-inputs.ts lists gets the code it gets with the peer, after the same reads
+  // (peer-free-inputs.test.ts). The vector file's recover row holds a body, which recover cannot decode without the peer.
+  it("TON: recover refuses tvm/peer-missing only for a transaction whose body it decodes", { timeout: IMPORT_MS }, async () => {
+    const { exactTvm } = await import("../src/tvm.js");
+    for (const row of rowsOf(tvmRecoverReads(), "peer-free-inputs.ts", { exact: 6 })) {
+      const c = row.reader();
+      const got = await exactTvm.recover(row.ref as never, c.reader as never);
+      expect([row.case, got, c.reads()]).toEqual([row.case, { refused: true, code: row.expect }, row.reads]);
+    }
+    for (const row of rowsOf(tvmRecoverDecodes(), "x402-exact-tvm.json V4.recover")) {
+      const c = row.reader();
+      expect([row.case, await exactTvm.recover(row.ref as never, c.reader as never), c.reads()]).toEqual([row.case, { refused: true, code: code(TVM) }, 1]);
+    }
   });
 
   // Buyer row B2's document, which TON's read reads with the peer: its option is TON's, so read refuses tvm/peer-missing
