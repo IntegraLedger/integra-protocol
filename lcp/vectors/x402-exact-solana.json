@@ -273,6 +273,21 @@
      "state": "pending",
      "why": "unreadable"
     }
+   },
+   {
+    "at": "confirmed",
+    "err": {
+     "InstructionError": [
+      2,
+      {
+       "Custom": 1
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "why": "not-final"
+    }
    }
   ],
   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
