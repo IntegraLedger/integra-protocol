@@ -652,6 +652,9 @@ jobs:
       - name: The diagrams are drawn in the pinned browser and font alone, and the site serves that font
         working-directory: website
         run: node scripts/check-diagrams.mjs
+      - name: Every page, in both themes at two widths, and the search dialog with each result selected, fail none of axe-core's WCAG 2.0, 2.1 and 2.2 A and AA rules
+        working-directory: website
+        run: node scripts/check-accessibility.mjs
       - name: Two builds of one commit are byte-equal
         working-directory: website
         run: |

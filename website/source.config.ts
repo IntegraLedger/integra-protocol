@@ -4,7 +4,13 @@ import { rehypeCodeDefaultOptions } from "fumadocs-core/mdx-plugins";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import { transformerTwoslash } from "fumadocs-twoslash";
 import { DOCS_DIR } from "./src/lib/docs-dir";
-import { hasMetaFlag, rehypeMermaid, rehypeTwoslashPopups, rehypeUncheckedUnder } from "./src/mdx/rehype-docs";
+import {
+  hasMetaFlag,
+  rehypeMermaid,
+  rehypeTableNames,
+  rehypeTwoslashPopups,
+  rehypeUncheckedUnder,
+} from "./src/mdx/rehype-docs";
 import { remarkDocLinks, remarkHtmlAnchors, remarkStripLeadingTitle } from "./src/mdx/remark-docs";
 
 // `next build`, `next dev` and `fumadocs-mdx` run in website/.
@@ -81,6 +87,7 @@ export default defineConfig({
       rehypeMermaid,
       ...plugins,
       rehypeTwoslashPopups,
+      rehypeTableNames,
     ],
     rehypeCodeOptions: {
       // Every text colour of these two themes is at least 4.5:1 on its code background (global.css):

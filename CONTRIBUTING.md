@@ -91,6 +91,12 @@ node scripts/docs-reference.mjs --check
   twice, the second time under a font configuration that changes every font's rendering, and checks that both give the
   same SVGs. It checks that a diagram with a character Inter does not draw is refused, and that the site serves the
   Inter files the diagrams are drawn in.
+- `node scripts/check-accessibility.mjs`, in `website/` after `pnpm run browser` and the site's build, serves
+  `website/out` with the headers its `_headers` gives, loads every page in the pinned browser in the light and the dark
+  theme, at 1280 and 390 pixels wide, opens every Twoslash popup of every page at 1280 pixels, and opens the search
+  dialog with each of its results selected in turn. It runs axe-core's WCAG 2.0, 2.1 and 2.2 A and AA rules in each
+  state, and fails on any failure, naming the page, the theme, the width, the rule and the element. It also presses
+  each printable character key alone, outside a text field, and fails when one changes the page (WCAG 2.1.4).
 - Two builds of one commit are byte-equal. The build ID, which every page carries and which names the folder of the
   build's manifests under `/_next/static/`, is the commit's sha (`website/next.config.ts`); with uncommitted changes
   it is the sha and a digest of those changes. The Mermaid diagrams are drawn in the browser build and the font the

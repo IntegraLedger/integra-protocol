@@ -175,3 +175,38 @@ export function rehypeUncheckedUnder(dirs: string[]) {
 export function hasMetaFlag(meta: unknown, flag: string): boolean {
   return typeof meta === "string" && meta.split(/\s+/).includes(flag);
 }
+
+/**
+ * Names each table by the heading it sits under, as `data-name`, which the table's region takes as its accessible name
+ * (src/components/Table.tsx). Tables that would share a name, such as two under one heading, are told apart by their
+ * place among them ("Codes, table 2 of 3"), so each region of a page has a name of its own. A table before any heading
+ * is named by the page's title.
+ */
+export function rehypeTableNames() {
+  return (tree: HastNode, file: { data: object }) => {
+    const tables: { table: HastNode; name: string }[] = [];
+    const title = (file.data as { frontmatter?: { title?: unknown } }).frontmatter?.title;
+    let heading = typeof title === "string" && title.trim() !== "" ? title.trim() : "Table";
+    const visit = (node: HastNode) => {
+      for (const child of node.children ?? []) {
+        if (child.type === "element" && /^h[1-6]$/.test(child.tagName ?? "")) {
+          heading = textOf(child).replace(/\s+/g, " ").trim() || heading;
+        } else if (child.type === "element" && child.tagName === "table") {
+          tables.push({ table: child, name: heading });
+        } else {
+          visit(child);
+        }
+      }
+    };
+    visit(tree);
+    const counts = new Map<string, number>();
+    for (const { name } of tables) counts.set(name, (counts.get(name) ?? 0) + 1);
+    const seen = new Map<string, number>();
+    for (const { table, name } of tables) {
+      const total = counts.get(name) ?? 1;
+      const place = (seen.get(name) ?? 0) + 1;
+      seen.set(name, place);
+      table.properties = { ...table.properties, dataName: total > 1 ? `${name}, table ${place} of ${total}` : name };
+    }
+  };
+}

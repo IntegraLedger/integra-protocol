@@ -34,6 +34,12 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Text of the docs theme set here. The search dialog's close button shows "ESC", so its accessible name begins with
+ * that label (WCAG 2.5.3).
+ */
+const translations = { "Close Search(search dialog)(aria-label)": "Esc: close search" };
+
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
@@ -54,7 +60,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           Skip to content
         </a>
         <JsonLd data={[organizationJsonLd(), webSiteJsonLd(), softwareJsonLd(packageVersion)]} />
-        <RootProvider search={{ enabled: true, options: { type: "static", api: "/api/search" } }}>
+        {/* The theme changes only through the layout's theme switch: no key pressed alone changes it (WCAG 2.1.4). */}
+        <RootProvider
+          search={{ enabled: true, options: { type: "static", api: "/api/search" } }}
+          theme={{ hotKey: false }}
+          i18n={{ translations }}
+        >
           {children}
         </RootProvider>
       </body>

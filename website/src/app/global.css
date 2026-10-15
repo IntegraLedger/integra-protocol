@@ -14,18 +14,25 @@ html:not(.dark) {
   --color-fd-muted-foreground: #666666;
 }
 
+/* Dark mode's muted text is opaque, the theme's grey at full strength, so it is at least 4.5:1 wherever it sits: the
+   path of a selected search result, on the accent over the popover, included. */
+html.dark {
+  --color-fd-muted-foreground: hsl(0, 0%, 70%);
+}
+
 html:not(.dark) figure.shiki {
   background-color: #ffffff;
 }
 
-/* The one Twoslash popup on a page (src/components/TwoslashPopups.tsx), placed in page coordinates. Its code
-   sits on white in light mode, as the code samples do. */
+/* The one Twoslash popup on a page (src/components/TwoslashPopups.tsx), placed in page coordinates. Its code, the
+   samples in its documentation included, sits on white in light mode, as the code samples do. */
 .twoslash-popover {
   position: absolute;
   z-index: 50;
 }
 
-html:not(.dark) .twoslash-popover {
+html:not(.dark) .twoslash-popover,
+html:not(.dark) .twoslash-popover pre code {
   background-color: #ffffff;
 }
 
@@ -36,8 +43,14 @@ html:not(.dark) .twoslash-popover {
   border-radius: 2px;
 }
 
-/* A table (in the wrapper the docs layout gives it) is laid out and painted only when it nears the viewport, so
-   the long reference tables, the refusal codes above all, cost no rendering work while they are off screen. */
+/* A keyboard user sees which table has focus: its region scrolls with the arrow keys (src/components/Table.tsx). */
+.prose div[role="region"]:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: 2px;
+}
+
+/* A table (in its region) is laid out and painted only when it nears the viewport, so the long reference tables, the
+   refusal codes above all, cost no rendering work while they are off screen. */
 .prose div:has(> table) {
   content-visibility: auto;
   contain-intrinsic-size: auto 480px;
