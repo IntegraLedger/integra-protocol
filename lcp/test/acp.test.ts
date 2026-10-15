@@ -58,8 +58,22 @@ describe("acp-checkout.json", () => {
     for (const row of rowsOf(V.V3.digests, "acp-checkout.json V3.digests")) expect(await issuedDigest(row.option)).toBe(row.expect);
   });
 
-  it("V4: build, complete and bound", async () => {
+  // ACP's Allowance (agentic-commerce-protocol 7fdd78df, spec/2026-04-17/json-schema/schema.delegate_payment.json
+  // L183-233), its members in the schema's order, written here from the choice with checkout_session_id h. build's
+  // allowance is held to it whole, as JSON text.
+  const allowanceOf = (choice: { max_amount: number; currency: string; merchant_id: string; expires_at: string }, h: string) => ({
+    reason: "one_time",
+    max_amount: choice.max_amount,
+    currency: choice.currency,
+    checkout_session_id: h.toLowerCase(),
+    merchant_id: choice.merchant_id,
+    expires_at: choice.expires_at,
+  });
+
+  it("V4: build gives ACP's Allowance as its schema writes it, then complete and bound", async () => {
+    expect(JSON.stringify(V.V4.expectAllowance)).toBe(JSON.stringify(allowanceOf(V.V4.choice, V.V4.h)));
     const u = (await delegated.build(V.V4.choice, V.V4.h)) as Unsigned;
+    expect(JSON.stringify(u.allowance)).toBe(JSON.stringify(V.V4.expectAllowance));
     expect(u.allowance).toEqual(V.V4.expectAllowance);
     expect(Object.keys(u.allowance)).toEqual(Object.keys(V.V4.expectAllowance));
     const request: Presented = { allowance: u.allowance, payment_method: { type: "card" } };
@@ -116,6 +130,11 @@ describe("acp-checkout.json", () => {
           ? { allowance: (out as Unsigned).allowance }
           : out;
       expect(got, row.case).toEqual(row.expect);
+      if (typeof row.expect === "object" && row.expect !== null && "allowance" in row.expect) {
+        const [choice, h] = args as [Parameters<typeof allowanceOf>[0], string];
+        expect(JSON.stringify(row.expect.allowance), row.case).toBe(JSON.stringify(allowanceOf(choice, h)));
+        expect(JSON.stringify(got), row.case).toBe(JSON.stringify(row.expect));
+      }
     }
   });
 });
