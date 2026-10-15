@@ -853,7 +853,7 @@ function xrplLcpMemo(tx: XrplTxJson): AtrHash | Refusal {
 /**
  * The opening's blob, decoded once per payload: a `PaymentChannelCreate` the payer signed with a single key (a blob that
  * carries `Signers` is refused `xrpl/multisigned`), whose `NetworkID` a node of the challenge's network takes, as
- * rippled reads it (`networkIdHeld`, else `xrpl/network-id-mismatch`), and whose one LCP memo is the echoed challenge's H.
+ * rippled reads it (`networkIdHeld`, else `xrpl/network-mismatch`), and whose one LCP memo is the echoed challenge's H.
  */
 async function xrplOpening(
   presented: MppCredential,
@@ -866,7 +866,7 @@ async function xrplOpening(
   if (isRefusal(decoded)) return decoded;
   const network = xrplNetworkOf(e.checked.details);
   if (isRefusal(network)) return network;
-  if (!networkIdHeld(decoded.tx, network)) return refusal("xrpl/network-id-mismatch");
+  if (!networkIdHeld(decoded.tx, network)) return refusal("xrpl/network-mismatch");
   if (decoded.tx.TransactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
   const h = xrplLcpMemo(decoded.tx);
   if (isRefusal(h)) return h;

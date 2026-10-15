@@ -172,9 +172,9 @@ export type MppUnsigned =
   | {
       /**
        * An EIP-1559 transaction of the call, or its hash once broadcast. Unbroadcast, `complete` takes the signed
-       * transaction, and refuses one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields)
-       * or is signed for a chain other than `chainId` with `mpp/credential-malformed`, the code it gives bytes that are
-       * not hex or are over 64 KiB.
+       * transaction: one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields) is
+       * `mpp/credential-malformed`, the code it gives bytes that are not hex or are over 64 KiB, and one signed for a
+       * chain other than `chainId` is `evm/chain-mismatch`.
        */
       request: { kind: "evm-call"; chainId: number; call: { to: Hex; data: Hex }; broadcast: boolean };
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
@@ -658,9 +658,9 @@ function eip1559ChainId(wire: Uint8Array): bigint | undefined {
 /**
  * The call's request for the buyer's signer, on the challenge's chain. On `hash`, `complete` takes the transaction hash;
  * on `transaction`, the signed transaction, as draft-evm-charge-00's transaction verification reads it before it
- * broadcasts (L696-697 and L873-879 at tempoxyz/mpp-specs 08e7dd87): an EIP-1559 transaction whose chain id is the
- * challenge's `methodDetails.chainId`, else `mpp/credential-malformed`. `bound` reads nothing of it
- * (`mpp/no-signed-place`), so `complete` gives the code it gives every input it cannot take.
+ * broadcasts (L696-697 and L873-879 at tempoxyz/mpp-specs 08e7dd87): an EIP-1559 transaction, else
+ * `mpp/credential-malformed`, whose chain id is the challenge's `methodDetails.chainId`, else `evm/chain-mismatch`.
+ * `bound` reads nothing of it (`mpp/no-signed-place`).
  */
 function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
@@ -680,7 +680,9 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
           return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
         }
         if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
-        if (eip1559ChainId(bytesOf(signedTxOrHash)!) !== BigInt(chainId)) return refusal("mpp/credential-malformed");
+        const txChain = eip1559ChainId(bytesOf(signedTxOrHash)!);
+        if (txChain === undefined) return refusal("mpp/credential-malformed");
+        if (txChain !== BigInt(chainId)) return refusal("evm/chain-mismatch");
         return { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
       },
     };

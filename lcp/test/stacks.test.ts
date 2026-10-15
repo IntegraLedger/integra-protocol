@@ -709,8 +709,8 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     if ("refused" in u) throw new Error(u.code);
     expect(u.complete(mainnet)).not.toHaveProperty("refused");
     const m4 = await withMemo();
-    expect(await chargeUsdcStacks.bound(onMainnet(m4))).toEqual({ refused: true, code: "mpp/stacks-network-mismatch" });
-    expect(u.complete(m4)).toEqual({ refused: true, code: "mpp/stacks-network-mismatch" });
+    expect(await chargeUsdcStacks.bound(onMainnet(m4))).toEqual({ refused: true, code: "stacks/chain-mismatch" });
+    expect(u.complete(m4)).toEqual({ refused: true, code: "stacks/chain-mismatch" });
   });
 
   // build's complete reads the transaction as bound reads it: bytes a Stacks node does not decode are

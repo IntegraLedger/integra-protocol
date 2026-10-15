@@ -428,7 +428,8 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
 
   // draft-evm-charge-00 (tempoxyz/mpp-specs 08e7dd87) L696-697 and L873-879: the transaction credential carries an
   // EIP-1559 transaction, which the server deserializes and holds to methodDetails.chainId before it broadcasts. build's
-  // complete reads it so, and refuses any other with mpp/credential-malformed; bound reads nothing of it.
+  // complete reads it so: bytes that are not an EIP-1559 transaction are mpp/credential-malformed, and one for another
+  // chain is evm/chain-mismatch. bound reads nothing of it.
   it("agreedRefusals: build's complete refuses a transaction for another chain, or bytes that are not an EIP-1559 transaction", async () => {
     type Row = { case: string; chainIds?: number[]; transactions: ViemHex[]; expect: string };
     const rows = rowsOf(TX.agreedRefusals.rows as Row[], "mpp-charge-evm-transaction.json agreedRefusals.rows", { exact: 2 });

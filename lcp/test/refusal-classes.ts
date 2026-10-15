@@ -114,7 +114,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "terms-missing", "terms-not-https", "too-large",
   ],
   evm: [
-    "ambiguous", "amount-malformed", "channel-id-mismatch", "field-malformed", "network-malformed",
+    "ambiguous", "amount-malformed", "chain-mismatch", "channel-id-mismatch", "field-malformed", "network-malformed",
     "no-authorization-use", "no-channel-created", "no-leaf", "no-open-call", "no-permit2-settle", "nonce-not-used",
     "reverted", "wrong-reader",
   ],
@@ -139,8 +139,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "nonce-not-usdc-derivation", "not-an-opening", "not-bound-within", "not-this-pairing", "opaque-malformed",
     "opaque-not-this-hash", "receipt-malformed", "receipt-missing", "request-malformed", "request-not-jcs",
     "salt-not-this-hash", "salt-not-usdc-derivation", "session-action", "session-protocol", "source-required",
-    "splits-malformed", "stacks-memo-not-h", "stacks-network-mismatch", "stacks-tx-malformed", "usdc-profile",
-    "within-action-not-built", "witness-not-challenge-hash", "witness-taken",
+    "splits-malformed", "stacks-memo-not-h", "stacks-tx-malformed", "usdc-profile", "within-action-not-built",
+    "witness-not-challenge-hash", "witness-taken",
   ],
   near: [
     "actions", "args-malformed", "carrier-occupied", "memo-missing", "memo-not-lcp", "network-malformed", "no-relayer",
@@ -152,7 +152,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "extrinsic-too-large", "network-unsupported", "no-remark", "no-transfer", "not-located", "not-signed-v4",
     "option-malformed", "range", "remark-not-lcp", "signature-malformed", "wrong-reader",
   ],
-  stacks: ["no-memo", "not-success", "wrong-reader"],
+  stacks: ["chain-mismatch", "no-memo", "not-success", "wrong-reader"],
   starknet: [
     "ambiguous", "caller-forbidden", "felt-malformed", "network-malformed", "no-legal-context", "no-transfer",
     "nonce-not-bound", "option-malformed", "reverted", "signature-malformed", "typed-data-malformed", "wrong-reader",
@@ -203,7 +203,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   xrpl: [
     "blob-malformed", "blob-too-large", "carrier-mismatch", "carrier-not-lcp", "carrier-occupied", "currency-not-xrp",
-    "memo-count", "memos-not-carried", "multisigned", "network-id-mismatch", "network-malformed", "network-missing",
+    "memo-count", "memos-not-carried", "multisigned", "network-malformed", "network-mismatch", "network-missing",
     "no-invoice-id", "no-memo", "not-channel-create", "not-payment", "not-success", "peer-missing", "read-first",
     "wrong-reader",
   ],
