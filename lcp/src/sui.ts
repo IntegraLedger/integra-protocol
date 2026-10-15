@@ -306,9 +306,9 @@ async function build(
   choice: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
 ): Promise<SuiUnsigned | Refusal> {
-  if (peer === undefined) return refusal("sui/peer-missing");
   const ok = chosen(choice?.required, choice?.accepted, suiFilter);
   if (ok !== true) return ok;
+  if (peer === undefined) return refusal("sui/peer-missing");
   const accepted = choice.accepted;
   const expected = normalHash(h);
   if (expected === null) return refusal("x402/payload-malformed");

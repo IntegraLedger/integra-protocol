@@ -1650,3 +1650,23 @@ describe("x402-exact-tvm.json", () => {
     expect(exactTvm.carrier).toBe("extra.forwardPayload");
   });
 });
+
+// Buyer row B2's option with one fault the filter reads without @ton/core. ton-near-peer-missing.test.ts gives the same
+// three options the same codes without the peer.
+describe("an option's fault that needs no peer, with @ton/core", () => {
+  it("read gives x402/no-payable-option and advertise tvm/option-malformed", () => {
+    const [b2] = rowsOf(V.buyer.rows as { name: string; input: { doc: { accepts: { extra: object }[] } } }[], "x402-exact-tvm.json buyer.rows", {
+      exact: 1,
+      keep: ["row B2, whose document carries a placed TON option", (r) => r.name === "B2"],
+      leave: ["every other row", (r) => r.name !== "B2"],
+    });
+    const doc = b2!.input.doc;
+    const O = doc.accepts[0]!;
+    const faults = [{ ...O, amount: "x" }, { ...O, maxTimeoutSeconds: 0 }, { ...O, extra: { ...O.extra, areFeesSponsored: false } }];
+    for (const bad of rowsOf(faults, "the three faults", { exact: 3 })) {
+      expect(exactTvm.read({ ...doc, accepts: [bad] } as never)).toEqual({ refused: true, code: "x402/no-payable-option" });
+      const issued = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [bad] };
+      expect(exactTvm.advertise(issued as never, V.fixed.H, V.fixed.link, bad as never)).toEqual({ refused: true, code: "tvm/option-malformed" });
+    }
+  });
+});

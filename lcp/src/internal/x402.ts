@@ -157,7 +157,8 @@ export function filterOf(
  * an absolute URL with a scheme other than `https` is `x402/link-not-https`; any other value that is not a link, or two
  * spellings that disagree, is `x402/legal-context-malformed`. A document in which the filter serves no option is
  * `x402/no-payable-option`, unless the filter refused one of its options because the pairing's optional peer cannot be
- * loaded: then it is the first such refusal (`<rail>/peer-missing`), since that option may be payable with the peer.
+ * loaded: then it is the first such refusal (`<rail>/peer-missing`), since without the peer the filter cannot tell
+ * whether that option is payable.
  * A document holding no option of the pairing gets the same answer with the peer or without it.
  */
 export function readFor(filter: OptionFilter): (doc: unknown) => X402Read | Refusal {

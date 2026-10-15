@@ -1,13 +1,14 @@
 // algosdk is an optional peer. With it absent, the avm entry point and the package root still import, and each function
 // that needs algosdk refuses `avm/peer-missing`, the code the package states for a rail without its peer
 // (`<rail>/peer-missing`, docs/guides/rails.md "Peer dependencies", with the entry point's namespace `avm`), never a
-// malformed-input code. avmCarrier and build refuse it for any input. read, advertise, bound and reference need algosdk
+// malformed-input code. avmCarrier refuses it for any input. read, advertise, build, bound and reference need algosdk
 // only for an Algorand option: the option filter refuses each one whose addresses it would check `avm/peer-missing`,
-// and a document, offer or payment with no such option gets the answer it gets with algosdk. The documents, options and
+// and a document, offer, choice or payment with no such option gets the answer it gets with algosdk. The documents, options and
 // payments are the vector file's own, which the pairing reads, builds and binds with algosdk (avm.test.ts).
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { buildChoices } from "./build-choices.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8"));
@@ -60,11 +61,16 @@ describe("without algosdk", () => {
     expect(avm.avmCarrier(PRESENTED.payload)).toEqual(REFUSED);
   });
 
-  it("build refuses avm/peer-missing for a well-formed choice, and for no choice", async () => {
+  // The filter refuses the chosen option after the choice's own checks, so no choice gets the answer it gets with
+  // algosdk (avm.test.ts, build-choices.test.ts) except one of an Algorand option.
+  it("build refuses avm/peer-missing for a well-formed choice, and answers any other choice as it does with algosdk", async () => {
     const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [O] };
     const choice = { required, accepted: O, payer: V.fixed.payer, params: PARAMS };
     expect(await avm.exactAvm.build(choice, V.fixed.H)).toEqual(REFUSED);
-    expect(await avm.exactAvm.build(null as never, V.fixed.H)).toEqual(REFUSED);
+    expect(await avm.exactAvm.build(null as never, V.fixed.H)).toEqual({ refused: true, code: "avm/option-malformed" });
+    for (const row of rowsOf(buildChoices(O, V.fixed.resource), "build-choices.ts", { exact: 2 })) {
+      expect(await avm.exactAvm.build(row.choice as never, V.fixed.H)).toEqual({ refused: true, code: row.expect });
+    }
   });
 
   // A fault of the document itself is read before any option, so it gets the code it gets with algosdk.

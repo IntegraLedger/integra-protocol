@@ -991,7 +991,10 @@ function rawAddress(s: unknown): Address | null {
  * (the wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds`). The network is
  * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
  * read at; any other `tvm:` network is `tvm/network-malformed`. `pairingOf`, `advertise`, `read` and `build` apply it,
- * and `bound` and `reference` hold the option a presented payment echoes to it.
+ * and `bound` and `reference` hold the option a presented payment echoes to it. The asset, `payTo` and response
+ * destination are addresses that only @ton/core reads, so they are checked last: without @ton/core, an option of this
+ * pairing that passes every other check is `tvm/peer-missing`, and one that fails another check gets the code it gets
+ * with @ton/core.
  */
 const check: OptionFilter = (o) => {
   if (!isObject(o) || o.scheme !== "exact") return refusal("x402/option-not-this-pairing");
@@ -1002,16 +1005,16 @@ const check: OptionFilter = (o) => {
   const flow = extra?.["paymentFlow"];
   if (flow !== undefined && flow !== "authorization") return refusal("x402/option-not-this-pairing");
   if (!CONFIGURATIONS.has(o.network)) return refusal("tvm/network-malformed");
-  if (peer === undefined) return refusal("tvm/peer-missing");
-  if (rawAddress(o.asset) === null || rawAddress(o.payTo) === null) return refusal("tvm/option-malformed");
   if (extra?.["areFeesSponsored"] !== true) return refusal("tvm/option-malformed");
   const forwardTon = extra["forwardTonAmount"];
   if (forwardTon !== undefined && decimalBelow(forwardTon, COINS_LIMIT - 1n) === undefined) return refusal("tvm/option-malformed");
-  const response = extra["responseDestination"];
-  if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
   if (!isAmount(o.amount) || decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   const t = o.maxTimeoutSeconds;
   if (!isTimeoutSeconds(t) || !isUint32(t)) return refusal("tvm/option-malformed");
+  if (peer === undefined) return refusal("tvm/peer-missing");
+  if (rawAddress(o.asset) === null || rawAddress(o.payTo) === null) return refusal("tvm/option-malformed");
+  const response = extra["responseDestination"];
+  if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
   return true;
 };
 
@@ -1061,11 +1064,11 @@ function carries(option: PaymentRequirements, payload: Cell): boolean {
 
 /** The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. */
 async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
-  if (peer === undefined) return refusal("tvm/peer-missing");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, wallet, walletId, seqno, jettonWallet, attachNanotons, now, stateInit } = c;
   const ok = chosen(required, accepted, check);
   if (ok !== true) return ok;
+  if (peer === undefined) return refusal("tvm/peer-missing");
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   const carrier = comment(nh);

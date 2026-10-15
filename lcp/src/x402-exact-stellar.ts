@@ -148,10 +148,10 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * Nothing reaches the signer unless every one holds.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
+  if (!hasPeer()) return refusal("stellar/peer-missing");
   const { accepted } = c;
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!Number.isSafeInteger(c.currentLedger) || c.currentLedger < 0) return refusal("stellar/tx-malformed");

@@ -1,12 +1,13 @@
 // @stellar/stellar-sdk is an optional peer. With it absent, the stellar entry points and the package root still import,
 // the root pairingOf names no Stellar option, and each function whose type carries a refusal and needs the peer refuses
 // `stellar/peer-missing` (the vectors' refusal), never throwing. muxedFor, a writer whose type carries no refusal,
-// throws TypeError. x402/exact/stellar's read, advertise, bound and reference need the peer only for a Stellar option:
-// the option filter refuses each one `stellar/peer-missing`, and a document, offer or payment with no Stellar option
-// gets the answer it gets with the peer.
+// throws TypeError. x402/exact/stellar's read, advertise, build, bound and reference need the peer only for a Stellar
+// option: the option filter refuses each one `stellar/peer-missing`, and a document, offer, choice or payment with no
+// Stellar option gets the answer it gets with the peer.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequirements } from "../src/x402.js";
+import { buildChoices } from "./build-choices.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
@@ -54,6 +55,13 @@ describe("without @stellar/stellar-sdk", () => {
     const notV2 = { refused: true, code: "x402/not-v2" };
     expect(await exactStellar.bound({ ...presented, x402Version: 1 })).toEqual(notV2);
     expect(await exactStellar.reference({ ...presented, x402Version: 1 })).toEqual(notV2);
+  });
+
+  it("x402/exact/stellar's build answers a choice of another pairing's option, or of a document that is not v2, as it does with the peer", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    for (const row of rowsOf(buildChoices(V.fixed.option, V.fixed.resource), "build-choices.ts", { exact: 2 })) {
+      expect(await exactStellar.build(row.choice as never, V.fixed.H)).toEqual({ refused: true, code: row.expect });
+    }
   });
 
   // The document is V3's challenge, which the pairing reads with the peer: its hash, link and V3's option.

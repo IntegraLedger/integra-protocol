@@ -479,11 +479,11 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /** The delegate action for the chosen option: one `ft_transfer` whose memo is the hash's LCP string. */
 async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal> {
-  if (borsh === undefined) return refusal("near/peer-missing");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, payer, publicKey, accessKeyNonce, finalHeight } = c;
   const ok = chosen(required, accepted, check);
   if (ok !== true) return ok;
+  if (borsh === undefined) return refusal("near/peer-missing");
   const nh = normalHash(h);
   if (nh === null) return refusal("x402/payload-malformed");
   if (!isNearAccountId(payer)) return refusal("x402/option-malformed");

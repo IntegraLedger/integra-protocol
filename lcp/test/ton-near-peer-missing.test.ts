@@ -1,8 +1,11 @@
 // TON's SDK and NEAR's borsh are optional peers. With them absent, the entry points and the package root still
 // import, and each function that needs a peer refuses `<rail>/peer-missing` (the vectors' refusal), never
-// throwing; a status that needs one reads as pending `unreadable`, and nothing is read.
+// throwing; a status that needs one reads as pending `unreadable`, and nothing is read. A check that needs no peer
+// comes first and gives the code it gives with the peer: TON's option filter checks the addresses last, and both
+// pairings' build read the choice's document and the option's place in it first.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { buildChoices } from "./build-choices.js";
 import { rowsOf } from "./rows.js";
 
 const TVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-tvm.json", import.meta.url), "utf8"));
@@ -68,6 +71,39 @@ describe("without the TON and NEAR peers", () => {
     const none = { refused: true, code: "x402/no-payable-option" };
     expect(exactTvm.read({ ...doc, accepts: [] } as never)).toEqual(none);
     expect(exactTvm.read({ ...doc, accepts: [EVM.fixed.O] } as never)).toEqual(none);
+  });
+
+  // Buyer row B2's option with one fault the filter reads without the peer. With @ton/core, read gives
+  // x402/no-payable-option for it and advertise tvm/option-malformed, and without it they give the same.
+  it("TON: an option's fault that needs no peer gets the code it gets with the peer", { timeout: IMPORT_MS }, async () => {
+    const { exactTvm } = await import("../src/tvm.js");
+    const [b2] = rowsOf(TVM.buyer.rows as { name: string; input: { doc: { accepts: { extra: object }[] } } }[], "x402-exact-tvm.json buyer.rows", {
+      exact: 1,
+      keep: ["row B2, whose document carries a placed TON option", (r) => r.name === "B2"],
+      leave: ["every other row", (r) => r.name !== "B2"],
+    });
+    const doc = b2!.input.doc;
+    const O = doc.accepts[0]!;
+    const faults = [{ ...O, amount: "x" }, { ...O, maxTimeoutSeconds: 0 }, { ...O, extra: { ...O.extra, areFeesSponsored: false } }];
+    for (const bad of rowsOf(faults, "the three faults", { exact: 3 })) {
+      expect(exactTvm.read({ ...doc, accepts: [bad] } as never)).toEqual({ refused: true, code: "x402/no-payable-option" });
+      const issued = { x402Version: 2 as const, resource: TVM.fixed.resource, accepts: [bad] };
+      expect(exactTvm.advertise(issued as never, TVM.fixed.H, TVM.fixed.link, bad as never)).toEqual({ refused: true, code: "tvm/option-malformed" });
+    }
+  });
+
+  it("TON: build answers a choice of another pairing's option, or of a document that is not v2, as it does with the peer", { timeout: IMPORT_MS }, async () => {
+    const { exactTvm } = await import("../src/tvm.js");
+    for (const row of rowsOf(buildChoices(TVM.fixed.O, TVM.fixed.resource), "build-choices.ts", { exact: 2 })) {
+      expect(await exactTvm.build(row.choice as never, TVM.fixed.H)).toEqual({ refused: true, code: row.expect });
+    }
+  });
+
+  it("NEAR: build answers a choice of another pairing's option, or of a document that is not v2, as it does with the peer", { timeout: IMPORT_MS }, async () => {
+    const { exactNear } = await import("../src/near.js");
+    for (const row of rowsOf(buildChoices(NEAR.fixed.O, NEAR.fixed.resource), "build-choices.ts", { exact: 2 })) {
+      expect(await exactNear.build(row.choice as never, NEAR.fixed.H)).toEqual({ refused: true, code: row.expect });
+    }
   });
 
   it("NEAR: every function that needs borsh refuses near/peer-missing", { timeout: IMPORT_MS }, async () => {

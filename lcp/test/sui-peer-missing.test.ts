@@ -1,8 +1,11 @@
 // @mysten/sui is an optional peer. With it absent, the sui module and the package root still
 // import, and each function that needs the peer refuses `sui/peer-missing` (the vectors' refusal), never
-// throwing; `status` reads as pending `unreadable`.
+// throwing; `status` reads as pending `unreadable`. build reads the choice's document and the option's place in it
+// first, without the peer, as it does with it.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { buildChoices } from "./build-choices.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-sui.json", import.meta.url), "utf8"));
 const CODE = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "sui/peer-missing").expect as string;
@@ -48,5 +51,12 @@ describe("without @mysten/sui", () => {
       why: "unreadable",
     });
     expect(calls).toBe(0);
+  });
+
+  it("build answers a choice of another pairing's option, or of a document that is not v2, as it does with the peer", { timeout: IMPORT_MS }, async () => {
+    const { exactSui } = await import("../src/sui.js");
+    for (const row of rowsOf(buildChoices(V.fixed.O, V.fixed.resource), "build-choices.ts", { exact: 2 })) {
+      expect(await exactSui.build(row.choice as never, V.fixed.H)).toEqual({ refused: true, code: row.expect });
+    }
   });
 });
