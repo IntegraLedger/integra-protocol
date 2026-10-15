@@ -348,11 +348,12 @@ function isDepositConfig(c: unknown): c is ChannelConfig {
 }
 
 /**
- * The batch-settlement pairing an option names, or undefined: the filter each of the three pairings applies to an
- * option, through which the root `pairingOf` names it. A Solana option names `extra.receiverAuthorizer` and client
- * voucher signing (`extra.voucherSigner` absent or `"client"`), and its `extra.withdrawDelay` is at least a
+ * The batch-settlement pairing an option names, or undefined: each of the three pairings' option filter (`FILTER`)
+ * serves the options this names for it that its `build` can pay. A Solana option names `extra.receiverAuthorizer` and
+ * client voucher signing (`extra.voucherSigner` absent or `"client"`), and its `extra.withdrawDelay` is at least a
  * `maxTimeoutSeconds` that is a number. A `maxTimeoutSeconds` of any other type is never converted to compare: the
- * option is named, and `advertise` and `build` refuse it `x402/option-malformed`.
+ * option is named, and the pairing's filter refuses it `x402/option-malformed`, so its `read` does not offer it and the
+ * root `pairingOf` names no pairing for it.
  */
 function batchIdOf(option: PaymentRequirements): BatchPairingId | undefined {
   if (!isObject(option) || option.scheme !== "batch-settlement" || !isObject(option.extra)) return undefined;
