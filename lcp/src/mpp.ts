@@ -138,7 +138,10 @@ export type MppUnsigned =
       complete(signature: Hex): MppCredential | Refusal;
     }
   | {
-      /** push: the buyer's signer broadcasts, and `complete` takes the transaction hash. */
+      /**
+       * push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed
+       * transaction, and refuses one signed for a chain other than `chainId` with `tempo/tx-malformed`.
+       */
       request: {
         kind: "tempo-call";
         chainId: number;
@@ -151,7 +154,8 @@ export type MppUnsigned =
   | {
       /**
        * A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one
-       * per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash.
+       * per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes
+       * the signed transaction, and refuses one signed for a chain other than `chainId` with `tempo/tx-malformed`.
        */
       request: {
         kind: "tempo-calls";
@@ -694,6 +698,11 @@ function transferCalldata(to: Hex, amount: bigint): Hex {
 
 // ── mpp/charge/tempo/memo and mpp/charge/tempo/push.
 
+/**
+ * The Tempo charge's calls for the buyer's signer. On push, `complete` takes the transaction hash; on memo, the signed
+ * transaction, read as `bound` reads it: one that does not decode gives `decodeTempoTx`'s refusal, and one signed for a
+ * chain other than the request's `chainId` is `tempo/tx-malformed`.
+ */
 function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
     const o = offerFor(choice, h, pairing);
@@ -725,6 +734,9 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
         return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
       }
       if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
+      const tx = decodeTempoTx(bytesOf(signedTxOrHash)!);
+      if (isRefusal(tx)) return tx;
+      if (tx.chainId !== BigInt(chainId)) return refusal("tempo/tx-malformed");
       return { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
     };
     return splits === undefined

@@ -718,7 +718,8 @@ describe("mpp-charge-tempo-memo.json", () => {
 
   // Tempo's charge draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-charge-00.md :717-720): a Tempo Transaction's chain
   // ID binds it to one chain, and the charge pays on methodDetails.chainId, 42431 where the challenge names none
-  // (:166). The chain id is the transaction's first field, read here with viem's fromRlp.
+  // (:166). The chain id is the transaction's first field, read here with viem's fromRlp. build's complete refuses the
+  // row's transaction with the row's code, as bound and reference refuse the credential that carries it.
   it("agreedRefusals: a memo transfer signed for another chain than the challenge's", async () => {
     const rows = rowsOf(M.agreedRefusals.rows as { case: string; transactionChainId: number; expect: string }[], "mpp-charge-tempo-memo.json agreedRefusals.rows", {
       exact: 1,
@@ -728,8 +729,12 @@ describe("mpp-charge-tempo-memo.json", () => {
       expect(fromRlp(toHex(wire.subarray(1)))[0]).toBe(num(chainId));
       return { challenge: c, source: "", payload: { type: "transaction", signature: toHex(wire) } } as MppCredential;
     };
+    const u = await tempoMemo.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(await tempoMemo.bound(u.complete(toHex(wireT(M.MV7.expectCalldata))))).toBe(H);
     for (const row of rows) {
       const refused = { refused: true, code: row.expect };
+      expect(u.complete(toHex(wireT(M.MV7.expectCalldata, row.transactionChainId))), row.case).toEqual(refused);
       expect(await tempoMemo.bound(presented(ch, row.transactionChainId)), row.case).toEqual(refused);
       expect(await tempoMemo.reference(presented(ch, row.transactionChainId)), row.case).toEqual(refused);
     }

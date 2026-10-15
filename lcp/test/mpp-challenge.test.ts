@@ -725,6 +725,18 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       "0x76",
       toRlp([toHex(R_T.methodDetails.chainId), "0x01", "0x02", "0x0186a0", calls, [], "0x", "0x", toHex(V.fixed.expiresUnix), "0x", R_T.currency, "0x", [], `0x${"11".repeat(65)}`] as never),
     ]);
+  /**
+   * A signed Tempo transaction of exactly `size` bytes on C_T's chain: MV7's memo call, then one more call to C_T's
+   * currency whose input is zero bytes enough to reach `size`.
+   */
+  const tempoWireOf = (size: number) => {
+    const padded = (n: number) => tempoWire([memoCall, [R_T.currency, "0x", `0x${"00".repeat(n)}`]]);
+    for (let n = size - (tempoWire([memoCall]).length - 2) / 2 - 64; n < size; n++) {
+      const w = padded(n);
+      if ((w.length - 2) / 2 === size) return w;
+    }
+    throw new Error(`no padding gives ${size} bytes`);
+  };
   const ZERO = "0x0000000000000000000000000000000000000000" as const;
   /** A TIP-20 channel reserve descriptor of well-formed values: MV7's payer, C_T's recipient and currency, and H. */
   const descriptor = {
@@ -760,7 +772,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     expect((await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
     const wire = `0x${"11".repeat(65_536)}` as const;
     expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(wire)).not.toHaveProperty("refused");
-    expect((await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H))).complete(wire)).not.toHaveProperty("refused");
+    expect((await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H))).complete(tempoWireOf(65_536))).not.toHaveProperty("refused");
     expect(await evmAuthorization.bound(await credential())).toBe(H);
     expect(parseChallenges(Array.from({ length: 32 }, (_, k) => payment(k)))).toHaveLength(32);
     const agreed = [placed(C_E, V.fixed.agreementUrl), (place([C_E, C_T], H, link, C_T, V.fixed.agreementUrl) as MppChallenge[])[1]!];
