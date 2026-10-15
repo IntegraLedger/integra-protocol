@@ -381,9 +381,10 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
       extensions: required.extensions,
     });
     expect(await exactAptos.bound(signed)).toBe(H);
+    // One fault, one code: a transaction for another chain is refused by complete as reference refuses it.
     expect(u.complete({ transaction: referenceWire(raw(transferPayload(), 2)) })).toEqual({
       refused: true,
-      code: "x402/signed-not-bound",
+      code: "aptos/chain-mismatch",
     });
   });
   it("the pattern states what the record proves, and claims nothing", () => {
@@ -487,6 +488,14 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
     expect(b[40]).toBe(2);
     return Uint8Array.from([...b.subarray(0, 40), ...uleb, ...b.subarray(41)]);
   };
+  /** build's unsigned payment for the option O, advertised under H. */
+  const built = async () => {
+    const required = exactAptos.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
+    if ("refused" in required) throw new Error(required.code);
+    const u = await exactAptos.build({ required, accepted: O }, H);
+    if ("refused" in u) throw new Error(u.code);
+    return u;
+  };
   /** What a row's expect states: a refusal code, or, for the status row, the status pending unreadable. */
   const wanted = (code: string) =>
     code === "pending unreadable" ? { state: "pending", why: "unreadable" } : { refused: true, code };
@@ -545,20 +554,34 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
       }
       return out;
     },
-    // Fixture F on chain 2 for aptos:1, text that is not base64, and a script payload: each reference refuses.
-    "complete with a transaction whose reference refuses": async () => {
-      const required = exactAptos.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
-      if ("refused" in required) throw new Error(required.code);
-      const u = await exactAptos.build({ required, accepted: O }, H);
-      if ("refused" in u) throw new Error(u.code);
+    // Text that is not base64, and a script payload: each reference refuses, for a fault other than the chain.
+    "complete with a transaction whose reference refuses for a fault other than its chain": async () => {
+      const u = await built();
       const script = new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], []));
       const out: unknown[] = [];
-      for (const transaction of [referenceWire(raw(transferPayload(), 2)), "AAA", signedWire(raw(script))]) {
-        expect(await exactAptos.reference(payment(transaction))).toHaveProperty("refused", true);
+      for (const transaction of ["AAA", signedWire(raw(script))]) {
+        const ref = await exactAptos.reference(payment(transaction));
+        expect(ref).toHaveProperty("refused", true);
+        expect(ref).not.toEqual({ refused: true, code: "aptos/chain-mismatch" });
         out.push(u.complete({ transaction }));
       }
       return out;
     },
+    // Fixture F on chain 2 for aptos:1, in both wire forms: reference and complete refuse it with one code. Fixture F
+    // itself, on chain 1, is taken by both.
+    "reference and build's complete with a transaction signed for a chain other than the option's network: fixture F's RawTransaction with chain id 2, for aptos:1, built with @aptos-labs/ts-sdk 7.5.0, in x402's reference wire form and in the scheme's BCS form":
+      async () => {
+        const u = await built();
+        for (const transaction of [referenceWire(raw()), signedWire(raw())]) {
+          expect(await exactAptos.reference(payment(transaction))).not.toHaveProperty("refused");
+          expect(u.complete({ transaction })).not.toHaveProperty("refused");
+        }
+        const out: unknown[] = [];
+        for (const transaction of [referenceWire(raw(transferPayload(), 2)), signedWire(raw(transferPayload(), 2))]) {
+          out.push(await exactAptos.reference(payment(transaction)), u.complete({ transaction }));
+        }
+        return out;
+      },
     // V4's row whose bySequence lookup is the real answer, which settles; then a ledger for chain 2, and that answer
     // for another sender (fixture F's fee payer) and for the next sequence number.
     "status: a ledger whose chain id is not the ref's network, or a bySequence answer for another sender or sequence number":

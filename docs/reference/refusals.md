@@ -130,7 +130,7 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 | `x402/salt-malformed` | A presented `auth-capture` payment's `salt`, or its `saltNonce` when the option binds a receiver authorizer or policy, is not `0x` followed by 64 hex digits. |
 | `x402/salt-not-bound` | A presented `auth-capture` payment's `salt` is not the commitment of its `saltNonce` to the option's receiver authorizer and policy, or the payment carries a `saltNonce` under an option that binds neither, whose payload carries none and whose salt is H. |
 | `x402/signature-malformed` | A signature given to `complete` or carried in the presented payload is missing, not hex (or bytes) of the length the pairing requires (on Sui, the presented signature is checked only as a non-empty string), or not the number of signatures the request asked for. On NEAR, an Ed25519 signature given to `complete` whose last byte is 0x20 or more is refused this way: nearcore reads none, and a valid signature never has one. A Solana pairing's `complete` answers these as `svm/input-malformed`. |
-| `x402/signed-not-bound` | `complete` refuses a signed transaction from which the pairing cannot read H back (or its read keys), or which carries a hash other than H. |
+| `x402/signed-not-bound` | `complete` refuses a signed transaction from which the pairing cannot read H back (or its read keys), or which carries a hash other than H; an Aptos transaction for a chain other than the option's network is `aptos/chain-mismatch` instead, as `reference` refuses it. |
 | `x402/spender-not-proxy` | A presented Permit2 payment's `spender` is not the x402 Permit2 proxy for its scheme (`exact` or `upto`). |
 
 ## mpp
@@ -518,7 +518,7 @@ Aptos (`@integraledger/lcp/aptos`).
 
 | Code | Meaning |
 |---|---|
-| `aptos/chain-mismatch` | The presented Aptos transaction's chain id is not the chain of the option's network. |
+| `aptos/chain-mismatch` | The presented Aptos transaction's chain id is not the chain of the option's network (`reference`), or that of the transaction given to `build`'s `complete` is not. |
 | `aptos/network-malformed` | An Aptos option's network starts with `aptos:` but is not followed by a decimal chain id from 1 to 255 with no leading zero. |
 | `aptos/not-an-x402-transfer` | The transaction given to `decodeAptosTx` is not a call to the framework `primary_fungible_store::transfer` or `fungible_asset::transfer` with one struct type argument and three arguments (two addresses and a u64 amount), or the committed transaction a reader returns is not a user transaction with an entry function payload whose sender, sequence number, expiry, function name, one type argument and three arguments (two addresses and a decimal u64 amount) can be read; `committedInstrument` does not check which function is called. |
 | `aptos/not-entry-function` | The Aptos transaction's payload is not an entry function call. |
