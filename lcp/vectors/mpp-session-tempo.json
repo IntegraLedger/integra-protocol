@@ -313,11 +313,17 @@
   ]
  },
  "agreedRefusals": {
-  "about": "Refusal codes the specification leaves to the implementation. draft-tempo-session-00 (tempoxyz/mpp-specs 08e7dd87, lines 366-367 and 1186-1188) requires that a v2 credential's descriptor.expiringNonceHash match the open transaction being broadcast, and names no code. Each row's credential is the v2 opening TS2's wire carries, built from fixed.payerKey, whose descriptor's expiringNonceHash is TS2.expectNonceHash, with the row's member in place of that descriptor's and its channelId the draft's keccak256 (lines 339-352) over the descriptor so changed, the escrow and the chain, encoded with viem. bound and reference refuse it with the row's code.",
+  "about": "Refusal codes the specification leaves to the implementation. draft-tempo-session-00 (tempoxyz/mpp-specs 08e7dd87, lines 366-367 and 1186-1188) requires that a v2 credential's descriptor.expiringNonceHash match the open transaction being broadcast, and (lines 1181-1182) that the payer be recovered from that transaction, and names no code. Each row's credential is the v2 opening TS2's wire carries, built from fixed.payerKey, whose descriptor's payer is fixed.payer and whose expiringNonceHash is TS2.expectNonceHash, with the row's members in place of that descriptor's and its channelId the draft's keccak256 (lines 339-352) over the descriptor so changed, the escrow and the chain, encoded with viem. bound and reference refuse it with the row's code.",
   "rows": [
    {
     "case": "a v2 opening whose descriptor's expiringNonceHash is not the expiring nonce hash of its open transaction (the value is the draft's example, line 901)",
     "expiringNonceHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "expect": "tempo/descriptor-mismatch"
+   },
+   {
+    "case": "a v2 opening whose descriptor's payer is not the address that signed its open transaction, with expiringNonceHash that transaction's expiring nonce hash under the row's payer (keccak256 of the bytes the sender signed and the payer, encoded with viem)",
+    "payer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    "expiringNonceHash": "0x92307086894b0145b7565d5010bebbd1a54f48a2dce7741343d9c73a1ddddb72",
     "expect": "tempo/descriptor-mismatch"
    }
   ]

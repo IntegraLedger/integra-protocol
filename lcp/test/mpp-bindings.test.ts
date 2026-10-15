@@ -1,6 +1,6 @@
 // MPP_BINDINGS lists the nine MPP charge and session pairings and the two Lightning pairings, and every pairing's reference is plain JSON.
 import { describe, expect, it } from "vitest";
-import { concat, toBytes, toHex, toRlp } from "viem";
+import { concat, keccak256, toBytes, toHex, toRlp } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
 import {
   MPP_BINDINGS,
@@ -158,7 +158,7 @@ describe("MPP_BINDINGS", () => {
     const st = (await sessionTempo.build({ challenge: chTS, from: T.fixed.payer, now: 0, deposit: 10000000n }, H)) as SessionUnsigned;
     const call = (st.funding as { call: { data: `0x${string}` } }).call.data;
     const fields = ["0xa5bf", "0x01", "0x02", "0x030d40", [[T.fixed.escrowV2, "0x", call]], [], toHex((1n << 256n) - 1n), "0x", "0x6ab05f3c", "0x", T.fixed.pathUSD, "0x", []];
-    const tx = toHex(toBytes(concat(["0x76", toRlp([...fields, `0x${"11".repeat(65)}`] as never)])));
+    const tx = toHex(toBytes(concat(["0x76", toRlp([...fields, await sig65(keccak256(concat(["0x76", toRlp(fields as never)])))] as never)])));
     refs.push(await sessionTempo.reference(st.complete(tx, `0x${"66".repeat(65)}`) as MppCredential));
     const chSub = placed(challenge("tempo", "subscription", U.fixed.request));
     const sub = (await subscriptionTempo.build({ challenge: chSub, from: U.fixed.payer, now: 0 }, H)) as KeyAuthorizationUnsigned;

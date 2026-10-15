@@ -16,10 +16,11 @@ import {
 import type { EvmReader } from "./evm.js";
 import { finalAt } from "./internal/evm.js";
 import { MAX_KEY_AUTHORIZATION_BYTES, MAX_SCOPES, readKeyAuthorization } from "./internal/key-authorization.js";
+import { CALLS, VALID_BEFORE, decodeEnvelope, senderSigned } from "./internal/tempo-envelope.js";
 import { readReceiptAtMark } from "./receipt.js";
 import { isAddress, isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
-import { rlpBytes, rlpDecode, rlpList, rlpUint, rlpUintBytes, type RlpItem } from "./rlp.js";
+import { rlpBytes, rlpList, rlpUint, rlpUintBytes, type RlpItem } from "./rlp.js";
 import type { AtrHash } from "./core.js";
 import type { MppCredential } from "./mpp-challenge.js";
 
@@ -56,42 +57,13 @@ export const KEY_REVOKED_TOPIC = "0x14ce4f0c8c12936436b733974fb13d10fc13e8c41c06
  */
 export const ACCESS_KEY_SPEND_TOPIC = "0xe0815e3aaadddf4dd75bde97fc060f0c38afe18e87a169be86a3f5c28247f192" as const;
 
-/** The type byte of a Tempo transaction. */
-const TEMPO_TX_TYPE = 0x76;
-const MAX_WIRE_BYTES = 65_536;
-const MAX_WIRE_DEPTH = 8;
+/** The calls a transaction may carry. */
 const MAX_CALLS = 64;
-/** Envelope positions: calls, valid_before, fee_token and fee_payer_signature. */
-const CALLS = 4;
-const VALID_BEFORE = 8;
-const FEE_TOKEN = 10;
-const FEE_PAYER_SIGNATURE = 11;
-const UINT_FIELDS = [0, 1, 2, 3, 6, 7, 8, 9] as const;
 
 export interface TempoCall {
   to: Hex | null;
   value: bigint;
   input: Uint8Array;
-}
-
-/**
- * The envelope's items: `0x76`, then an RLP list of 14 items (13 fields and the sender's signature), or 15 when a
- * key authorization precedes the signature. At most 64 KiB, RLP depth 8 and 64 calls.
- */
-function decodeEnvelope(wire: unknown): RlpItem[] | Refusal {
-  if (!(wire instanceof Uint8Array)) return refusal("tempo/tx-malformed");
-  if (wire.length > MAX_WIRE_BYTES) return refusal("tempo/tx-too-large");
-  if (wire.length < 2 || wire[0] !== TEMPO_TX_TYPE) return refusal("tempo/tx-malformed");
-  const top = rlpDecode(wire.subarray(1), MAX_WIRE_DEPTH);
-  if (top === undefined || top.kind !== "list") return refusal("tempo/tx-malformed");
-  const items = top.items;
-  if (items.length !== 14 && items.length !== 15) return refusal("tempo/tx-malformed");
-  for (const i of UINT_FIELDS) if (rlpUint(items[i]) === undefined) return refusal("tempo/tx-malformed");
-  for (const i of [CALLS, 5, 12]) if (items[i]!.kind !== "list") return refusal("tempo/tx-malformed");
-  if (items[FEE_TOKEN]!.kind !== "bytes") return refusal("tempo/tx-malformed");
-  if (items.length === 15 && items[13]!.kind !== "list") return refusal("tempo/tx-malformed");
-  if (items[items.length - 1]!.kind !== "bytes") return refusal("tempo/tx-malformed");
-  return items;
 }
 
 /**
@@ -176,14 +148,7 @@ export function expiringNonceHash(signedTx: Uint8Array, sender: Hex): Hex | Refu
   const items = decodeEnvelope(signedTx);
   if (isRefusal(items)) return items;
   if (!isAddress(sender)) return refusal("tempo/tx-malformed");
-  const fields = items.slice(0, -1).map((i) => i.raw);
-  const feePayerSigned = !(items[FEE_PAYER_SIGNATURE]!.kind === "bytes" && items[FEE_PAYER_SIGNATURE]!.raw.length === 1 &&
-    items[FEE_PAYER_SIGNATURE]!.raw[0] === 0x80);
-  if (feePayerSigned) {
-    fields[FEE_TOKEN] = Uint8Array.of(0x80);
-    fields[FEE_PAYER_SIGNATURE] = Uint8Array.of(0x00);
-  }
-  return keccakHex(concat([Uint8Array.of(TEMPO_TX_TYPE), rlpList(fields), bytesOf(sender)!]));
+  return keccakHex(concat([senderSigned(items), bytesOf(sender)!]));
 }
 
 export interface TempoKeyAuthorization {

@@ -70,6 +70,7 @@ import {
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readKeyAuthorization, type KeyAuthorizationRead } from "./internal/key-authorization.js";
 import { keyAccount } from "./internal/tempo.js";
+import { tempoSender } from "./internal/tempo-envelope.js";
 import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -1248,9 +1249,10 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The one `open` call to the escrow in the signed transaction, with its salt word equal to H. On v2, the payload's
- * descriptor carries H as its salt (`descriptorSalt`) and the expiring nonce hash of this transaction signed by the
- * descriptor's payer (`expiringNonceHash`), which draft-tempo-session-00 requires the descriptor's `expiringNonceHash`
- * to match: a descriptor naming another gives a channel id this transaction does not open. Else
+ * descriptor carries H as its salt (`descriptorSalt`), the transaction's sender as its `payer` (`tempoSender`, the
+ * payer draft-tempo-session-00 recovers from the transaction) and the expiring nonce hash of this transaction under
+ * that sender (`expiringNonceHash`), which the draft requires the descriptor's `expiringNonceHash` to match: a
+ * descriptor naming another payer or another hash gives a channel id this transaction does not open. Else
  * `tempo/descriptor-mismatch`.
  */
 function tempoOpened(
@@ -1282,8 +1284,11 @@ function tempoOpened(
   if (p.version === "v2") {
     const salt = descriptorSalt(e.payload, p);
     if (typeof salt !== "string" || !hashEquals(salt, e.h)) return refusal("tempo/descriptor-mismatch");
+    const sender = tempoSender(raw);
+    if (isRefusal(sender)) return sender;
     const d = descriptorOf(e.payload["descriptor"])!;
-    const nonceHash = expiringNonceHash(raw, d.payer);
+    if (!sameBytes(d.payer, sender)) return refusal("tempo/descriptor-mismatch");
+    const nonceHash = expiringNonceHash(raw, sender);
     if (typeof nonceHash !== "string" || !sameBytes(nonceHash, d.expiringNonceHash)) return refusal("tempo/descriptor-mismatch");
   }
   return { h: e.h, checked: e.checked, params: p, validBefore: tx.validBefore, channel };
