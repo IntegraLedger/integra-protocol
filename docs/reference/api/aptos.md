@@ -139,6 +139,10 @@ header.
 
 > **complete**(`signed`): [`Refusal`](index.md#refusal) \| `AptosPaymentPayload`
 
+The payment of the signed transaction, once `reference` reads its keys: a transaction signed for a chain other than
+the option's network is `aptos/chain-mismatch`, as `reference` refuses it, and any other `reference` refuses is
+`x402/signed-not-bound`.
+
 ###### Parameters
 
 | Parameter | Type |
