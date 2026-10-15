@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
+import { XRPL_NETWORKS } from "../src/mpp-rail-checks.js";
 import { sessionHedera, sessionSolana, sessionXrpl } from "../src/mpp.js";
 import type { LcpPattern } from "../src/x402.js";
 
@@ -29,7 +30,7 @@ const PROFILES: readonly [profile: string, file: string, pairings: readonly stri
       "",
       "1. `hedera`: the escrow `open`'s `salt` is H's 32 bytes; `authorizedSigner` may be zero.",
       "2. `solana`: the `open` instruction's `salt` is H's first 8 bytes read as a little-endian u64, so its encoded bytes are H's first 8 bytes. In operator mode, `authentication.challengeId` is the opening challenge's `id`.",
-      "3. `xrpl`: the `PaymentChannelCreate`, which the payer signs with a single key (a blob that carries `Signers` is refused `xrpl/multisigned`), carries exactly one memo whose `MemoData` is the UTF-8 of `lcp:sha256:` followed by H.",
+      "3. `xrpl`: the `PaymentChannelCreate`, which the payer signs with a single key (a blob that carries `Signers` is refused `xrpl/multisigned`), carries exactly one memo whose `MemoData` is the UTF-8 of `lcp:sha256:` followed by H. It carries no `NetworkID`, as rippled's `preflight0` requires on each network the challenge names, whose ids are at most 1024 (a blob that carries one is refused `xrpl/network-mismatch`).",
       "4. The server refuses an opening that lacks its carrier, before it broadcasts where the method lets it.",
     ],
   ],
@@ -45,6 +46,14 @@ describe("the session profiles", () => {
       expect(readFileSync(url, "utf8")).toBe(`${text.join("\n")}\n`);
     });
   }
+
+  // Clause 3's `NetworkID` sentence holds for the networks the XRPL session reads from `methodDetails.network`: rippled
+  // takes a transaction without `NetworkID` only on a network whose id is at most 1024 (`networkIdHeld`).
+  it("mpp/session/hedera-solana-xrpl: each network an xrpl challenge names has an id of at most 1024", () => {
+    const ids = Object.values(XRPL_NETWORKS).map((n) => Number(n.slice("xrpl:".length)));
+    expect(ids).toEqual([0, 1, 2]);
+    expect(ids.every((id) => Number.isSafeInteger(id) && id <= 1024)).toBe(true);
+  });
 });
 
 // The Hedera, Solana and XRPL session records, whole: each field of the pairing's published record, and its `proves`
