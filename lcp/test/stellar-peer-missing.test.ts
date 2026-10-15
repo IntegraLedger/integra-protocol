@@ -4,8 +4,9 @@
 // none, each of which gives the code it gives with the peer. Strkeys (`G…`, `C…` and `M…`) are read and written
 // without the SDK, so x402/exact/stellar's option filter, pairingOf, x402 read and advertise, MPP's filter,
 // pairingsOf and advertise, both pairings' unplaced, issuedDigest and muxedFor give every input the answer they give
-// with it. build, bound and reference refuse it only once they read the transaction; stellarStatus and stellarLocate
-// read as they do with the SDK, pending unreadable or incomplete only where they must decode a transaction.
+// with it. build, bound and reference refuse it only once they read the transaction, after the `payTo` or `recipient`
+// carrier, which `unmux` reads; stellarStatus and stellarLocate read as they do with the SDK, pending unreadable or
+// incomplete only where they must decode a transaction.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequirements } from "../src/x402.js";
@@ -16,6 +17,7 @@ import {
   memberFirstChoices,
   membersOf,
   muxedForArgs,
+  stellarCarrierRows,
   stellarChargeChoice,
   stellarChargeChoices,
   stellarChargeStrkeyAnswers,
@@ -331,5 +333,18 @@ describe("without @stellar/stellar-sdk", () => {
       const expected = { ...stated, build: row.build ?? CODE, bound: row.bound ?? CODE };
       expect(await stellarChargeStrkeyAnswers(row, f as never, CODE)).toEqual(expected);
     }
+  });
+
+  // peer-free-inputs.test.ts gives every row its answer with the SDK: an option or challenge whose payTo or recipient
+  // does not carry the echoed H's muxed id is refused before the transaction is read.
+  it("x402 and MPP bound and reference check the payTo or recipient carrier before they read the transaction", { timeout: IMPORT_MS }, async () => {
+    const { chargeStellar } = await import("../src/mpp.js");
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const f = { x402Bound: exactStellar.bound, x402Reference: exactStellar.reference, mppBound: chargeStellar.bound, mppReference: chargeStellar.reference };
+    const rows = rowsOf(stellarCarrierRows(), "peer-free-inputs.ts", { exact: 11 });
+    for (const row of rows) {
+      expect([row.case, await row.call(f as never)]).toEqual([row.case, row.without ?? row.expect]);
+    }
+    expect(rows.filter((row) => row.without !== undefined).map((row) => row.without)).toEqual([CODE, CODE, CODE]);
   });
 });

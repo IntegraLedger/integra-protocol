@@ -159,9 +159,9 @@ ack acp ap2 card mpp ucp x402
 ## What no pairing serves
 
 `pairingOf` returns `undefined` for an option no pairing serves, and each x402 pairing's `read` refuses a document in
-which it can pay no option (`x402/no-payable-option`, or the rail's `peer-missing` code when one of its own options
-cannot be read without the rail's optional peer). Where a protocol gives the buyer nothing to sign, the
-pairing says so instead of inventing a place: ACK's `build` and `bound` refuse `ack/no-signed-place`.
+which it can pay no option (`x402/no-payable-option`), with the rail's optional peer or without it. Where a protocol
+gives the buyer nothing to sign, the pairing says so instead of inventing a place: ACK's `build` and `bound` refuse
+`ack/no-signed-place`.
 
 ## Next
 

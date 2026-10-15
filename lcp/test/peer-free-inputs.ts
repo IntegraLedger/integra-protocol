@@ -3,12 +3,13 @@
 // and without it (the rail's peer-missing test):
 // - TON's and Sui's `recover`: a reader for another network or a ref recover cannot read, with nothing read; a read
 //   that fails, finds nothing or answers out of the reader's form; the rail's own refusal of a transaction it finds;
-//   and a body or bytes whose size, form, or tags read at fixed places refuse it before it decodes them with the peer.
+//   and a body or bytes whose size, form, CRC32C, or tags read at fixed places refuse it before it decodes them with
+//   the peer.
 //   The vector files' recover rows are decoded: each gets the vectors' answer with the peer and `<rail>/peer-missing`
 //   without it.
 // - The decoders and carriers: `tvmCarrier`, `decodeSuiTx`, `nearCarrier`, `decodeStellarTx`, `transferEventTopics`
-//   and `transferEventOf` on input whose network, size, base64 or union tags they refuse; `avmCarrier` on every input,
-//   as it needs no peer.
+//   and `transferEventOf` on input whose network, size, base64, CRC32C or union tags they refuse; `avmCarrier` on every
+//   input, as it needs no peer.
 // - `mpp/charge/stellar`'s `build`: a choice, challenge, H, current ledger, clock, expiration ledger or simulated
 //   transaction form it refuses. `x402/exact/near`'s `build`: a payer, key, nonce or height it refuses.
 // - Every x402 `build`: a malformed H, which each checks first, before the choice and its document; then each choice
@@ -26,6 +27,10 @@
 // - Each `status` of a rail with an optional peer that reads with it (`suiStatusRows`, `tvmStatusRows`,
 //   `stellarStatusRows`): the same answer after the same reads, except a read that reaches a step that decodes with
 //   the peer (`without`).
+// - Each x402 TON function, `x402/exact/sui`'s `build` and its `complete`, `mpp/charge/solana`'s `build`, and the
+//   Stellar pairings' `bound` and `reference` (`tvmPeerStepRows`, `suiPeerStepRows`, `solanaChargeBlockhashRows`,
+//   `stellarCarrierRows`): the same answer, except a call that reaches the step that decodes or writes with the peer
+//   (`without`).
 import { readFileSync } from "node:fs";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base32, base58 } from "@scure/base";
@@ -114,7 +119,15 @@ export function tvmRecoverReads(): RecoverRead[] {
     { case: "an empty inbound message body", ref: TON_REF, reader: read(tonTx(new Uint8Array(0))), expect: "tvm/unreadable", reads: 1 },
     { case: "an inbound message body over 8 KiB", ref: TON_REF, reader: read(tonTx(new Uint8Array(8193))), expect: "tvm/boc-too-large", reads: 1 },
     { case: "a body whose bag-of-cells magic TON does not know", ref: TON_REF, reader: read(tonTx(Uint8Array.of(1, 2, 3, 4, 5, 6, 7, 8))), expect: "tvm/unreadable", reads: 1 },
+    { case: "a body whose CRC32C does not match", ref: TON_REF, reader: read(tonTx(bytes(crcChanged(TVM.V1.expectBoc)))), expect: "tvm/unreadable", reads: 1 },
   ];
+}
+
+/** A BoC with the last byte of its CRC32C changed: its layout holds, and its checksum does not. */
+function crcChanged(boc: string): string {
+  const b = bytes(boc);
+  b[b.length - 1] = b[b.length - 1]! ^ 1;
+  return b64(b);
 }
 
 /** A settlement BoC and network `tvmCarrier` refuses before it needs @ton/core. */
@@ -128,6 +141,7 @@ export function tvmCarrierInputs(): { case: string; boc: unknown; network: unkno
     { case: "a BoC over 8 KiB", boc: b64(new Uint8Array(8193)), network: TON_NETWORK, expect: "tvm/boc-too-large" },
     { case: "a magic TON does not know", boc: b64([1, 2, 3, 4, 5, 6, 7, 8]), network: TON_NETWORK, expect: "tvm/boc-malformed" },
     { case: "a header naming two roots", boc: b64(twoRoots), network: TON_NETWORK, expect: "tvm/boc-malformed" },
+    { case: "V2's settlement BoC with its CRC32C changed", boc: crcChanged(TVM.V2.expectSettlementBoc), network: TON_NETWORK, expect: "tvm/boc-malformed" },
   ];
 }
 
@@ -871,7 +885,7 @@ export function stellarChargeStrkeyRows(): {
   const to = "recipient" as const;
   const asset = "currency" as const;
   return [
-    { case: "the seller's account", member: to, s: recipient, ...offered, advertise: muxed, build: "stellar/carrier-mismatch", bound: null },
+    { case: "the seller's account", member: to, s: recipient, ...offered, advertise: muxed, build: "stellar/carrier-mismatch", bound: "stellar/carrier-mismatch" },
     { case: "the seller's account muxed with H", member: to, s: muxed, ...offered, advertise: "stellar/carrier-occupied", build: null, bound: null },
     { case: "the asset's contract", member: asset, s: currency, ...offered, advertise: muxed, build: null, bound: null },
     { case: "an account whose checksum does not match", member: to, s: strkey(6 << 3, key, 1), ...refused },
@@ -1167,4 +1181,347 @@ export function stellarStatusRows(): StatusRow[] {
     reads: reads[i]!,
     ...(without[i] !== undefined ? { without: without[i] } : {}),
   }));
+}
+
+// ── Every function of a pairing with an optional peer, up to the one step that decodes or writes with it.
+
+type Fn = (...args: never[]) => unknown;
+
+/**
+ * A call and its answer with the rail's optional peer (`expect`), and without it where the call reaches the one step
+ * that decodes or writes with the peer (`without`): every other row gives `expect` without the peer too. `call` takes
+ * the functions a test file imports, with the peer or without it, and gives a refusal's code, or what the row states
+ * of any other answer.
+ */
+export interface PeerStepRow<F> {
+  case: string;
+  call: (f: F) => Promise<unknown>;
+  expect: unknown;
+  without?: unknown;
+}
+
+/** A refusal's code, or `other` of any other answer. */
+function codeOr(r: unknown, other: (r: Record<string, any>) => unknown): unknown {
+  return typeof r === "object" && r !== null && "refused" in r ? (r as unknown as { code: string }).code : other(r as Record<string, any>);
+}
+
+export interface TvmFns {
+  pairingOf: Fn;
+  read: Fn;
+  advertise: Fn;
+  build: Fn;
+  bound: Fn;
+  reference: Fn;
+}
+
+type TonOption = Record<string, unknown> & { extra: Record<string, unknown> };
+const TON_O = TVM.fixed.O as TonOption;
+const TON_PLACED = TVM.fixed.placed as TonOption;
+const TON_DOC = (TVM.buyer.rows as { name: string; input: { doc: Record<string, unknown> } }[]).find((r) => r.name === "B2")!.input.doc;
+const TON_OTHER_CELL: string = (TVM.agreedRefusals.rows as { advertiseOption?: TonOption }[]).find((r) => r.advertiseOption !== undefined)!
+  .advertiseOption!.extra["forwardPayload"] as string;
+const TON_NOT_W5: string = (TVM.agreedRefusals.rows as { settlementBoc?: string; expect: string }[]).find((r) => r.expect === "tvm/not-w5-signed")!
+  .settlementBoc!;
+const TON_HEX = "92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed";
+const tonWith = (extra: Record<string, unknown>, o: TonOption = TON_O): TonOption => ({ ...o, extra: { ...o.extra, ...extra } });
+/** The comment cell's BoC with no CRC32C: the same cell in other bytes, which only a decode shows to be that cell. */
+const TON_COMMENT_NO_CRC = (() => {
+  const b = bytes(TVM.V1.expectBoc);
+  b[4] = 0x01;
+  return b64(b.subarray(0, b.length - 4));
+})();
+/** One cell whose one reference names the cell itself: its layout holds, and TON refuses its cells. */
+const TON_SELF_REFERENCE = b64([0xb5, 0xee, 0x9c, 0x72, 0x01, 0x01, 0x01, 0x01, 0x00, 0x03, 0x00, 0x01, 0x00, 0x00]);
+
+function tonRead(f: TvmFns, option: unknown): unknown {
+  return codeOr(f.read({ ...TON_DOC, accepts: [option] } as never), (r) =>
+    JSON.stringify(r["offer"].options) === JSON.stringify([option]) ? "served" : r,
+  );
+}
+
+function tonAdvertise(f: TvmFns, option: unknown): unknown {
+  const doc = { x402Version: 2, resource: TVM.fixed.resource, accepts: [option] };
+  return codeOr(f.advertise(doc as never, TVM.fixed.H as never, TVM.fixed.link as never, option as never), (r) => r["accepts"][0].extra.forwardPayload);
+}
+
+function tonPayment(settlementBoc: unknown, accepted: unknown = TON_PLACED) {
+  return { x402Version: 2, resource: TVM.fixed.resource, accepted, payload: { settlementBoc, asset: TON_O["asset"] } };
+}
+
+async function tonBuild(f: TvmFns, members: Record<string, unknown>, accepted: unknown = TON_PLACED): Promise<unknown> {
+  const choice = {
+    required: { x402Version: 2, resource: TVM.fixed.resource, accepts: [accepted] },
+    accepted,
+    wallet: TVM.fixed.wallet,
+    walletId: TVM.fixed.walletId,
+    seqno: TVM.fixed.seqno,
+    jettonWallet: TVM.fixed.jettonWallet,
+    attachNanotons: BigInt(TVM.fixed.attachNanotons),
+    now: TVM.fixed.now,
+    ...members,
+  };
+  return codeOr(await f.build(choice as never, TVM.fixed.H as never), (u) => Buffer.from(u["request"].hash).toString("hex"));
+}
+
+/**
+ * The x402 TON pairing's functions, each of whose option filters reads raw addresses without @ton/core: `pairingOf`,
+ * `read` and `advertise` (the placed `forwardPayload`, which `advertise` writes without the peer), `bound` and
+ * `reference` (the hash and the read keys), and `build` (the request's hash, in hex). Without @ton/core a call is
+ * `tvm/peer-missing` only where it decodes a BoC's cells or writes the request's: every bag's bytes (base64, size,
+ * layout, CRC32C) are read without it, and so is a forward payload whose bytes are the comment's BoC as `advertise`
+ * writes it. Rows that state two faults give the code of the check that needs no peer, with the peer too.
+ */
+export function tvmPeerStepRows(): PeerStepRow<TvmFns>[] {
+  const missing = "tvm/peer-missing";
+  const V2 = TVM.V2.expectSettlementBoc as string;
+  const notRaw = "0:12";
+  return [
+    { case: "pairingOf of the vectors' option", call: async (f) => f.pairingOf(TON_O as never) ?? "none", expect: "x402/exact/tvm" },
+    { case: "read of a document holding the vectors' option", call: async (f) => tonRead(f, TON_O), expect: "served" },
+    { case: "read of a document holding the placed option", call: async (f) => tonRead(f, TON_PLACED), expect: "served" },
+    {
+      case: "read of a document holding an option whose payTo's workchain, 128, is outside int8",
+      call: async (f) => tonRead(f, { ...TON_O, payTo: `128:${TON_HEX}` }),
+      expect: "x402/no-payable-option",
+    },
+    { case: "advertise of the vectors' option", call: async (f) => tonAdvertise(f, TON_O), expect: TVM.V1.expectBoc },
+    { case: "advertise of an option whose asset is not a raw address", call: async (f) => tonAdvertise(f, { ...TON_O, asset: notRaw }), expect: "tvm/option-malformed" },
+    {
+      case: "advertise of an option whose responseDestination is a raw address on workchain -1 in uppercase hex",
+      call: async (f) => tonAdvertise(f, tonWith({ responseDestination: `-1:${TON_HEX.toUpperCase()}` })),
+      expect: TVM.V1.expectBoc,
+    },
+    {
+      case: "advertise of an option whose responseDestination is not a raw address",
+      call: async (f) => tonAdvertise(f, tonWith({ responseDestination: notRaw })),
+      expect: "tvm/option-malformed",
+    },
+    { case: "advertise of the placed option, whose forwardPayload is the comment's BoC", call: async (f) => tonAdvertise(f, TON_PLACED), expect: TVM.V1.expectBoc },
+    {
+      case: "advertise of an option whose forwardPayload is the comment's cell in a BoC with no CRC32C",
+      call: async (f) => tonAdvertise(f, tonWith({ forwardPayload: TON_COMMENT_NO_CRC })),
+      expect: TVM.V1.expectBoc,
+      without: missing,
+    },
+    {
+      case: "advertise of an option whose forwardPayload is another cell",
+      call: async (f) => tonAdvertise(f, tonWith({ forwardPayload: TON_OTHER_CELL })),
+      expect: "tvm/carrier-occupied",
+      without: missing,
+    },
+    {
+      case: "advertise of an option whose forwardPayload's CRC32C does not match",
+      call: async (f) => tonAdvertise(f, tonWith({ forwardPayload: crcChanged(TVM.V1.expectBoc) })),
+      expect: "tvm/carrier-occupied",
+    },
+    { case: "advertise of an option whose forwardPayload is not base64", call: async (f) => tonAdvertise(f, tonWith({ forwardPayload: "AA=A" })), expect: "tvm/carrier-occupied" },
+    { case: "bound of V2's payment", call: async (f) => codeOr(await f.bound(tonPayment(V2) as never), (h) => h), expect: TVM.V3.expectBound, without: missing },
+    { case: "reference of V2's payment", call: async (f) => codeOr(await f.reference(tonPayment(V2) as never), (r) => r), expect: TVM.V3.expectReference, without: missing },
+    { case: "bound of V2's payment with its CRC32C changed", call: async (f) => codeOr(await f.bound(tonPayment(crcChanged(V2)) as never), (h) => h), expect: "tvm/boc-malformed" },
+    { case: "reference of a settlementBoc that is not base64", call: async (f) => codeOr(await f.reference(tonPayment("AA=A") as never), (r) => r), expect: "tvm/boc-malformed" },
+    {
+      case: "bound of V2's payment under the vectors' option, which carries no forwardPayload",
+      call: async (f) => codeOr(await f.bound(tonPayment(V2, TON_O) as never), (h) => h),
+      expect: "tvm/carrier-mismatch",
+    },
+    {
+      case: "bound of V2's payment under an option whose forwardPayload's CRC32C does not match",
+      call: async (f) => codeOr(await f.bound(tonPayment(V2, tonWith({ forwardPayload: crcChanged(TVM.V1.expectBoc) })) as never), (h) => h),
+      expect: "tvm/carrier-mismatch",
+    },
+    {
+      case: "bound of V2's payment under an option whose forwardPayload is another cell",
+      call: async (f) => codeOr(await f.bound(tonPayment(V2, tonWith({ forwardPayload: TON_OTHER_CELL })) as never), (h) => h),
+      expect: "tvm/carrier-mismatch",
+      without: missing,
+    },
+    {
+      case: "bound of V2's payment under an option whose payTo is not a raw address",
+      call: async (f) => codeOr(await f.bound(tonPayment(V2, { ...TON_PLACED, payTo: notRaw }) as never), (h) => h),
+      expect: "tvm/option-malformed",
+    },
+    {
+      case: "two faults: bound of a settlement that is not W5-signed, under the vectors' option, which carries no forwardPayload",
+      call: async (f) => codeOr(await f.bound(tonPayment(TON_NOT_W5, TON_O) as never), (h) => h),
+      expect: "tvm/carrier-mismatch",
+    },
+    { case: "build of V2's choice", call: async (f) => tonBuild(f, {}), expect: TVM.V2.expectRequestHash, without: missing },
+    {
+      case: "build of a choice whose wallet's workchain, 1, is not one the network holds",
+      call: async (f) => tonBuild(f, { wallet: `1:${TON_HEX}` }),
+      expect: "x402/option-malformed",
+    },
+    {
+      case: "build of a choice whose now plus the option's timeout is 2^32",
+      call: async (f) => tonBuild(f, { now: 2 ** 32 - (TON_PLACED["maxTimeoutSeconds"] as number) }),
+      expect: "x402/option-malformed",
+    },
+    { case: "build of a choice of the vectors' option, which carries no forwardPayload", call: async (f) => tonBuild(f, {}, TON_O), expect: "tvm/carrier-mismatch" },
+    {
+      case: "build of a choice whose attachNanotons is not above the option's forwardTonAmount",
+      call: async (f) => tonBuild(f, {}, tonWith({ forwardTonAmount: TVM.fixed.attachNanotons }, TON_PLACED)),
+      expect: "tvm/value-too-low",
+    },
+    { case: "build of a choice whose state init is not base64", call: async (f) => tonBuild(f, { stateInit: "AA=A" }), expect: "tvm/boc-malformed" },
+    { case: "build of a choice whose state init is over 8 KiB", call: async (f) => tonBuild(f, { stateInit: b64(new Uint8Array(8193)) }), expect: "tvm/boc-too-large" },
+    {
+      case: "build of a choice whose state init's CRC32C does not match",
+      call: async (f) => tonBuild(f, { stateInit: crcChanged(TVM.V2b.stateInit) }),
+      expect: "tvm/boc-malformed",
+    },
+    {
+      case: "build of a choice whose state init's one cell names itself",
+      call: async (f) => tonBuild(f, { stateInit: TON_SELF_REFERENCE }),
+      expect: "tvm/boc-malformed",
+      without: missing,
+    },
+    {
+      case: "two faults: build of a choice of an option whose forwardPayload is another cell, with a wallet on workchain 1",
+      call: async (f) => tonBuild(f, { wallet: `1:${TON_HEX}` }, tonWith({ forwardPayload: TON_OTHER_CELL }, TON_PLACED)),
+      expect: "x402/option-malformed",
+    },
+    {
+      case: "two faults: build of a choice of an option whose forwardPayload is another cell, with a state init that is not base64",
+      call: async (f) => tonBuild(f, { stateInit: "AA=A" }, tonWith({ forwardPayload: TON_OTHER_CELL }, TON_PLACED)),
+      expect: "tvm/boc-malformed",
+    },
+    {
+      case: "two faults: build of a choice whose state init's one cell names itself and whose attachNanotons is not above forwardTonAmount",
+      call: async (f) => tonBuild(f, { stateInit: TON_SELF_REFERENCE }, tonWith({ forwardTonAmount: TVM.fixed.attachNanotons }, TON_PLACED)),
+      expect: "tvm/value-too-low",
+    },
+  ];
+}
+
+export interface SuiFns {
+  build: Fn;
+}
+
+/**
+ * `x402/exact/sui`'s `build` of the vectors' option, which writes its request without @mysten/sui (its kind and the
+ * `Pure` input in hex), and `complete` of signed payloads, which reads the transaction as `bound` does: "payment" for
+ * the payment it gives. Without the peer only `complete` of a transaction whose form, size and tags pass is
+ * `sui/peer-missing`, as only its decode needs the peer.
+ */
+export function suiPeerStepRows(): PeerStepRow<SuiFns>[] {
+  const { H, O, resource } = SUI.fixed;
+  const built = async (f: SuiFns) => (await f.build({ required: { x402Version: 2, resource, accepts: [O] }, accepted: O } as never, H as never)) as Record<string, any>;
+  const complete = async (f: SuiFns, signed: unknown) => {
+    const u = await built(f);
+    return "refused" in u ? u["code"] : codeOr(u["complete"](signed), () => "payment");
+  };
+  const notBound = "x402/signed-not-bound";
+  return [
+    { case: "build of the vectors' option", call: async (f) => codeOr(await built(f), (u) => `${u["request"].kind}:${Buffer.from(u["request"].pureInput).toString("hex")}`), expect: `sui-transaction:${H.slice(2)}` },
+    { case: "complete of V2's transaction", call: async (f) => complete(f, { signature: "AAAA", transaction: SUI.V2.tx.transactionBase64 }), expect: "payment", without: "sui/peer-missing" },
+    { case: "complete of a payload whose signature is empty", call: async (f) => complete(f, { signature: "", transaction: SUI.V2.tx.transactionBase64 }), expect: notBound },
+    { case: "complete of a transaction whose version tag is not V1's", call: async (f) => complete(f, { signature: "AAAA", transaction: b64(suiTagged(0, 1)) }), expect: notBound },
+    { case: "complete of a transaction of another kind", call: async (f) => complete(f, { signature: "AAAA", transaction: b64(suiTagged(1, 1)) }), expect: notBound },
+    { case: "complete of a transaction that is not base64", call: async (f) => complete(f, { signature: "AAAA", transaction: "AA=A" }), expect: notBound },
+  ];
+}
+
+export interface SolanaChargeFns {
+  advertise: Fn;
+  build: Fn;
+}
+
+const SOL_CHARGE = vector("mpp-charge-solana.json");
+
+/**
+ * `mpp/charge/solana`'s `build` of a placed challenge whose request names no `recentBlockhash`, so the choice's is
+ * built with: its form is a key, base58 of 32 bytes, as @solana/kit's `blockhash` reads it, and is checked before the
+ * kit writes the message, for a native SOL request as for a token one. "message" for the message the kit writes: without
+ * it that is `svm/peer-missing`.
+ */
+export function solanaChargeBlockhashRows(): PeerStepRow<SolanaChargeFns>[] {
+  const { H, link, payer } = SOL_CHARGE.fixed;
+  const placed = (f: SolanaChargeFns, request: Record<string, unknown>) => {
+    const { recentBlockhash: _given, ...methodDetails } = request["methodDetails"] as Record<string, unknown>;
+    const issued = { ...SOL_CHARGE.challenge, request: Buffer.from(JSON.stringify({ ...request, methodDetails }), "utf8").toString("base64url") };
+    const doc = f.advertise([issued] as never, H as never, link as never, issued as never) as unknown[];
+    return doc[0];
+  };
+  const build = async (f: SolanaChargeFns, request: Record<string, unknown>, recentBlockhash: unknown) =>
+    codeOr(await f.build({ challenge: placed(f, request), payer, recentBlockhash } as never, H as never), () => "message");
+  const sol = SOL_CHARGE.sol.request as Record<string, unknown>;
+  const token = SOL_CHARGE.fixed.request as Record<string, unknown>;
+  const key: string = SOL_CHARGE.fixed.feePayer;
+  const short = base58.encode(new Uint8Array(31).fill(7));
+  return [
+    { case: "a native SOL request, with the choice's blockhash", call: (f) => build(f, sol, key), expect: "message", without: "svm/peer-missing" },
+    { case: "a native SOL request, with a blockhash that is not base58", call: (f) => build(f, sol, "0OIl"), expect: "svm/input-malformed" },
+    { case: "a native SOL request, with a blockhash of 31 bytes", call: (f) => build(f, sol, short), expect: "svm/input-malformed" },
+    { case: "a token request, with a blockhash that is not base58", call: (f) => build(f, token, "0OIl"), expect: "svm/input-malformed" },
+  ];
+}
+
+export interface StellarCarrierFns {
+  x402Bound: Fn;
+  x402Reference: Fn;
+  mppBound: Fn;
+  mppReference: Fn;
+}
+
+/**
+ * The Stellar pairings' `bound` and `reference` of payments under an option or challenge whose `payTo` or `recipient`
+ * does or does not carry the echoed H's muxed id, which `unmux` reads without the SDK before the transaction is read:
+ * `stellar/carrier-mismatch` with the SDK and without it. A payment whose option or challenge carries it reaches the
+ * transaction: H and the read keys with the SDK, and `stellar/peer-missing` without it. Rows that state two faults give
+ * the carrier's code, with the SDK too.
+ */
+export function stellarCarrierRows(): PeerStepRow<StellarCarrierFns>[] {
+  const missing = "stellar/peer-missing";
+  const mismatch = "stellar/carrier-mismatch";
+  const { seller } = STELLAR.fixed;
+  const key = base32.decode(seller).subarray(1, 33);
+  const idZero = strkey(12 << 3, Uint8Array.from([...key, ...zeros(8)]));
+  const V3 = STELLAR.V3;
+  const x402 = (transaction: unknown, payTo: unknown = V3.accepted.payTo, extensions: unknown = V3.extensions) => ({
+    x402Version: 2,
+    accepted: { ...V3.accepted, payTo },
+    payload: { transaction },
+    extensions,
+  });
+  const plainTo = (STELLAR.V4 as { case: string; envelope: string }[]).find((r) => r.case === "to is the plain seller G")!.envelope;
+  const otherH = (STELLAR.V4 as { case: string; extensions: unknown }[]).find((r) => r.case === "the echoed legalContext.value is not H")!.extensions;
+  const placed = CHARGE.place.expect as { request: string };
+  const mpp = (recipient?: string) => ({
+    challenge: recipient === undefined ? placed : withRequestMember(placed, "recipient", recipient),
+    payload: { type: "transaction", transaction: CHARGE.V3.envelope },
+  });
+  const answer = (r: unknown) => codeOr(r, (x) => x);
+  return [
+    { case: "x402 bound of V3's payment", call: async (f) => answer(await f.x402Bound(x402(V3.envelope) as never)), expect: V3.expectBound, without: missing },
+    { case: "x402 reference of V3's payment", call: async (f) => answer(await f.x402Reference(x402(V3.envelope) as never)), expect: V3.expectReference, without: missing },
+    { case: "x402 bound of V3's payment under an option whose payTo is the seller's account", call: async (f) => answer(await f.x402Bound(x402(V3.envelope, seller) as never)), expect: mismatch },
+    { case: "x402 reference of V3's payment under an option whose payTo is the seller's account", call: async (f) => answer(await f.x402Reference(x402(V3.envelope, seller) as never)), expect: mismatch },
+    {
+      case: "x402 bound of V4's envelope to the seller's account, under an option whose payTo is that account",
+      call: async (f) => answer(await f.x402Bound(x402(plainTo, seller) as never)),
+      expect: mismatch,
+    },
+    {
+      case: "x402 bound of V3's payment under an option whose payTo is the seller's account muxed with the id 0",
+      call: async (f) => answer(await f.x402Bound(x402(V3.envelope, idZero) as never)),
+      expect: mismatch,
+    },
+    { case: "x402 bound of V3's payment whose echoed legal context holds another hash", call: async (f) => answer(await f.x402Bound(x402(V3.envelope, V3.accepted.payTo, otherH) as never)), expect: mismatch },
+    {
+      case: "two faults: x402 bound of an envelope that is not base64, under an option whose payTo is the seller's account",
+      call: async (f) => answer(await f.x402Bound(x402("AA=A", seller) as never)),
+      expect: mismatch,
+    },
+    { case: "MPP bound of V3's envelope under the placed challenge", call: async (f) => answer(await f.mppBound(mpp() as never)), expect: CHARGE.fixed.H, without: missing },
+    {
+      case: "MPP bound of V3's envelope under a placed challenge whose recipient is the seller's account muxed with the id 0",
+      call: async (f) => answer(await f.mppBound(mpp(strkey(12 << 3, Uint8Array.from([...base32.decode(issuedRecipient()).subarray(1, 33), ...zeros(8)]))) as never)),
+      expect: mismatch,
+    },
+    {
+      case: "MPP reference of V3's envelope under a placed challenge whose recipient is the seller's account",
+      call: async (f) => answer(await f.mppReference(mpp(issuedRecipient()) as never)),
+      expect: mismatch,
+    },
+  ];
 }

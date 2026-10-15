@@ -2,15 +2,18 @@
 // gives, `recover` after the reads it states, and `recover` answers the vector files' recover rows with the vectors'
 // values. Each rail's peer-missing test gives the same inputs the same codes without the peer.
 import { readFileSync } from "node:fs";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { StrKey } from "@stellar/stellar-sdk/base";
+import type { Cell } from "@ton/core";
 import { describe, expect, it } from "vitest";
+import { pairingOf } from "../src/index.js";
 import { avmCarrier, exactAvm } from "../src/avm.js";
 import { isAccount, isContract } from "../src/internal/stellar.js";
-import { chargeStellar, issuedDigest, pairingsOf, pairingsOfPlaced, sessionXrpl, type MppChallenge } from "../src/mpp.js";
+import { chargeSolana, chargeStellar, issuedDigest, pairingsOf, pairingsOfPlaced, sessionXrpl, type MppChallenge } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
 import { decodeStellarTx, muxedFor, stellarLocate, stellarStatus, transferEventOf, transferEventTopics } from "../src/stellar.js";
 import { decodeSuiTx, exactSui, suiStatus } from "../src/sui.js";
-import { exactTvm, tvmCarrier, tvmStatus } from "../src/tvm.js";
+import { exactTvm, lcpComment, tvmCarrier, tvmStatus } from "../src/tvm.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import {
@@ -19,6 +22,8 @@ import {
   nearBuildChoices,
   nearCarrierInputs,
   nearChoice,
+  solanaChargeBlockhashRows,
+  stellarCarrierRows,
   stellarChargeChoices,
   stellarChargeStrkeyAnswers,
   stellarChargeStrkeyRows,
@@ -34,9 +39,11 @@ import {
   SUI_STATUS_POSITION,
   suiDecodeInputs,
   suiRecoverDecodes,
+  suiPeerStepRows,
   suiRecoverReads,
   suiStatusRows,
   tvmCarrierInputs,
+  tvmPeerStepRows,
   tvmRecoverDecodes,
   tvmRecoverReads,
   tvmStatusRows,
@@ -53,7 +60,7 @@ const STELLAR_V5_REF = JSON.parse(readFileSync(new URL("../vectors/x402-exact-st
 const AVM_H = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8")).fixed.H as `0x${string}`;
 
 const RAILS = [
-  { id: exactTvm.id, recover: exactTvm.recover, reads: tvmRecoverReads(), count: 9, decodes: tvmRecoverDecodes() },
+  { id: exactTvm.id, recover: exactTvm.recover, reads: tvmRecoverReads(), count: 10, decodes: tvmRecoverDecodes() },
   { id: exactSui.id, recover: exactSui.recover, reads: suiRecoverReads(), count: 11, decodes: suiRecoverDecodes() },
 ];
 
@@ -177,8 +184,8 @@ describe("x402/exact/algorand's build with algosdk", () => {
 });
 
 describe("the decoders and carriers with each rail's optional peer", () => {
-  it("tvmCarrier: a network, size, base64 or bag-of-cells layout it refuses", () => {
-    for (const row of rowsOf(tvmCarrierInputs(), "peer-free-inputs.ts", { exact: 6 })) {
+  it("tvmCarrier: a network, size, base64, bag-of-cells layout or CRC32C it refuses", () => {
+    for (const row of rowsOf(tvmCarrierInputs(), "peer-free-inputs.ts", { exact: 7 })) {
       expect([row.case, tvmCarrier(row.boc as never, row.network as never)]).toEqual([row.case, refused(row.expect)]);
     }
   });
@@ -247,6 +254,49 @@ describe("builds and reads that check what needs no peer first, with the peer", 
   it("mpp/session/xrpl's buildWithin: two faults, one in the opening, get the code of the check made first", async () => {
     for (const row of rowsOf(xrplWithinTwoFaults(), "peer-free-inputs.ts", { exact: 4 })) {
       expect([row.case, await sessionXrpl.buildWithin(row.within as never, row.h as never)]).toEqual([row.case, refused(row.expect)]);
+    }
+  });
+});
+
+// Each rail's peer-missing test runs the same rows without the peer: every row gives the same answer, except one that
+// reaches the step that decodes or writes with the peer.
+describe("every function of a pairing with an optional peer, up to the step that decodes or writes with it, with the peer", () => {
+  it("x402/exact/tvm: pairingOf, read, advertise, bound, reference and build", async () => {
+    const f = { pairingOf, ...exactTvm };
+    for (const row of rowsOf(tvmPeerStepRows(), "peer-free-inputs.ts", { exact: 34 })) {
+      expect([row.case, await row.call(f as never)]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  // advertise writes the comment's BoC without @ton/core: here it is held to @ton/core's BoC of lcpComment's cell.
+  it("x402/exact/tvm: advertise writes the BoC @ton/core writes of each hash's comment, for 64 hashes", () => {
+    const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-tvm.json", import.meta.url), "utf8"));
+    const doc = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.fixed.O] };
+    const hashes = rowsOf(Array.from({ length: 64 }, (_, i) => `0x${Buffer.from(sha256(Uint8Array.of(i))).toString("hex")}` as const), "64 hashes", { exact: 64 });
+    for (const h of hashes) {
+      const placed = exactTvm.advertise(doc, h, V.fixed.link, V.fixed.O);
+      if ("refused" in placed) throw new Error(placed.code);
+      const want = (lcpComment(h) as unknown as Cell).toBoc({ idx: false, crc32: true }).toString("base64");
+      expect([h, placed.accepts[0]!.extra!["forwardPayload"]]).toEqual([h, want]);
+    }
+  });
+
+  it("x402/exact/sui: build, and complete of signed payloads", async () => {
+    for (const row of rowsOf(suiPeerStepRows(), "peer-free-inputs.ts", { exact: 6 })) {
+      expect([row.case, await row.call(exactSui as never)]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  it("mpp/charge/solana: build of a choice whose blockhash is or is not a key", async () => {
+    for (const row of rowsOf(solanaChargeBlockhashRows(), "peer-free-inputs.ts", { exact: 4 })) {
+      expect([row.case, await row.call(chargeSolana as never)]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  it("the Stellar pairings' bound and reference: the payTo or recipient carrier, before the transaction", async () => {
+    const f = { x402Bound: exactStellar.bound, x402Reference: exactStellar.reference, mppBound: chargeStellar.bound, mppReference: chargeStellar.reference };
+    for (const row of rowsOf(stellarCarrierRows(), "peer-free-inputs.ts", { exact: 11 })) {
+      expect([row.case, await row.call(f as never)]).toEqual([row.case, row.expect]);
     }
   });
 });

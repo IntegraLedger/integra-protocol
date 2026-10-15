@@ -102,7 +102,9 @@ function networkOf(e: Echoed): StellarNetwork | Refusal {
 /**
  * The echoed challenge's binding: its `network` and its request's `recipient`, an account or its muxed form whose
  * strkey's checksum matches, read as `advertise` reads them (else `stellar/option-malformed`), and the payment read
- * from its transaction. A `hash`
+ * from its transaction. Every check that reads no XDR comes before the transaction is read: the recipient must be a
+ * muxed address whose id is H's first 8 bytes (`unmux`, without the SDK), else `stellar/carrier-mismatch`, as `build`
+ * checks it. A `hash`
  * credential under a request with `feePayer` true is `mpp/credential-type`: MPP's Stellar charge forbids push mode
  * when the server sponsors the fee. A `hash` credential whose transaction carries no address entry of the payer, under
  * a request with `feePayer` false or absent, is read as a payer that authorized the transfer as the transaction's
@@ -121,6 +123,8 @@ function bindingOf(
   if (e.payload["type"] === "hash" && feePayer === true) return refusal("mpp/credential-type");
   const xdr = presentedXdr(credential, e.payload);
   if (isRefusal(xdr)) return xdr;
+  const m = unmux(e.checked.request["recipient"]);
+  if (m === null || m.id !== muxedId(e.h)) return refusal("stellar/carrier-mismatch");
   const landed = e.payload["type"] === "hash";
   let signed: { payment: StellarPayment | SourcePayment; agrees: boolean } | Refusal = readSignedTransfer(xdr, network, landed);
   if (isRefusal(signed) && signed.code === "stellar/no-address-auth" && landed) {

@@ -166,7 +166,12 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
   return s.unsigned;
 }
 
-/** The option, the echoed hash and the decoded transfer of a payment, or the refusal that names what is wrong. */
+/**
+ * The option, the echoed hash and the decoded transfer of a payment, or the refusal that names what is wrong. Every
+ * check that reads no XDR comes before the transaction is read (`readSignedTransfer`): the option, the legal context,
+ * the payload, and the option's `payTo` carrying the echoed hash's muxed id (`unmux`, without the SDK), else
+ * `stellar/carrier-mismatch`, as `build` checks it.
+ */
 function presentedOf(presented: unknown) {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = acceptedBy(presented["accepted"], filter);
@@ -175,6 +180,8 @@ function presentedOf(presented: unknown) {
   if (isRefusal(lc)) return lc;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
+  const m = unmux(accepted.payTo);
+  if (m === null || m.id !== muxedId(lc.h)) return refusal("stellar/carrier-mismatch");
   const signed = readSignedTransfer(payload["transaction"] as string, accepted.network as "stellar:pubnet", false);
   if (isRefusal(signed)) return signed;
   const { payment } = signed;

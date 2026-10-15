@@ -141,18 +141,22 @@ peer dependency. Install the one for each rail you use:
 | TON | `@ton/core` and its peer `@ton/crypto` |
 | Algorand | `algosdk` |
 
-Without its peer, a rail's function that returns refusals gives `<rail>/peer-missing` for an input it needs the peer
-to answer. A `status` or a locate reads as it does with the peer and gives the same answer, after the same calls,
-wherever it decodes nothing with the peer; a step that must decode with the peer makes a `status` pending
-`unreadable`, or a locate's search incomplete, when it is reached, after the reads before it. An x402 pairing refuses a
-missing peer only through an option of its own: its `read`, `advertise`, `build`, `bound` and `reference` give a
-document, choice, offer or payment holding none the answer they give with the peer. Stellar and Algorand read their
-addresses without the peer (Stellar's strkeys, version byte, length and checksum, and Algorand's address text), so
-their option filters, `read` and `advertise` need none, nor do Algorand's `bound` and `reference`, nor MPP Stellar's
-filter, which reads a challenge's `recipient` and `currency` whole: those rails' other functions need the peer only to
-read or write the transaction, and check everything else first. Of the reads, Stellar's `status` and `stellarLocate`
-decode only a transaction that succeeded (a search that lists no candidate decodes none), Sui's `status` only a
-present transaction's bytes that hash to the digest, and TON's `status` nothing: it compares raw addresses without
+Without its peer, a rail's function gives `<rail>/peer-missing` only when it reaches the one step that must decode or
+write with the peer, after every check that needs none: every other input gets the answer it gets with the peer. Every
+x402 pairing's option filter reads its options without the peer, so `pairingOf`, `read` and `advertise` need none:
+Stellar reads its strkeys whole (version byte, length and checksum), Algorand its address text and TON its raw
+addresses, and TON's `advertise` writes the comment's BoC itself, decoding only a forward payload the offer holds in
+other bytes. MPP Stellar's filter reads a challenge's `recipient` and `currency` whole, and Algorand's `bound` and
+`reference` need no peer. The other functions read or write the transaction with the peer and check everything else
+first: TON reads a BoC's base64, size, layout and CRC32C before `@ton/core` decodes its cells; the Stellar pairings'
+`bound` and `reference` hold the `payTo` or `recipient` to H's muxed id before the SDK reads the transaction; Sui's
+`build` writes its request without `@mysten/sui`, and its `complete` decodes the signed transaction; and the Solana
+`build`s check every input, a blockhash the choice gives included, before `@solana/kit` writes the message. A `status`
+or a locate reads as it does with the peer and gives the same answer, after the same calls, wherever it decodes nothing
+with the peer; a step that must decode with the peer makes a `status` pending `unreadable`, or a locate's search
+incomplete, when it is reached, after the reads before it. Of the reads, Stellar's `status` and `stellarLocate` decode
+only a transaction that succeeded (a search that lists no candidate decodes none), Sui's `status` only a present
+transaction's bytes that hash to the digest, and TON's `status` nothing: it compares raw addresses without
 `@ton/core`. Every other rail needs nothing more than the package.
 
 ## Reading settlement

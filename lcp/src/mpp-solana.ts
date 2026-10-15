@@ -14,6 +14,7 @@ import {
   canonicalCarrier,
   compileV0,
   decodeSvmTx,
+  isKey,
   isSignature,
   keyBytes,
   svmReference,
@@ -347,7 +348,10 @@ async function buildSolMessage(i: {
 /**
  * The message for the payer to sign: the request's transfer (a token `TransferChecked`, or a System `transfer` for
  * `"sol"`) with the memo the request's `externalId` carries, which must be this H's LCP string. Splits and confidential
- * transfers are not built: the pairing's filter refuses a challenge that asks for them (`svm/input-malformed`).
+ * transfers are not built: the pairing's filter refuses a challenge that asks for them (`svm/input-malformed`). Every
+ * input's form is checked before @solana/kit writes the message, the blockhash's as a key (base58 of 32 bytes, as
+ * @solana/kit's `blockhash` reads it) included, so without the kit a choice is `svm/peer-missing` only once every one
+ * holds.
  */
 async function build(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
@@ -364,7 +368,7 @@ async function build(
   if (keyBytes(choice.payer) === null) return refusal("svm/input-malformed");
   const feePayer = d["feePayer"] === true ? (d["feePayerKey"] as string) : choice.payer;
   const recentBlockhash = typeof d["recentBlockhash"] === "string" ? d["recentBlockhash"] : choice.recentBlockhash;
-  if (typeof recentBlockhash !== "string") return refusal("svm/input-malformed");
+  if (!isKey(recentBlockhash)) return refusal("svm/input-malformed");
   const computeUnitLimit = choice.computeUnitLimit ?? 40_000;
   const computeUnitPrice = choice.computeUnitPrice ?? 1n;
   if (!Number.isInteger(computeUnitLimit) || computeUnitLimit < 0 || computeUnitLimit > 0xffffffff) {

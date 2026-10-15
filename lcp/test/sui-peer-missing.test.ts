@@ -1,14 +1,14 @@
 // @mysten/sui is an optional peer. With it absent, the sui module and the package root still
-// import, and each function that needs the peer refuses `sui/peer-missing` (the vectors' refusal), never
-// throwing; `status` reads as it does with the peer, pending `unreadable` only once it must decode a transaction's
-// bytes. build checks H, then reads the choice's document and the option's
-// place in it, recover reads the ref, the reader and the transaction before it decodes the transaction, and
-// decodeSuiTx reads the bytes' form, size and two leading tags before it decodes them, without the peer, as they do
-// with it.
+// import, and each function refuses `sui/peer-missing` (the vectors' refusal) only where it decodes a transaction's
+// bytes, never throwing; `status` reads as it does with the peer, pending `unreadable` only once it must decode a
+// transaction's bytes. build checks H, then reads the choice's document and the option's place in it, and writes its
+// request as it does with the peer; its complete decodes the signed transaction as bound does. recover reads the ref,
+// the reader and the transaction before it decodes the transaction, and decodeSuiTx reads the bytes' form, size and two
+// leading tags before it decodes them, without the peer, as they do with it.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildChoices } from "./build-choices.js";
-import { BAD_H, hFirstChoices, SUI_STATUS_POSITION, suiDecodeInputs, suiRecoverDecodes, suiRecoverReads, suiStatusRows } from "./peer-free-inputs.js";
+import { BAD_H, hFirstChoices, SUI_STATUS_POSITION, suiDecodeInputs, suiPeerStepRows, suiRecoverDecodes, suiRecoverReads, suiStatusRows } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-sui.json", import.meta.url), "utf8"));
@@ -27,7 +27,7 @@ describe("without @mysten/sui", () => {
     root = await import("../src/index.js");
   }, IMPORT_MS);
 
-  it("the root imports, and every function that needs the peer refuses peer-missing", { timeout: IMPORT_MS }, async () => {
+  it("the root imports, and every function that decodes a transaction's bytes refuses peer-missing there", { timeout: IMPORT_MS }, async () => {
     expect(root.BINDINGS.map((b) => b.id)).toContain("x402/exact/sui");
     const { decodeSuiTx, exactSui } = await import("../src/sui.js");
     const b64 = V.V2.tx.transactionBase64 as string;
@@ -36,8 +36,17 @@ describe("without @mysten/sui", () => {
     expect(decodeSuiTx(b64)).toEqual(refused);
     expect(await exactSui.bound(p)).toEqual(refused);
     expect(await exactSui.reference(p)).toEqual(refused);
-    const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.fixed.O] };
-    expect(await exactSui.build({ required, accepted: V.fixed.O }, V.fixed.H)).toEqual(refused);
+  });
+
+  // peer-free-inputs.test.ts gives every row its answer with the peer: build writes its request without it, and only
+  // complete of a transaction that passes decodeSuiTx's form, size and tags reaches the decode.
+  it("build and complete answer as with the peer, up to the decode of the signed transaction", { timeout: IMPORT_MS }, async () => {
+    const { exactSui } = await import("../src/sui.js");
+    const rows = rowsOf(suiPeerStepRows(), "peer-free-inputs.ts", { exact: 6 });
+    for (const row of rows) {
+      expect([row.case, await row.call(exactSui as never)]).toEqual([row.case, row.without ?? row.expect]);
+    }
+    expect(rows.filter((row) => row.without !== undefined).map((row) => row.without)).toEqual([CODE]);
   });
 
   // peer-free-inputs.test.ts gives the same reads with the peer. Only bytes that hash to the digest and pass

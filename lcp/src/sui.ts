@@ -2,10 +2,11 @@
  * Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction
  * that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash
  * stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed
- * bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is; without it every
- * function that needs it refuses `sui/peer-missing`, after the checks that need no peer, and `status` reads as it does
- * with it, pending `unreadable` only once it must decode a transaction's bytes. A digest is base58, read and written
- * with the package's own dependency @scure/base, so it is checked without the peer.
+ * bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a
+ * transaction's bytes is the one step that needs it: without it a function refuses `sui/peer-missing` only when it
+ * reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads
+ * as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own
+ * dependency @scure/base, so it is checked without the peer.
  */
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base58 } from "@scure/base";
@@ -306,7 +307,13 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(suiFilter)(doc);
 }
 
-/** The wallet request: the scheme's payment plus one unused `Pure` input holding the hash, bounded by epoch. */
+/**
+ * The wallet request: the scheme's payment plus one unused `Pure` input holding the hash, bounded by epoch. H is checked
+ * first, then the choice's document and option. The request is written without @mysten/sui, so `build` gives it with
+ * the peer and without it. `complete` reads the signed transaction as `bound` does: one whose hash is not H, or that
+ * `bound` refuses, is `x402/signed-not-bound`; without the peer, a transaction whose form, size and tags pass is
+ * `sui/peer-missing`, as its decode is the one step that needs the peer.
+ */
 async function build(
   choice: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
@@ -315,7 +322,6 @@ async function build(
   if (expected === null) return refusal("x402/payload-malformed");
   const ok = chosen(choice?.required, choice?.accepted, suiFilter);
   if (ok !== true) return ok;
-  if (peer === undefined) return refusal("sui/peer-missing");
   const accepted = choice.accepted;
   const { required } = choice;
   return {
@@ -323,6 +329,7 @@ async function build(
     complete(signed: SuiPayload): SuiPaymentPayload | Refusal {
       const payment = paymentWith(required, accepted, signed);
       const got = boundNow(payment);
+      if (isRefusal(got) && got.code === "sui/peer-missing") return got;
       if (isRefusal(got) || got !== expected) return refusal("x402/signed-not-bound");
       return payment;
     },

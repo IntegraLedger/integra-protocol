@@ -1,10 +1,12 @@
 // TON's SDK and NEAR's borsh are optional peers. With them absent, the entry points and the package root still
-// import, and each function that needs a peer refuses `<rail>/peer-missing` (the vectors' refusal), never
-// throwing; TON's status needs no peer and gives every answer it gives with it. A check that needs no peer
-// comes first and gives the code it gives with the peer: TON's option filter checks the addresses last, both
-// pairings' build check H, then the form of the choice's own members, then read the choice's document and the
-// option's place in it, TON's recover reads the ref, the reader, the transaction and its body's size and layout before
-// it decodes the body's cells, and tvmCarrier and nearCarrier check their input's size and form before they decode it.
+// import, and each function refuses `<rail>/peer-missing` (the vectors' refusal) only at the step that decodes or writes
+// with the peer, never throwing; TON's status needs no peer and gives every answer it gives with it. A check that needs
+// no peer comes first and gives the code it gives with the peer: TON's option filter reads raw addresses itself, so
+// pairingOf, read and advertise need no peer; both pairings' build check H, then the form of the choice's own members,
+// then read the choice's document and the option's place in it; TON's build, bound and reference read every BoC's bytes
+// (base64, size, layout, CRC32C) before @ton/core decodes its cells; TON's recover reads the ref, the reader, the
+// transaction and its body's bytes before it decodes the body's cells; and tvmCarrier and nearCarrier check their
+// input's size and form before they decode it.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildChoices } from "./build-choices.js";
@@ -17,6 +19,7 @@ import {
   nearCarrierInputs,
   nearChoice,
   tvmCarrierInputs,
+  tvmPeerStepRows,
   tvmRecoverDecodes,
   tvmRecoverReads,
   tvmStatusRows,
@@ -51,19 +54,30 @@ describe("without the TON and NEAR peers", () => {
     expect(ids).toContain("x402/exact/near");
   });
 
-  it("TON: every function that needs @ton/core refuses tvm/peer-missing", { timeout: IMPORT_MS }, async () => {
+  // The cells of a BoC whose bytes pass, and the cells lcpComment writes, need @ton/core.
+  it("TON: every function that decodes or writes a cell refuses tvm/peer-missing there", { timeout: IMPORT_MS }, async () => {
     const { exactTvm, lcpComment, tvmCarrier } = await import("../src/tvm.js");
     const refused = { refused: true, code: code(TVM) };
-    const O = TVM.fixed.O;
-    const doc = { x402Version: 2 as const, resource: TVM.fixed.resource, accepts: [O] };
+    const placed = TVM.fixed.placed;
+    const doc = { x402Version: 2 as const, resource: TVM.fixed.resource, accepts: [placed] };
     expect(lcpComment(TVM.fixed.H)).toEqual(refused);
     expect(tvmCarrier("te6ccgEBAQEAAgAAAA==", "tvm:-239")).toEqual(refused);
-    expect(root.pairingOf(O)).toBeUndefined();
-    expect(exactTvm.advertise(doc, TVM.fixed.H, TVM.fixed.link, O)).toEqual(refused);
-    const payment = { x402Version: 2, accepted: O, payload: { settlementBoc: "te6ccgEBAQEAAgAAAA==", asset: O.asset } };
+    const payment = { x402Version: 2, accepted: placed, payload: { settlementBoc: "te6ccgEBAQEAAgAAAA==", asset: placed.asset } };
     expect(await exactTvm.bound(payment)).toEqual(refused);
     expect(await exactTvm.reference(payment)).toEqual(refused);
-    expect(await exactTvm.build({ ...membersOf(exactTvm.id), required: doc, accepted: O } as never, TVM.fixed.H)).toEqual(refused);
+    expect(await exactTvm.build({ ...membersOf(exactTvm.id), required: doc, accepted: placed } as never, TVM.fixed.H)).toEqual(refused);
+  });
+
+  // peer-free-inputs.test.ts gives every row its answer with @ton/core: without it each gives the same, except a row
+  // that reaches the decode of a BoC's cells or the writing of the request's (`without`).
+  it("TON: pairingOf, read, advertise, bound, reference and build answer as with the peer, up to the step that decodes or writes", { timeout: IMPORT_MS }, async () => {
+    const { exactTvm } = await import("../src/tvm.js");
+    const f = { pairingOf: root.pairingOf, ...exactTvm };
+    const rows = rowsOf(tvmPeerStepRows(), "peer-free-inputs.ts", { exact: 34 });
+    for (const row of rows) {
+      expect([row.case, await row.call(f as never)]).toEqual([row.case, row.without ?? row.expect]);
+    }
+    expect(rows.filter((row) => row.without !== undefined).map((row) => row.without)).toEqual(new Array(7).fill(code(TVM)));
   });
 
   // peer-free-inputs.test.ts gives the same reads with @ton/core: status decodes no cell and compares raw addresses
@@ -82,7 +96,7 @@ describe("without the TON and NEAR peers", () => {
   // (peer-free-inputs.test.ts). The vector file's recover row holds a body, which recover cannot decode without the peer.
   it("TON: recover refuses tvm/peer-missing only for a transaction whose body it decodes", { timeout: IMPORT_MS }, async () => {
     const { exactTvm } = await import("../src/tvm.js");
-    for (const row of rowsOf(tvmRecoverReads(), "peer-free-inputs.ts", { exact: 9 })) {
+    for (const row of rowsOf(tvmRecoverReads(), "peer-free-inputs.ts", { exact: 10 })) {
       const c = row.reader();
       const got = await exactTvm.recover(row.ref as never, c.reader as never);
       expect([row.case, got, c.reads()]).toEqual([row.case, { refused: true, code: row.expect }, row.reads]);
@@ -93,9 +107,10 @@ describe("without the TON and NEAR peers", () => {
     }
   });
 
-  // Buyer row B2's document, which TON's read reads with the peer: its option is TON's, so read refuses tvm/peer-missing
-  // as advertise and bound do. With no TON option in it, read gives the answer it gives with the peer.
-  it("TON: read refuses tvm/peer-missing for a document holding a TON option, and only then", { timeout: IMPORT_MS }, async () => {
+  // Buyer row B2's document, which TON's read reads with the peer: its option is TON's, and its filter reads its raw
+  // addresses without the peer, so read serves it as it does with the peer. With no TON option in it, read gives the
+  // answer it gives with the peer.
+  it("TON: read serves a document holding a TON option as it does with the peer", { timeout: IMPORT_MS }, async () => {
     const { exactTvm } = await import("../src/tvm.js");
     const [b2] = rowsOf(TVM.buyer.rows as { name: string; input: { doc: { accepts: unknown[] } } }[], "x402-exact-tvm.json buyer.rows", {
       exact: 1,
@@ -103,8 +118,9 @@ describe("without the TON and NEAR peers", () => {
       leave: ["every other row", (r) => r.name !== "B2"],
     });
     const doc = b2!.input.doc;
-    expect(exactTvm.read(doc as never)).toEqual({ refused: true, code: code(TVM) });
-    expect(exactTvm.read({ ...doc, accepts: [...doc.accepts, EVM.fixed.O] } as never)).toEqual({ refused: true, code: code(TVM) });
+    const served = (r: unknown) => (r as { offer: { options: unknown[] } }).offer.options;
+    expect(served(exactTvm.read(doc as never))).toEqual(doc.accepts);
+    expect(served(exactTvm.read({ ...doc, accepts: [...doc.accepts, EVM.fixed.O] } as never))).toEqual(doc.accepts);
     const none = { refused: true, code: "x402/no-payable-option" };
     expect(exactTvm.read({ ...doc, accepts: [] } as never)).toEqual(none);
     expect(exactTvm.read({ ...doc, accepts: [EVM.fixed.O] } as never)).toEqual(none);
@@ -136,9 +152,9 @@ describe("without the TON and NEAR peers", () => {
     }
   });
 
-  it("TON: tvmCarrier answers a network, size, base64 or bag-of-cells layout it refuses as it does with the peer", { timeout: IMPORT_MS }, async () => {
+  it("TON: tvmCarrier answers a network, size, base64, bag-of-cells layout or CRC32C it refuses as it does with the peer", { timeout: IMPORT_MS }, async () => {
     const { tvmCarrier } = await import("../src/tvm.js");
-    for (const row of rowsOf(tvmCarrierInputs(), "peer-free-inputs.ts", { exact: 6 })) {
+    for (const row of rowsOf(tvmCarrierInputs(), "peer-free-inputs.ts", { exact: 7 })) {
       expect([row.case, tvmCarrier(row.boc as never, row.network as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });

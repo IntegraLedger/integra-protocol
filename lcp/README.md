@@ -84,9 +84,9 @@ dependencies: install the one for each rail you use, at a version in the range t
 | TON | `@ton/core` and its peer `@ton/crypto` | `x402/exact/tvm` |
 | Algorand | `algosdk` | `x402/exact/algorand` |
 
-Without its peer, a rail's function that returns refusals gives `<rail>/peer-missing` for an input it needs the peer
-to answer, and a `status` that needs the peer is pending `unreadable`, with nothing read. Every other rail, and every
-protocol surface, needs nothing more.
+Without its peer, a rail's function that returns refusals gives `<rail>/peer-missing` only when it reaches the one
+step that must decode or write with the peer, after every check that needs none, and a `status` reads as it does with
+the peer, pending `unreadable` only there. Every other rail, and every protocol surface, needs nothing more.
 
 ## Quickstart
 

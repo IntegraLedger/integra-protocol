@@ -10,7 +10,7 @@ import type { Address, Cell, Slice } from "@ton/core";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import type { TvmPayment } from "./internal/tvm.js";
+import { crc32c, type TvmPayment } from "./internal/tvm.js";
 import {
   advertiseFor,
   chosen,
@@ -24,7 +24,7 @@ import {
   x402Broadcaster,
   type X402Read,
 } from "./internal/x402.js";
-import { decimalBelow, fromBase64 } from "./rail-bytes.js";
+import { decimalBelow, fromBase64, sameBytes, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /**
@@ -261,47 +261,82 @@ function bocOf(c: Cell): string {
 }
 
 /**
- * The one root of a base64 BoC of at most 8 KiB, at most 512 cells and depth 32, or the refusal. The bytes are read
- * as TON deserializes a bag of cells (`deserialized`): bytes TON refuses are `tvm/boc-malformed`. An exotic cell TON
- * accepts is refused only where a read parses it: every parse here refuses one without throwing, and a cell no read
- * parses, such as a state init's library code or a Jetton transfer's custom payload, is left as it is. The base64, the
- * size bound and the bag's layout (its header, root index and each cell's span) are read without @ton/core; the CRC32C
- * and the cells are @ton/core's, so without it bytes whose base64, size and layout pass are `tvm/peer-missing`.
+ * The BoC of `lcpComment`'s cell for H, written without @ton/core as `bocOf` writes that cell: the generic magic with
+ * the CRC32C flag, no index and one-byte references, a one-byte offset size, one cell, one root, none absent, the data
+ * size, root 0; then the cell's two descriptor bytes (no references, ordinary, level 0; its byte count doubled, as its
+ * 32 zero bits and the LCP string's 77 bytes fill whole bytes) and its data; then the CRC32C of every byte before it.
+ */
+function commentBoc(nh: AtrHash): Uint8Array {
+  const text = utf8.encode(toLcpString(nh));
+  const n = 4 + text.length;
+  const b = new Uint8Array(13 + n + 4);
+  b.set([0xb5, 0xee, 0x9c, 0x72, 0x41, 1, 1, 1, 0, 2 + n, 0, 0, 2 * n]);
+  b.set(text, 17);
+  const crc = crc32c(b.subarray(0, b.length - 4));
+  b.set([crc & 0xff, (crc >>> 8) & 0xff, (crc >>> 16) & 0xff, crc >>> 24], b.length - 4);
+  return b;
+}
+
+/**
+ * The one root of a base64 BoC of at most 8 KiB, at most 512 cells and depth 32, or the refusal: its bytes as `bagOf`
+ * reads them, without @ton/core, then its cells as `rootIn` reads them, with it.
  */
 function rootOf(boc: unknown): Cell | Refusal {
+  const bag = bagOf(boc);
+  return isRefusal(bag) ? bag : rootIn(bag);
+}
+
+/**
+ * A base64 BoC's bytes, read without @ton/core: the base64, the 8 KiB bound, then the bag's layout and its CRC32C
+ * (`layoutOf`). Bytes TON refuses there are `tvm/boc-malformed`, and more than 8 KiB `tvm/boc-too-large`, with
+ * @ton/core and without it.
+ */
+function bagOf(boc: unknown): Bag | Refusal {
   const bytes = boc === "" ? null : fromBase64(boc);
   if (bytes === null) return refusal("tvm/boc-malformed");
   if (bytes.length > MAX_BOC_BYTES) return refusal("tvm/boc-too-large");
-  const root = deserialized(bytes);
-  if (root === "peer-missing") return refusal("tvm/peer-missing");
+  return layoutOf(bytes) ?? refusal("tvm/boc-malformed");
+}
+
+/**
+ * The bag's one root, its cells read as TON deserializes them (`cellsOf`), at most 512 cells and depth 32, or the
+ * refusal: cells TON refuses are `tvm/boc-malformed`. An exotic cell TON accepts is refused only where a read parses it:
+ * every parse here refuses one without throwing, and a cell no read parses, such as a state init's library code or a
+ * Jetton transfer's custom payload, is left as it is. The cells are @ton/core's, so without it every bag is
+ * `tvm/peer-missing`: this is the one step that decodes a BoC.
+ */
+function rootIn(bag: Bag): Cell | Refusal {
+  if (peer === undefined) return refusal("tvm/peer-missing");
+  const root = cellsOf(bag);
   if (root === null) return refusal("tvm/boc-malformed");
   if (root.depth() > MAX_DEPTH) return refusal("tvm/boc-too-large");
   if (cellCount(root) > MAX_CELLS) return refusal("tvm/boc-too-large");
   return root;
 }
 
+/** A bag of cells' bytes and layout, as `layoutOf` reads them: what `cellsOf` builds the cells from. */
+interface Bag {
+  readonly bytes: Uint8Array;
+  readonly cells: number;
+  readonly rootIdx: number;
+  readonly refSize: number;
+  /** Each cell's span in `data`. */
+  readonly spans: readonly (readonly [number, number])[];
+  /** Each cell's cache bit from the index, or null for a bag without cache bits. */
+  readonly cached: readonly boolean[] | null;
+  readonly data: Uint8Array;
+}
+
 /**
- * The one root of a bag of cells as TON deserializes it (ton-blockchain/ton `crypto/vm/boc.cpp`,
- * `std_boc_deserialize`), or null where TON refuses the bytes:
+ * A bag of cells' layout as TON deserializes it (ton-blockchain/ton `crypto/vm/boc.cpp`, `std_boc_deserialize`), read
+ * without @ton/core, or null where TON refuses the bytes:
  * - the header (`parse_serialized_header`): one of the three magics, cache bits only with an index, a reference size
  *   of 1 to 4 bytes and an offset size of 1 to 8, at least one cell, exactly one root, no more absent cells than
  *   cells, a data size within the cell count's bounds, and the bytes holding all of it;
- * - with a CRC32C, the input's last four bytes are the CRC32C of every byte before them;
- * - each cell's bytes (`deserialize`, `deserialize_cell`): at most four references, each to a later cell, the bytes
- *   read exactly (the cells fill the data, or each index entry bounds one cell with no unused space), a partial last
- *   data byte holding a data bit before its completion tag, and with cache bits, each cell's flag set exactly when two
- *   or more references (the root's counted) name it;
- * - each cell as TON creates it (`crypto/vm/cells/DataCell.cpp`, `CellChecker`, and `create_data_cell`): at most 1,023
- *   bits; an exotic cell of type 1 to 4 with its exact bits and references (a pruned branch none, a library cell none,
- *   a Merkle proof one, a Merkle update two, each Merkle child's level-0 hash and depth as the cell stores them); a
- *   depth of at most 1,024 at every level; the level mask its first byte gives equal to the one computed; and where it
- *   stores hashes and depths, each one equal to the computed one;
- * - the root's level 0.
- *
- * The layout (the header, the root index and each cell's span) is read first, without @ton/core; then, without it,
- * "peer-missing". With it every refusal here is null, so reading the layout before the CRC32C changes no answer.
+ * - each cell's span: the cells fill the data, or each index entry bounds one cell with no unused space;
+ * - with a CRC32C, the input's last four bytes are the CRC32C of every byte before them (`crc32c`).
  */
-function deserialized(b: Uint8Array): Cell | null | "peer-missing" {
+function layoutOf(b: Uint8Array): Bag | null {
   const at = (o: number, n: number): number => {
     let v = 0;
     for (let i = 0; i < n; i++) v = v * 256 + b[o + i]!;
@@ -334,6 +369,7 @@ function deserialized(b: Uint8Array): Cell | null | "peer-missing" {
   if (rootIdx >= cells) return null;
   const data = b.subarray(dataAt, dataAt + dataSize);
   const spans: [number, number][] = [];
+  const cached: boolean[] | null = cacheBits ? [] : null;
   if (indexed) {
     let start = 0;
     for (let i = 0; i < cells; i++) {
@@ -341,6 +377,7 @@ function deserialized(b: Uint8Array): Cell | null | "peer-missing" {
       const end = cacheBits ? Math.floor(raw / 2) : raw;
       if (start > end || end > dataSize) return null;
       spans.push([start, end]);
+      cached?.push(raw % 2 === 1);
       start = end;
     }
   } else {
@@ -357,10 +394,31 @@ function deserialized(b: Uint8Array): Cell | null | "peer-missing" {
     }
     if (start !== dataSize) return null;
   }
-  if (peer === undefined) return "peer-missing";
-  if (crc && !peer.crc32c(Buffer.from(b.subarray(0, b.length - 4))).equals(Buffer.from(b.subarray(b.length - 4)))) {
-    return null;
-  }
+  if (crc && crc32c(b.subarray(0, b.length - 4)) !== littleEndian32(b, b.length - 4)) return null;
+  return { bytes: b, cells, rootIdx, refSize, spans, cached, data };
+}
+
+/** Four bytes at `o`, least significant first, as an unsigned 32-bit number. */
+function littleEndian32(b: Uint8Array, o: number): number {
+  return (b[o]! | (b[o + 1]! << 8) | (b[o + 2]! << 16) | (b[o + 3]! << 24)) >>> 0;
+}
+
+/**
+ * The one root of a bag `layoutOf` read, its cells built as TON deserializes them, or null where TON refuses them:
+ * - each cell's bytes (`deserialize`, `deserialize_cell`): at most four references, each to a later cell, its bytes
+ *   read exactly, a partial last data byte holding a data bit before its completion tag, and with cache bits, each
+ *   cell's flag set exactly when two or more references (the root's counted) name it;
+ * - each cell as TON creates it (`crypto/vm/cells/DataCell.cpp`, `CellChecker`, and `create_data_cell`): at most 1,023
+ *   bits; an exotic cell of type 1 to 4 with its exact bits and references (a pruned branch none, a library cell none,
+ *   a Merkle proof one, a Merkle update two, each Merkle child's level-0 hash and depth as the cell stores them); a
+ *   depth of at most 1,024 at every level; the level mask its first byte gives equal to the one computed; and where it
+ *   stores hashes and depths, each one equal to the computed one;
+ * - the root's level 0.
+ *
+ * The cells are @ton/core's: `rootIn` calls this only with it.
+ */
+function cellsOf(bag: Bag): Cell | null {
+  const { cells, rootIdx, refSize, spans, cached, data } = bag;
   const built: Cell[] = new Array<Cell>(cells);
   const named = new Uint8Array(cells);
   named[rootIdx] = 1;
@@ -410,8 +468,8 @@ function deserialized(b: Uint8Array): Cell | null | "peer-missing" {
   } catch {
     return null;
   }
-  if (cacheBits) {
-    for (let i = 0; i < cells; i++) if ((named[i]! > 1) !== (at(indexAt + i * offSize, offSize) % 2 === 1)) return null;
+  if (cached !== null) {
+    for (let i = 0; i < cells; i++) if ((named[i]! > 1) !== cached[i]) return null;
   }
   const root = built[rootIdx]!;
   return root.level() === 0 ? root : null;
@@ -717,8 +775,8 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
  * `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The
  * settlement message's source names the account that relays it, which the BoC cannot show: one naming another account
  * is read, and TON sends it when that account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an
- * `addr_var` of 256 bits names its `addr_std`. The network, the base64, the 8 KiB bound and the bag-of-cells layout
- * need no peer: without @ton/core they give the codes they give with it, and a BoC that passes them is
+ * `addr_var` of 256 bits names its `addr_std`. The network, the base64, the 8 KiB bound, the bag-of-cells layout and
+ * its CRC32C need no peer: without @ton/core they give the codes they give with it, and a BoC that passes them is
  * `tvm/peer-missing`.
  */
 export function tvmCarrier(settlementBoc: string, network: TvmNetwork): {
@@ -732,11 +790,12 @@ export function tvmCarrier(settlementBoc: string, network: TvmNetwork): {
 } | Refusal {
   const config = CONFIGURATIONS.get(network);
   if (config === undefined) return refusal("tvm/network-malformed");
-  return carrierIn(settlementBoc, config);
+  const root = rootOf(settlementBoc);
+  return isRefusal(root) ? root : carrierIn(root, config);
 }
 
-/** `tvmCarrier` at the network's configuration, with the payload as the peer's cell. */
-function carrierIn(settlementBoc: string, config: TonConfiguration): {
+/** `tvmCarrier` of the settlement message's decoded root at the network's configuration, with the payload as the peer's cell. */
+function carrierIn(root: Cell, config: TonConfiguration): {
   h: AtrHash;
   transferBodyHash: Hex;
   jettonWallet: string;
@@ -745,8 +804,6 @@ function carrierIn(settlementBoc: string, config: TonConfiguration): {
   validUntil: number;
   payload: Cell;
 } | Refusal {
-  const root = rootOf(settlementBoc);
-  if (isRefusal(root)) return root;
   const message = messageOf(root, null, config);
   if (message === null) return refusal("tvm/boc-malformed");
 
@@ -937,8 +994,8 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
  * body that is not a bag of cells with one root is an answer out of the reader's documented form, `tvm/unreadable`. A
  * ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body's cells
  * cannot be read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader, the read
- * and the body's size and bag-of-cells layout are checked, which need no peer, so an empty body is `tvm/unreadable` and
- * one over 8 KiB `tvm/boc-too-large` either way. One call.
+ * and the body's size, bag-of-cells layout and CRC32C are checked, which need no peer, so an empty body is
+ * `tvm/unreadable` and one over 8 KiB `tvm/boc-too-large` either way. One call.
  */
 export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tvm/wrong-reader");
@@ -1023,9 +1080,8 @@ function isRawAddress(s: unknown): s is string {
  * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
  * read at; any other `tvm:` network is `tvm/network-malformed`. `pairingOf`, `advertise`, `read` and `build` apply it,
  * and `bound` and `reference` hold the option a presented payment echoes to it. The asset, `payTo` and response
- * destination are addresses that only @ton/core reads, so they are checked last: without @ton/core, an option of this
- * pairing that passes every other check is `tvm/peer-missing`, and one that fails another check gets the code it gets
- * with @ton/core.
+ * destination are raw addresses (`isRawAddress`), read without @ton/core as its `Address.parseRaw` reads them, so the
+ * filter needs no peer and gives every option the same answer with @ton/core and without it.
  */
 const check: OptionFilter = (o) => {
   if (!isObject(o) || o.scheme !== "exact") return refusal("x402/option-not-this-pairing");
@@ -1042,10 +1098,9 @@ const check: OptionFilter = (o) => {
   if (!isAmount(o.amount) || decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   const t = o.maxTimeoutSeconds;
   if (!isTimeoutSeconds(t) || !isUint32(t)) return refusal("tvm/option-malformed");
-  if (peer === undefined) return refusal("tvm/peer-missing");
-  if (rawAddress(o.asset) === null || rawAddress(o.payTo) === null) return refusal("tvm/option-malformed");
+  if (!isRawAddress(o.asset) || !isRawAddress(o.payTo)) return refusal("tvm/option-malformed");
   const response = extra["responseDestination"];
-  if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
+  if (response !== undefined && !isRawAddress(response)) return refusal("tvm/option-malformed");
   return true;
 };
 
@@ -1060,7 +1115,14 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   return { ...option, extra };
 }
 
-/** x402's legal context placed in the document, then `extra.forwardPayload` on the offered option set to the hash's comment. */
+/**
+ * x402's legal context placed in the document, then `extra.forwardPayload` on the offered option set to the BoC of the
+ * hash's comment, which `commentBoc` writes without @ton/core. An offer that carries a forward payload keeps it only
+ * when it is that comment's cell, else `tvm/carrier-occupied`: bytes equal to the BoC written are that cell, and bytes
+ * `bagOf` refuses are not, without @ton/core; any other BoC is decoded and compared by representation hash, the one
+ * step here that needs @ton/core, so without it that offer is `tvm/peer-missing`. Every other answer is the same with
+ * @ton/core and without it.
+ */
 function advertise(
   doc: PaymentRequired,
   h: AtrHash,
@@ -1070,16 +1132,21 @@ function advertise(
 ): PaymentRequired | Refusal {
   const placed = advertiseFor(check)(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
-  const carrier = comment(normalHash(h)!);
-  if (isRefusal(carrier)) return carrier;
+  const nh = normalHash(h)!;
+  const carrier = commentBoc(nh);
   const present = offer.extra?.["forwardPayload"];
   if (present !== undefined) {
-    const cell = rootOf(present);
-    if (isRefusal(cell) || !cell.equals(carrier)) return refusal("tvm/carrier-occupied");
+    const bag = bagOf(present);
+    if (isRefusal(bag)) return refusal("tvm/carrier-occupied");
+    if (!sameBytes(bag.bytes, carrier)) {
+      const cell = rootIn(bag);
+      if (isRefusal(cell) && cell.code === "tvm/peer-missing") return cell;
+      if (isRefusal(cell) || !cell.equals(comment(nh) as Cell)) return refusal("tvm/carrier-occupied");
+    }
   }
   const i = offeredAt(placed.accepts, offer);
   const accepts = [...placed.accepts];
-  accepts[i] = { ...offer, extra: { ...offer.extra, forwardPayload: bocOf(carrier) } };
+  accepts[i] = { ...offer, extra: { ...offer.extra, forwardPayload: toBase64(carrier) } };
   return { ...placed, accepts };
 }
 
@@ -1087,18 +1154,20 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(check)(doc);
 }
 
-/** True when the option's `extra.forwardPayload` is one cell whose hash is the payload's. */
-function carries(option: PaymentRequirements, payload: Cell): boolean {
-  const cell = rootOf(option.extra?.["forwardPayload"]);
-  return !isRefusal(cell) && cell.equals(payload);
+/** The workchain of a raw address `isRawAddress` holds, as @ton/core's `Address.parseRaw` reads it (`parseInt`). */
+function workchainOf(s: string): number {
+  return Number(s.slice(0, s.indexOf(":")));
 }
 
 /**
- * The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. H is checked
- * first, then the form of the choice's wallets, `walletId`, `seqno`, `now` and `attachNanotons`, each
- * `x402/option-malformed`, then its document and option, so without @ton/core the filter refuses a TON option
- * `tvm/peer-missing` only after those. The wallets' workchains, `now` with the option's timeout, the state init, which
- * needs @ton/core, and the attached value against the option's forward amount come after.
+ * The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. Every check
+ * that needs no peer comes first: H; the form of the choice's wallets, `walletId`, `seqno`, `now` and
+ * `attachNanotons`, each `x402/option-malformed`; its document and option (`chosen`, whose filter needs no peer); the
+ * option's forward payload's bytes (`bagOf`, else `tvm/carrier-mismatch`); the wallets' workchains and `now` with the
+ * option's timeout, each `x402/option-malformed`; a state init given as a BoC, its bytes (`bagOf`); and the attached
+ * value against the option's forward amount (`tvm/value-too-low`). Then @ton/core decodes the forward payload, which
+ * must be the hash's comment cell, and the state init, and writes the request's cells: without it the choice is
+ * `tvm/peer-missing` only there. The state init's fields and hash against the wallet come last.
  */
 async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   const nh = normalHash(h);
@@ -1112,24 +1181,29 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   if (typeof attachNanotons !== "bigint" || attachNanotons >= COINS_LIMIT) return refusal("x402/option-malformed");
   const ok = chosen(required, accepted, check);
   if (ok !== true) return ok;
-  if (peer === undefined) return refusal("tvm/peer-missing");
-  const carrier = comment(nh);
-  if (isRefusal(carrier)) return carrier;
-  if (!carries(accepted, carrier)) return refusal("tvm/carrier-mismatch");
-  const walletAddress = rawAddress(wallet);
-  const jettonAddress = rawAddress(jettonWallet);
-  if (walletAddress === null || jettonAddress === null) return refusal("x402/option-malformed");
+  const extra = accepted.extra!;
+  const carried = bagOf(extra["forwardPayload"]);
+  if (isRefusal(carried)) return refusal("tvm/carrier-mismatch");
   const config = CONFIGURATIONS.get(accepted.network)!;
-  if (!config.workchains.has(walletAddress.workChain) || !config.workchains.has(jettonAddress.workChain)) {
+  if (!config.workchains.has(workchainOf(wallet)) || !config.workchains.has(workchainOf(jettonWallet))) {
     return refusal("x402/option-malformed");
   }
   const validUntil = now + accepted.maxTimeoutSeconds;
   if (!isUint32(validUntil)) return refusal("x402/option-malformed");
-  const initCell = stateInit === undefined || stateInit instanceof peer.Cell ? stateInit : rootOf(stateInit);
-  if (isRefusal(initCell)) return initCell;
-  const extra = accepted.extra!;
+  // A state init given as an object may be @ton/core's cell, which only @ton/core tells; any other value is read as a BoC.
+  const initBag = stateInit === undefined || (typeof stateInit === "object" && stateInit !== null) ? undefined : bagOf(stateInit);
+  if (isRefusal(initBag)) return initBag;
   const forwardTon = extra["forwardTonAmount"] === undefined ? 0n : BigInt(extra["forwardTonAmount"] as string);
   if (attachNanotons <= forwardTon) return refusal("tvm/value-too-low");
+  if (peer === undefined) return refusal("tvm/peer-missing");
+  const carrier = comment(nh) as Cell;
+  const held = rootIn(carried);
+  if (isRefusal(held) || !held.equals(carrier)) return refusal("tvm/carrier-mismatch");
+  const walletAddress = rawAddress(wallet)!;
+  const jettonAddress = rawAddress(jettonWallet)!;
+  const initCell =
+    stateInit === undefined || stateInit instanceof peer.Cell ? stateInit : initBag === undefined ? refusal("tvm/boc-malformed") : rootIn(initBag);
+  if (isRefusal(initCell)) return initCell;
   const response = extra["responseDestination"] === undefined ? null : rawAddress(extra["responseDestination"]);
 
   const body = peer.beginCell()
@@ -1324,15 +1398,28 @@ function labelLength(s: Slice, n: number): number | null {
   return l;
 }
 
-/** The signed request's carrier, read at the option's network's configuration and checked against its forward payload. */
+/**
+ * The signed request's carrier, read at the option's network's configuration and checked against its forward payload.
+ * Every check that needs no peer comes first: the payment and its option (`presentedWith`, whose filter needs no peer),
+ * the settlement BoC's bytes (`bagOf`), then the forward payload's bytes (else `tvm/carrier-mismatch`). @ton/core then
+ * decodes the settlement BoC's cells and the forward payload's, which must be the payment's comment cell: without it the
+ * payment is `tvm/peer-missing` only there.
+ */
 function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclude<ReturnType<typeof carrierIn>, Refusal> } | Refusal {
   const p = presentedWith(presented, check);
   if (isRefusal(p)) return p;
   const boc = p.payload["settlementBoc"];
   if (typeof boc !== "string") return refusal("x402/payload-malformed");
-  const c = carrierIn(boc, CONFIGURATIONS.get(p.accepted.network)!);
+  const settlement = bagOf(boc);
+  if (isRefusal(settlement)) return settlement;
+  const forward = bagOf(p.accepted.extra?.["forwardPayload"]);
+  if (isRefusal(forward)) return refusal("tvm/carrier-mismatch");
+  const root = rootIn(settlement);
+  if (isRefusal(root)) return root;
+  const c = carrierIn(root, CONFIGURATIONS.get(p.accepted.network)!);
   if (isRefusal(c)) return c;
-  if (!carries(p.accepted, c.payload)) return refusal("tvm/carrier-mismatch");
+  const held = rootIn(forward);
+  if (isRefusal(held) || !held.equals(c.payload)) return refusal("tvm/carrier-mismatch");
   return { accepted: p.accepted, c };
 }
 
@@ -1343,6 +1430,8 @@ function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclud
  * action runs.
  * A state init that holds a libraries dictionary, has a fixed prefix longer than 8 bits, or does not hash to the
  * settlement message's destination is read, since whether TON deploys the wallet from it is chain state.
+ * The option, the settlement BoC's bytes and the forward payload's bytes are checked without @ton/core, which then
+ * decodes both BoCs' cells: without it a payment that passes those checks is `tvm/peer-missing`, as for `reference`.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const r = carried(presented);
