@@ -70,11 +70,15 @@ opening's address lookup tables, and the seller broadcasts the opening; on `mpp/
 `mpp/charge/nearintents` the payer broadcasts, and neither has `landedTx` or `fetchPresented`.
 
 `broadcaster` answers only for a payment of a type and kind the pairing takes, within the shape gate its `bound`
-applies first, and gives any other payment the refusal `bound` gives it, so where both refuse, they refuse with one
-code. The shape gates are an MPP credential of `credentialOf`'s shape, at most 64 KiB as JSON and 16 arrays and objects
-deep; an x402 v2 payment whose `accepted` and `payload` are objects; and an object, for the checkout and card pairings
-(on `acp/checkout/delegated`, one whose `allowance` has ACP's members). Faults `bound` finds in anything else, such as
-H, the challenge, an amount or a signature, do not change the answer, so `broadcaster` does not stand in for `bound`.
+applies first, and gives any other payment the refusal `bound` gives that fault. Where a payment has a second fault
+that `bound` finds first, in H or the challenge, the two codes differ. A session's or batch channel's `bound` reads the
+opening alone, so for any other action the reader is `channel.kind`: a payment it refuses for its own content gets its
+refusal, and one it refuses for what the challenge decides is answered. The shape gates are an MPP credential of
+`credentialOf`'s shape, at most 64 KiB as JSON and 16 arrays and objects deep; an x402 v2 payment whose `accepted` is
+an object, and whose `payload` is one too, except on `x402/exact/lnbtc`, `x402/exact/lnbtc/invoice-named` and
+`x402/batch-settlement/cloudflare`, which read no payload; and an object, for the checkout and card pairings (on
+`acp/checkout/delegated`, one whose `allowance` has ACP's members). Faults `bound` finds in anything else, such as H,
+the challenge, an amount or a signature, do not change the answer, so `broadcaster` does not stand in for `bound`.
 It is pure: it takes no reader and loads no peer. The pairings whose `bound` binds nothing and applies no gate
 (`ack/payment-request`, `acp/checkout/undelegated`, `ucp/checkout/unsigned`, `ucp/booking/unsigned`,
 `card/seller-reference`) answer for whatever is presented.
@@ -83,8 +87,13 @@ A pairing that reads a payload `type` or a session `action` refuses one it does 
 `mpp/credential-type` on most MPP charges, `near/not-hash-credential` on `mpp/charge/nearintents`, and
 `mpp/no-signed-place` on `mpp/charge/evm/transaction` and `mpp/charge/evm/hash`, whose `bound` binds nothing. A session
 takes the actions its `channel.kind` takes, and refuses any other with the code its `bound` gives a credential that is
-not an opening; an opening of a type its `bound` does not take gets `bound`'s code too. The EVM and Solana
-batch-settlement channels refuse a payload `type` their `channel.kind` does not take with `x402/not-an-opening`.
+not an opening; an opening of a type its `bound` does not take gets `bound`'s code too. On `mpp/session/solana`, a close
+that lacks the member its `voucherSigner` mode requires, or carries the one it forbids, gets `mpp/credential-malformed`,
+as `channel.kind` refuses it; where `channel.kind` refuses the echoed challenge itself, the challenge decides, and
+`broadcaster` answers. The EVM and Solana batch-settlement channels refuse a payload `type` their `channel.kind` does
+not take with `x402/not-an-opening`, and the EVM channel refuses a refund whose `amount` is not a positive decimal below
+2^128 with `x402/payload-malformed`, as `channel.kind` does. Both read the payload alone, so which option `accepted` is
+does not change the answer.
 
 Most pairings take payments of one path, and every payment they take gets one answer. These take more than one, and
 answer by the payment's kind:
@@ -95,7 +104,7 @@ answer by the payment's kind:
 | `mpp/charge/hedera`, `mpp/charge/xrpl` | `type` `hash` | `type` `transaction` |
 | `mpp/charge/stellar` | `type` `hash`, where the request's `feePayer` is not true; under `feePayer` true MPP's Stellar charge forbids push mode, and a `hash` credential gets `mpp/credential-type` | `type` `transaction` |
 | `mpp/charge/solana` | `type` `signature` | `type` `transaction` or `bundle` |
-| `mpp/session/evm` | An opening or a top-up of `type` `hash`. No member reads the top-up, so the seller confirms it outside the package. | An opening or a top-up of `type` `authorization` or `permit2`; a voucher, or, where it carries an opening `deposit`, by that deposit's `type`; the close. |
+| `mpp/session/evm` | An opening or a top-up of `type` `hash`, and a voucher carrying an opening `deposit` of that `type`. No member reads the top-up, so the seller confirms it outside the package. | An opening or a top-up of `type` `authorization` or `permit2`, and a voucher carrying an opening `deposit` of either; any other voucher; the close. |
 | `mpp/session/hedera` | The opening; a top-up, which no member reads, so the seller confirms it outside the package. | A voucher; the close. |
 | `mpp/session/lightning` | The opening; a top-up; a bearer proof, which draws on the deposit the payer paid. | The close, whose refund the seller's node pays. |
 

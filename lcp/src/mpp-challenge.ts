@@ -1074,8 +1074,8 @@ function shapeGate(c: unknown, bound: boolean): MppCredential | Refusal {
 
 /**
  * The `broadcaster` of an MPP pairing: `answer` reads a credential within `credentialShape`'s gate, which every MPP
- * `bound` applies first, and gives who broadcasts it, or, for a credential of a type or action the pairing does not
- * take, the refusal `bound` gives it. Any other credential is `mpp/credential-malformed`, as `bound` refuses it.
+ * `bound` applies first, and gives who broadcasts it, or `answer`'s refusal for a credential of a type or action the
+ * pairing does not take. Any other credential is `mpp/credential-malformed`, as `bound` refuses it.
  */
 export function mppBroadcaster(
   answer: (credential: MppCredential) => Broadcaster | Refusal,

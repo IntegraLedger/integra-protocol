@@ -1,5 +1,5 @@
 {
-  "about": "Who broadcasts what a payer presents under each pairing, as its `broadcaster` answers: \"payer\", which sent the payment before presenting it, so the seller reads a landed payment, or \"payee\", the seller, or the facilitator or processor acting for it, which sends or executes what the payer presented. `broadcaster` answers only for a payment of a type and kind the pairing takes, within the shape gate its `bound` applies first, and gives any other payment the refusal `bound` gives it. `pairings` holds every pairing once, with its answer where every payment it takes has the same one, and null where it answers by the kind of payment; `kinds` holds answers for credentials of each kind, each copied from the pairing's own vector file's buyer row with only its payload changed, or, where its `case` says so, under another challenge: on the EVM `transaction` and `hash` charges, a challenge carrying only the members a credential needs, or the challenge `place` places; on the card and Stripe pairings, the challenge `advertise` places; and on the Stellar charge's hash credential, a request whose feePayer is false. `refusals` holds payments of a type, kind or shape the pairing does not take: `bound` and `broadcaster` each refuse one with `expectRefusal`, except where the row has a `bound`, which names the code `bound` gives: a session's or channel's action other than the opening, which `bound` does not read, and which `channel.kind` and `broadcaster` each refuse with `expectRefusal`. A value {\"$repeat\": [s, n]} in a row stands for the string s repeated n times. Each row's `source` names the specification the answer is read from; the MPP drafts are cited at tempoxyz/mpp-specs 08e7dd87.",
+  "about": "Who broadcasts what a payer presents under each pairing, as its `broadcaster` answers: \"payer\", which sent the payment before presenting it, so the seller reads a landed payment, or \"payee\", the seller, or the facilitator or processor acting for it, which sends or executes what the payer presented. `broadcaster` answers only for a payment of a type and kind the pairing takes, within the shape gate its `bound` applies first, and gives any other payment the refusal `bound` gives that fault. Where a payment has a second fault that `bound` finds first, in H or the challenge, the two codes differ. A session's or batch channel's `bound` reads the opening alone, so for any other action the reader is `channel.kind`: a payment it refuses for its own content gets its refusal, and one it refuses for what the challenge decides is answered. `pairings` holds every pairing once, with its answer where every payment it takes has the same one, and null where it answers by the kind of payment; `kinds` holds answers for credentials of each kind, each copied from the pairing's own vector file's buyer row with only its payload changed, or, where its `case` says so, under another challenge: on the EVM `transaction` and `hash` charges, a challenge carrying only the members a credential needs, or the challenge `place` places; on the card and Stripe pairings, the challenge `advertise` places; and on the Stellar charge's hash credential, a request whose feePayer is false. `refusals` holds payments of a type, kind or shape the pairing does not take: `bound` and `broadcaster` each refuse one with `expectRefusal`, except where the row has a `bound`, which names the code `bound` gives: a session's or channel's action other than the opening, which `bound` does not read, and which `channel.kind` and `broadcaster` each refuse with `expectRefusal`. A value {\"$repeat\": [s, n]} in a row stands for the string s repeated n times. Each `pairings` and `kinds` row's `source` names the specification the answer is read from; the MPP drafts are cited at tempoxyz/mpp-specs 08e7dd87.",
   "pairings": [
     {
       "pairing": "x402/exact/eip155/eip3009",
@@ -1513,7 +1513,7 @@
       "expectRefusal": "mpp/credential-type"
     },
     {
-      "case": "mpp/charge/stellar: the hash credential with a payload member of 65,536 characters, over 64 KiB as JSON",
+      "case": "mpp/charge/stellar: kinds row 10's hash credential with a payload member of 65,536 characters, over 64 KiB as JSON",
       "pairing": "mpp/charge/stellar",
       "presented": {
         "challenge": {
@@ -1539,7 +1539,7 @@
       "expectRefusal": "mpp/credential-malformed"
     },
     {
-      "case": "mpp/charge/stellar: the hash credential with objects nested 17 deep, the credential counting 1",
+      "case": "mpp/charge/stellar: kinds row 10's hash credential with objects nested 17 deep, the credential counting 1",
       "pairing": "mpp/charge/stellar",
       "presented": {
         "challenge": {
