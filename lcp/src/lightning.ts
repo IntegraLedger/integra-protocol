@@ -25,6 +25,8 @@ import {
   decodeObject,
   echoedFor,
   measured,
+  measuring,
+  measuringAsync,
   place,
   read as mppRead,
   tie as mppTie,
@@ -673,9 +675,9 @@ const MPP_LN_SESSION_PROVES = MPP_LN_PROVES + " The close is the seller's report
 export const sessionLightning = Object.freeze({
   ...lnMppBinding(LN_SESSION, "request.depositInvoice#h", MPP_LN_SESSION_PROVES),
   channel: Object.freeze({
-    kind: sessionKind,
-    ref: sessionRef,
-    boundWithin: sessionBoundWithin,
+    kind: measuring(sessionKind),
+    ref: measuringAsync(sessionRef),
+    boundWithin: measuringAsync(sessionBoundWithin),
     until: (_presented: unknown): number | undefined => undefined,
   }),
 });

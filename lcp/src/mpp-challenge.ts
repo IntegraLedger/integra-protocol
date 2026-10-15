@@ -1100,6 +1100,21 @@ export function measured<C extends MppCredential>(credential: C): C | Refusal {
 }
 
 /**
+ * A session pairing's `channel.kind`, given only a payment `measured` takes: one over the credential size bound, or
+ * nested more than 16 arrays and objects deep, is `mpp/credential-malformed` before `kind` reads it, as `bound`
+ * measures every credential before it reads it. So one rule covers every credential, in the channel or opening it.
+ */
+export function measuring<P, T>(kind: (presented: P) => T): (presented: P) => T | Refusal {
+  return (presented) => (jsonWithin(presented, MAX_CREDENTIAL) ? kind(presented) : refusal("mpp/credential-malformed"));
+}
+
+/** `measuring` for a session pairing's `channel.ref` and `channel.boundWithin`, which answer in a promise. */
+export function measuringAsync<P, T>(read: (presented: P) => Promise<T>): (presented: P) => Promise<T | Refusal> {
+  return async (presented) =>
+    jsonWithin(presented, MAX_CREDENTIAL) ? read(presented) : refusal("mpp/credential-malformed");
+}
+
+/**
  * An echoed challenge as a credential presents it, held to its pairing's filter (`checkedFor`): the request decoded,
  * and each pairing reads the request members its own read keys or derivation use.
  */

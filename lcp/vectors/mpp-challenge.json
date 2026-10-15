@@ -266,5 +266,13 @@
    { "case": "a voucher whose credential is at the credential size bound", "size": 65536, "taken": true },
    { "case": "a voucher whose credential is one over the credential size bound", "size": 65537, "expect": "mpp/credential-malformed" }
   ]
+ },
+ "inChannelSize": {
+  "about": "One rule covers the credentials in a channel: a buildWithin's complete measures the in-channel credential it would return, and a session pairing's channel.kind, channel.ref and channel.boundWithin measure the payment they are given before they read it, with credentialSize's bound and code, as bound measures every credential. Each row runs on the five pairings with a buildWithin (mpp/session/evm, mpp/session/tempo on v2, mpp/session/hedera, mpp/session/solana and mpp/session/xrpl): mpp-session-within.test.ts's within challenge and held opening for each, a voucher, completed with one signature of the pairing's form. The within challenge is padded by a description so that the in-channel credential measures the row's size. A taken row's credential is what complete returns, and channel.kind, channel.ref and channel.boundWithin answer it as they answer the same credential without the description; otherwise complete and each of the three give the row's code. The two session pairings with channel members and no buildWithin, mpp/session/lightning and mpp/subscription/tempo, run the rows on channel.kind, channel.ref and channel.boundWithin alone, given the pairing's opening (credentialSize's credential) padded the same way.",
+  "rows": [
+   { "case": "an in-channel credential one under the credential size bound", "size": 65535, "taken": true },
+   { "case": "an in-channel credential at the credential size bound", "size": 65536, "taken": true },
+   { "case": "an in-channel credential one over the credential size bound", "size": 65537, "expect": "mpp/credential-malformed" }
+  ]
  }
 }

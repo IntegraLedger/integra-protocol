@@ -80,6 +80,8 @@ import {
   isObject,
   issuedFor,
   measured,
+  measuring,
+  measuringAsync,
   place,
   read,
   tie,
@@ -620,7 +622,7 @@ async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
     complete(signatures: readonly string[]): MppCredential | Refusal {
       const signature = Array.isArray(signatures) && signatures.length === 1 ? signatures[0] : undefined;
       if (typeof signature !== "string" || (bytesOf(signature)?.length ?? 0) < 1) return refusal("mpp/credential-malformed");
-      return { challenge, payload: { action, channelId, cumulativeAmount, signature } };
+      return measured({ challenge, payload: { action, channelId, cumulativeAmount, signature } });
     },
   };
 }
@@ -920,14 +922,14 @@ async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
     complete(signatures: readonly string[]): MppCredential | Refusal {
       const signature = Array.isArray(signatures) && signatures.length === 1 ? signatures[0] : undefined;
       if (typeof signature !== "string" || !isBase58Signature(signature)) return refusal("mpp/credential-malformed");
-      return {
+      return measured({
         challenge,
         payload: {
           action,
           channelId,
           voucher: { voucher: { channelId, cumulativeAmount }, signer, signature, signatureType: "ed25519" },
         },
-      };
+      });
     },
   };
 }
@@ -1211,7 +1213,7 @@ async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWit
     complete(signatures: readonly string[]): MppCredential | Refusal {
       const signature = Array.isArray(signatures) && signatures.length === 1 ? signatures[0] : undefined;
       if (typeof signature !== "string" || !HEX.test(signature)) return refusal("mpp/credential-malformed");
-      return { challenge, payload: { action, channelId, amount: drops.toString(), signature } };
+      return measured({ challenge, payload: { action, channelId, amount: drops.toString(), signature } });
     },
   };
 }
@@ -1305,9 +1307,9 @@ export const sessionHedera = Object.freeze({
   },
   closeRef: hederaCloseRef,
   channel: Object.freeze({
-    kind: (p: MppCredential) => hederaKind(p),
-    ref: hederaRef,
-    boundWithin: notBoundWithin,
+    kind: measuring((p: MppCredential) => hederaKind(p)),
+    ref: measuringAsync(hederaRef),
+    boundWithin: measuringAsync(notBoundWithin),
     until: (_p: MppCredential): number | undefined => undefined,
   }),
 });
@@ -1342,9 +1344,9 @@ export const sessionSolana = Object.freeze({
   fetchPresented: solanaFetchPresented,
   closeRef: solanaCloseRef,
   channel: Object.freeze({
-    kind: (p: MppCredential) => solanaKind(p),
-    ref: solanaRef,
-    boundWithin: solanaBoundWithin,
+    kind: measuring((p: MppCredential) => solanaKind(p)),
+    ref: measuringAsync(solanaRef),
+    boundWithin: measuringAsync(solanaBoundWithin),
     until: (_p: MppCredential): number | undefined => undefined,
   }),
 });
@@ -1377,9 +1379,9 @@ export const sessionXrpl = Object.freeze({
   recover: xrplRecover,
   closeRef: xrplCloseRef,
   channel: Object.freeze({
-    kind: (p: MppCredential) => actionKind(p, ["voucher"]),
-    ref: xrplRef,
-    boundWithin: notBoundWithin,
+    kind: measuring((p: MppCredential) => actionKind(p, ["voucher"])),
+    ref: measuringAsync(xrplRef),
+    boundWithin: measuringAsync(notBoundWithin),
     until: xrplUntil,
   }),
 });

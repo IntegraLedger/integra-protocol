@@ -37,6 +37,7 @@ import {
 import { chargeLightning, sessionLightning } from "../src/lightning.js";
 import { rlpBytes, rlpList } from "../src/rlp.js";
 import { encodeKeyAuthorization } from "../src/tempo.js";
+import { described, descriptionFor, sizeOf } from "./credential-size.js";
 import { load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -104,14 +105,6 @@ function built<U>(u: U | Refused): U {
 }
 const decoded = (c: MppChallenge): { [k: string]: Json } => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
 
-/** A credential's size as credentialSize's about measures it, and as `bound` does. */
-function sizeOf(v: unknown): number {
-  if (typeof v === "string") return v.length + 2;
-  if (typeof v === "number" || typeof v === "bigint" || typeof v === "boolean" || v === null) return 8;
-  if (Array.isArray(v)) return v.reduce((n: number, x) => n + sizeOf(x), 2);
-  if (typeof v === "object") return Object.entries(v).reduce((n, [k, x]) => n + k.length + 3 + sizeOf(x), 2);
-  throw new Error(`a credential holds ${typeof v}, which is not JSON`);
-}
 
 /** How a pairing's build and complete run on its B2 row and its B6 payment's payload and source, under `challenge`. */
 type Run = (challenge: Placed, b2: BuyerRow, b6: { payload: Payload; source?: string }) => Promise<unknown>;
@@ -346,10 +339,6 @@ function setUp(id: string) {
   return { placed, h: b2.advertised, complete: (challenge: Placed) => p.run(challenge, b2, payment) };
 }
 
-/** The challenge with a description of `n` characters, a member no pairing reads or hashes. */
-const described = (c: Placed, n: number): Placed => ({ ...c, description: "d".repeat(n) });
-/** The description length that brings `credential`, made under a challenge with none, to `size`. */
-const descriptionFor = (credential: unknown, size: number) => size - sizeOf(credential) - ("description".length + 3) - 2;
 
 type SizeRow = { case: string; size: number; taken?: true; expect?: string };
 const ROWS = rowsOf<SizeRow>(MC.credentialSize.rows, "mpp-challenge.json credentialSize.rows", { exact: 3 });
@@ -630,6 +619,29 @@ describe("mpp-challenge.json voucherSize: a session build's voucher measures as 
             expect(u.voucher(session.funded)).toEqual(refused(row.expect!));
             expect(u.complete(session.funded, "0x00")).toEqual(refused(row.expect!));
           }
+        });
+      }
+    });
+  }
+});
+
+// inChannelSize on the two session pairings with channel members and no buildWithin: channel.kind, channel.ref and
+// channel.boundWithin measure the payment they are given, here the pairing's opening, padded as credentialSize pads it.
+describe("mpp-challenge.json inChannelSize: the channel members of the sessions without a buildWithin", () => {
+  const ROWS_IN = rowsOf<SizeRow>(MC.inChannelSize.rows, "mpp-challenge.json inChannelSize.rows", { exact: 3 });
+  type Members = { kind(p: MppCredential): unknown; ref(p: MppCredential): Promise<unknown>; boundWithin(p: MppCredential): Promise<unknown> };
+  const MEMBERS: Record<string, Members> = { "mpp/session/lightning": sessionLightning.channel, "mpp/subscription/tempo": subscriptionTempo.channel };
+  const answers = async (m: Members, c: MppCredential) => [m.kind(c), await m.ref(c), await m.boundWithin(c)];
+  for (const [id, members] of Object.entries(MEMBERS)) {
+    describe(id, () => {
+      for (const row of ROWS_IN) {
+        it(row.case, async () => {
+          const { placed, complete } = setUp(id);
+          const plain = (await complete(placed)) as MppCredential;
+          const sized = { ...plain, challenge: described(placed, descriptionFor(plain, row.size)) };
+          expect(sizeOf(sized)).toBe(row.size);
+          if (row.taken) expect(await answers(members, sized)).toEqual(await answers(members, plain));
+          else expect(await answers(members, sized)).toEqual([refused(row.expect!), refused(row.expect!), refused(row.expect!)]);
         });
       }
     });

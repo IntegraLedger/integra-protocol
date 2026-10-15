@@ -206,8 +206,10 @@ too: the XRP Ledger charge's signed blob to 4,096 hex digits (`xrpl/blob-too-lar
 envelope to 8,192 base64 characters (`stellar/tx-too-large`). So no `build`'s `complete` returns a credential `bound`
 refuses for its size. It checks in `bound`'s order, measuring the credential before it reads the payment: a payment
 fault in a credential over the bound, such as a Stellar envelope over 8,192 characters, a `usdc` Stacks transaction
-over 16,384 bytes or a Tempo key authorization over 8,192 bytes, is `mpp/credential-malformed`, as `bound` gives it. A `buildWithin`'s `complete` does not measure its credential, as `channel.kind`, `channel.ref`
-and `channel.boundWithin`, which read an in-channel payment, do not.
+over 16,384 bytes or a Tempo key authorization over 8,192 bytes, is `mpp/credential-malformed`, as `bound` gives it.
+One rule covers the credentials in a channel too: a `buildWithin`'s `complete` measures the in-channel credential it
+would return, and a session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` measure the payment they
+are given before they read it, with the same bound and code.
 
 `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature

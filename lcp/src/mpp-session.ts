@@ -47,6 +47,8 @@ import {
   isObject,
   issuedFor,
   measured,
+  measuring,
+  measuringAsync,
   place,
   read,
   requestAddress,
@@ -201,7 +203,12 @@ export type WithinSigningRequest =
   | { kind: "ed25519-raw"; message: Uint8Array<ArrayBuffer>; signer: string }
   | { kind: "xrpl-claim"; channelId: string; drops: bigint; bytes: Uint8Array<ArrayBuffer> };
 
-/** One signing request; `complete` takes its one signature and returns the in-channel credential. */
+/**
+ * One signing request; `complete` takes its one signature and returns the in-channel credential, measured as `bound`
+ * measures every credential: one over the credential size bound, 64 KiB, its challenge included, is
+ * `mpp/credential-malformed`, as each session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin`
+ * refuse it.
+ */
 export interface SessionWithinUnsigned {
   requests: readonly WithinSigningRequest[];
   complete(signatures: readonly string[]): MppCredential | Refusal;
@@ -1219,10 +1226,10 @@ function withinUnsigned(
     complete(signatures: readonly string[]): MppCredential | Refusal {
       const signature = oneHexSignature(signatures);
       if (isRefusal(signature)) return signature;
-      return {
+      return measured({
         challenge,
         payload: { action, channelId, cumulativeAmount, signature, ...(descriptor === undefined ? {} : { descriptor }) },
-      };
+      });
     },
   };
 }
@@ -1809,7 +1816,12 @@ export const sessionEvm = Object.freeze({
   recover: evmRecover,
   landedTx: evmLandedTx,
   closeRef: evmCloseRef,
-  channel: Object.freeze({ kind: evmKind, ref: refFrom(SESSION_EVM, evmKind), boundWithin: notBoundWithin, until: noEnd }),
+  channel: Object.freeze({
+    kind: measuring(evmKind),
+    ref: measuringAsync(refFrom(SESSION_EVM, evmKind)),
+    boundWithin: measuringAsync(notBoundWithin),
+    until: noEnd,
+  }),
 });
 
 export const sessionTempo = Object.freeze({
@@ -1834,7 +1846,12 @@ export const sessionTempo = Object.freeze({
   status: pairingStatus(SESSION_TEMPO),
   recover: tempoRecover,
   closeRef: tempoCloseRef,
-  channel: Object.freeze({ kind: tempoKind, ref: refFrom(SESSION_TEMPO, tempoKind), boundWithin: tempoBoundWithin, until: noEnd }),
+  channel: Object.freeze({
+    kind: measuring(tempoKind),
+    ref: measuringAsync(refFrom(SESSION_TEMPO, tempoKind)),
+    boundWithin: measuringAsync(tempoBoundWithin),
+    until: noEnd,
+  }),
 });
 
 export const subscriptionTempo = Object.freeze({
@@ -1865,7 +1882,12 @@ export const subscriptionTempo = Object.freeze({
   reference: subscriptionReference,
   status: pairingStatus(SUBSCRIPTION),
   closeRef: subscriptionCloseRef,
-  channel: Object.freeze({ kind: subscriptionKind, ref: subscriptionRef, boundWithin: notBoundWithin, until: subscriptionUntil }),
+  channel: Object.freeze({
+    kind: measuring(subscriptionKind),
+    ref: measuringAsync(subscriptionRef),
+    boundWithin: measuringAsync(notBoundWithin),
+    until: subscriptionUntil,
+  }),
   recover: witnessRecover,
   keySearch,
   /**

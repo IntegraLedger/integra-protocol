@@ -42,7 +42,9 @@ import {
   type SessionWithin,
 } from "../src/mpp.js";
 import type { SessionWithinUnsigned } from "../src/mpp-session.js";
+import { described, descriptionFor, sizeOf } from "./credential-size.js";
 import { H, challenge, link, load } from "./mpp-fixtures.js";
+import { rowsOf } from "./rows.js";
 
 const E = load("mpp-session-evm.json");
 const T = load("mpp-session-tempo.json");
@@ -75,6 +77,35 @@ const unsigned = (u: unknown) => {
   if (typeof u === "object" && u !== null && "refused" in u) throw new Error(JSON.stringify(u));
   return u as SessionWithinUnsigned;
 };
+type SizeRow = { case: string; size: number; taken?: true; expect?: string };
+const IN_CHANNEL = rowsOf<SizeRow>(load("mpp-challenge.json").inChannelSize.rows, "mpp-challenge.json inChannelSize.rows", { exact: 3 });
+type ChannelMembers = {
+  channel: { kind(p: MppCredential): unknown; ref(p: MppCredential): Promise<unknown>; boundWithin(p: MppCredential): Promise<unknown> };
+};
+/**
+ * inChannelSize's rows (mpp-challenge.json) on one pairing: `complete(challenge)` is its buildWithin of a voucher under
+ * that within challenge, completed with one signature. The challenge is padded by a description so that the in-channel
+ * credential measures the row's size.
+ */
+async function inChannelRows<C extends MppChallenge>(pairing: ChannelMembers, within: C, complete: (challenge: C) => Promise<unknown>) {
+  const plain = (await complete(within)) as MppCredential;
+  expect(plain).not.toHaveProperty("refused");
+  const answers = async (c: MppCredential) => [pairing.channel.kind(c), await pairing.channel.ref(c), await pairing.channel.boundWithin(c)];
+  const taken = await answers(plain);
+  for (const row of IN_CHANNEL) {
+    const challenge = described(within, descriptionFor(plain, row.size));
+    const sized = { ...plain, challenge } as MppCredential;
+    expect(sizeOf(sized), row.case).toBe(row.size);
+    const made = await complete(challenge);
+    if (row.taken) {
+      expect(made, row.case).toEqual(sized);
+      expect(await answers(sized), row.case).toEqual(taken);
+    } else {
+      expect(made, row.case).toEqual(refused(row.expect!));
+      expect(await answers(sized), row.case).toEqual([refused(row.expect!), refused(row.expect!), refused(row.expect!)]);
+    }
+  }
+}
 const eip712Of = (u: SessionWithinUnsigned) => {
   const r = u.requests[0];
   if (u.requests.length !== 1 || r === undefined || r.kind !== "eip712") throw new Error("not one eip712 request");
@@ -101,6 +132,11 @@ describe("mpp/session/evm: buildWithin", async () => {
   const within = { ...challenge("evm", "session", f.request), id: "seller-own-id" };
   const w = (cumulativeAmount: bigint, action: string = "voucher"): SessionWithin =>
     ({ challenge: within, opening, cumulativeAmount, action }) as SessionWithin;
+
+  it("inChannelSize: complete, channel.kind, channel.ref and channel.boundWithin measure the in-channel credential", () =>
+    inChannelRows(sessionEvm, within, async (challenge) =>
+      unsigned(await sessionEvm.buildWithin({ ...w(250n), challenge }, H)).complete([`0x${"11".repeat(65)}`]),
+    ));
 
   it("the voucher under \"EVM Payment Channel\", from the opening's channel, escrow and chain; ES5 at 0", async () => {
     const zero = unsigned(await sessionEvm.buildWithin(w(0n), H));
@@ -161,6 +197,11 @@ describe("mpp/session/tempo: buildWithin", async () => {
   const v1 = await open(f.requestV1, f.escrowV1);
   const w = (opening: MppCredential, request: string, cumulativeAmount: bigint, action = "voucher"): SessionWithin =>
     ({ challenge: { ...challenge("tempo", "session", request), id: "seller-own-id" }, opening, cumulativeAmount, action }) as SessionWithin;
+
+  it("inChannelSize: complete, channel.kind, channel.ref and channel.boundWithin measure the in-channel credential (v2)", () =>
+    inChannelRows(sessionTempo, w(v2, f.requestV2, 250n).challenge, async (challenge) =>
+      unsigned(await sessionTempo.buildWithin({ ...w(v2, f.requestV2, 250n), challenge }, H)).complete([`0x${"11".repeat(65)}`]),
+    ));
 
   it("v2: under \"TIP20 Channel Reserve\" with uint96, TS4's digests, and the opening's descriptor", async () => {
     expect(hashTypedData(forViem(eip712Of(unsigned(await sessionTempo.buildWithin(w(v2, f.requestV2, 0n), H)))))).toBe(T.TS4.expectVoucher0);
@@ -224,6 +265,9 @@ describe("mpp/session/hedera: buildWithin", () => {
   const within = { ...R.SS1.hedera.challenge, id: "seller-own-id" };
   const w = (cumulativeAmount: bigint, action = "voucher") => ({ challenge: within, opening, cumulativeAmount, action }) as SessionWithin;
 
+  it("inChannelSize: complete, channel.kind, channel.ref and channel.boundWithin measure the in-channel credential", () =>
+    inChannelRows(sessionHedera, within, async (challenge) => unsigned(await sessionHedera.buildWithin({ ...w(100n), challenge }, H)).complete([`0x${"11".repeat(65)}`])));
+
   // HS2's digest is eth-account 0.14.0's of the draft's Voucher at 0 (draft-hedera-session-00 L1068-1142); viem
   // re-derives it here, and buildWithin's voucher at 0 is held to it.
   it("hederaVoucher under \"Hedera Stream Channel\": HS2's digest at 0, as viem hashes the draft's voucher, and the draft's payload", async () => {
@@ -252,6 +296,9 @@ describe("mpp/session/solana: buildWithin", () => {
   const opening: MppCredential = { challenge: C_S, payload: { action: "open", channelId: R.SV2.channel, transaction: R.SV2.wireBase64 } };
   const within = { ...R.SS1.solana.challenge, id: "seller-own-id" };
   const w = (cumulativeAmount: bigint, action = "voucher") => ({ challenge: within, opening, cumulativeAmount, action }) as SessionWithin;
+
+  it("inChannelSize: complete, channel.kind, channel.ref and channel.boundWithin measure the in-channel credential", () =>
+    inChannelRows(sessionSolana, within, async (challenge) => unsigned(await sessionSolana.buildWithin({ ...w(100n), challenge }, H)).complete([base58.encode(new Uint8Array(64).fill(1))])));
   /** The open instruction's authorized signer (account 4), read by @solana/kit from SV2's wire. */
   const authorized = (() => {
     const tx = getTransactionDecoder().decode(Uint8Array.from(Buffer.from(R.SV2.wireBase64, "base64")));
@@ -329,6 +376,9 @@ describe("mpp/session/xrpl: buildWithin", () => {
   const opening: MppCredential = { challenge: C_X, payload: { action: "open", transaction: R.XS2.blob, amount: "100", signature: "00" } };
   const within = { ...R.SS1.xrpl.challenge, id: "seller-own-id" };
   const w = (cumulativeAmount: bigint, action = "voucher") => ({ challenge: within, opening, cumulativeAmount, action }) as SessionWithin;
+
+  it("inChannelSize: complete, channel.kind, channel.ref and channel.boundWithin measure the in-channel credential", () =>
+    inChannelRows(sessionXrpl, within, async (challenge) => unsigned(await sessionXrpl.buildWithin({ ...w(100n), challenge }, H)).complete(["C0".repeat(64)])));
 
   it("one xrpl-claim request: XS3's bytes at 100 drops, and the draft's payload with the cumulative amount", async () => {
     const u = unsigned(await sessionXrpl.buildWithin(w(100n), H));
