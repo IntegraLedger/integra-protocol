@@ -55,6 +55,10 @@ type UsdcDirect = typeof EVM | typeof STACKS | typeof GATEWAY;
 
 const MAX_REQUEST = 8192;
 const MAX_SIGNATURE = 8192;
+/**
+ * The size bound of a `usdc` Stacks transaction, which `bound`, `reference` and `build`'s `complete` share: 1 to 16,384
+ * bytes, else `mpp/stacks-tx-malformed`.
+ */
 const MAX_STACKS_TX = 16_384;
 /** Stacks mainnet's chain id, `CHAIN_ID_MAINNET` (stacks-core 4.0.5, stacks-common/src/libcommon.rs:58). */
 const STACKS_MAINNET_CHAIN = 1;
@@ -358,9 +362,10 @@ export type UsdcUnsigned =
   | {
       /**
        * The transfer to sign for the challenge's chain, `chainId`, at that network's version: 0x00 on chain 1, mainnet,
-       * and 0x80 on any other. `complete` takes the signed transaction's bytes, and refuses bytes that are empty or over
-       * 16 KiB with `mpp/credential-malformed`, bytes a Stacks node does not decode with `mpp/stacks-tx-malformed`, and a
-       * transaction of another chain id or version with `stacks/chain-mismatch`, as `bound` refuses them.
+       * and 0x80 on any other. `complete` takes the signed transaction's bytes, and refuses a value that is not a
+       * `Uint8Array` with `mpp/credential-malformed`; bytes that are empty, over 16,384 bytes or that a Stacks node does
+       * not decode with `mpp/stacks-tx-malformed`; and a transaction of another chain id or version with
+       * `stacks/chain-mismatch`, as `bound` refuses them.
        */
       request: {
         kind: "stacks-contract-call";
@@ -403,9 +408,9 @@ function onNetwork(tx: StacksTransaction, chainId: number): boolean {
 /**
  * The SIP-010 `transfer` for the buyer's Stacks wallet to build and sign: `(amount, sender, recipient, (some H))` on
  * the profile's token contract, one `SentEq` post-condition, post-condition mode Deny and anchor mode OnChainOnly, for
- * the profile's `chainId`. `complete` reads the signed transaction as `bound` reads it: bytes a Stacks node does not
- * decode are `mpp/stacks-tx-malformed`, and a transaction a node of the challenge's network does not take
- * (`onNetwork`) is `stacks/chain-mismatch`.
+ * the profile's `chainId`. `complete` reads the signed transaction as `bound` reads it: bytes that are empty, over the
+ * size bound or that a Stacks node does not decode are `mpp/stacks-tx-malformed`, and a transaction a node of the
+ * challenge's network does not take (`onNetwork`) is `stacks/chain-mismatch`.
  */
 async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
@@ -429,9 +434,8 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
       anchorMode: "onChainOnly" as const,
     },
     complete(serializedTx: Uint8Array): MppCredential | Refusal {
-      if (!(serializedTx instanceof Uint8Array) || serializedTx.length === 0 || serializedTx.length > MAX_STACKS_TX) {
-        return refusal("mpp/credential-malformed");
-      }
+      if (!(serializedTx instanceof Uint8Array)) return refusal("mpp/credential-malformed");
+      if (serializedTx.length === 0 || serializedTx.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
       const tx = readStacksTransaction(serializedTx);
       if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
       if (!onNetwork(tx, Number(chainId))) return refusal("stacks/chain-mismatch");

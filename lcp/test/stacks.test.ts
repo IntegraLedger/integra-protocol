@@ -25,15 +25,18 @@ const KEY = `${"00".repeat(31)}0101`;
 
 /**
  * M4's transfer with `memo` as its fourth argument, signed by KEY. `on` sets the transaction's version and chain id
- * before it is signed; without it they are network testnet's, 0x80 and 2147483648.
+ * before it is signed; without it they are network testnet's, 0x80 and 2147483648. `fifth` adds a fifth argument, a
+ * buffer of that many zero bytes.
  */
-async function transfer(memo: S.ClarityValue, on?: { transactionVersion: number; chainId: number }): Promise<Uint8Array> {
+async function transfer(memo: S.ClarityValue, on?: { transactionVersion: number; chainId: number }, fifth?: number): Promise<Uint8Array> {
   const [address, name] = F.contract.split(".");
+  const args = [S.uintCV(BigInt(F.amount)), S.principalCV(F.sender), S.principalCV(F.recipient), memo];
+  if (fifth !== undefined) args.push(S.bufferCV(new Uint8Array(fifth)));
   const tx = await S.makeUnsignedContractCall({
     contractAddress: address,
     contractName: name,
     functionName: "transfer",
-    functionArgs: [S.uintCV(BigInt(F.amount)), S.principalCV(F.sender), S.principalCV(F.recipient), memo],
+    functionArgs: args,
     network: "testnet",
     fee: BigInt(F.fee),
     nonce: BigInt(F.nonce),
@@ -60,8 +63,19 @@ function challenge(): MppChallenge & { id: string } {
   return doc[0] as MppChallenge & { id: string };
 }
 
-/** An agreedRefusals row; the rows that set a version and a chain id say which, as numbers. */
-type NetworkRow = { case: string; wireHex: string; expect: string; transactionVersion?: number; chainId?: number };
+/**
+ * An agreedRefusals row; the rows that set a version and a chain id say which, as numbers, and the size rows their
+ * length in bytes and, where they add one, the length of their fifth argument.
+ */
+type NetworkRow = {
+  case: string;
+  wireHex: string;
+  expect: string;
+  transactionVersion?: number;
+  chainId?: number;
+  bytes?: number;
+  fifthArgumentBytes?: number;
+};
 
 function credential(wire: Uint8Array, format = "stacks_transaction_v1"): MppCredential {
   return {
@@ -713,6 +727,35 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     expect(u.complete(m4)).toEqual({ refused: true, code: "stacks/chain-mismatch" });
   });
 
+  // The size bound, one rule for bound, reference and build's complete: a transaction is 1 to 16,384 bytes, and an empty
+  // one or one over 16,384 bytes is mpp/stacks-tx-malformed, the code of bytes a Stacks node does not decode. The rows
+  // at the bound are agreedRefusals rows 46 to 48: 0 bytes, 1 byte, and M4's transfer padded by a fifth argument to
+  // 16,385 bytes; padded to 16,384 bytes it is taken by all three.
+  it("bound, reference and build's complete take 1 to 16,384 bytes, and refuse 0 bytes and 16,385 bytes with one code", async () => {
+    const rows = rowsOf(V.agreedRefusals.rows as NetworkRow[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", {
+      exact: 3,
+      keep: ["the size rows", (r) => r.bytes !== undefined],
+      leave: ["every other row, run by the agreedRefusals runner below", (r) => r.bytes === undefined],
+    });
+    expect(rows.map((r) => [r.bytes, (r.wireHex.length - 2) / 2])).toEqual([[0, 0], [1, 1], [16_385, 16_385]]);
+    const padded = rows[2]!.fifthArgumentBytes!;
+    expect(hex(await transfer(S.someCV(S.bufferCV(Buffer.from(F.H.slice(2), "hex"))), undefined, padded))).toBe(rows[2]!.wireHex);
+    const u = await chargeUsdcStacks.build({ challenge: challenge(), from: F.sender }, F.H);
+    if ("refused" in u) throw new Error(u.code);
+    const largest = await transfer(S.someCV(S.bufferCV(Buffer.from(F.H.slice(2), "hex"))), undefined, padded - 1);
+    expect(largest.length).toBe(16_384);
+    expect(await chargeUsdcStacks.bound(credential(largest))).toBe(F.H);
+    expect(await chargeUsdcStacks.reference(credential(largest))).toMatchObject({ network: F.network, nonce: F.nonce });
+    expect(u.complete(largest)).toMatchObject({ payload: { transaction: Buffer.from(largest).toString("base64") } });
+    for (const r of rows) {
+      const wire = Uint8Array.from(Buffer.from(r.wireHex.slice(2), "hex"));
+      const code = { refused: true, code: r.expect };
+      expect([r.bytes, await chargeUsdcStacks.bound(credential(wire))]).toEqual([r.bytes, code]);
+      expect([r.bytes, await chargeUsdcStacks.reference(credential(wire))]).toEqual([r.bytes, code]);
+      expect([r.bytes, u.complete(wire)]).toEqual([r.bytes, code]);
+    }
+  });
+
   // build's complete reads the transaction as bound reads it: bytes a Stacks node does not decode are
   // mpp/stacks-tx-malformed, the code bound gives them.
   it("build's complete refuses a truncated transaction and one with bytes after it, as bound does", async () => {
@@ -1086,6 +1129,7 @@ describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
     ...Array.from({ length: 3 }, () => "post-condition"),
     ...Array.from({ length: 3 }, () => "authorization"),
     ...Array.from({ length: 4 }, () => "network"),
+    ...Array.from({ length: 3 }, () => "size"),
   ];
   const rows = rowsOf(V.agreedRefusals.rows as NetworkRow[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", {
     exact: PARTS.length,
@@ -1105,7 +1149,7 @@ describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
       if (w.length === m4.length && w.slice(2 + 10, 2 + 88) === at(5, 44) && w.endsWith(at(109))) return "network";
       return "other";
     };
-    expect(rows.map((r) => part(r.wireHex))).toEqual(PARTS);
+    expect(rows.map((r) => (r.bytes !== undefined ? "size" : part(r.wireHex)))).toEqual(PARTS);
   });
   // The network rows are @stacks/transactions 7.6.0's: M4's transfer, its version and chain id set to the row's before
   // signing, byte for byte; the same build without them is M4.
