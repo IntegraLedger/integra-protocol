@@ -561,7 +561,9 @@ The `open` instruction's data: `01` ‖ salt u64 ‖ deposit u64 ‖ gracePeriod
 > **openOf**(`tx`, `program`): [`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `salt`: `bigint`; \}
 
 The one top-level instruction of `program` whose data starts with `OPEN_DISCRIMINATOR`, with at least 33 bytes of
-data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`.
+data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`,
+as is a channel named through an address lookup table: the message holds the table's address and an index, not the
+account, and this function reads no table.
 
 #### Parameters
 
@@ -795,16 +797,18 @@ a block that is not finalized can be replaced. A landed wire that does not decod
 > **svmStatus**(`ref`, `reader`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
 Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
-without error, and must carry a token or SOL transfer, a top-level or an inner instruction. A message the payer did
-not sign is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message.
-An error, or no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the
-read at `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither
-documented shape, or a reader for another network is pending `unreadable`. A ref whose `digest` is not a string is
-pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a
-slot and the node's first available block is at or before `fromSlot`, is read once more at `finalized`; when that
-lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it is failed
-`nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is pending
-`not-found`. At most two calls, or five for a durable-nonce reference.
+without error, and must carry a token or SOL transfer, a top-level or an inner instruction, whose program is read
+from the static keys or from the addresses the transaction's lookup tables loaded. A message the payer did not sign
+is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message. An error, or
+no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the read at
+`finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither documented
+shape (a landed wire that does not decode, or `loaded` addresses other than 32-byte keys in the numbers the message's
+lookups name, included), or a reader for another network is pending `unreadable`. A ref whose `digest` is not a
+string is pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once
+`svmNonceMoved` names a slot and the node's first available block is at or before `fromSlot`, is read once more at
+`finalized`; when that lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it
+is failed `nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is
+pending `not-found`. At most two calls, or five for a durable-nonce reference.
 
 #### Parameters
 

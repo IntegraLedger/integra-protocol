@@ -216,7 +216,11 @@ transfer among its instructions and inner instructions (`no-transfer`), only fro
 at `confirmed` alone it answers pending `not-final`, and a later read gives the verdict. A failure that rests only on
 the signed message, which the signature fixes, holds from a read at either commitment: a message the payer did not
 sign (`not-this-instrument`), no single `open` or `top_up` payment-channels instruction (`no-channel-instruction`), or
-a reported close whose instructions do not close the channel (`not-a-close`). The Solana `recover`s and
+a reported close whose instructions do not close the channel (`not-a-close`). An account a transaction takes from an
+address lookup table, such as an inner instruction's program or a session close's channel, is read from the addresses
+the landed transaction's tables loaded (`SvmLanded.loaded`, `getTransaction`'s `meta.loadedAddresses`), so no table is
+read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups name
+reads as pending `unreadable`. The Solana `recover`s and
 `fetchPresented` read an error by the same rule: `svm/err` from the read at `finalized`, and `svm/not-final`, a read
 to repeat, from the read at `confirmed` alone.
 

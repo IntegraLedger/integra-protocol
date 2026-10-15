@@ -269,6 +269,8 @@ function sameBytes(a: Uint8Array | undefined, b: Uint8Array): boolean {
 
 interface Decoded extends SvmTx {
   requiredSignatures: number;
+  /** How many addresses the message's lookups load: the writable indexes, then the read-only ones. */
+  loads: { writable: number; readonly: number };
 }
 
 class Cursor {
@@ -306,7 +308,7 @@ class Cursor {
 export function decodeSvmTx(wire: Uint8Array): SvmTx | Refusal {
   const d = decode(wire);
   if (isRefusal(d)) return d;
-  const { requiredSignatures: _, ...tx } = d;
+  const { requiredSignatures: _, loads: __, ...tx } = d;
   return tx;
 }
 
@@ -350,16 +352,17 @@ function decode(wire: Uint8Array): Decoded | Refusal {
       const data = c.bytes(c.compact());
       instructions.push({ program, accounts, data });
     }
+    const loads = { writable: 0, readonly: 0 };
     if (versioned) {
       const nLookups = c.compact();
       for (let i = 0; i < nLookups; i++) {
         c.bytes(32);
-        c.bytes(c.compact());
-        c.bytes(c.compact());
+        loads.writable += c.bytes(c.compact()).length;
+        loads.readonly += c.bytes(c.compact()).length;
       }
     }
     if (c.at !== wire.length) return refusal("svm/tx-malformed");
-    return { signatures, message: wire.subarray(start), keys, instructions, blockhash, requiredSignatures };
+    return { signatures, message: wire.subarray(start), keys, instructions, blockhash, requiredSignatures, loads };
   } catch {
     return refusal("svm/tx-malformed");
   }
@@ -694,7 +697,7 @@ type Lookup = { landed: SvmLanded; commitment: "confirmed" | "finalized" } | { n
  * nothing, `notFound` with the slot the last lookup names. Undefined when a read failed or gave an answer of neither
  * documented shape.
  */
-async function landedAt(
+export async function landedAt(
   reader: SvmReader,
   transaction: string,
   commitments: readonly ("finalized" | "confirmed")[] = ["finalized", "confirmed"],
@@ -732,14 +735,27 @@ function isLanded(v: unknown): v is SvmLanded {
   );
 }
 
-/** Every key the landed transaction's instructions may index: the static keys, then the loaded addresses. */
-export function allKeys(tx: SvmTx, landed: SvmLanded): readonly Uint8Array[] {
-  return [...tx.keys, ...landed.loaded.writable, ...landed.loaded.readonly];
+/**
+ * A landed transaction's wire, decoded, with every key its instructions may index, in the runtime's order: the static
+ * keys, then the addresses its address lookup tables loaded, writable, then read-only, as `loaded` lists them
+ * (`getTransaction`'s `meta.loadedAddresses`). A table can supply any account but a signer or a top-level instruction's
+ * program, so this is how a read finds such an account without reading the table. Null when the wire does not decode,
+ * or when `loaded` does not hold 32-byte keys in exactly the numbers the message's lookups name: that answer is out of
+ * its documented form.
+ */
+export function decodeLanded(landed: SvmLanded): { tx: SvmTx; keys: readonly Uint8Array[] } | null {
+  const d = decode(landed.wire);
+  if (isRefusal(d)) return null;
+  const { writable, readonly } = landed.loaded;
+  const isKeyList = (list: readonly unknown[], n: number) =>
+    list.length === n && list.every((k) => k instanceof Uint8Array && k.length === 32);
+  if (!isKeyList(writable, d.loads.writable) || !isKeyList(readonly, d.loads.readonly)) return null;
+  const { requiredSignatures: _, loads: __, ...tx } = d;
+  return { tx, keys: [...tx.keys, ...writable, ...readonly] };
 }
 
 /** True when a top-level or inner instruction is a token `TransferChecked` or a System `transfer`. */
-function movesValue(tx: SvmTx, landed: SvmLanded): boolean {
-  const keys = allKeys(tx, landed);
+function movesValue(tx: SvmTx, landed: SvmLanded, keys: readonly Uint8Array[]): boolean {
   const all = [...tx.instructions, ...landed.inner];
   return all.some(({ program, data }) => {
     const key = keys[program];
@@ -750,35 +766,41 @@ function movesValue(tx: SvmTx, landed: SvmLanded): boolean {
 
 /**
  * Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
- * without error, and must carry a token or SOL transfer, a top-level or an inner instruction. A message the payer did
- * not sign is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message.
- * An error, or no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the
- * read at `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither
- * documented shape, or a reader for another network is pending `unreadable`. A ref whose `digest` is not a string is
- * pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a
- * slot and the node's first available block is at or before `fromSlot`, is read once more at `finalized`; when that
- * lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it is failed
- * `nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is pending
- * `not-found`. At most two calls, or five for a durable-nonce reference.
+ * without error, and must carry a token or SOL transfer, a top-level or an inner instruction, whose program is read
+ * from the static keys or from the addresses the transaction's lookup tables loaded. A message the payer did not sign
+ * is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message. An error, or
+ * no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the read at
+ * `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither documented
+ * shape (a landed wire that does not decode, or `loaded` addresses other than 32-byte keys in the numbers the message's
+ * lookups name, included), or a reader for another network is pending `unreadable`. A ref whose `digest` is not a
+ * string is pending `unreadable`, with nothing read. A durable-nonce transaction that is not found, once
+ * `svmNonceMoved` names a slot and the node's first available block is at or before `fromSlot`, is read once more at
+ * `finalized`; when that lookup, naming a slot at or past the context slot of the nonce account read, finds nothing, it
+ * is failed `nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no slot, is
+ * pending `not-found`. At most two calls, or five for a durable-nonce reference.
  */
 export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
-  return settledBy(ref, reader, { execution: (tx, landed) => (movesValue(tx, landed) ? null : "no-transfer") });
+  return settledBy(ref, reader, { execution: (tx, landed, keys) => (movesValue(tx, landed, keys) ? null : "no-transfer") });
 }
 
 /**
- * The shared settlement read: the digest, then the pairing's check of the signed message (`message`), then `err`,
- * then its check of how the transaction executed (`execution`); each check names a failure or returns null. A failure
- * on the signed message, the digest's `not-this-instrument` included, is final from a read at either commitment: the
- * signature fixes the message, so every landing of it carries the same instructions. A failure on execution is failed
- * only from the read at `finalized`, and pending `not-final` from the read at `confirmed`, since a block that is not
- * finalized can be replaced and the transaction can land in another block and execute otherwise. A durable-nonce
- * transaction that is not found is failed `nonce-moved` once its nonce has moved on and a last read at `finalized`,
- * naming a slot at or past the context slot of the nonce account read, still finds nothing.
+ * The shared settlement read: the digest, then the pairing's check of the signed message (`message`), then `err`, then
+ * its check of how the transaction executed (`execution`, given every key the instructions may index, as `decodeLanded`
+ * reads them); each check names a failure or returns null. A landed answer `decodeLanded` cannot read is pending
+ * `unreadable`. A failure on the signed message, the digest's `not-this-instrument` included, is final from a read at
+ * either commitment: the signature fixes the message, so every landing of it carries the same instructions. A failure
+ * on execution is failed only from the read at `finalized`, and pending `not-final` from the read at `confirmed`, since
+ * a block that is not finalized can be replaced and the transaction can land in another block and execute otherwise. A
+ * durable-nonce transaction that is not found is failed `nonce-moved` once its nonce has moved on and a last read at
+ * `finalized`, naming a slot at or past the context slot of the nonce account read, still finds nothing.
  */
 export async function settledBy<W extends string>(
   ref: SvmRef & { transaction: string },
   reader: SvmReader,
-  check: { message?: (tx: SvmTx) => W | null; execution?: (tx: SvmTx, landed: SvmLanded) => W | null },
+  check: {
+    message?: (tx: SvmTx) => W | null;
+    execution?: (tx: SvmTx, landed: SvmLanded, keys: readonly Uint8Array[]) => W | null;
+  },
 ): Promise<
   | { state: "settled"; commitment: "confirmed" | "finalized" }
   | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
@@ -799,13 +821,14 @@ export async function settledBy<W extends string>(
     }
   }
   if ("notFound" in read) return { state: "pending", why: "not-found" };
-  const tx = decodeSvmTx(read.landed.wire);
-  if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
+  const decoded = decodeLanded(read.landed);
+  if (decoded === null) return { state: "pending", why: "unreadable" };
+  const { tx, keys } = decoded;
   if ((await svmDigest(tx)) !== ref.digest.toLowerCase()) return { state: "failed", why: "not-this-instrument" };
   const signed = check.message?.(tx) ?? null;
   if (signed !== null) return { state: "failed", why: signed };
   const executed =
-    read.landed.err !== null && read.landed.err !== undefined ? "err" : (check.execution?.(tx, read.landed) ?? null);
+    read.landed.err !== null && read.landed.err !== undefined ? "err" : (check.execution?.(tx, read.landed, keys) ?? null);
   if (executed === null) return { state: "settled", commitment: read.commitment };
   return read.commitment === "finalized" ? { state: "failed", why: executed } : { state: "pending", why: "not-final" };
 }

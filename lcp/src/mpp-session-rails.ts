@@ -594,7 +594,9 @@ function solanaOpenTx(payload: { [k: string]: Json }): SvmTx | Refusal {
  * present, it names the echoed challenge's id, else `svm/proof-not-challenge`. For `operator`, the draft requires the
  * open's `authorizedSigner` (account 4) to equal the challenged `operator`: a static key other than the challenge's
  * `operator`, or an account from an address lookup table, is `svm/signer-not-operator`. For `client`, the client
- * chooses that signer.
+ * chooses that signer. The draft has the server resolve a version-0 message's address lookup table entries before it
+ * broadcasts (Settlement Procedure, Open, step 9). These checks take no reader and read no table, so an account 4 or 5
+ * named through a table is refused, never taken as read; `status` reads a landed transaction's table addresses.
  */
 function solanaOpening(
   presented: MppCredential,
@@ -767,8 +769,9 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
 /**
  * A voucher, or a close's voucher, on the channel the held opening opened, for its `client` voucher signer: one
  * `ed25519-raw` request over `solanaVoucher(channelId, cumulativeAmount)`, for the signer the opening's `open`
- * instruction named. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a
- * `use`; an action draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
+ * instruction named; a signer named through an address lookup table is `svm/open-not-found`, since no table is read
+ * here. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a `use`; an action
+ * draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
  */
 async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
   const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64, ["topUp", "use"]);

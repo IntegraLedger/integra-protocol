@@ -399,7 +399,78 @@
   "expectProofSignatureSuffix": "b0490e"
  },
  "SV4": {
-  "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] → settled; data 02 → failed not-a-close"
+  "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] → settled; data 02 → failed not-a-close",
+  "tableClose": {
+   "case": "A settleAndSeal close (data 04, accounts [payee, channel, sysvar]) as @solana/kit 8.4.0 writes it with the channel from an address lookup table (fixtures/svm-lookup-table.ts tableClose: compressTransactionMessageUsingAddressLookupTables with table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW holding [channel], whose address is the one kit's documentation of that function uses), behind one zero signature slot. draft-solana-session-00 L2082-2097 at tempoxyz/mpp-specs 08e7dd87: a close bundled with a distribute of many recipients may be a version-0 transaction with an address lookup table. Each row is the landed transaction's loadedAddresses, as getTransaction lists the addresses its lookup tables loaded (writable, then read-only), and status's answer at finalized",
+   "wireBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACAxzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4Gp9UXGSxcUSGMyUw9SvF/WNruCJuh/UTj29mKAAAAAMldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAQEDAAMCAQQBMrT7p/g2fICURynDZTjaqXSPN7hONppH7ZxdJJOr6ysBAAA=",
+   "rows": [
+    {
+     "case": "loadedAddresses.writable [channel]: the close names the channel",
+     "loaded": {
+      "writable": [
+       "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH"
+      ],
+      "readonly": []
+     },
+     "expect": {
+      "state": "settled",
+      "commitment": "finalized"
+     }
+    },
+    {
+     "case": "loadedAddresses.writable [payee]: the close names another account",
+     "loaded": {
+      "writable": [
+       "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+      ],
+      "readonly": []
+     },
+     "expect": {
+      "state": "failed",
+      "why": "not-a-close"
+     }
+    },
+    {
+     "case": "no loaded address, where the message's lookups load one writable address",
+     "loaded": {
+      "writable": [],
+      "readonly": []
+     },
+     "expect": {
+      "state": "pending",
+      "why": "unreadable"
+     }
+    },
+    {
+     "case": "one read-only loaded address more than the message's lookups load",
+     "loaded": {
+      "writable": [
+       "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH"
+      ],
+      "readonly": [
+       "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH"
+      ]
+     },
+     "expect": {
+      "state": "pending",
+      "why": "unreadable"
+     }
+    },
+    {
+     "case": "a loaded address of 31 bytes",
+     "loaded": {
+      "writable": [
+       "1111111111111111111111111111111"
+      ],
+      "readonly": []
+     },
+     "expect": {
+      "state": "pending",
+      "why": "unreadable"
+     }
+    }
+   ]
+  }
  },
  "SV5": {
   "about": "Operator mode's opening (draft-solana-session-00, Session Bearer Proof): SS1's C_S with methodDetails.voucherSigner \"operator\" and methodDetails.operator set (the operator key here is SS1's feePayerKey, as a test value). In operator mode the open instruction's authorizedSigner (account 4) is the challenged operator (draft-solana-session-00 L1252-1254 and L1982-1985 at tempoxyz/mpp-specs 08e7dd87), so the channel client answers SV5.opening, not SV2's open, whose account 4 is the payer; the payer (seed 01) then signs SV5.opening.expectProofText as ed25519-raw, and the open payload gains authentication = {type: \"proof\", challengeId, payer, signature}, the signature in base58. Its hex is SV5.opening.expectProofSignature.",
@@ -706,6 +777,28 @@
    {
     "case": "a solana opening whose open instruction's authorizedSigner (account 4) is not the challenge's operator, its challenge's voucherSigner operator (draft-solana-session-00 L1252-1254 and L1982-1985 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner MUST equal the challenged operator)",
     "expect": "svm/signer-not-operator"
+   },
+   {
+    "case": "a solana opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, that key its challenge's operator and its challenge's voucherSigner operator (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete take no reader and read no table)",
+    "expect": "svm/signer-not-operator",
+    "composed": "@solana/kit 8.4.0 (fixtures/svm-lookup-table.ts tableOpening): SV5.opening decompiled, its open's account 4 set to the public key of Ed25519 seed 03, read-only, and accounts 5 and 7 to the channel and escrow derived for that signer as SV5.opening's are, then compressTransactionMessageUsingAddressLookupTables with table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW",
+    "operator": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+    "channel": "BAeLwhwLnxqqxFny7FxZRLjfHTfsMxD37LaHid9dyvVr",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjJqBx+pviBRICyg0IYmeVXPzNdZ/sYUr0C143IyCEzoLag1Zo/x3RvCl0xAaayZaSo9ltzfM9LuR2QKfE0SIEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cYX/c8gfc+xM6IiRv2Lz16Z5qZ6EfO+KvPpxXbELfjRmXDVJFP059oQprwTml9FhfYF0DP1fwtF8QXIJCgpNwfe3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAGp9UXGSxcUSGMyUw9SvF/WNruCJuh/UTj29mKAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDCwAFAkANAwALAAkDAQAAAAAAAAAKDgEABgcOAwQCDQUMCQgKIQG6eBa/jwHP6oCWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAEytPun+DZ8gJRHKcNlONqpdI83uE42mkftnF0kk6vrKwABAA=="
+   },
+   {
+    "case": "a solana opening whose open instruction names its channel (account 5) through an address lookup table (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete take no reader and read no table)",
+    "expect": "svm/open-not-found",
+    "composed": "@solana/kit 8.4.0 (fixtures/svm-lookup-table.ts tableOpening): SV5.opening decompiled, its open's account 4 set to SV3.payer, read-only, and accounts 5 and 7 to SV2's channel and escrow, derived for that signer, then compressTransactionMessageUsingAddressLookupTables with table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW",
+    "channel": "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAoBsl+9869yD4hmoQag8sr3cnRytYvLymSoi31xCieoLSqZ5hMlBXjZoFN5ACkDWoH++yNl8HLomQDQc0goR0GgAIACQ2BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cv2Q4GeONEFNuI/pcllypAMKvV5K+T2SRxXCSMvu5FavtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AE7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAup1pUDXtrHisrtRdSGcmj8GAQkkHKjE8XDMHKLUju6vnQjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+Fmnofuk6ysJCZP30t/WK4niuHIHemOf19dHqOmfY9QVrgMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAwoABQJADQMACgAJAwEAAAAAAAAACQ4BAAUGAQ0DAgwECwgHCSEBungWv48Bz+qAlpgAAAAAAIQDAACt1fwUAAAAAAAAAAABMrT7p/g2fICURynDZTjaqXSPN7hONppH7ZxdJJOr6ysBAAA="
+   },
+   {
+    "case": "a solana voucher built on a client opening whose open instruction names its authorizedSigner (account 4) through an address lookup table (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; buildWithin takes no reader and reads no table, so it has no signer to name)",
+    "expect": "svm/open-not-found",
+    "composed": "agreedRefusals.rows[21]'s opening",
+    "channel": "BAeLwhwLnxqqxFny7FxZRLjfHTfsMxD37LaHid9dyvVr",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAjJqBx+pviBRICyg0IYmeVXPzNdZ/sYUr0C143IyCEzoLag1Zo/x3RvCl0xAaayZaSo9ltzfM9LuR2QKfE0SIEgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cYX/c8gfc+xM6IiRv2Lz16Z5qZ6EfO+KvPpxXbELfjRmXDVJFP059oQprwTml9FhfYF0DP1fwtF8QXIJCgpNwfe3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAGp9UXGSxcUSGMyUw9SvF/WNruCJuh/UTj29mKAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDCwAFAkANAwALAAkDAQAAAAAAAAAKDgEABgcOAwQCDQUMCQgKIQG6eBa/jwHP6oCWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAEytPun+DZ8gJRHKcNlONqpdI83uE42mkftnF0kk6vrKwABAA=="
    }
   ]
  },

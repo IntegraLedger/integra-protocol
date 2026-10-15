@@ -4,15 +4,14 @@
  * are re-exported by `../svm.ts`; the read of a reported close serves `mpp/session/solana`'s `status`.
  */
 import { canonicalJson, toRawBytes, type AtrHash } from "../core.js";
-import { isObject, notFoundPoint } from "../fields.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import {
   channelVoucherMessage,
-  decodeSvmTx,
+  decodeLanded,
   keyBytes,
   keyString,
+  landedAt,
   type SolanaNetwork,
-  type SvmLanded,
   type SvmReader,
   type SvmTx,
 } from "./svm.js";
@@ -49,7 +48,9 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
 
 /**
  * The one top-level instruction of `program` whose data starts with `OPEN_DISCRIMINATOR`, with at least 33 bytes of
- * data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`.
+ * data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`,
+ * as is a channel named through an address lookup table: the message holds the table's address and an index, not the
+ * account, and this function reads no table.
  */
 export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: string } | Refusal {
   const open = readOpen(tx, program);
@@ -58,7 +59,7 @@ export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: str
 
 /**
  * `openOf`'s read, with the instruction's `authorizedSigner` (account 4): its key when the message names it as a static
- * key, else undefined (an account from an address lookup table).
+ * key, else undefined (an account from an address lookup table, which the message alone does not resolve).
  */
 export function readOpen(tx: SvmTx, program: string): { salt: bigint; signer: string | undefined; channel: string } | Refusal {
   const programKey = keyBytes(program);
@@ -114,41 +115,36 @@ function isWellFormed(s: unknown): s is string {
 /**
  * Reads a reported close at `finalized`, then `confirmed`: a top-level instruction of `program` whose data byte 0 is
  * `settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel, in a transaction that
- * executed without error, is settled. A landed transaction without such an instruction is failed `not-a-close` from a
- * read at either commitment, since the signature fixes its instructions. One with such an instruction that landed with
- * an error is failed `err` only from the read at `finalized`, and pending `not-final` from the read at `confirmed`,
- * since a block that is not finalized can be replaced and the transaction can land in another block and execute
- * otherwise. Not found at either is pending `not-found`; a failed read, or an answer of neither documented shape, is
- * pending `unreadable`. A ref whose program or channel is not the base58 of a 32-byte key is pending `unreadable`,
- * with nothing read. At most two calls.
+ * executed without error, is settled. The channel account is read from the static keys or from the addresses the
+ * transaction's address lookup tables loaded (`loaded`, as `getTransaction` lists them), since a table can supply it:
+ * draft-solana-session-00 has a close bundled with a `distribute` of many recipients sent as a version-0 transaction
+ * with an address lookup table. A landed transaction without such an instruction is failed `not-a-close` from a read at
+ * either commitment, since the signature fixes its instructions. One with such an instruction that landed with an
+ * error is failed `err` only from the read at `finalized`, and pending `not-final` from the read at `confirmed`, since
+ * a block that is not finalized can be replaced and the transaction can land in another block and execute otherwise.
+ * Not found at either is pending `not-found`; a failed read, or an answer of neither documented shape (a landed wire
+ * that does not decode, or `loaded` addresses other than 32-byte keys in the numbers the message's lookups name,
+ * included), is pending `unreadable`. A ref whose program or channel is not the base58 of a 32-byte key is pending
+ * `unreadable`, with nothing read. At most two calls.
  */
 export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promise<SvmCloseStatus> {
   if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
   const programKey = keyBytes(ref.program);
   const channelKey = keyBytes(ref.channel);
   if (programKey === null || channelKey === null) return { state: "pending", why: "unreadable" };
-  let found: { landed: SvmLanded; commitment: "confirmed" | "finalized" } | null = null;
-  try {
-    for (const commitment of ["finalized", "confirmed"] as const) {
-      const landed: unknown = await reader.transaction(ref.transaction, commitment);
-      if (notFoundPoint(landed, "slot") !== undefined) continue;
-      if (!isObject(landed) || !(landed["wire"] instanceof Uint8Array)) return { state: "pending", why: "unreadable" };
-      found = { landed: landed as unknown as SvmLanded, commitment };
-      break;
-    }
-  } catch {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (found === null) return { state: "pending", why: "not-found" };
-  const tx = decodeSvmTx(found.landed.wire);
-  if (isRefusal(tx)) return { state: "pending", why: "unreadable" };
+  const read = await landedAt(reader, ref.transaction);
+  if (read === undefined) return { state: "pending", why: "unreadable" };
+  if ("notFound" in read) return { state: "pending", why: "not-found" };
+  const decoded = decodeLanded(read.landed);
+  if (decoded === null) return { state: "pending", why: "unreadable" };
+  const { tx, keys } = decoded;
   const closes = tx.instructions.some((ix) => {
     if (!sameKey(tx.keys[ix.program], programKey)) return false;
     const at = ix.data[0] === SETTLE_AND_SEAL_DISCRIMINATOR ? 1 : ix.data[0] === SEAL_DISCRIMINATOR ? 0 : -1;
-    return at !== -1 && sameKey(tx.keys[ix.accounts[at] ?? -1], channelKey);
+    return at !== -1 && sameKey(keys[ix.accounts[at] ?? -1], channelKey);
   });
   if (!closes) return { state: "failed", why: "not-a-close" };
-  const { err } = found.landed;
-  if (err === null || err === undefined) return { state: "settled", commitment: found.commitment };
-  return found.commitment === "finalized" ? { state: "failed", why: "err" } : { state: "pending", why: "not-final" };
+  const { err } = read.landed;
+  if (err === null || err === undefined) return { state: "settled", commitment: read.commitment };
+  return read.commitment === "finalized" ? { state: "failed", why: "err" } : { state: "pending", why: "not-final" };
 }
