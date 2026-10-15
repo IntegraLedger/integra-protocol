@@ -387,8 +387,11 @@ EIP-3009's `ReceiveWithAuthorization`: the same fields as `TransferWithAuthoriza
 > **voucher**(`funded`): [`Refusal`](index.md#refusal) \| [`VoucherTypedData`](#vouchertypeddata)
 
 `funded`: the funding signature, transaction hash or signed `0x76` transaction. A `tempo-call` funding's signed
-transaction that does not decode, an empty one among them, or that is signed for a chain other than
-`funding.chainId` is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses it.
+transaction that does not decode, an empty one among them, that is signed for a chain other than
+`funding.chainId`, whose signature gives no sender (a keychain signature of type `0x03` among them), or whose
+`aa_authorization_list` holds an entry that is not a list of four items ending in a signature or one signed with
+a keychain signature of type `0x03`, is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses
+it.
 
 ###### Parameters
 

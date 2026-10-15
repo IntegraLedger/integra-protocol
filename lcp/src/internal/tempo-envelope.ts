@@ -1,7 +1,7 @@
 /**
- * The signed Tempo `0x76` envelope: its items, the bytes its sender signed, and its sender. `../tempo.ts` reads the
- * calls and the expiring nonce hash through these, and `../mpp-session.ts` reads the sender of a session's opening; no
- * entry point exports these names.
+ * The signed Tempo `0x76` envelope: its items, the bytes its sender signed, its sender, and the signatures of its
+ * authorization list. `../tempo.ts` reads the calls and the expiring nonce hash through these, and `../mpp-session.ts`
+ * reads the sender and the authorization list's signatures of a session's opening; no entry point exports these names.
  */
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { concat, hexOf, keccak, type Hex } from "../evm-abi.js";
@@ -17,6 +17,7 @@ export const CALLS = 4;
 export const VALID_BEFORE = 8;
 const FEE_TOKEN = 10;
 const FEE_PAYER_SIGNATURE = 11;
+const AUTHORIZATION_LIST = 12;
 const UINT_FIELDS = [0, 1, 2, 3, 6, 7, 8, 9] as const;
 
 /** Tempo's signature lengths and type bytes (tempoxyz/tempo, `tt_signature.rs`). */
@@ -26,6 +27,7 @@ const WEBAUTHN_MIN = 128;
 const WEBAUTHN_MAX = 2048;
 const P256 = 0x01;
 const WEBAUTHN = 0x02;
+const KEYCHAIN_V1 = 0x03;
 const KEYCHAIN_V2 = 0x04;
 
 /**
@@ -41,7 +43,7 @@ export function decodeEnvelope(wire: unknown): RlpItem[] | Refusal {
   const items = top.items;
   if (items.length !== 14 && items.length !== 15) return refusal("tempo/tx-malformed");
   for (const i of UINT_FIELDS) if (rlpUint(items[i]) === undefined) return refusal("tempo/tx-malformed");
-  for (const i of [CALLS, 5, 12]) if (items[i]!.kind !== "list") return refusal("tempo/tx-malformed");
+  for (const i of [CALLS, 5, AUTHORIZATION_LIST]) if (items[i]!.kind !== "list") return refusal("tempo/tx-malformed");
   if (items[FEE_TOKEN]!.kind !== "bytes") return refusal("tempo/tx-malformed");
   if (items.length === 15 && items[13]!.kind !== "list") return refusal("tempo/tx-malformed");
   if (items[items.length - 1]!.kind !== "bytes") return refusal("tempo/tx-malformed");
@@ -122,4 +124,30 @@ export function tempoSender(wire: Uint8Array): Hex | Refusal {
     return isRefusal(inner) ? inner : hexOf(account);
   }
   return primitiveSigner(sig, hash);
+}
+
+/**
+ * The signatures of the envelope's `aa_authorization_list` (item 12), one per entry. Tempo writes each entry as
+ * rlp([chain_id, address, nonce, signature]), its signature a Tempo signature as the sender's is (tempoxyz/tempo
+ * `7d4fd03`, `crates/primitives/src/transaction/tt_authorization.rs`: `TempoSignedAuthorization`, whose `decode_fields`
+ * reads `chain_id`, `address`, `nonce` and `signature` in that order). An entry that is not a list of four items whose
+ * fourth is a byte string is `tempo/tx-malformed`, since it holds no signature to read. So is an entry whose signature
+ * is a keychain signature of type `0x03`, a length other than 65 bytes and the first byte `0x03`
+ * (`crates/primitives/src/transaction/tt_signature.rs`, `TempoSignature::from_bytes`): Tempo's node validates the
+ * keychain version of each entry's signature as it validates the sender's, and refuses `0x03` once T1C is active
+ * (`crates/revm/src/handler.rs`: "Validate keychain signature version (outer + authorization list)", then
+ * `auth.signature().validate_version(cfg.spec().is_t1c())` for each entry, which answers `LegacyKeychainSignature`), as
+ * it is on chains 4217 and 42431 (`tempoSender`). No other part of an entry is read.
+ */
+export function authorizationSignatures(wire: Uint8Array): Uint8Array[] | Refusal {
+  const items = decodeEnvelope(wire);
+  if (isRefusal(items)) return items;
+  const signatures: Uint8Array[] = [];
+  for (const entry of (items[AUTHORIZATION_LIST] as Extract<RlpItem, { kind: "list" }>).items) {
+    const sig = entry.kind === "list" && entry.items.length === 4 ? entry.items[3]! : undefined;
+    if (sig === undefined || sig.kind !== "bytes") return refusal("tempo/tx-malformed");
+    if (sig.bytes.length !== SECP256K1_LENGTH && sig.bytes[0] === KEYCHAIN_V1) return refusal("tempo/tx-malformed");
+    signatures.push(sig.bytes);
+  }
+  return signatures;
 }

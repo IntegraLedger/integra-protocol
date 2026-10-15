@@ -336,13 +336,15 @@ describe("mpp-session-evm.json", () => {
 });
 
 /**
- * The vector's T for `calls`, each `[to, value, input]`, signed by the payer over keccak256(0x76 ‖ rlp(fields)); `signing`
- * is 0x76 ‖ rlp(fields), the bytes the sender signs.
+ * The vector's T for `calls`, each `[to, value, input]`, with `authorizationList` as its aa_authorization_list (empty by
+ * default), signed by `signer` (the payer's key by default) over keccak256(0x76 ‖ rlp(fields)); `signing` is
+ * 0x76 ‖ rlp(fields), the bytes the sender signs.
  */
 async function signedWire(
   calls: readonly (readonly string[])[],
   signer: (hash: ViemHex) => Promise<ViemHex> = sig65,
   chainId = 42431,
+  authorizationList: readonly unknown[] = [],
 ): Promise<{ wire: Uint8Array; signing: ViemHex }> {
   const fields = [
     num(chainId),
@@ -357,7 +359,7 @@ async function signedWire(
     "0x",
     T.fixed.pathUSD,
     "0x",
-    [],
+    authorizationList,
   ] as const;
   const signing = concat(["0x76", toRlp(fields as never)]);
   const signature = await signer(keccak256(signing));
@@ -778,10 +780,13 @@ describe("mpp-session-tempo.json", () => {
 
   // The payer is the address Tempo recovers from the open transaction's signature (draft-tempo-session-00 :1181-1182).
   // Tempo's signature forms (tempoxyz/tempo 9bb63953, crates/primitives/src/transaction/tt_signature.rs): secp256k1's
-  // 65 bytes, P256 (0x01), WebAuthn (0x02), and keychain (0x04, whose inner signature signs keccak256(0x04 ‖ the hash ‖
-  // the account)), an account and an inner signature. Each signature here is written with ox's
-  // SignatureEnvelope.serialize, P256's and WebAuthn's signed with noble's p256, and its sender is ox's extractAddress
-  // with root true. An opening built for that sender gives H; one built for another payer is refused.
+  // 65 bytes, P256 (0x01), WebAuthn (0x02), and keychain, an account and an inner signature: 0x03, whose inner signature
+  // signs the hash, and 0x04, whose inner signature signs keccak256(0x04 ‖ the hash ‖ the account). Tempo refuses 0x03
+  // once T1C is active (tempoxyz/tempo 7d4fd03, crates/revm/src/handler.rs, validate_version), as it is on chains 4217
+  // and 42431, so the forms that give a sender are the other four, and 0x03 is among the forms refused below. Each
+  // signature here is written with ox's SignatureEnvelope.serialize, P256's and WebAuthn's signed with noble's p256, and
+  // its sender is ox's extractAddress with root true. An opening built for that sender gives H; one built for another
+  // payer is refused.
   it("v2: the descriptor's payer is the open transaction's sender, in each Tempo signature form", async () => {
     const Sig = TempoTransaction.z_SignatureEnvelope;
     const ch = placed(V2);
@@ -826,7 +831,10 @@ describe("mpp-session-tempo.json", () => {
     expect(senders).toEqual([f.payer, p256Address, p256Address, OTHER].map((a) => a.toLowerCase()));
     // Any other signature form, the 0x03 keychain form among them (Tempo's transaction specification rejects it from
     // T1C onward, "Keychain"), a secp256k1 v outside 0, 1, 27, 28 and 35 up, or an s in the upper half of the order
-    // gives no sender.
+    // gives no sender: build's voucher and complete refuse the transaction, and bound refuses the credential complete
+    // gives for the secp256k1 form, carrying that transaction in its place.
+    const own = await openedBy(f.payer, await openWire(data));
+    const txMalformed = { refused: true, code: "tempo/tx-malformed" };
     const n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
     const highS = (sig: ViemHex) => {
       const p = parseSignature(sig);
@@ -838,7 +846,10 @@ describe("mpp-session-tempo.json", () => {
       ["v 29", async (hash: ViemHex) => `${(await sig65(hash)).slice(0, 130)}1d` as ViemHex],
       ["high s", async (hash: ViemHex) => highS(await sig65(hash))],
     ] as const) {
-      expect(await sessionTempo.bound(await openedBy(f.payer, await openWire(data, signer))), name).toEqual({ refused: true, code: "tempo/tx-malformed" });
+      const wire = toHex(await openWire(data, signer));
+      expect(u.voucher(wire), name).toEqual(txMalformed);
+      expect(u.complete(wire, `0x${"66".repeat(65)}`), name).toEqual(txMalformed);
+      expect(await sessionTempo.bound({ ...own, payload: { ...own.payload, transaction: wire } }), name).toEqual(txMalformed);
     }
   });
 
@@ -925,12 +936,18 @@ describe("mpp-session-tempo.json", () => {
       expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
       expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
     }
-    // A signature that gives no sender, a secp256k1 v outside 0, 1, 27, 28 and 35 up, is refused as on v2, and so is a
-    // payee, token or authorizedSigner word whose first 12 bytes are not zero, which ABI decoding does not take as an
-    // address.
+    // A signature that gives no sender, a secp256k1 v outside 0, 1, 27, 28 and 35 up, is refused as on v2: by build's
+    // voucher and complete, and by bound in the credential complete gives for the transaction fixed.payer signs, carrying
+    // it in its place. So is a payee, token or authorizedSigner word whose first 12 bytes are not zero, which ABI decoding
+    // does not take as an address.
     const malformedTx = { refused: true, code: "tempo/tx-malformed" };
     const v29 = async (hash: ViemHex) => `${(await sig65(hash)).slice(0, 130)}1d` as ViemHex;
-    expect(await sessionTempo.bound(await openedBy(f.payer, await wire(args, v29)))).toEqual(malformedTx);
+    const noSender = toHex(await wire(args, v29));
+    const byPayer = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+    expect(byPayer.voucher(noSender)).toEqual(malformedTx);
+    expect(byPayer.complete(noSender, `0x${"66".repeat(65)}`)).toEqual(malformedTx);
+    const signedByPayer = await openedBy(f.payer, await wire(args));
+    expect(await sessionTempo.bound({ ...signedByPayer, payload: { ...signedByPayer.payload, transaction: noSender } })).toEqual(malformedTx);
     for (const word of [0, 1, 4]) {
       const data = call(args);
       const at = 10 + 64 * word;
@@ -1126,48 +1143,130 @@ describe("mpp-session-tempo.json", () => {
   // Tempo's transaction specification (docs.tempo.xyz, Tempo Transactions Specification, "Keychain" and "Transaction
   // Validation", step 1): "The legacy `0x03` format is rejected from T1C onward." tempoxyz/tempo 7d4fd03 activates T1C
   // on chain 4217 at 1773327600 and on chain 42431 at 1773068400 (crates/hardfork/src/constants.rs), and its handler
-  // refuses a 0x03 signature once T1C is active (crates/revm/src/handler.rs, validate_version). A row's opening is
-  // build's from fixed.payer for its protocol's challenge, completed with that open call in a transaction of TS2's
-  // other fields whose signature ox's SignatureEnvelope.serialize writes as a keychain signature for fixed.payer, its
-  // inner signature by the row's accessKey; ox's extractAddress reads fixed.payer from it, and its bytes hash to the
-  // row's expectSha256 (GNU coreutils sha256sum). The same opening under the 0x04 keychain signature gives H.
+  // refuses a 0x03 signature once T1C is active, the sender's and each aa_authorization_list entry's
+  // (crates/revm/src/handler.rs, validate_version). An entry is rlp([chain_id, address, nonce, signature])
+  // (crates/primitives/src/transaction/tt_authorization.rs), its signature over EIP-7702's keccak256(0x05 ‖
+  // rlp([chain_id, address, nonce])). A row's opening is build's from fixed.payer for its protocol's challenge, its open
+  // call in a transaction of TS2's other fields whose aa_authorization_list holds the row's entries. Each signature is a
+  // keychain signature for fixed.payer in the form the row names, written with ox's SignatureEnvelope.serialize, its
+  // inner signature by the row's accessKey, and ox's extractAddress reads fixed.payer from it; the transaction's bytes
+  // hash to the row's expectSha256 (GNU coreutils sha256sum). build's voucher and complete refuse that transaction, and
+  // bound, reference and buildWithin refuse the credential complete would give for it: the one complete gives for the
+  // transaction fixed.payer signs, carrying this transaction in its place, on v2 with the descriptor's expiringNonceHash
+  // keccak256 of the bytes this transaction's sender signed and fixed.payer, and the channel id the draft's keccak256
+  // (:339-352) over that descriptor, encoded with viem. The same opening with every signature in the 0x04 form is
+  // completed, gives H, a search and a voucher built within it, and complete's credential for it is the one so made.
   it("agreedRefusals: an opening whose transaction carries a 0x03 keychain signature", async () => {
-    type Row = { case: string; sessionProtocol?: string; senderSignature?: string; accessKey: ViemHex; expectSha256: string; expect: string };
+    type Entry = { chainId: number; address: ViemHex; nonce: number; signature: string };
+    type Row = {
+      case: string;
+      sessionProtocol?: string;
+      senderSignature?: string;
+      authorizationList?: Entry[];
+      accessKey: ViemHex;
+      expectSha256: string;
+      expect: string;
+    };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
-      exact: 2,
+      exact: 4,
       keep: ["the senderSignature rows", (r) => r.senderSignature !== undefined],
       leave: ["the descriptor, channelId, transactionChainId and faults rows, which the tests above run", (r) => r.senderSignature === undefined],
     });
     const Sig = TempoTransaction.z_SignatureEnvelope;
     const Tx = TempoTransaction.z_TxEnvelopeTempo;
-    for (const row of rows) {
-      expect(row.senderSignature, row.case).toBe("keychain-v1");
-      const v1 = row.sessionProtocol === "v1";
-      const ch = placed(v1 ? V1 : V2);
-      const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+    const nine = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
+    const low = (a: string) => a.toLowerCase() as `0x${string}`;
+    const voucherSignature = `0x${"66".repeat(65)}` as const;
+    const VERSION: Record<string, "v1" | "v2" | undefined> = { "keychain-v1": "v1", "keychain-v2": "v2" };
+    /** build's opening for the challenge of one protocol, the credential complete would give for a transaction, and the transaction. */
+    const openingFor = async (v1: boolean) => {
+      const V = v1 ? V1 : V2;
+      const u = unsignedOf(await sessionTempo.build({ challenge: placed(V), from: f.payer, now: f.now, deposit }, H));
       if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
-      const data = u.funding.call.data;
-      const keychain = (version: "v1" | "v2") => async (hash: ViemHex) => {
-        const signed = version === "v1" ? hash : keccak256(concat(["0x04", hash, f.payer]));
-        const inner = await sign({ hash: signed, privateKey: row.accessKey });
+      const call = [v1 ? f.escrowV1 : f.escrowV2, "0x", u.funding.call.data] as const;
+      const own = u.complete(toHex(await openWire(u.funding.call.data, sig65, call[0])), voucherSignature) as MppCredential;
+      const carrying = (t: { wire: Uint8Array; signing: ViemHex }): MppCredential => {
+        const payload: { [k: string]: Json } = { ...own.payload, transaction: toHex(t.wire) };
+        if (!v1) {
+          const d = { ...(own.payload["descriptor"] as ReturnType<typeof descriptor>), expiringNonceHash: keccak256(concat([t.signing, f.payer])) };
+          payload["descriptor"] = d;
+          payload["channelId"] = keccak256(
+            encodeAbiParameters(nine, [low(d.payer), low(d.payee), d.operator, low(d.token), d.salt, d.authorizedSigner, d.expiringNonceHash, low(f.escrowV2), 42431n]),
+          );
+        }
+        return { ...own, payload };
+      };
+      const within = (opening: MppCredential) =>
+        ({ challenge: { ...V, id: "seller-own-id" }, opening, cumulativeAmount: 1n, action: "voucher" }) as Parameters<typeof sessionTempo.buildWithin>[0];
+      const signed = (signer: (hash: ViemHex) => Promise<ViemHex>, list: readonly unknown[] = []) => signedWire([call], signer, 42431, list);
+      return { u, carrying, within, signed };
+    };
+    for (const row of rows) {
+      const entries = row.authorizationList ?? [];
+      const forms = [row.senderSignature!, ...entries.map((a) => a.signature)];
+      expect(forms.filter((form) => form === "keychain-v1"), row.case).toHaveLength(1);
+      expect(forms.every((form) => VERSION[form] !== undefined), row.case).toBe(true);
+      const { u, carrying, within, signed } = await openingFor(row.sessionProtocol === "v1");
+      /** A keychain signature for fixed.payer over `hash`: 0x03's inner signature signs the hash, 0x04's keccak256(0x04 ‖ the hash ‖ fixed.payer). */
+      const keychain = async (form: string, hash: ViemHex) => {
+        const version = VERSION[form]!;
+        const inner = await sign({ hash: version === "v1" ? hash : keccak256(concat(["0x04", hash, f.payer])), privateKey: row.accessKey });
         const envelope = { type: "keychain", version, userAddress: f.payer, inner: { type: "secp256k1", signature: { r: BigInt(inner.r), s: BigInt(inner.s), yParity: inner.yParity } } };
         expect(Sig.extractAddress({ payload: hash, signature: envelope as never, root: true }).toLowerCase(), row.case).toBe(f.payer.toLowerCase());
-        return Sig.serialize(envelope as never);
+        const serialized = Sig.serialize(envelope as never) as ViemHex;
+        expect(serialized.slice(0, 4), row.case).toBe(version === "v1" ? "0x03" : "0x04");
+        return serialized;
       };
-      const opened = async (version: "v1" | "v2") =>
-        u.complete(toHex(await openWire(data, keychain(version), v1 ? f.escrowV1 : f.escrowV2)), `0x${"66".repeat(65)}`) as MppCredential;
-      expect(await sessionTempo.bound(await opened("v2")), row.case).toBe(H);
-      const cred = await opened("v1");
-      const wire = toBytes(cred.payload["transaction"] as ViemHex);
-      expect(sha256(wire), row.case).toBe(row.expectSha256);
-      const sig = fromRlp(toHex(wire.subarray(1)))[13] as ViemHex;
-      expect(sig.slice(0, 4), row.case).toBe("0x03");
-      expect(Tx.deserialize(toHex(wire) as never).signature?.type, row.case).toBe("keychain");
+      /** The opening's transaction, each signature in the form `as` gives for the row's. */
+      const transaction = async (as: (form: string) => string) => {
+        const list: unknown[] = [];
+        for (const a of entries) {
+          const tuple = [num(a.chainId), a.address, num(a.nonce)];
+          list.push([...tuple, await keychain(as(a.signature), keccak256(concat(["0x05", toRlp(tuple as never)])))]);
+        }
+        return signed((hash) => keychain(as(row.senderSignature!), hash), list);
+      };
+      const control = await transaction(() => "keychain-v2");
+      const completed = u.complete(toHex(control.wire), voucherSignature) as MppCredential;
+      expect(carrying(control), row.case).toEqual(completed);
+      expect(u.voucher(toHex(control.wire)), row.case).not.toHaveProperty("refused");
+      expect(await sessionTempo.bound(completed), row.case).toBe(H);
+      expect(await sessionTempo.reference(completed), row.case).toHaveProperty("search");
+      expect(Object.keys(await sessionTempo.buildWithin(within(completed), H)).sort(), row.case).toEqual(["complete", "requests"]);
+      const t = await transaction((form) => form);
+      expect(sha256(t.wire), row.case).toBe(row.expectSha256);
+      const back = Tx.deserialize(toHex(t.wire) as never);
+      expect(back.signature?.type, row.case).toBe("keychain");
+      expect((back.authorizationList ?? []).map((a) => (a as { signature?: { type?: string } }).signature?.type), row.case).toEqual(entries.map(() => "keychain"));
       const refused = { refused: true, code: row.expect };
+      expect(u.voucher(toHex(t.wire)), row.case).toEqual(refused);
+      expect(u.complete(toHex(t.wire), voucherSignature), row.case).toEqual(refused);
+      const cred = carrying(t);
       expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
       expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
-      const within = { challenge: { ...(v1 ? V1 : V2), id: "seller-own-id" }, opening: cred, cumulativeAmount: 1n, action: "voucher" };
-      expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
+      expect(await sessionTempo.buildWithin(within(cred), H), row.case).toEqual(refused);
+    }
+    // An entry is read for its signature's form alone. One that is not a list of four items whose fourth is a byte string
+    // holds no signature to read and is refused tempo/tx-malformed; a 65-byte signature is secp256k1's whatever its first
+    // byte, as TempoSignature::from_bytes reads it (crates/primitives/src/transaction/tt_signature.rs), and is not.
+    const { u, carrying, signed } = await openingFor(false);
+    const tuple = [num(42431), ZERO, "0x"];
+    const entrySignature = await sig65(keccak256(concat(["0x05", toRlp(tuple as never)])));
+    const startingWith03 = `0x03${entrySignature.slice(4)}` as ViemHex;
+    expect(toBytes(startingWith03), "65 bytes starting 0x03").toHaveLength(65);
+    const read65 = await signed(sig65, [[...tuple, startingWith03]]);
+    expect(u.complete(toHex(read65.wire), voucherSignature), "65 bytes starting 0x03").toEqual(carrying(read65));
+    expect(await sessionTempo.bound(carrying(read65)), "65 bytes starting 0x03").toBe(H);
+    const txMalformed = { refused: true, code: "tempo/tx-malformed" };
+    for (const [name, entry] of [
+      ["three items", tuple],
+      ["a list in place of the signature", [...tuple, [entrySignature]]],
+      ["a byte string in place of the entry", entrySignature],
+    ] as const) {
+      const t = await signed(sig65, [entry]);
+      expect(u.voucher(toHex(t.wire)), name).toEqual(txMalformed);
+      expect(u.complete(toHex(t.wire), voucherSignature), name).toEqual(txMalformed);
+      expect(await sessionTempo.bound(carrying(t)), name).toEqual(txMalformed);
     }
   });
 
