@@ -402,7 +402,7 @@
   "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] → settled; data 02 → failed not-a-close"
  },
  "SV5": {
-  "about": "Operator mode's opening (draft-solana-session-00, Session Bearer Proof): SS1's C_S with methodDetails.voucherSigner \"operator\" and methodDetails.operator set (the operator key here is SS1's feePayerKey, as a test value). The channel client answers SV2's open; the payer (seed 01) then signs SV3's proof text as ed25519-raw, and the open payload gains authentication = {type: \"proof\", challengeId, payer, signature}, the signature in base58. Its hex is SV3's proof signature.",
+  "about": "Operator mode's opening (draft-solana-session-00, Session Bearer Proof): SS1's C_S with methodDetails.voucherSigner \"operator\" and methodDetails.operator set (the operator key here is SS1's feePayerKey, as a test value). In operator mode the open instruction's authorizedSigner (account 4) is the challenged operator (draft-solana-session-00 L1252-1254 and L1982-1985 at tempoxyz/mpp-specs 08e7dd87), so the channel client answers SV5.opening, not SV2's open, whose account 4 is the payer; the payer (seed 01) then signs SV5.opening.expectProofText as ed25519-raw, and the open payload gains authentication = {type: \"proof\", challengeId, payer, signature}, the signature in base58. Its hex is SV5.opening.expectProofSignature.",
   "methodDetails": {
    "voucherSigner": "operator",
    "operator": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu"
@@ -421,7 +421,24 @@
    "challengeId",
    "payer",
    "signature"
-  ]
+  ],
+  "opening": {
+   "case": "An operator-mode open, written by hand in Python 3.12.3 from the Solana v0 message format: SV2's message with the open instruction's account 4 (authorizedSigner) the operator, static key 0, which is also the fee payer and rentPayer; static key 3, the channel, the canonical program-derived address of SV2's channel program over the seeds \"channel\", payer, payee, mint, authorizedSigner, the salt (u64 little-endian) and openSlot (u64 little-endian), the seeds from which SV2's channel derives with the payer as authorizedSigner (draft-solana-session-00 L378-394 and L471 at tempoxyz/mpp-specs 08e7dd87: the authorized signer is a PDA seed); static key 2, the escrow, that channel's associated token account for the mint; every other byte SV2's. The derivation is SHA-256 over the seeds, the bump, the program and \"ProgramDerivedAddress\", taking the first bump from 255 whose hash is not an Ed25519 point. The payer (seed 01) signs the message with cryptography 41.0.7's Ed25519 in the second signature slot; the fee payer's slot is zero, as in SV2. The same procedure with the payer as account 4 writes SV2's wire byte for byte. expectProofText is the JCS object {channelId, domain \"mpp-session-auth-v1\", payer, sessionChallengeId} for this channel, the payer and fixed.MV1 (draft-solana-session-00 L1131-1142, RFC 8785), and expectProofSignature the payer's Ed25519 signature of it, both by hand in Python 3.12.3. expectReference.digest is the SHA-256 of the message.",
+   "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUQJ7R2HlEcXeEpLsBHvWV/FGJ7S7JRp0r51iJv3v9lB7sJ2rYb1/q04UApa4ONJrm/uAkGZ1nMKrNISdf3XcLgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cGSqaCuJvhnBEs6EOUZ/vBBfGKzgOg7Vr6rB+4rpN8Dqo7vbEDBlOlUtqVlPI9uKjORb3Foxmu7t7KUB5LecQ7e3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDBgAFAkANAwAGAAkDAQAAAAAAAAANDgEACQoAAwQCCAUHDAsNIQG6eBa/jwHP6oCWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAA=",
+   "wireLength": 686,
+   "expectMessageSha256": "0xce717fb67b5ccaea163cc70f1eb8ef7b5867d681e2d51c2939b52bdc85f583c7",
+   "channel": "CNSqP2Zbs4utxLUEeyVngtdnGAX4BoNVFzYT8srFDmLG",
+   "escrow": "2hEsSS1LSkmuhavNBQFEjTAZ1HmMpvcQ9rkDbcgzRPjo",
+   "expectProofText": "{\"channelId\":\"CNSqP2Zbs4utxLUEeyVngtdnGAX4BoNVFzYT8srFDmLG\",\"domain\":\"mpp-session-auth-v1\",\"payer\":\"AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9\",\"sessionChallengeId\":\"ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0\"}",
+   "expectProofSignature": "f4af75a7ed3c749054e9f28d4a827d6ccd39a86eda7dd1565d4052dc3e4540cefc63328cae0cb84d9a2728c15b4490bda2c19d565380474324f0162aebfa950b",
+   "expectReference": {
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "digest": "0xce717fb67b5ccaea163cc70f1eb8ef7b5867d681e2d51c2939b52bdc85f583c7",
+    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+    "channel": "CNSqP2Zbs4utxLUEeyVngtdnGAX4BoNVFzYT8srFDmLG"
+   }
+  }
  },
  "XS1": {
   "case": "xrplChannelId(account, destination, sequence): the PayChannel ledger entry's ID, the SHA-512Half of the PayChannel space key 0x0078, the source's AccountID, the destination's AccountID and the Sequence of the PaymentChannelCreate (xrpl.org, PayChannel, \"PayChannel ID Format\": docs/references/protocol/ledger-data/ledger-entry-types/paychannel.md L97-103 at XRPLF/xrpl-dev-portal 1a22a493; rippled src/libxrpl/protocol/Indexes.cpp L99, L131-135 and L437-441 and include/xrpl/protocol/digest.h L152-166 and L212-221 at XRPLF/rippled 791c96fa, which hash the space as a big-endian UInt16 and the sequence as a big-endian UInt32). expect is computed by hand from that format: node:crypto's SHA-512 of those 46 bytes, its first 32 bytes, each AccountID from ripple-binary-codec 2.11.0's AccountID type; Python 3.12.3's hashlib with a hand base58 decoding agrees.",
@@ -685,6 +702,10 @@
    {
     "case": "a solana bearer (draft-solana-session-00 L1178-1353 at tempoxyz/mpp-specs 08e7dd87: the actions are open, voucher, use, topUp and close)",
     "expect": "mpp/session-action"
+   },
+   {
+    "case": "a solana opening whose open instruction's authorizedSigner (account 4) is not the challenge's operator, its challenge's voucherSigner operator (draft-solana-session-00 L1252-1254 and L1982-1985 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner MUST equal the challenged operator)",
+    "expect": "svm/signer-not-operator"
    }
   ]
  },

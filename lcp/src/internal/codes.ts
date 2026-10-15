@@ -381,6 +381,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "svm/peer-missing",
   "svm/proof-not-challenge",
   "svm/read-first",
+  "svm/signer-not-operator",
   "svm/tx-malformed",
   "svm/tx-too-large",
   "svm/unreadable",

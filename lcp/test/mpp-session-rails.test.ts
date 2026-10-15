@@ -15,6 +15,7 @@ import {
   getAddressEncoder,
   getCompiledTransactionMessageEncoder,
   getI64Encoder,
+  getProgramDerivedAddress,
   getU64Decoder,
   getU64Encoder,
   pipe,
@@ -621,32 +622,75 @@ describe("mpp/session/solana", () => {
     expect(await sessionSolana.channel.boundWithin(use)).toEqual(refused(V.plants.solana.expectUse));
   });
 
+  // SV5.opening is written by hand from the Solana v0 message format (its case): SV2's message with the open's account 4
+  // the operator and the channel and escrow derived for that signer. They are derived again here with @solana/kit 8.4.0's
+  // getProgramDerivedAddress, over the seeds SV2's channel derives from with the payer as account 4.
+  it("SV5.opening: an operator-mode open, account 4 the challenge's operator, written by hand", async () => {
+    const program = "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX";
+    const w = Uint8Array.from(Buffer.from(V.SV5.opening.wireBase64, "base64"));
+    expect(w.length).toBe(V.SV5.opening.wireLength);
+    const [tx, sv2] = [decodeSvmTx(w), decodeSvmTx(wire)];
+    if ("refused" in tx || "refused" in sv2) throw new Error("not decoded");
+    expect(`0x${sha256(tx.message)}`).toBe(V.SV5.opening.expectMessageSha256);
+    const keyOf = (t: typeof tx, i: number) => base58.encode(t.keys[i]!);
+    const openIx = (t: typeof tx) => t.instructions.find((i) => keyOf(t, i.program) === program)!;
+    const [ix, ix2] = [openIx(tx), openIx(sv2)];
+    expect(hex(ix.data)).toBe(V.SV2.expectOpenData);
+    expect([keyOf(tx, ix.accounts[4]!), keyOf(sv2, ix2.accounts[4]!)]).toEqual([V.SV5.methodDetails.operator, V.SV3.payer]);
+    expect(ix.accounts.filter((_, i) => i !== 4)).toEqual(ix2.accounts.filter((_, i) => i !== 4));
+    expect(tx.keys.filter((_, i) => i !== 2 && i !== 3)).toEqual(sv2.keys.filter((_, i) => i !== 2 && i !== 3));
+    expect(openOf(tx, program)).toEqual({ salt: BigInt(V.SV1.expectSalt), channel: V.SV5.opening.channel });
+    const enc = getAddressEncoder();
+    const at = (n: number) => enc.encode(address(keyOf(tx, ix.accounts[n]!)));
+    const channelOf = async (signer: string) =>
+      (await getProgramDerivedAddress({
+        programAddress: address(program),
+        seeds: ["channel", at(0), at(2), at(3), enc.encode(address(signer)), ix.data.subarray(1, 9), ix.data.subarray(21, 29)],
+      }))[0];
+    expect([await channelOf(V.SV3.payer), await channelOf(V.SV5.methodDetails.operator)]).toEqual([V.SV2.channel, V.SV5.opening.channel]);
+    expect(keyOf(tx, ix.accounts[5]!)).toBe(V.SV5.opening.channel);
+    const [escrow] = await getProgramDerivedAddress({
+      programAddress: address("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+      seeds: [enc.encode(address(V.SV5.opening.channel)), at(8), at(3)],
+    });
+    expect([escrow, keyOf(tx, ix.accounts[7]!)]).toEqual([V.SV5.opening.escrow, V.SV5.opening.escrow]);
+  });
+
   // SV5's challenge is C_S with SV5's methodDetails. The open action's authentication is REQUIRED for an operator voucher
-  // signer and MUST be absent for client, the default (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87). The
-  // operator opening's proof is SV5's: SV3's proof text signed with the payer's seed 01, in base58.
+  // signer and MUST be absent for client, the default (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87). For
+  // operator, the open's authorizedSigner MUST equal the challenged operator (L1252-1254, L1982-1985), so the operator
+  // opening is SV5.opening, and its proof is SV5.opening's proof text signed with the payer's seed 01, in base58. For
+  // client, the client controls authorizedSigner: SV2's open, and SV5.opening too, are client openings.
   it("SV5: an operator opening carries authentication and a client opening none; bound, reference and complete refuse the other", async () => {
     const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
     const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
     expect([operator.id, client.id]).toEqual([V.fixed.MV1, V.fixed.MV1]);
-    const proof = sessionProof({ channelId: V.SV2.channel, payer: V.SV3.payer, challengeId: operator.id });
+    const proof = sessionProof({ channelId: V.SV5.opening.channel, payer: V.SV3.payer, challengeId: operator.id });
+    expect(new TextDecoder().decode(proof)).toBe(V.SV5.opening.expectProofText);
     const signature = ed25519.sign(proof, new Uint8Array(32).fill(1));
-    expect(hex(signature).startsWith(V.SV3.expectProofSignaturePrefix) && hex(signature).endsWith(V.SV3.expectProofSignatureSuffix)).toBe(true);
+    expect(hex(signature)).toBe(V.SV5.opening.expectProofSignature);
     const authentication = { ...V.SV5.expectAuthentication, signature: base58.encode(signature) };
     expect(Object.keys(authentication)).toEqual(V.SV5.expectAuthenticationKeys);
     const payload = { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 };
-    const held = [cred(operator, { ...payload, authentication }), cred(client, payload), cred(C_S, payload)];
-    for (const c of held) {
+    const opened = { action: "open", channelId: V.SV5.opening.channel, transaction: V.SV5.opening.wireBase64 };
+    const held = [
+      [cred(operator, { ...opened, authentication }), V.SV5.opening.expectReference],
+      [cred(client, payload), V.SV2.expectReference],
+      [cred(C_S, payload), V.SV2.expectReference],
+      [cred(client, opened), V.SV5.opening.expectReference],
+    ] as const;
+    for (const [c, reference] of held) {
       expect(await sessionSolana.bound(c)).toBe(H);
-      expect(await sessionSolana.reference(c)).toEqual(V.SV2.expectReference);
+      expect(await sessionSolana.reference(c)).toEqual(reference);
     }
-    const other = [cred(operator, payload), cred(client, { ...payload, authentication }), cred(C_S, { ...payload, authentication })];
+    const other = [cred(operator, opened), cred(client, { ...payload, authentication }), cred(C_S, { ...payload, authentication })];
     for (const c of other) {
       expect(await sessionSolana.bound(c)).toEqual(refused("mpp/credential-malformed"));
       expect(await sessionSolana.reference(c)).toEqual(refused("mpp/credential-malformed"));
     }
     for (const [c, open, expected] of [
-      [operator, { ...payload, authentication }, { challenge: operator, payload: { ...payload, authentication } }],
-      [operator, payload, refused("mpp/credential-malformed")],
+      [operator, { ...opened, authentication }, { challenge: operator, payload: { ...opened, authentication } }],
+      [operator, opened, refused("mpp/credential-malformed")],
       [client, payload, { challenge: client, payload }],
       [client, { ...payload, authentication }, refused("mpp/credential-malformed")],
     ] as const) {
@@ -1190,6 +1234,8 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
   };
 
   const solanaOpen = { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 };
+  /** SV5's operator-mode open, whose account 4 is the challenge's operator. */
+  const operatorOpen = { action: "open", channelId: V.SV5.opening.channel, transaction: V.SV5.opening.wireBase64 };
   const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
   const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
   const proofFor = (c: MppChallenge & { id: string }) => ({ type: "proof", challengeId: c.id, payer: V.SV3.payer, signature: "x" });
@@ -1243,9 +1289,13 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     expect(solanaVoucher(V.SV2.channel, 100n)).toBeInstanceOf(Uint8Array);
     expect(await sessionHedera.build(hederaChoice, H)).not.toHaveProperty("refused");
     expect(await sessionXrpl.build(xrplChoice, H)).not.toHaveProperty("refused");
-    for (const [c, payload] of [[operator, { ...solanaOpen, authentication: proofFor(operator) }], [client, solanaOpen], [C_S, solanaOpen]] as const) {
-      const [bound, reference, completed] = await solanaCalls(c, payload);
-      expect([bound, reference, completed]).toEqual([H, V.SV2.expectReference, { challenge: c, payload }]);
+    for (const [c, payload, reference] of [
+      [operator, { ...operatorOpen, authentication: proofFor(operator) }, V.SV5.opening.expectReference],
+      [client, solanaOpen, V.SV2.expectReference],
+      [C_S, solanaOpen, V.SV2.expectReference],
+    ] as const) {
+      const [bound, referenced, completed] = await solanaCalls(c, payload);
+      expect([bound, referenced, completed]).toEqual([H, reference, { challenge: c, payload }]);
     }
     expect(await solanaUseCalls(operator)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, H]);
     for (const c of [client, C_S]) {
@@ -1333,7 +1383,7 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       ];
     },
     "a solana opening without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: REQUIRED for operator)":
-      async () => solanaCalls(operator, solanaOpen),
+      async () => solanaCalls(operator, operatorOpen),
     "a solana opening with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: MUST be absent for client)":
       async () => [
         ...(await solanaCalls(client, { ...solanaOpen, authentication: proofFor(client) })),
@@ -1365,6 +1415,12 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       async () => [...(await xrplActionCalls("topUp")), ...(await xrplActionCalls("use")), ...(await xrplActionCalls("bearer"))],
     "a solana bearer (draft-solana-session-00 L1178-1353 at tempoxyz/mpp-specs 08e7dd87: the actions are open, voucher, use, topUp and close)":
       async () => solanaActionCalls("bearer"),
+    "a solana opening whose open instruction's authorizedSigner (account 4) is not the challenge's operator, its challenge's voucherSigner operator (draft-solana-session-00 L1252-1254 and L1982-1985 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner MUST equal the challenged operator)":
+      async () => {
+        const opening = { ...solanaOpen, authentication: proofFor(operator) };
+        const within = await sessionSolana.buildWithin({ challenge: operator, opening: cred(operator, opening), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
+        return [...(await solanaCalls(operator, opening)), within];
+      },
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });

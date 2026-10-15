@@ -24,8 +24,7 @@ import {
   type HederaVoucherTypedData,
 } from "./internal/hedera-session.js";
 import {
-  OPEN_DISCRIMINATOR,
-  openOf,
+  readOpen,
   sessionSalt,
   solanaVoucher,
   svmCloseStatus,
@@ -88,8 +87,6 @@ const HASH256 = /^[0-9A-Fa-f]{64}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
 const U64 = 1n << 64n;
 const U128 = 1n << 128n;
-/** The open instruction's `authorizedSigner` account. */
-const OPEN_SIGNER_ACCOUNT = 4;
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 type Kind = "open" | "within" | "close";
@@ -594,9 +591,14 @@ function solanaOpenTx(payload: { [k: string]: Json }): SvmTx | Refusal {
  * The opening's checks: the one `open` of the challenge's program, its salt H's first 8 bytes, its channel the payload's;
  * then `authentication`, which draft-solana-session-00's open action requires for an `operator` voucher signer and
  * forbids for `client`, the default: missing for `operator`, or present for `client`, is `mpp/credential-malformed`;
- * present, it names the echoed challenge's id, else `svm/proof-not-challenge`.
+ * present, it names the echoed challenge's id, else `svm/proof-not-challenge`. For `operator`, the draft requires the
+ * open's `authorizedSigner` (account 4) to equal the challenged `operator`: a static key other than the challenge's
+ * `operator`, or an account from an address lookup table, is `svm/signer-not-operator`. For `client`, the client
+ * chooses that signer.
  */
-function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Echoed; tx: SvmTx; program: string } | Refusal {
+function solanaOpening(
+  presented: MppCredential,
+): { h: AtrHash; checked: Echoed; tx: SvmTx; signer: string | undefined; channel: string } | Refusal {
   const e = opening(presented, SOLANA);
   if (isRefusal(e)) return e;
   const program = channelProgram(e.checked);
@@ -605,17 +607,22 @@ function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Echoed;
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
-  const open = openOf(tx, program);
+  const open = readOpen(tx, program);
   if (isRefusal(open)) return open;
   if (open.salt !== sessionSalt(e.h)) return refusal("mpp/carrier-not-challenge");
   const declared = keyBytes(e.payload["channelId"]);
   if (declared === null || keyString(declared) !== open.channel) return refusal("svm/channel-mismatch");
   const auth = e.payload["authentication"];
-  if ((e.checked.details["voucherSigner"] === "operator") !== (auth !== undefined)) return refusal("mpp/credential-malformed");
+  const operatorMode = e.checked.details["voucherSigner"] === "operator";
+  if (operatorMode !== (auth !== undefined)) return refusal("mpp/credential-malformed");
   if (auth !== undefined && (!isObject(auth) || auth["challengeId"] !== presented.challenge.id)) {
     return refusal("svm/proof-not-challenge");
   }
-  return { h: e.h, checked: e.checked, tx, program };
+  if (operatorMode) {
+    const operator = keyBytes(e.checked.details["operator"]);
+    if (operator === null || open.signer !== keyString(operator)) return refusal("svm/signer-not-operator");
+  }
+  return { h: e.h, checked: e.checked, tx, signer: open.signer, channel: open.channel };
 }
 
 async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -638,10 +645,8 @@ async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot">
   const network = solanaNetworkOf(o.checked.details, true);
   if (network === null) return refusal("svm/network-undeclared");
   if (isRefusal(network)) return network;
-  const open = openOf(o.tx, o.program);
-  if (isRefusal(open)) return open;
   const ref = await svmReference(network, o.tx);
-  return isRefusal(ref) ? ref : { ...ref, channel: open.channel };
+  return isRefusal(ref) ? ref : { ...ref, channel: o.channel };
 }
 
 /**
@@ -759,20 +764,6 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
   };
 }
 
-/** The `authorizedSigner` account of the opening's one `open` instruction of `program`. */
-function openSigner(tx: SvmTx, program: string): string | Refusal {
-  const programKey = keyBytes(program);
-  const ix = tx.instructions.find(
-    (i) => programKey !== null && sameKeyBytes(tx.keys[i.program], programKey) && i.data[0] === OPEN_DISCRIMINATOR,
-  );
-  const key = ix === undefined ? undefined : tx.keys[ix.accounts[OPEN_SIGNER_ACCOUNT]!];
-  return key === undefined ? refusal("svm/open-not-found") : keyString(key);
-}
-
-function sameKeyBytes(a: Uint8Array | undefined, b: Uint8Array): boolean {
-  return a !== undefined && a.length === b.length && a.every((x, i) => x === b[i]);
-}
-
 /**
  * A voucher, or a close's voucher, on the channel the held opening opened, for its `client` voucher signer: one
  * `ed25519-raw` request over `solanaVoucher(channelId, cumulativeAmount)`, for the signer the opening's `open`
@@ -783,8 +774,8 @@ async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionW
   const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64, ["topUp", "use"]);
   if (isRefusal(o)) return o;
   if (o.checked.details["voucherSigner"] === "operator") return refusal("mpp/within-action-not-built");
-  const signer = openSigner(o.tx, o.program);
-  if (isRefusal(signer)) return signer;
+  const signer = o.signer;
+  if (signer === undefined) return refusal("svm/open-not-found");
   const channel = keyBytes(w.opening.payload["channelId"]);
   if (channel === null) return refusal("mpp/credential-malformed");
   const channelId = keyString(channel);

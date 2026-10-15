@@ -22,6 +22,7 @@ export const SETTLE_AND_SEAL_DISCRIMINATOR = 4;
 export const SEAL_DISCRIMINATOR = 6;
 const OPEN_MIN_DATA = 33;
 const OPEN_MIN_ACCOUNTS = 6;
+const OPEN_SIGNER_ACCOUNT = 4;
 const OPEN_CHANNEL_ACCOUNT = 5;
 
 export type SvmCloseRef = { phase: "close"; network: SolanaNetwork; program: string; channel: string; transaction: string };
@@ -51,6 +52,15 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
  * data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`.
  */
 export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: string } | Refusal {
+  const open = readOpen(tx, program);
+  return isRefusal(open) ? open : { salt: open.salt, channel: open.channel };
+}
+
+/**
+ * `openOf`'s read, with the instruction's `authorizedSigner` (account 4): its key when the message names it as a static
+ * key, else undefined (an account from an address lookup table).
+ */
+export function readOpen(tx: SvmTx, program: string): { salt: bigint; signer: string | undefined; channel: string } | Refusal {
   const programKey = keyBytes(program);
   if (programKey === null) return refusal("svm/open-not-found");
   const opens = tx.instructions.filter(
@@ -66,7 +76,8 @@ export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: str
   if (channel === undefined) return refusal("svm/open-not-found");
   let salt = 0n;
   for (let i = 8; i >= 1; i--) salt = (salt << 8n) | BigInt(ix.data[i]!);
-  return { salt, channel: keyString(channel) };
+  const signer = tx.keys[ix.accounts[OPEN_SIGNER_ACCOUNT]!];
+  return { salt, signer: signer === undefined ? undefined : keyString(signer), channel: keyString(channel) };
 }
 
 /**

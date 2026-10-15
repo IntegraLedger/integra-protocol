@@ -299,11 +299,15 @@ describe("mpp/session/solana: buildWithin", () => {
     request.methodDetails.voucherSigner = "operator";
     request.methodDetails.operator = request.methodDetails.feePayerKey;
     const operatorChallenge = placed({ ...R.SS1.solana.challenge, request: Buffer.from(JSON.stringify(request)).toString("base64url") });
-    // An operator opening carries the payer's session proof as authentication (draft-solana-session-00 L1197).
+    // An operator opening carries the payer's session proof as authentication (draft-solana-session-00 L1197), and its
+    // open names the operator as authorizedSigner (L1252-1254): SV5's opening, not SV2's, whose account 4 is the payer.
     const authentication = { type: "proof", challengeId: operatorChallenge.id, payer: R.SV3.payer, signature: "x" };
-    const operatorOpening = { challenge: operatorChallenge, payload: { ...opening.payload, authentication } };
+    const operatorOpen = { action: "open", channelId: R.SV5.opening.channel, transaction: R.SV5.opening.wireBase64, authentication };
+    const operatorOpening = { challenge: operatorChallenge, payload: operatorOpen };
     expect(await sessionSolana.buildWithin({ ...w(1n), opening: operatorOpening }, H)).toEqual(refused("mpp/within-action-not-built"));
     expect(await sessionSolana.buildWithin({ ...w(1n), opening: { ...opening, challenge: operatorChallenge } }, H)).toEqual(refused("mpp/credential-malformed"));
+    const payerSigned = { challenge: operatorChallenge, payload: { ...opening.payload, authentication } };
+    expect(await sessionSolana.buildWithin({ ...w(1n), opening: payerSigned }, H)).toEqual(refused("svm/signer-not-operator"));
     expect(await sessionSolana.buildWithin(w(1n, "use"), H)).toEqual(refused("mpp/within-action-not-built"));
     expect(await sessionSolana.buildWithin(w(1n), H2)).toEqual(refused("mpp/id-not-ours"));
     expect(await sessionSolana.buildWithin(w(1n << 64n), H)).toEqual(refused("mpp/input-malformed"));

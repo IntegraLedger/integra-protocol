@@ -11,7 +11,7 @@ is not an object, or a ref whose transaction id is not in its rail's form, refus
 gives a reader for another network.
 The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
-This page lists all 496 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 497 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -35,7 +35,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 16 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
 | [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
-| [`svm`](#svm) | 28 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
+| [`svm`](#svm) | 29 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 22 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`). |
@@ -399,6 +399,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/peer-missing` | The optional peer dependency `@solana/kit` cannot be loaded to build a Solana message. |
 | `svm/proof-not-challenge` | The MPP Solana session credential's `authentication.challengeId` is not the echoed challenge's id, or a `use` credential carries no such proof. |
 | `svm/read-first` | An MPP Solana `signature` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |
+| `svm/signer-not-operator` | The MPP Solana session opening's `open` instruction names an `authorizedSigner` (account 4) other than the echoed challenge's `operator`, or names it through an address lookup table, when the challenge's `voucherSigner` is `operator` (`bound`, `reference`, `build`'s `complete` and `buildWithin`). |
 | `svm/tx-malformed` | A Solana transaction is not non-empty base64 of a well-formed unversioned or v0 wire transaction (signature count, header, keys, instructions and lookup tables consistent and fully consumed), or an MPP `bundle` credential's `transactions` is not an array within the bound, or `svmCarrier` or `channelInstruction` is given a transaction that is not a decoded one. |
 | `svm/tx-too-large` | A Solana transaction, or its base64 text, exceeds the wire size bound. |
 | `svm/unreadable` | **Read to repeat.** The Solana reader threw, gave an answer of neither documented shape (a landed transaction, or a not-found answer), or returned a landed transaction that is not well formed. |
