@@ -155,7 +155,10 @@ export function filterOf(
  * The buyer's reading over a pairing's filter: the hash, the link, the agreement URL when `extensions.legalContext` carries one, and
  * the options the filter serves, in document order. A link or agreement URL of at most 2048 characters that parses as
  * an absolute URL with a scheme other than `https` is `x402/link-not-https`; any other value that is not a link, or two
- * spellings that disagree, is `x402/legal-context-malformed`.
+ * spellings that disagree, is `x402/legal-context-malformed`. A document in which the filter serves no option is
+ * `x402/no-payable-option`, unless the filter refused one of its options because the pairing's optional peer cannot be
+ * loaded: then it is the first such refusal (`<rail>/peer-missing`), since that option may be payable with the peer.
+ * A document holding no option of the pairing gets the same answer with the peer or without it.
  */
 export function readFor(filter: OptionFilter): (doc: unknown) => X402Read | Refusal {
   return (doc) => {
@@ -169,8 +172,15 @@ export function readFor(filter: OptionFilter): (doc: unknown) => X402Read | Refu
     const agreement = agreementIn(isObject(present) ? present["info"] : undefined);
     if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("x402/link-not-https");
     if (typeof agreement === "object") return refusal("x402/legal-context-malformed");
-    const options = (accepts as PaymentRequirements[]).filter((o) => isObject(o) && filter(o) === true);
-    if (options.length === 0) return refusal("x402/no-payable-option");
+    const options: PaymentRequirements[] = [];
+    let peerMissing: Refusal | undefined;
+    for (const o of accepts as PaymentRequirements[]) {
+      if (!isObject(o)) continue;
+      const f = filter(o);
+      if (f === true) options.push(o);
+      else if (f !== undefined && f.code.endsWith("/peer-missing")) peerMissing ??= f;
+    }
+    if (options.length === 0) return peerMissing ?? refusal("x402/no-payable-option");
     const offer = { required: doc as PaymentRequired, options };
     return agreement === undefined ? { h: lc.h, link: lc.link, offer } : { h: lc.h, link: lc.link, agreement, offer };
   };

@@ -3,9 +3,11 @@
 // throwing; a status that needs one reads as pending `unreadable`, and nothing is read.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { rowsOf } from "./rows.js";
 
 const TVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-tvm.json", import.meta.url), "utf8"));
 const NEAR = JSON.parse(readFileSync(new URL("../vectors/x402-exact-near.json", import.meta.url), "utf8"));
+const EVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-eip155-eip3009.json", import.meta.url), "utf8"));
 const code = (v: { agreedRefusals: { rows: { expect: string }[] } }) =>
   v.agreedRefusals.rows.find((r) => r.expect.endsWith("/peer-missing"))!.expect;
 
@@ -49,6 +51,23 @@ describe("without the TON and NEAR peers", () => {
     expect(await exactTvm.recover({ network: "tvm:-3", transaction: "x" }, reader as never)).toEqual(refused);
     expect(await exactTvm.status({ network: "tvm:-3" } as never, reader as never)).toEqual({ state: "pending", why: "unreadable" });
     expect(calls).toBe(0);
+  });
+
+  // Buyer row B2's document, which TON's read reads with the peer: its option is TON's, so read refuses tvm/peer-missing
+  // as advertise and bound do. With no TON option in it, read gives the answer it gives with the peer.
+  it("TON: read refuses tvm/peer-missing for a document holding a TON option, and only then", { timeout: IMPORT_MS }, async () => {
+    const { exactTvm } = await import("../src/tvm.js");
+    const [b2] = rowsOf(TVM.buyer.rows as { name: string; input: { doc: { accepts: unknown[] } } }[], "x402-exact-tvm.json buyer.rows", {
+      exact: 1,
+      keep: ["row B2, whose document carries a placed TON option", (r) => r.name === "B2"],
+      leave: ["every other row", (r) => r.name !== "B2"],
+    });
+    const doc = b2!.input.doc;
+    expect(exactTvm.read(doc as never)).toEqual({ refused: true, code: code(TVM) });
+    expect(exactTvm.read({ ...doc, accepts: [...doc.accepts, EVM.fixed.O] } as never)).toEqual({ refused: true, code: code(TVM) });
+    const none = { refused: true, code: "x402/no-payable-option" };
+    expect(exactTvm.read({ ...doc, accepts: [] } as never)).toEqual(none);
+    expect(exactTvm.read({ ...doc, accepts: [EVM.fixed.O] } as never)).toEqual(none);
   });
 
   it("NEAR: every function that needs borsh refuses near/peer-missing", { timeout: IMPORT_MS }, async () => {
