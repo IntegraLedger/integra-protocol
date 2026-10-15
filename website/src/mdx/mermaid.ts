@@ -31,6 +31,8 @@ const FONTCONFIG = '<?xml version="1.0"?>\n<fontconfig></fontconfig>\n';
  *   antialiasing) reach a diagram;
  * - a chart with a character Inter does not draw is refused before the browser starts, since the browser has no other
  *   font to draw it in.
+ * - the page reads its clock in UTC and formats in the en-US locale, so a chart that writes a date or a number writes it
+ *   the same on every machine.
  * The SVGs name the font, and `src/app/global.css` loads the same files, so a reader sees the diagram in the font it
  * is measured in.
  *
@@ -56,7 +58,9 @@ export async function renderMermaid(charts: string[], prefix: string): Promise<D
       executablePath,
       headless: true,
       artifactsDir: dir,
-      env: { HOME: dir, TMPDIR: dir, FONTCONFIG_FILE: join(dir, "fonts.conf") },
+      env: { HOME: dir, TMPDIR: dir, FONTCONFIG_FILE: join(dir, "fonts.conf"), TZ: "UTC" },
+      timezoneId: "UTC",
+      locale: "en-US",
     });
     try {
       const page = await context.newPage();
