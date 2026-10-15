@@ -311,5 +311,15 @@
     "expect": "mpp/session-protocol"
    }
   ]
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation. draft-tempo-session-00 (tempoxyz/mpp-specs 08e7dd87, lines 366-367 and 1186-1188) requires that a v2 credential's descriptor.expiringNonceHash match the open transaction being broadcast, and names no code. Each row's credential is the v2 opening TS2's wire carries, built from fixed.payerKey, whose descriptor's expiringNonceHash is TS2.expectNonceHash, with the row's member in place of that descriptor's and its channelId the draft's keccak256 (lines 339-352) over the descriptor so changed, the escrow and the chain, encoded with viem. bound and reference refuse it with the row's code.",
+  "rows": [
+   {
+    "case": "a v2 opening whose descriptor's expiringNonceHash is not the expiring nonce hash of its open transaction (the value is the draft's example, line 901)",
+    "expiringNonceHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "expect": "tempo/descriptor-mismatch"
+   }
+  ]
  }
 }

@@ -1246,7 +1246,13 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
   return descriptorSalt(payload, p);
 }
 
-/** The one `open` call to the escrow in the signed transaction, with its salt word equal to H. */
+/**
+ * The one `open` call to the escrow in the signed transaction, with its salt word equal to H. On v2, the payload's
+ * descriptor carries H as its salt (`descriptorSalt`) and the expiring nonce hash of this transaction signed by the
+ * descriptor's payer (`expiringNonceHash`), which draft-tempo-session-00 requires the descriptor's `expiringNonceHash`
+ * to match: a descriptor naming another gives a channel id this transaction does not open. Else
+ * `tempo/descriptor-mismatch`.
+ */
 function tempoOpened(
   presented: MppCredential,
 ): { h: AtrHash; checked: Echoed; params: Params; validBefore: bigint | null; channel: Hex } | Refusal {
@@ -1258,7 +1264,8 @@ function tempoOpened(
   const wire = e.payload["transaction"];
   if (typeof wire !== "string" || wire.length % 2 !== 0 || !/^0x[0-9a-fA-F]*$/.test(wire)) return refusal("mpp/credential-malformed");
   if ((wire.length - 2) / 2 > MAX_WIRE) return refusal("tempo/tx-too-large");
-  const tx = decodeTempoTx(bytesOf(wire)!);
+  const raw = bytesOf(wire)!;
+  const tx = decodeTempoTx(raw);
   if (isRefusal(tx)) return tx;
   const selector = p.version === "v2" ? OPEN_V2_SELECTOR : OPEN_V1_SELECTOR;
   const opens = tx.calls.filter(
@@ -1275,6 +1282,9 @@ function tempoOpened(
   if (p.version === "v2") {
     const salt = descriptorSalt(e.payload, p);
     if (typeof salt !== "string" || !hashEquals(salt, e.h)) return refusal("tempo/descriptor-mismatch");
+    const d = descriptorOf(e.payload["descriptor"])!;
+    const nonceHash = expiringNonceHash(raw, d.payer);
+    if (typeof nonceHash !== "string" || !sameBytes(nonceHash, d.expiringNonceHash)) return refusal("tempo/descriptor-mismatch");
   }
   return { h: e.h, checked: e.checked, params: p, validBefore: tx.validBefore, channel };
 }

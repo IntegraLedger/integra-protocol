@@ -692,6 +692,37 @@ describe("mpp-session-tempo.json", () => {
     }
   });
 
+  // Tempo's session draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-session-00.md :366-367 and :1186-1188): a v2
+  // credential's "`descriptor.expiringNonceHash` matches the open transaction being broadcast". TS2's opening carries
+  // TS2.expectNonceHash, ox's encodeForSigning and the sender; the row's descriptor names another, and its channel id is
+  // the draft's keccak256 (:339-352) over that descriptor, encoded with viem. A voucher carries the descriptor and no
+  // transaction, so its salt is read through the channel id alone.
+  it("agreedRefusals: a v2 opening whose descriptor's expiringNonceHash is not its transaction's", async () => {
+    type Row = { case: string; expiringNonceHash: `0x${string}`; expect: string };
+    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", { exact: 1 });
+    const nine = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
+    const low = (a: string) => a.toLowerCase() as `0x${string}`;
+    const u = unsignedOf(await sessionTempo.build({ challenge: placed(V2), from: f.payer, now: f.now, deposit }, H));
+    if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+    const cred = u.complete(toHex(await openWire(u.funding.call.data)), `0x${"66".repeat(65)}`) as MppCredential;
+    const built = cred.payload["descriptor"] as ReturnType<typeof descriptor>;
+    expect(built.expiringNonceHash).toBe(T.TS2.expectNonceHash);
+    expect(await sessionTempo.bound(cred)).toBe(H);
+    for (const row of rows) {
+      const d = { ...built, expiringNonceHash: row.expiringNonceHash };
+      const channelId = keccak256(
+        encodeAbiParameters(nine, [low(d.payer), low(d.payee), d.operator, low(d.token), d.salt, d.authorizedSigner, d.expiringNonceHash, low(f.escrowV2), 42431n]),
+      );
+      const planted = { ...cred, payload: { ...cred.payload, descriptor: d, channelId } };
+      const refused = { refused: true, code: row.expect };
+      expect(await sessionTempo.bound(planted), row.case).toEqual(refused);
+      expect(await sessionTempo.reference(planted), row.case).toEqual(refused);
+      const within = { challenge: { ...V2, id: "seller-own-id" }, opening: planted, cumulativeAmount: 1n, action: "voucher" };
+      expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
+      expect(await sessionTempo.channel.boundWithin({ ...planted, payload: { ...planted.payload, action: "voucher" } }), row.case).toBe(H);
+    }
+  });
+
   it("the record", () => {
     expect(sessionTempo.pattern).toEqual(Object.fromEntries(Object.entries(T.pattern).filter(([k]) => k !== "claims")));
   });
