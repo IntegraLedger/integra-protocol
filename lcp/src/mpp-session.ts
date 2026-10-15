@@ -1217,7 +1217,11 @@ function descriptorOf(v: Json | undefined): Parameters<typeof tempoChannelId>[0]
   return d as unknown as Parameters<typeof tempoChannelId>[0];
 }
 
-/** The v2 descriptor's salt, when the descriptor's channel id is the payload's channel. */
+/**
+ * The v2 descriptor's salt, when the descriptor's channel id is the payload's channel and its operator is the
+ * challenge's `methodDetails.operator`, or the zero address where the challenge names none: draft-tempo-session-00
+ * requires both of a v2 credential's descriptor. Else `tempo/descriptor-mismatch`.
+ */
 function descriptorSalt(payload: { [k: string]: Json }, p: Params): AtrHash | Refusal {
   const d = descriptorOf(payload["descriptor"]);
   if (d === undefined) return refusal("tempo/descriptor-mismatch");
@@ -1227,6 +1231,7 @@ function descriptorSalt(payload: { [k: string]: Json }, p: Params): AtrHash | Re
   if (typeof id !== "string" || channel === null || salt === null || !sameBytes(id, channel)) {
     return refusal("tempo/descriptor-mismatch");
   }
+  if (!sameBytes(d.operator, p.details["operator"] ?? ZERO)) return refusal("tempo/descriptor-mismatch");
   return salt;
 }
 

@@ -657,6 +657,41 @@ describe("mpp-session-tempo.json", () => {
     expect(await sessionTempo.bound(planted)).toEqual(T.plant1.expect);
   });
 
+  // Tempo's session draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-session-00.md :360-365 and :1227-1228): a v2
+  // credential's "`descriptor.operator` matches `methodDetails.operator` when present, or is the zero address when no
+  // operator is advertised". The channel id is the draft's keccak256 (:339-352) over the descriptor, the escrow and the
+  // chain, encoded with viem.
+  it("a v2 descriptor whose operator is not the challenge's operator", async () => {
+    const operator = "0x7777777777777777777777777777777777777777" as const;
+    const nine = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
+    const withOperator = JSON.parse(f.requestV2);
+    withOperator.methodDetails.operator = operator;
+    const opened = async (c: MppChallenge, descriptorOperator?: `0x${string}`): Promise<MppCredential> => {
+      const u = unsignedOf(await sessionTempo.build({ challenge: placed(c), from: f.payer, now: f.now, deposit }, H));
+      if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+      const cred = u.complete(toHex(await openWire(u.funding.call.data)), `0x${"66".repeat(65)}`) as MppCredential;
+      if (descriptorOperator === undefined) return cred;
+      const d = { ...(cred.payload["descriptor"] as ReturnType<typeof descriptor>), operator: descriptorOperator };
+      const low = (a: string) => a.toLowerCase() as `0x${string}`;
+      const channelId = keccak256(
+        encodeAbiParameters(nine, [low(d.payer), low(d.payee), d.operator, low(d.token), d.salt, d.authorizedSigner, d.expiringNonceHash, low(f.escrowV2), 42431n]),
+      );
+      return { ...cred, payload: { ...cred.payload, descriptor: d, channelId } };
+    };
+    const named = challenge("tempo", "session", JSON.stringify(withOperator));
+    const built = await opened(named);
+    expect((built.payload["descriptor"] as { operator: string }).operator).toBe(operator);
+    expect(await sessionTempo.bound(built)).toBe(H);
+    const mismatch = { refused: true, code: "tempo/descriptor-mismatch" };
+    for (const [c, other, name] of [[named, ZERO, "the zero operator under a named one"], [V2, operator, "an operator under none"]] as const) {
+      const cred = await opened(c, other);
+      expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
+      expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
+      const voucher = { ...cred, payload: { ...cred.payload, action: "voucher" } };
+      expect(await sessionTempo.channel.boundWithin(voucher), name).toEqual(mismatch);
+    }
+  });
+
   it("the record", () => {
     expect(sessionTempo.pattern).toEqual(Object.fromEntries(Object.entries(T.pattern).filter(([k]) => k !== "claims")));
   });
