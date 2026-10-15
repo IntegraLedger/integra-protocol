@@ -645,9 +645,10 @@ describe("x402-exact-tvm.json", () => {
   // and nothing after has_other_actions 0 (ton-blockchain/wallet-contract-v5 contracts/wallet_v5.fc, recv_internal,
   // process_signed_request and process_actions). Each body here is V2's request written again with @ton/core 0.63.1,
   // signed with fixed.seedHex over its signed part, in V2's settlement. A form W5 sends the transfer from binds H, its
-  // requestBodyHash the whole body's hash. A form W5 sends nothing from is refused, and two forms whose signed part ends
-  // before has_other_actions are refused whatever the signature's bits. TON's emulator (@ton/sandbox 0.45.0) running the
-  // published W5 code gives the same verdict on each form: the V3b rows and agreedRefusals rows 84 to 98.
+  // requestBodyHash the whole body's hash. A form W5 sends nothing from is refused. A signed part that ends before
+  // has_other_actions is tvm/not-w5-signed, with an action list or without one, and two such forms are refused whatever
+  // the signature's bits. TON's emulator (@ton/sandbox 0.45.0) running the published W5 code gives the same verdict on
+  // each form: the V3b rows and agreedRefusals rows 84 to 98 and 101.
   it("the W5 request is read as W5's internal_signed path reads it, and nothing after has_other_actions 0 is read", async () => {
     const p = await signed();
     const root = Cell.fromBase64(p.payload.settlementBoc);
@@ -701,6 +702,7 @@ describe("x402-exact-tvm.json", () => {
       ["no has_other_actions bit, signed", request({ fields: "1" }), "tvm/not-w5-signed"],
       ["no has_other_actions bit, its signature 64 zero bytes", request({ fields: "1", signature: zeros }), "tvm/not-w5-signed"],
       ["no has_other_actions bit, its signature 64 bytes 0xff", request({ fields: "1", signature: ones }), "tvm/not-w5-signed"],
+      ["the Maybe bit 0 and no has_other_actions bit", request({ fields: "0", refs: [] }), "tvm/not-w5-signed"],
       ["the Maybe bit 0: no action list", request({ fields: "00", refs: [] }), "tvm/actions"],
       ["has_other_actions 1 and nothing after", request({ fields: "11" }), "tvm/actions"],
     ];
@@ -718,7 +720,7 @@ describe("x402-exact-tvm.json", () => {
       got.push([form, await exactTvm.bound(payment(boc)), tvmCarrier(boc, REF.network)]);
       want.push([form, { refused: true, code }, { refused: true, code }]);
     }
-    expect(rowsOf(got, "the forms above", { exact: 21 })).toEqual(want);
+    expect(rowsOf(got, "the forms above", { exact: 22 })).toEqual(want);
   });
 
   it("V3b: a W5 request with bits or references after has_other_actions 0 binds H, its keys the vector's", async () => {

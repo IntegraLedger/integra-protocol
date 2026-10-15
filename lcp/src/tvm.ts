@@ -751,7 +751,8 @@ function carrierIn(settlementBoc: string, config: TonConfiguration): {
     validUntil = s.loadUint(32);
     s.loadUint(32);
     const list = s.loadMaybeRef();
-    if (list === null || s.loadBit()) return refusal("tvm/actions");
+    const hasOtherActions = s.loadBit();
+    if (list === null || hasOtherActions) return refusal("tvm/actions");
     actions = list;
   } catch {
     return refusal("tvm/not-w5-signed");
