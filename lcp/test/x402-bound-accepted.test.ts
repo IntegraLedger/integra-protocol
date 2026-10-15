@@ -96,7 +96,7 @@ const PRESENTATIONS = rowsOf(
     [...OPTIONS, ...presentedOptions(where, p.accepted)].map(([what, accepted]) => ({ where, what, payment: p, accepted })),
   ),
   "each presented payment under every option the files hold and under its own option changed",
-  { exact: 15951 },
+  { exact: 17759 },
 );
 
 /** A pairing's answers to one presentation. */
@@ -147,7 +147,7 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
 
   it("under an option its read does not offer, each pairing's bound refuses the payment with the code its advertise gives", () => {
     const refused = rowsOf(answers, "every pairing's answer to every presentation", {
-      exact: 454244,
+      exact: 505664,
       keep: ["the options the pairing's read does not offer", (a) => !a.offered],
       leave: ["the options the pairing's read offers", (a) => a.offered],
     });
@@ -157,7 +157,7 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
 
   it("under every option its read offers, a pairing that binds the payment gives H, or a refusal naming what bound reads of the option", () => {
     const offered = rowsOf(answers, "every pairing's answer to every presentation", {
-      exact: 886,
+      exact: 930,
       keep: ["the options the pairing's read offers, for a payment its bound binds under its own option", (a) => a.offered && !isRefusal(a.own)],
       leave: ["the others", (a) => !(a.offered && !isRefusal(a.own))],
     });
@@ -173,7 +173,7 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
       expect([a.pairing.id, a.where, a.what, code in (READS_OF_THE_OPTION[a.pairing.id] ?? {})]).toEqual([a.pairing.id, a.where, a.what, true]);
       seen.add(`${a.pairing.id} ${code}`);
     }
-    expect([bindings, offered.length - bindings]).toEqual([827, 59]);
+    expect([bindings, offered.length - bindings]).toEqual([869, 61]);
     const listed = Object.entries(READS_OF_THE_OPTION).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);

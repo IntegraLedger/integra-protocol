@@ -101,12 +101,182 @@
  "EB3": {
   "depositNonce": "0x20154736b3902f9c5659386a3b8ae1d67bc0ef3e80951b76af04d6ec8334f374",
   "digest": "0xfe3ff6463decb30707ff2d9f86b6fbe9817ebe94e9af23d82306a3a6b79f2859",
-  "signature": "0x1a8c019f1b4b29fb865d8aa3378cda488a550220180f8e16a65f430ec37888f741e7457488332d9b1560cc73bbab13e39ab0e320c92305847b07146d0e8cd0271c"
+  "signature": "0x1a8c019f1b4b29fb865d8aa3378cda488a550220180f8e16a65f430ec37888f741e7457488332d9b1560cc73bbab13e39ab0e320c92305847b07146d0e8cd0271c",
+  "case": "the opening's ERC-3009 deposit. expectPayload is complete's payment for the payer's signature (signature) and the payer authorizer's voucher signature (EB2.signature), written by hand from x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_evm.md L118-164 (payload type \"deposit\", channelConfig, voucher {channelId, maxClaimableAmount, signature}, deposit {amount, authorization {erc3009Authorization {validAfter \"0\", validBefore, salt, signature}}}) with fixed.evm's config, deposit, validBefore and authSalt, wrapped in x402 v2's PaymentPayload (specs/x402-specification-v2.md \u00a75.2.1: x402Version, resource, accepted, payload, then extensions, the document's own, echoed); Python 3.12.3's json.dumps of the object, compact, is its JSON text.",
+  "expectPayload": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "batch-settlement",
+    "network": "eip155:84532",
+    "amount": "1000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 3600,
+    "extra": {
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "withdrawDelay": 900,
+     "name": "USDC",
+     "version": "2"
+    }
+   },
+   "payload": {
+    "type": "deposit",
+    "channelConfig": {
+     "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+     "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "withdrawDelay": 900,
+     "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    "voucher": {
+     "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+     "maxClaimableAmount": "1000",
+     "signature": "0xeaadd469778d85cee58ea5c232a3b9009cb03c4771626b885c209759580df8b5572742e58a71529f7367e72fd5913a25f638e3cbde9a989054ccf1998db7514e1b"
+    },
+    "deposit": {
+     "amount": "100000",
+     "authorization": {
+      "erc3009Authorization": {
+       "validAfter": "0",
+       "validBefore": "1790003600",
+       "salt": "0x0000000000000000000000000000000000000000000000000000000000000001",
+       "signature": "0x1a8c019f1b4b29fb865d8aa3378cda488a550220180f8e16a65f430ec37888f741e7457488332d9b1560cc73bbab13e39ab0e320c92305847b07146d0e8cd0271c"
+      }
+     }
+    }
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  }
  },
  "EB4": {
   "digest": "0x8042cffa510741cf8e5a3d0d9fb4460368d9ff6e3f5baf9fa55c7e9e3e933d0d",
   "nonce": "1",
-  "deadline": "1790003600"
+  "deadline": "1790003600",
+  "signature": "0x224e41f66ab5ce7c45322ce7c0eb17514c1880711112de0ef1227ab027aa8cb279442fb6822a0fcf63d25db553d3a1c1042596066d435e9268c8ee7c07e704441b",
+  "case": "the opening's Permit2 deposit, the option's extra with assetTransferMethod \"permit2\". signature is eth-keys 0.8.0's deterministic (RFC 6979) signature of digest with fixed.evm.payerKey. expectPayload is complete's payment for that signature and EB2.signature, written by hand from x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_evm.md L114-116 (exactly one of erc3009Authorization and permit2Authorization) and the steward SDK's Permit2 deposit (the same commit, typescript/packages/mechanisms/evm/src/batch-settlement/client/permit2.ts L37-50 and L77-90: permit2Authorization {from, permitted {token, amount}, spender the Permit2 deposit collector, nonce, deadline, witness {channelId}, signature}), wrapped in x402 v2's PaymentPayload (specs/x402-specification-v2.md \u00a75.2.1: x402Version, resource, accepted, payload, then extensions, the document's own, echoed); Python 3.12.3's json.dumps of the object, compact, is its JSON text.",
+  "expectPayload": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "batch-settlement",
+    "network": "eip155:84532",
+    "amount": "1000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 3600,
+    "extra": {
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "withdrawDelay": 900,
+     "name": "USDC",
+     "version": "2",
+     "assetTransferMethod": "permit2"
+    }
+   },
+   "payload": {
+    "type": "deposit",
+    "channelConfig": {
+     "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+     "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "withdrawDelay": 900,
+     "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    "voucher": {
+     "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+     "maxClaimableAmount": "1000",
+     "signature": "0xeaadd469778d85cee58ea5c232a3b9009cb03c4771626b885c209759580df8b5572742e58a71529f7367e72fd5913a25f638e3cbde9a989054ccf1998db7514e1b"
+    },
+    "deposit": {
+     "amount": "100000",
+     "authorization": {
+      "permit2Authorization": {
+       "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+       "permitted": {
+        "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "amount": "100000"
+       },
+       "spender": "0x4020425FAf3B746C082C2f942b4E5159887B0005",
+       "nonce": "1",
+       "deadline": "1790003600",
+       "witness": {
+        "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482"
+       },
+       "signature": "0x224e41f66ab5ce7c45322ce7c0eb17514c1880711112de0ef1227ab027aa8cb279442fb6822a0fcf63d25db553d3a1c1042596066d435e9268c8ee7c07e704441b"
+      }
+     }
+    }
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  }
  },
  "EB5": {
   "channelCreatedDeclaration": "ChannelCreated(bytes32,(address,address,address,address,address,uint40,bytes32))",
@@ -132,7 +302,145 @@
    "expect": "x402/channel-id-mismatch",
    "matchedChannelId": "0xe86beca0bedc5bc55580fbbc3bcd49b100d96adaf426d13ed5c9994067e76fa1",
    "expectBoundWithinMatched": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
-  }
+  },
+  "expectVoucherPayload": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "batch-settlement",
+    "network": "eip155:84532",
+    "amount": "1000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 3600,
+    "extra": {
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "withdrawDelay": 900,
+     "name": "USDC",
+     "version": "2"
+    }
+   },
+   "payload": {
+    "type": "voucher",
+    "channelConfig": {
+     "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+     "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "withdrawDelay": 900,
+     "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    "voucher": {
+     "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+     "maxClaimableAmount": "1000",
+     "signature": "0xeaadd469778d85cee58ea5c232a3b9009cb03c4771626b885c209759580df8b5572742e58a71529f7367e72fd5913a25f638e3cbde9a989054ccf1998db7514e1b"
+    }
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "expectRefundPayload": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "batch-settlement",
+    "network": "eip155:84532",
+    "amount": "1000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 3600,
+    "extra": {
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "withdrawDelay": 900,
+     "name": "USDC",
+     "version": "2"
+    }
+   },
+   "payload": {
+    "type": "refund",
+    "channelConfig": {
+     "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+     "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "withdrawDelay": 900,
+     "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    "voucher": {
+     "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+     "maxClaimableAmount": "1000",
+     "signature": "0xeaadd469778d85cee58ea5c232a3b9009cb03c4771626b885c209759580df8b5572742e58a71529f7367e72fd5913a25f638e3cbde9a989054ccf1998db7514e1b"
+    },
+    "amount": "1500"
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "case": "bound and the channel members. expectVoucherPayload and expectRefundPayload are buildWithin's completes for fixed.evm.config at maxClaimableAmount 1000 with EB2.signature, without and with refund {amount refundAmount}, written by hand from x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_evm.md L166-190 (type \"voucher\", channelConfig, voucher) and L192-221 (type \"refund\", channelConfig, voucher, amount), wrapped in x402 v2's PaymentPayload (specs/x402-specification-v2.md \u00a75.2.1: x402Version, resource, accepted, payload, then extensions, the document's own, echoed); Python 3.12.3's json.dumps of the object, compact, is its JSON text."
  },
  "EB7": {
   "case": "status on fixture receipts (finalized 100, safe 105) with EB3's reference. The channel contract's deposit collects the deposit through the collector and then emits ChannelCreated, on a channel's first deposit, and Deposited (x402BatchSettlement.sol deposit, L216-231), so a deposit call's transfers lie after the contract's previous Deposited log and before its own. Rows that name a channel X use EB1's withHprime as its id; the stranger is Anvil account 3 and the custom collector 0x8888888888888888888888888888888888888888",
@@ -826,7 +1134,8 @@
   "payloadLength": 439,
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "withoutExtensions": "x402/no-legal-context",
-  "expectPairing": "x402/batch-settlement/cloudflare"
+  "expectPairing": "x402/batch-settlement/cloudflare",
+  "case": "the Cloudflare payment. payload is the decoded PAYMENT-SIGNATURE of x402's batch-settlement Cloudflare scheme (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_cloudflare.md L143-160: x402Version, payload {amount, asset}, accepted), with the extensions echoed at the top level (L168-170), written by hand; payloadLength is the length of its compact JSON text. build writes the same members in the same order from the chosen option, its extensions the document's."
  },
  "agreedRefusals": {
   "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h; with zeroMembers, the EVM build of EB2 and EB3's opening once per member named, with that member the zero address: from in its choice, or payTo or asset in fixed.evm.option. A row with pairing and calls runs each of those functions of that pairing on an opening. On the EVM pairing it is EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies; buildWithin takes the advertised option and EB2's maxClaimableAmount. On the Solana pairing it is ES2's opening as ES4 presents it: ES4's config, a voucher for ES1's PDA, and ES2's wire as deposit.transaction; buildWithin takes the advertised Solana option and maxClaimableAmount 1000. With depositAmount, deposit.amount is replaced by it. With validBeforeOrDeadline, the ERC-3009 authorization's validBefore, or the Permit2 authorization's deadline, is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set; voucher.channelId is the channel id of the configuration that results, and buildWithin takes that configuration, under H. With refundAmounts, each value is the amount of a refund payload that carries the opening's channelConfig and voucher, one run per value.",

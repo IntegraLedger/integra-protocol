@@ -112,6 +112,18 @@ function evmReaderFor(receipt: unknown): EvmReader {
   };
 }
 
+// x402's batch-settlement EVM payloads written by hand (x402 751590a2, scheme_batch_settlement_evm.md L118-221; the
+// steward SDK's Permit2 deposit, client/permit2.ts L37-50 and L77-90) in x402 v2's PaymentPayload (§5.2.1): each EB
+// complete's payment is held to its vector value whole, as JSON text.
+const voucherOf = () => ({ channelId: V.EB1.channelId, maxClaimableAmount: V.EB2.maxClaimableAmount, signature: V.EB2.signature });
+const paymentOf = (accepted: PaymentRequirements, payload: Record<string, unknown>) => ({
+  x402Version: 2,
+  resource: V.fixed.resource,
+  accepted,
+  payload,
+  extensions: evmDoc().extensions,
+});
+
 describe("x402-batch-settlement.json: EVM", () => {
   it("EB1: the channel id", () => {
     expect(keccak256(toBytes(E.channelConfigType))).toBe(CHANNEL_CONFIG_TYPEHASH);
@@ -136,6 +148,14 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(p["voucher"].signature).toBe(V.EB2.signature);
     expect(p["voucher"].maxClaimableAmount).toBe(V.EB2.maxClaimableAmount);
     expect(p["deposit"].authorization.erc3009Authorization.validBefore).toBe(E.validBefore);
+    const byHand = paymentOf(E.option, {
+      type: "deposit",
+      channelConfig: E.config,
+      voucher: voucherOf(),
+      deposit: { amount: E.deposit, authorization: { erc3009Authorization: { validAfter: "0", validBefore: E.validBefore, salt: E.authSalt, signature: V.EB3.signature } } },
+    });
+    expect(JSON.stringify(V.EB3.expectPayload)).toBe(JSON.stringify(byHand));
+    expect(JSON.stringify(payment)).toBe(JSON.stringify(V.EB3.expectPayload));
   });
 
   // ECMA-262 RegExp.prototype.test applies ToString to its argument, so ["0x…"] reads as its one element: each guard
@@ -157,6 +177,46 @@ describe("x402-batch-settlement.json: EVM", () => {
     const a = (payment.payload as Record<string, any>)["deposit"].authorization.permit2Authorization;
     expect([a.nonce, a.deadline]).toEqual([V.EB4.nonce, V.EB4.deadline]);
     expect(await batchEvm.bound(payment)).toBe(H);
+    expect(a.signature).toBe(V.EB4.signature);
+    const byHand = paymentOf({ ...E.option, extra: { ...E.option.extra, assetTransferMethod: "permit2" } }, {
+      type: "deposit",
+      channelConfig: E.config,
+      voucher: voucherOf(),
+      deposit: {
+        amount: E.deposit,
+        authorization: {
+          permit2Authorization: {
+            from: E.payer,
+            permitted: { token: E.config.token, amount: E.deposit },
+            spender: "0x4020425FAf3B746C082C2f942b4E5159887B0005",
+            nonce: V.EB4.nonce,
+            deadline: V.EB4.deadline,
+            witness: { channelId: V.EB1.channelId },
+            signature: V.EB4.signature,
+          },
+        },
+      },
+    });
+    expect(JSON.stringify(V.EB4.expectPayload)).toBe(JSON.stringify(byHand));
+    expect(JSON.stringify(payment)).toBe(JSON.stringify(V.EB4.expectPayload));
+  });
+
+  it("EB6: buildWithin's voucher and refund completes, byte for byte the scheme's payloads", async () => {
+    const doc = evmDoc();
+    const within = (refund?: { amount?: bigint }) =>
+      batchEvm.buildWithin(
+        { required: doc, accepted: doc.accepts[0]!, channelConfig: E.config, maxClaimableAmount: 1000n, ...(refund === undefined ? {} : { refund }) },
+        H,
+      );
+    const voucher = unwrap(await within());
+    expect(hashTypedData(forViem(voucher.requests[0]!.kind === "eip712" ? voucher.requests[0]!.typedData : undefined))).toBe(V.EB2.digest);
+    const byHandVoucher = paymentOf(E.option, { type: "voucher", channelConfig: E.config, voucher: voucherOf() });
+    expect(JSON.stringify(V.EB6.expectVoucherPayload)).toBe(JSON.stringify(byHandVoucher));
+    expect(JSON.stringify(unwrap(voucher.complete([V.EB2.signature])))).toBe(JSON.stringify(V.EB6.expectVoucherPayload));
+    const refund = unwrap(await within({ amount: BigInt(V.EB6.refundAmount) }));
+    const byHandRefund = paymentOf(E.option, { type: "refund", channelConfig: E.config, voucher: voucherOf(), amount: V.EB6.refundAmount });
+    expect(JSON.stringify(V.EB6.expectRefundPayload)).toBe(JSON.stringify(byHandRefund));
+    expect(JSON.stringify(unwrap(refund.complete([V.EB2.signature])))).toBe(JSON.stringify(V.EB6.expectRefundPayload));
   });
 
   it("EB5: the event topics and the config's data", () => {
@@ -661,6 +721,11 @@ describe("x402-batch-settlement.json: Cloudflare", () => {
     const doc = unwrap(batchCloudflare.advertise(required, H, V.fixed.link, V.EC1.payload.accepted));
     const built = unwrap(await batchCloudflare.build({ required: doc, accepted: doc.accepts[0]! }, H));
     expect(built.payload).toEqual(V.EC1.payload.payload);
+    // EC1.payload is the Cloudflare scheme's payment written by hand (its case); build's is the same members in the same
+    // order, its extensions the document's, held whole as JSON text.
+    const byHand = { x402Version: 2, payload: { amount: V.EC1.payload.accepted.amount, asset: V.EC1.payload.accepted.asset }, accepted: V.EC1.payload.accepted, extensions: V.EC1.payload.extensions };
+    expect(JSON.stringify(V.EC1.payload)).toBe(JSON.stringify(byHand));
+    expect(JSON.stringify(built)).toBe(JSON.stringify({ ...V.EC1.payload, extensions: doc.extensions }));
     expect(await batchCloudflare.bound(built)).toBe(H);
   });
 });

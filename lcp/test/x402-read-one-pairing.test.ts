@@ -8,7 +8,7 @@
 // root pairingOf names `x402/exact/eip155/erc7710`; `pairingOfPayment` names the level from the payment), and no `read`
 // offers the lnbtc offer without an invoice, which pairingOf names `x402/exact/lnbtc` and whose H that pairing's
 // `advertiseBeforeCarrier` places. Each presented payment in those vector files is bound only by pairings whose `read`
-// offers its `accepted`.
+// offers its `accepted`: an opening by `bound`, and a channel's within payment by `channel.boundWithin`.
 import { describe, expect, it } from "vitest";
 import { isRefusal, pairingOf } from "../src/index.js";
 import type { PaymentRequired } from "../src/x402.js";
@@ -59,7 +59,10 @@ describe("each x402 option is offered by one pairing's read, the one the root pa
     for (const [where, p] of PAYMENTS) {
       const offering = offeredBy(p.accepted);
       const bound: string[] = [];
-      for (const b of X402) if (!isRefusal(await b.bound(p))) bound.push(b.id);
+      for (const b of X402) {
+        const within = b.channel !== undefined && b.channel.kind(p) === "within";
+        if (!isRefusal(await (within ? b.channel!.boundWithin(p) : b.bound(p)))) bound.push(b.id);
+      }
       expect([where, bound.length]).not.toEqual([where, 0]);
       expect([where, bound.filter((id) => !offering.includes(id))]).toEqual([where, []]);
     }
