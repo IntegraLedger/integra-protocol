@@ -14,6 +14,7 @@ import type { TvmPayment } from "./internal/tvm.js";
 import {
   advertiseFor,
   chosen,
+  isTimeoutSeconds,
   offeredAt,
   paymentWith,
   presentedWith,
@@ -1007,7 +1008,7 @@ const check: OptionFilter = (o) => {
   if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
   if (decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   const t = o.maxTimeoutSeconds;
-  if (!isUint32(t) || t < 1) return refusal("tvm/option-malformed");
+  if (!isTimeoutSeconds(t) || !isUint32(t)) return refusal("tvm/option-malformed");
   return true;
 };
 

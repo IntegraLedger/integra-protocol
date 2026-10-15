@@ -11,6 +11,7 @@ import type { StarknetPayment } from "./internal/starknet.js";
 import {
   advertiseFor,
   chosen,
+  isTimeoutSeconds,
   paymentWith,
   presentedWith,
   readFor,
@@ -495,7 +496,7 @@ const check: OptionFilter = (o) => {
   }
   if (feePayer === 0n || feePayer === BigInt(ANY_CALLER)) return refusal("starknet/caller-forbidden");
   if (decimalBelow(o.amount, U256_LIMIT) === undefined) return refusal("starknet/option-malformed");
-  if (!Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds < 1) return refusal("starknet/option-malformed");
+  if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return refusal("starknet/option-malformed");
   return true;
 };
 

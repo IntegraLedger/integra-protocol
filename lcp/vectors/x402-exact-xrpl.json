@@ -472,6 +472,78 @@
      }
     },
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 60.5, which is not an integer",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1000000",
+     "asset": "XRP",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60.5,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds \"60\", a string, not a number",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1000000",
+     "asset": "XRP",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": "60",
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1000000",
+     "asset": "XRP",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 2^53, which is not a safe integer",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1000000",
+     "asset": "XRP",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 9007199254740992,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

@@ -8,7 +8,7 @@ import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
-import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -131,7 +131,7 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   if (uint64Of(o.asset) === undefined || !isAddress(o.payTo) || (feePayer !== undefined && !isAddress(feePayer))) {
     return refusal("avm/option-malformed");
   }
-  if (uint64Of(o.amount) === undefined || !Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds <= 0) {
+  if (uint64Of(o.amount) === undefined || !isTimeoutSeconds(o.maxTimeoutSeconds)) {
     return refusal("avm/option-malformed");
   }
   return true;

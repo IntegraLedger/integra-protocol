@@ -41,6 +41,14 @@ export const MAX_LINK = 2048;
  */
 export type OptionFilter = (option: PaymentRequirements) => true | Refusal | undefined;
 
+/**
+ * True when an option's `maxTimeoutSeconds` is a positive safe integer: the one rule every x402 pairing's option filter
+ * holds the member to. A pairing's own upper bound, where it has one, applies beside it.
+ */
+export function isTimeoutSeconds(maxTimeoutSeconds: unknown): maxTimeoutSeconds is number {
+  return Number.isSafeInteger(maxTimeoutSeconds) && (maxTimeoutSeconds as number) > 0;
+}
+
 /** An x402 v2 payment whose `payload` is the pairing's own. */
 export type X402Payment<P> = Omit<PaymentPayload, "payload"> & { payload: P };
 

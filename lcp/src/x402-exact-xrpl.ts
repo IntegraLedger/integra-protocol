@@ -9,6 +9,7 @@ import {
   advertiseFor,
   chosen,
   filterOf,
+  isTimeoutSeconds,
   offeredAt,
   paymentWith,
   readFor,
@@ -68,13 +69,18 @@ function isThis(option: PaymentRequirements): boolean {
 
 /**
  * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
- * pairing whose `Amount` `build` can write (`payable`), else `x402/option-malformed`.
+ * pairing whose `Amount` `build` can write and whose timeout is a positive safe integer (`payable`), else
+ * `x402/option-malformed`.
  */
 const filter = filterOf(isThis, payable);
 
-/** True when `build` can write the Payment's `Amount`: XRP drops, or an issued amount with `extra.issuer`. */
+/**
+ * True when `build` can write the Payment's `Amount`, XRP drops or an issued amount with `extra.issuer`, and the timeout
+ * is a positive safe integer.
+ */
 function payable(o: PaymentRequirements): boolean {
   if (typeof o.amount !== "string" || typeof o.asset !== "string" || typeof o.payTo !== "string") return false;
+  if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return false;
   if (o.asset === "XRP") return DROPS.test(o.amount);
   return AMOUNT.test(o.amount) && typeof o.extra?.["issuer"] === "string";
 }

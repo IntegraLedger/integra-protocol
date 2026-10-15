@@ -12,6 +12,7 @@ import type { TronPayment } from "./internal/tron.js";
 import {
   advertiseFor,
   chosen,
+  isTimeoutSeconds,
   paymentWith,
   presentedWith,
   readFor,
@@ -509,7 +510,7 @@ const check: OptionFilter = (o) => {
   if (addressBytes(o.asset) === null || addressBytes(o.payTo) === null) return refusal("tron/address-malformed");
   if (decimalBelow(o.amount, UINT256_LIMIT) === undefined) return refusal("tron/option-malformed");
   const t = o.maxTimeoutSeconds;
-  if (!Number.isSafeInteger(t) || t < 1 || t > MAX_TIMEOUT_SECONDS) return refusal("tron/option-malformed");
+  if (!isTimeoutSeconds(t) || t > MAX_TIMEOUT_SECONDS) return refusal("tron/option-malformed");
   return true;
 };
 

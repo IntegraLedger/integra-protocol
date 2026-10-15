@@ -131,10 +131,10 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 21221;
-const NOT_OFFERED = 605561;
-const OFFERED_OWN_BINDS = 1332;
-const OFFERED_COUNTS = [1240, 92, 1147];
+const PRESENTED = 22425;
+const NOT_OFFERED = 640549;
+const OFFERED_OWN_BINDS = 1302;
+const OFFERED_COUNTS = [1210, 92, 1129];
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>
@@ -265,7 +265,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 113 },
+  { exact: 141 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {

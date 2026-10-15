@@ -12,6 +12,7 @@ import type { NearPayment } from "./internal/near.js";
 import {
   advertiseFor,
   chosen,
+  isTimeoutSeconds,
   paymentWith,
   presentedWith,
   readFor,
@@ -400,8 +401,7 @@ const check: OptionFilter = (o) => {
   if (typeof o.asset !== "string" || !ACCOUNT.test(o.asset)) return refusal("near/option-malformed");
   if (typeof o.payTo !== "string" || !ACCOUNT.test(o.payTo)) return refusal("near/option-malformed");
   if (decimalBelow(o.amount, U128_LIMIT) === undefined) return refusal("near/option-malformed");
-  // Any integer timeout: `build` opens a window of max(1, maxTimeoutSeconds) blocks, x402's own mapping.
-  if (!Number.isSafeInteger(o.maxTimeoutSeconds)) return refusal("near/option-malformed");
+  if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return refusal("near/option-malformed");
   return true;
 };
 
@@ -440,7 +440,9 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   if (typeof accessKeyNonce !== "bigint" || accessKeyNonce < 0n || accessKeyNonce + 1n >= U64_LIMIT) {
     return refusal("x402/option-malformed");
   }
-  const window = BigInt(Math.max(1, accepted.maxTimeoutSeconds));
+  // x402's NEAR scheme opens max(1, ceil(maxTimeoutSeconds / estimatedBlockSeconds)) blocks; with one-second blocks and
+  // the positive timeout the filter holds, that is maxTimeoutSeconds blocks.
+  const window = BigInt(accepted.maxTimeoutSeconds);
   if (typeof finalHeight !== "bigint" || finalHeight < 0n || finalHeight + window >= U64_LIMIT) {
     return refusal("x402/option-malformed");
   }

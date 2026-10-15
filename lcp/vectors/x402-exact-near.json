@@ -45,7 +45,7 @@
   },
   "presentedOptions": [
    {
-    "case": "V2's payment presented under an option with maxTimeoutSeconds 0: the option filter names no timeout bound, and build's window is max(1, maxTimeoutSeconds) blocks (x402 scheme_exact_near: timeoutBlocks = max(1, ceil(maxTimeoutSeconds / estimatedBlockSeconds)))",
+    "case": "V2's payment presented under an option with maxTimeoutSeconds 0, which read does not offer: bound and reference hold the presented option to read's filter and refuse it",
     "accepted": {
      "scheme": "exact",
      "network": "near:testnet",
@@ -54,16 +54,7 @@
      "payTo": "merchant.testnet",
      "maxTimeoutSeconds": 0
     },
-    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": {
-     "network": "near:testnet",
-     "asset": "usdc.testnet",
-     "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-     "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-     "nonce": "101",
-     "maxBlockHeight": "200000060",
-     "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb"
-    }
+    "expect": "near/option-malformed"
    }
   ],
   "refusals": [
@@ -841,6 +832,62 @@
      "asset": "usdc.testnet",
      "payTo": "merchant.testnet",
      "maxTimeoutSeconds": 60
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 60.5, which is not an integer",
+    "pairing": "x402/exact/near",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 60.5
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds \"60\", a string, not a number",
+    "pairing": "x402/exact/near",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": "60"
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/exact/near",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 0
+    },
+    "expect": "near/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 2^53, which is not a safe integer",
+    "pairing": "x402/exact/near",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "near:testnet",
+     "amount": "1000000",
+     "asset": "usdc.testnet",
+     "payTo": "merchant.testnet",
+     "maxTimeoutSeconds": 9007199254740992
     },
     "expect": "near/option-malformed"
    }

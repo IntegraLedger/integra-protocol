@@ -17,7 +17,7 @@ import {
   type ExecutorPayload,
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
-import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -573,7 +573,7 @@ function isNamed(o: PaymentRequirements): boolean {
 
 /** Everything but the transfer method: network, asset, payee, amount and timeout. */
 function isServable(o: PaymentRequirements): boolean {
-  return isNamed(o) && amountOf(o.amount) !== undefined && Number.isSafeInteger(o.maxTimeoutSeconds) && o.maxTimeoutSeconds > 0;
+  return isNamed(o) && amountOf(o.amount) !== undefined && isTimeoutSeconds(o.maxTimeoutSeconds);
 }
 
 /**

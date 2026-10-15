@@ -9,7 +9,7 @@ import { isObject, normalHash } from "../fields.js";
 import type { Bolt11, LnNetwork } from "../lightning.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequirements } from "../x402.js";
-import type { OptionFilter } from "./x402.js";
+import { isTimeoutSeconds, type OptionFilter } from "./x402.js";
 
 const MAX_INVOICE = 8192;
 const MAX_FIELDS = 64;
@@ -255,8 +255,7 @@ function optionFields(o: PaymentRequirements): Refusal | null {
     !PAY_TO.test(o.payTo) ||
     typeof o.amount !== "string" ||
     !POSITIVE.test(o.amount) ||
-    !Number.isSafeInteger(o.maxTimeoutSeconds) ||
-    o.maxTimeoutSeconds <= 0
+    !isTimeoutSeconds(o.maxTimeoutSeconds)
   ) {
     return refusal("x402/option-malformed");
   }

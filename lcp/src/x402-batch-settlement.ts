@@ -77,6 +77,7 @@ import {
   advertiseFor,
   chosen,
   filterOf,
+  isTimeoutSeconds,
   legalContextOf,
   offeredAt,
   paymentWith,
@@ -398,8 +399,7 @@ function payable(o: PaymentRequirements): boolean {
     typeof o.amount === "string" &&
     DECIMAL.test(o.amount) &&
     BigInt(o.amount) < U128_LIMIT &&
-    Number.isSafeInteger(o.maxTimeoutSeconds) &&
-    o.maxTimeoutSeconds > 0
+    isTimeoutSeconds(o.maxTimeoutSeconds)
   );
 }
 
@@ -418,14 +418,20 @@ function svmPayable(o: PaymentRequirements): boolean {
 
 const isId = (id: BatchPairingId) => (o: PaymentRequirements): boolean => batchIdOf(o) === id;
 
+/** What the Cloudflare pairing serves: an option whose timeout is a positive safe integer. */
+function cfPayable(o: PaymentRequirements): boolean {
+  return isTimeoutSeconds(o.maxTimeoutSeconds);
+}
+
 /**
  * Each pairing's option filter, which its `advertise`, `read`, `build`, `buildWithin`, `bound`, `reference` and channel
- * reads apply: an option the pairing names, refused `x402/option-malformed` where its `build` cannot pay it.
+ * reads apply: an option the pairing names, refused `x402/option-malformed` where its `build` cannot pay it or, on
+ * Cloudflare, where its `maxTimeoutSeconds` is not a positive safe integer.
  */
 const FILTER: Readonly<Record<BatchPairingId, OptionFilter>> = {
   [EVM_ID]: filterOf(isId(EVM_ID), evmPayable),
   [SVM_ID]: filterOf(isId(SVM_ID), svmPayable),
-  [CF_ID]: filterOf(isId(CF_ID)),
+  [CF_ID]: filterOf(isId(CF_ID), cfPayable),
 };
 
 function payloadOf(p: unknown, id: BatchPairingId): { accepted: PaymentRequirements; payload: Record<string, unknown> } | Refusal {

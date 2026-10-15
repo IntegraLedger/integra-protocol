@@ -222,14 +222,19 @@ describe("x402-exact-near.json", () => {
     expect(await exactNear.build({ ...choice(), publicKey: mlDsaPublicKey }, H)).toEqual({ refused: true, code: "x402/option-malformed" });
   });
 
-  it("V2 presented under an option with timeout 0 gives H; build opens a window of one block", async () => {
-    for (const row of rowsOf(V.V2.presentedOptions, "x402-exact-near.json V2.presentedOptions")) {
-      const p = { ...payment(V.V2.expectSignedDelegateAction), accepted: row.accepted };
-      expect([row.case, await exactNear.bound(p)]).toEqual([row.case, row.expectBound]);
-      expect([row.case, await exactNear.reference(p)]).toEqual([row.case, row.expectReference]);
-    }
+  it("V2 presented under an option with timeout 0 is refused; build under a timeout of 1 opens a window of one block", async () => {
+    const [row] = rowsOf(V.V2.presentedOptions, "x402-exact-near.json V2.presentedOptions", { exact: 1 });
+    const presented = { ...payment(V.V2.expectSignedDelegateAction), accepted: row.accepted };
+    const want = { refused: true, code: row.expect };
+    const doc = exactNear.advertise(required, H, V.fixed.link, O);
+    if ("refused" in doc) throw new Error(doc.code);
+    expect(row.accepted.maxTimeoutSeconds).toBe(0);
+    expect(exactNear.read({ ...doc, accepts: [row.accepted] })).toEqual({ refused: true, code: "x402/no-payable-option" });
+    expect([row.case, await exactNear.bound(presented)]).toEqual([row.case, want]);
+    expect([row.case, await exactNear.reference(presented)]).toEqual([row.case, want]);
+    expect(await exactNear.build({ ...choice(), required: { ...required, accepts: [row.accepted] }, accepted: row.accepted }, H)).toEqual(want);
     // x402's scheme_exact_near: timeoutBlocks = max(1, ceil(maxTimeoutSeconds / estimatedBlockSeconds)), 1 s blocks.
-    const accepted = { ...O, maxTimeoutSeconds: 0 };
+    const accepted = { ...O, maxTimeoutSeconds: 1 };
     const u = await exactNear.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);
     if ("refused" in u) throw new Error(u.code);
     const p = u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) });

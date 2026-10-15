@@ -25,6 +25,7 @@ import {
   carriesRefusedMember,
   chosen,
   filterOf,
+  isTimeoutSeconds,
   legalContextOf,
   offeredAt,
   readFor,
@@ -79,8 +80,7 @@ function payable(o: PaymentRequirements): boolean {
     typeof o.amount === "string" &&
     AMOUNT.test(o.amount) &&
     BigInt(o.amount) < I128_LIMIT &&
-    Number.isSafeInteger(o.maxTimeoutSeconds) &&
-    o.maxTimeoutSeconds > 0 &&
+    isTimeoutSeconds(o.maxTimeoutSeconds) &&
     Math.ceil(o.maxTimeoutSeconds / 5) <= UINT32_MAX
   );
 }

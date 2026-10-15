@@ -10,7 +10,7 @@ import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from 
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
-import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -309,7 +309,7 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   if (typeof o.amount !== "string" || !DECIMAL.test(o.amount)) return refusal("polkadot/option-malformed");
   const amount = BigInt(o.amount);
   if (amount === 0n || amount >= U128_LIMIT) return refusal("polkadot/option-malformed");
-  if (!Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds < 1 || o.maxTimeoutSeconds > 3600) {
+  if (!isTimeoutSeconds(o.maxTimeoutSeconds) || o.maxTimeoutSeconds > 3600) {
     return refusal("polkadot/option-malformed");
   }
   const dest = ss58Decode(o.payTo);

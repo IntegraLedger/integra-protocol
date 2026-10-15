@@ -29,6 +29,7 @@ import {
   advertiseFor,
   chosen,
   filterOf,
+  isTimeoutSeconds,
   offeredAt,
   paymentWith,
   readFor,
@@ -111,8 +112,7 @@ function payable(o: PaymentRequirements): boolean {
     typeof o.amount === "string" &&
     U64_DECIMAL.test(o.amount) &&
     BigInt(o.amount) < U64_LIMIT &&
-    Number.isSafeInteger(o.maxTimeoutSeconds) &&
-    o.maxTimeoutSeconds > 0
+    isTimeoutSeconds(o.maxTimeoutSeconds)
   );
 }
 

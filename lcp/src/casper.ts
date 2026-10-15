@@ -6,7 +6,7 @@ import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -257,7 +257,6 @@ function isCall(c: unknown): c is CasperCall {
 function casperOption(o: unknown): o is PaymentRequirements {
   if (!isObject(o)) return false;
   const extra = o["extra"];
-  const timeout = o["maxTimeoutSeconds"];
   return (
     o["scheme"] === "exact" &&
     typeof o["network"] === "string" &&
@@ -269,9 +268,7 @@ function casperOption(o: unknown): o is PaymentRequirements {
     isObject(extra) &&
     isName(extra["name"]) &&
     isName(extra["version"]) &&
-    typeof timeout === "number" &&
-    Number.isSafeInteger(timeout) &&
-    timeout > 0
+    isTimeoutSeconds(o["maxTimeoutSeconds"])
   );
 }
 

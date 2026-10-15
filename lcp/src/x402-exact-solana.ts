@@ -28,6 +28,7 @@ import {
   advertiseFor,
   chosen,
   filterOf,
+  isTimeoutSeconds,
   offeredAt,
   paymentWith,
   readFor,
@@ -87,13 +88,19 @@ function isThis(option: PaymentRequirements): boolean {
 
 /**
  * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
- * pairing whose amount `build` can pay (`payable`), else `x402/option-malformed`.
+ * pairing whose amount `build` can pay and whose timeout is a positive safe integer (`payable`), else
+ * `x402/option-malformed`.
  */
 const filter = filterOf(isThis, payable);
 
-/** True when the amount is a u64 in decimal. */
+/** True when the amount is a u64 in decimal and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
-  return typeof o.amount === "string" && DECIMAL.test(o.amount) && BigInt(o.amount) < U64_LIMIT;
+  return (
+    typeof o.amount === "string" &&
+    DECIMAL.test(o.amount) &&
+    BigInt(o.amount) < U64_LIMIT &&
+    isTimeoutSeconds(o.maxTimeoutSeconds)
+  );
 }
 
 /**

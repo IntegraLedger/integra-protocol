@@ -740,6 +740,62 @@
      "maxTimeoutSeconds": 60
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 60.5, which is not an integer",
+    "pairing": "x402/exact/aptos",
+    "payment": "/boundAccepted/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "aptos:1",
+     "amount": "99900000",
+     "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+     "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxTimeoutSeconds": 60.5
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds \"60\", a string, not a number",
+    "pairing": "x402/exact/aptos",
+    "payment": "/boundAccepted/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "aptos:1",
+     "amount": "99900000",
+     "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+     "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxTimeoutSeconds": "60"
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/exact/aptos",
+    "payment": "/boundAccepted/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "aptos:1",
+     "amount": "99900000",
+     "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+     "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxTimeoutSeconds": 0
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 2^53, which is not a safe integer",
+    "pairing": "x402/exact/aptos",
+    "payment": "/boundAccepted/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "aptos:1",
+     "amount": "99900000",
+     "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+     "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxTimeoutSeconds": 9007199254740992
+    },
+    "expect": "x402/option-not-this-pairing"
    }
   ]
  }

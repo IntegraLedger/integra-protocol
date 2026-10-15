@@ -11,6 +11,7 @@ import type { CardanoPaymentPayload } from "./internal/cardano.js";
 import {
   advertiseFor,
   chosen,
+  isTimeoutSeconds,
   paymentWith,
   presentedWith,
   readFor,
@@ -220,6 +221,7 @@ function cardanoOptionCheck(option: unknown): Refusal | undefined {
   if (flow !== undefined && flow !== "authorization") return refusal("x402/option-not-this-pairing");
   const amount = option["amount"];
   if (typeof amount !== "string" || !DECIMAL.test(amount)) return refusal("x402/option-not-this-pairing");
+  if (!isTimeoutSeconds(option["maxTimeoutSeconds"])) return refusal("x402/option-not-this-pairing");
   return undefined;
 }
 

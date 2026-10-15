@@ -59,6 +59,7 @@ import {
   advertiseFor,
   chosen,
   paymentWith,
+  isTimeoutSeconds,
   readFor,
   type OptionFilter,
   type X402Advertise,
@@ -417,8 +418,7 @@ function isPayable(o: PaymentRequirements): boolean {
     isAddress(o.asset) &&
     isAddress(o.payTo) &&
     uint256Of(o.amount) !== undefined &&
-    Number.isSafeInteger(o.maxTimeoutSeconds) &&
-    o.maxTimeoutSeconds > 0
+    isTimeoutSeconds(o.maxTimeoutSeconds)
   );
 }
 
@@ -586,8 +586,7 @@ function isBreadthPayable(id: X402PairingId) {
   return (o: PaymentRequirements): boolean =>
     isObject(o) &&
     uint256Of(o.amount) !== undefined &&
-    Number.isSafeInteger(o.maxTimeoutSeconds) &&
-    o.maxTimeoutSeconds > 0 &&
+    isTimeoutSeconds(o.maxTimeoutSeconds) &&
     (!escrow ||
       (isObject(o.extra) &&
         isNonEmpty(o.extra["name"]) &&
