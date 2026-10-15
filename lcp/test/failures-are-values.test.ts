@@ -45,6 +45,7 @@ import {
   chargeSolana,
   chargeUsdcSolana,
   chargeXrpl,
+  FETCHED,
   sessionHedera,
   sessionSolana,
   sessionStatus,
@@ -867,7 +868,7 @@ describe("mpp", () => {
     ] as const) {
       const landed = await sessionHedera.fetchPresented(c as never, answering(r) as never);
       if ("refused" in landed) throw new Error(landed.code);
-      expect(landed.landed.blockNumber).toBe(r.blockNumber);
+      expect(landed[FETCHED].blockNumber).toBe(r.blockNumber);
       expect(await sessionHedera.bound(landed)).toBe(h);
     }
     const read = open.logs.findIndex((l: { topics: string[] }) => l.topics[1] === S.HS4.channel);

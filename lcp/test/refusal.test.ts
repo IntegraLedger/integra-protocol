@@ -16,19 +16,26 @@ import { place } from "../src/mpp.js";
 import { credentialOf } from "../src/mpp-challenge.js";
 import { isRefusal, refusal } from "../src/refusal.js";
 import { ap2Mandate as ucpAp2, bookingAp2Mandate as ucpBookingAp2, bookingUnsigned as ucpBookingUnsigned, unsigned as ucpUnsigned } from "../src/ucp.js";
+import { heldOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const dir = new URL("../vectors/", import.meta.url);
-const presentedOf: Map<string, unknown> = new Map(
+/** Each pairing's B6 input: its credential as presented, and what fetchPresented read of it where the row holds that. */
+const presentedOf: Map<string, { presented: unknown; fetched?: unknown }> = new Map(
   readdirSync(dir)
     .filter((n) => n.endsWith(".json"))
     .flatMap((n) => {
       const d = JSON.parse(readFileSync(new URL(n, dir), "utf8")) as {
-        buyer?: { rows: { name: string; pairing: string; input: { presented?: unknown } }[] };
+        buyer?: { rows: { name: string; pairing: string; input: { presented?: unknown; fetched?: unknown } }[] };
       };
-      return (d.buyer?.rows ?? []).filter((r) => r.name === "B6").map((r) => [r.pairing, r.input.presented] as const);
+      return (d.buyer?.rows ?? [])
+        .filter((r) => r.name === "B6" && r.input.presented !== undefined)
+        .map((r) => [r.pairing, r.input as { presented: unknown; fetched?: unknown }] as const);
     }),
 );
+
+/** A copy of the pairing's B6 credential as the seller holds it (`heldOf`). */
+const held = (id: string): unknown => heldOf(structuredClone(presentedOf.get(id)!));
 
 /** A caller's value in the shape of a refusal, with a code the package never returns from these calls. */
 const shaped = () => ({ refused: true, code: "claim/store-unavailable", extra: "<b>x</b>" });
@@ -141,7 +148,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   }
 
   it("MPP's credential reader refuses a credential carrying a refused member as malformed", () => {
-    const c = presentedOf.get("mpp/charge/tempo/push");
+    const c = held("mpp/charge/tempo/push");
     expect(isRefusal(credentialOf(c))).toBe(false);
     expect(credentialOf(withRefused(c))).toEqual({ refused: true, code: "mpp/credential-malformed" });
     expect(credentialOf(shaped())).toEqual({ refused: true, code: "mpp/credential-malformed" });
@@ -166,8 +173,8 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     if (p === undefined || expected === undefined) continue;
     it(`${b.id}: the signed payment with a refused member added is ${expected}`, async () => {
       const bound = b.bound as (p: unknown) => Promise<unknown>;
-      expect(typeof (await bound(structuredClone(p)))).toBe("string");
-      expect(await bound(withRefused(structuredClone(p)))).toEqual({ refused: true, code: expected });
+      expect(typeof (await bound(held(b.id)))).toBe("string");
+      expect(await bound(withRefused(held(b.id)))).toEqual({ refused: true, code: expected });
     });
   }
 
@@ -490,7 +497,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     it(`${b.id}: fetchPresented refuses a credential carrying a refused member before any read`, async () => {
       let reads = 0;
       const reader = new Proxy({}, { get: () => (reads++, () => Promise.reject(new Error("no read"))) });
-      expect(await fetchPresented(withRefused(structuredClone(p)), reader)).toEqual({
+      expect(await fetchPresented(withRefused(held(b.id)), reader)).toEqual({
         refused: true,
         code: "mpp/credential-malformed",
       });

@@ -13,6 +13,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { BINDINGS, canonicalJson, isRefusal, type Json } from "../src/index.js";
 import { pairingsOf, pairingsOfPlaced, type MppChallenge, type MppCredential } from "../src/mpp.js";
+import { heldOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const DIR = new URL("../vectors/", import.meta.url);
@@ -37,11 +38,20 @@ const MPP = rowsOf(
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isCredential = (v: unknown): v is MppCredential =>
   isObj(v) && isObj(v["challenge"]) && typeof v["challenge"]["request"] === "string" && isObj(v["payload"]);
-/** Every credential under `v`, with its JSON Pointer (RFC 6901) into the file. */
+/**
+ * Every credential under `v`, with its JSON Pointer (RFC 6901) into the file. A credential held as `presented` beside
+ * `fetched`, what fetchPresented read of it, is the credential as the seller holds it (`heldOf`).
+ */
 function credentials(v: unknown, at: string, out: [string, MppCredential][]): [string, MppCredential][] {
   if (!isObj(v) && !Array.isArray(v)) return out;
   if (isCredential(v)) out.push([at, v]);
-  for (const [k, x] of Object.entries(v)) credentials(x, `${at}/${k}`, out);
+  for (const [k, x] of Object.entries(v)) {
+    if (k === "presented" && isObj(v) && v["fetched"] !== undefined && isCredential(x)) {
+      out.push([`${at}/${k}`, heldOf(v as { presented: unknown; fetched: unknown })]);
+      continue;
+    }
+    credentials(x, `${at}/${k}`, out);
+  }
   return out;
 }
 const CREDENTIALS = rowsOf(
@@ -301,12 +311,18 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
   }, 0);
 });
 
-/** The value at a JSON Pointer (RFC 6901) into `doc`. */
+/**
+ * The value at a JSON Pointer (RFC 6901) into `doc`; a credential held as `presented` beside `fetched` is the
+ * credential as the seller holds it (`heldOf`).
+ */
 function at(doc: unknown, pointer: string): unknown {
-  return pointer
-    .split("/")
-    .slice(1)
-    .reduce((o, k) => (o as Record<string, unknown>)[k.replaceAll("~1", "/").replaceAll("~0", "~")], doc);
+  const keys = pointer.split("/").slice(1).map((k) => k.replaceAll("~1", "/").replaceAll("~0", "~"));
+  const parent = keys.slice(0, -1).reduce((o, k) => (o as Record<string, unknown>)[k], doc) as Record<string, unknown>;
+  const last = keys[keys.length - 1]!;
+  if (last === "presented" && isObj(parent) && parent["fetched"] !== undefined) {
+    return heldOf(parent as { presented: unknown; fetched: unknown });
+  }
+  return parent[last];
 }
 
 interface BoundChallengeRow {

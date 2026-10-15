@@ -76,6 +76,8 @@ import {
   decodeObject,
   deepFreeze,
   echoedFor,
+  FETCHED,
+  fetchedOf,
   isObject,
   place,
   read,
@@ -104,20 +106,24 @@ const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 type Kind = "open" | "within" | "close";
 
-/** A Hedera session opening with the landed receipt's logs from the escrow. */
+/** A Hedera session opening with the landed receipt's logs from the escrow, under `FETCHED`. */
 export type HederaLandedCredential = LandedCredential;
 
 /**
- * A Solana session opening with what `sessionSolana.fetchPresented` read of its message's address lookup tables. Both
- * sides keep it as the opening for the life of the channel: a later read gives each table as it stands then, and once
- * the table's authority deactivates or closes it no `tables` can be read.
+ * A Solana session opening with what `sessionSolana.fetchPresented` read of its message's address lookup tables, under
+ * `FETCHED`. Only that member is read: a string-keyed `tables` is not, and `JSON.stringify` and `structuredClone` drop
+ * the member. Both sides keep this object, or a spread or `Object.assign` copy of it, as the opening for the life of
+ * the channel: a later read gives each table as it stands then, and once the table's authority deactivates or closes
+ * it no tables can be read.
  */
 export interface SolanaTablesCredential extends MppCredential {
-  /**
-   * For each address table lookup of the opening's message, in order: the table's address, and the table's entries at
-   * the lookup's writable and read-only indexes, in order, each a base58 key. Empty for a message without lookups.
-   */
-  tables: readonly { address: string; writable: readonly string[]; readonly: readonly string[] }[];
+  [FETCHED]: {
+    /**
+     * For each address table lookup of the opening's message, in order: the table's address, and the table's entries
+     * at the lookup's writable and read-only indexes, in order, each a base58 key. Empty for a message without lookups.
+     */
+    tables: readonly { address: string; writable: readonly string[]; readonly: readonly string[] }[];
+  };
 }
 
 /** The buyer's inputs to a session opening's `build`. The deposit and the XRPL channel terms are the funder's. */
@@ -245,17 +251,18 @@ function hederaChain(network: string): 295 | 296 {
 }
 
 /**
- * The opening's receipt, read by `payload.txHash`, with its logs from the escrow added as `landed`. A reader that is
+ * The opening's receipt, read by `payload.txHash`, with its logs from the escrow written under `FETCHED`; any member
+ * the credential carries already is kept and not read. A reader that is
  * missing or for another network than the challenge's is `hedera/wrong-reader`. No receipt is `hedera/not-found`, and a
  * failed read, or a reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a list of
  * logs) or holds a log that is not an object with a string `address`, an array of string `topics` and a string `data`,
  * is `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert whose block is at or below the
  * reader's `finalized` mark is `hedera/reverted`: nothing moved. A revert above that mark, or where the mark cannot be
  * read, is `hedera/not-final`, a read to repeat: the block can be replaced by one in which the transaction succeeds.
- * A receipt that succeeded whose logs kept as `landed` do not hold exactly one `ChannelOpened` from the escrow naming
+ * A receipt that succeeded whose logs kept do not hold exactly one `ChannelOpened` from the escrow naming
  * `payload.channelId`, the log `bound` reads, is read at the same mark: above it, or where it cannot be read, it is
  * `hedera/not-final`, since a block that replaces it can hold other logs; at or below it the credential is returned
- * with `landed`, and `bound` gives the verdict. The mark is read only for a revert or such a receipt, and not for a
+ * with the read, and `bound` gives the verdict. The mark is read only for a revert or such a receipt, and not for a
  * `channelId` that is not a 32-byte hash, which `bound` refuses whatever the chain holds. At most two calls.
  */
 async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmReader): Promise<HederaLandedCredential | Refusal> {
@@ -284,7 +291,7 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
   const channel = normalHash(e.payload["channelId"]);
   const opened = channel === null || channelOpened(logs, escrow, channel).length === 1;
   if (!opened && !(await finalAt(receipt.blockNumber, reader as EvmReader))) return refusal("hedera/not-final");
-  return { ...presented, landed: { transaction: tx as Hex, blockNumber: receipt.blockNumber, logs } };
+  return { ...presented, [FETCHED]: { transaction: tx as Hex, blockNumber: receipt.blockNumber, logs } };
 }
 
 /**
@@ -306,19 +313,21 @@ function channelOpened(logs: readonly unknown[], escrow: Hex, channel: string | 
 /**
  * H from the echoed challenge, once exactly one landed `ChannelOpened` from the escrow names `payload.channelId`, its
  * salt is H, and the channel id recomputed from the event (payer, payee, token, signer, salt, escrow, chain) is that id.
+ * The logs are those `fetchPresented` wrote under `FETCHED`: an opening without them is `hedera/read-first`, whatever
+ * string-keyed members it carries.
  */
 async function hederaBound(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const e = opening(presented, HEDERA);
   if (isRefusal(e)) return e;
-  const landed = (presented as Partial<HederaLandedCredential>).landed;
-  if (!isObject(landed) || !Array.isArray(landed.logs)) return refusal("hedera/read-first");
+  const landed = fetchedOf(presented);
+  if (!isObject(landed) || !Array.isArray(landed["logs"])) return refusal("hedera/read-first");
   const channel = normalHash(e.payload["channelId"]);
   if (channel === null) return refusal("mpp/credential-malformed");
   const escrow = hederaEscrow(e.checked);
   if (isRefusal(escrow)) return escrow;
-  const opened = channelOpened(landed.logs, escrow, channel);
+  const opened = channelOpened(landed["logs"], escrow, channel);
   if (opened.length !== 1) return refusal("hedera/channel-log-not-found");
   const log = opened[0]!;
   const data = bytesOf(log.data)!;
@@ -657,10 +666,11 @@ function solanaStatic(presented: MppCredential, e: Exclude<ReturnType<typeof ope
  * `client`, the client chooses that signer. The draft has the server validate the complete compiled message, resolving
  * any version-0 address-lookup-table entries (Settlement Procedure, Open, step 9), and a table can supply account 4 or
  * account 5. So the accounts are read from the static keys and, for a message with address table lookups, from the
- * `tables` member `fetchPresented` writes, in the runtime's order (`loadedKeys`): such an opening without `tables`, or
- * whose `tables` are not one entry per lookup naming its table with as many keys as it names indexes, is
- * `svm/read-first`, and one whose loaded keys repeat a static key or each other is `svm/table-unusable`. A message
- * without lookups is read from its static keys, whatever members the credential carries. `status` reads a landed
+ * tables `fetchPresented` writes under `FETCHED`, in the runtime's order (`loadedKeys`): such an opening without them,
+ * or whose tables are not one entry per lookup naming its table with as many keys as it names indexes, is
+ * `svm/read-first`, and one whose loaded keys repeat a static key or each other is `svm/table-unusable`. A
+ * string-keyed `tables` is not read: an opening carrying one gives the answer the same opening without it gives. A
+ * message without lookups is read from its static keys, whatever members the credential carries. `status` reads a landed
  * transaction's table addresses.
  */
 function solanaOpening(
@@ -671,7 +681,8 @@ function solanaOpening(
   const s = solanaStatic(presented, e);
   if (isRefusal(s)) return s;
   const { tx, lookups } = s;
-  const keys = lookups.length === 0 ? tx.keys : loadedKeys(tx, lookups, (presented as Partial<SolanaTablesCredential>).tables);
+  const read = fetchedOf(presented);
+  const keys = lookups.length === 0 ? tx.keys : loadedKeys(tx, lookups, isObject(read) ? read["tables"] : undefined);
   if (isRefusal(keys)) return keys;
   const open = openAccounts(s.open, keys);
   if (isRefusal(open)) return open;
@@ -681,13 +692,16 @@ function solanaOpening(
 }
 
 /**
- * The opening with `tables` added: for each address table lookup of its message, in order, the table's address and the
- * table's entries at the lookup's writable and read-only indexes, as the runtime loads them when the opening executes
+ * The opening with its tables written under `FETCHED` (any member it carries already is kept and not read): for each
+ * address table lookup of its message, in order, the table's address and the table's entries at the lookup's writable
+ * and read-only indexes, as the runtime loads them when the opening executes
  * (draft-solana-session-00, Settlement Procedure, Open, step 9: the server validates the complete compiled message,
  * resolving any version-0 address-lookup-table entries). `bound`, `reference` and `buildWithin` read the open's
  * accounts through them; `build`'s `complete`, which takes the payload alone, refuses such an open with
- * `svm/read-first`. Both sides keep the credential this returns, with its `tables`, as the opening for the life of the
- * channel, and pass it to `bound`, `reference` and `buildWithin`: a later read gives each table as it stands then, and
+ * `svm/read-first`. Both sides keep the credential this returns, or a spread or `Object.assign` copy of it, as the
+ * opening for the life of the channel, and pass it to `bound`, `reference` and `buildWithin`; `JSON.stringify` and
+ * `structuredClone` drop the member, so a copy made by either is read as one not read. A later read gives each table
+ * as it stands then, and
  * once the table's authority deactivates or closes it, that read is `svm/table-unusable` or `svm/not-found`, and no
  * later read gives the channel's accounts.
  *
@@ -705,7 +719,7 @@ function solanaOpening(
  * index while the table's authority can still extend it, is `svm/not-found`, and a rejected read or an answer of
  * neither documented shape `svm/unreadable`: reads to repeat. Every table is read before the answer, and a
  * `svm/table-unusable` in one lookup comes before a read to repeat in another. A reader that is missing or for another
- * network than the challenge's is `svm/wrong-reader`. A message without lookups gets `tables` empty, with nothing
+ * network than the challenge's is `svm/wrong-reader`. A message without lookups gets its tables empty, with nothing
  * read. One call per distinct table the message names.
  */
 async function solanaFetchPresented(presented: MppCredential, reader: SvmReader): Promise<SolanaTablesCredential | Refusal> {
@@ -717,9 +731,9 @@ async function solanaFetchPresented(presented: MppCredential, reader: SvmReader)
   if (!isObject(reader) || reader.network !== network) return refusal("svm/wrong-reader");
   const s = solanaStatic(presented, e);
   if (isRefusal(s)) return s;
-  if (s.lookups.length === 0) return { ...presented, tables: [] };
+  if (s.lookups.length === 0) return { ...presented, [FETCHED]: { tables: [] } };
   const tables = await readLookupTables(reader, s.tx.keys, s.lookups);
-  return isRefusal(tables) ? tables : { ...presented, tables };
+  return isRefusal(tables) ? tables : { ...presented, [FETCHED]: { tables } };
 }
 
 async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -867,10 +881,11 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
  * A voucher, or a close's voucher, on the channel the held opening opened, for its `client` voucher signer: one
  * `ed25519-raw` request over `solanaVoucher(channelId, cumulativeAmount)`, for the signer the opening's `open`
  * instruction named (account 4), the key vouchers "MUST verify under" (draft-solana-session-00). The opening is read as
- * `bound` reads it: for a message with address table lookups, through the `tables` that `fetchPresented` writes, else
- * `svm/read-first`, so the opening is the credential `fetchPresented` returned, kept for the life of the channel: a
- * table read again after its authority deactivates or closes it gives no `tables`. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a
- * `use`; an action draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
+ * `bound` reads it: for a message with address table lookups, through the tables that `fetchPresented` writes under
+ * `FETCHED`, else `svm/read-first`, so the opening is the credential `fetchPresented` returned, or a spread or
+ * `Object.assign` copy of it, kept for the life of the channel: a table read again after its authority deactivates or
+ * closes it gives no tables. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp`
+ * or a `use`; an action draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
  */
 async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
   const o = await withinChecks(w, h, "session/solana", async (p) => solanaOpening(p), U64, ["topUp", "use"]);

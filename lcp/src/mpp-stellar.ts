@@ -25,6 +25,8 @@ import {
   deepFreeze,
   echoedFor,
   expiresOf,
+  FETCHED,
+  fetchedOf,
   isObject,
   placeCarrier,
   pushedField,
@@ -60,12 +62,20 @@ export interface StellarChargeUnsigned {
   complete(signature: Uint8Array): MppCredential | Refusal;
 }
 
-/** The signed transfer a credential presents: its `transaction`, or for `type="hash"` the one fetched by that hash. */
-function presentedXdr(payload: { [k: string]: Json }): string | Refusal {
+/**
+ * The signed transfer a credential presents: its `transaction` for `type="transaction"`, or for `type="hash"` the
+ * envelope `fetchPresented` wrote under `FETCHED`, read by that hash, else `stellar/read-first`. A `hash` credential's
+ * own `transaction` member is not read.
+ */
+function presentedXdr(credential: MppCredential, payload: { [k: string]: Json }): string | Refusal {
   const type = payload["type"];
   if (type !== "transaction" && type !== "hash") return refusal("mpp/credential-type");
+  if (type === "hash") {
+    const read = fetchedOf(credential);
+    const landed = isObject(read) ? read["transaction"] : undefined;
+    return typeof landed === "string" ? landed : refusal("stellar/read-first");
+  }
   const xdr = payload["transaction"];
-  if (xdr === undefined) return type === "hash" ? refusal("stellar/read-first") : refusal("stellar/tx-malformed");
   return typeof xdr === "string" ? xdr : refusal("stellar/tx-malformed");
 }
 
@@ -94,7 +104,7 @@ function bindingOf(
   if (!isStellarRecipient(e.checked.request["recipient"])) return refusal("stellar/option-malformed");
   const feePayer = e.checked.details["feePayer"];
   if (e.payload["type"] === "hash" && feePayer === true) return refusal("mpp/credential-type");
-  const xdr = presentedXdr(e.payload);
+  const xdr = presentedXdr(credential, e.payload);
   if (isRefusal(xdr)) return xdr;
   const landed = e.payload["type"] === "hash";
   let signed: { payment: StellarPayment | SourcePayment; agrees: boolean } | Refusal = readSignedTransfer(xdr, network, landed);
@@ -162,12 +172,15 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
 }
 
 /**
- * A push credential (`type="hash"`) with the landed envelope added as `transaction`. Other credentials are returned
- * unchanged. Under a request with `feePayer` true a push credential is `mpp/credential-type`, and nothing is read: MPP's
+ * A push credential (`type="hash"`) with the landed envelope written under `FETCHED`, as `transaction`; any member the
+ * credential carries already is kept and not read. Other credentials are returned unchanged. Under a request with `feePayer` true a push credential is `mpp/credential-type`, and nothing is read: MPP's
  * Stellar charge forbids push mode when the server sponsors the fee. A read that fails, or finds nothing, is a refusal
  * the seller retries; a transaction the ledger records as `FAILED` is refused `stellar/tx-failed`.
  */
-async function fetchPresented(credential: MppCredential, reader: StellarReader): Promise<MppCredential | Refusal> {
+async function fetchPresented(
+  credential: MppCredential,
+  reader: StellarReader,
+): Promise<(MppCredential & { [FETCHED]?: { transaction: string } }) | Refusal> {
   if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
     return refusal("mpp/credential-malformed");
   }
@@ -190,7 +203,7 @@ async function fetchPresented(credential: MppCredential, reader: StellarReader):
   if (r.status === "FAILED") return refusal("stellar/tx-failed");
   if (r.status === "NOT_FOUND" || typeof r.envelopeXdr !== "string") return refusal("stellar/not-found");
   if (r.status !== "SUCCESS") return refusal("stellar/unreadable");
-  return { ...credential, payload: { ...credential.payload, transaction: r.envelopeXdr } };
+  return { ...credential, [FETCHED]: { transaction: r.envelopeXdr } };
 }
 
 /**

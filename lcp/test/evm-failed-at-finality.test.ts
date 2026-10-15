@@ -38,7 +38,7 @@ import {
   TRANSFER_WITH_MEMO_TOPIC,
 } from "../src/tempo.js";
 import { BATCH_SETTLEMENT, CHANNEL_CREATED_TOPIC, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
-import { problem, type MppCredential } from "../src/mpp.js";
+import { FETCHED, problem, type MppCredential } from "../src/mpp.js";
 import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC } from "../src/internal/hedera-session.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
 import { readToRepeat } from "../src/refusal.js";
@@ -482,11 +482,8 @@ describe("a fetchPresented revert, or a receipt without the bound log, is refuse
   const MV10 = load("mpp-challenge.json").MV10.rows as { code: string; expect: { status: number; type: string } }[];
   const b6 = (file: typeof PU, pairing: string) =>
     file.buyer.rows.find((r: { name: string; pairing: string }) => r.name === "B6" && r.pairing === pairing);
-  const asSent = (file: typeof PU, pairing: string) => {
-    const { landed: _landed, ...credential } = b6(file, pairing).input.presented;
-    return credential as MppCredential;
-  };
-  const landedLogs = (file: typeof PU, pairing: string) => b6(file, pairing).input.presented.landed.logs as EvmLog[];
+  const asSent = (file: typeof PU, pairing: string) => b6(file, pairing).input.presented as MppCredential;
+  const landedLogs = (file: typeof PU, pairing: string) => b6(file, pairing).input.fetched.logs as EvmLog[];
   const hederaNotFinal = (HS.agreedRefusals.rows as { case: string; expect: string }[]).find((r) =>
     r.case.startsWith("fetchPresented of a hedera opening whose transaction reverted"),
   )!.expect;
@@ -512,7 +509,7 @@ describe("a fetchPresented revert, or a receipt without the bound log, is refuse
   ];
   const fetchOf = (id: string) =>
     (BINDINGS.find((b) => b.id === id) as unknown as {
-      fetchPresented: (c: MppCredential, reader: EvmReader) => Promise<{ refused: true; code: string } | { landed: unknown }>;
+      fetchPresented: (c: MppCredential, reader: EvmReader) => Promise<{ refused: true; code: string } | { [FETCHED]: unknown }>;
     }).fetchPresented;
   const boundOf = (id: string) => (BINDINGS.find((b) => b.id === id) as unknown as { bound: (c: unknown) => Promise<unknown> }).bound;
   const reverted: Failure = { why: "reverted", logs: [], reverted: true };
@@ -548,7 +545,7 @@ describe("a fetchPresented revert, or a receipt without the bound log, is refuse
       // read; `bound` gives H from it.
       const marks: string[] = [];
       const landed = await fetchPresented(credential, reader(network, { why: "", logs }, BLOCK - 1n, BLOCK - 1n, marks));
-      expect("landed" in landed && landed.landed).toMatchObject({ blockNumber: BLOCK });
+      expect(FETCHED in landed && landed[FETCHED]).toMatchObject({ blockNumber: BLOCK });
       expect(marks).toEqual([]);
       expect(await boundOf(id)(landed)).toBe(H);
     });
@@ -575,7 +572,7 @@ describe("a fetchPresented revert, or a receipt without the bound log, is refuse
       ] as const) {
         const marks: string[] = [];
         const landed = await fetchPresented(credential, reader(network, without, finalized, safe, marks));
-        expect("landed" in landed && landed.landed, `finalized ${finalized}`).toMatchObject({ blockNumber: BLOCK, logs: [] });
+        expect(FETCHED in landed && landed[FETCHED], `finalized ${finalized}`).toMatchObject({ blockNumber: BLOCK, logs: [] });
         expect(marks).toContain("finalized");
         expect(await boundOf(id)(landed)).toEqual({ refused: true, code: unbound });
       }

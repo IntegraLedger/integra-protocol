@@ -169,8 +169,9 @@ export type SessionStatus =
 /**
  * The buyer's inputs to an in-channel payment: the within 402's challenge, echoed as given; the held opening, exactly
  * as signed; the cumulative amount to sign; and the action. On `mpp/session/solana`, the held opening is the credential
- * `fetchPresented` returned, with its `tables`, kept for the life of the channel: a later read gives each address
- * lookup table as it stands then, and once the table's authority deactivates or closes it no `tables` can be read.
+ * `fetchPresented` returned, with its tables under `FETCHED`, or a spread or `Object.assign` copy of it, kept for the
+ * life of the channel: a later read gives each address lookup table as it stands then, and once the table's authority
+ * deactivates or closes it no tables can be read.
  */
 export interface SessionWithin {
   challenge: MppChallenge & { id: string };

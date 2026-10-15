@@ -35,6 +35,7 @@ import type { EvmReceipt } from "../src/evm.js";
 import { ReaderError } from "../src/evm.js";
 import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
 import {
+  FETCHED,
   issuedDigest,
   pairingsOf,
   sessionHedera,
@@ -50,6 +51,7 @@ import { counting } from "./fixtures/counting-reader.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
 import { emptyLookup, TABLE, TABLE_B, tableClose, tableOpening } from "./fixtures/svm-lookup-table.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
+import { readsOnlyFetched } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
@@ -400,8 +402,8 @@ describe("mpp/session/hedera", () => {
     if ("refused" in landed) throw new Error(landed.code);
     expect(await sessionHedera.bound(landed)).toEqual(refused(V.plants.hedera.expect));
     const moved = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    const forged = { ...moved, landed: { transaction: V.HS3.txHash, blockNumber: 1n, logs: [{ ...V.HS3.log, address: V.plants.hedera.otherEmitter }] } };
-    expect(await sessionHedera.bound(forged)).toEqual(refused(V.plants.hedera.expectOtherEmitter));
+    const held = { ...moved, [FETCHED]: { transaction: V.HS3.txHash, blockNumber: 1n, logs: [{ ...V.HS3.log, address: V.plants.hedera.otherEmitter }] } };
+    expect(await sessionHedera.bound(held)).toEqual(refused(V.plants.hedera.expectOtherEmitter));
   });
 
   // A `ChannelOpened` whose payer or payee topic is not a 32-byte word is not the log the opening needs; the answer is
@@ -411,9 +413,20 @@ describe("mpp/session/hedera", () => {
     for (const at of [2, 3]) {
       const topics = [...V.HS3.log.topics];
       topics[at] = "not-hex";
-      const landed = { ...c, landed: { transaction: V.HS3.txHash, blockNumber: 1n, logs: [{ ...V.HS3.log, topics }] } };
+      const landed = { ...c, [FETCHED]: { transaction: V.HS3.txHash, blockNumber: 1n, logs: [{ ...V.HS3.log, topics }] } };
       await expect(sessionHedera.bound(landed)).resolves.toEqual(refused("hedera/channel-log-not-found"));
     }
+  });
+
+  // The landed logs are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries:
+  // an opening the buyer sends with a string-keyed `landed` holding HS3's ChannelOpened log, which would bind H, is
+  // hedera/read-first, as it is without one, and one held with both is read by its FETCHED member alone.
+  it("the landed logs are read only from fetchPresented's FETCHED member, never from a string-keyed landed", async () => {
+    const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
+    const sent = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
+    const fetched = await sessionHedera.fetchPresented(sent, hederaReader({ [V.HS3.txHash]: receipt }));
+    const landed = (logs: unknown) => (c: unknown) => ({ ...(c as object), landed: { transaction: V.HS3.txHash, blockNumber: 40_000_000n, logs } });
+    await readsOnlyFetched(sessionHedera, sent, fetched, V.HS3.expectBound, landed([V.HS3.log]), landed([]), "hedera/read-first");
   });
 });
 
@@ -463,7 +476,7 @@ describe("mpp/session/solana", () => {
     expect(lookups.map((l) => [l.lookupTableAddress, l.writableIndexes, l.readonlyIndexes])).toEqual([[DURABLE.table, [], [0]]]);
     const { reader, calls } = tableReader({ [DURABLE.table]: "sysvar" });
     const fetched = await sessionSolana.fetchPresented(open(sysvar.wireBase64), reader);
-    expect(fetched).toEqual({ ...open(sysvar.wireBase64), tables: [{ address: DURABLE.table, writable: [], readonly: [DURABLE.sysvar] }] });
+    expect(fetched).toEqual({ ...open(sysvar.wireBase64), [FETCHED]: { tables: [{ address: DURABLE.table, writable: [], readonly: [DURABLE.sysvar] }] } });
     expect(calls).toEqual([DURABLE.table]);
     expect(await sessionSolana.bound(fetched)).toBe(V.SV2.expectBound);
     expect(await sessionSolana.reference(fetched)).toEqual({
@@ -1070,8 +1083,9 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
         expect(await sessionSolana.reference(presented), c).toEqual(refused(row.before ?? "svm/read-first"));
         if (row.given !== undefined) {
           for (const tables of rowsOf(row.given, `${row.case}: given`)) {
-            expect(await sessionSolana.bound({ ...presented, tables } as MppCredential), JSON.stringify(tables)).toEqual(refused(row.bound!));
-            expect(await sessionSolana.reference({ ...presented, tables } as MppCredential), JSON.stringify(tables)).toEqual(refused(row.bound!));
+            const held = { ...presented, [FETCHED]: { tables } } as MppCredential;
+            expect(await sessionSolana.bound(held), JSON.stringify(tables)).toEqual(refused(row.bound!));
+            expect(await sessionSolana.reference(held), JSON.stringify(tables)).toEqual(refused(row.bound!));
           }
           continue;
         }
@@ -1082,7 +1096,7 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
           expect(fetched, c).toEqual(refused(row.expect));
           continue;
         }
-        expect(fetched, c).toEqual({ ...presented, tables: row.expect!.tables });
+        expect(fetched, c).toEqual({ ...presented, [FETCHED]: { tables: row.expect!.tables } });
         if ("refused" in fetched) throw new Error(fetched.code);
         const u = await sessionSolana.build({ challenge: challenges[c]!, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
         if ("refused" in u) throw new Error(u.code);
@@ -1103,21 +1117,57 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
     });
   }
 
+  // The tables are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries. rows[4]'s
+  // opening, under the operator challenge, names account 4 through TABLE, whose entry there is the channel: read, it is
+  // svm/signer-not-operator. Sent with a string-keyed tables naming the operator at that index, which would give H, it
+  // is svm/read-first to bound, reference and buildWithin, as it is without one; held with both, the read alone is read.
+  it("the tables are read only from fetchPresented's FETCHED member: a string-keyed tables naming the operator is never H", async () => {
+    const row = rows[4]!;
+    const sent = presentedOf(row, "operator");
+    const fetched = await sessionSolana.fetchPresented(sent, tableReader(row.accounts!).reader);
+    const tables = (t: unknown) => (c: unknown) => ({ ...(c as object), tables: t });
+    const operatorAt4 = tables([{ address: TABLE, writable: [], readonly: [R[21].operator] }]);
+    await readsOnlyFetched(sessionSolana, sent, fetched, refused(row.bound!), operatorAt4, operatorAt4, "svm/read-first");
+    const within = (opening: unknown) =>
+      sessionSolana.buildWithin({ challenge: operator, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
+    expect(await within(fetched)).toEqual(refused(row.bound!));
+    expect(await within(operatorAt4(sent))).toEqual(refused("svm/read-first"));
+    expect(await within(operatorAt4(fetched))).toEqual(refused(row.bound!));
+    // On a client channel, buildWithin builds for the signer the read names, from the held opening, a spread or an
+    // Object.assign copy of it; a JSON round trip or a structuredClone of it, and a string-keyed tables naming another
+    // signer, are svm/read-first.
+    const client2 = rows[2]!;
+    const sent2 = presentedOf(client2, "client");
+    const fetched2 = await sessionSolana.fetchPresented(sent2, tableReader(client2.accounts!).reader);
+    const build = (opening: unknown) =>
+      sessionSolana.buildWithin({ challenge: client, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
+    for (const held of [fetched2, { ...(fetched2 as object) }, Object.assign({}, fetched2)]) {
+      expect(await build(held)).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: client2.signer }] });
+    }
+    const otherSigner = tables([{ address: TABLE, writable: [], readonly: [R[21].channel] }]);
+    for (const copy of [JSON.parse(JSON.stringify(fetched2)), structuredClone(fetched2), otherSigner(sent2)]) {
+      expect(await build(copy)).toEqual(refused("svm/read-first"));
+    }
+    expect(await build(otherSigner(fetched2))).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: client2.signer }] });
+  });
+
   it("fetchPresented of an opening without lookups adds tables empty and reads nothing", async () => {
     const { reader, calls } = tableReader({});
     const c = cred(C_S, { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 });
     const fetched = await sessionSolana.fetchPresented(c, reader);
-    expect(fetched).toEqual({ ...c, tables: [] });
+    expect(fetched).toEqual({ ...c, [FETCHED]: { tables: [] } });
     expect(calls).toEqual([]);
     expect(await sessionSolana.bound(fetched)).toBe(V.SV2.expectBound);
-    // A message without lookups is read from its static keys, whatever tables member the credential carries.
+    // A message without lookups is read from its static keys, whatever tables the credential carries, under FETCHED
+    // or as a string-keyed member.
+    expect(await sessionSolana.bound({ ...c, [FETCHED]: { tables: "x" } } as unknown as MppCredential)).toBe(V.SV2.expectBound);
     expect(await sessionSolana.bound({ ...c, tables: "x" } as MppCredential)).toBe(V.SV2.expectBound);
   });
 
   it("fetchPresented reads each distinct table once, refuses a reader for another network, and reads a failed or malformed answer as svm/unreadable", async () => {
     const both = presentedOf(rows[3]!, "operator");
     const { reader, calls } = tableReader(rows[3]!.accounts!);
-    expect(await sessionSolana.fetchPresented(both, reader)).toEqual({ ...both, tables: (rows[3]!.expect as { tables: unknown[] }).tables });
+    expect(await sessionSolana.fetchPresented(both, reader)).toEqual({ ...both, [FETCHED]: { tables: (rows[3]!.expect as { tables: unknown[] }).tables } });
     expect(calls).toEqual([TABLE_B, TABLE]);
     const opening = presentedOf(rows[1]!, "C_S");
     const counted = tableReader({ [TABLE]: "channel" });
@@ -1576,6 +1626,10 @@ describe("the three session pairings' records", () => {
 // file's opening challenges, HS3's opening, XS1's and XS2's XRPL values and SV2's channel.
 describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", () => {
   type Row = { case: string; expect: string };
+  /** The rows whose openings carry a string-keyed landed or tables member that fetchPresented did not write. */
+  const ROW_25 = "bound of a hedera opening carrying a landed member, HS3's receipt logs, that fetchPresented did not write: bound reads the landed logs only from what fetchPresented writes, under lcp's FETCHED member, which no wire form carries, so the opening is read as one without it";
+  const ROW_26 =
+    "a solana opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, its challenge's voucherSigner operator, carrying a tables member whose entry for account 4 is the challenge's operator, that fetchPresented did not write: bound, reference and buildWithin read the open's accounts only through the tables fetchPresented writes, under lcp's FETCHED member, which no wire form carries, so the opening is read as one without it, never as bound to H (read through fetchPresented from SV6.tables.channel, as SV6.rows[4] serves it, account 4 is the channel, and the opening is svm/signer-not-operator)";
   /** The method's opening challenge, as issued, with its decoded request changed by `change`. */
   const requestOf = (m: "hedera" | "solana" | "xrpl", change: (r: Record<string, any>) => void): MppChallenge => {
     const r = JSON.parse(Buffer.from(V.SS1[m].challenge.request, "base64url").toString("utf8"));
@@ -1826,6 +1880,19 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
         await sessionSolana.buildWithin({ challenge: client, opening: cred(client, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H),
         await sessionSolana.buildWithin({ challenge: C_S, opening: cred(C_S, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "close" } as SessionWithin, H),
       ],
+    [ROW_25]: async () => {
+      const { landed } = V.agreedRefusals.rows[25];
+      return [await sessionHedera.bound({ ...hs3, landed: { ...landed, blockNumber: BigInt(landed.blockNumber) } })];
+    },
+    [ROW_26]: async () => {
+      const { tables } = V.agreedRefusals.rows[26];
+      const opening = { ...cred(tableOperator, { ...tableOpen(V.agreedRefusals.rows[21]), authentication: proofFor(tableOperator) }), tables };
+      return [
+        await sessionSolana.bound(opening),
+        await sessionSolana.reference(opening),
+        await sessionSolana.buildWithin({ challenge: tableOperator, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H),
+      ];
+    },
   };
 
   // The row whose blobs carry NetworkID: XS2's opening re-signed with each of its networkIds, and the same steps without

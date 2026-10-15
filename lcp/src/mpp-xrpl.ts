@@ -20,6 +20,8 @@ import {
   credentialOf,
   deepFreeze,
   echoedFor,
+  FETCHED,
+  fetchedOf,
   isObject,
   placeCarrier,
   pushedField,
@@ -58,12 +60,20 @@ export interface XrplChargeUnsigned {
   complete(signedBlob: string): Promise<MppCredential | Refusal>;
 }
 
-/** The signed blob a credential presents: its `blob`, or for `type="hash"` the one fetched by that hash. */
-function presentedBlob(payload: { [k: string]: Json }): string | Refusal {
+/**
+ * The signed blob a credential presents: its `blob` for `type="transaction"`, or for `type="hash"` the one
+ * `fetchPresented` wrote under `FETCHED`, read by that hash, else `xrpl/read-first`. A `hash` credential's own `blob`
+ * member is not read.
+ */
+function presentedBlob(credential: MppCredential, payload: { [k: string]: Json }): string | Refusal {
   const type = payload["type"];
   if (type !== "transaction" && type !== "hash") return refusal("mpp/credential-type");
+  if (type === "hash") {
+    const read = fetchedOf(credential);
+    const landed = isObject(read) ? read["blob"] : undefined;
+    return typeof landed === "string" ? landed : refusal("xrpl/read-first");
+  }
   const blob = payload["blob"];
-  if (blob === undefined) return type === "hash" ? refusal("xrpl/read-first") : refusal("xrpl/blob-malformed");
   return typeof blob === "string" ? blob : refusal("xrpl/blob-malformed");
 }
 
@@ -78,7 +88,7 @@ async function bindingOf(
   const e = echoedFor(credential, ID);
   if (isRefusal(e)) return e;
   if (!isXrplInvoiceId(e.checked.details["invoiceId"])) return refusal("mpp/request-malformed");
-  const blob = presentedBlob(e.payload);
+  const blob = presentedBlob(credential, e.payload);
   if (isRefusal(blob)) return blob;
   const decoded = await decodePresented(e.payload, blob);
   if (isRefusal(decoded)) return decoded;
@@ -124,12 +134,16 @@ async function reference(input: unknown): Promise<Omit<XrplRef, "fromLedger"> | 
 }
 
 /**
- * A push credential (`type="hash"`) with the signed blob added as `blob`, read by that hash once the transaction is in a
- * validated ledger. Other credentials are returned unchanged. A read that fails, finds nothing, or finds the transaction
+ * A push credential (`type="hash"`) with the signed blob, read by that hash once the transaction is in a validated
+ * ledger, written under `FETCHED` as `blob`; any member the credential carries already is kept and not read. Other
+ * credentials are returned unchanged. A read that fails, finds nothing, or finds the transaction
  * not yet validated is a refusal the seller retries; a validated result other than `tesSUCCESS` is refused
  * `xrpl/not-success`. At most two calls.
  */
-async function fetchPresented(credential: MppCredential, reader: XrplReader): Promise<MppCredential | Refusal> {
+async function fetchPresented(
+  credential: MppCredential,
+  reader: XrplReader,
+): Promise<(MppCredential & { [FETCHED]?: { blob: string } }) | Refusal> {
   if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
     return refusal("mpp/credential-malformed");
   }
@@ -159,7 +173,7 @@ async function fetchPresented(credential: MppCredential, reader: XrplReader): Pr
   }
   if (blob === null) return refusal("xrpl/not-found");
   if (typeof blob !== "string") return refusal("xrpl/unreadable");
-  return { ...credential, payload: { ...credential.payload, blob } };
+  return { ...credential, [FETCHED]: { blob } };
 }
 
 /**

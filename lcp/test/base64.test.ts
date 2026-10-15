@@ -12,7 +12,7 @@ import { canonicalJson, toLcpString, type AtrHash } from "../src/core.js";
 import { decodeAptosTx } from "../src/aptos.js";
 import { avmCarrier, exactAvm, type AvmParams } from "../src/avm.js";
 import { decodeCardanoTx, exactCardano } from "../src/cardano.js";
-import { chargeHedera, exactHedera, hederaStatus, type HederaReader, type MirrorEntry } from "../src/hedera.js";
+import { chargeHedera, exactHedera, FETCHED, hederaStatus, type HederaReader, type MirrorEntry } from "../src/hedera.js";
 import type { MppCredential } from "../src/mpp.js";
 import { exactNear, type NearReader } from "../src/near.js";
 import { base64Bytes, fromBase64, toBase64 } from "../src/rail-bytes.js";
@@ -426,7 +426,7 @@ describe("mpp-charge-hedera.json, with a pad bit set", () => {
       transactions: async () => (V.fetchPresented.entries as MirrorEntry[]).map((e) => ({ ...e, memo_base64: m })),
     });
     const landed = await chargeHedera.fetchPresented(push, reader(memo) as never);
-    expect((landed as { landed: { memo: string } }).landed.memo).toBe(X.V1.expectMemo);
+    expect((landed as { [FETCHED]: { memo?: string } })[FETCHED].memo).toBe(X.V1.expectMemo);
     expect(await chargeHedera.fetchPresented(push, reader(NOT_BASE64) as never)).toEqual(refused("hedera/unreadable"));
     expect(await chargeHedera.fetchPresented(push, reader(raised(memo)) as never)).toEqual(refused("hedera/unreadable"));
   });

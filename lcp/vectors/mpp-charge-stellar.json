@@ -91,6 +91,16 @@
   {
    "case": "the echoed challenge names H2 (id and opaque), with V3's envelope carrying H's 8 bytes",
    "expect": "stellar/carrier-mismatch"
+  },
+  {
+   "case": "under the sourceAccount section's challenge, a hash credential carrying a transaction member, V3's envelope, that fetchPresented did not write: bound and reference read a hash credential's transaction only from what fetchPresented writes, under lcp's FETCHED member, which no wire form carries",
+   "challenge": "sourceAccount",
+   "payload": {
+    "type": "hash",
+    "hash": "a1b2c3d4e5f6789012345678901234567890123456789012345678901234abcd",
+    "transaction": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQADTgs6FkXZhrRlJ+G5Z7N7+pHMs9JZhcP4t83O/l7sk2akgEFOlZ+QfcNpnQV/Q5hIEQnzK/srtdp3FZCj/mQsAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA="
+   },
+   "expect": "stellar/read-first"
   }
  ],
  "agreedRefusals": {
@@ -261,7 +271,7 @@
   ],
   "refusals": [
    {
-    "case": "this envelope pushed under the place section's challenge, whose feePayer is true: fetchPresented reads nothing, and bound and reference refuse it carrying its transaction",
+    "case": "this envelope pushed under the place section's challenge, whose feePayer is true: fetchPresented reads nothing, and bound and reference refuse it holding this envelope as its fetched transaction (carriesTransaction: written under lcp's FETCHED member, as fetchPresented writes it)",
     "challenge": "place",
     "type": "hash",
     "carriesTransaction": true,
@@ -309,7 +319,7 @@
     "expect": "stellar/no-address-auth"
    },
    {
-    "case": "a hash credential under this challenge carrying this envelope as its transaction, whose hash is not 64 hexadecimal digits (draft-stellar-charge-00: hash is the Stellar transaction hash, a 64-character hex string)",
+    "case": "a hash credential under this challenge holding this envelope as its fetched transaction (carriesTransaction: written under lcp's FETCHED member, as fetchPresented writes it), whose hash is not 64 hexadecimal digits (draft-stellar-charge-00: hash is the Stellar transaction hash, a 64-character hex string)",
     "challenge": "sourceAccount",
     "type": "hash",
     "hash": "not-a-transaction-hash",

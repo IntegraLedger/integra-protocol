@@ -15,6 +15,7 @@ import {
   evmHash,
   evmPermit2,
   evmTransaction,
+  FETCHED,
   issuedDigest,
   network,
   pairingsOf,
@@ -33,12 +34,13 @@ import {
 } from "../src/mpp.js";
 import { ReaderError } from "../src/evm.js";
 import { TIP20_CHANNEL_RESERVE, expiringNonceHash, memoCalldata, tempoChannelId } from "../src/tempo.js";
-import type { HederaEvmReader, HederaReader } from "../src/hedera.js";
+import { FETCHED as HEDERA_FETCHED, type HederaEvmReader, type HederaReader } from "../src/hedera.js";
+import { FETCHED as ROOT_FETCHED } from "../src/index.js";
 import type { StellarReader } from "../src/stellar.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
-import { C_E, C_T, H, V, b64u, challenge, fromB64u, link, load, readerFor, realm } from "./mpp-fixtures.js";
+import { C_E, C_T, H, V, b64u, challenge, fromB64u, heldOf, link, load, readerFor, realm } from "./mpp-fixtures.js";
 import { READS_TO_REPEAT } from "./refusal-classes.js";
 import { rowsOf } from "./rows.js";
 
@@ -346,11 +348,12 @@ describe("problem", () => {
 
   // Tempo push: `bound` and `reference` on the buyer's credential as sent, before fetchPresented has read the landed
   // logs, answer tempo/read-first, 500 and no challenge, as MV10's row gives. The credential is the vector file's B6
-  // buyer row without the `landed` member fetchPresented adds; with it, bound reads H (MV13).
+  // buyer row's presented; with its fetched written under FETCHED, as fetchPresented writes it, bound reads H (MV13).
   it("mpp/charge/tempo/push: bound and reference before fetchPresented answer tempo/read-first, 500", async () => {
     const tempo = load("mpp-charge-tempo-push.json");
-    const presented = tempo.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented;
-    const { landed: _landed, ...asSent } = presented as MppCredential & { landed: unknown };
+    const input = tempo.buyer.rows.find((r: { name: string }) => r.name === "B6").input;
+    const asSent = input.presented as MppCredential;
+    const presented = heldOf(input);
     expect(await tempoPush.bound(asSent)).toEqual({ refused: true, code: "tempo/read-first" });
     expect(await tempoPush.reference(asSent)).toEqual({ refused: true, code: "tempo/read-first" });
     expect(problem("tempo/read-first")).toEqual(expectOf("tempo/read-first"));
@@ -1004,4 +1007,29 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       for (const code of codes) expect(results).toContainEqual(refused(code));
     });
   }
+});
+
+// FETCHED keys the one member that holds what a seller's reader wrote onto a credential. It is the registered symbol
+// Symbol.for("@integraledger/lcp/fetched"), the same from each entry point that exports it. No wire form carries it:
+// JSON and structuredClone drop it, while a spread and Object.assign copy it; and only a credential's own member keyed
+// by it is read.
+describe("FETCHED", () => {
+  it("is the registered symbol, the same from the package root, ./mpp and ./hedera", () => {
+    expect(FETCHED).toBe(Symbol.for("@integraledger/lcp/fetched"));
+    expect(ROOT_FETCHED).toBe(FETCHED);
+    expect(HEDERA_FETCHED).toBe(FETCHED);
+  });
+
+  it("a JSON round trip and a structuredClone drop the member, a spread and Object.assign copy it, and only an own member is read", async () => {
+    const input = load("mpp-charge-tempo-push.json").buyer.rows.find((r: { name: string }) => r.name === "B6").input;
+    const held = heldOf(input) as MppCredential & { [FETCHED]: unknown };
+    const json = JSON.parse(JSON.stringify(held, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
+    expect(Object.getOwnPropertySymbols(json)).toEqual([]);
+    expect(Object.getOwnPropertySymbols(structuredClone(held))).toEqual([]);
+    expect({ ...held }[FETCHED]).toBe(held[FETCHED]);
+    expect(Object.assign({}, held)[FETCHED]).toBe(held[FETCHED]);
+    expect(await tempoPush.bound(held)).toBe(H);
+    const inherited = Object.assign(Object.create({ [FETCHED]: held[FETCHED] }), input.presented);
+    expect(await tempoPush.bound(inherited)).toEqual({ refused: true, code: "tempo/read-first" });
+  });
 });

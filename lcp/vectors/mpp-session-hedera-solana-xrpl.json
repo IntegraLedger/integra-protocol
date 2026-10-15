@@ -824,11 +824,46 @@
      "12000D210000040122000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974403F09B7D8DE339BF61C78780F897D2A0AACAE3C3908CB806E636E6E0F8A434B9D7123F3BF788C261B72FF9BA097045EC62EA646F531F57B622E0B1C7F92EF6F0F81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1"
     ],
     "expect": "xrpl/network-mismatch"
+   },
+   {
+    "case": "bound of a hedera opening carrying a landed member, HS3's receipt logs, that fetchPresented did not write: bound reads the landed logs only from what fetchPresented writes, under lcp's FETCHED member, which no wire form carries, so the opening is read as one without it",
+    "opening": "HS3",
+    "landed": {
+     "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+     "blockNumber": "40000000",
+     "logs": [
+      {
+       "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+       "topics": [
+        "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+        "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+       ],
+       "data": "0x00000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000000000ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000989680"
+      }
+     ]
+    },
+    "expect": "hedera/read-first"
+   },
+   {
+    "case": "a solana opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, its challenge's voucherSigner operator, carrying a tables member whose entry for account 4 is the challenge's operator, that fetchPresented did not write: bound, reference and buildWithin read the open's accounts only through the tables fetchPresented writes, under lcp's FETCHED member, which no wire form carries, so the opening is read as one without it, never as bound to H (read through fetchPresented from SV6.tables.channel, as SV6.rows[4] serves it, account 4 is the channel, and the opening is svm/signer-not-operator)",
+    "opening": "agreedRefusals.rows[21]",
+    "tables": [
+     {
+      "address": "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW",
+      "writable": [],
+      "readonly": [
+       "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse"
+      ]
+     }
+    ],
+    "expect": "svm/read-first"
    }
   ]
  },
  "buyer": {
-  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. A B6 input that holds fetched, what fetchPresented read of a push payment, is checked as the seller holds it: presented with fetched written under lcp's FETCHED member. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
   "rows": [
    {
     "name": "B2",
@@ -880,23 +915,23 @@
        "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
        "cumulativeAmount": "0",
        "signature": "0x00"
-      },
-      "landed": {
-       "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
-       "blockNumber": "40000000",
-       "logs": [
-        {
-         "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
-         "topics": [
-          "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
-          "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
-          "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-          "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
-         ],
-         "data": "0x00000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000000000ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000989680"
-        }
-       ]
       }
+     },
+     "fetched": {
+      "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "blockNumber": "40000000",
+      "logs": [
+       {
+        "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+        "topics": [
+         "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+         "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+        ],
+        "data": "0x00000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000000000ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000989680"
+       }
+      ]
      },
      "check": [
       {
@@ -915,7 +950,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's HS3 payment, as the file holds it; no signature was made for this row."
+    "note": "presented is this file's HS3 payment as the buyer sends it, and fetched is what fetchPresented read of it, which check reads written under lcp's FETCHED member, as fetchPresented returns it: JSON carries no symbol-keyed member, and a string-keyed member of that name is not read. No signature was made for this row."
    },
    {
     "name": "B2",

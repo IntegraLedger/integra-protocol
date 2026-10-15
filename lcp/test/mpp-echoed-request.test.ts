@@ -39,14 +39,14 @@ import {
 } from "../src/mpp.js";
 import { sessionLightning } from "../src/lightning.js";
 import { gatewayAccount } from "../src/mpp-usdc.js";
-import { load } from "./mpp-fixtures.js";
+import { heldOf, load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 type Edit = (request: { [k: string]: Json }, challenge: { [k: string]: unknown }) => void;
 
-/** The vector file's buyer row `row` as presented, with `edit` applied to its request and challenge. */
+/** The vector file's buyer row `row` as the seller holds it (`heldOf`), with `edit` applied to its request and challenge. */
 function presented(file: string, row: number, edit: Edit = () => {}): MppCredential {
-  const c = structuredClone(load(file).buyer.rows[row].input.presented) as MppCredential;
+  const c = heldOf(structuredClone(load(file).buyer.rows[row].input));
   const request = JSON.parse(Buffer.from(c.challenge.request, "base64url").toString("utf8"));
   edit(request, c.challenge as unknown as { [k: string]: unknown });
   c.challenge.request = Buffer.from(canonicalJson(request) as string, "utf8").toString("base64url");

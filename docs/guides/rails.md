@@ -202,8 +202,9 @@ a reverted transaction, on `mpp/charge/tempo/push` and `mpp/session/hedera`, the
 `hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). A receipt that succeeded
 without exactly one of the logs `bound` reads H from there, the `TransferWithMemo` with the challenge's attribution
 memo or the escrow's `ChannelOpened` naming the channel, is read at the same mark: above it `fetchPresented` answers
-`tempo/not-final` or `hedera/not-final`, and at or below it returns the landed logs, from which `bound` gives the
-verdict. An EVM `recover`
+`tempo/not-final` or `hedera/not-final`, and at or below it returns the landed logs, written under the member the
+registered symbol `FETCHED` keys, from which alone `bound` gives the verdict: no wire form carries that member, and a
+credential's own `landed` member is never read ([The MPP pairings](./mpp.md#the-mpp-pairings)). An EVM `recover`
 (`x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`,
 `x402/upto/eip155/permit2`, `x402/batch-settlement/eip155` and `mpp/session/evm`) places by the same mark a revert and
 each verdict it reads from the receipt, the settle call it finds with the receipt's `Transfer`, or Permit2's nonce
@@ -230,7 +231,8 @@ the landed transaction's tables loaded (`SvmLanded.loaded`, `getTransaction`'s `
 read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups name, or
 repeat a static key or each other (the runtime refuses a transaction that loads one account twice), reads as pending
 `unreadable`. An `mpp/session/solana` opening, which the seller reads before it lands, is read through its tables
-instead: `fetchPresented` reads each table account at `finalized` ([Sessions](./sessions.md)). The signature fixes a table's address and an index into it, not the entry there, so a session close
+instead: `fetchPresented` reads each table account at `finalized` and writes the tables under `FETCHED`, the only
+member `bound`, `reference` and `buildWithin` read them from ([Sessions](./sessions.md)). The signature fixes a table's address and an index into it, not the entry there, so a session close
 whose `settleAndSeal` or `seal` names its channel account through a table, and does not name the channel, is
 `not-a-close` only from the read at `finalized`, and pending `not-final` from the read at `confirmed` alone. The Solana
 `recover`s and `fetchPresented` read an error by the same rule: `svm/err` from the read at `finalized`, and

@@ -2,7 +2,8 @@
  * Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement
  * read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and
  * `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); and MPP's `mpp/charge/hedera`, whose
- * signed memo is MPP's attribution memo, its nonce keccak256 of the challenge id that carries the hash.
+ * signed memo is MPP's attribution memo, its nonce keccak256 of the challenge id that carries the hash, with `FETCHED`,
+ * the key under which its `fetchPresented` writes the seller's read onto a credential.
  */
 import { fromLcpString, fromLegalContext, hash, toLcpString, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
@@ -26,6 +27,8 @@ import {
   checkedFor,
   checkAttribution,
   credentialOf,
+  FETCHED,
+  fetchedOf,
   place,
   read as readMpp,
   tie as tieMpp,
@@ -1104,13 +1107,17 @@ function chargeCredential(
   return { h: cb.h, challenge, request: cb.request, type };
 }
 
-/** A Hedera charge credential with what `fetchPresented` read: the network, and for a push the landed memo. */
-type HederaLandedCharge = MppCredential & { landed: { network: HederaNetwork; memo?: string } };
+/**
+ * A Hedera charge credential with what `fetchPresented` read under `FETCHED`: the network, and for a push the landed
+ * memo.
+ */
+type HederaLandedCharge = MppCredential & { [FETCHED]: { network: HederaNetwork; memo?: string } };
 
 /**
- * The credential with `landed` written from the reader: the charge's network (the request's `chainId`, or
+ * The credential with the read written under `FETCHED`: the charge's network (the request's `chainId`, or
  * `defaultNetwork` when the request names none), and for a push credential (`type="hash"`) the memo of the
- * landed SUCCESS entry. The reader must be of that network. A read that fails, or finds no transaction or no counted
+ * landed SUCCESS entry. Any member the credential carries already is kept and not read. The reader must be of that
+ * network. A read that fails, or finds no transaction or no counted
  * user entry yet, is a refusal the seller retries (`hedera/unreadable`, `hedera/not-found`). Counted user entries with
  * no SUCCESS among them are `hedera/not-success`: the transaction reached consensus and failed, so its transfers were
  * not made, and a later read gives the same answer.
@@ -1128,7 +1135,7 @@ async function fetchCharge(
   if (isRefusal(network)) return network;
   if (!isObject(reader) || !isHederaNetwork(reader.network)) return refusal("hedera/wrong-reader");
   if (network !== reader.network) return refusal("hedera/wrong-reader");
-  if (c.type === "transaction") return { ...credential, landed: { network } };
+  if (c.type === "transaction") return { ...credential, [FETCHED]: { network } };
   const id = pushTransactionId(credential);
   if (isRefusal(id)) return id;
   const entries = await entriesOf(network, txIdMirror(id), reader);
@@ -1148,7 +1155,7 @@ async function fetchCharge(
   } catch {
     return refusal("mpp/attribution-malformed");
   }
-  return { ...credential, landed: { network, memo: text } };
+  return { ...credential, [FETCHED]: { network, memo: text } };
 }
 
 /** A push credential's `transactionId`, `shard.realm.num@seconds.nanos`. */
@@ -1159,9 +1166,9 @@ function pushTransactionId(credential: MppCredential): { account: string; second
   return { account: m[1]!, seconds: BigInt(m[2]!), nanos: Number(m[3]!.padEnd(9, "0")) };
 }
 
-/** What `fetchPresented` wrote, or undefined. */
+/** What `fetchPresented` wrote under `FETCHED`, or undefined; a string-keyed `landed` is not read. */
 function landedOf(credential: MppCredential): { network?: unknown; memo?: unknown } | undefined {
-  const landed = (credential as Partial<HederaLandedCharge>).landed;
+  const landed = fetchedOf(credential);
   return isObject(landed) ? landed : undefined;
 }
 
@@ -1179,8 +1186,8 @@ function attributed(memo: string, challenge: { realm: string; id: string }): tru
 
 /**
  * The hash from the echoed challenge, once the payer's memo is this challenge's attribution memo: from the signed body
- * (`type="transaction"`), or from the landed entry's memo that `fetchPresented` wrote (`type="hash"`). No transfer,
- * amount, payer or signature is read.
+ * (`type="transaction"`), or from the landed entry's memo that `fetchPresented` wrote under `FETCHED` (`type="hash"`),
+ * else `hedera/read-first`. No transfer, amount, payer or signature is read.
  */
 async function boundCharge(input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
@@ -1202,7 +1209,7 @@ async function boundCharge(input: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys, on the network `fetchPresented` wrote (else the request's `chainId`).
+ * The read keys, on the network `fetchPresented` wrote under `FETCHED` (else the request's `chainId`).
  * `type="transaction"`: from the signed body. `type="hash"`: the credential's transaction id, the landed memo, and
  * validity to the valid start plus 180 s.
  */
@@ -1292,6 +1299,7 @@ export const chargeHedera = Object.freeze({
   status: hederaStatus,
 });
 
+export { FETCHED } from "./mpp-challenge.js";
 export {
   CHANNEL_CLOSED_TOPIC,
   CHANNEL_OPENED_TOPIC,

@@ -3,6 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS, hash, hashEquals, type AtrHash } from "../src/index.js";
+import { heldOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 interface Row {
@@ -12,6 +13,7 @@ interface Row {
     doc?: unknown;
     servesHex?: string;
     presented?: unknown;
+    fetched?: unknown;
     check?: { bytesHex: string }[];
   };
   advertised?: string;
@@ -54,10 +56,13 @@ const pairing = (id: string): Pairing => {
   return b as unknown as Pairing;
 };
 
-/** The buyer's check of a payment against ATR bytes: the bytes' hash when the payment's bound hash equals it. */
-async function check(bytes: Uint8Array, presented: unknown, p: Pairing): Promise<{ h: AtrHash } | { decline: string }> {
+/**
+ * The buyer's check of a payment against ATR bytes: the bytes' hash when the payment's bound hash equals it. The
+ * payment is the row's input as the seller holds it (`heldOf`), made from a copy of the row.
+ */
+async function check(bytes: Uint8Array, input: Row["input"], p: Pairing): Promise<{ h: AtrHash } | { decline: string }> {
   const h = await hash(bytes);
-  const b = await p.bound(structuredClone(presented));
+  const b = await p.bound(heldOf(structuredClone(input) as { presented: unknown; fetched?: unknown }));
   return typeof b === "string" && hashEquals(b, h) ? { h } : { decline: "signed-not-bound" };
 }
 
@@ -129,7 +134,7 @@ describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
     it(`${file} B6 ${row.pairing}: the payment is bound to the ATR's hash and not to the planted ATR's`, async () => {
       const p = pairing(row.pairing);
       const got = [];
-      for (const c of row.input.check!) got.push(await check(fromHex(c.bytesHex), row.input.presented, p));
+      for (const c of row.input.check!) got.push(await check(fromHex(c.bytesHex), row.input, p));
       expect(got).toEqual(row.expect);
     });
   }

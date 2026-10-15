@@ -87,7 +87,7 @@
   "provesRule": "as tempo/memo, with \"signed and broadcast\" and \"read after the money had moved\""
  },
  "buyer": {
-  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. A B6 input that holds fetched, what fetchPresented read of a push payment, is checked as the seller holds it: presented with fetched written under lcp's FETCHED member. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
   "rows": [
    {
     "name": "B2",
@@ -135,32 +135,32 @@
       "payload": {
        "type": "hash",
        "hash": "0x1111111111111111111111111111111111111111111111111111111111111111"
-      },
-      "landed": {
-       "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
-       "blockNumber": "100",
-       "logs": [
-        {
-         "address": "0x20c0000000000000000000000000000000000000",
-         "topics": [
-          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-          "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-          "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
-         ],
-         "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
-        },
-        {
-         "address": "0x20c0000000000000000000000000000000000000",
-         "topics": [
-          "0x57bc7354aa85aed339e000bccffabbc529466af35f0772c8f8ee1145927de7f0",
-          "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-          "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00",
-          "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a"
-         ],
-         "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
-        }
-       ]
       }
+     },
+     "fetched": {
+      "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "blockNumber": "100",
+      "logs": [
+       {
+        "address": "0x20c0000000000000000000000000000000000000",
+        "topics": [
+         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+        ],
+        "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+       },
+       {
+        "address": "0x20c0000000000000000000000000000000000000",
+        "topics": [
+         "0x57bc7354aa85aed339e000bccffabbc529466af35f0772c8f8ee1145927de7f0",
+         "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00",
+         "0xef1ed712017b4364449d1dc19a8a7b00000000000000000000d66873a1db955a"
+        ],
+        "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+       }
+      ]
      },
      "check": [
       {
@@ -179,7 +179,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's MV13 payment, as the file holds it; no signature was made for this row."
+    "note": "presented is this file's MV13 payment as the buyer sends it, and fetched is what fetchPresented read of it, which check reads written under lcp's FETCHED member, as fetchPresented returns it: JSON carries no symbol-keyed member, and a string-keyed member of that name is not read. No signature was made for this row."
    }
   ]
  },

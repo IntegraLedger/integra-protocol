@@ -31,6 +31,8 @@ import {
   credentialOf,
   deepFreeze,
   echoedFor,
+  FETCHED,
+  fetchedOf,
   isObject,
   placeCarrier,
   pushedField,
@@ -120,10 +122,11 @@ function mppSvmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
 }
 
 /**
- * The signed transaction a credential presents: the one of `transaction`, the last of a `bundle`, or a fetched one.
- * Under `transactionOnly`, any type but `transaction` is `mpp/credential-type`.
+ * The signed transaction a credential presents: the one of `transaction`, the last of a `bundle`, or for `signature`
+ * the landed wire `fetchPresented` wrote under `FETCHED`, else `svm/read-first`; a `signature` credential's own
+ * `transaction` member is not read. Under `transactionOnly`, any type but `transaction` is `mpp/credential-type`.
  */
-function presentedTx(payload: { [k: string]: Json }, transactionOnly: boolean): SvmTx | Refusal {
+function presentedTx(credential: MppCredential, payload: { [k: string]: Json }, transactionOnly: boolean): SvmTx | Refusal {
   const type = payload["type"];
   let b64: Json | undefined;
   if (type === "transaction") b64 = payload["transaction"];
@@ -134,8 +137,10 @@ function presentedTx(payload: { [k: string]: Json }, transactionOnly: boolean): 
     if (list.length === 0) return refusal("svm/bundle-empty");
     b64 = list[list.length - 1];
   } else if (type === "signature") {
-    if (payload["transaction"] === undefined) return refusal("svm/read-first");
-    b64 = payload["transaction"];
+    const read = fetchedOf(credential);
+    const landed = isObject(read) ? read["transaction"] : undefined;
+    if (typeof landed !== "string") return refusal("svm/read-first");
+    b64 = landed;
   } else return refusal("mpp/credential-type");
   const wire = wireOf(b64);
   return isRefusal(wire) ? wire : decodeSvmTx(wire);
@@ -153,7 +158,7 @@ function bindingOf(
   const e = echoedFor(credential, spec.id);
   if (isRefusal(e)) return e;
   if (!isSolanaExternalId(e.checked.request["externalId"])) return refusal("mpp/request-malformed");
-  const tx = presentedTx(e.payload, spec.transactionOnly);
+  const tx = presentedTx(credential, e.payload, spec.transactionOnly);
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
@@ -191,8 +196,9 @@ async function reference(
 }
 
 /**
- * A push credential (`type="signature"`) with the landed wire added as `transaction`, read at `confirmed`. Other
- * credentials are returned unchanged. A read that fails, finds nothing or gives an answer of neither documented shape
+ * A push credential (`type="signature"`) with the landed wire, read at `confirmed`, written under `FETCHED` as
+ * `transaction`; any member the credential carries already is kept and not read. Other credentials are returned
+ * unchanged. A read that fails, finds nothing or gives an answer of neither documented shape
  * is a refusal the seller retries. A transaction that landed with an error at `confirmed` is read once more at
  * `finalized`: it is refused `svm/err` when that read holds it with an error, and `svm/not-final`, a read to repeat,
  * when that read does not hold it yet, since a block that is not finalized can be replaced; when that read holds it
@@ -202,7 +208,7 @@ async function fetchPresented(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
   credential: MppCredential,
   reader: SvmReader,
-): Promise<MppCredential | Refusal> {
+): Promise<(MppCredential & { [FETCHED]?: { transaction: string } }) | Refusal> {
   if (!isObject(credential) || carriesRefused(credential) || !isObject(credential.payload)) {
     return refusal("mpp/credential-malformed");
   }
@@ -224,7 +230,7 @@ async function fetchPresented(
     if (read === "not-found") return refusal("svm/not-final");
     if (read.failed) return refusal("svm/err");
   }
-  return { ...credential, payload: { ...credential.payload, transaction: toBase64(read.wire) } };
+  return { ...credential, [FETCHED]: { transaction: toBase64(read.wire) } };
 }
 
 /**

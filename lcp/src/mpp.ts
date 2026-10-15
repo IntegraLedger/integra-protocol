@@ -4,7 +4,8 @@
  * `hash` (nothing signed carries H), and Tempo pull and push (the signed `transferWithMemo` carries the attribution
  * memo MPP's SDKs write, whose nonce is keccak256 of the id). The card, Stripe, Solana, Stellar, XRP Ledger, Hedera,
  * NEAR Intents and `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported
- * from their modules.
+ * from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a
+ * credential.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
 import { addressWord, bytesOf, concat, hexOf, sameBytes, uintOf, uintWord, type Hex } from "./evm-abi.js";
@@ -40,6 +41,8 @@ import {
   echoedFor,
   echoedOf,
   expiresOf,
+  FETCHED,
+  fetchedOf,
   isChallengeShape,
   isHexBytes,
   isObject,
@@ -79,6 +82,7 @@ import type { LcpPattern } from "./x402.js";
 
 export {
   CARRIER,
+  FETCHED,
   attributionMemo,
   challengeBound,
   challengeH,
@@ -186,9 +190,14 @@ export type MppUnsigned =
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
     };
 
-/** A push credential with the landed receipt's logs from the currency. */
+/**
+ * A push credential with what `fetchPresented` read under `FETCHED`: the landed transaction, its block and its
+ * receipt's logs from the currency (on `mpp/session/hedera`, from the escrow). Only that member is read: a
+ * string-keyed `landed` is not, and `JSON.stringify` and `structuredClone` drop the member, so the seller keeps this
+ * object, or a spread or `Object.assign` copy of it.
+ */
 export interface LandedCredential extends MppCredential {
-  landed: { transaction: Hex; blockNumber: bigint; logs: readonly EvmLog[] };
+  [FETCHED]: { transaction: Hex; blockNumber: bigint; logs: readonly EvmLog[] };
 }
 
 const AUTHORIZATION = "mpp/charge/evm/authorization" as const;
@@ -869,8 +878,8 @@ async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: 
 }
 
 /**
- * Reads the pushed transaction's receipt and returns the credential with `landed`: the transaction, its block and
- * the receipt's logs from `currency`. No receipt is `tempo/not-found` and a failed read `tempo/unreadable`: reads to
+ * Reads the pushed transaction's receipt and returns the credential with the read under `FETCHED`: the transaction,
+ * its block and the receipt's logs from `currency`. Any member the credential carries already is kept and not read. No receipt is `tempo/not-found` and a failed read `tempo/unreadable`: reads to
  * repeat, not a refusal of the payment. A revert whose block is at or below the reader's `finalized` mark is
  * `tempo/reverted`: nothing moved. A revert above that mark, or where the mark cannot be read, is `tempo/not-final`, a
  * read to repeat: the block can be replaced by one in which the transaction succeeds. A `TransferWithMemo` log from
@@ -878,7 +887,7 @@ async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: 
  * `tempo/unreadable` too: the reader's answer is not well formed. A receipt that succeeded whose logs from `currency`
  * do not hold exactly one `TransferWithMemo` with this challenge's attribution memo, the log `bound` reads, is read at
  * the same mark: above it, or where it cannot be read, it is `tempo/not-final`, since a block that replaces it can hold
- * other logs; at or below it the credential is returned with `landed`, and `bound` gives the verdict. The mark is read
+ * other logs; at or below it the credential is returned with the read, and `bound` gives the verdict. The mark is read
  * only for a revert or such a receipt. A reader that is missing or for another network than the challenge names is
  * `tempo/wrong-reader`. At most two calls.
  */
@@ -909,7 +918,7 @@ async function pushFetchPresented(presented: MppCredential, reader: EvmReader): 
   }
   const attributed = attributedMemoLogs(logs, currency, presented.challenge);
   if (attributed.length !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("tempo/not-final");
-  return { ...presented, landed: { transaction: hash, blockNumber: receipt.blockNumber, logs } };
+  return { ...presented, [FETCHED]: { transaction: hash, blockNumber: receipt.blockNumber, logs } };
 }
 
 /** The `TransferWithMemo` logs from `currency` among `logs` whose memo topic is the challenge's attribution memo. */
@@ -928,18 +937,19 @@ function attributedMemoLogs(logs: readonly unknown[], currency: Hex, challenge: 
 }
 
 /**
- * The one landed `TransferWithMemo` from `currency` whose memo topic is this challenge's attribution memo. A credential
- * with no landed logs, which `fetchPresented` has not read, is `tempo/read-first`.
+ * The one landed `TransferWithMemo` from `currency` whose memo topic is this challenge's attribution memo, among the
+ * logs `fetchPresented` wrote under `FETCHED`. A credential without them, which `fetchPresented` has not read, is
+ * `tempo/read-first`, whatever string-keyed members it carries.
  */
 function landedMemoLog(presented: MppCredential): { h: AtrHash; checked: Echoed; currency: Hex; log: EvmLog } | Refusal {
   const e = echoed(presented, PUSH);
   if (isRefusal(e)) return e;
   if (e.payload["type"] !== "hash") return refusal("mpp/credential-type");
-  const landed = (presented as Partial<LandedCredential>).landed;
-  if (!isObject(landed) || !Array.isArray(landed.logs)) return refusal("tempo/read-first");
+  const landed = fetchedOf(presented);
+  if (!isObject(landed) || !Array.isArray(landed["logs"])) return refusal("tempo/read-first");
   const currency = requestAddress(e.checked, "currency");
   if (isRefusal(currency)) return currency;
-  const found = attributedMemoLogs(landed.logs, currency, presented.challenge);
+  const found = attributedMemoLogs(landed["logs"], currency, presented.challenge);
   if (found.length === 0) return refusal("tempo/memo-not-bound");
   if (found.length > 1) return refusal("tempo/ambiguous");
   return { h: e.h, checked: e.checked, currency, log: found[0]! };

@@ -164,6 +164,19 @@ that fails, cannot yet read the landed payment, or reads a revert or error that 
 not a refusal of the payment: the seller asks again later. `readToRepeat(code)`, from the package root, is true for each
 such code ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)).
 
+`fetchPresented` returns the credential with what it read written under one member, keyed by the registered symbol
+`FETCHED`, `Symbol.for("@integraledger/lcp/fetched")`, which `@integraledger/lcp`, `@integraledger/lcp/mpp` and
+`@integraledger/lcp/hedera` export: the landed logs on the Tempo push charge and the Hedera session, the network and,
+for a push, the landed memo on the Hedera charge, the landed transaction on the Solana and Stellar charges, the signed
+blob on the XRP Ledger charge, and the address lookup tables on the Solana session. `bound`, `reference` and
+`buildWithin` read the seller's read from that member and from no other. A credential's own `landed`, `tables`, push
+`transaction` or `blob` member, or any other string-keyed member, is never read: a credential that arrives with one
+gives the answer the same credential without it gives, `<rail>/read-first` where the read is needed. No wire form
+carries a symbol-keyed member: `JSON.parse` makes none, and `JSON.stringify` and `structuredClone` drop it. So the
+seller keeps the object `fetchPresented` returned, or a spread or `Object.assign` copy of it, both of which copy the
+member; a copy made through JSON or `structuredClone` is read as a credential `fetchPresented` has not read. Calling
+`bound` first, and `fetchPresented` when it answers `<rail>/read-first`, reads only what the seller's reader read.
+
 `bound`, `reference` and `fetchPresented` start from the echoed challenge's H, require its intent and method to be
 the pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which
 must name the pairing (`pairingsOfPlaced`). A challenge those checks refuse gives their code, and one that offers only
@@ -229,7 +242,7 @@ pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a ch
 neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem` gives it 500
 `internal-payment-error`, never a 402.
 
-On `mpp/session/solana`, both sides keep the credential `fetchPresented` returned, with its `tables`, as the opening
-for the life of the channel, and pass it to `bound`, `reference` and `buildWithin`: a later read gives each address
+On `mpp/session/solana`, both sides keep the credential `fetchPresented` returned, with its tables under `FETCHED`, or
+a spread or `Object.assign` copy of it, as the opening for the life of the channel, and pass it to `bound`, `reference` and `buildWithin`: a later read gives each address
 lookup table as it stands then, and once the table's authority deactivates or closes it, that read is
 `svm/table-unusable` or `svm/not-found`, and no later read gives the channel's accounts.

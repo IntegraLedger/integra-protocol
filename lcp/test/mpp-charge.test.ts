@@ -33,6 +33,7 @@ import {
   evmHash,
   evmPermit2,
   evmTransaction,
+  FETCHED,
   pairingsOf,
   place,
   problem,
@@ -51,7 +52,7 @@ import {
   memoCalldata,
 } from "../src/tempo.js";
 import { counting } from "./fixtures/counting-reader.js";
-import { C_E, C_T, H, b64u, challenge, fromB64u, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
+import { C_E, C_T, H, b64u, challenge, fromB64u, link, load, readerFor, readsOnlyFetched, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const A = load("mpp-charge-evm-authorization.json");
@@ -821,7 +822,7 @@ describe("mpp-charge-tempo-push.json", () => {
     const cred = u.complete(PU.MV13.T_P) as MppCredential;
     expect(cred.payload).toEqual({ type: "hash", hash: PU.MV13.T_P });
     const landed = (await tempoPush.fetchPresented(cred, readerFor("eip155:42431", receipt))) as LandedCredential;
-    expect(withBigints(landed.landed)).toEqual({ transaction: PU.MV13.T_P, blockNumber: "100", logs: receipt.logs });
+    expect(withBigints(landed[FETCHED])).toEqual({ transaction: PU.MV13.T_P, blockNumber: "100", logs: receipt.logs });
     expect(await tempoPush.bound(landed)).toBe(H);
     const ref = (await tempoPush.reference(landed)) as EvmRef;
     expect(ref.transferLog?.digest).toBe(PU.MV13.expectReferenceDigest);
@@ -877,7 +878,7 @@ describe("mpp-charge-tempo-push.json", () => {
         name,
         unreadable,
       ]);
-      const landed = { ...cred, landed: { transaction: PU.MV13.T_P, blockNumber: 100n, logs } };
+      const landed = { ...cred, [FETCHED]: { transaction: PU.MV13.T_P, blockNumber: 100n, logs } };
       expect([name, await tempoPush.reference(landed)]).toEqual([name, unreadable]);
     }
     expect(problem("tempo/unreadable")).toEqual({ status: 500, type: "https://paymentauth.org/problems/internal-payment-error" });
@@ -890,8 +891,20 @@ describe("mpp-charge-tempo-push.json", () => {
     const moved = { ...receipt, logs: [receipt.logs[0], { ...receipt.logs[1], address: PU.fixed.otherTip20 }] };
     const landed = (await tempoPush.fetchPresented(cred, readerFor("eip155:42431", moved))) as LandedCredential;
     expect(await tempoPush.bound(landed)).toEqual(PU.plant.expect);
-    const forged = { ...cred, landed: { transaction: PU.MV13.T_P, blockNumber: 100n, logs: moved.logs } };
-    expect(await tempoPush.bound(forged)).toEqual(PU.plant.expect);
+    const held = { ...cred, [FETCHED]: { transaction: PU.MV13.T_P, blockNumber: 100n, logs: moved.logs } };
+    expect(await tempoPush.bound(held)).toEqual(PU.plant.expect);
+  });
+
+  // The landed logs are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries:
+  // a credential the buyer sends with a string-keyed `landed` of logs that would bind H is tempo/read-first, as it is
+  // without one, and one held with both is read by its FETCHED member alone.
+  it("the landed logs are read only from fetchPresented's FETCHED member, never from a string-keyed landed", async () => {
+    const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const sent = u.complete(PU.MV13.T_P) as MppCredential;
+    const fetched = await tempoPush.fetchPresented(sent, readerFor("eip155:42431", receipt));
+    const landed = (logs: unknown) => (c: unknown) => ({ ...(c as object), landed: { transaction: PU.MV13.T_P, blockNumber: 100n, logs } });
+    await readsOnlyFetched(tempoPush, sent, fetched, H, landed(receipt.logs), landed([]), "tempo/read-first");
   });
 });
 

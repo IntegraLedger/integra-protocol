@@ -176,7 +176,7 @@ function entryPointsPage() {
 
 function indexSummary(e) {
   return e === "index"
-    ? "The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, and the registry of every pairing (`BINDINGS`, `pairingOf`)."
+    ? "The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, the registry of every pairing (`BINDINGS`, `pairingOf`), and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential."
     : "";
 }
 
