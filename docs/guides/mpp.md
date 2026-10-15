@@ -48,14 +48,16 @@ equal `option` gets the id derived from H and an `opaque` holding the seller's o
 and so each pairing's `advertise`, refuses a list holding a challenge that carries a `refused` member as
 `mpp/challenge-malformed`.
 `read(doc)` is the buyer's reading: the challenges whose `opaque` carries an LCP hash and an `https` link and whose id
-derives from that hash. `pairingsOf(challenge)` names the pairings a challenge offers, and `tie(challenges)` is the
-ATR's binding slot: every challenge's bound members, as issued.
+derives from that hash. `pairingsOf(challenge)` names the pairings a challenge offers, and `pairingsOfPlaced(challenge)`
+those a placed challenge offers, with the Lightning invoice the seller's node writes after `place` required.
+`tie(challenges)` is the ATR's binding slot: every challenge's bound members, as issued.
 
 A challenge's `expires`, when present, is an RFC 3339 date-time, else `mpp/expires-required`. MPP's core makes it a
 SHOULD for servers. A pairing needs it where its `build` writes it into what the payer signs: the EVM `authorization`
 and `permit2` charges, Tempo's pull and push charges, the `usdc` EVM charge, the Stellar charge and the EVM and Tempo
 sessions; the NEAR Intents and XRP Ledger charge drafts require it too. Without `expires` those pairings are left out of
-what `pairingsOf`, `advertise` and `build` offer, and a challenge left with no pairing is `mpp/expires-required`.
+what `pairingsOf`, `advertise`, `build`, `bound` and `reference` take, and a challenge left with no pairing is
+`mpp/expires-required`.
 
 ```ts
 import { hash, isRefusal } from "@integraledger/lcp";
@@ -162,20 +164,23 @@ that fails, cannot yet read the landed payment, or reads a revert or error that 
 not a refusal of the payment: the seller asks again later. `readToRepeat(code)`, from the package root, is true for each
 such code ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)).
 
-`bound`, `reference` and `fetchPresented` start from the echoed challenge's H, and require its intent and method to be
-the pairing's (on `usdc`, also the profile `methodDetails.type` names). They do not check the request again: that is
-`advertise`'s and `build`'s. On the EVM, Tempo, `usdc`, Solana, Stellar, XRP Ledger and NEAR Intents charges, the EVM,
-Tempo, Hedera, Solana and XRP Ledger sessions, and the Tempo subscription, each reads only the request members its own
-read keys or derivation use, such as the network or chain, the currency, the recipient, the escrow, the member that
-carries H (`externalId`, or the XRP Ledger's `methodDetails.invoiceId`), and `expires` where it is the payment's
-deadline, and refuses one of those that is malformed, with the code `advertise` gives it. On the Lightning charge and
-session, `bound` and `reference` hold the `network` the echoed challenge names, when it names one, to the invoice's
-currency as `advertise` does: a network MPP Lightning does not define, or one the invoice is not on, is
-`ln/currency-network`, and the read keys name the network of the invoice's currency. On every pairing, `bound`,
-`reference` and `fetchPresented` refuse a `methodDetails` that is present and not an object with
-`mpp/request-malformed`, as `advertise` does, and never read it as empty, except the Hedera charge's `bound`, which
-reads no request member, the EVM `transaction` and `hash` charges' `bound`, which always refuses
-(`mpp/no-signed-place`), and a `fetchPresented` given a signed transaction, which returns it as given.
+`bound`, `reference` and `fetchPresented` start from the echoed challenge's H, require its intent and method to be
+the pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which
+must name the pairing (`pairingsOfPlaced`). A challenge those checks refuse gives their code, and one that offers only
+other pairings (another credential type, mode or `usdc` profile, or no `expires` where the pairing needs it) is
+`mpp/not-this-pairing`, as `advertise` and `build` answer for the same challenge; `build` holds the chosen challenge
+to the same filter. `pairingsOf` makes every check `build`, `bound` and `reference` make on the challenge alone: on
+Lightning, that the invoice decodes with one `h` field and no `d`, carries the request's payment hash and the currency
+of the `network` the challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or
+`confidential` transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the build writes; on
+Permit2, an `amount` above its `splits`; on the XRP Ledger charge, no `memos`; the XRPL session recipient's checksum;
+the Tempo subscription's period and expiry within the key authorization's uint64; and, on `usdc`'s EVM and Gateway
+profiles, a request in its RFC 8785 form. So no pairing binds a payment presented under a challenge `pairingsOf` would
+not name for it. Of a challenge the filter takes, each function reads only the request members its own read keys or
+derivation use, such as the network or chain, the currency, the recipient, the escrow, the member that carries H, and
+`expires` where it is the payment's deadline; on the Lightning charge and session, the read keys name the network of
+the invoice's currency. The EVM `transaction` and `hash` charges' `bound` then refuses (`mpp/no-signed-place`), and a
+`fetchPresented` given a signed transaction returns it as given.
 
 `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature

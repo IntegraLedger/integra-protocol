@@ -53,8 +53,11 @@ within the channel, and what `channel.boundWithin` and `channel.until` read.
 
 An `mpp/session/xrpl` challenge's `amount` is the increment, in drops, charged for its request. `pairingsOf` takes only
 an opening challenge, whose `channelId` is absent or empty, and on it `build` signs that `amount` as the first claim's
-cumulative total, a big-endian u64. `pairingsOf`, and so `build`, refuses an `amount` that is not a u64 written in
-decimal with no sign, point or leading zero, with `mpp/request-malformed`.
+cumulative total, a big-endian u64. `pairingsOf`, and so `build`, `bound` and `reference`, refuses an `amount` that is
+not a u64 written in decimal with no sign, point or leading zero, or a `recipient` that is not a classic address whose
+checksum holds (the channel id derives from its AccountID), with `mpp/request-malformed`. Each session pairing's
+`bound` and `reference` hold the opening's echoed challenge to its filter, as the [MPP guide](./mpp.md) says; a within
+or close payment's challenge, which the seller issues naming the channel, is read without it.
 
 This example lists them from the registry:
 

@@ -798,7 +798,10 @@ Checks a challenge as issued (no LCP member in `opaque`) and names its pairings,
 Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money. An
 `expires` that is present must be an RFC 3339 date-time, else `mpp/expires-required`. Without `expires`, the pairings
 whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
-it, are left out, and a challenge left with no pairing is `mpp/expires-required`.
+it, are left out, and a challenge left with no pairing is `mpp/expires-required`. These checks are each pairing's one
+filter: they include every check its `build`, `bound` and `reference` make on the challenge alone, and those take
+only a challenge `pairingsOfPlaced` names for the pairing, refusing any other with the code these checks give it
+(`mpp/not-this-pairing` where they name only other pairings).
 
 #### Parameters
 
@@ -816,8 +819,10 @@ it, are left out, and a challenge left with no pairing is `mpp/expires-required`
 
 > **pairingsOfPlaced**(`c`): readonly [`MppPairingId`](#mpppairingid)[]
 
-The pairings a placed challenge offers: `pairingsOf` over the challenge with its `opaque` removed, so the LCP members
-`place` wrote are not read as an occupied carrier. None when the challenge does not read.
+The pairings a placed challenge offers: `pairingsOf`'s checks over the challenge with its `opaque` removed, so the LCP
+members `place` wrote are not read as an occupied carrier, and with the carrier the seller writes after `place`
+required where `pairingsOf` takes a challenge without it (the Lightning invoice). These are the pairings whose `build`
+takes the challenge and whose `bound` and `reference` take it echoed. None when the challenge does not read.
 
 #### Parameters
 
