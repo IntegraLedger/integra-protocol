@@ -108,7 +108,10 @@ dispatched by hand, and from the publish workflow before it packs. Its other ste
   package), `allowBuilds` (denials only), `minimumReleaseAgeExclude` (`@integraledger/*` only) and `overrides`
   (registry versions only). Every package in both lockfiles comes from the registry by its integrity, and no
   dependency is a file, directory, link, git or tarball source. No workflow sets pnpm's settings by a `pnpm_config_`
-  environment variable, a `--config.` flag or the `pnpm config` command, its alias or its shorthands.
+  environment variable, a `--config.` flag or the `pnpm config` command, its alias or its shorthands. The step reads
+  the committed files and the workflows' lines. A workflow step that rewrites a checked file before the install, such
+  as a `sed -i` on `pnpm-workspace.yaml`, or that builds a setting's name at run time, is code, like a step that
+  deletes this check, and this check does not read it.
 - **One-way imports:** no package here, nor the root `package.json`, depends on or names another `@integraledger`
   package, however the name is loaded or resolved; the site names only `@integraledger/lcp`. Each workspace package
   has a `build`, `typecheck` and `test` script that is not empty, since `pnpm -r` skips a package without one.
