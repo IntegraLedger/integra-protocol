@@ -819,10 +819,11 @@ only a challenge `pairingsOfPlaced` names for the pairing, refusing any other wi
 
 > **pairingsOfPlaced**(`c`): readonly [`MppPairingId`](#mpppairingid)[]
 
-The pairings a placed challenge offers: `pairingsOf`'s checks over the challenge with its `opaque` removed, so the LCP
-members `place` wrote are not read as an occupied carrier, and with the carrier the seller writes after `place`
-required where `pairingsOf` takes a challenge without it (the Lightning invoice). These are the pairings whose `build`
-takes the challenge and whose `bound` and `reference` take it echoed. None when the challenge does not read.
+The pairings a placed challenge offers: `pairingsOf`'s checks over the challenge with the LCP members `place` writes
+allowed in its `opaque`, which must decode as a map of strings, so they are not read as an occupied carrier, and
+with the carrier the seller writes after `place` required where `pairingsOf` takes a challenge without it (the
+Lightning invoice). These are the pairings whose `build` takes the challenge and whose `bound` and `reference` take it
+echoed. None when the challenge does not read.
 
 #### Parameters
 
