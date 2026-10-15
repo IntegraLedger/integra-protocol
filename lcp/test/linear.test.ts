@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import { DELEGATION_MANAGER, REDEEMED_DELEGATION_TOPIC, TRANSFER_TOPIC, type EvmLog, type EvmReader, type Hex } from "../src/evm.js";
 import { readEntry } from "../src/internal/avm.js";
+import { decodeBlob } from "../src/internal/xrpl.js";
 import { workOf, workOfAsync } from "./work.js";
 
 describe("readEntry: an Algorand payment entry is decoded in time linear in its bytes", () => {
@@ -111,6 +112,24 @@ describe("evmStatus: a delegation payment's receipt is read in time linear in it
     const atSmall = await workOfAsync(() => status(ref, small));
     const atLarge = await workOfAsync(() => status(ref, large));
     expect(atSmall).toBeGreaterThan(1000);
+    expect(atLarge).toBeLessThanOrEqual(2.5 * atSmall);
+  });
+});
+
+describe("decodeBlob: the XRPL depth scan reads a blob's fields in time linear in its length", () => {
+  // Field headers from the XRPL binary format's field codes (ripple-binary-codec's definitions.json): Memos (STArray
+  // 9) f9, its end f1; Memo (STObject 10) ea, its end e1; MemoData (Blob 13) 7d, then a one-byte length.
+  /** `k` memos holding one byte each, then 65 Memo objects opened: refused by the depth scan, past every memo. */
+  const blob = (k: number) =>
+    `f9${Array.from({ length: k }, (_, j) => `ea7d01${(j & 0xff).toString(16).padStart(2, "0")}e1`).join("")}f1${"ea".repeat(65)}`;
+
+  it("many fields before the nesting the scan refuses: the work at twice the fields is at most two and a half times the work", async () => {
+    const [small, large] = [blob(180), blob(360)];
+    expect(large.length).toBeLessThanOrEqual(4096);
+    for (const hex of [small, large]) expect(await decodeBlob(hex)).toMatchObject({ code: "xrpl/blob-malformed" });
+    const atSmall = await workOfAsync(() => decodeBlob(small));
+    const atLarge = await workOfAsync(() => decodeBlob(large));
+    expect(atSmall).toBeGreaterThan(180);
     expect(atLarge).toBeLessThanOrEqual(2.5 * atSmall);
   });
 });

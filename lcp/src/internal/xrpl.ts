@@ -91,14 +91,50 @@ const TXN_PREFIX = Uint8Array.of(0x54, 0x58, 0x4e, 0x00);
 
 type Codec = typeof import("ripple-binary-codec");
 type Parser = typeof import("ripple-binary-codec/dist/serdes/binary-parser.js").BinaryParser;
-let codec: Promise<{ c: Codec; BinaryParser: Parser } | undefined> | undefined;
+let codec: Promise<{ c: Codec; Scanner: Parser } | undefined> | undefined;
 
-/** The codec and its `BinaryParser`, loaded together on first use; undefined when the peer is not installed. */
-function loadCodec(): Promise<{ c: Codec; BinaryParser: Parser } | undefined> {
+/**
+ * The codec, and a `BinaryParser` that reads from an offset into the blob, loaded together on first use; undefined
+ * when the peer is not installed. The codec's own parser copies every byte after the ones it reads at each read; this
+ * one gives a view of the bytes it reads and moves its offset past them, so a pass over a blob's fields is linear in
+ * the blob's length. The codec's field and value readers read the bytes through these five methods only.
+ */
+function loadCodec(): Promise<{ c: Codec; Scanner: Parser } | undefined> {
   codec ??= Promise.all([
     import("ripple-binary-codec").catch(() => undefined),
     import("ripple-binary-codec/dist/serdes/binary-parser.js").catch(() => undefined),
-  ]).then(([c, p]) => (c === undefined || p === undefined ? undefined : { c, BinaryParser: p.BinaryParser }));
+  ]).then(([c, p]) => {
+    if (c === undefined || p === undefined) return undefined;
+    class Scanner extends p.BinaryParser {
+      readonly #b: Uint8Array;
+      #at = 0;
+      constructor(hex: string, definitions?: ConstructorParameters<Parser>[1]) {
+        super("", definitions);
+        this.#b = fromHex(hex);
+      }
+      override peek(): number {
+        if (this.#at >= this.#b.length) throw new Error("peek past the end");
+        return this.#b[this.#at]!;
+      }
+      override skip(n: number): void {
+        if (n < 0 || n > this.size()) throw new Error("skip past the end");
+        this.#at += n;
+      }
+      override read(n: number): Uint8Array {
+        if (n < 0 || n > this.size()) throw new Error("read past the end");
+        this.#at += n;
+        return this.#b.subarray(this.#at - n, this.#at);
+      }
+      override size(): number {
+        return this.#b.length - this.#at;
+      }
+      override end(customEnd?: number): boolean {
+        const length = this.size();
+        return length === 0 || (customEnd !== undefined && length <= customEnd);
+      }
+    }
+    return { c, Scanner };
+  });
   return codec;
 }
 
@@ -158,8 +194,8 @@ export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: s
   if (hex.length > MAX_BLOB_HEX) return refusal("xrpl/blob-too-large");
   const loaded = await loadCodec();
   if (loaded === undefined) return refusal("xrpl/peer-missing");
-  const { c, BinaryParser } = loaded;
-  if (!withinCaps(new BinaryParser(hex, c.DEFAULT_DEFINITIONS))) return refusal("xrpl/blob-malformed");
+  const { c, Scanner } = loaded;
+  if (!withinCaps(new Scanner(hex, c.DEFAULT_DEFINITIONS))) return refusal("xrpl/blob-malformed");
   let tx: XrplTxJson;
   let canonical: string;
   try {
