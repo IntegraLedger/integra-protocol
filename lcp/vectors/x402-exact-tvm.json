@@ -44,7 +44,7 @@
   "expectBoc": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
  },
  "V2": {
-  "case": "build({required: {x402Version: 2, resource, accepts: [placed]}, accepted: placed, wallet, walletId, seqno, jettonWallet, attachNanotons, now}, H), then complete(signature)",
+  "case": "build({required: {x402Version: 2, resource, accepts: [placed]}, accepted: placed, wallet, walletId, seqno, jettonWallet, attachNanotons, now}, H), then complete(signature). expectSettlementBoc is the settlement BoC complete writes, as pytoniq-core 0.2.0 serializes the settlement cell tree, Cell.to_boc(has_idx=False, hash_crc32=True): the root's hash is expectSettlementRootHash, and the text is buyer row B6's presented settlementBoc, which the same call reproduces byte for byte",
   "expectTransferBodyBits": 391,
   "expectTransferBodyHash": "2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
   "expectOutMessageHash": {
@@ -60,7 +60,8 @@
    "prefix": "6483cff80194d94e",
    "suffix": "761f183506"
   },
-  "expectSettlementRootHash": "696775c946299a6249d2856c9284735961758c91dca2ea084e278380cb3e1f15"
+  "expectSettlementRootHash": "696775c946299a6249d2856c9284735961758c91dca2ea084e278380cb3e1f15",
+  "expectSettlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87w=="
  },
  "V3": {
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",

@@ -250,6 +250,12 @@ describe("x402-exact-tvm.json", () => {
     if ("refused" in p) throw new Error(p.code);
     const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
     expect(hashHex(root)).toBe(V.V2.expectSettlementRootHash);
+    // The whole BoC is held byte for byte to expectSettlementBoc, pytoniq-core's serialization of the settlement tree
+    // (V2's case); @ton/core reads it to the same root and writes it again, without an index and with CRC-32C, unchanged.
+    const pytoniq = Cell.fromBase64(V.V2.expectSettlementBoc);
+    expect(hashHex(pytoniq)).toBe(V.V2.expectSettlementRootHash);
+    expect(pytoniq.toBoc({ idx: false, crc32: true }).toString("base64")).toBe(V.V2.expectSettlementBoc);
+    expect(p.payload.settlementBoc).toBe(V.V2.expectSettlementBoc);
     const actions = root.refs[0]!.refs[0]!;
     const out = actions.refs[1]!;
     const body = out.refs[0]!;
