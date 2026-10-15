@@ -576,7 +576,8 @@ class CborReader {
     if (info > 27) throw new RangeError("reserved");
     const n = 1 << (info - 24);
     let v = 0n;
-    for (const x of this.take(BigInt(n))) v = (v << 8n) | BigInt(x);
+    const w = this.take(BigInt(n));
+    for (let i = 0; i < w.length; i++) v = (v << 8n) | BigInt(w[i]!);
     return v;
   }
 

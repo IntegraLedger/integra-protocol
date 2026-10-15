@@ -49,4 +49,24 @@ describe("the CBOR reader", () => {
     expect(isMap(decodeCbor(bytes("4100"))!)).toBe(false);
     expect(isMap(decodeCbor(bytes("a0"))!)).toBe(true);
   });
+
+  it("a float is read from its own bytes, wherever they sit: [1, π] on 4 backings", () => {
+    // [float32 1.0, float64 π] (RFC 8949 §3.3: fa and fb carry IEEE 754 binary32 and binary64).
+    const plain = bytes("82fa3f800000fb400921fb54442d18");
+    const room = new Uint8Array(plain.length + 3);
+    room.set(plain, 3);
+    const backings: Record<string, Uint8Array> = {
+      "a Uint8Array": plain,
+      "a pooled Buffer": Buffer.from(plain),
+      "a view at an offset": room.subarray(3),
+      "a Buffer at an offset": Buffer.from(room.buffer, 3, plain.length),
+    };
+    const pooled = backings["a pooled Buffer"]!;
+    expect(Buffer.isBuffer(pooled) && pooled.buffer.byteLength > pooled.length).toBe(true);
+    expect(backings["a view at an offset"]!.byteOffset).toBe(3);
+    expect(Buffer.isBuffer(backings["a Buffer at an offset"]) && backings["a Buffer at an offset"]!.byteOffset).toBe(3);
+    const read = Object.entries(backings).map(([backing, b]) => [backing, decodeCbor(b)]);
+    expect(read).toEqual(Object.keys(backings).map((backing) => [backing, [1, 3.141592653589793]]));
+    expect(read.length).toBe(4);
+  });
 });

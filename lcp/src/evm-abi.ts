@@ -22,7 +22,7 @@ export function bytesOf(h: unknown, maxBytes = Number.MAX_SAFE_INTEGER): Uint8Ar
 /** `0x` and the bytes as lowercase hex. */
 export function hexOf(b: Uint8Array): Hex {
   let s = "0x";
-  for (const x of b) s += DIGITS[x >> 4]! + DIGITS[x & 15]!;
+  for (let i = 0; i < b.length; i++) s += DIGITS[b[i]! >> 4]! + DIGITS[b[i]! & 15]!;
   return s as Hex;
 }
 

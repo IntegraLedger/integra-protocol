@@ -156,7 +156,7 @@ function pushBytes(out: number[], no: number, b: Uint8Array): void {
   if (b.length === 0) return;
   pushVarint(out, BigInt((no << 3) | 2));
   pushVarint(out, BigInt(b.length));
-  for (const x of b) out.push(x);
+  for (let i = 0; i < b.length; i++) out.push(b[i]!);
 }
 
 function pushInt(out: number[], no: number, v: bigint): void {
@@ -593,7 +593,7 @@ async function build(c: TronChoice, h: AtrHash): Promise<TronUnsigned | Refusal>
       }
       const v = signature[64]!;
       if (v !== 0 && v !== 1 && v !== 27 && v !== 28) return refusal("tron/signature-malformed");
-      const transaction = hexDigits(encodeTransaction(rawBytes, [Uint8Array.from(signature)]));
+      const transaction = hexDigits(encodeTransaction(rawBytes, [new Uint8Array(signature)]));
       return paymentWith(required, accepted, { transaction });
     },
   };

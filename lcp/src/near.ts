@@ -427,7 +427,7 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
         return refusal("x402/signature-malformed");
       }
       const signedDelegateAction = toBase64(
-        encodeSignedDelegate(borsh, { delegateAction, signature: { keyType, data: Uint8Array.from(bytes) } }),
+        encodeSignedDelegate(borsh, { delegateAction, signature: { keyType, data: new Uint8Array(bytes) } }),
       );
       return paymentWith(required, accepted, { signedDelegateAction });
     },

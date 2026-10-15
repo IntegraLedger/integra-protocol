@@ -68,7 +68,7 @@ export function rlpUint(item: RlpItem | undefined): bigint | undefined {
   if (item === undefined || item.kind !== "bytes" || item.bytes.length > 32) return undefined;
   if (item.bytes.length > 0 && item.bytes[0] === 0) return undefined;
   let v = 0n;
-  for (const x of item.bytes) v = (v << 8n) | BigInt(x);
+  for (let i = 0; i < item.bytes.length; i++) v = (v << 8n) | BigInt(item.bytes[i]!);
   return v;
 }
 

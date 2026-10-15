@@ -625,7 +625,7 @@ export function signingFor(
               type: 17,
               map: [
                 { key: { type: 15, sym: new x.XdrString("public_key") }, val: { type: 13, bytes: Uint8Array.from(publicKey) } },
-                { key: { type: 15, sym: new x.XdrString("signature") }, val: { type: 13, bytes: Uint8Array.from(signature) } },
+                { key: { type: 15, sym: new x.XdrString("signature") }, val: { type: 13, bytes: new Uint8Array(signature) } },
               ],
             },
           ],

@@ -329,7 +329,7 @@ function bodyOf(bodyBytes: Uint8Array, depth: number): HederaBody | null {
       return null;
     }
   }
-  return { id: { account, seconds: s, nanos: Number(ns) }, validDuration, memo, bodyBytes: Uint8Array.from(bodyBytes) };
+  return { id: { account, seconds: s, nanos: Number(ns) }, validDuration, memo, bodyBytes: new Uint8Array(bodyBytes) };
 }
 
 /** `AccountID` {shardNum 1, realmNum 2, accountNum 3} as "shard.realm.num"; an alias account is not read. */
@@ -367,7 +367,9 @@ function vField(n: number, v: bigint): number[] {
 
 /** A length-delimited field, written even when empty. */
 function lenField(n: number, bytes: readonly number[] | Uint8Array): number[] {
-  return [...varint(BigInt((n << 3) | 2)), ...varint(BigInt(bytes.length)), ...bytes];
+  const out = [...varint(BigInt((n << 3) | 2)), ...varint(BigInt(bytes.length))];
+  for (let i = 0; i < bytes.length; i++) out.push(bytes[i]!);
+  return out;
 }
 
 /** A length-delimited field; an empty value is not written. */

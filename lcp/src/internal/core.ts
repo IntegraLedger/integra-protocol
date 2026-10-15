@@ -462,7 +462,7 @@ function decodeHash(s: unknown): Uint8Array<ArrayBuffer> | null {
 /** The one place a hash is written: `0x` and lowercase hex of 32 bytes. */
 function toHex(b: Uint8Array): AtrHash {
   let s = "0x";
-  for (const x of b) s += HEX_DIGITS[x >> 4]! + HEX_DIGITS[x & 15]!;
+  for (let i = 0; i < b.length; i++) s += HEX_DIGITS[b[i]! >> 4]! + HEX_DIGITS[b[i]! & 15]!;
   return s as AtrHash;
 }
 

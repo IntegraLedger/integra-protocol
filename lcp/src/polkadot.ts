@@ -115,7 +115,7 @@ const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 function toHex(b: Uint8Array): Hex {
   let s = "0x";
-  for (const x of b) s += x.toString(16).padStart(2, "0");
+  for (let i = 0; i < b.length; i++) s += b[i]!.toString(16).padStart(2, "0");
   return s as Hex;
 }
 
@@ -258,9 +258,9 @@ export function decodeProfileCall(call: Uint8Array): ProfileCall<ArrayBuffer> | 
   if (length === null || length.value !== BigInt(REMARK_LENGTH) || length.next + REMARK_LENGTH !== call.length) return no;
   return {
     assetId: Number(asset.value),
-    dest: Uint8Array.from(dest),
+    dest: new Uint8Array(dest),
     amount: amount.value,
-    remark: Uint8Array.from(call.subarray(length.next)),
+    remark: new Uint8Array(call.subarray(length.next)),
   };
 }
 
@@ -277,7 +277,7 @@ export function splitSigned(xt: Uint8Array): { signer: Uint8Array<ArrayBuffer>; 
   if (xt[at] !== 0x84) return refusal("polkadot/not-signed-v4");
   at += 1;
   if (xt[at] !== 0x00 || at + 33 > xt.length) return refusal("polkadot/address-not-id");
-  const signer = Uint8Array.from(xt.subarray(at + 1, at + 33));
+  const signer = new Uint8Array(xt.subarray(at + 1, at + 33));
   at += 33;
   const variant = xt[at];
   const size = variant === 0 || variant === 1 ? 64 : variant === 2 || variant === 3 ? 65 : -1;

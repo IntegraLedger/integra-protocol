@@ -162,7 +162,7 @@ export const U64_LIMIT = 1n << 64n;
 /** Lowercase hex of the bytes, without a prefix. */
 export function hexDigits(b: Uint8Array): string {
   let s = "";
-  for (const x of b) s += (x < 16 ? "0" : "") + x.toString(16);
+  for (let i = 0; i < b.length; i++) s += (b[i]! < 16 ? "0" : "") + b[i]!.toString(16);
   return s;
 }
 

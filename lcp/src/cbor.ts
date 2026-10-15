@@ -106,7 +106,8 @@ function argument(b: Uint8Array, s: { at: number }, info: number): bigint {
   const width = info === 24 ? 1 : info === 25 ? 2 : info === 26 ? 4 : info === 27 ? 8 : 0;
   if (width === 0) throw new Malformed();
   let v = 0n;
-  for (const x of take(b, s, BigInt(width))) v = (v << 8n) | BigInt(x);
+  const w = take(b, s, BigInt(width));
+  for (let i = 0; i < w.length; i++) v = (v << 8n) | BigInt(w[i]!);
   return v;
 }
 
@@ -122,8 +123,8 @@ function simple(b: Uint8Array, s: { at: number }, info: number): Cbor {
     return { simple: v };
   }
   if (info === 25) return half(take(b, s, 2n));
-  if (info === 26) return new DataView(take(b, s, 4n).slice().buffer).getFloat32(0);
-  if (info === 27) return new DataView(take(b, s, 8n).slice().buffer).getFloat64(0);
+  if (info === 26) return viewOf(take(b, s, 4n)).getFloat32(0);
+  if (info === 27) return viewOf(take(b, s, 8n)).getFloat64(0);
   throw new Malformed();
 }
 
@@ -157,6 +158,11 @@ function half(x: Uint8Array): number {
   const mant = h & 0x3ff;
   const v = exp === 0 ? mant * 2 ** -24 : exp !== 31 ? (mant + 1024) * 2 ** (exp - 25) : mant === 0 ? Infinity : NaN;
   return h & 0x8000 ? -v : v;
+}
+
+/** A DataView over exactly `x`'s bytes, wherever they sit in its buffer: a Node `Buffer` may sit inside a pool. */
+function viewOf(x: Uint8Array): DataView {
+  return new DataView(x.buffer, x.byteOffset, x.byteLength);
 }
 
 function byte(b: Uint8Array, s: { at: number }): number {

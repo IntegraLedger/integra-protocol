@@ -348,9 +348,9 @@ export function decodeSvmTx(wire: Uint8Array): SvmTx<ArrayBuffer> | Refusal {
   };
 }
 
-/** The bytes in a fresh `ArrayBuffer` of their own, whatever backs `b`. */
+/** The bytes in a fresh `ArrayBuffer` of their own, copied by index (not by `b`'s iterator), whatever backs `b`. */
 function copyOf(b: Uint8Array): Uint8Array<ArrayBuffer> {
-  return Uint8Array.from(b);
+  return new Uint8Array(b);
 }
 
 /** `decodeSvmTx`, with the message's address table lookups in order (none for a legacy message). */
@@ -397,7 +397,8 @@ function decode(wire: Uint8Array): Decoded | Refusal {
     for (let i = 0; i < nIx; i++) {
       const program = c.byte();
       const nAcc = c.compact();
-      const accounts = Array.from(c.bytes(nAcc));
+      const indices = c.bytes(nAcc);
+      const accounts = Array.from({ length: indices.length }, (_, j) => indices[j]!);
       const data = c.bytes(c.compact());
       instructions.push({ program, accounts, data });
     }
@@ -407,8 +408,10 @@ function decode(wire: Uint8Array): Decoded | Refusal {
       const nLookups = c.compact();
       for (let i = 0; i < nLookups; i++) {
         const table = keyString(c.bytes(32));
-        const writable = Array.from(c.bytes(c.compact()));
-        const readonly = Array.from(c.bytes(c.compact()));
+        const w = c.bytes(c.compact());
+        const writable = Array.from({ length: w.length }, (_, j) => w[j]!);
+        const r = c.bytes(c.compact());
+        const readonly = Array.from({ length: r.length }, (_, j) => r[j]!);
         // A v0 message's sanitize refuses a lookup that loads no account, "each lookup table must be used to load at
         // least one account" (anza-xyz/solana-sdk 648387ee, tag message@v3.0.0, `message/src/versions/v0/mod.rs:118-129`).
         if (writable.length + readonly.length === 0) return refusal("svm/tx-malformed");

@@ -84,7 +84,7 @@ export function decodeTempoTx(
     const v = rlpUint(value);
     if (to.kind !== "bytes" || input.kind !== "bytes" || v === undefined) return refusal("tempo/tx-malformed");
     if (to.bytes.length !== 0 && to.bytes.length !== 20) return refusal("tempo/tx-malformed");
-    calls.push({ to: to.bytes.length === 0 ? null : hexOf(to.bytes), value: v, input: Uint8Array.from(input.bytes) });
+    calls.push({ to: to.bytes.length === 0 ? null : hexOf(to.bytes), value: v, input: new Uint8Array(input.bytes) });
   }
   const validBeforeItem = items[VALID_BEFORE] as Extract<RlpItem, { kind: "bytes" }>;
   return {
