@@ -266,5 +266,20 @@
     "expect": "mpp/request-malformed"
    }
   ]
+ },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation. draft-tempo-subscription-00 (tempoxyz/mpp-specs 08e7dd87, lines 463-466) requires that the signed key authorization authorize the exact access key methodDetails.accessKey describes, both its accessKeyAddress and its keyType, and names no code. Each row's key authorization is SUB1's with the member the row gives in place of SUB1's, signed by the payer key and presented with B6's challenge. Key types are numbered as Tempo's IAccountKeychain SignatureType (tempoxyz/tempo 9bb63953, crates/contracts/src/precompiles/account_keychain.rs lines 24-28): Secp256k1 0, P256 1, WebAuthn 2. bound, reference and channel.ref each refuse the credential with the row's code.",
+  "rows": [
+   {
+    "case": "a key authorization whose key_id is not the challenge's accessKeyAddress",
+    "keyId": "0x7777777777777777777777777777777777777777",
+    "expect": "tempo/key-not-authorized"
+   },
+   {
+    "case": "a key authorization whose key_type is P256 (1) under a challenge whose keyType is secp256k1",
+    "keyType": 1,
+    "expect": "tempo/key-not-authorized"
+   }
+  ]
  }
 }

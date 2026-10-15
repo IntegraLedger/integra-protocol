@@ -68,6 +68,7 @@ import {
   type ReceiveTypedData,
 } from "./internal/evm.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
+import { readKeyAuthorization, type KeyAuthorizationRead } from "./internal/key-authorization.js";
 import { keyAccount } from "./internal/tempo.js";
 import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -84,7 +85,6 @@ import {
   OPEN_V2_SELECTOR,
   TIP20_CHANNEL_RESERVE,
   TRANSFER_WITH_MEMO_SELECTOR,
-  decodeKeyAuthorization,
   decodeTempoTx,
   encodeKeyAuthorization,
   expiringNonceHash,
@@ -257,6 +257,7 @@ const OPEN_WITH_AUTHORIZATION_SELECTOR = "0xb82a39ba";
 const MAX_CALLDATA = 131_072;
 const U96 = 1n << 96n;
 const U128 = 1n << 128n;
+/** The access key types a subscription challenge names, as Tempo's account keychain numbers them (`SignatureType`). */
 const KEY_TYPES = { secp256k1: 0, p256: 1, webAuthn: 2 } as const;
 
 // ── Channel ids.
@@ -1415,19 +1416,52 @@ function subscriptionKind(presented: MppCredential): "open" | "within" | "close"
   return p["type"] === "keyAuthorization" ? "open" : refusal("mpp/session-action");
 }
 
+/**
+ * The access key the subscription challenge issued, `methodDetails.accessKey`: its address, lowercase, and its key type
+ * as Tempo numbers it (`KEY_TYPES`); else `mpp/access-key-malformed`, the code the pairing's filter gives.
+ */
+function issuedKey(details: { [k: string]: Json }): { keyId: Hex; keyType: bigint } | Refusal {
+  const key = details["accessKey"];
+  const address = isObject(key) ? key["accessKeyAddress"] : undefined;
+  const type = isObject(key) ? key["keyType"] : undefined;
+  if (!isAddress(address) || (type !== "secp256k1" && type !== "p256" && type !== "webAuthn")) {
+    return refusal("mpp/access-key-malformed");
+  }
+  return { keyId: address.toLowerCase() as Hex, keyType: BigInt(KEY_TYPES[type]) };
+}
+
+/**
+ * The key id of the challenge's issued key (`issuedKey`), when the payer's key authorization authorizes that key: its
+ * key id and its key type are the challenge's. Tempo's subscription draft requires the authorization to name "the exact
+ * access key described by `methodDetails.accessKey`, including both `accessKeyAddress` and `keyType`". A key
+ * authorization for another key id or key type is `tempo/key-not-authorized`, so the activation, the payments under
+ * the key and the close are read under the one key the challenge issued.
+ */
+function authorizedKey(k: Pick<KeyAuthorizationRead, "keyId" | "keyType">, details: { [k: string]: Json }): Hex | Refusal {
+  const issued = issuedKey(details);
+  if (isRefusal(issued)) return issued;
+  return sameBytes(k.keyId, issued.keyId) && k.keyType === issued.keyType ? issued.keyId : refusal("tempo/key-not-authorized");
+}
+
+/**
+ * The opening's checked values: the key authorization the payload's `signature` carries, whose witness is H and whose
+ * key is the challenge's issued key (`authorizedKey`), and that key's id.
+ */
 function subscriptionWitness(
   presented: MppCredential,
-): { h: AtrHash; checked: Echoed; keyId: Hex; key: Exclude<ReturnType<typeof decodeKeyAuthorization>, Refusal> } | Refusal {
+): { h: AtrHash; checked: Echoed; keyId: Hex; key: KeyAuthorizationRead } | Refusal {
   const e = echoed(presented, SUBSCRIPTION);
   if (isRefusal(e)) return e;
   if (e.payload["type"] !== "keyAuthorization") return refusal("mpp/not-an-opening");
   const signed = e.payload["signature"];
   if (typeof signed !== "string") return refusal("tempo/key-authorization-malformed");
-  const k = decodeKeyAuthorization(signed as Hex);
+  const k = readKeyAuthorization(signed as Hex);
   if (isRefusal(k)) return k;
   if (k.witness === undefined) return refusal("tempo/no-witness");
   if (!hashEquals(k.witness, e.h)) return refusal("tempo/witness-not-bound");
-  return { h: e.h, checked: e.checked, keyId: k.keyId, key: k };
+  const keyId = authorizedKey(k, e.checked.details);
+  if (isRefusal(keyId)) return keyId;
+  return { h: e.h, checked: e.checked, keyId, key: k };
 }
 
 /**
@@ -1464,7 +1498,8 @@ async function subscriptionBound(input: unknown): Promise<AtrHash | Refusal> {
 /**
  * The activation's read keys, from what the payer signed: the keychain's `KeyAuthorizationWitness` carrying H, and the
  * `Transfer` of the key authorization's token to its recipient (`signedScope`), identified by the recipient alone.
- * `accessKey` records the key with that token and recipient for `keySearch`. Of the request it reads only the chain.
+ * `accessKey` records the key, the challenge's issued key that the key authorization authorizes (`authorizedKey`), with
+ * that token and recipient for `keySearch`. Of the request it reads only the chain.
  */
 async function subscriptionReference(input: unknown): Promise<SessionRef | Refusal> {
   const presented = credentialOf(input);
@@ -1486,14 +1521,20 @@ async function subscriptionReference(input: unknown): Promise<SessionRef | Refus
   };
 }
 
+/**
+ * The network and the key authorization's digest, for a key authorization that authorizes the challenge's issued key
+ * (`authorizedKey`).
+ */
 async function subscriptionRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
   const payload = payloadOf(presented);
   if (isRefusal(payload)) return payload;
   const p = paramsOf(presented.challenge);
   if (isRefusal(p)) return p;
   if (typeof payload["signature"] !== "string") return refusal("tempo/key-authorization-malformed");
-  const k = decodeKeyAuthorization(payload["signature"] as Hex);
-  return isRefusal(k) ? k : { network: p.network, channel: k.digest };
+  const k = readKeyAuthorization(payload["signature"] as Hex);
+  if (isRefusal(k)) return k;
+  const key = authorizedKey(k, p.details);
+  return isRefusal(key) ? key : { network: p.network, channel: k.digest };
 }
 
 function subscriptionUntil(presented: MppCredential): number | undefined {
@@ -1536,19 +1577,19 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
 
 /**
  * The close keys of a subscription: the account keychain's `KeyRevoked` naming `account`, the payer's account, and the
- * issued challenge's access key. The account is the one the activation registered the key for, which `keySearch` reads
- * from the activation's receipt as `accessKey.account`; without an address it is refused `mpp/input-malformed`.
+ * issued challenge's access key (`issuedKey`), the key `reference` records. The account is the one the activation
+ * registered the key for, which `keySearch` reads from the activation's receipt as `accessKey.account`; without an
+ * address it is refused `mpp/input-malformed`.
  */
 function subscriptionCloseRef(chosen: MppChallenge, _channel: string, account?: Hex): SessionRef | Refusal {
   const held = checkedFor(chosen, SUBSCRIPTION);
   if (isRefusal(held)) return held;
   const p = paramsOf(chosen);
   if (isRefusal(p)) return p;
-  const key = p.details["accessKey"];
-  const address = isObject(key) ? key["accessKeyAddress"] : undefined;
-  if (!isAddress(address)) return refusal("mpp/access-key-malformed");
+  const key = issuedKey(p.details);
+  if (isRefusal(key)) return key;
   if (!isAddress(account)) return refusal("mpp/input-malformed");
-  return { network: p.network, revokes: { account: account.toLowerCase() as Hex, keyId: address.toLowerCase() as Hex } };
+  return { network: p.network, revokes: { account: account.toLowerCase() as Hex, keyId: key.keyId } };
 }
 
 // ── The records.

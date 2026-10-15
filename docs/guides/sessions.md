@@ -309,7 +309,11 @@ carries the same token and recipient for `keySearch`. Tempo's subscription draft
 forbids `approve`, so no other rule names the recipient: an `approve` rule's spender is not one. The request's amount,
 currency and recipient are not read. An authorization that names more than one token or recipient, or none, is refused
 `tempo/key-authorization-malformed`. A `transfer` or `transferWithMemo` rule with no recipients allows any recipient,
-so the authorization does not name exactly one, and it is refused the same way.
+so the authorization does not name exactly one, and it is refused the same way. The key is the one the challenge
+issues: Tempo's subscription draft requires the authorization of "the exact access key described by
+`methodDetails.accessKey`, including both `accessKeyAddress` and `keyType`", so a key authorization whose key id or
+key type is another is refused `tempo/key-not-authorized` by `bound`, `reference` and `channel.ref`. The activation,
+the transfers `keySearch` finds under the key and the close `closeRef` names are read under that one key.
 
 On `x402/batch-settlement/eip155`, `bound` and `reference` read the opening's deposit amount as the channel contract's
 `deposit` takes it, a `uint128` that is not 0: an amount that is not a positive decimal below 2^128 is refused

@@ -963,6 +963,53 @@ describe("mpp-subscription-tempo.json", () => {
     expect(await subscriptionTempo.bound(cred)).toEqual(U.plant2.expect);
   });
 
+  // Tempo's subscription draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-subscription-00.md :261-272 and :463-466): the
+  // signed key authorization authorizes "the exact access key described by `methodDetails.accessKey`, including both
+  // `accessKeyAddress` and `keyType`". Tempo numbers key types as IAccountKeychain's SignatureType (tempoxyz/tempo
+  // 9bb63953, crates/contracts/src/precompiles/account_keychain.rs :24-28): Secp256k1 0, P256 1, WebAuthn 2. Each key
+  // authorization here is SUB1's, written with viem's RLP and signed by the payer key.
+  it("agreedRefusals: a key authorization for a key other than the challenge's access key", async () => {
+    type Row = { case: string; keyId?: string; keyType?: number; expect: string };
+    const rows = rowsOf(U.agreedRefusals.rows as Row[], "mpp-subscription-tempo.json agreedRefusals.rows", { exact: 2 });
+    const a = U.SUB1.authorization;
+    const presented = async (c: MppChallenge & { id: string }, keyType: number, keyId: string): Promise<MppCredential> => {
+      const authorization = toRlp([
+        num(BigInt(a.chainId)),
+        num(keyType),
+        keyId,
+        num(BigInt(a.expiry)),
+        [[f.pathUSD, num(10000000), num(2592000)]],
+        [[f.pathUSD, [["0x95777d59", [f.recipient]]]]],
+        H,
+      ] as never);
+      const signature = toRlp([fromRlp(authorization) as never, await sig65(keccak256(authorization))]);
+      return { challenge: c, source: `did:pkh:eip155:42431:${f.payer}`, payload: { type: "keyAuthorization", signature } };
+    };
+    // The challenge's own key: bound gives H, and the payment and the close read under that one key.
+    const own = await presented(ch, a.keyType, a.keyId);
+    expect(await subscriptionTempo.bound(own)).toBe(H);
+    const paid = (await subscriptionTempo.reference(own)) as SessionRef;
+    const closed = subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer) as SessionRef;
+    expect(paid.accessKey?.keyId).toBe(f.accessKey.toLowerCase());
+    expect(closed.revokes?.keyId).toBe(f.accessKey.toLowerCase());
+    for (const row of rows) {
+      const c = await presented(ch, row.keyType ?? a.keyType, row.keyId ?? a.keyId);
+      const refused = { refused: true, code: row.expect };
+      expect(await subscriptionTempo.bound(c), row.case).toEqual(refused);
+      expect(await subscriptionTempo.reference(c), row.case).toEqual(refused);
+      expect(await subscriptionTempo.channel.ref(c), row.case).toEqual(refused);
+    }
+    // A challenge that issues a P256 or a WebAuthn key takes a key authorization of that type, 1 or 2, and no other.
+    const typeRow = rows.find((r) => r.keyType !== undefined)!;
+    for (const [keyType, n] of [["p256", 1], ["webAuthn", 2]] as const) {
+      const request = JSON.parse(f.request);
+      request.methodDetails.accessKey.keyType = keyType;
+      const issued = placed(challenge("tempo", "subscription", JSON.stringify(request)));
+      expect(await subscriptionTempo.bound(await presented(issued, n, a.keyId)), keyType).toBe(H);
+      expect(await subscriptionTempo.bound(await presented(issued, 0, a.keyId)), keyType).toEqual({ refused: true, code: typeRow.expect });
+    }
+  });
+
   it("refusals", async () => {
     const u = (await subscriptionTempo.build({ challenge: ch, from: f.payer, now: f.now }, H)) as KeyAuthorizationUnsigned;
     const cred = u.complete(await sig65(u.request.digest)) as MppCredential;
