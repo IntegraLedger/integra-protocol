@@ -221,7 +221,7 @@
   "expectChannelIdH2Suffix": "a9d1"
  },
  "HS2": {
-  "case": "build(...) with SS1's placed C_H, from fixed.payer and deposit 10000000. calls[0].data is expectApproveCalldata: ERC-20 approve(address,uint256) of the escrow for the deposit, the approval the draft requires before open (draft-hedera-session-00 L441-445 at tempoxyz/mpp-specs 08e7dd87) and the reference client sends (packages/mppx-hedera/src/client/session.ts L213-220 at tomrowbo/mppx-hedera b5193b42). calls[1].data is expectOpenCalldata: the escrow's open(address,address,uint128,bytes32,address) (draft L417-439) with SS1's recipient and currency, the deposit, H as the salt and a zero authorizedSigner. Both are encoded with eth-utils 6.0.0's function_signature_to_4byte_selector and eth-abi 6.0.0's encode on Python 3.12.3; the lengths, prefixes, suffix, selector and salt bytes are of them. expectVoucherDigest is the EIP-712 digest of Voucher(bytes32 channelId,uint128 cumulativeAmount) under the domain {name \"Hedera Stream Channel\", version \"1\", chainId 296, verifyingContract the escrow}, with HS1's expectChannelId and cumulativeAmount 0 (draft L1068-1142; HederaStreamChannel.sol L26, L36-39 and L367-370), computed with eth-account 0.14.0's encode_typed_data and eth-utils' keccak.",
+  "case": "build(...) with SS1's placed C_H, from fixed.payer and deposit 10000000. calls[0].data is expectApproveCalldata: ERC-20 approve(address,uint256) of the escrow for the deposit, the approval the draft requires before open (draft-hedera-session-00 L441-445 at tempoxyz/mpp-specs 08e7dd87) and the reference client sends (packages/mppx-hedera/src/client/session.ts L213-220 at tomrowbo/mppx-hedera b5193b42). calls[1].data is expectOpenCalldata: the escrow's open(address,address,uint128,bytes32,address) (draft L417-439) with SS1's recipient and currency, the deposit, H as the salt and a zero authorizedSigner. Both are encoded with eth-utils 6.0.0's function_signature_to_4byte_selector and eth-abi 6.0.0's encode on Python 3.12.3; the lengths, prefixes, suffix, selector and salt bytes are of them. expectVoucherDigest is the EIP-712 digest of Voucher(bytes32 channelId,uint128 cumulativeAmount) under the domain {name \"Hedera Stream Channel\", version \"1\", chainId 296, verifyingContract the escrow}, with HS1's expectChannelId and cumulativeAmount 0 (draft L1068-1142; HederaStreamChannel.sol L26, L36-39 and L367-370), computed with eth-account 0.14.0's encode_typed_data and eth-utils' keccak.. complete({openTx: HS3.txHash, signature}) with the signature 0x22 x 65 gives the credential {challenge, payload: expectOpenPayload}: the draft's open credential (draft-hedera-session-00 L880-903 at tempoxyz/mpp-specs 08e7dd87: action \"open\", channelId, txHash, cumulativeAmount, signature), written by hand with HS1.expectChannelId, the transaction hash, the zero initial voucher's amount \"0\" and that signature",
   "deposit": "10000000",
   "expectApproveCalldata": "0x095ea7b30000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae0000000000000000000000000000000000000000000000000000000000989680",
   "expectOpenCalldata": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000",
@@ -235,7 +235,14 @@
    100,
    132
   ],
-  "expectVoucherDigest": "0x50cfeeafe6c419798b2bbaee65874dff8d02d47c48e682d56d45178501e16815"
+  "expectVoucherDigest": "0x50cfeeafe6c419798b2bbaee65874dff8d02d47c48e682d56d45178501e16815",
+  "expectOpenPayload": {
+   "action": "open",
+   "channelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+   "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+   "cumulativeAmount": "0",
+   "signature": "0x2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222"
+  }
  },
  "HS3": {
   "txHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
@@ -424,7 +431,7 @@
   "expect": "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7"
  },
  "XS2": {
-  "case": "XS2's opening: a PaymentChannelCreate from account, the payer of Ed25519 entropy 01x16, to SS1's xrpl recipient, of deposit drops, with settleDelay, fee, sequence and lastLedgerSequence, and one memo whose MemoData is the UTF-8 of toLcpString(H), signed by the payer. expectTxJson is written by hand from xrpl.org's PaymentChannelCreate (docs/references/protocol/transactions/types/paymentchannelcreate.md L38-45) and Transaction Common Fields (docs/references/protocol/transactions/common-fields.md L10-30 and L110-116) at XRPLF/xrpl-dev-portal 1a22a493, with these values. build's request.txJson is expectTxJson, and the blob's fields other than SigningPubKey and TxnSignature, as ripple-binary-codec 2.11.0 decodes them, are expectTxJson. The blob is reproduced byte for byte from expectTxJson: the payer's key is derived from the entropy by xrpl.org's Ed25519 Key Derivation (docs/concepts/accounts/cryptographic-keys.md L162-176, node:crypto's SHA-512Half and @noble/curves 2.4.0), its signature is @noble/curves' Ed25519 over ripple-binary-codec's encodeForSigning, and the blob is ripple-binary-codec's encode with SigningPubKey and TxnSignature. ripple-binary-codec is the peer lcp reads blobs with; build writes txJson without it. expectChannel is XS1's formula for account, SS1's xrpl recipient and sequence, computed by hand as XS1's is.",
+  "case": "XS2's opening: a PaymentChannelCreate from account, the payer of Ed25519 entropy 01x16, to SS1's xrpl recipient, of deposit drops, with settleDelay, fee, sequence and lastLedgerSequence, and one memo whose MemoData is the UTF-8 of toLcpString(H), signed by the payer. expectTxJson is written by hand from xrpl.org's PaymentChannelCreate (docs/references/protocol/transactions/types/paymentchannelcreate.md L38-45) and Transaction Common Fields (docs/references/protocol/transactions/common-fields.md L10-30 and L110-116) at XRPLF/xrpl-dev-portal 1a22a493, with these values. build's request.txJson is expectTxJson, and the blob's fields other than SigningPubKey and TxnSignature, as ripple-binary-codec 2.11.0 decodes them, are expectTxJson. The blob is reproduced byte for byte from expectTxJson: the payer's key is derived from the entropy by xrpl.org's Ed25519 Key Derivation (docs/concepts/accounts/cryptographic-keys.md L162-176, node:crypto's SHA-512Half and @noble/curves 2.4.0), its signature is @noble/curves' Ed25519 over ripple-binary-codec's encodeForSigning, and the blob is ripple-binary-codec's encode with SigningPubKey and TxnSignature. ripple-binary-codec is the peer lcp reads blobs with; build writes txJson without it. expectChannel is XS1's formula for account, SS1's xrpl recipient and sequence, computed by hand as XS1's is.. complete({signedBlob: blob, claimSignature: \"C042FD\"}) gives the credential {challenge, source, payload: expectOpenPayload}, source did:pkh:xrpl:1:account: the draft's open credential (draft-xrpl-session-00 L336-350 at tempoxyz/mpp-specs 08e7dd87: action \"open\", transaction, amount, signature), written by hand with blob, SS1's xrpl request amount and that claim signature",
   "blob": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440FD659811F48201E3336E668DE891D117AAFA477D2BC0C0B45045952A9533EF53D9DE6408E697B91EC800926C335AA44FB2AD9C18EB875368524EBC791517230B81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
   "expectLength": 306,
   "expectHash": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
@@ -456,6 +463,12 @@
      }
     }
    ]
+  },
+  "expectOpenPayload": {
+   "action": "open",
+   "transaction": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440FD659811F48201E3336E668DE891D117AAFA477D2BC0C0B45045952A9533EF53D9DE6408E697B91EC800926C335AA44FB2AD9C18EB875368524EBC791517230B81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
+   "amount": "100",
+   "signature": "C042FD"
   }
  },
  "XS3": {

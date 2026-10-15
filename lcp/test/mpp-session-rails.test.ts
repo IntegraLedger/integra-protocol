@@ -167,6 +167,10 @@ describe("mpp/session/hedera", () => {
     const c = u.complete({ openTx: V.HS3.txHash, signature: `0x${"22".repeat(65)}` });
     if ("refused" in c) throw new Error(c.code);
     expect(c.payload["channelId"]).toBe(V.HS1.expectChannelId);
+    // The opening credential is held whole, as JSON text, to the draft's open credential written by hand (HS2's case).
+    const byHand = { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: `0x${"22".repeat(65)}` };
+    expect(JSON.stringify(V.HS2.expectOpenPayload)).toBe(JSON.stringify(byHand));
+    expect(JSON.stringify(c)).toBe(JSON.stringify({ challenge: C_H, payload: V.HS2.expectOpenPayload }));
   });
 
   it("HS3: fetchPresented, bound, channel ref and status of the opening", async () => {
@@ -812,6 +816,11 @@ describe("mpp/session/xrpl", () => {
     const c = await u.complete({ signedBlob: V.XS2.blob, claimSignature: "C042FD" });
     if ("refused" in c) throw new Error(c.code);
     expect(c.source).toBe(`did:pkh:xrpl:1:${V.XS2.account}`);
+    // The opening credential is held whole, as JSON text, to the draft's open credential written by hand (XS2's case).
+    const amount = JSON.parse(Buffer.from(V.SS1.xrpl.challenge.request, "base64url").toString("utf8")).amount;
+    const byHand = { action: "open", transaction: V.XS2.blob, amount, signature: "C042FD" };
+    expect(JSON.stringify(V.XS2.expectOpenPayload)).toBe(JSON.stringify(byHand));
+    expect(JSON.stringify(c)).toBe(JSON.stringify({ challenge: C_X, source: `did:pkh:xrpl:1:${V.XS2.account}`, payload: V.XS2.expectOpenPayload }));
   });
 
   it("build refuses a request whose amount is not a u64 of drops, and builds the largest u64", async () => {
