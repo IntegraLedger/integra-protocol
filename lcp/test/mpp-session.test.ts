@@ -945,7 +945,8 @@ describe("mpp-session-tempo.json", () => {
   // binds the channel to the escrow and the chain, methodDetails.chainId, which is 4217 where a v1 challenge names none
   // (:613), and the server broadcasts the signed open transaction (:859-862). The chain id is the first field of that
   // transaction, read here with viem's fromRlp. A row's opening is build's for its protocol's challenge, both for chain
-  // 42431, completed with that open call in a transaction signed for the row's chain; signed for 42431, it gives H.
+  // 42431: signed for 42431, complete gives the credential and bound gives H. Signed for the row's chain, build's voucher
+  // and complete refuse that transaction, and bound, reference and buildWithin refuse the credential that carries it.
   it("agreedRefusals: an opening whose transaction is signed for another chain than the challenge's", async () => {
     type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; expect: string };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
@@ -953,12 +954,18 @@ describe("mpp-session-tempo.json", () => {
       keep: ["the transactionChainId rows", (r) => r.transactionChainId !== undefined],
       leave: ["the descriptor and channelId rows, which the two tests above run", (r) => r.transactionChainId === undefined],
     });
+    const voucherSignature = `0x${"66".repeat(65)}` as const;
     const openedOn = async (ch: ReturnType<typeof placed>, escrow: string, chainId: number) => {
       const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
       if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
-      const wire = await openWire(u.funding.call.data, sig65, escrow, chainId);
-      expect(fromRlp(toHex(wire.subarray(1)))[0]).toBe(num(chainId));
-      return { chain: u.funding.chainId, cred: u.complete(toHex(wire), `0x${"66".repeat(65)}`) as MppCredential };
+      const wire = toHex(await openWire(u.funding.call.data, sig65, escrow, chainId));
+      expect(fromRlp(`0x${wire.slice(4)}`)[0]).toBe(num(chainId));
+      return { chain: u.funding.chainId, u, wire };
+    };
+    /** The credential complete gives for the transaction signed for the challenge's chain, carrying `wire` in its place. */
+    const carrying = (own: Awaited<ReturnType<typeof openedOn>>, wire: `0x${string}`) => {
+      const cred = own.u.complete(own.wire, voucherSignature) as MppCredential;
+      return { ...cred, payload: { ...cred.payload, transaction: wire } };
     };
     for (const row of rows) {
       const v1 = row.sessionProtocol === "v1";
@@ -966,9 +973,12 @@ describe("mpp-session-tempo.json", () => {
       const escrow = v1 ? f.escrowV1 : f.escrowV2;
       const own = await openedOn(ch, escrow, 42431);
       expect(own.chain, row.case).toBe(42431);
-      expect(await sessionTempo.bound(own.cred), row.case).toBe(H);
-      const { cred } = await openedOn(ch, escrow, row.transactionChainId!);
+      expect(await sessionTempo.bound(own.u.complete(own.wire, voucherSignature)), row.case).toBe(H);
+      const other = await openedOn(ch, escrow, row.transactionChainId!);
       const refused = { refused: true, code: row.expect };
+      expect(other.u.voucher(other.wire), row.case).toEqual(refused);
+      expect(other.u.complete(other.wire, voucherSignature), row.case).toEqual(refused);
+      const cred = carrying(own, other.wire);
       expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
       expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
       const within = { challenge: { ...(v1 ? V1 : V2), id: "seller-own-id" }, opening: cred, cumulativeAmount: 1n, action: "voucher" };
@@ -979,8 +989,10 @@ describe("mpp-session-tempo.json", () => {
     const v1Bare = placed(challenge("tempo", "session", JSON.stringify(bare)));
     const onDefault = await openedOn(v1Bare, f.escrowV1, 4217);
     expect(onDefault.chain).toBe(4217);
-    expect(await sessionTempo.bound(onDefault.cred)).toBe(H);
-    expect(await sessionTempo.bound((await openedOn(v1Bare, f.escrowV1, 42431)).cred)).toEqual({ refused: true, code: "tempo/tx-malformed" });
+    expect(await sessionTempo.bound(onDefault.u.complete(onDefault.wire, voucherSignature))).toBe(H);
+    const off = await openedOn(v1Bare, f.escrowV1, 42431);
+    expect(off.u.complete(off.wire, voucherSignature)).toEqual({ refused: true, code: "tempo/tx-malformed" });
+    expect(await sessionTempo.bound(carrying(onDefault, off.wire))).toEqual({ refused: true, code: "tempo/tx-malformed" });
   });
 
   it("the record", () => {

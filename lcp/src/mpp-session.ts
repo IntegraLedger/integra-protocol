@@ -128,7 +128,10 @@ export type SessionUnsigned = {
     | { kind: "eip712"; typedData: ReceiveTypedData | Permit2TypedData }
     | { kind: "evm-calls"; chainId: number; calls: { to: Hex; data: Hex }[]; broadcast: true }
     | { kind: "tempo-call"; chainId: number; call: { to: Hex; data: Hex }; validBefore: number; broadcast: false };
-  /** `funded`: the funding signature, transaction hash or signed `0x76` transaction. */
+  /**
+   * `funded`: the funding signature, transaction hash or signed `0x76` transaction. A `0x76` transaction signed for a
+   * chain other than `funding.chainId` is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses it.
+   */
   voucher(funded: Hex): VoucherTypedData | Refusal;
   complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal;
 };
@@ -1343,6 +1346,11 @@ async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
   };
 }
 
+/**
+ * The open call for the buyer's signer, and the voucher and credential of the signed transaction. That transaction is
+ * read as `bound` reads it: one that does not decode gives `decodeTempoTx`'s refusal, and one signed for a chain other
+ * than the challenge's, `methodDetails.chainId`, is `tempo/tx-malformed`.
+ */
 async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
   const o = offerFor(choice, h, SESSION_TEMPO);
   if (isRefusal(o)) return o;
@@ -1371,6 +1379,9 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
   const opened = (signedTx: Hex) => {
     const wire = isHexBytes(signedTx, 1, MAX_WIRE) ? bytesOf(signedTx)! : undefined;
     if (wire === undefined) return refusal("mpp/credential-malformed");
+    const tx = decodeTempoTx(wire);
+    if (isRefusal(tx)) return tx;
+    if (tx.chainId !== BigInt(p.chainId)) return refusal("tempo/tx-malformed");
     if (p.version === "v1") {
       const channelId = evmChannelId({ payer: from, payee: recipient, token: currency, salt, authorizedSigner: signer, escrow: p.escrow, chainId: p.chainId });
       return typeof channelId === "string" ? { channelId } : channelId;
