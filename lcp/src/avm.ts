@@ -1,7 +1,8 @@
 /**
  * Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR
  * hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes.
- * `algosdk` is an optional peer: this module loads it when present. Without it the pairing serves no option, and
+ * `algosdk` is an optional peer: this module loads it when present. Without it the pairing serves no option: the
+ * option filter refuses an Algorand option `avm/peer-missing` where it would check the option's addresses, and
  * `avmCarrier` and `build` refuse `avm/peer-missing`.
  */
 import type * as Algosdk from "algosdk";
@@ -117,24 +118,31 @@ function isAddress(s: unknown): s is string {
  * method, and no flow other than `"authorization"`), the amount a positive decimal (`isAmount`) below 2^64 and
  * `maxTimeoutSeconds` a positive safe integer, which `build` writes into the asset transfer and its last valid round.
  * `pairingOf`, `advertise`, `read` and `build` apply it, and `bound` and `reference` hold the option a presented payment
- * echoes to it. Without algosdk no option is served.
+ * echoes to it. An `exact` option on an `algorand:` network is this pairing's, which needs no algosdk; any other option
+ * is not. The `payTo` and the fee payer are addresses that only algosdk checks, so they are checked last: without
+ * algosdk, an option of this pairing that passes every other check is `avm/peer-missing`, and one that fails another
+ * check gets the code it gets with algosdk.
  */
 function check(o: PaymentRequirements): true | Refusal | undefined {
   if (!isObject(o) || typeof o.network !== "string" || !o.network.startsWith("algorand:")) return undefined;
-  if (o.scheme !== "exact" || sdk === null) return undefined;
+  if (o.scheme !== "exact") return undefined;
   const extra = o.extra;
   if (extra !== undefined && !isObject(extra)) return refusal("avm/option-malformed");
   if (!NETWORK.test(o.network)) return refusal("avm/network-malformed");
   if (extra?.["assetTransferMethod"] !== undefined) return refusal("avm/option-malformed");
   const flow = extra?.["paymentFlow"];
   if (flow !== undefined && flow !== "authorization") return refusal("avm/option-malformed");
+  if (
+    uint64Of(o.asset) === undefined ||
+    !isAmount(o.amount) ||
+    uint64Of(o.amount) === undefined ||
+    !isTimeoutSeconds(o.maxTimeoutSeconds)
+  ) {
+    return refusal("avm/option-malformed");
+  }
+  if (sdk === null) return refusal("avm/peer-missing");
   const feePayer = extra?.["feePayer"];
-  if (uint64Of(o.asset) === undefined || !isAddress(o.payTo) || (feePayer !== undefined && !isAddress(feePayer))) {
-    return refusal("avm/option-malformed");
-  }
-  if (!isAmount(o.amount) || uint64Of(o.amount) === undefined || !isTimeoutSeconds(o.maxTimeoutSeconds)) {
-    return refusal("avm/option-malformed");
-  }
+  if (!isAddress(o.payTo) || (feePayer !== undefined && !isAddress(feePayer))) return refusal("avm/option-malformed");
   return true;
 }
 
@@ -203,6 +211,11 @@ function advertise(
   return advertiseFor(check)(doc, h, link, offer, agreementUrl);
 }
 
+/**
+ * The buyer's reading of the challenge over the option filter (`readFor`). Without algosdk the filter refuses
+ * `avm/peer-missing` each Algorand option whose addresses it would check, so a challenge holding one is
+ * `avm/peer-missing`, and any other challenge gets the answer it gets with algosdk.
+ */
 function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(check)(doc);
 }
