@@ -94,8 +94,30 @@ describe("x402/exact/casper", () => {
     expect(toHex(digest)).toBe(V.C1.expectDigest);
   });
 
-  it("C2: complete, then bound gives H", async () => {
+  // C2's payload is x402 v2's PaymentPayload written by hand (x402 751590a2, specs/x402-specification-v2.md §5.2.1 and
+  // specs/schemes/exact/scheme_exact_casper.md L13-17, L39-50): the authorization is C1's message, and the public key
+  // and signature the fixed placeholders. complete's payment is held to it whole, as JSON text.
+  it("C2: complete gives x402's PaymentPayload as the Casper scheme writes it, then bound gives H", async () => {
+    const byHand = {
+      x402Version: 2,
+      resource: V.fixed.resource,
+      accepted: O,
+      payload: {
+        authorization: {
+          from: V.C1.expectMessage.from,
+          to: V.C1.expectMessage.to,
+          value: V.C1.expectMessage.value,
+          validAfter: V.C1.expectMessage.validAfter,
+          validBefore: V.C1.expectMessage.validBefore,
+          nonce: V.C1.expectMessage.nonce,
+        },
+        publicKey: V.fixed.publicKey,
+        signature: V.fixed.signature,
+      },
+    };
+    expect(JSON.stringify(V.C2.expectPayload)).toBe(JSON.stringify(byHand));
     const payment = completed(await unsigned());
+    expect(JSON.stringify(payment)).toBe(JSON.stringify(V.C2.expectPayload));
     expect(payment).toEqual(V.C2.expectPayload);
     expect(await exactCasper.bound(payment)).toBe(V.C2.expectBound);
     const prefixed = mutate(payment, { "payload.authorization.nonce": H });

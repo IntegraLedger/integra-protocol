@@ -46,7 +46,7 @@
   "expectDigest": "0x81a4a72aa000ac8cff789ccd444699483d4424a2b4ce225474a6a723965e41c9"
  },
  "C2": {
-  "case": "complete(publicKey, signature), then bound",
+  "case": "complete(publicKey, signature), then bound. expectPayload is x402 v2's PaymentPayload written by hand from the specifications (x402-foundation/x402 751590a2): its members in the order of specs/x402-specification-v2.md \u00a75.2.1 (x402Version, resource, accepted, payload), and the Casper payload as specs/schemes/exact/scheme_exact_casper.md L13-17 and its example PaymentPayload L39-50 write it (authorization, then publicKey and signature, the fixed placeholders), the authorization's members in the order of L40-47 with C1.expectMessage's values; Python 3.12.3's json.dumps of that object, compact, is the JSON text of expectPayload.",
   "expectPayload": {
    "x402Version": 2,
    "resource": {
