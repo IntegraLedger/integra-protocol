@@ -626,6 +626,14 @@
    {
     "case": "build with a malformed from, deposit or XRPL channel terms",
     "expect": "mpp/input-malformed"
+   },
+   {
+    "case": "a solana opening without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: REQUIRED for operator)",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "a solana opening with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: MUST be absent for client)",
+    "expect": "mpp/credential-malformed"
    }
   ]
  },

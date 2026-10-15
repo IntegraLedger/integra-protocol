@@ -124,7 +124,10 @@ export interface HederaSessionUnsigned {
   complete(signed: { openTx: Hex; signature: Hex }): MppCredential | Refusal;
 }
 
-/** The values a Solana channel client composes the `open` from; `complete` takes the composed open payload. */
+/**
+ * The values a Solana channel client composes the `open` from; `complete` takes the composed open payload, which carries
+ * `authentication` when the challenge's `voucherSigner` is `operator` and none otherwise, and checks it as `bound` does.
+ */
 export interface SolanaSessionUnsigned {
   request: {
     kind: "solana-session-open";
@@ -575,7 +578,12 @@ function solanaOpenTx(payload: { [k: string]: Json }): SvmTx | Refusal {
   return isRefusal(wire) ? wire : decodeSvmTx(wire);
 }
 
-/** The opening's checks: the one `open` of the challenge's program, its salt H's first 8 bytes, its channel the payload's. */
+/**
+ * The opening's checks: the one `open` of the challenge's program, its salt H's first 8 bytes, its channel the payload's;
+ * then `authentication`, which draft-solana-session-00's open action requires for an `operator` voucher signer and
+ * forbids for `client`, the default: missing for `operator`, or present for `client`, is `mpp/credential-malformed`;
+ * present, it names the echoed challenge's id, else `svm/proof-not-challenge`.
+ */
 function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Echoed; tx: SvmTx; program: string } | Refusal {
   const e = opening(presented, SOLANA);
   if (isRefusal(e)) return e;
@@ -591,6 +599,7 @@ function solanaOpening(presented: MppCredential): { h: AtrHash; checked: Echoed;
   const declared = keyBytes(e.payload["channelId"]);
   if (declared === null || keyString(declared) !== open.channel) return refusal("svm/channel-mismatch");
   const auth = e.payload["authentication"];
+  if ((e.checked.details["voucherSigner"] === "operator") !== (auth !== undefined)) return refusal("mpp/credential-malformed");
   if (auth !== undefined && (!isObject(auth) || auth["challengeId"] !== presented.challenge.id)) {
     return refusal("svm/proof-not-challenge");
   }

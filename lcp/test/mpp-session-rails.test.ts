@@ -22,6 +22,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { ed25519 } from "@noble/curves/ed25519.js";
+import { base58 } from "@scure/base";
 import canonicalize from "canonicalize";
 import { coreTypes, decode as decodeXrpl, encode as encodeXrpl, encodeForSigning } from "ripple-binary-codec";
 import { encodeAbiParameters, encodeFunctionData, hashTypedData, keccak256, parseAbi, parseAbiParameters, type Hex as ViemHex } from "viem";
@@ -57,6 +58,15 @@ const C_H: MppChallenge & { id: string } = V.SS1.hedera.placed;
 const C_S: MppChallenge & { id: string } = V.SS1.solana.placed;
 const C_X: MppChallenge & { id: string } = V.SS1.xrpl.placed;
 const cred = (challenge: MppChallenge & { id: string }, payload: MppCredential["payload"]): MppCredential => ({ challenge, payload });
+/** SS1's Solana challenge with its methodDetails changed by `change`, placed as C_S is. */
+const solanaPlaced = (change: (details: Record<string, unknown>) => void): MppChallenge & { id: string } => {
+  const r = JSON.parse(Buffer.from(V.SS1.solana.challenge.request, "base64url").toString("utf8"));
+  change(r.methodDetails);
+  const c: MppChallenge = { ...V.SS1.solana.challenge, request: b64u(canonicalJson(r) as string) };
+  const placed = sessionSolana.advertise([c], H, V.fixed.link, c);
+  if (!Array.isArray(placed)) throw new Error("not placed");
+  return placed[0] as MppChallenge & { id: string };
+};
 
 describe("SS1: the opening challenges", () => {
   it("pairingsOf, place and issuedDigest", async () => {
@@ -592,6 +602,41 @@ describe("mpp/session/solana", () => {
     const use = cred(C_S, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.plants.solana.useWrongChallengeId, payer: V.SV3.payer, signature: "x" } });
     expect(await sessionSolana.channel.boundWithin(use)).toEqual(refused(V.plants.solana.expectUse));
   });
+
+  // SV5's challenge is C_S with SV5's methodDetails. The open action's authentication is REQUIRED for an operator voucher
+  // signer and MUST be absent for client, the default (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87). The
+  // operator opening's proof is SV5's: SV3's proof text signed with the payer's seed 01, in base58.
+  it("SV5: an operator opening carries authentication and a client opening none; bound, reference and complete refuse the other", async () => {
+    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
+    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
+    expect([operator.id, client.id]).toEqual([V.fixed.MV1, V.fixed.MV1]);
+    const proof = sessionProof({ channelId: V.SV2.channel, payer: V.SV3.payer, challengeId: operator.id });
+    const signature = ed25519.sign(proof, new Uint8Array(32).fill(1));
+    expect(hex(signature).startsWith(V.SV3.expectProofSignaturePrefix) && hex(signature).endsWith(V.SV3.expectProofSignatureSuffix)).toBe(true);
+    const authentication = { ...V.SV5.expectAuthentication, signature: base58.encode(signature) };
+    expect(Object.keys(authentication)).toEqual(V.SV5.expectAuthenticationKeys);
+    const payload = { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 };
+    const held = [cred(operator, { ...payload, authentication }), cred(client, payload), cred(C_S, payload)];
+    for (const c of held) {
+      expect(await sessionSolana.bound(c)).toBe(H);
+      expect(await sessionSolana.reference(c)).toEqual(V.SV2.expectReference);
+    }
+    const other = [cred(operator, payload), cred(client, { ...payload, authentication }), cred(C_S, { ...payload, authentication })];
+    for (const c of other) {
+      expect(await sessionSolana.bound(c)).toEqual(refused("mpp/credential-malformed"));
+      expect(await sessionSolana.reference(c)).toEqual(refused("mpp/credential-malformed"));
+    }
+    for (const [c, open, expected] of [
+      [operator, { ...payload, authentication }, { challenge: operator, payload: { ...payload, authentication } }],
+      [operator, payload, refused("mpp/credential-malformed")],
+      [client, payload, { challenge: client, payload }],
+      [client, { ...payload, authentication }, refused("mpp/credential-malformed")],
+    ] as const) {
+      const u = await sessionSolana.build({ challenge: c, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
+      if ("refused" in u) throw new Error(u.code);
+      expect(u.complete(open)).toEqual(expected);
+    }
+  });
 });
 
 /** The PayChannel ledger entry's ID, by hand: SHA-512Half of 0x0078 ‖ AccountID ‖ AccountID ‖ the sequence, big-endian. */
@@ -1027,6 +1072,17 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     },
   };
 
+  const solanaOpen = { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 };
+  const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
+  const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
+  const proofFor = (c: MppChallenge & { id: string }) => ({ type: "proof", challengeId: c.id, payer: V.SV3.payer, signature: "x" });
+  /** bound, reference and build's complete of the opening `payload` answering challenge `c`. */
+  const solanaCalls = async (c: MppChallenge & { id: string }, payload: MppCredential["payload"]) => {
+    const u = await sessionSolana.build({ challenge: c, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
+    if ("refused" in u) throw new Error(u.code);
+    return [await sessionSolana.bound(cred(c, payload)), await sessionSolana.reference(cred(c, payload)), u.complete(payload)];
+  };
+
   // Each input a row changes is accepted as given, so each refusal below is the change's.
   it("the inputs the rows change, as given, are accepted", async () => {
     for (const m of ["hedera", "solana", "xrpl"] as const) expect(pairingsOf(requestOf(m, () => undefined))).toEqual([`mpp/session/${m}`]);
@@ -1036,6 +1092,10 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     expect(solanaVoucher(V.SV2.channel, 100n)).toBeInstanceOf(Uint8Array);
     expect(await sessionHedera.build(hederaChoice, H)).not.toHaveProperty("refused");
     expect(await sessionXrpl.build(xrplChoice, H)).not.toHaveProperty("refused");
+    for (const [c, payload] of [[operator, { ...solanaOpen, authentication: proofFor(operator) }], [client, solanaOpen], [C_S, solanaOpen]] as const) {
+      const [bound, reference, completed] = await solanaCalls(c, payload);
+      expect([bound, reference, completed]).toEqual([H, V.SV2.expectReference, { challenge: c, payload }]);
+    }
   });
 
   const cases: Record<string, () => Promise<unknown[]>> = {
@@ -1107,6 +1167,13 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
         await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, cancelAfter: -1 } }, H),
       ];
     },
+    "a solana opening without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: REQUIRED for operator)":
+      async () => solanaCalls(operator, solanaOpen),
+    "a solana opening with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: MUST be absent for client)":
+      async () => [
+        ...(await solanaCalls(client, { ...solanaOpen, authentication: proofFor(client) })),
+        ...(await solanaCalls(C_S, { ...solanaOpen, authentication: proofFor(C_S) })),
+      ],
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });
