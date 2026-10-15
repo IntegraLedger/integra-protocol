@@ -82,7 +82,10 @@ A pairing of protocol, scheme and rail.
 Who broadcasts what a payer presents under a pairing: `"payer"`, which sent the payment before presenting it, or
 `"payee"`, the seller, or the facilitator or processor acting for it, which sends or executes it after. A pairing's
 `broadcaster` gives this only for a payment of a type and kind the pairing takes, within the shape gate its `bound`
-applies first; any other payment gets the refusal `bound` gives it.
+applies first; any other payment gets the refusal `bound` gives that fault. Where a payment has a second fault that
+`bound` finds first, in H or the challenge, the two codes differ. A session's or batch channel's `bound` reads the
+opening alone, so for any other action the reader is `channel.kind`: a payment it refuses for its own content gets
+its refusal, and one it refuses for what the challenge decides is answered.
 
 ***
 

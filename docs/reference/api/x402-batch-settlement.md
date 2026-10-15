@@ -173,7 +173,9 @@ seller, verifies the agent's signed request and bills its registered identity of
 `x402/batch-settlement/eip155`. The payee broadcasts (`broadcaster` answers `"payee"` for each payment type
 `channel.kind` takes): for every payment of the channel: the seller's facilitator executes the deposit's token
 authorization, redeems vouchers when it claims, and executes a refund; `status` reads them, and `channel.kind`
-classifies each payment. A payment of any other type gets `x402/not-an-opening`, as `bound` refuses it.
+classifies each payment. A payment of any other type gets `x402/not-an-opening`, as `bound` refuses it. `bound` reads
+a deposit alone, so `channel.kind` reads the rest: a refund whose `amount` is not a positive decimal below 2^128 gets
+`x402/payload-malformed`, as `channel.kind` refuses it.
 
 ***
 

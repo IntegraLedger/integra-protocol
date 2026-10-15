@@ -768,7 +768,10 @@ opening and a top-up, each a transaction the payer signed, once `fetchPresented`
 lookup tables (it reads no landed payment); it redeems vouchers and the operator's `use` metering when it settles,
 and broadcasts the close. `status` and `closeRef` read them. Any other action, a voucher where the challenge's
 `voucherSigner` is `operator` and a `use` where it is not among them, gets `mpp/session-action`, as `bound` refuses
-it.
+it. `bound` reads the opening alone, so `channel.kind` reads the rest: a close that lacks the member its mode
+requires, or carries the one its mode forbids, gets `mpp/credential-malformed`, as `channel.kind` refuses it. Where
+`channel.kind` refuses the echoed challenge itself (another intent or method, or a request that does not decode or
+whose `methodDetails` is not an object), the challenge decides, and `broadcaster` answers.
 
 ***
 
