@@ -56,6 +56,8 @@ type UsdcDirect = typeof EVM | typeof STACKS | typeof GATEWAY;
 const MAX_REQUEST = 8192;
 const MAX_SIGNATURE = 8192;
 const MAX_STACKS_TX = 16_384;
+/** Stacks mainnet's chain id, `CHAIN_ID_MAINNET` (stacks-core 4.0.5, stacks-common/src/libcommon.rs:58). */
+const STACKS_MAINNET_CHAIN = 1;
 const STACKS_FORMAT = "stacks_transaction_v1";
 const GATEWAY_FORMAT = "circle-gateway-v1";
 const UINT = /^[0-9]{1,78}$/;
@@ -354,8 +356,15 @@ export type UsdcUnsigned =
       complete(signature: Hex): MppCredential | Refusal;
     }
   | {
+      /**
+       * The transfer to sign for the challenge's chain, `chainId`, at that network's version: 0x00 on chain 1, mainnet,
+       * and 0x80 on any other. `complete` takes the signed transaction's bytes, and refuses bytes that are empty or over
+       * 16 KiB with `mpp/credential-malformed`, bytes a Stacks node does not decode with `mpp/stacks-tx-malformed`, and a
+       * transaction of another chain id or version with `mpp/stacks-network-mismatch`, as `bound` refuses them.
+       */
       request: {
         kind: "stacks-contract-call";
+        chainId: number;
         contract: string;
         functionName: "transfer";
         args: { amount: string; sender: string; recipient: string; memo: AtrHash };
@@ -381,8 +390,22 @@ export type UsdcUnsigned =
     };
 
 /**
+ * True when a node of the challenge's network takes the transaction: its chain id is the challenge's `chainId`, and
+ * its version is that network's, 0x00 on mainnet and 0x80 on any other. stacks-core 4.0.5 refuses a transaction of
+ * another chain id, then one of version 0x00 on a node that is not mainnet's and one of version 0x80 on mainnet's
+ * (stackslib/src/chainstate/stacks/db/transactions/processing/validation.rs:49-79), and a mainnet node's chain id is
+ * `CHAIN_ID_MAINNET`, 1, and no other (stackslib/src/config/mod.rs:1844-1857; stacks-common/src/libcommon.rs:58).
+ */
+function onNetwork(tx: StacksTransaction, chainId: number): boolean {
+  return tx.chainId === chainId && tx.version === (chainId === STACKS_MAINNET_CHAIN ? 0x00 : 0x80);
+}
+
+/**
  * The SIP-010 `transfer` for the buyer's Stacks wallet to build and sign: `(amount, sender, recipient, (some H))` on
- * the profile's token contract, one `SentEq` post-condition, post-condition mode Deny and anchor mode OnChainOnly.
+ * the profile's token contract, one `SentEq` post-condition, post-condition mode Deny and anchor mode OnChainOnly, for
+ * the profile's `chainId`. `complete` reads the signed transaction as `bound` reads it: bytes a Stacks node does not
+ * decode are `mpp/stacks-tx-malformed`, and a transaction a node of the challenge's network does not take
+ * (`onNetwork`) is `mpp/stacks-network-mismatch`.
  */
 async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
@@ -397,6 +420,7 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
   return {
     request: {
       kind: "stacks-contract-call" as const,
+      chainId: Number(chainId),
       contract: `${str(p["contractAddress"])}.${str(p["contractName"])}`,
       functionName: "transfer" as const,
       args: { amount: str(o.request["amount"]), sender: from, recipient: str(o.request["recipient"]), memo },
@@ -408,6 +432,9 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
       if (!(serializedTx instanceof Uint8Array) || serializedTx.length === 0 || serializedTx.length > MAX_STACKS_TX) {
         return refusal("mpp/credential-malformed");
       }
+      const tx = readStacksTransaction(serializedTx);
+      if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
+      if (!onNetwork(tx, Number(chainId))) return refusal("mpp/stacks-network-mismatch");
       return {
         challenge,
         source: `stacks:${chainId}:${from}`,
@@ -419,8 +446,9 @@ async function stacksBuild(choice: StacksChargeChoice, h: AtrHash) {
 
 /**
  * H from the echoed challenge, once its transaction is one a Stacks node decodes and serializes back to the same bytes
- * (`readStacksTransaction`) and calls `transfer` with `(some H)` as its fourth argument. Nothing but that argument is
- * read for H.
+ * (`readStacksTransaction`), one a node of the challenge's network takes (`onNetwork`, else
+ * `mpp/stacks-network-mismatch`), and calls `transfer` with `(some H)` as its fourth argument. Nothing but that argument
+ * is read for H.
  */
 async function stacksBinding(
   input: unknown,
@@ -440,6 +468,7 @@ async function stacksBinding(
   if (wire === null || wire.length === 0 || wire.length > MAX_STACKS_TX) return refusal("mpp/stacks-tx-malformed");
   const tx = readStacksTransaction(wire);
   if (tx === undefined) return refusal("mpp/stacks-tx-malformed");
+  if (!onNetwork(tx, Number(str(profileOf(e.checked)["chainId"])))) return refusal("mpp/stacks-network-mismatch");
   const call = tx.call;
   const fourth = call?.functionName === "transfer" ? call.args[3] : undefined;
   if (call === null || fourth === undefined || hexOf(fourth) !== memoArgument(e.h)) return refusal("mpp/stacks-memo-not-h");

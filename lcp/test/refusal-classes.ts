@@ -139,8 +139,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "nonce-not-usdc-derivation", "not-an-opening", "not-bound-within", "not-this-pairing", "opaque-malformed",
     "opaque-not-this-hash", "receipt-malformed", "receipt-missing", "request-malformed", "request-not-jcs",
     "salt-not-this-hash", "salt-not-usdc-derivation", "session-action", "session-protocol", "source-required",
-    "splits-malformed", "stacks-memo-not-h", "stacks-tx-malformed", "usdc-profile", "within-action-not-built",
-    "witness-not-challenge-hash", "witness-taken",
+    "splits-malformed", "stacks-memo-not-h", "stacks-network-mismatch", "stacks-tx-malformed", "usdc-profile",
+    "within-action-not-built", "witness-not-challenge-hash", "witness-taken",
   ],
   near: [
     "actions", "args-malformed", "carrier-occupied", "memo-missing", "memo-not-lcp", "network-malformed", "no-relayer",

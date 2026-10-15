@@ -23,7 +23,11 @@ const hex = (b: Uint8Array) => `0x${Buffer.from(b).toString("hex")}`;
 /** The private key whose scalar is 1, compressed. */
 const KEY = `${"00".repeat(31)}0101`;
 
-async function transfer(memo: S.ClarityValue): Promise<Uint8Array> {
+/**
+ * M4's transfer with `memo` as its fourth argument, signed by KEY. `on` sets the transaction's version and chain id
+ * before it is signed; without it they are network testnet's, 0x80 and 2147483648.
+ */
+async function transfer(memo: S.ClarityValue, on?: { transactionVersion: number; chainId: number }): Promise<Uint8Array> {
   const [address, name] = F.contract.split(".");
   const tx = await S.makeUnsignedContractCall({
     contractAddress: address,
@@ -38,11 +42,16 @@ async function transfer(memo: S.ClarityValue): Promise<Uint8Array> {
     postConditions: [S.Pc.principal(F.sender).willSendEq(BigInt(F.amount)).ft(F.contract, F.asset)],
   });
   tx.anchorMode = S.AnchorMode.OnChainOnly;
+  if (on !== undefined) {
+    tx.transactionVersion = on.transactionVersion;
+    tx.chainId = on.chainId;
+  }
   new S.TransactionSigner(tx).signOrigin(KEY);
   return S.serializeTransactionBytes(tx);
 }
 
-const withMemo = () => transfer(S.someCV(S.bufferCV(Buffer.from(F.H.slice(2), "hex"))));
+const withMemo = (on?: { transactionVersion: number; chainId: number }) =>
+  transfer(S.someCV(S.bufferCV(Buffer.from(F.H.slice(2), "hex"))), on);
 
 function challenge(): MppChallenge & { id: string } {
   const c: MppChallenge = { realm: F.realm, method: "usdc", intent: "charge", request: b64u(JSON.stringify(F.request)), expires: F.expires };
@@ -50,6 +59,9 @@ function challenge(): MppChallenge & { id: string } {
   if (!Array.isArray(doc)) throw new Error(JSON.stringify(doc));
   return doc[0] as MppChallenge & { id: string };
 }
+
+/** An agreedRefusals row; the rows that set a version and a chain id say which, as numbers. */
+type NetworkRow = { case: string; wireHex: string; expect: string; transactionVersion?: number; chainId?: number };
 
 function credential(wire: Uint8Array, format = "stacks_transaction_v1"): MppCredential {
   return {
@@ -84,6 +96,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     if ("refused" in u) throw new Error(u.code);
     expect(u.request).toEqual({
       kind: "stacks-contract-call",
+      chainId: Number(F.network.slice("stacks:".length)),
       contract: F.contract,
       functionName: "transfer",
       args: { amount: F.amount, sender: F.sender, recipient: F.recipient, memo: F.H },
@@ -660,6 +673,58 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
   });
 
+  // A Stacks node takes a transaction only on its own chain id, and on mainnet only at version 0x00, elsewhere only at
+  // 0x80 (stacks-core 4.0.5, stackslib/src/chainstate/stacks/db/transactions/processing/validation.rs:49-79); a mainnet
+  // node runs chain id 1 and no other (stackslib/src/config/mod.rs:1844-1857). The agreedRefusals rows whose wire is M4's
+  // transfer signed for another network are refused by bound, reference and build's complete alike.
+  it("bound, reference and build's complete refuse a transaction signed for another network than the challenge's", async () => {
+    const rows = rowsOf(V.agreedRefusals.rows as NetworkRow[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", {
+      exact: 4,
+      keep: ["the rows that set a version and a chain id", (r) => r.chainId !== undefined],
+      leave: ["the rows that replace a part of M4's wire, run by the agreedRefusals runner below", (r) => r.chainId === undefined],
+    });
+    const u = await chargeUsdcStacks.build({ challenge: challenge(), from: F.sender }, F.H);
+    if ("refused" in u) throw new Error(u.code);
+    for (const r of rows) {
+      const wire = Buffer.from(r.wireHex.slice(2), "hex");
+      const code = { refused: true, code: r.expect };
+      expect([r.case, await chargeUsdcStacks.bound(credential(wire))]).toEqual([r.case, code]);
+      expect([r.case, await chargeUsdcStacks.reference(credential(wire))]).toEqual([r.case, code]);
+      expect([r.case, u.complete(Uint8Array.from(wire))]).toEqual([r.case, code]);
+    }
+  });
+
+  // The control: a challenge naming chain id 1, mainnet, reads the transfer signed at version 0x00 on chain 1, whose
+  // origin is then a mainnet address (version 22), and refuses M4, signed for testnet.
+  it("a challenge on mainnet, chain id 1, reads a transaction of version 0x00 on chain 1 and refuses M4", async () => {
+    const request = { ...F.request, methodDetails: { ...F.request.methodDetails, stacks: { ...F.request.methodDetails.stacks, network: "mainnet", chainId: "1" } } };
+    const c: MppChallenge = { realm: F.realm, method: "usdc", intent: "charge", request: b64u(JSON.stringify(request)), expires: F.expires };
+    const doc = chargeUsdcStacks.advertise([c], F.H, F.link, c);
+    if (!Array.isArray(doc)) throw new Error(JSON.stringify(doc));
+    const onMainnet = (wire: Uint8Array): MppCredential => ({ ...credential(wire), challenge: doc[0] as MppChallenge & { id: string } });
+    const mainnet = await withMemo({ transactionVersion: 0x00, chainId: 1 });
+    expect(await chargeUsdcStacks.bound(onMainnet(mainnet))).toBe(F.H);
+    expect(await chargeUsdcStacks.reference(onMainnet(mainnet))).toMatchObject({ network: "stacks:1", origin: S.getAddressFromPrivateKey(KEY, "mainnet") });
+    const u = await chargeUsdcStacks.build({ challenge: doc[0] as MppChallenge & { id: string }, from: F.sender }, F.H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(u.complete(mainnet)).not.toHaveProperty("refused");
+    const m4 = await withMemo();
+    expect(await chargeUsdcStacks.bound(onMainnet(m4))).toEqual({ refused: true, code: "mpp/stacks-network-mismatch" });
+    expect(u.complete(m4)).toEqual({ refused: true, code: "mpp/stacks-network-mismatch" });
+  });
+
+  // build's complete reads the transaction as bound reads it: bytes a Stacks node does not decode are
+  // mpp/stacks-tx-malformed, the code bound gives them.
+  it("build's complete refuses a truncated transaction and one with bytes after it, as bound does", async () => {
+    const u = await chargeUsdcStacks.build({ challenge: challenge(), from: F.sender }, F.H);
+    if ("refused" in u) throw new Error(u.code);
+    const whole = await withMemo();
+    for (const wire of [whole.subarray(0, whole.length - 1), Uint8Array.from([...whole, 0])]) {
+      expect(u.complete(wire)).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+      expect(await chargeUsdcStacks.bound(credential(wire))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+    }
+  });
+
   it("states what it proves", () => {
     expect({ ...chargeUsdcStacks.pattern, claims: chargeUsdcStacks.claims }).toEqual(V.pattern);
   });
@@ -1003,7 +1068,8 @@ function withBigints(v: unknown): unknown {
 // deserializer reads (StacksTransaction::consensus_deserialize, stacks-codec/src/transaction.rs:3065-3067), the sources
 // the tests above name: a token transfer's recipient (type 0), a pay-to-alt coinbase's (5), a Nakamoto coinbase's (8)
 // and its VRF proof, a contract call's argument, contract and function (2), a smart contract (6 and 1), a coinbase's
-// anchor mode (4), a poisoned microblock (3), a tenure change (7), a post-condition, and a multisig authorization.
+// anchor mode (4), a poisoned microblock (3), a tenure change (7), a post-condition, and a multisig authorization; then
+// M4's transfer signed for another network, which a node's precheck refuses (the M4 test above names its source).
 describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
   // The part of M4's wire each row replaces, in the file's order: the rows the file holds, as this list states them.
   const PARTS = [
@@ -1019,8 +1085,9 @@ describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
     "payload 03",
     ...Array.from({ length: 3 }, () => "post-condition"),
     ...Array.from({ length: 3 }, () => "authorization"),
+    ...Array.from({ length: 4 }, () => "network"),
   ];
-  const rows = rowsOf(V.agreedRefusals.rows as { case: string; wireHex: string; expect: string }[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", {
+  const rows = rowsOf(V.agreedRefusals.rows as NetworkRow[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", {
     exact: PARTS.length,
   });
   it("each wire is M4's with the part its case names replaced", () => {
@@ -1034,9 +1101,29 @@ describe("mpp-charge-usdc-stacks.json agreedRefusals", () => {
       if (w.startsWith(`0x${at(0, 109)}03${at(110, 186)}`)) return `anchor 03, payload ${w.slice(payloadAt, payloadAt + 2)}`;
       if (w.startsWith(`0x${at(0, 115)}`) && w.endsWith(at(186))) return "post-condition";
       if (w.startsWith(`0x${at(0, 5)}`) && w.endsWith(at(109))) return "authorization";
+      // The version and chain id (bytes 0 to 5) and the signature they change (bytes 44 to 109).
+      if (w.length === m4.length && w.slice(2 + 10, 2 + 88) === at(5, 44) && w.endsWith(at(109))) return "network";
       return "other";
     };
     expect(rows.map((r) => part(r.wireHex))).toEqual(PARTS);
+  });
+  // The network rows are @stacks/transactions 7.6.0's: M4's transfer, its version and chain id set to the row's before
+  // signing, byte for byte; the same build without them is M4.
+  it("each network row's wire is M4's transfer signed at its version and chain id", async () => {
+    expect(hex(await withMemo())).toBe(V.M4.wireHex);
+    const network = rows.filter((r) => r.chainId !== undefined);
+    expect(network.map((r) => [r.transactionVersion, r.chainId])).toEqual([
+      [0x80, 1],
+      [0x80, 0x80000001],
+      [0x00, 0x80000000],
+      [0x00, 1],
+    ]);
+    for (const r of network) {
+      const wire = await withMemo({ transactionVersion: r.transactionVersion!, chainId: r.chainId! });
+      expect([r.case, hex(wire)]).toEqual([r.case, r.wireHex]);
+      const decoded = S.deserializeTransaction(wire);
+      expect([decoded.transactionVersion, decoded.chainId]).toEqual([r.transactionVersion, r.chainId]);
+    }
   });
   for (const r of rows) {
     it(`${r.case}: ${r.expect}`, async () => {

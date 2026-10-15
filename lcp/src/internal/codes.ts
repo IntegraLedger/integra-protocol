@@ -266,6 +266,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "mpp/source-required",
   "mpp/splits-malformed",
   "mpp/stacks-memo-not-h",
+  "mpp/stacks-network-mismatch",
   "mpp/stacks-tx-malformed",
   "mpp/usdc-profile",
   "mpp/within-action-not-built",

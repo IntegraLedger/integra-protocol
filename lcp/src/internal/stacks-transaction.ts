@@ -13,6 +13,8 @@ import { sameBytes } from "../rail-bytes.js";
 export interface StacksTransaction {
   /** The version byte: 0x00 (mainnet) or 0x80 (testnet). */
   version: number;
+  /** The chain id, the four bytes after the version, big-endian (stacks-codec/src/transaction.rs:3085). */
+  chainId: number;
   /** True for a standard authorization, false for a sponsored one. */
   standard: boolean;
   /** The origin's spending condition: its hash mode, signer hash160 and nonce. */
@@ -596,7 +598,7 @@ export function readStacksTransaction(wire: Uint8Array): StacksTransaction | und
     const r = new Reader(wire);
     const version = r.u8();
     need(version === 0x00 || version === 0x80);
-    r.bytes(4); // chain id
+    const chainId = r.u32();
     const auth = r.u8();
     need(auth === 0x04 || auth === 0x05);
     const origin = spendingCondition(r);
@@ -609,7 +611,7 @@ export function readStacksTransaction(wire: Uint8Array): StacksTransaction | und
     need(anchor >= 1 && anchor <= 3 && postConditionMode >= 1 && postConditionMode <= 3);
     need(anchor === 1 || ![0x03, 0x04, 0x05, 0x08].includes(type));
     need(r.at === wire.length);
-    return { version, standard: auth === 0x04, origin, call };
+    return { version, chainId, standard: auth === 0x04, origin, call };
   } catch {
     return undefined;
   }
