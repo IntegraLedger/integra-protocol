@@ -87,6 +87,17 @@ describe("base64url without padding", () => {
     expect(fromBase64Url("_w")).toEqual(Uint8Array.of(0xff));
   });
 
+  it("refuses a character outside ASCII, whatever its low seven bits", () => {
+    // U+00C1, U+00E1, U+00B0, U+00AD, U+00DF and U+0141 have the low seven bits of "A", "a", "0", "-", "_" and "A";
+    // U+D800 is a lone surrogate. None is in the URL-safe alphabet (RFC 4648 §5), and the platform's strict reader
+    // refuses each.
+    for (const c of ["\u00c1", "\u00e1", "\u00b0", "\u00ad", "\u00df", "\u0141", "\ud800"]) {
+      for (const s of [`${c}Q`, `Q${c}`, `Zm9v${c}g`]) {
+        expect([fromBase64Url(s), base64UrlBytes(s, 8), platform(s)], s).toEqual([null, "malformed", null]);
+      }
+    }
+  });
+
   it("base64UrlBytes bounds the decoded length by the text's length before it decodes", () => {
     const h = new Uint8Array(32).fill(0xab);
     expect(base64UrlBytes(toBase64Url(h), 32)).toEqual(h);

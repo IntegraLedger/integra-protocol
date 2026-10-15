@@ -84,6 +84,16 @@ describe("standard base64 in its canonical form", () => {
     expect([fromBase64("QR=="), fromBase64("QUJ="), base64Bytes("QR==", 8)]).toEqual([null, null, "malformed"]);
   }, 0);
 
+  it("fromBase64 and base64Bytes refuse a character outside ASCII, whatever its low seven bits", () => {
+    // U+00C1, U+00E1, U+00B0, U+00AB, U+00AF and U+0141 have the low seven bits of "A", "a", "0", "+", "/" and "A";
+    // U+D800 is a lone surrogate. None is in the alphabet (RFC 4648 §4), and ECMA-262's strict reader refuses each.
+    for (const c of ["\u00c1", "\u00e1", "\u00b0", "\u00ab", "\u00af", "\u0141", "\ud800"]) {
+      for (const s of [`${c}QQ=`, `Q${c}Q=`, `QQ${c}=`, `Zm9v${c}mFy`]) {
+        expect([fromBase64(s), base64Bytes(s, 8), ecma(s)], s).toEqual([null, "malformed", null]);
+      }
+    }
+  });
+
   it("toBase64 writes 16 MiB as Node's Buffer writes it, and fromBase64 and base64Bytes read it back", () => {
     // 16 MiB is one byte more than a multiple of three, so the text ends in "==". The test has no time bound (0): the
     // reader and the writer each make one pass, in constant stack, and how long that takes depends only on the machine.
