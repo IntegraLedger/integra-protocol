@@ -97,6 +97,12 @@ node scripts/docs-reference.mjs --check
   dialog with each of its results selected in turn. It runs axe-core's WCAG 2.0, 2.1 and 2.2 A and AA rules in each
   state, and fails on any failure, naming the page, the theme, the width, the rule and the element. It also presses
   each printable character key alone, outside a text field, and fails when one changes the page (WCAG 2.1.4).
+- `node scripts/check-headers.mjs`, in `website/` after `pnpm run browser` and the site's build, serves `website/out`
+  the same way and loads every page in the pinned browser in both themes, with a Twoslash popup opened where the page
+  has one, and the search dialog with a query typed. It fails on any content policy violation, on a page served
+  without `frame-ancestors 'none'` and `X-Frame-Options: DENY`, and on a page with a `<base>` or a `<form>`. It also
+  loads pages of its own that use a `data:` image, a `data:` font, a `blob:` worker and a `<base>`, and submit a form,
+  and fails unless the policy refuses each of them.
 - Two builds of one commit are byte-equal. The build ID, which every page carries and which names the folder of the
   build's manifests under `/_next/static/`, is the commit's sha (`website/next.config.ts`); with uncommitted changes
   it is the sha and a digest of those changes. The Mermaid diagrams are drawn in the browser build and the font the
