@@ -657,11 +657,25 @@ describe("mpp/session/solana", () => {
       expect(await sessionSolana.channel.ref(use(c))).toEqual(refused("mpp/session-action"));
       expect(await sessionSolana.channel.boundWithin(use(c))).toEqual(refused("mpp/session-action"));
     }
-    for (const c of [operator, client, C_S]) {
-      const voucher = cred(c, { action: "voucher", channelId: V.SV2.channel });
-      expect(sessionSolana.channel.kind(voucher)).toBe("within");
-      expect(await sessionSolana.channel.boundWithin(voucher)).toEqual(refused("mpp/not-bound-within"));
+  });
+
+  // draft-solana-session-00 L1324-1326 at tempoxyz/mpp-specs 08e7dd87: a `voucher` action "directly authorizes service
+  // only for `client`. In `operator` mode, vouchers are operator-generated settlement artifacts and MUST NOT authenticate
+  // the caller"; `client` is the default when the challenge omits `voucherSigner` (L258). A voucher echoing a client
+  // challenge, or C_S with no voucherSigner, is within and names its channel; one echoing SV5's operator challenge is
+  // refused by each function that reads it. No voucher gives H.
+  it("SV5: a voucher is within only on a client channel; channel.kind, channel.ref and channel.boundWithin refuse it on an operator channel", async () => {
+    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
+    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
+    const voucher = (c: MppChallenge & { id: string }) => cred(c, { action: "voucher", channelId: V.SV2.channel });
+    for (const c of [client, C_S]) {
+      expect(sessionSolana.channel.kind(voucher(c))).toBe("within");
+      expect(await sessionSolana.channel.ref(voucher(c))).toEqual({ network: V.SV2.expectReference.network, channel: V.SV2.channel });
+      expect(await sessionSolana.channel.boundWithin(voucher(c))).toEqual(refused("mpp/not-bound-within"));
     }
+    expect(sessionSolana.channel.kind(voucher(operator))).toEqual(refused("mpp/session-action"));
+    expect(await sessionSolana.channel.ref(voucher(operator))).toEqual(refused("mpp/session-action"));
+    expect(await sessionSolana.channel.boundWithin(voucher(operator))).toEqual(refused("mpp/session-action"));
   });
 });
 
@@ -1137,6 +1151,11 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     const use = cred(c, { action: "use", channelId: V.SV2.channel, authentication: proofFor(c) });
     return [sessionSolana.channel.kind(use), await sessionSolana.channel.ref(use), await sessionSolana.channel.boundWithin(use)];
   };
+  /** channel.kind, channel.ref and channel.boundWithin of a `voucher` echoing challenge `c`. */
+  const solanaVoucherCalls = async (c: MppChallenge & { id: string }) => {
+    const voucher = cred(c, { action: "voucher", channelId: V.SV2.channel });
+    return [sessionSolana.channel.kind(voucher), await sessionSolana.channel.ref(voucher), await sessionSolana.channel.boundWithin(voucher)];
+  };
 
   // Each input a row changes is accepted as given, so each refusal below is the change's.
   it("the inputs the rows change, as given, are accepted", async () => {
@@ -1152,6 +1171,9 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       expect([bound, reference, completed]).toEqual([H, V.SV2.expectReference, { challenge: c, payload }]);
     }
     expect(await solanaUseCalls(operator)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, H]);
+    for (const c of [client, C_S]) {
+      expect(await solanaVoucherCalls(c)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")]);
+    }
   });
 
   const cases: Record<string, () => Promise<unknown[]>> = {
@@ -1235,6 +1257,8 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
         ...(await solanaUseCalls(client)),
         ...(await solanaUseCalls(C_S)),
       ],
+    "a solana voucher, its challenge's voucherSigner operator (draft-solana-session-00 L1324-1326 at tempoxyz/mpp-specs 08e7dd87: in operator mode MUST NOT authenticate the caller)":
+      async () => solanaVoucherCalls(operator),
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });

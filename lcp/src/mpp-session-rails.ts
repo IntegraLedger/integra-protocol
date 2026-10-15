@@ -633,21 +633,25 @@ async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot">
 }
 
 /**
- * The kind of a Solana session payment by its action. draft-solana-session-00's `use` action is valid only when the
- * echoed challenge's `voucherSigner` is `operator`: a `use` whose challenge names `client`, or no `voucherSigner`, is
- * `mpp/session-action`.
+ * The kind of a Solana session payment by its action, read against the echoed challenge's `voucherSigner` (`client`
+ * when absent), as draft-solana-session-00 says: a `voucher` authorizes service only for `client`, and in `operator`
+ * mode does not authenticate the caller; a `use` is valid only for `operator`. A `voucher` whose challenge names
+ * `operator`, or a `use` whose challenge names `client` or no `voucherSigner`, is `mpp/session-action`.
  */
 function solanaKind(presented: MppCredential): Kind | Refusal {
   const k = actionKind(presented, ["voucher", "topUp", "use"]);
-  if (isRefusal(k) || presented.payload["action"] !== "use") return k;
+  if (isRefusal(k)) return k;
+  const action = presented.payload["action"];
+  if (action !== "voucher" && action !== "use") return k;
   const details = echoedDetails(presented, "solana");
   if (isRefusal(details)) return details;
-  return details["voucherSigner"] === "operator" ? k : refusal("mpp/session-action");
+  return (details["voucherSigner"] === "operator") === (action === "use") ? k : refusal("mpp/session-action");
 }
 
 /**
- * A `use` credential echoing the opening challenge whose bearer proof names that challenge's id gives its H. A `use`
- * whose challenge's `voucherSigner` is not `operator` is `mpp/session-action`, as `channel.kind` answers it.
+ * A `use` credential echoing the opening challenge whose bearer proof names that challenge's id gives its H. A `voucher`
+ * whose challenge's `voucherSigner` is `operator`, or a `use` whose challenge's is not, is `mpp/session-action`, as
+ * `channel.kind` answers it.
  */
 async function solanaBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
@@ -664,7 +668,8 @@ async function solanaBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The network and the payload's `channelId`, re-encoded; on a within or close payment, read from the payment itself. A
- * `use` whose challenge's `voucherSigner` is not `operator` is `mpp/session-action`, as `channel.kind` answers it.
+ * `voucher` whose challenge's `voucherSigner` is `operator`, or a `use` whose challenge's is not, is
+ * `mpp/session-action`, as `channel.kind` answers it.
  */
 async function solanaRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
   const k = solanaKind(presented);
