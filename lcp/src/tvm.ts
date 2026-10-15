@@ -131,10 +131,11 @@ interface TvmChoice {
    * The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must be exactly
    * one `StateInit`, as TON reads a message's state init: no bit or reference after its fields, at most 1,024 cells
    * read, and at most two Merkle proofs or updates nested in it. It must be one TON deploys a wallet from at the
-   * configuration of the option's network: no libraries dictionary (global version 15), and a fixed prefix length of
-   * at most ConfigParam 43's `max_acc_fixed_prefix_length`, 8 (global version 10). Else `x402/option-malformed`. The
-   * settlement message carries it as its `init` exactly as given, so its hash stays the address the wallet derives
-   * from it.
+   * configuration of the option's network: no libraries dictionary (global version 15), a fixed prefix length of at
+   * most ConfigParam 43's `max_acc_fixed_prefix_length`, 8 (global version 10), and a representation hash that is
+   * `wallet`'s 256-bit address, except the first fixed-prefix-length bits, which may differ, since TON deploys an
+   * account only from a state init whose hash is its address (`check_in_msg_state_hash`). Else
+   * `x402/option-malformed`. The settlement message carries it as its `init` exactly as given.
    */
   stateInit?: TonCell | string;
 }
@@ -1128,7 +1129,7 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   // The checks read the state init's form only: `complete` carries the cell itself.
   if (
     initCell !== undefined &&
-    (!isStateInit(initCell) || merkleDepth([initCell]) > MAX_MERKLE_DEPTH || !deploysFrom(initCell, config))
+    (!isStateInit(initCell) || merkleDepth([initCell]) > MAX_MERKLE_DEPTH || !deploysFrom(initCell, config, walletAddress))
   ) {
     return refusal("x402/option-malformed");
   }
@@ -1197,20 +1198,28 @@ function isStateInit(root: Cell): boolean {
 }
 
 /**
- * True when TON deploys an account from a state init `isStateInit` holds, at the configuration (ton-blockchain/ton
- * `crypto/block/transaction.cpp`, `unpack_msg_state` and `prepare_compute_phase`): from global version 15 its
- * `library:(HashmapE 256 SimpleLib)` is `hme_empty` ("libraries are not null"), and from global version 10 its
- * `fixed_prefix_length` is absent or at most the configuration's `maxAccFixedPrefixLength` ("too big fixed prefix
- * length").
+ * True when TON deploys the account at `address` from a state init `isStateInit` holds, at the configuration
+ * (ton-blockchain/ton `crypto/block/transaction.cpp`, `unpack_msg_state`, `prepare_compute_phase` and
+ * `check_in_msg_state_hash`): from global version 15 its `library:(HashmapE 256 SimpleLib)` is `hme_empty` ("libraries
+ * are not null"), from global version 10 its `fixed_prefix_length` is absent or at most the configuration's
+ * `maxAccFixedPrefixLength` ("too big fixed prefix length"), and its representation hash is the address's 256 bits,
+ * except the first `fixed_prefix_length` bits, which may differ ("in_msg_state hash mismatch"). The workchain is not
+ * part of the hash.
  */
-function deploysFrom(root: Cell, config: TonConfiguration): boolean {
+function deploysFrom(root: Cell, config: TonConfiguration, address: Address): boolean {
   const s = root.beginParse();
   const prefix = s.loadBit() ? s.loadUint(5) : 0;
   if (s.loadBit()) s.skip(2);
   s.loadMaybeRef();
   s.loadMaybeRef();
   const libraries = s.loadBit();
-  return !(config.globalVersion >= 15 && libraries) && !(config.globalVersion >= 10 && prefix > config.maxAccFixedPrefixLength);
+  if (config.globalVersion >= 15 && libraries) return false;
+  if (config.globalVersion >= 10 && prefix > config.maxAccFixedPrefixLength) return false;
+  const hash = root.hash();
+  for (let i = prefix; i < 256; i++) {
+    if (((hash[i >> 3]! ^ address.hash[i >> 3]!) & (0x80 >> (i & 7))) !== 0) return false;
+  }
+  return true;
 }
 
 /**
@@ -1283,8 +1292,8 @@ function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclud
  * presented option is held to the filter `read` applies, so a payment under an option `read` would not offer is
  * refused. The signature is not verified here; the facilitator verifies it, and the W5 contract checks it before any
  * action runs.
- * A state init that holds a libraries dictionary, or a fixed prefix longer than 8 bits, is read, since whether TON
- * deploys the wallet from it is chain state.
+ * A state init that holds a libraries dictionary, has a fixed prefix longer than 8 bits, or does not hash to the
+ * settlement message's destination is read, since whether TON deploys the wallet from it is chain state.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const r = carried(presented);

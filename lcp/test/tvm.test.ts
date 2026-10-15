@@ -361,6 +361,70 @@ describe("x402-exact-tvm.json", () => {
     expect(await exactTvm.bound(payment(carrying))).toBe(H);
   });
 
+  // TON deploys an account from a message's state init only when the init's representation hash is the account's
+  // address, the first fixed_prefix_length bits aside, which may differ; the workchain is not part of the hash
+  // (ton-blockchain/ton crypto/block/transaction.cpp at 8e6f091, check_in_msg_state_hash, "in_msg_state hash
+  // mismatch"). TON's emulator (@ton/sandbox 0.45.0) deploys the published W5 code from such a state init and runs the
+  // request for each wallet build takes here, and skips the compute phase as a bad state, sending nothing, for each
+  // wallet build refuses (agreedRefusals rows 99 and 100). A wallet already deployed ignores its message's state init,
+  // so bound reads a settlement message whose init does not hash to its destination.
+  it("V2b: build takes a state init only for the wallet its hash names, the bits of its fixed prefix aside", async () => {
+    const { code, data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
+    const initOf = (prefix: number | null) =>
+      (prefix === null ? beginCell().storeBit(0) : beginCell().storeBit(1).storeUint(prefix, 5)).storeBit(0).storeMaybeRef(code).storeMaybeRef(data).storeBit(0).endCell();
+    const flipped = (hash: Uint8Array, bits: readonly number[]) => {
+      const b = Buffer.from(hash);
+      for (const i of bits) b[i >> 3] = b[i >> 3]! ^ (0x80 >> (i & 7));
+      return b.toString("hex");
+    };
+    const cases: [string, number | null, string, boolean][] = [];
+    for (const prefix of [null, 1, 8]) {
+      const d = prefix ?? 0;
+      const hash = initOf(prefix).hash();
+      cases.push(
+        [`fixed prefix ${prefix}: the init's hash`, prefix, `0:${flipped(hash, [])}`, true],
+        [`fixed prefix ${prefix}: the init's hash on workchain -1`, prefix, `-1:${flipped(hash, [])}`, true],
+        [`fixed prefix ${prefix}: its last bit flipped`, prefix, `0:${flipped(hash, [255])}`, false],
+        [`fixed prefix ${prefix}: bit ${d}, the first past the fixed prefix, flipped`, prefix, `0:${flipped(hash, [d])}`, false],
+        [`fixed prefix ${prefix}: another address`, prefix, V.fixed.wallet, false],
+      );
+      if (d > 0) {
+        const inside = Array.from({ length: d }, (_, i) => i);
+        cases.push([`fixed prefix ${prefix}: its first ${d} bits, the fixed prefix, flipped`, prefix, `0:${flipped(hash, inside)}`, true]);
+      }
+    }
+    const got: unknown[] = [];
+    const want: unknown[] = [];
+    for (const [name, prefix, wallet, builds] of rowsOf(cases, "the wallets given with each state init", { exact: 17 })) {
+      const init = initOf(prefix);
+      for (const stateInit of [init, init.toBoc({ idx: false, crc32: true }).toString("base64")]) {
+        const u = await exactTvm.build({ ...choice(), wallet, seqno: V.V2b.seqno, stateInit }, H);
+        got.push([name, typeof stateInit, "refused" in u ? u : "built"]);
+        want.push([name, typeof stateInit, builds ? "built" : { refused: true, code: "x402/option-malformed" }]);
+      }
+    }
+    expect(got).toEqual(want);
+    // V2b's settlement message with its destination's last bit flipped: its four flag bits, its source, that wallet,
+    // then the rest of its info and its init and body as they are.
+    const u = await exactTvm.build({ ...choice(), wallet: V.V2b.wallet, seqno: V.V2b.seqno, stateInit: V.V2b.stateInit }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const p = u.complete(ed25519.sign(u.request.hash, seed));
+    if ("refused" in p) throw new Error(p.code);
+    const v2b = Cell.fromBase64(p.payload.settlementBoc);
+    const s = v2b.beginParse();
+    const flags = s.loadBits(4);
+    const src = s.loadMaybeAddress();
+    s.loadAddress();
+    const rest = s.loadBits(s.remainingBits);
+    const other = `0:${flipped(Buffer.from(V.V2b.expectStateInitHash, "hex"), [255])}`;
+    const moved = beginCell().storeBits(flags).storeAddress(src).storeAddress(Address.parseRaw(other)).storeBits(rest).storeRef(v2b.refs[0]!).storeRef(v2b.refs[1]!).endCell();
+    const b64 = moved.toBoc({ idx: false, crc32: true }).toString("base64");
+    expect(await exactTvm.bound(payment(b64))).toBe(H);
+    const ref = await exactTvm.reference(payment(b64));
+    if ("refused" in ref) throw new Error(ref.code);
+    expect([ref.wallet, ref.requestBodyHash]).toEqual([other, `0x${V.V2b.expectRequestBodyHash}`]);
+  });
+
   // TL-B's MessageRelaxed: `init:(Maybe (Either StateInit ^StateInit))`, then the body. Read past the message's info,
   // the init is present as a reference, and that cell's hash is the address the wallet derives from its state init
   // (the file's `wallet`, computed with pytoniq-core 0.2.0 as x402's Python SDK 2.25.0 derives it), which is the
@@ -418,7 +482,7 @@ describe("x402-exact-tvm.json", () => {
       ["a state init cell that is exotic", library],
     ];
     for (const given of good) {
-      const u = await exactTvm.build({ ...choice(), stateInit: given }, H);
+      const u = await exactTvm.build({ ...choice(), wallet: `0:${hashHex(given)}`, stateInit: given }, H);
       if ("refused" in u) throw new Error(u.code);
       const p = u.complete(ed25519.sign(u.request.hash, seed));
       if ("refused" in p) throw new Error(p.code);
@@ -426,7 +490,7 @@ describe("x402-exact-tvm.json", () => {
     }
     for (const [name, given] of bad) {
       for (const stateInit of [given, given.toBoc({ idx: false, crc32: true }).toString("base64")]) {
-        expect([name, await exactTvm.build({ ...choice(), stateInit }, H)]).toEqual([name, { refused: true, code: "x402/option-malformed" }]);
+        expect([name, await exactTvm.build({ ...choice(), wallet: `0:${hashHex(given)}`, stateInit }, H)]).toEqual([name, { refused: true, code: "x402/option-malformed" }]);
       }
     }
   });
@@ -466,7 +530,7 @@ describe("x402-exact-tvm.json", () => {
       ["513 plain entries", plain(513)],
     ] as const;
     for (const [name, given] of cases) {
-      expect([name, await exactTvm.build({ ...choice(), stateInit: given }, H)]).toEqual([name, malformed]);
+      expect([name, await exactTvm.build({ ...choice(), wallet: `0:${hashHex(given)}`, stateInit: given }, H)]).toEqual([name, malformed]);
     }
   });
 
@@ -850,14 +914,14 @@ describe("x402-exact-tvm.json", () => {
     const doc = (o: PaymentRequirements): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
     expect(exactTvm.advertise(doc(offered(bagOf(writtenOf(comment)))), H, V.fixed.link, offered(bagOf(writtenOf(comment))))).not.toHaveProperty("refused");
     expect(await exactTvm.bound({ ...p, accepted: accepted(bagOf(writtenOf(comment))) })).toBe(H);
-    expect(await exactTvm.build({ ...choice(), stateInit: bagOf(writtenOf(init)) }, H)).not.toHaveProperty("refused");
+    expect(await exactTvm.build({ ...choice(), wallet: V.V2b.wallet, stateInit: bagOf(writtenOf(init)) }, H)).not.toHaveProperty("refused");
     for (const [name, form] of rowsOf(forms, "the forms TON's deserialization refuses at a root the read expects", { exact: 9 })) {
       const payload = form(comment);
       expect([name, exactTvm.advertise(doc(offered(payload)), H, V.fixed.link, offered(payload))]).toEqual([name, { refused: true, code: "tvm/carrier-occupied" }]);
       const mismatch = { refused: true, code: "tvm/carrier-mismatch" };
       expect([name, await exactTvm.bound({ ...p, accepted: accepted(payload) })]).toEqual([name, mismatch]);
       expect([name, await exactTvm.reference({ ...p, accepted: accepted(payload) })]).toEqual([name, mismatch]);
-      expect([name, await exactTvm.build({ ...choice(), stateInit: form(init) }, H)]).toEqual([name, { refused: true, code: "tvm/boc-malformed" }]);
+      expect([name, await exactTvm.build({ ...choice(), wallet: V.V2b.wallet, stateInit: form(init) }, H)]).toEqual([name, { refused: true, code: "tvm/boc-malformed" }]);
     }
   });
 
@@ -1064,7 +1128,7 @@ describe("x402-exact-tvm.json", () => {
       ["three Merkle levels", 3, false],
     ] as const) {
       const given = beginCell().storeBit(0).storeBit(0).storeMaybeRef(proven(levels)).storeMaybeRef(data).storeBit(0).endCell();
-      const built = await exactTvm.build({ ...choice(), stateInit: given }, H);
+      const built = await exactTvm.build({ ...choice(), wallet: `0:${hashHex(given)}`, stateInit: given }, H);
       expect([name, "refused" in built ? built : "built"]).toEqual([name, builds ? "built" : { refused: true, code: "x402/option-malformed" }]);
     }
   });
@@ -1100,7 +1164,7 @@ describe("x402-exact-tvm.json", () => {
       const p = payment(c.toBoc({ idx: false, crc32: true }).toString("base64"));
       expect([name, await exactTvm.bound(p), await exactTvm.reference(p)]).toEqual([name, { refused: true, code }, { refused: true, code }]);
     }
-    expect(await exactTvm.build({ ...choice(), stateInit: init(30) }, H)).toEqual({ refused: true, code: "x402/option-malformed" });
+    expect(await exactTvm.build({ ...choice(), wallet: `0:${hashHex(init(30))}`, stateInit: init(30) }, H)).toEqual({ refused: true, code: "x402/option-malformed" });
   });
 
   // TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail,
@@ -1183,8 +1247,9 @@ describe("x402-exact-tvm.json", () => {
     const library = beginCell().storeUint(2, 8).storeBuffer(Buffer.alloc(32, 1)).endCell({ exotic: true });
     const { data } = loadStateInit(Cell.fromBase64(V.V2b.stateInit).beginParse());
     const init = beginCell().store(storeStateInit({ code: library, data })).endCell();
+    const wallet = `0:${hashHex(init)}`;
     for (const stateInit of [init, init.toBoc({ idx: false, crc32: true }).toString("base64")]) {
-      const u = await exactTvm.build({ ...choice(), stateInit }, H);
+      const u = await exactTvm.build({ ...choice(), wallet, stateInit }, H);
       if ("refused" in u) throw new Error(u.code);
       expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2.expectRequestHash);
       const p = u.complete(ed25519.sign(u.request.hash, seed));
@@ -1192,7 +1257,7 @@ describe("x402-exact-tvm.json", () => {
       const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
       expect(root.refs.some((r) => r.refs.some((c) => c.isExotic))).toBe(true);
       expect(await exactTvm.bound(p)).toBe(V.V3.expectBound);
-      expect(await exactTvm.reference(p)).toEqual(V.V3.expectReference);
+      expect(await exactTvm.reference(p)).toEqual({ ...V.V3.expectReference, wallet });
     }
   });
 
@@ -1499,8 +1564,9 @@ describe("x402-exact-tvm.json", () => {
         expect(await exactTvm.build({ ...choice(), seqno: -1 }, H)).toEqual(want);
         expect(await exactTvm.build({ ...choice(), now: 1.5 }, H)).toEqual(want);
       } else if (row.stateInit !== undefined) {
-        expect([row.case, await exactTvm.build({ ...choice(), stateInit: row.stateInit }, H)]).toEqual([row.case, want]);
-        expect([row.case, await exactTvm.build({ ...choice(), stateInit: Cell.fromBase64(row.stateInit) }, H)]).toEqual([row.case, want]);
+        const wallet = row.stateInitWallet ?? `0:${hashHex(Cell.fromBase64(row.stateInit))}`;
+        expect([row.case, await exactTvm.build({ ...choice(), wallet, stateInit: row.stateInit }, H)]).toEqual([row.case, want]);
+        expect([row.case, await exactTvm.build({ ...choice(), wallet, stateInit: Cell.fromBase64(row.stateInit) }, H)]).toEqual([row.case, want]);
       } else if (row.signatureBytes !== undefined) {
         const u = await exactTvm.build(choice(), H);
         if ("refused" in u) throw new Error(u.code);

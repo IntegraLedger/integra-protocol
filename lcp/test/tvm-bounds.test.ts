@@ -72,7 +72,7 @@ describe("the TON BoC bounds: 512 cells, depth 32", () => {
       {
         required,
         accepted: placed,
-        wallet: V.fixed.wallet,
+        wallet: `0:${stateInit.hash().toString("hex")}`,
         walletId: V.fixed.walletId,
         seqno: 0,
         jettonWallet: V.fixed.jettonWallet,
