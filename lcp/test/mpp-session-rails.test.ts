@@ -798,9 +798,10 @@ describe("mpp/session/xrpl", () => {
     expect(xrplChannelId(V.XS1.account, V.XS1.destination, V.XS1.sequence)).toBe(V.XS1.expect);
   });
 
-  // The codes are the file's agreedRefusals rows: one for the two helpers, one for build. A classic address ends in a
-  // four-byte double-SHA-256 checksum (xrpl.org, "Addresses"), so XS1's account with its last character changed is not
-  // one; a transaction's Sequence is a UInt32 (xrpl.org, "Transaction Common Fields"); a channel id is a Hash256, 64 hex
+  // The codes are the file's agreedRefusals rows, one for the two helpers and one for build's inputs, and for a challenge
+  // whose recipient is not a classic address whose checksum holds, the code docs/reference/refusals.md gives it,
+  // mpp/request-malformed. A classic address ends in a four-byte double-SHA-256 checksum (xrpl.org, "Addresses"), so
+  // XS1's account with its last character changed is not one; a transaction's Sequence is a UInt32 (xrpl.org, "Transaction Common Fields"); a channel id is a Hash256, 64 hex
   // digits (xrpl.org, "Basic Data Types"); a claim signs its drops as a 64-bit unsigned integer (xrpl.org,
   // "PaymentChannelClaim").
   it("xrplChannelId, xrplClaim and build refuse malformed input with the agreedRefusals rows' code", async () => {
@@ -839,11 +840,13 @@ describe("mpp/session/xrpl", () => {
       xrpl: { publicKey: `ED${"11".repeat(32)}`, settleDelay: 3600, fee: "12", sequence: 7, lastLedgerSequence: 1000 },
     };
     expect(await sessionXrpl.build({ ...choice, from: notAddress }, H)).toEqual(refused(row("build with a malformed from")));
-    // The request's recipient holds the shape the challenge check reads, and only its checksum fails.
-    const request = JSON.parse(Buffer.from(V.SS1.xrpl.challenge.request, "base64url").toString("utf8"));
-    const asked: MppChallenge = { ...V.SS1.xrpl.challenge, request: b64u(canonicalJson({ ...request, recipient: notAddress }) as string) };
-    const placed = (sessionXrpl.advertise([asked], H, V.fixed.link, asked) as (MppChallenge & { id: string })[])[0]!;
-    expect(await sessionXrpl.build({ ...choice, challenge: placed }, H)).toEqual(refused(helpers));
+    // SS1's placed challenge with only its request's recipient changed: the recipient holds the shape the challenge check
+    // reads, and only its checksum fails.
+    const request = JSON.parse(Buffer.from(C_X.request, "base64url").toString("utf8"));
+    const placed: MppChallenge & { id: string } = { ...C_X, request: b64u(canonicalJson({ ...request, recipient: notAddress }) as string) };
+    expect(placed).toBeDefined();
+    expect(placed.id).toBe(C_X.id);
+    expect(await sessionXrpl.build({ ...choice, challenge: placed }, H)).toEqual(refused("mpp/request-malformed"));
   });
 
   // A PaymentChannelCreate names its Destination (xrpl.org, "PaymentChannelCreate"), and a Sequence of 0 leaves the
