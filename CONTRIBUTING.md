@@ -82,9 +82,25 @@ node scripts/docs-reference.mjs --check
   first=$(mktemp -d) && pnpm build && mv out "$first/out" && rm -rf .next && pnpm build && diff -r --brief "$first/out" out
   ```
 
-CI runs the commands in the block above and the rest of `.github/workflows/ci.yml` on every push to `main` and when
-dispatched by hand. No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change
-once it is on `main`.
+CI runs the commands in the block above and the rest of `.github/workflows/ci.yml` on every push to `main`, when
+dispatched by hand, and from the publish workflow before it packs. Its other steps check:
+
+- **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in
+  one step, byte for byte the same in every job, before its first other step that runs. No workflow uses
+  `setup-node`, `continue-on-error`, `if:`, `container:`, `shell:` or a `PATH:` key, or writes `$GITHUB_ENV`, and only
+  the Node.js and pnpm fetches write `$GITHUB_PATH`.
+- **The install policy:** both `pnpm-workspace.yaml` files set `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade`
+  and `strictDepBuilds: true`, and no other setting but `packages` (`"*"` and `"!website"`, so `pnpm -r` reaches every
+  package), `allowBuilds` (denials only), `minimumReleaseAgeExclude` (`@integraledger/*` only) and `overrides`
+  (registry versions only). Every package in both lockfiles comes from the registry by its integrity, and no
+  dependency is a file, directory, link, git or tarball source. No workflow sets pnpm's settings by a `pnpm_config_`
+  environment variable, a `--config.` flag or the `pnpm config` command, its alias or its shorthands.
+- **One-way imports:** no package here, nor the root `package.json`, depends on or names another `@integraledger`
+  package, however the name is loaded or resolved; the site names only `@integraledger/lcp`. Each workspace package
+  has a `build`, `typecheck` and `test` script that is not empty, since `pnpm -r` skips a package without one.
+
+No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change once it is on
+`main`.
 
 ## The rules the code follows
 
