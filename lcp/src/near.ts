@@ -219,10 +219,9 @@ function carrierOf(signedDelegateAction: string): {
   const da = d.delegateAction;
   if (da.functionCall.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = da.functionCall.args;
-  const read = argsObject(args);
-  if (isRefusal(read)) return read;
-  if (!tokenReads(read.text, read.parsed)) return refusal("near/args-malformed");
-  const memo = memoIn(read.parsed);
+  const parsed = argsObject(args);
+  if (isRefusal(parsed)) return parsed;
+  const memo = memoIn(parsed);
   if (isRefusal(memo)) return memo;
   return {
     h: memo,
@@ -235,8 +234,12 @@ function carrierOf(signedDelegateAction: string): {
   };
 }
 
-/** `ft_transfer`'s arguments as a JSON object, with their text: strict UTF-8 JSON text of at most 4096 bytes. */
-function argsObject(args: Uint8Array): { text: string; parsed: Record<string, unknown> } | Refusal {
+/**
+ * `ft_transfer`'s arguments as a JSON object, read only as the token contract reads them: strict UTF-8 JSON text of at
+ * most 4096 bytes whose value is an object that `tokenReads` takes. Anything else is `near/args-malformed`. Every read
+ * of the arguments' content goes through here: `nearCarrier`, and so `bound` and `reference`, and `recover`.
+ */
+function argsObject(args: Uint8Array): Record<string, unknown> | Refusal {
   if (args.length > MAX_ARGS_BYTES) return refusal("near/args-malformed");
   let text: string;
   try {
@@ -245,7 +248,7 @@ function argsObject(args: Uint8Array): { text: string; parsed: Record<string, un
     return refusal("near/args-malformed");
   }
   const parsed = parseJson(text);
-  return isObject(parsed) ? { text, parsed } : refusal("near/args-malformed");
+  return isObject(parsed) && tokenReads(text, parsed) ? parsed : refusal("near/args-malformed");
 }
 
 /** The keys the token contract's `ft_transfer` reads. */
@@ -383,8 +386,13 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
  * account id among them), or a delegate whose arguments are not base64 in its canonical form (RFC 4648 §3.5), an answer
  * out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref that names no
  * `transaction` string is `near/wrong-reader`, and a relayer list that is empty or whose first four are not each a NEAR
- * account id is `near/no-relayer`, each with nothing read. The arguments are read for their `memo` alone: the hash a
- * transaction carries is recovered whatever its transfer's outcome.
+ * account id is `near/no-relayer`, each with nothing read. The delegate's arguments are read as `nearCarrier` reads
+ * them, only as the token contract reads them: arguments over the size bound, not UTF-8 JSON, not an object, or that the
+ * contract refuses (a `receiver_id`, `amount` or `memo` named more than once, a key that decodes to a lone surrogate, a
+ * `receiver_id` that is not a NEAR account id, or an `amount` that is not a string of an optional `+` and ASCII digits
+ * below 2^128) are `near/args-malformed`, since the contract makes no transfer with them; then a `memo` that is not a
+ * string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. Otherwise the hash is recovered
+ * whatever the transfer's outcome, and nothing else in the arguments is compared with the ATR's content.
  */
 export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("near/wrong-reader");
@@ -397,8 +405,8 @@ export async function nearRecover(ref: { network: NearNetwork; transaction: stri
   if (outcome.delegate === null || outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = fromBase64(outcome.delegate.argsBase64);
   if (args === null) return refusal("near/unreadable");
-  const read = argsObject(args);
-  return isRefusal(read) ? read : memoIn(read.parsed);
+  const parsed = argsObject(args);
+  return isRefusal(parsed) ? parsed : memoIn(parsed);
 }
 
 /** The relayers the reader lists, the first four, when there is one and each is a NEAR account id; else null. */

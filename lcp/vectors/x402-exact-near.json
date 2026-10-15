@@ -540,6 +540,35 @@
      "code": "near/not-ft-transfer"
     },
     "source": "the pairing reads the memo of one NEP-141 ft_transfer; ft_transfer_call is another method"
+   },
+   {
+    "case": "a delegate whose ft_transfer args name memo twice, first as a free-form string, then as V1's LCP string, whose token receipt fails: serde's derived reader refuses a field named twice (duplicate_field), so the token contract makes no transfer and the args carry no hash, though JSON.parse keeps the last memo",
+    "outcome": {
+     "status": "FINAL",
+     "delegate": {
+      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "nonce": "101",
+      "receiverId": "usdc.testnet",
+      "methodName": "ft_transfer",
+      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImEgZnJlZS1mb3JtIG1lbW8iLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQ=="
+     },
+     "receipts": [
+      {
+       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "outcome": "success"
+      },
+      {
+       "executor": "usdc.testnet",
+       "outcome": "failure"
+      }
+     ]
+    },
+    "expect": {
+     "refused": true,
+     "code": "near/args-malformed"
+    },
+    "source": "agreedRefusals row 37's args, written with Python base64"
    }
   ]
  },

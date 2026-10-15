@@ -8,12 +8,12 @@
 // escape that decodes to a lone surrogate, while a skipped value's strings and keys are not held to that (serde_json,
 // src/read.rs and src/de.rs). A `U128` is a JSON string that Rust's `u128::from_str` reads (near-sdk-core,
 // src/json_types/integers.rs): an optional `+`, then one or more ASCII digits, at most 2^128 - 1 (core,
-// src/num/mod.rs). The pairing binds arguments the contract reads and refuses the others as `near/args-malformed`;
-// a `memo` keeps the pairing's own codes, `near/memo-missing` and `near/memo-not-lcp`.
+// src/num/mod.rs). The pairing binds and recovers H only from arguments the contract reads, and refuses the others as
+// `near/args-malformed`; a `memo` keeps the pairing's own codes, `near/memo-missing` and `near/memo-not-lcp`.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AtrHash } from "../src/core.js";
-import { exactNear, ftTransferArgs, nearCarrier } from "../src/near.js";
+import { exactNear, ftTransferArgs, nearCarrier, type NearReader } from "../src/near.js";
 import type { PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 
@@ -44,6 +44,19 @@ const payment = (signedDelegateAction: string) => ({
   payload: { signedDelegateAction },
 });
 
+// V3's settled recover fixture, its delegate's arguments replaced.
+const landed = V.V3.recover[0];
+const readerWithArgs = (text: string): NearReader => ({
+  network: V.V3.ref.network,
+  relayers: V.V3.relayers,
+  txStatus: async () => ({
+    ...landed.outcome,
+    delegate: { ...landed.outcome.delegate, nonce: BigInt(landed.outcome.delegate.nonce), argsBase64: Buffer.from(text, "utf8").toString("base64") },
+  }),
+  finalHeight: async () => 0n,
+  accessKeyNonce: async () => null,
+});
+
 // V1's arguments, member by member: R, A and M.
 const R = '"receiver_id":"merchant.testnet"';
 const A = '"amount":"1000000"';
@@ -51,15 +64,24 @@ const M = `"memo":${JSON.stringify(JSON.parse(V.V1.expectArgsUtf8).memo)}`;
 const args = (...members: string[]) => `{${members.join(",")}}`;
 const withAmount = (amount: string) => args(R, `"amount":${amount}`, M);
 
-/** `bound`'s answer, H or the refusal's code, once `nearCarrier` and `reference` give the same; else what differs. */
+/**
+ * `bound`'s answer, H or the refusal's code, once `nearCarrier`, `reference` and `recover`, reading the arguments from
+ * a settled transaction's delegate, give the same; else what differs.
+ */
 async function answer(text: string): Promise<string> {
   const sda = sdaWithArgs(text);
   const b = await exactNear.bound(payment(sda));
   const c = nearCarrier(sda);
   const r = await exactNear.reference(payment(sda));
+  const v = await exactNear.recover({ network: V.V3.ref.network, transaction: V.V3.ref.transaction }, readerWithArgs(text));
   const of = (x: unknown, ok: (v: unknown) => boolean) =>
     typeof x === "object" && x !== null && "refused" in x ? String((x as { code?: unknown }).code) : ok(x) ? "H" : JSON.stringify(x);
-  const each = [of(b, (v) => v === H), of(c, (v) => (v as { h?: unknown }).h === H), of(r, (v) => typeof (v as { argsDigest?: unknown }).argsDigest === "string")];
+  const each = [
+    of(b, (x) => x === H),
+    of(c, (x) => (x as { h?: unknown }).h === H),
+    of(r, (x) => typeof (x as { argsDigest?: unknown }).argsDigest === "string"),
+    of(v, (x) => x === H),
+  ];
   return each.every((x) => x === each[0]) ? each[0]! : `differ: ${each.join(" | ")}`;
 }
 
@@ -71,7 +93,7 @@ async function answers(rows: readonly (readonly [string, string, string])[]): Pr
 const wanted = (rows: readonly (readonly [string, string, string])[]) => rows.map(([label, , want]) => [label, want, want]);
 
 describe("ft_transfer's arguments as the token contract reads them", () => {
-  it("V1's arguments bind H at bound, nearCarrier and reference", async () => {
+  it("V1's arguments bind H at bound, nearCarrier and reference, and recover recovers it", async () => {
     expect(V.V1.expectArgsUtf8).toBe(args(R, A, M));
     expect(await answer(args(R, A, M))).toBe("H");
   });

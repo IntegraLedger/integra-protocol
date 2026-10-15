@@ -337,7 +337,7 @@ describe("x402-exact-near.json", () => {
     for (const row of rowsOf(V.V3.lapsed, "x402-exact-near.json V3.lapsed", { exact: 6 })) {
       expect([row.case, await nearLapsed({ ...REF, ...row.ref }, readerFor(row))]).toEqual([row.case, row.expect]);
     }
-    for (const row of rowsOf(V.V3.recover, "x402-exact-near.json V3.recover")) {
+    for (const row of rowsOf(V.V3.recover, "x402-exact-near.json V3.recover", { exact: 3 })) {
       const got = await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
@@ -528,6 +528,36 @@ describe("x402-exact-near.json", () => {
         throw new Error(`no runner for ${row.case}`);
       }
     }
+  });
+
+  // The token contract reads ft_transfer's arguments with serde's derived reader (near-sdk) and makes no transfer with
+  // arguments it refuses, so a transaction whose delegate carries them carries no hash: recover reads a delegate's
+  // arguments as bound does. Each agreedRefusals row that bound refuses as near/args-malformed, its arguments in V3's
+  // settled fixture: rows 35 to 42 (a key the contract reads named twice, a missing or malformed amount, a key that
+  // decodes to a lone surrogate) and rows 7, 16 and 33.
+  it("recover refuses as near/args-malformed the arguments of each agreedRefusals row bound refuses so", async () => {
+    type Signed = { delegateAction: { actions: { functionCall: { args: Uint8Array } }[] } };
+    type Row = { case: string; signedDelegateAction?: string; expect: string };
+    const malformed = (r: Row) => r.signedDelegateAction !== undefined && r.expect === "near/args-malformed";
+    const rows = rowsOf<Row>(V.agreedRefusals.rows, "x402-exact-near.json agreedRefusals.rows", {
+      exact: 11,
+      keep: ["the signed delegate actions bound refuses as near/args-malformed", malformed],
+      leave: ["every other row", (r) => !malformed(r)],
+    });
+    expect(V.agreedRefusals.rows.flatMap((r: Row, i: number) => (malformed(r) ? [i] : []))).toEqual([
+      7, 16, 33, 35, 36, 37, 38, 39, 40, 41, 42,
+    ]);
+    const landed = V.V3.recover[0];
+    const got: unknown[] = [];
+    for (const row of rows) {
+      const sda = row.signedDelegateAction!;
+      expect([row.case, await exactNear.bound(payment(sda))]).toEqual([row.case, { refused: true, code: row.expect }]);
+      const signed = deserialize(SCHEMA.SignedDelegate, Buffer.from(sda, "base64")) as Signed;
+      const argsBase64 = Buffer.from(signed.delegateAction.actions[0]!.functionCall.args).toString("base64");
+      const outcome: Fixture = { ...landed.outcome, delegate: { ...landed.outcome.delegate, argsBase64 } };
+      got.push([row.case, await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor({ outcome }))]);
+    }
+    expect(got).toEqual(rows.map((row) => [row.case, { refused: true, code: "near/args-malformed" }]));
   });
 
   // RFC 8259 §8.1: implementations "MUST NOT add a byte order mark (U+FEFF) to the beginning of a networked-transmitted

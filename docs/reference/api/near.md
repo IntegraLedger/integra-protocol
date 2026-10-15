@@ -264,8 +264,13 @@ read, an outcome that is not well formed (a delegate sender or receiver, or a re
 account id among them), or a delegate whose arguments are not base64 in its canonical form (RFC 4648 §3.5), an answer
 out of the reader's documented form, is `near/unreadable`, as `nearStatus` answers it pending. A ref that names no
 `transaction` string is `near/wrong-reader`, and a relayer list that is empty or whose first four are not each a NEAR
-account id is `near/no-relayer`, each with nothing read. The arguments are read for their `memo` alone: the hash a
-transaction carries is recovered whatever its transfer's outcome.
+account id is `near/no-relayer`, each with nothing read. The delegate's arguments are read as `nearCarrier` reads
+them, only as the token contract reads them: arguments over the size bound, not UTF-8 JSON, not an object, or that the
+contract refuses (a `receiver_id`, `amount` or `memo` named more than once, a key that decodes to a lone surrogate, a
+`receiver_id` that is not a NEAR account id, or an `amount` that is not a string of an optional `+` and ASCII digits
+below 2^128) are `near/args-malformed`, since the contract makes no transfer with them; then a `memo` that is not a
+string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. Otherwise the hash is recovered
+whatever the transfer's outcome, and nothing else in the arguments is compared with the ATR's content.
 
 #### Parameters
 
