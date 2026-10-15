@@ -59,12 +59,12 @@ node scripts/docs-reference.mjs --check
   registry, the exports, the vectors or the refusal codes, run `node scripts/docs-reference.mjs` and commit what it
   writes.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm run browser && pnpm build` inside that
-  folder, on Linux x64. `pnpm run browser` fetches the browser build the Mermaid diagrams are drawn in, Chrome Headless
-  Shell, which `website/scripts/browser.mjs` pins by version and by the SHA-256 of its archive, and the build refuses
-  any other. The build is pinned for Linux x64 alone, since a browser build for another platform measures text through
-  that platform's own font engine, so the site is built in CI or on a maintainer's Linux x64 machine. After a change to
-  a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API pages it writes under
-  `docs/reference/api/`; CI checks that they match the source.
+  folder, on Linux x64. `pnpm run browser` fetches, in up to five attempts, the browser build the Mermaid diagrams are
+  drawn in, Chrome Headless Shell, which `website/scripts/browser.mjs` pins by version and by the SHA-256 of its
+  archive, and the build refuses any other. The build is pinned for Linux x64 alone, since a browser build for another
+  platform measures text through that platform's own font engine, so the site is built in CI or on a maintainer's Linux
+  x64 machine. After a change to a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API
+  pages it writes under `docs/reference/api/`; CI checks that they match the source.
 - `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.
@@ -96,13 +96,15 @@ node scripts/docs-reference.mjs --check
 CI runs the commands in the block above and the rest of `.github/workflows/ci.yml` on every push to `main`, when
 dispatched by hand, and from the publish workflow before it packs. Its other steps check:
 
-- **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in
-  one step, byte for byte the same in every job, before its first other step that runs. No workflow uses
-  `setup-node`, `continue-on-error`, `if:`, `container:`, `shell:` or a `PATH:` key, or writes `$GITHUB_ENV`, and only
-  the Node.js and pnpm fetches write `$GITHUB_PATH`. Every workflow is written in YAML's plain block style: outside a
-  block scalar (`run: |`), each line is one plain key and its value, with no flow mapping, anchor, alias, tag or quoted
-  value that does not close on its own line, and a block scalar's header holds only its indicators and a comment. The
-  step reads the jobs' steps only outside a block scalar, so the text a block scalar holds is never read as a step.
+- **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in one
+  step, byte for byte the same in every job, before its first other step that runs. Every download in a workflow is
+  `curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/<file>" https://<address>`, which retries a failed transfer
+  five times whatever the error, and writes one file. No workflow uses `setup-node`, `continue-on-error`, `if:`,
+  `container:`, `shell:` or a `PATH:` key, or writes `$GITHUB_ENV`, and only the Node.js and pnpm fetches write
+  `$GITHUB_PATH`. Every workflow is written in YAML's plain block style: outside a block scalar (`run: |`), each line is
+  one plain key and its value, with no flow mapping, anchor, alias, tag or quoted value that does not close on its own
+  line, and a block scalar's header holds only its indicators and a comment. The step reads the jobs' steps only outside
+  a block scalar, so the text a block scalar holds is never read as a step.
 - **The install policy:** both `pnpm-workspace.yaml` files set `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade`
   and `strictDepBuilds: true`, and no other setting but `packages` (`"*"` and `"!website"`, so `pnpm -r` reaches every
   package), `allowBuilds` (denials only), `minimumReleaseAgeExclude` (`@integraledger/*` only) and `overrides`
