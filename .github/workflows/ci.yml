@@ -64,7 +64,8 @@ jobs:
           node - <<'EOF'
           const fs = require("node:fs");
           const path = require("node:path");
-          // The site documents @integraledger/lcp and may name it; no package depends on or names another.
+          // The site documents @integraledger/lcp and may name it in its code; no manifest, the site's included, depends
+          // on another @integraledger package, and no other package's code names one.
           const allowed = (dir) => (dir === "website" ? ["@integraledger/lcp"] : []);
           const code = /\.(?:[cm]?[jt]sx?)$/;
           // Every quoted @integraledger name in code counts, however it is loaded or resolved (import, require,
@@ -97,7 +98,7 @@ jobs:
             packages++;
             const pkg = JSON.parse(fs.readFileSync(manifest, "utf8"));
             const ok = new Set([pkg.name, ...allowed(dir)]);
-            const found = dependencies(pkg, manifest);
+            const found = dependencies(pkg, manifest).filter(([name]) => name !== pkg.name);
             if (!outside.has(dir)) {
               for (const script of ["build", "typecheck", "test"]) {
                 if (typeof pkg.scripts?.[script] !== "string" || pkg.scripts[script].trim() === "") {
@@ -108,20 +109,19 @@ jobs:
             }
             const walk = (d) => {
               for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-                if (e.name === "node_modules" || e.name === "dist" || e.name.startsWith(".")) continue;
+                // Build output is the package's own dist; a folder named dist under its source is source.
+                if (e.name === "node_modules" || (d === dir && e.name === "dist") || e.name.startsWith(".")) continue;
                 const p = path.join(d, e.name);
                 if (e.isDirectory()) walk(p);
                 else if (code.test(e.name)) {
-                  for (const m of fs.readFileSync(p, "utf8").matchAll(named)) found.push([m[1], p]);
+                  for (const m of fs.readFileSync(p, "utf8").matchAll(named)) if (!ok.has(m[1])) found.push([m[1], p]);
                 }
               }
             };
             walk(dir);
             for (const [name, where] of found) {
-              if (!ok.has(name)) {
-                console.log(`${where}: ${name}`);
-                bad++;
-              }
+              console.log(`${where}: ${name}`);
+              bad++;
             }
           }
           if (packages === 0) {
