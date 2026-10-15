@@ -407,7 +407,8 @@ function commandArguments(c: ParsedCommand): readonly ParsedArgument[] {
 
 /**
  * The types a programmable transaction carries: each call's type arguments, each vector's element type, and each funds
- * withdrawal's type. None for any other kind.
+ * withdrawal's type. None for any other kind. Each is listed on its own, so the list takes constant stack however many
+ * types a call carries.
  */
 function typesOf(data: ReturnType<typeof SuiBcs.TransactionData.parse>): readonly string[] {
   if (data.$kind !== "V1" || data.V1.kind.$kind !== "ProgrammableTransaction") return [];
@@ -417,7 +418,7 @@ function typesOf(data: ReturnType<typeof SuiBcs.TransactionData.parse>): readonl
     if (input.$kind === "FundsWithdrawal") out.push(input.FundsWithdrawal.typeArg.Balance);
   }
   for (const command of commands) {
-    if (command.$kind === "MoveCall") out.push(...command.MoveCall.typeArguments);
+    if (command.$kind === "MoveCall") for (const type of command.MoveCall.typeArguments) out.push(type);
     else if (command.$kind === "MakeMoveVec" && command.MakeMoveVec.type !== null) out.push(command.MakeMoveVec.type);
   }
   return out;

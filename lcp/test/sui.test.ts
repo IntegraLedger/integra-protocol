@@ -200,6 +200,22 @@ describe("a type nested to Sui's type depth limit", () => {
       expect(decodeSuiTx(call(type).toString("base64"))).toEqual({ refused: true, code: "sui/tx-malformed" });
     }
   });
+  // Each `u8` type argument is one byte, so a call in a transaction of 128 KiB, `max_tx_size_bytes`, can carry more
+  // than 130,000 of them. The types are read one by one, in constant stack, so the answer does not depend on this
+  // host's stack. The test has no time bound (0): how long @mysten/sui takes to write the transaction depends only on
+  // the machine.
+  it("a call with as many u8 type arguments as 128 KiB holds decodes and carries H", async () => {
+    const call = (n: number) =>
+      serialize([pure], [{ MoveCall: { package: "0x2", module: "m", function: "f", typeArguments: Array(n).fill("u8"), arguments: [] } }]);
+    // The count's ULEB128 takes three bytes from 16,384 type arguments on, two more than it takes for none.
+    const n = 128 * 1024 - call(0).length - 2;
+    const tx = call(n);
+    expect([n > 130_000, tx.length]).toEqual([true, 128 * 1024]);
+    const decoded = decodeSuiTx(tx.toString("base64"));
+    if ("refused" in decoded) throw new Error(decoded.code);
+    expect(suiCarrier(decoded)).toBe(H);
+    expect(decodeSuiTx(call(n + 1).toString("base64"))).toEqual({ refused: true, code: "sui/tx-too-large" });
+  }, 0);
 });
 
 describe("V1 · the real rail", () => {
