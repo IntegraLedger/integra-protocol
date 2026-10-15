@@ -693,6 +693,39 @@ describe("mpp/session/solana", () => {
     expect(await sessionSolana.channel.ref(voucher(operator))).toEqual(refused("mpp/session-action"));
     expect(await sessionSolana.channel.boundWithin(voucher(operator))).toEqual(refused("mpp/session-action"));
   });
+
+  // draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: a close's `voucher` is "REQUIRED for `client` and
+  // MUST be absent for `operator`", and its `authentication` is "REQUIRED for `operator` and MUST be absent for
+  // `client`"; `client` is the default when the challenge omits `voucherSigner` (L258). A close carrying its mode's
+  // member alone is the close and names its channel; any other is refused by each function that reads it. The close
+  // buildWithin builds on a client channel carries its voucher alone, and is the close.
+  it("SV5: a close carries voucher on a client channel and authentication on an operator channel; channel.kind, channel.ref and channel.boundWithin refuse any other", async () => {
+    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
+    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
+    const voucher = { voucher: { channelId: V.SV2.channel, cumulativeAmount: "100" }, signer: V.SV3.payer, signature: "x", signatureType: "ed25519" };
+    const authentication = (c: MppChallenge & { id: string }) => ({ type: "proof", challengeId: c.id, payer: V.SV3.payer, signature: "x" });
+    const close = (c: MppChallenge & { id: string }, members: Record<string, unknown>) => cred(c, { action: "close", channelId: V.SV2.channel, ...members } as MppCredential["payload"]);
+    const calls = async (p: MppCredential) => [sessionSolana.channel.kind(p), await sessionSolana.channel.ref(p), await sessionSolana.channel.boundWithin(p)];
+    const closed = ["close", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")];
+    const malformed = Array(3).fill(refused("mpp/credential-malformed"));
+    for (const c of [client, C_S]) {
+      expect(await calls(close(c, { voucher }))).toEqual(closed);
+      for (const members of [{}, { authentication: authentication(c) }, { voucher, authentication: authentication(c) }]) {
+        expect(await calls(close(c, members))).toEqual(malformed);
+      }
+    }
+    expect(await calls(close(operator, { authentication: authentication(operator) }))).toEqual(closed);
+    for (const members of [{}, { voucher }, { voucher, authentication: authentication(operator) }]) {
+      expect(await calls(close(operator, members))).toEqual(malformed);
+    }
+    const opening = cred(C_S, { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 });
+    const u = await sessionSolana.buildWithin({ challenge: C_S, opening, cumulativeAmount: 100n, action: "close" }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const built = u.complete([base58.encode(new Uint8Array(64).fill(1))]);
+    if ("refused" in built) throw new Error(built.code);
+    expect(Object.keys(built.payload)).toEqual(["action", "channelId", "voucher"]);
+    expect(await calls(built)).toEqual(closed);
+  });
 });
 
 /** The PayChannel ledger entry's ID, by hand: SHA-512Half of 0x0078 ‖ AccountID ‖ AccountID ‖ the sequence, big-endian. */
@@ -1085,9 +1118,13 @@ describe("channel.ref of a within or close payment, on the seller's own challeng
   it("solana: a voucher's and a close's ref is {the request's network, payload.channelId}", async () => {
     const channel = V.SV2.channel as string;
     const c = own(C_S, (r) => ((r["methodDetails"] as Record<string, unknown>)["channelId"] = channel));
-    for (const action of ["voucher", "topUp", "close"]) {
-      const p = cred(c, { action, channelId: channel, cumulativeAmount: "100", signature: "x" });
-      expect(await sessionSolana.channel.ref(p)).toEqual({ network: V.SV2.expectReference.network, channel });
+    const voucher = { voucher: { channelId: channel, cumulativeAmount: "100" }, signer: V.SV3.payer, signature: "x", signatureType: "ed25519" };
+    for (const payload of [
+      { action: "voucher", channelId: channel, voucher },
+      { action: "topUp", channelId: channel, additionalAmount: "100", transaction: "x" },
+      { action: "close", channelId: channel, voucher },
+    ]) {
+      expect(await sessionSolana.channel.ref(cred(c, payload))).toEqual({ network: V.SV2.expectReference.network, channel });
     }
     expect(sessionSolana.channel.kind(cred(c, { action: "voucher", channelId: channel }))).toBe("within");
   });
@@ -1172,6 +1209,12 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     const voucher = cred(c, { action: "voucher", channelId: V.SV2.channel });
     return [sessionSolana.channel.kind(voucher), await sessionSolana.channel.ref(voucher), await sessionSolana.channel.boundWithin(voucher)];
   };
+  /** channel.kind, channel.ref and channel.boundWithin of a `close` echoing challenge `c`, with `members` beside its channel. */
+  const solanaCloseCalls = async (c: MppChallenge & { id: string }, members: Record<string, unknown>) => {
+    const close = cred(c, { action: "close", channelId: V.SV2.channel, ...members } as MppCredential["payload"]);
+    return [sessionSolana.channel.kind(close), await sessionSolana.channel.ref(close), await sessionSolana.channel.boundWithin(close)];
+  };
+  const closeVoucher = { voucher: { channelId: V.SV2.channel, cumulativeAmount: "100" }, signer: V.SV3.payer, signature: "x", signatureType: "ed25519" };
   /** channel.kind and channel.ref of a Hedera payment under `action`, and buildWithin of `action` on HS3's opening. */
   const hederaActionCalls = async (action: string) => {
     const paid = cred(C_H, { action, channelId: V.HS1.expectChannelId, cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` });
@@ -1196,6 +1239,9 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     for (const c of [client, C_S]) {
       expect(await solanaVoucherCalls(c)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")]);
     }
+    const closed = ["close", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")];
+    for (const c of [client, C_S]) expect(await solanaCloseCalls(c, { voucher: closeVoucher })).toEqual(closed);
+    expect(await solanaCloseCalls(operator, { authentication: proofFor(operator) })).toEqual(closed);
     const [kind, ref, within] = await hederaActionCalls("voucher");
     expect([kind, ref]).toEqual(["within", { network: "hedera:testnet", channel: V.HS1.expectChannelId }]);
     expect(within).not.toHaveProperty("refused");
@@ -1286,6 +1332,19 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       async () => solanaVoucherCalls(operator),
     "a hedera use (draft-hedera-session-00 L840-845 at tempoxyz/mpp-specs 08e7dd87: the payload's action is one of open, topUp, voucher and close)":
       async () => hederaActionCalls("use"),
+    "a solana close without voucher or with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: voucher REQUIRED for client, authentication MUST be absent for client)":
+      async () => {
+        const out: unknown[] = [];
+        for (const c of [client, C_S]) {
+          out.push(...(await solanaCloseCalls(c, {})), ...(await solanaCloseCalls(c, { voucher: closeVoucher, authentication: proofFor(c) })));
+        }
+        return out;
+      },
+    "a solana close with voucher or without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: voucher MUST be absent for operator, authentication REQUIRED for operator)":
+      async () => [
+        ...(await solanaCloseCalls(operator, { voucher: closeVoucher, authentication: proofFor(operator) })),
+        ...(await solanaCloseCalls(operator, {})),
+      ],
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });

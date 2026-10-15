@@ -669,6 +669,14 @@
    {
     "case": "a hedera use (draft-hedera-session-00 L840-845 at tempoxyz/mpp-specs 08e7dd87: the payload's action is one of open, topUp, voucher and close)",
     "expect": "mpp/session-action"
+   },
+   {
+    "case": "a solana close without voucher or with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: voucher REQUIRED for client, authentication MUST be absent for client)",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "a solana close with voucher or without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: voucher MUST be absent for operator, authentication REQUIRED for operator)",
+    "expect": "mpp/credential-malformed"
    }
   ]
  },
