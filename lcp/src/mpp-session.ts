@@ -1249,14 +1249,15 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The one `open` call to the escrow in the signed transaction, with its salt word equal to H. On v2, the payload's
- * descriptor carries H as its salt (`descriptorSalt`), the transaction's sender as its `payer` (`tempoSender`, the
- * payer draft-tempo-session-00 recovers from the transaction) and the expiring nonce hash of this transaction under
- * that sender (`expiringNonceHash`), which the draft requires the descriptor's `expiringNonceHash` to match: a
- * descriptor naming another payer or another hash gives a channel id this transaction does not open. Else
- * `tempo/descriptor-mismatch`. On v1, the payload's `channelId` is the channel this transaction opens: `evmChannelId`
- * over the sender, the call's payee, token and authorizedSigner (words 0, 1 and 4 of `open(payee, token, deposit,
- * salt, authorizedSigner)`), H, the escrow and the chain, as draft-tempo-session-00 computes it from the payer it
- * recovers from the transaction. Else `mpp/channel-not-bound`; a sender that cannot be read, or an argument word that
+ * descriptor matches that transaction, as draft-tempo-session-00 requires: it carries H as its salt (`descriptorSalt`),
+ * the call's payee, operator, token and authorizedSigner (words 0, 1, 2 and 5 of `open(payee, operator, token,
+ * deposit, salt, authorizedSigner)`), the transaction's sender as its `payer` (`tempoSender`, the payer the draft
+ * recovers from the transaction) and the expiring nonce hash of this transaction under that sender
+ * (`expiringNonceHash`). A descriptor naming another party or another hash gives a channel id this transaction does
+ * not open: `tempo/descriptor-mismatch`. On v1, the payload's `channelId` is the channel this transaction opens:
+ * `evmChannelId` over the sender, the call's payee, token and authorizedSigner (words 0, 1 and 4 of `open(payee, token,
+ * deposit, salt, authorizedSigner)`), H, the escrow and the chain, as the draft computes it from the payer it recovers
+ * from the transaction. Else `mpp/channel-not-bound`. On either, a sender that cannot be read, or an argument word that
  * is not an address, is `tempo/tx-malformed`.
  */
 function tempoOpened(
@@ -1285,19 +1286,23 @@ function tempoOpened(
   if (!sameBytes(hexOf(input.subarray(saltAt, saltAt + 32)), e.h)) return refusal("tempo/salt-not-bound");
   const channel = normalHash(e.payload["channelId"]);
   if (channel === null) return refusal("mpp/credential-malformed");
+  const args = input.subarray(4);
   if (p.version === "v2") {
     const salt = descriptorSalt(e.payload, p);
     if (typeof salt !== "string" || !hashEquals(salt, e.h)) return refusal("tempo/descriptor-mismatch");
+    const d = descriptorOf(e.payload["descriptor"])!;
+    const called = [0, 1, 2, 5].map((i) => addressAt(args, i));
+    if (called.includes(undefined)) return refusal("tempo/tx-malformed");
+    const named = [d.payee, d.operator, d.token, d.authorizedSigner];
+    if (!named.every((a, i) => sameBytes(a, called[i]))) return refusal("tempo/descriptor-mismatch");
     const sender = tempoSender(raw);
     if (isRefusal(sender)) return sender;
-    const d = descriptorOf(e.payload["descriptor"])!;
     if (!sameBytes(d.payer, sender)) return refusal("tempo/descriptor-mismatch");
     const nonceHash = expiringNonceHash(raw, sender);
     if (typeof nonceHash !== "string" || !sameBytes(nonceHash, d.expiringNonceHash)) return refusal("tempo/descriptor-mismatch");
   } else {
     const sender = tempoSender(raw);
     if (isRefusal(sender)) return sender;
-    const args = input.subarray(4);
     const payee = addressAt(args, 0);
     const token = addressAt(args, 1);
     const signer = addressAt(args, 4);
