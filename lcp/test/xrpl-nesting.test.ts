@@ -2,7 +2,8 @@
 // field sits at level 10, rippled's limit (rippled 3.4.1, src/libxrpl/protocol/STVar.cpp L104-108), is read as the
 // pairing reads the blob it extends, and one whose deepest field sits at level 11 is refused. Each row is a pairing
 // vector's blob with a Memo field added, which no pairing reads, so H is the source row's; each row's hash is Python
-// 3.12.3 hashlib's SHA-512Half over 54584E00 and the blob.
+// 3.12.3 hashlib's SHA-512Half over 54584E00 and the blob. XC16 and XC17 hold an end marker in a container it does
+// not close, which rippled refuses at any level (src/libxrpl/protocol/STObject.cpp L240-244, STArray.cpp L54-58).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { chargeXrpl, sessionXrpl, type MppChallenge, type MppCredential, type SessionWithin } from "../src/mpp.js";
@@ -15,13 +16,18 @@ const CAPS = load("decoder-caps.json");
 const X = load("x402-exact-xrpl.json");
 const M = load("mpp-charge-xrpl.json");
 const S = load("mpp-session-hedera-solana-xrpl.json");
-type Row = { name: string; case: string; depth: number; blob: string; accept: boolean; hash: string };
+type Row = { name: string; case: string; depth: number; blob: string; accept: boolean; hash: string; stray?: string };
 const rows = rowsOf(CAPS.xrpl.rows as Row[], "decoder-caps.json xrpl.rows", {
-  keep: ["the rows that extend a pairing's blob", (r) => typeof r.hash === "string"],
-  leave: ["the rows that hold only the nesting", (r) => r.hash === undefined],
+  keep: ["the rows that extend a pairing's blob to a level", (r) => typeof r.hash === "string" && r.stray === undefined],
+  leave: ["the rows that hold only the nesting, and the rows with a stray end marker", (r) => r.hash === undefined || r.stray !== undefined],
+});
+const strays = rowsOf(CAPS.xrpl.rows as Row[], "decoder-caps.json xrpl.rows", {
+  exact: 2,
+  keep: ["the rows with a stray end marker", (r) => r.stray !== undefined],
+  leave: ["the rows whose end markers each close their own container", (r) => r.stray === undefined],
 });
 const row = (name: string): Row => {
-  const r = rows.find((x) => x.name === name);
+  const r = [...rows, ...strays].find((x) => x.name === name);
   if (r === undefined) throw new Error(`decoder-caps.json xrpl.rows: no ${name}`);
   return r;
 };
@@ -62,6 +68,23 @@ describe("x402/exact/xrpl: bound and reference", () => {
     const r = row("XC11");
     expect(await exactXrpl.bound(paid(r.blob))).toEqual(malformed);
     expect(await exactXrpl.reference(paid(r.blob))).toEqual(malformed);
+  });
+
+  it("XC16, V2's blob with an array end marker in the transaction's object: refused", async () => {
+    const r = row("XC16");
+    expect(r.blob).toBe(`${X.V2.blob}F1F1`);
+    expect(await exactXrpl.bound(paid(r.blob))).toEqual(malformed);
+    expect(await exactXrpl.reference(paid(r.blob))).toEqual(malformed);
+  });
+});
+
+describe("stray end markers: rippled refuses each at any level", () => {
+  it("decodeBlob refuses XC16 and XC17", async () => {
+    expect(strays.map((r) => [r.name, r.stray, r.depth, r.accept])).toEqual([
+      ["XC16", "ArrayEndMarker", 1, false],
+      ["XC17", "ObjectEndMarker", 2, false],
+    ]);
+    for (const r of strays) expect(await decodeBlob(r.blob), r.name).toEqual(malformed);
   });
 });
 

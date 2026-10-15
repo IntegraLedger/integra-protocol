@@ -33,13 +33,25 @@ type Row = { name: string; case: string; accept: boolean };
 const AFTER_THE_VALUE = "bytes after its one value";
 
 describe("XRPL binary: the level of every field", () => {
-  // rippled 3.4.1 refuses a field whose depth is above 10 (src/libxrpl/protocol/STVar.cpp L104-108).
-  it("the cap is the vectors' and rippled's, and a row is admitted exactly when its deepest field is within it", () => {
+  // rippled 3.4.1 refuses a field whose depth is above 10 (src/libxrpl/protocol/STVar.cpp L104-108), and an end marker
+  // in a container it does not close (src/libxrpl/protocol/STObject.cpp L240-244, STArray.cpp L54-58).
+  it("the cap is the vectors' and rippled's, and a row is admitted exactly when its deepest field is within it and it holds no stray end marker", () => {
     expect(XRPL_MAX_DEPTH).toBe(V.xrpl.maxDepth);
     expect(XRPL_MAX_DEPTH).toBe(10);
-    for (const r of rowsOf(V.xrpl.rows as (Row & { depth: number })[], "decoder-caps.json xrpl.rows")) {
-      expect(r.accept, r.name).toBe(r.depth <= XRPL_MAX_DEPTH);
+    for (const r of rowsOf(V.xrpl.rows as (Row & { depth: number; stray?: string })[], "decoder-caps.json xrpl.rows")) {
+      expect(r.accept, r.name).toBe(r.depth <= XRPL_MAX_DEPTH && r.stray === undefined);
     }
+  });
+  it("XC16 and XC17 hold a stray end marker within the cap", () => {
+    const stray = rowsOf(V.xrpl.rows as (Row & { depth: number; stray?: string })[], "decoder-caps.json xrpl.rows", {
+      exact: 2,
+      keep: ["the rows that hold a stray end marker", (r) => r.stray !== undefined],
+      leave: ["the rows whose end markers each close their own container", (r) => r.stray === undefined],
+    });
+    expect(stray.map((r) => [r.name, r.stray, r.depth])).toEqual([
+      ["XC16", "ArrayEndMarker", 1],
+      ["XC17", "ObjectEndMarker", 2],
+    ]);
   });
   for (const r of rowsOf(V.xrpl.rows as (Row & { blob: string })[], "decoder-caps.json xrpl.rows")) {
     it(`${r.name}: ${r.case} → ${r.accept ? "decoded" : "xrpl/blob-malformed"}`, async () => {

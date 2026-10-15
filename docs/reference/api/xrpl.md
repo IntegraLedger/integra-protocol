@@ -190,10 +190,10 @@ CAIP-2: `xrpl:` and the chain's NetworkID, 0 to 4294967295.
 > `const` **XRPL\_MAX\_DEPTH**: `10` = `10`
 
 The deepest level a field of a transaction sits at, rippled's limit: its deserializer refuses a field whose depth is
-above 10 (rippled 3.4.1, `src/libxrpl/protocol/STVar.cpp`, the `STVar` constructor that reads a `SerialIter`). A
-top-level field is at level 1, each field inside an STObject or STArray field one level below that field, and an
-array's member object one level below the array. An end marker sits at no level, so an object or array at this
-level holds no field.
+above 10 (rippled 3.4.1, `src/libxrpl/protocol/STVar.cpp` L104-108, the `STVar` constructor that reads a
+`SerialIter`). A top-level field is at level 1, each field inside an STObject or STArray field one level below that
+field, and an array's member object one level below the array. An end marker that closes its own object or array
+sits at no level, so an object or array at this level holds no field.
 
 ## Functions
 
@@ -203,9 +203,10 @@ level holds no field.
 
 Decodes a signed blob of at most 4096 hex characters (2048 bytes), and computes its transaction hash as the ledger
 does: SHA-512Half over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its
-fields refuses a blob with a field deeper than `XRPL_MAX_DEPTH`, as rippled refuses it. The blob must be the
-canonical serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes,
-so nothing follows a top-level end marker and every array member is an object.
+fields refuses a blob with a field deeper than `XRPL_MAX_DEPTH`, or with an end marker in an object or array it does
+not close, as rippled refuses either. The blob must be the canonical serialization of what it decodes to: the
+codec's encoding of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and every
+array member is an object.
 
 #### Parameters
 

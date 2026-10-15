@@ -81,10 +81,10 @@ export interface XrplPaymentPayload {
 export const MAX_BLOB_HEX = 4096;
 /**
  * The deepest level a field of a transaction sits at, rippled's limit: its deserializer refuses a field whose depth is
- * above 10 (rippled 3.4.1, `src/libxrpl/protocol/STVar.cpp`, the `STVar` constructor that reads a `SerialIter`). A
- * top-level field is at level 1, each field inside an STObject or STArray field one level below that field, and an
- * array's member object one level below the array. An end marker sits at no level, so an object or array at this
- * level holds no field.
+ * above 10 (rippled 3.4.1, `src/libxrpl/protocol/STVar.cpp` L104-108, the `STVar` constructor that reads a
+ * `SerialIter`). A top-level field is at level 1, each field inside an STObject or STArray field one level below that
+ * field, and an array's member object one level below the array. An end marker that closes its own object or array
+ * sits at no level, so an object or array at this level holds no field.
  */
 export const XRPL_MAX_DEPTH = 10;
 const NETWORK = /^xrpl:(0|[1-9][0-9]{0,9})$/;
@@ -188,9 +188,10 @@ export function mppInvoiceId(h: AtrHash): string {
 /**
  * Decodes a signed blob of at most 4096 hex characters (2048 bytes), and computes its transaction hash as the ledger
  * does: SHA-512Half over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its
- * fields refuses a blob with a field deeper than `XRPL_MAX_DEPTH`, as rippled refuses it. The blob must be the
- * canonical serialization of what it decodes to: the codec's encoding of the decoded fields gives back the same bytes,
- * so nothing follows a top-level end marker and every array member is an object.
+ * fields refuses a blob with a field deeper than `XRPL_MAX_DEPTH`, or with an end marker in an object or array it does
+ * not close, as rippled refuses either. The blob must be the canonical serialization of what it decodes to: the
+ * codec's encoding of the decoded fields gives back the same bytes, so nothing follows a top-level end marker and every
+ * array member is an object.
  */
 export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: string } | Refusal> {
   if (typeof hex !== "string" || !HEX.test(hex)) return refusal("xrpl/blob-malformed");
@@ -221,11 +222,12 @@ export async function decodeBlob(hex: string): Promise<{ tx: XrplTxJson; hash: s
 
 /**
  * True when no field of the serialized transaction sits deeper than `XRPL_MAX_DEPTH`, and every object and array it
- * opens is closed. It reads each field header once: a field other than an end marker sits one level below the objects
- * and arrays open around it, an object or array field opens a level in place, its end marker closes it, and every
- * other field's value is read as a leaf, so the pass is linear in the blob's length. Levels open and close as the
- * codec's decode reads them: inside an object only `ObjectEndMarker` closes, inside an array only `ArrayEndMarker`
- * closes, and any other field whose type is STObject or STArray opens a level.
+ * opens is closed by its own end marker. It reads each field header once: a field other than an end marker sits one
+ * level below the objects and arrays open around it, an object or array field opens a level in place, its end marker
+ * closes it, and every other field's value is read as a leaf, so the pass is linear in the blob's length. Inside an
+ * object only `ObjectEndMarker` closes, and inside an array only `ArrayEndMarker` closes; any other end marker is
+ * refused, as rippled 3.4.1 refuses an array end marker in an object (`src/libxrpl/protocol/STObject.cpp` L240-244)
+ * and an object end marker as an array's member (`src/libxrpl/protocol/STArray.cpp` L54-58).
  */
 function withinCaps(parser: InstanceType<Parser>): boolean {
   const open: ("STObject" | "STArray")[] = [];
@@ -234,8 +236,8 @@ function withinCaps(parser: InstanceType<Parser>): boolean {
       const field = parser.readField();
       const inside = open.at(-1) ?? "STObject";
       const closes = inside === "STObject" ? "ObjectEndMarker" : "ArrayEndMarker";
-      if (field.name === closes) {
-        if (open.pop() === undefined) return false;
+      if (field.name === "ObjectEndMarker" || field.name === "ArrayEndMarker") {
+        if (field.name !== closes || open.pop() === undefined) return false;
         continue;
       }
       if (open.length >= XRPL_MAX_DEPTH) return false;
