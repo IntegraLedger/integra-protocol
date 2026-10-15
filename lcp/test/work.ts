@@ -2,9 +2,9 @@
 // input without a clock: the same call gives the same count, and a test compares one input shape at two sizes. It
 // counts each element an array, Map or Set iterator yields (spread, for...of, Array.from of an iterable, new Map of a
 // Map); for array and typed-array methods, each element a copy writes (slice, concat, map, filter, flat, flatMap,
-// splice, from, set), each element a search reads up to its answer (indexOf, lastIndexOf, includes) or each callback
-// it calls (find, findIndex, findLast, findLastIndex, some, every), and each element a whole-array method visits
-// (forEach, reduce, reduceRight, fill, join, reverse, sort).
+// splice, from, set), each element a search reads up to its answer (indexOf, lastIndexOf) or, for includes, whose
+// answer gives no position, every element, each callback it calls (find, findIndex, findLast, findLastIndex, some,
+// every), and each element a whole-array method visits (forEach, reduce, reduceRight, fill, join, reverse, sort).
 // The methods are wrapped only while the call runs, then restored.
 
 type Fn = (...args: unknown[]) => unknown;
