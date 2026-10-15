@@ -12,7 +12,49 @@ on:
 permissions: {}
 
 jobs:
+  # A release is the tag v<version> on the version's commit on main: publish runs from that tag and no other ref.
+  tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # main's whole history, to know whether the tag's commit is on it.
+          fetch-depth: 0
+      - name: Fetch Node.js
+        run: |
+          set -eu
+          curl -fsSL -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
+          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/node"
+          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
+      - name: The run's ref is the tag v<version> of lcp/package.json's version, and its commit is on main
+        run: |
+          set -eu
+          version=$(node -p 'require("./lcp/package.json").version')
+          if [ "$GITHUB_REF" != "refs/tags/v$version" ]; then
+            echo "publish runs from the tag v$version, lcp/package.json's version; this run's ref is $GITHUB_REF"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "the tag v$version names $GITHUB_SHA, which is not a commit on main"
+            exit 1
+          fi
+          echo "the tag v$version names $GITHUB_SHA, a commit on main"
+
+  # Every check CI makes, on the commit to be packed: the pack waits for all of them.
+  ci:
+    needs: tag
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   pack:
+    needs: ci
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:

@@ -129,6 +129,23 @@ request. To sign off commits you already made, run `git rebase --signoff origin/
 - Describe what changed and how you checked it: the commands and what they printed.
 - Update the documentation and the vectors in the same pull request as the code they describe.
 
+## Releases
+
+Each release of `@integraledger/lcp` is the annotated tag `v<version>` on the commit on `main` that sets that version,
+made in this order:
+
+1. A pull request sets the version in `lcp/package.json`.
+2. It is merged to `main`.
+3. A maintainer tags that commit `v<version>` with an annotated tag (`git tag -a v<version> -m v<version> <commit>`)
+   and pushes the tag.
+4. A maintainer dispatches the publish workflow from the tag. Its first job fails unless the run's ref is the tag
+   `v<version>` of the version `lcp/package.json` names and the tag's commit is on `main`. CI then runs every check on
+   that commit, and only then does the `pack` job pack the package and the `stage` job stage it on npm, where a
+   maintainer approves it.
+
+To link the documentation of a release, link the tag's copy:
+`https://github.com/IntegraLedger/integra-protocol/tree/v<version>/docs`.
+
 ## Code of conduct
 
 This project follows the [Contributor Covenant](./CODE_OF_CONDUCT.md).
