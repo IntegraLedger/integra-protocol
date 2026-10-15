@@ -2,20 +2,22 @@
 // Compiles and runs every TypeScript sample in the READMEs (every README.md in the tree, outside node_modules and
 // build output) and in the pages under docs/ (except the generated API pages) against the built lcp package.
 //
-// A fence opens with three or more backticks or tildes, indented or not, and closes with at least as many of the same
-// character, indented or not. A sample is a fence whose info string starts with `ts` or `typescript` and does
-// not contain `no-check`. A fence whose info string starts with another TypeScript or JavaScript name (`tsx`, `mts`,
+// Each file is read as CommonMark reads it, by mdast-util-from-markdown: a fenced code block inside a block quote or a
+// list item is read where it stands, and the text of an indented code block, an HTML block or a paragraph is never a
+// fence. A sample is a fenced code block whose info string starts with `ts` or `typescript` and does not contain
+// `no-check`. A fenced code block whose info string starts with another TypeScript or JavaScript name (`tsx`, `mts`,
 // `cts`, `js`, `jsx`, `mjs`, `cjs`, `javascript`, or `ts` or `typescript` with a capital letter) fails unless it
 // contains `no-check`, so no sample leaves the run by its label. Each sample is a complete ESM program. It is written
 // to lcp/.samples/, so `@integraledger/lcp` resolves to the package itself, type-checked with lcp/tsconfig.docs.json,
-// then run with node. When the next fence after a sample, with only blank lines between them, is a `text` fence, the
-// program's standard output must equal that fence's content.
+// then run with node. When the block after a sample in the same container, with only blank lines between them, is a
+// fenced `text` block, the program's standard output must equal that block's content.
 //
 // Usage: node scripts/docs-samples.mjs [file.md ...]   (from the repository root, after lcp is built; with no file,
 // every README and page under docs/)
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { fromMarkdown } from "mdast-util-from-markdown";
 
 const root = join(import.meta.dirname, "..");
 const lcp = join(root, "lcp");
@@ -56,30 +58,32 @@ function sources() {
   return files;
 }
 
-/** The fences of one Markdown file, in order: info string, body and the line the fence opens on. */
+/**
+ * The fenced code blocks of one Markdown file, in document order: language, info string, body, the line the block
+ * opens on, and the body of the fenced `text` block that follows it in the same container, if one does. Only a fenced
+ * code block has an info string, so a code node with no language is an indented block or a fence with none. Nodes
+ * that follow each other in one container have only blank lines between them.
+ */
 function fences(text) {
-  const lines = text.split("\n");
   const found = [];
-  for (let i = 0; i < lines.length; i++) {
-    const open = /^([ \t]*)(`{3,}|~{3,})(.*)$/.exec(lines[i]);
-    if (open === null) continue;
-    const [, indent, marker, info] = open;
-    const close = new RegExp(`^[ \\t]*${marker[0]}{${marker.length},}[ \\t]*$`);
-    const body = [];
-    let j = i + 1;
-    while (j < lines.length && !close.test(lines[j])) {
-      body.push(lines[j].startsWith(indent) ? lines[j].slice(indent.length) : lines[j]);
-      j++;
-    }
-    found.push({ info: info.trim(), body: body.join("\n"), line: i + 1, end: j });
-    i = j;
-  }
-  return found.map((f, k) => {
-    const next = found[k + 1];
-    const between = next === undefined ? [] : lines.slice(f.end + 1, next.line - 1);
-    const adjacent = next !== undefined && between.every((l) => l.trim() === "");
-    return { ...f, output: adjacent && next.info.split(/\s+/)[0] === "text" ? next.body : undefined };
-  });
+  const walk = (node) => {
+    const children = node.children ?? [];
+    children.forEach((child, k) => {
+      if (child.type === "code" && child.lang !== null) {
+        const next = children[k + 1];
+        found.push({
+          lang: child.lang,
+          info: child.meta === null ? child.lang : `${child.lang} ${child.meta}`,
+          body: child.value,
+          line: child.position.start.line,
+          output: next?.type === "code" && next.lang === "text" ? next.value : undefined,
+        });
+      }
+      walk(child);
+    });
+  };
+  walk(fromMarkdown(text));
+  return found;
 }
 
 rmSync(out, { recursive: true, force: true });
@@ -91,7 +95,7 @@ const named = process.argv.slice(2).map((f) => resolve(f));
 for (const file of named.length > 0 ? named : sources()) {
   const where = relative(root, file);
   for (const f of fences(readFileSync(file, "utf8"))) {
-    const lang = f.info.split(/\s+/)[0];
+    const lang = f.lang;
     if (/\bno-check\b/.test(f.info)) continue;
     if (lang !== "ts" && lang !== "typescript") {
       if (/^(?:[cm]?[jt]sx?|typescript|javascript)$/i.test(lang)) refused.push(`${where}:${f.line} is fenced \`${lang}\``);

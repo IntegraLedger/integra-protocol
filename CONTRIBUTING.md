@@ -42,11 +42,12 @@ node scripts/docs-samples.mjs
 node scripts/docs-reference.mjs --check
 ```
 
-- `docs-samples.mjs` compiles each TypeScript sample, a block fenced `ts` with backticks or tildes, in every
-  `README.md` in the tree and every page in `docs/`, not marked `no-check`, against the package you just built, runs
-  it, and checks its output against the `text` block that follows it. A block fenced in another TypeScript or
-  JavaScript language (`tsx`, `js`, `mjs`, …) fails unless it is marked `no-check`. A change that alters what a sample
-  prints updates the sample.
+- `docs-samples.mjs` reads every `README.md` in the tree and every page in `docs/` as CommonMark reads them, with
+  `mdast-util-from-markdown`. It compiles each TypeScript sample, a code block fenced `ts` with backticks or tildes and
+  not marked `no-check`, wherever it stands, in a list item or a block quote too, against the package you just built,
+  runs it, and checks its output against the fenced `text` block that follows it in the same container. A block fenced
+  in another TypeScript or JavaScript language (`tsx`, `js`, `mjs`, …) fails unless it is marked `no-check`. A change
+  that alters what a sample prints updates the sample.
 - `docs-reference.mjs --check` checks the generated reference pages and the README's pairing list against the
   package, `lcp/src/internal/codes.ts` against the codes `docs/reference/refusals.md` lists, that page's stated total
   and namespace table against its rows, that it lists no code twice, and the page against the source both ways: the page
