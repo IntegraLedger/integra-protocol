@@ -23,6 +23,9 @@
 // - `mpp/charge/stellar`'s `pairingsOf`, filter, `advertise`, `build` and `bound` of a `recipient` or `currency` strkey,
 //   read whole (`stellarChargeStrkeyRows`).
 // - `stellarLocate`'s search, which decodes only a candidate's transaction that succeeded (`stellarLocateRows`).
+// - Each `status` of a rail with an optional peer that reads with it (`suiStatusRows`, `tvmStatusRows`,
+//   `stellarStatusRows`): the same answer after the same reads, except a read that reaches a step that decodes with
+//   the peer (`without`).
 import { readFileSync } from "node:fs";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base32, base58 } from "@scure/base";
@@ -978,4 +981,190 @@ export function stellarLocateRows(): {
     { case: "a candidate that succeeded with the ref's entry", reader: readerOf([page({ events: listed })], succeeded(STELLAR.V5.rebuilt.envelope)), expect: { found: candidate, complete: true }, calls: 2, decodes: true },
     { case: "a candidate that succeeded with another entry", reader: readerOf([page({ events: listed })], succeeded(STELLAR.plant.envelope)), expect: { complete: true }, calls: 2, decodes: true },
   ];
+}
+
+/**
+ * A `status` read with the rail's peer: its answer after the reads given. `without` is the answer and the reads
+ * without the peer for a read that reaches a step that decodes with it; every other read gives the same answer, after
+ * the same reads, without the peer.
+ */
+export interface StatusRow {
+  case: string;
+  ref: unknown;
+  reader: () => Counted;
+  expect: unknown;
+  reads: number;
+  without?: { expect: unknown; reads: number };
+}
+
+/** A reader whose calls are counted, each answering through `answer(method, ...args)`, which throws to fail the read. */
+function countedBy(network: string, answer: (method: string, args: unknown[]) => unknown): Counted {
+  let reads = 0;
+  const reader = new Proxy({}, {
+    get: (_, k) => {
+      if (k === "network") return network;
+      if (k === "then") return undefined;
+      return async (...args: unknown[]) => {
+        reads++;
+        return answer(String(k), args);
+      };
+    },
+  });
+  return { reader, reads: () => reads };
+}
+
+const SUI_STATUS_REF = SUI.V4.ref as { network: string; digest: string; untilEpoch: string; h: string };
+/** The position x402-exact-sui.json's V4 reads from. */
+export const SUI_STATUS_POSITION = BigInt(SUI.V4.position);
+const suiStatusAnswer = (tx: { bcs: Uint8Array; status: string } | null, epoch: bigint, firstCheckpoint: bigint | null) => ({
+  tx: tx === null ? null : { transactionBcs: tx.bcs, status: tx.status, checkpoint: 7n },
+  epoch,
+  firstCheckpoint,
+});
+
+/**
+ * `suiStatus` reads of x402-exact-sui.json's V4 ref from its position. Only bytes that hash to the digest and pass
+ * `decodeSuiTx`'s tags are decoded with @mysten/sui: without it those are pending `unreadable` after the one read.
+ */
+export function suiStatusRows(): StatusRow[] {
+  const ref = SUI_STATUS_REF;
+  const read = (answer: unknown) => () => counted(SUI_NETWORK, "read", answer);
+  const unreadable = { state: "pending", why: "unreadable" };
+  const decoded = { expect: unreadable, reads: 1 };
+  const tagged = (at: 0 | 1, tag: number) => ({ ref: { ...ref, digest: suiDigestOf(suiTagged(at, tag)) }, reader: read(suiStatusAnswer({ bcs: suiTagged(at, tag), status: "SUCCESS" }, 1234n, null)) });
+  return [
+    { case: "V2's transaction, executed at checkpoint 7", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "SUCCESS" }, 1234n, null)), expect: { state: "settled", checkpoint: 7n }, reads: 1, without: decoded },
+    { case: "V2's transaction, aborted", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "FAILURE" }, 1234n, null)), expect: { state: "failed", why: "aborted" }, reads: 1, without: decoded },
+    { case: "no transaction, at its bound", ref, reader: read(suiStatusAnswer(null, 1234n, 0n)), expect: { state: "pending", why: "not-found" }, reads: 1 },
+    { case: "no transaction past its bound, the history held from the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION)), expect: { state: "failed", why: "expired" }, reads: 1 },
+    { case: "no transaction past its bound, the history held only after the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION + 1n)), expect: { state: "pending", why: "not-found" }, reads: 1 },
+    { case: "no transaction past its bound, no history named", ref, reader: read(suiStatusAnswer(null, 1235n, null)), expect: { state: "pending", why: "not-found" }, reads: 1 },
+    { case: "a read that fails", ref, reader: read("error"), expect: unreadable, reads: 1 },
+    { case: "an answer out of the reader's form", ref, reader: read({ epoch: "1234" }), expect: unreadable, reads: 1 },
+    { case: "V1's bytes under V2's digest", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V1!, status: "SUCCESS" }, 1234n, null)), expect: unreadable, reads: 1 },
+    { case: "bytes whose version tag is not V1's", ...tagged(0, 1), expect: { state: "failed", why: "not-this-instrument" }, reads: 1 },
+    { case: "a transaction whose kind is not programmable", ...tagged(1, 1), expect: { state: "failed", why: "not-this-instrument" }, reads: 1 },
+    { case: "a reader for another network", ref, reader: () => counted("sui:mainnet", "read", null), expect: unreadable, reads: 0 },
+    { case: "a ref whose h is not a hash", ref: { ...ref, h: "0x12" }, reader: read(null), expect: unreadable, reads: 0 },
+  ];
+}
+
+type TonFixture = Record<string, unknown>;
+type TonStatusRow = {
+  case: string;
+  byInBody?: TonFixture[] | "reader-error";
+  byInBodyRequest?: TonFixture[] | "reader-error";
+  byInMessage?: Record<string, TonFixture[] | "reader-error">;
+  headUtime?: number;
+  indexedUtime?: number;
+  expect: unknown;
+};
+/** A TON reader answering a status row's fixtures as tvm.test.ts's does, its calls counted. */
+function tonStatusReader(row: TonStatusRow): Counted {
+  const request = TVM.V4.ref.requestBodyHash as string;
+  const tx = (f: TonFixture) => ({ ...f, inBody: null });
+  return countedBy(TON_NETWORK, (method, args) => {
+    if (method === "byInBody") {
+      const answer = args[0] === request ? row.byInBodyRequest : row.byInBody;
+      if (answer === "reader-error") throw new Error("transport");
+      return { transactions: (answer ?? []).map(tx), headUtime: row.indexedUtime ?? row.headUtime };
+    }
+    if (method === "byInMessage") {
+      const answer = row.byInMessage?.[args[0] as string];
+      if (answer === "reader-error") throw new Error("transport");
+      return (answer ?? []).map(tx);
+    }
+    if (method === "headUtime") {
+      if (row.headUtime === undefined) throw new Error("transport");
+      return row.headUtime;
+    }
+    return null;
+  });
+}
+
+/**
+ * `tvmStatus` reads: x402-exact-tvm.json's V4 status rows and the ref with its accounts written in another raw
+ * spelling. The read decodes no cell and compares raw addresses itself, so each gives its answer, after the same reads,
+ * without @ton/core.
+ */
+export function tvmStatusRows(): StatusRow[] {
+  const ref = TVM.V4.ref as { wallet: string; jettonWallet: string };
+  const rows = TVM.V4.status as TonStatusRow[];
+  // The head and the request's lookup, then the lookup of each message the read follows.
+  const reads = [4, 4, 4, 3, 4, 2, 2, 3, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2];
+  const settled = rows[0]!;
+  const respelled = (s: string, wc: string) => `${wc}:${s.slice(s.indexOf(":") + 1).toUpperCase()}`;
+  return [
+    ...rows.map((row, i) => ({ case: row.case, ref, reader: () => tonStatusReader(row), expect: row.expect, reads: reads[i]! })),
+    { case: "the ref's accounts in uppercase hex, workchain 00 and -0", ref: { ...ref, wallet: respelled(ref.wallet, "00"), jettonWallet: respelled(ref.jettonWallet, "-0") }, reader: () => tonStatusReader(settled), expect: settled.expect, reads: 4 },
+    { case: "a ref whose wallet is not a raw address", ref: { ...ref, wallet: "x" }, reader: () => tonStatusReader(settled), expect: { state: "pending", why: "unreadable" }, reads: 0 },
+  ];
+}
+
+type StellarStatusFixture = { status: string; envelope?: string; ledger?: number };
+type StellarStatusRow = StellarStatusFixture & {
+  case: string;
+  latestLedger?: number;
+  transfers?: { events: { txHash: string }[]; complete: boolean; latestLedger?: number };
+  candidate?: StellarStatusFixture;
+  expect: unknown;
+};
+/** A Stellar reader answering a V5 row as stellar.test.ts's does, its calls counted. */
+function stellarStatusReader(row: StellarStatusRow): Counted {
+  const envelopeOf = (e: string | undefined) => (e === "plant" ? STELLAR.plant.envelope : e === "rebuilt" ? STELLAR.V5.rebuilt.envelope : e);
+  const answer = (a: StellarStatusFixture) => {
+    if (a.status === "reader-error") throw new Error("transport");
+    const envelope = envelopeOf(a.envelope);
+    return { status: a.status, ...(envelope !== undefined ? { envelopeXdr: envelope } : {}), ...(a.ledger !== undefined ? { ledger: a.ledger } : {}), oldestLedger: 1 };
+  };
+  const listed = new Set((row.transfers?.events ?? []).map((e) => e.txHash));
+  return countedBy(STELLAR.V5.ref.network, (method, args) => {
+    if (method === "transaction") return answer(listed.has(args[0] as string) && row.candidate !== undefined ? row.candidate : row);
+    if (method === "latestLedger") return row.latestLedger ?? 2000;
+    if (method === "transfers") {
+      const f = args[0] as { fromLedger: number };
+      return {
+        events: (row.transfers?.events ?? []).map((e) => ({ txHash: e.txHash, toMuxedId: BigInt(STELLAR.V1.muxedId) })),
+        complete: row.transfers?.complete ?? true,
+        oldestLedger: f.fromLedger,
+        latestLedger: row.transfers?.latestLedger ?? row.latestLedger ?? 2000,
+      };
+    }
+    return null;
+  });
+}
+
+/**
+ * `stellarStatus` reads of x402-exact-stellar.json's V5 rows. Only a transaction that succeeded is decoded with the
+ * SDK: without it a named one is pending `unreadable` after its one read, and a search's candidate leaves the search
+ * incomplete, pending with the named transaction's reason, after the same reads.
+ */
+export function stellarStatusRows(): StatusRow[] {
+  const ref = STELLAR.V5.ref;
+  const rows = STELLAR.V5.rows as StellarStatusRow[];
+  const reads = [1, 2, 3, 3, 4, 2, 3, 2, 3, 1, 1, 3, 4];
+  const unreadable = { expect: { state: "pending", why: "unreadable" }, reads: 1 };
+  const without: (StatusRow["without"] | undefined)[] = [
+    unreadable,
+    undefined,
+    undefined,
+    undefined,
+    { expect: { state: "pending", why: "transaction-failed" }, reads: 4 },
+    unreadable,
+    unreadable,
+    undefined,
+    undefined,
+    undefined,
+    unreadable,
+    undefined,
+    { expect: { state: "pending", why: "not-found" }, reads: 4 },
+  ];
+  return rows.map((row, i) => ({
+    case: row.case,
+    ref,
+    reader: () => stellarStatusReader(row),
+    expect: row.expect,
+    reads: reads[i]!,
+    ...(without[i] !== undefined ? { without: without[i] } : {}),
+  }));
 }

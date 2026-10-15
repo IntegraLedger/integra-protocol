@@ -312,10 +312,11 @@ read uses, or holds one in another form than `reference` writes, is pending `unr
 `transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
 an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
 strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
-`expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The ref's form needs no SDK; without
-@stellar/stellar-sdk a ref in its form is pending `unreadable` too, with nothing read, as the transaction cannot be
-decoded. One call when the named transaction settles or a read fails, two before the expiration ledger has passed,
-and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
+`expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The read needs no @stellar/stellar-sdk but to
+decode a transaction that succeeded: without it a named transaction that succeeded is pending `unreadable` after its
+one call, a search's candidate that succeeded leaves the search incomplete (pending with the named transaction's
+reason), and every other answer is the one with the SDK, after the same calls. One call when the named transaction
+settles or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
 the transaction's source account, with no `expiration` either) is settled when the named transaction succeeded as
 that transfer, and is otherwise pending: there is no expiration ledger to pass.
 

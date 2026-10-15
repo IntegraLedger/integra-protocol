@@ -3,9 +3,9 @@
  * that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash
  * stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed
  * bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is; without it every
- * function that needs it refuses `sui/peer-missing`, after the checks that need no peer, and `status` reads as pending
- * `unreadable`. A digest is base58,
- * read and written with the package's own dependency @scure/base, so it is checked without the peer.
+ * function that needs it refuses `sui/peer-missing`, after the checks that need no peer, and `status` reads as it does
+ * with it, pending `unreadable` only once it must decode a transaction's bytes. A digest is base58, read and written
+ * with the package's own dependency @scure/base, so it is checked without the peer.
  */
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base58 } from "@scure/base";
@@ -214,10 +214,12 @@ export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
  * with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
  * bytes carrying this hash, and its effects' status decides. A ref whose `digest` is not base58 of 32 bytes, whose `h`
  * is not `0x` and 64 hex digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and a
- * `position` that is not a non-negative bigint, are pending `unreadable`, with nothing read. One call.
+ * `position` that is not a non-negative bigint, are pending `unreadable`, with nothing read. One call. Only the decode
+ * of a present transaction's bytes needs @mysten/sui: without it bytes that hash to the digest and that `decodeSuiTx`
+ * cannot read before the peer are pending `unreadable` after the call, and every other answer is the one with it.
  */
 export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint): Promise<SuiStatus> {
-  if (peer === undefined || !isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
     return { state: "pending", why: "unreadable" };
   }
   const untilEpoch = ref.untilEpoch === null ? null : decimalBelow(ref.untilEpoch, U64_LIMIT);
@@ -234,6 +236,7 @@ export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader,
   }
   if (suiDigest(tx.transactionBcs) !== ref.digest) return { state: "pending", why: "unreadable" };
   const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
+  if (isRefusal(decoded) && decoded.code === "sui/peer-missing") return { state: "pending", why: "unreadable" };
   if (isRefusal(decoded)) return { state: "failed", why: "not-this-instrument" };
   const carried = suiCarrier(decoded);
   if (isRefusal(carried) || carried !== h) return { state: "failed", why: "not-this-instrument" };

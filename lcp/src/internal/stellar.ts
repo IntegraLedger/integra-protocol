@@ -3,9 +3,9 @@
  * bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. XDR, strkeys and
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
  * needs it refuses `stellar/peer-missing`, after the checks that need no peer (an envelope's network, size, base64 and
- * union tags, an event's form, a strkey), which give the codes they give with it, except the reads: `stellarStatus` is
- * pending `unreadable`, with nothing read, after the ref's form is checked, and `stellarLocate` searches as it does with
- * the SDK, its one step that needs it being the decode of a candidate's transaction that succeeded.
+ * union tags, an event's form, a strkey), which give the codes they give with it, except the reads: `stellarStatus` and
+ * `stellarLocate` read as they do with the SDK, and their one step that needs it, the decode of a transaction that
+ * succeeded, is pending `unreadable` (a search's candidate leaves the search incomplete) when it is reached.
  * Strkeys (`G…`, `C…` and `M…`) are read and written without it (`stellar-strkey.ts`), so `isAccount`, `isContract`,
  * `isMuxed`, `unmux` and `muxedFor` need no peer. The public names are re-exported by `../stellar.ts`.
  */
@@ -212,11 +212,6 @@ export function isMuxed(s: unknown): s is string {
 
 function need(): typeof StellarBase | null {
   return peer ?? null;
-}
-
-/** True when @stellar/stellar-sdk loaded with this module. */
-function hasPeer(): boolean {
-  return peer !== undefined;
 }
 
 // ── decoding ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -833,10 +828,11 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
  * `transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
  * an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
  * strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
- * `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The ref's form needs no SDK; without
- * @stellar/stellar-sdk a ref in its form is pending `unreadable` too, with nothing read, as the transaction cannot be
- * decoded. One call when the named transaction settles or a read fails, two before the expiration ledger has passed,
- * and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
+ * `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The read needs no @stellar/stellar-sdk but to
+ * decode a transaction that succeeded: without it a named transaction that succeeded is pending `unreadable` after its
+ * one call, a search's candidate that succeeded leaves the search incomplete (pending with the named transaction's
+ * reason), and every other answer is the one with the SDK, after the same calls. One call when the named transaction
+ * settles or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
  * the transaction's source account, with no `expiration` either) is settled when the named transaction succeeded as
  * that transfer, and is otherwise pending: there is no expiration ledger to pass.
  */
@@ -850,8 +846,7 @@ export async function stellarStatus(
     reader.network !== ref.network ||
     typeof ref.transaction !== "string" ||
     !TX_HASH.test(ref.transaction) ||
-    !refWellFormed(ref) ||
-    !hasPeer()
+    !refWellFormed(ref)
   ) {
     return { state: "pending", why: "unreadable" };
   }

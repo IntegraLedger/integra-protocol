@@ -330,7 +330,8 @@ is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and a
 at any head and at any finality. A transaction on any other account is ignored. A failed or malformed read, a
 malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
 network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
-lowercase. At most four calls.
+lowercase. At most four calls. The read decodes no cell, and the accounts are raw addresses, compared without
+@ton/core (`rawKey`), so every answer is the same with it and without it.
 
 #### Parameters
 

@@ -1,6 +1,6 @@
 // TON's SDK and NEAR's borsh are optional peers. With them absent, the entry points and the package root still
 // import, and each function that needs a peer refuses `<rail>/peer-missing` (the vectors' refusal), never
-// throwing; a status that needs one reads as pending `unreadable`, and nothing is read. A check that needs no peer
+// throwing; TON's status needs no peer and gives every answer it gives with it. A check that needs no peer
 // comes first and gives the code it gives with the peer: TON's option filter checks the addresses last, both
 // pairings' build check H, then the form of the choice's own members, then read the choice's document and the
 // option's place in it, TON's recover reads the ref, the reader, the transaction and its body's size and layout before
@@ -19,6 +19,7 @@ import {
   tvmCarrierInputs,
   tvmRecoverDecodes,
   tvmRecoverReads,
+  tvmStatusRows,
 } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
@@ -63,10 +64,18 @@ describe("without the TON and NEAR peers", () => {
     expect(await exactTvm.bound(payment)).toEqual(refused);
     expect(await exactTvm.reference(payment)).toEqual(refused);
     expect(await exactTvm.build({ ...membersOf(exactTvm.id), required: doc, accepted: O } as never, TVM.fixed.H)).toEqual(refused);
-    let calls = 0;
-    const reader = new Proxy({ network: "tvm:-3" }, { get: (t, k) => (k in t ? t[k as "network"] : async () => (calls++, null)) });
-    expect(await exactTvm.status({ network: "tvm:-3" } as never, reader as never)).toEqual({ state: "pending", why: "unreadable" });
-    expect(calls).toBe(0);
+  });
+
+  // peer-free-inputs.test.ts gives the same reads with @ton/core: status decodes no cell and compares raw addresses
+  // itself.
+  it("TON: status gives every read the answer it gives with the peer, after the same reads", { timeout: IMPORT_MS }, async () => {
+    const { exactTvm } = await import("../src/tvm.js");
+    for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 20 })) {
+      const c = row.reader();
+      const got = await exactTvm.status(row.ref as never, c.reader as never);
+      expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
+    }
+    expect(tvmStatusRows().every((row) => row.without === undefined)).toBe(true);
   });
 
   // Each case peer-free-inputs.ts lists gets the code it gets with the peer, after the same reads

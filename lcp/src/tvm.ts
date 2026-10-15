@@ -836,13 +836,14 @@ function sendsWith(mode: number, config: TonConfiguration): boolean {
  * at any head and at any finality. A transaction on any other account is ignored. A failed or malformed read, a
  * malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
  * network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
- * lowercase. At most four calls.
+ * lowercase. At most four calls. The read decodes no cell, and the accounts are raw addresses, compared without
+ * @ton/core (`rawKey`), so every answer is the same with it and without it.
  */
 export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStatus> {
   const unreadable = { state: "pending", why: "unreadable" } as const;
-  if (peer === undefined || !isObject(ref) || !isObject(reader) || reader.network !== ref.network) return unreadable;
+  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return unreadable;
   const request = normalHash(ref.requestBodyHash);
-  if (request === null || rawAddress(ref.jettonWallet) === null || rawAddress(ref.wallet) === null || !isUint32(ref.validUntil)) {
+  if (request === null || rawKey(ref.jettonWallet) === null || rawKey(ref.wallet) === null || !isUint32(ref.validUntil)) {
     return unreadable;
   }
   const head = await headTime(reader);
@@ -974,9 +975,19 @@ function isTonTx(t: unknown): t is TonTx {
 }
 
 function sameAccount(a: string, b: string): boolean {
-  const x = rawAddress(a);
-  const y = rawAddress(b);
-  return x !== null && y !== null && x.equals(y);
+  const x = rawKey(a);
+  return x !== null && x === rawKey(b);
+}
+
+/**
+ * The key of a raw address in the form `isRawAddress` reads, without @ton/core: the workchain as a number and the 64
+ * hex digits in lowercase. Two keys are equal exactly when @ton/core's `Address.parseRaw` gives addresses that are
+ * `equals`: it reads the workchain with `parseInt` and the hex as bytes. Null for any other value.
+ */
+function rawKey(s: unknown): string | null {
+  if (!isRawAddress(s)) return null;
+  const at = s.indexOf(":");
+  return `${Number(s.slice(0, at))}:${s.slice(at + 1).toLowerCase()}`;
 }
 
 /**

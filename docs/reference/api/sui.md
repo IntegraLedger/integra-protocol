@@ -233,7 +233,9 @@ pending `not-found`, since an endpoint that holds a shorter history may have pru
 with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
 bytes carrying this hash, and its effects' status decides. A ref whose `digest` is not base58 of 32 bytes, whose `h`
 is not `0x` and 64 hex digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and a
-`position` that is not a non-negative bigint, are pending `unreadable`, with nothing read. One call.
+`position` that is not a non-negative bigint, are pending `unreadable`, with nothing read. One call. Only the decode
+of a present transaction's bytes needs @mysten/sui: without it bytes that hash to the digest and that `decodeSuiTx`
+cannot read before the peer are pending `unreadable` after the call, and every other answer is the one with it.
 
 #### Parameters
 

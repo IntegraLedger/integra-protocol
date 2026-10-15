@@ -1,13 +1,14 @@
 // @mysten/sui is an optional peer. With it absent, the sui module and the package root still
 // import, and each function that needs the peer refuses `sui/peer-missing` (the vectors' refusal), never
-// throwing; `status` reads as pending `unreadable`. build checks H, then reads the choice's document and the option's
+// throwing; `status` reads as it does with the peer, pending `unreadable` only once it must decode a transaction's
+// bytes. build checks H, then reads the choice's document and the option's
 // place in it, recover reads the ref, the reader and the transaction before it decodes the transaction, and
 // decodeSuiTx reads the bytes' form, size and two leading tags before it decodes them, without the peer, as they do
 // with it.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildChoices } from "./build-choices.js";
-import { BAD_H, hFirstChoices, suiDecodeInputs, suiRecoverDecodes, suiRecoverReads } from "./peer-free-inputs.js";
+import { BAD_H, hFirstChoices, SUI_STATUS_POSITION, suiDecodeInputs, suiRecoverDecodes, suiRecoverReads, suiStatusRows } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-sui.json", import.meta.url), "utf8"));
@@ -37,19 +38,18 @@ describe("without @mysten/sui", () => {
     expect(await exactSui.reference(p)).toEqual(refused);
     const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.fixed.O] };
     expect(await exactSui.build({ required, accepted: V.fixed.O }, V.fixed.H)).toEqual(refused);
-    let calls = 0;
-    const reader = {
-      network: "sui:testnet" as const,
-      async read() {
-        calls++;
-        return { tx: null, epoch: 1n, firstCheckpoint: 0n };
-      },
-    };
-    expect(await exactSui.status({ ...V.V4.ref }, reader, BigInt(V.V4.position))).toEqual({
-      state: "pending",
-      why: "unreadable",
-    });
-    expect(calls).toBe(0);
+  });
+
+  // peer-free-inputs.test.ts gives the same reads with the peer. Only bytes that hash to the digest and pass
+  // decodeSuiTx's tags are decoded: without the peer those are pending unreadable after the one read.
+  it("status reads as it does with the peer, pending unreadable only where it must decode the bytes", { timeout: IMPORT_MS }, async () => {
+    const { exactSui } = await import("../src/sui.js");
+    for (const row of rowsOf(suiStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
+      const c = row.reader();
+      const got = await exactSui.status(row.ref as never, c.reader as never, SUI_STATUS_POSITION);
+      const want = row.without ?? { expect: row.expect, reads: row.reads };
+      expect([row.case, got, c.reads()]).toEqual([row.case, want.expect, want.reads]);
+    }
   });
 
   // Each case peer-free-inputs.ts lists gets the code it gets with the peer, after the same reads

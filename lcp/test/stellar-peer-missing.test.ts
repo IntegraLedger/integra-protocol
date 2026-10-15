@@ -4,8 +4,8 @@
 // none, each of which gives the code it gives with the peer. Strkeys (`G…`, `C…` and `M…`) are read and written
 // without the SDK, so x402/exact/stellar's option filter, pairingOf, x402 read and advertise, MPP's filter,
 // pairingsOf and advertise, both pairings' unplaced, issuedDigest and muxedFor give every input the answer they give
-// with it. build, bound and reference refuse it only once they read the transaction; stellarStatus reads nothing, and
-// stellarLocate searches as it does with the SDK, incomplete only where it must decode a candidate's transaction.
+// with it. build, bound and reference refuse it only once they read the transaction; stellarStatus and stellarLocate
+// read as they do with the SDK, pending unreadable or incomplete only where they must decode a transaction.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequirements } from "../src/x402.js";
@@ -25,6 +25,7 @@ import {
   stellarEventInputs,
   stellarLocateRows,
   stellarOccupied,
+  stellarStatusRows,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
   stellarUnplacedRows,
@@ -296,18 +297,17 @@ describe("without @stellar/stellar-sdk", () => {
     }
   });
 
-  // The ref is V5's, in the form reference writes. stellarStatus reads nothing without the SDK.
-  it("stellarStatus is pending unreadable for a ref in its form, with nothing read", { timeout: IMPORT_MS }, async () => {
+  // peer-free-inputs.test.ts gives V5's reads with the SDK. Only a transaction that succeeded is decoded: a named one is
+  // pending unreadable after its one read, and a search's candidate leaves the search incomplete, pending with the
+  // named transaction's reason, after the same reads.
+  it("stellarStatus reads as it does with the peer, pending only where it must decode a transaction", { timeout: IMPORT_MS }, async () => {
     const { stellarStatus } = await import("../src/stellar.js");
-    let calls = 0;
-    const reader = {
-      network: V.V5.ref.network,
-      transaction: async () => (calls++, { status: "NOT_FOUND" as const }),
-      latestLedger: async () => (calls++, 0),
-      transfers: async () => (calls++, { events: [], complete: true, oldestLedger: 0, latestLedger: 0 }),
-    };
-    expect(await stellarStatus(V.V5.ref, reader as never)).toEqual({ state: "pending", why: "unreadable" });
-    expect(calls).toBe(0);
+    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
+      const c = row.reader();
+      const got = await stellarStatus(row.ref as never, c.reader as never);
+      const want = row.without ?? { expect: row.expect, reads: row.reads };
+      expect([row.case, got, c.reads()]).toEqual([row.case, want.expect, want.reads]);
+    }
   });
 
   // peer-free-inputs.test.ts gives the same searches with the SDK. Only a candidate's transaction that succeeded is

@@ -8,9 +8,9 @@ import { avmCarrier, exactAvm } from "../src/avm.js";
 import { isAccount, isContract } from "../src/internal/stellar.js";
 import { chargeStellar, issuedDigest, pairingsOf, pairingsOfPlaced, sessionXrpl, type MppChallenge } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
-import { decodeStellarTx, muxedFor, stellarLocate, transferEventOf, transferEventTopics } from "../src/stellar.js";
-import { decodeSuiTx, exactSui } from "../src/sui.js";
-import { exactTvm, tvmCarrier } from "../src/tvm.js";
+import { decodeStellarTx, muxedFor, stellarLocate, stellarStatus, transferEventOf, transferEventTopics } from "../src/stellar.js";
+import { decodeSuiTx, exactSui, suiStatus } from "../src/sui.js";
+import { exactTvm, tvmCarrier, tvmStatus } from "../src/tvm.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import {
@@ -27,15 +27,19 @@ import {
   stellarEventInputs,
   stellarLocateRows,
   stellarOccupied,
+  stellarStatusRows,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
   stellarUnplacedRows,
+  SUI_STATUS_POSITION,
   suiDecodeInputs,
   suiRecoverDecodes,
   suiRecoverReads,
+  suiStatusRows,
   tvmCarrierInputs,
   tvmRecoverDecodes,
   tvmRecoverReads,
+  tvmStatusRows,
   xrplPayments,
   xrplWithinInputs,
   xrplWithinTwoFaults,
@@ -132,6 +136,34 @@ describe("stellarLocate with @stellar/stellar-sdk", () => {
       const { reader, calls } = row.reader();
       const got = await stellarLocate(STELLAR_V5_REF, reader as never);
       expect([row.case, got, calls()]).toEqual([row.case, row.expect, row.calls]);
+    }
+  });
+});
+
+// Each rail's peer-missing test gives the same reads the same answers, after the same reads, without the peer, except a
+// read that reaches a step that decodes with it.
+describe("status with each rail's optional peer", () => {
+  it("suiStatus: each read's answer, after the reads stated", async () => {
+    for (const row of rowsOf(suiStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
+      const c = row.reader();
+      const got = await suiStatus(row.ref as never, c.reader as never, SUI_STATUS_POSITION);
+      expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
+    }
+  });
+
+  it("tvmStatus: each read's answer, after the reads stated", async () => {
+    for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 20 })) {
+      const c = row.reader();
+      const got = await tvmStatus(row.ref as never, c.reader as never);
+      expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
+    }
+  });
+
+  it("stellarStatus: each read's answer, after the reads stated", async () => {
+    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
+      const c = row.reader();
+      const got = await stellarStatus(row.ref as never, c.reader as never);
+      expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
     }
   });
 });
