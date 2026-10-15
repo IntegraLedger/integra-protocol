@@ -114,16 +114,23 @@ dispatched by hand, and from the publish workflow before it packs. Its other ste
   one plain key and its value, with no flow mapping, anchor, alias, tag or quoted value that does not close on its own
   line, and a block scalar's header holds only its indicators and a comment. The step reads the jobs' steps only outside
   a block scalar, so the text a block scalar holds is never read as a step.
-- **The install policy:** both `pnpm-workspace.yaml` files set `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade`
-  and `strictDepBuilds: true`, and no other setting but `packages` (`"*"` and `"!website"`, so `pnpm -r` reaches every
-  package), `permissions` (each package's `build` and `skills` decisions, every one `false`), `minimumReleaseAgeExclude`
-  (`@integraledger/*` only) and `overrides` (registry versions only). `allowBuilds` and `allowSkills` are refused, so
-  every package decision is in one place. Every package in both lockfiles comes from the registry by its integrity, and
-  no dependency is a file, directory, link, git or tarball source. No workflow sets pnpm's settings by a `pnpm_config_`
-  environment variable, a `--config.` flag or the `pnpm config` command, its alias or its shorthands. The step reads the
-  committed files and the workflows' lines. A workflow step that rewrites a checked file before the install, such as a
-  `sed -i` on `pnpm-workspace.yaml`, or that builds a setting's name at run time, is code, like a step that deletes this
-  check, and this check does not read it.
+- **The install policy:** every `pnpm-workspace.yaml` git lists, the root's and the site's, sets
+  `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade` and `strictDepBuilds: true`, and before the install
+  `pnpm config get` reads those three values in each folder that holds one, and every override as an exact version. No
+  other setting is admitted but `packages` (the root's alone: relative globs that exclude each folder holding its own
+  workspace file, here `"*"` and `"!website"`, so `pnpm -r` reaches every package), `permissions` (each package's
+  `build` and `skills` decisions, every one `false`), `minimumReleaseAgeExclude` (exact
+  `'@integraledger/<name>@<x.y.z>'` versions a lockfile installs), `overrides` (exact registry versions: no range,
+  prerelease, URL, `file:`, `link:`, git, `github:` or `npm:` alias) and `patchedDependencies` (exact versions, each
+  patched by a file under `patches/` that git lists). `allowBuilds` and `allowSkills` are refused, so every package
+  decision is in one place, and a line indented under a setting is refused too. Every `package.json`'s `pnpm.overrides`,
+  `resolutions` and `overrides`, npm's nested form included, name exact versions. Every package in every lockfile comes
+  from the registry by its integrity, a `link:` reaches only a workspace package, and no dependency is a file,
+  directory, git or tarball source. No workflow sets pnpm's settings by a `pnpm_config_` environment variable, a
+  `--config.` flag or the `pnpm config` command, its alias or its shorthands; the one line admitted is the step's own
+  `config get` read. The step reads the committed files, pnpm's reading of them and the workflows' lines. A workflow
+  step that rewrites a checked file before the install, such as a `sed -i` on `pnpm-workspace.yaml`, or that builds a
+  setting's name at run time, is code, like a step that deletes this check, and this check does not read it.
 - **One-way imports:** no package here, nor the root `package.json`, depends on or names another `@integraledger`
   package, however the name is loaded or resolved; the site names only `@integraledger/lcp`. Each workspace package
   has a `build`, `typecheck` and `test` script that is not empty, since `pnpm -r` skips a package without one.
