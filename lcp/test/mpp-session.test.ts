@@ -1000,16 +1000,18 @@ describe("mpp-subscription-tempo.json", () => {
 
   // Tempo's subscription draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-subscription-00.md :261-272 and :463-466): the
   // signed key authorization authorizes "the exact access key described by `methodDetails.accessKey`, including both
-  // `accessKeyAddress` and `keyType`". Tempo numbers key types as IAccountKeychain's SignatureType (tempoxyz/tempo
-  // 9bb63953, crates/contracts/src/precompiles/account_keychain.rs :24-28): Secp256k1 0, P256 1, WebAuthn 2. Each key
-  // authorization here is SUB1's, written with viem's RLP and signed by the payer key.
-  it("agreedRefusals: a key authorization for a key other than the challenge's access key", async () => {
-    type Row = { case: string; keyId?: string; keyType?: number; expect: string };
-    const rows = rowsOf(U.agreedRefusals.rows as Row[], "mpp-subscription-tempo.json agreedRefusals.rows", { exact: 2 });
+  // `accessKeyAddress` and `keyType`", and (:461-463) its chain ID equals `methodDetails.chainId`. Tempo numbers key
+  // types as IAccountKeychain's SignatureType (tempoxyz/tempo 9bb63953, crates/contracts/src/precompiles/account_keychain.rs
+  // :24-28): Secp256k1 0, P256 1, WebAuthn 2, and writes the chain id as the authorization's item 0
+  // (crates/primitives/src/transaction/key_authorization.rs :177). Each key authorization here is SUB1's, written with
+  // viem's RLP and signed by the payer key.
+  it("agreedRefusals: a key authorization for a key other than the challenge's access key, or for another chain", async () => {
+    type Row = { case: string; keyId?: string; keyType?: number; chainId?: number; expect: string };
+    const rows = rowsOf(U.agreedRefusals.rows as Row[], "mpp-subscription-tempo.json agreedRefusals.rows", { exact: 3 });
     const a = U.SUB1.authorization;
-    const presented = async (c: MppChallenge & { id: string }, keyType: number, keyId: string): Promise<MppCredential> => {
+    const presented = async (c: MppChallenge & { id: string }, keyType: number, keyId: string, chainId = BigInt(a.chainId)): Promise<MppCredential> => {
       const authorization = toRlp([
-        num(BigInt(a.chainId)),
+        num(chainId),
         num(keyType),
         keyId,
         num(BigInt(a.expiry)),
@@ -1028,7 +1030,7 @@ describe("mpp-subscription-tempo.json", () => {
     expect(paid.accessKey?.keyId).toBe(f.accessKey.toLowerCase());
     expect(closed.revokes?.keyId).toBe(f.accessKey.toLowerCase());
     for (const row of rows) {
-      const c = await presented(ch, row.keyType ?? a.keyType, row.keyId ?? a.keyId);
+      const c = await presented(ch, row.keyType ?? a.keyType, row.keyId ?? a.keyId, BigInt(row.chainId ?? a.chainId));
       const refused = { refused: true, code: row.expect };
       expect(await subscriptionTempo.bound(c), row.case).toEqual(refused);
       expect(await subscriptionTempo.reference(c), row.case).toEqual(refused);
@@ -1043,6 +1045,9 @@ describe("mpp-subscription-tempo.json", () => {
       expect(await subscriptionTempo.bound(await presented(issued, n, a.keyId)), keyType).toBe(H);
       expect(await subscriptionTempo.bound(await presented(issued, 0, a.keyId)), keyType).toEqual({ refused: true, code: typeRow.expect });
     }
+    // The draft's equality admits no other chain id, 0 among them.
+    const chainRow = rows.find((r) => r.chainId !== undefined)!;
+    expect(await subscriptionTempo.bound(await presented(ch, a.keyType, a.keyId, 0n))).toEqual({ refused: true, code: chainRow.expect });
   });
 
   it("refusals", async () => {

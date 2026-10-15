@@ -179,6 +179,7 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     "hedera/channel-log-not-found": "the landed ChannelOpened is from the request's escrow",
   },
   "mpp/session/solana": { "svm/open-not-found": "the opening calls the request's channel program" },
+  "mpp/subscription/tempo": { "tempo/key-not-authorized": "the key authorization names the request's chain" },
   "mpp/session/tempo": {
     "tempo/descriptor-mismatch": "the opening's descriptor names the request's chain",
     "tempo/open-not-found": "the opening calls the request's escrow with its session protocol's open",
@@ -291,7 +292,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([2025, 217]);
+    expect([bindings, named.length - bindings]).toEqual([2024, 218]);
     const listed = [COMPARES, REFERENCE_READS].flatMap((m) => Object.entries(m).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`)));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);

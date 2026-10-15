@@ -1,7 +1,7 @@
 /**
  * The read of a signed Tempo key authorization and its bounds. `../tempo.ts`'s `decodeKeyAuthorization` gives this read
- * without the key type, and `../mpp-session.ts`'s subscription reads the key type with the key id; no entry point
- * exports these names.
+ * without the key type and the chain id, and `../mpp-session.ts`'s subscription reads both with the key id; no entry
+ * point exports these names.
  */
 import { bytesOf, hexOf, keccakHex, type Hex } from "../evm-abi.js";
 import { refusal, type Refusal } from "../refusal.js";
@@ -21,11 +21,13 @@ export interface KeyAuthorizationRead {
   allowedCalls: TempoKeyAuthorization["allowedCalls"];
   /** Item 1, the key type, as Tempo numbers it: secp256k1 0, P256 1, WebAuthn 2; any other value as given. */
   keyType: bigint;
+  /** Item 0, the chain id. */
+  chainId: bigint;
 }
 
 /**
- * `decodeKeyAuthorization`'s read, with the key type: an RLP list of the authorization (3 to 9 items) and a
- * byte-string signature, else `tempo/key-authorization-malformed`.
+ * `decodeKeyAuthorization`'s read, with the key type and the chain id: an RLP list of the authorization (3 to 9 items)
+ * and a byte-string signature, else `tempo/key-authorization-malformed`.
  */
 export function readKeyAuthorization(signed: Hex): KeyAuthorizationRead | Refusal {
   const bad = refusal("tempo/key-authorization-malformed");
@@ -37,8 +39,9 @@ export function readKeyAuthorization(signed: Hex): KeyAuthorizationRead | Refusa
   if (auth.kind !== "list" || sig.kind !== "bytes" || auth.items.length < 3 || auth.items.length > 9) return bad;
   const keyId = auth.items[2]!;
   if (keyId.kind !== "bytes" || keyId.bytes.length !== 20) return bad;
+  const chainId = rlpUint(auth.items[0]);
   const keyType = rlpUint(auth.items[1]);
-  if (rlpUint(auth.items[0]) === undefined || keyType === undefined) return bad;
+  if (chainId === undefined || keyType === undefined) return bad;
   for (const i of [4, 5]) {
     const l = auth.items[i];
     if (l !== undefined && !withinScopes(l, i === 5)) return bad;
@@ -53,7 +56,7 @@ export function readKeyAuthorization(signed: Hex): KeyAuthorizationRead | Refusa
     if (w.bytes.length === 32) witness = hexOf(w.bytes);
   }
   const digest = keccakHex(auth.raw);
-  const read = { digest, keyId: hexOf(keyId.bytes), limits, allowedCalls, keyType };
+  const read = { digest, keyId: hexOf(keyId.bytes), limits, allowedCalls, keyType, chainId };
   return witness === undefined ? read : { witness, ...read };
 }
 

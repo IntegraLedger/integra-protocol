@@ -1436,16 +1436,20 @@ function issuedKey(details: { [k: string]: Json }): { keyId: Hex; keyType: bigin
 }
 
 /**
- * The key id of the challenge's issued key (`issuedKey`), when the payer's key authorization authorizes that key: its
- * key id and its key type are the challenge's. Tempo's subscription draft requires the authorization to name "the exact
- * access key described by `methodDetails.accessKey`, including both `accessKeyAddress` and `keyType`". A key
- * authorization for another key id or key type is `tempo/key-not-authorized`, so the activation, the payments under
- * the key and the close are read under the one key the challenge issued.
+ * The key id of the challenge's issued key (`issuedKey`), when the payer's key authorization authorizes that key on the
+ * challenge's chain: its key id and its key type are the challenge's, and then its chain id is `methodDetails.chainId`.
+ * Tempo's subscription draft requires the authorization to name "the exact access key described by
+ * `methodDetails.accessKey`, including both `accessKeyAddress` and `keyType`", and its chain ID to equal
+ * `methodDetails.chainId`. A key authorization for another key id, key type or chain is `tempo/key-not-authorized`,
+ * so the activation, the payments under the key and the close are read under the one key the challenge issued.
  */
-function authorizedKey(k: Pick<KeyAuthorizationRead, "keyId" | "keyType">, details: { [k: string]: Json }): Hex | Refusal {
+function authorizedKey(k: Pick<KeyAuthorizationRead, "keyId" | "keyType" | "chainId">, details: { [k: string]: Json }): Hex | Refusal {
   const issued = issuedKey(details);
   if (isRefusal(issued)) return issued;
-  return sameBytes(k.keyId, issued.keyId) && k.keyType === issued.keyType ? issued.keyId : refusal("tempo/key-not-authorized");
+  if (!sameBytes(k.keyId, issued.keyId) || k.keyType !== issued.keyType) return refusal("tempo/key-not-authorized");
+  const chain = details["chainId"];
+  const sameChain = typeof chain === "number" && Number.isSafeInteger(chain) && BigInt(chain) === k.chainId;
+  return sameChain ? issued.keyId : refusal("tempo/key-not-authorized");
 }
 
 /**
