@@ -59,6 +59,7 @@ export interface X402Pairing {
   id: string;
   read(doc: unknown): unknown;
   bound(presented: unknown): Promise<unknown>;
+  reference?(presented: unknown): Promise<unknown>;
   advertise(doc: unknown, h: string, link: string, offer: unknown): unknown;
   advertiseBeforeCarrier?(doc: unknown, h: string, link: string, offer: unknown): unknown;
 }

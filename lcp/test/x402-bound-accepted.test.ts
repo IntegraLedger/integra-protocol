@@ -222,3 +222,37 @@ describe("the x402 vector files' boundAccepted rows", () => {
     expect(pairing.advertise(doc, H, LINK, row.accepted)).toEqual({ refused: true, code: row.expect });
   });
 });
+
+// x402 v2's PaymentPayload carries `accepted`, the PaymentRequirements object the payer chose
+// (specs/x402-specification-v2.md at x402-foundation/x402 e95b06661e), and docs/reference/refusals.md gives
+// `x402/payload-malformed` for a presented payment whose `accepted` is not an object. Each pairing is given a vector
+// payment its `bound` binds, with `accepted` replaced by each value that is not an object, or removed.
+const NOT_AN_OBJECT: [string, unknown][] = [
+  ["null", null],
+  ["a string", "exact"],
+  ["a number", 2],
+  ["an array", []],
+  ["removed", undefined],
+];
+
+describe("a presented payment whose accepted is not an object", () => {
+  it.each(X402.map((b) => [b.id, b] as const))("%s: bound and reference refuse it with x402/payload-malformed", async (_, pairing) => {
+    let payment: PaymentPayload | undefined;
+    for (const [, p] of PAYMENTS) {
+      if (!isRefusal(await pairing.bound(p))) {
+        payment = p;
+        break;
+      }
+    }
+    expect(payment).toBeDefined();
+    for (const [what, accepted] of NOT_AN_OBJECT) {
+      const presented: Record<string, unknown> = { ...payment! };
+      if (accepted === undefined) delete presented["accepted"];
+      else presented["accepted"] = accepted;
+      expect([what, await pairing.bound(presented)]).toEqual([what, { refused: true, code: "x402/payload-malformed" }]);
+      if (pairing.reference !== undefined) {
+        expect([what, await pairing.reference(presented)]).toEqual([what, { refused: true, code: "x402/payload-malformed" }]);
+      }
+    }
+  });
+});
