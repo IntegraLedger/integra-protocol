@@ -4,9 +4,9 @@
  */
 import { canonicalJson, type Json } from "./core.js";
 import { isAddress } from "./fields.js";
-import { b64uEncode } from "./internal/base64url.js";
 import type { MppChallenge, MppPairingId } from "./mpp-challenge.js";
 import { solanaChargePairings, solanaNetworkOf } from "./mpp-rail-checks.js";
+import { toBase64Url } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 type Obj = { [k: string]: Json };
@@ -88,7 +88,7 @@ export function usdcProfile(d: Obj): { type: string; details: Obj } | Refusal {
  */
 export function isJcsRequest(requestParam: string, parsed: unknown): boolean {
   const text = canonicalJson(parsed as Json);
-  return typeof text === "string" && b64uEncode(new TextEncoder().encode(text)) === requestParam;
+  return typeof text === "string" && toBase64Url(new TextEncoder().encode(text)) === requestParam;
 }
 
 /**

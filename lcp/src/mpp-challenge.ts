@@ -20,7 +20,6 @@ import {
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
-import { b64uDecode, b64uEncode } from "./internal/base64url.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import { decode as decodeInvoice, FIELD } from "./internal/lightning.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
@@ -40,6 +39,7 @@ import {
   xrplChargePairings,
   xrplSessionPairings,
 } from "./mpp-rail-checks.js";
+import { base64UrlBytes, fromBase64Url, toBase64Url } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, readToRepeat, refusal, type Refusal } from "./refusal.js";
 
 /** A challenge's auth-params after quoted-string unescaping. `request` and `opaque` are base64url-nopad JSON. */
@@ -366,7 +366,7 @@ export function challengeId(h: AtrHash, index: number): string | Refusal {
   if (b === null || !Number.isSafeInteger(index) || index < 0 || index >= MAX_CHALLENGES) {
     return refusal("mpp/challenge-malformed");
   }
-  return `${b64uEncode(toRawBytes(b))}.${index}`;
+  return `${toBase64Url(toRawBytes(b))}.${index}`;
 }
 
 /** H from an id `challengeId` wrote, or from the bare base64url of H; anything else is `mpp/id-not-ours`. */
@@ -379,8 +379,8 @@ export function challengeH(id: string): AtrHash | Refusal {
     if (!/^(?:0|[1-9][0-9]?)$/.test(pos) || Number(pos) >= MAX_CHALLENGES) return refusal("mpp/id-not-ours");
   }
   if (body.length !== 43) return refusal("mpp/id-not-ours");
-  const raw = b64uDecode(body, 32);
-  const h = raw === undefined ? null : fromRawBytes(raw);
+  const raw = fromBase64Url(body);
+  const h = raw === null ? null : fromRawBytes(raw);
   return h === null ? refusal("mpp/id-not-ours") : h;
 }
 
@@ -848,9 +848,9 @@ export function place(
   if (typeof text !== "string") return refusal("mpp/opaque-malformed");
   const bytes = new TextEncoder().encode(text);
   if (bytes.length > MAX_DECODED) return refusal("mpp/opaque-malformed");
-  const id = subscription ? b64uEncode(toRawBytes(hash)) : `${b64uEncode(toRawBytes(hash))}.${i}`;
+  const id = subscription ? toBase64Url(toRawBytes(hash)) : `${toBase64Url(toRawBytes(hash))}.${i}`;
   const out = doc.map((c) => ({ ...c }));
-  out[i] = { ...target, id, opaque: b64uEncode(bytes) };
+  out[i] = { ...target, id, opaque: toBase64Url(bytes) };
   return out;
 }
 
@@ -880,7 +880,7 @@ export function placeCarrier(
   if (typeof text !== "string") return refusal("mpp/request-malformed");
   const bytes = new TextEncoder().encode(text);
   if (bytes.length > MAX_DECODED) return refusal("mpp/request-malformed");
-  placed[i] = { ...placed[i]!, request: b64uEncode(bytes) };
+  placed[i] = { ...placed[i]!, request: toBase64Url(bytes) };
   return placed;
 }
 
@@ -911,7 +911,7 @@ export function withoutCarrier(c: MppChallenge, unmux?: typeof StellarUnmux): Mp
   if (issued === request) return c;
   const text = canonicalJson(issued);
   if (typeof text !== "string") return c;
-  return { ...c, request: b64uEncode(new TextEncoder().encode(text)) };
+  return { ...c, request: toBase64Url(new TextEncoder().encode(text)) };
 }
 
 /**
@@ -1244,8 +1244,8 @@ function civilDays(y: number, m: number, d: number): number {
 
 /** The decoded JSON object of a base64url-nopad value: at most 8 KiB, UTF-8, depth 16, serialisable. */
 export function decodeObject(s: string): { [k: string]: Json } | undefined {
-  const bytes = b64uDecode(s, MAX_DECODED);
-  if (bytes === undefined) return undefined;
+  const bytes = base64UrlBytes(s, MAX_DECODED);
+  if (typeof bytes === "string") return undefined;
   let text: string;
   try {
     text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);

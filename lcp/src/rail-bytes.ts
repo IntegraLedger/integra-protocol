@@ -1,7 +1,7 @@
 /**
- * Byte helpers shared by the rail entry points: padded standard base64 read in its canonical form only, lowercase hex,
- * and fixed-width integers. The base64 reader and writer each make one pass over their input, in constant stack,
- * whatever its length.
+ * Byte helpers shared by the rail entry points: base64 in its two forms, padded standard base64 and base64url without
+ * padding, each read in its canonical form only; lowercase hex; and fixed-width integers. Each base64 reader and writer
+ * makes one pass over its input, in constant stack, whatever its length.
  */
 
 /** A base64 alphabet: each value's character code, and each character code's value or -1. */
@@ -19,6 +19,8 @@ function alphabetOf(chars: string): Alphabet {
 
 /** RFC 4648 §4's alphabet. */
 const STANDARD = alphabetOf("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/");
+/** RFC 4648 §5's URL-safe alphabet. */
+const URL_SAFE = alphabetOf("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
 const PAD = 0x3d;
 /** The written characters, all ASCII, read back as text. */
 const ascii = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -102,6 +104,36 @@ export function base64Bytes(s: unknown, maxBytes: number): Uint8Array | "too-lar
  */
 export function toBase64(b: Uint8Array): string {
   return encode(b, STANDARD, true);
+}
+
+/**
+ * The bytes of `s` when it is base64url without padding (RFC 4648 §5), the base64url of RFC 7515 §2, in its canonical
+ * form (RFC 4648 §3.5), or null: the URL-safe alphabet alone, no `=` padding, a length that is not one more than a
+ * multiple of four, and zero bits past the last whole byte in the last character. Every base64url this package reads,
+ * a JWS or SD-JWT segment's and an MPP challenge's included, is read by this one function, in one pass over the text.
+ */
+export function fromBase64Url(s: unknown): Uint8Array | null {
+  return typeof s === "string" ? decode(s, s.length, URL_SAFE) : null;
+}
+
+/**
+ * The bytes of `s` as `fromBase64Url` reads them, or "too-large" when they would be more than `maxBytes`, or
+ * "malformed". The size is read from the text's length before anything is decoded, so a text past the bound is never
+ * decoded.
+ */
+export function base64UrlBytes(s: unknown, maxBytes: number): Uint8Array | "too-large" | "malformed" {
+  if (typeof s !== "string") return "malformed";
+  if (s.length % 4 === 1) return "malformed";
+  if (Math.floor((s.length * 3) / 4) > maxBytes) return "too-large";
+  return fromBase64Url(s) ?? "malformed";
+}
+
+/**
+ * base64url without padding (RFC 4648 §5) of `b`, in the canonical form `fromBase64Url` reads, in one pass over the
+ * bytes.
+ */
+export function toBase64Url(b: Uint8Array): string {
+  return encode(b, URL_SAFE, false);
 }
 
 /** `0x` and lowercase hex. */

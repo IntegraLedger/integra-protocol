@@ -1,8 +1,9 @@
-// The base64url codec. Expected values: RFC 4648 §10's test vectors (written without padding, as RFC 7515 §2 does), RFC
-// 7515 Appendix C's example, Node's Buffer "base64url" encoder, and ECMA-262's Uint8Array.fromBase64 with alphabet
-// "base64url" and lastChunkHandling "strict" (Node 26.10.0), which reads only the canonical form of padded text.
+// base64url without padding: `fromBase64Url`, `base64UrlBytes` and `toBase64Url`. Expected values: RFC 4648 §10's test
+// vectors (written without padding, as RFC 7515 §2 does), RFC 7515 Appendix C's example, Node's Buffer "base64url"
+// encoder, and ECMA-262's Uint8Array.fromBase64 with alphabet "base64url" and lastChunkHandling "strict" (Node 26.10.0),
+// which reads only the canonical form of padded text.
 import { describe, expect, it } from "vitest";
-import { b64uDecode, b64uEncode, isB64u } from "../src/internal/base64url.js";
+import { base64UrlBytes, fromBase64Url, toBase64Url } from "../src/rail-bytes.js";
 
 const ascii = (s: string) => new TextEncoder().encode(s);
 const fromBase64 = (Uint8Array as unknown as {
@@ -14,12 +15,12 @@ const fromBase64 = (Uint8Array as unknown as {
  * base64url (RFC 7515 §2: "with all trailing '=' characters omitted ... and without the inclusion of any line breaks,
  * whitespace, or other additional characters"); fromBase64 would skip the whitespace.
  */
-function platform(s: string): Uint8Array | undefined {
-  if (/[=\s]/.test(s)) return undefined;
+function platform(s: string): Uint8Array | null {
+  if (/[=\s]/.test(s)) return null;
   try {
     return fromBase64(s + "=".repeat((4 - (s.length % 4)) % 4), { alphabet: "base64url", lastChunkHandling: "strict" });
   } catch {
-    return undefined;
+    return null;
   }
 }
 
@@ -35,23 +36,23 @@ describe("base64url without padding", () => {
       ["foobar", "Zm9vYmFy"],
     ];
     for (const [text, encoded] of rows) {
-      expect(b64uEncode(ascii(text))).toBe(encoded);
-      expect(b64uDecode(encoded)).toEqual(ascii(text));
+      expect(toBase64Url(ascii(text))).toBe(encoded);
+      expect(fromBase64Url(encoded)).toEqual(ascii(text));
     }
   });
 
   it("RFC 7515 Appendix C's example: [3, 236, 255, 224, 193] is A-z_4ME", () => {
     const bytes = Uint8Array.of(3, 236, 255, 224, 193);
-    expect(b64uEncode(bytes)).toBe("A-z_4ME");
-    expect(b64uDecode("A-z_4ME")).toEqual(bytes);
+    expect(toBase64Url(bytes)).toBe("A-z_4ME");
+    expect(fromBase64Url("A-z_4ME")).toEqual(bytes);
   });
 
   it("round trip over every byte value, as Node's Buffer writes it", () => {
     const all = Uint8Array.from({ length: 256 }, (_, i) => i);
     for (let n = 0; n <= all.length; n += 1) {
-      const encoded = b64uEncode(all.subarray(0, n));
+      const encoded = toBase64Url(all.subarray(0, n));
       expect(encoded).toBe(Buffer.from(all.subarray(0, n)).toString("base64url"));
-      expect(b64uDecode(encoded)).toEqual(all.subarray(0, n));
+      expect(fromBase64Url(encoded)).toEqual(all.subarray(0, n));
     }
   });
 
@@ -63,14 +64,15 @@ describe("base64url without padding", () => {
       for (const b of chars) texts.push(a + b, `Zm9v${a}${b}`);
     }
     for (const a of "AQgw_Z.=") for (const b of chars) for (const c of chars) texts.push(a + b + c, `Zm9v${a}${b}${c}`);
-    const same = (a: Uint8Array | undefined, b: Uint8Array | undefined) =>
-      a === undefined || b === undefined ? a === b : Buffer.from(a).equals(Buffer.from(b));
+    const same = (a: Uint8Array | null, b: Uint8Array | null) =>
+      a === null || b === null ? a === b : Buffer.from(a).equals(Buffer.from(b));
     let read = 0;
     const differ: string[] = [];
     for (const s of texts) {
       const want = platform(s);
-      if (!same(b64uDecode(s), want) || isB64u(s) !== (want !== undefined)) differ.push(s);
-      if (want !== undefined) read++;
+      const bounded = base64UrlBytes(s, 1024);
+      if (!same(fromBase64Url(s), want) || !same(bounded instanceof Uint8Array ? bounded : null, want)) differ.push(s);
+      if (want !== null) read++;
     }
     expect(differ).toEqual([]);
     expect(read).toBeGreaterThan(0);
@@ -79,17 +81,35 @@ describe("base64url without padding", () => {
 
   it("refuses the same bytes spelled with bits past the last byte, with padding, or with the standard alphabet", () => {
     // "QQ" is one byte, 0x41; its last character carries four bits past that byte, so "QR" to "QZ" spell it too.
-    expect(b64uDecode("QQ")).toEqual(Uint8Array.of(0x41));
-    for (const s of ["QR", "QZ", "QQ==", "QQ=", "Zm9", "Zm8=", "+w", "/w", "A", "Zm9vY"]) expect(b64uDecode(s), s).toBeUndefined();
-    expect(b64uDecode("-w")).toEqual(Uint8Array.of(0xfb));
-    expect(b64uDecode("_w")).toEqual(Uint8Array.of(0xff));
+    expect(fromBase64Url("QQ")).toEqual(Uint8Array.of(0x41));
+    for (const s of ["QR", "QZ", "QQ==", "QQ=", "Zm9", "Zm8=", "+w", "/w", "A", "Zm9vY"]) expect(fromBase64Url(s), s).toBeNull();
+    expect(fromBase64Url("-w")).toEqual(Uint8Array.of(0xfb));
+    expect(fromBase64Url("_w")).toEqual(Uint8Array.of(0xff));
   });
 
-  it("bounds the decoded length by the text's length before it decodes", () => {
+  it("base64UrlBytes bounds the decoded length by the text's length before it decodes", () => {
     const h = new Uint8Array(32).fill(0xab);
-    expect(b64uDecode(b64uEncode(h), 32)).toEqual(h);
-    expect(b64uDecode(b64uEncode(new Uint8Array(33)), 32)).toBeUndefined();
-    expect(b64uDecode(7)).toBeUndefined();
-    expect(isB64u(7)).toBe(false);
+    expect(base64UrlBytes(toBase64Url(h), 32)).toEqual(h);
+    expect(base64UrlBytes(toBase64Url(new Uint8Array(33)), 32)).toBe("too-large");
+    // Past the bound, a text is too large whatever its form; within it, a form fromBase64Url does not read is malformed.
+    expect(base64UrlBytes(`${"A".repeat(43)}=`, 32)).toBe("too-large");
+    for (const s of ["QR", "QQ==", "+w", "A", 7]) expect(base64UrlBytes(s, 32), String(s)).toBe("malformed");
+    expect(fromBase64Url(7)).toBeNull();
   });
+
+  it("toBase64Url writes 16 MiB as Node's Buffer writes it, and fromBase64Url and base64UrlBytes read it back", () => {
+    // 16 MiB is one byte more than a multiple of three, so the text ends in two characters, the last with four zero
+    // bits. The test has no time bound (0): the reader and the writer each make one pass, in constant stack, and how
+    // long that takes depends only on the machine.
+    const bytes = Uint8Array.from({ length: 16 * 1024 * 1024 }, (_, i) => (i * 31 + (i >>> 11)) & 0xff);
+    const text = Buffer.from(bytes).toString("base64url");
+    expect(text.length).toBe(22369622);
+    expect(toBase64Url(bytes) === text).toBe(true);
+    const read = fromBase64Url(text);
+    const bounded = base64UrlBytes(text, bytes.length);
+    expect(read !== null && Buffer.from(read).equals(bytes)).toBe(true);
+    expect(bounded instanceof Uint8Array && Buffer.from(bounded).equals(bytes)).toBe(true);
+    expect(base64UrlBytes(text, bytes.length - 1)).toBe("too-large");
+    expect(fromBase64Url(`${text.slice(0, -1)}R`)).toBeNull();
+  }, 0);
 });

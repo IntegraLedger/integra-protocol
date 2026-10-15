@@ -7,7 +7,7 @@
 import { base64 } from "@scure/base";
 import { canonicalJson, parseJson, type AtrHash, type Json } from "./core.js";
 import { bytesOf, hexOf, keccakHex, sameBytes, type Hex } from "./evm-abi.js";
-import { fromBase64 } from "./rail-bytes.js";
+import { base64UrlBytes, fromBase64 } from "./rail-bytes.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
@@ -17,7 +17,6 @@ import {
   type EvmRef,
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
-import { b64uDecode } from "./internal/base64url.js";
 import { c32Address } from "./internal/c32.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { memoArgument } from "./internal/stacks.js";
@@ -72,8 +71,8 @@ const LIMIT = "This does not show that amount, payee, asset or timing match the 
  * RFC 8785 form of their own parse, else `mpp/request-not-jcs`; they are hashed as received.
  */
 export async function usdcRequestHash(requestParam: string): Promise<Hex | Refusal> {
-  const bytes = b64uDecode(requestParam, MAX_REQUEST);
-  if (bytes === undefined) return refusal("mpp/request-malformed");
+  const bytes = base64UrlBytes(requestParam, MAX_REQUEST);
+  if (typeof bytes === "string") return refusal("mpp/request-malformed");
   let text: string;
   let parsed: unknown;
   try {

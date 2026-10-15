@@ -9,8 +9,8 @@ import type { Hex } from "../evm.js";
 import { isObject } from "../fields.js";
 import type { HederaNetwork } from "../hedera.js";
 import type { MppChallenge } from "../mpp-challenge.js";
+import { fromBase64Url } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
-import { b64uDecode } from "./base64url.js";
 import type { X402Payment } from "./x402.js";
 
 /** The x402 `exact` payload on Hedera: the partially signed transaction, base64. */
@@ -97,8 +97,8 @@ export function chargeLegs(
  */
 export function hederaChargeRequest(c: MppChallenge): true | Refusal {
   if (!isObject(c) || c.method !== "hedera" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
-  const bytes = b64uDecode(c.request);
-  if (bytes === undefined) return refusal("mpp/request-malformed");
+  const bytes = fromBase64Url(c.request);
+  if (bytes === null) return refusal("mpp/request-malformed");
   let request: unknown;
   try {
     request = parseJson(new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes));

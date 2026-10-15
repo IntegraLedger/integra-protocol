@@ -14,7 +14,7 @@
 import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash } from "./core.js";
 import { normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { b64uDecode } from "./internal/base64url.js";
+import { fromBase64Url } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import {
@@ -394,9 +394,9 @@ function jwkOf(cnf: unknown): Record<string, unknown> | null {
  * `card/vi-key-malformed`; any other failure is `card/vi-signature-invalid`.
  */
 async function verifyEs256(jws: string, jwk: Record<string, unknown>): Promise<true | Refusal> {
-  const x = b64uDecode(jwk["x"]);
-  const y = b64uDecode(jwk["y"]);
-  if (x === undefined || y === undefined || x.length !== 32 || y.length !== 32) return refusal("card/vi-key-malformed");
+  const x = fromBase64Url(jwk["x"]);
+  const y = fromBase64Url(jwk["y"]);
+  if (x === null || y === null || x.length !== 32 || y.length !== 32) return refusal("card/vi-key-malformed");
   const point = new Uint8Array(65);
   point[0] = 0x04;
   point.set(x, 1);
@@ -408,8 +408,8 @@ async function verifyEs256(jws: string, jwk: Record<string, unknown>): Promise<t
     return refusal("card/vi-key-malformed");
   }
   const cut = jws.lastIndexOf(".");
-  const signature = b64uDecode(jws.slice(cut + 1));
-  if (cut < 0 || signature === undefined || signature.length !== 64) return refusal("card/vi-signature-invalid");
+  const signature = fromBase64Url(jws.slice(cut + 1));
+  if (cut < 0 || signature === null || signature.length !== 64) return refusal("card/vi-signature-invalid");
   const signed = new TextEncoder().encode(jws.slice(0, cut));
   const ok = await crypto.subtle.verify(
     { name: "ECDSA", hash: "SHA-256" },

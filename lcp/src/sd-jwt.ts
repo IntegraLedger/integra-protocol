@@ -9,7 +9,7 @@
  * Refusal codes are the caller's.
  */
 import { MAX_JSON_DEPTH, type Json } from "./internal/core.js";
-import { b64uDecode, b64uEncode, isB64u } from "./internal/base64url.js";
+import { fromBase64Url, toBase64Url } from "./rail-bytes.js";
 import { type Refusal } from "./refusal.js";
 
 type JsonObject = { [k: string]: Json };
@@ -51,7 +51,7 @@ const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** base64url, unpadded, of SHA-256 over the US-ASCII characters of `s` (RFC 9901 §4.2.3). */
 export async function disclosureDigest(s: string): Promise<string> {
-  return b64uEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", ascii.encode(s))));
+  return toBase64Url(new Uint8Array(await crypto.subtle.digest("SHA-256", ascii.encode(s))));
 }
 
 /**
@@ -59,8 +59,8 @@ export async function disclosureDigest(s: string): Promise<string> {
  * whose last character carries a bit past its last byte is null.
  */
 export function decodeJsonSegment(s: string): Json | null {
-  const bytes = b64uDecode(s);
-  if (bytes === undefined) return null;
+  const bytes = fromBase64Url(s);
+  if (bytes === null) return null;
   try {
     return JSON.parse(utf8.decode(bytes)) as Json;
   } catch {
@@ -76,7 +76,7 @@ export function jwsSegments(s: string): [header: string, payload: string, signat
   if (typeof s !== "string") return null;
   const parts = s.split(".");
   if (parts.length !== 3) return null;
-  for (const p of parts) if (!isB64u(p)) return null;
+  for (const p of parts) if (fromBase64Url(p) === null) return null;
   return parts as [string, string, string];
 }
 

@@ -25,6 +25,12 @@ Re-exports [base64Bytes](index.md#base64bytes)
 
 ***
 
+### base64UrlBytes
+
+Re-exports [base64UrlBytes](index.md#base64urlbytes)
+
+***
+
 ### canonicalJson
 
 Re-exports [canonicalJson](index.md#canonicaljson)
@@ -46,6 +52,12 @@ Re-exports [digestJson](index.md#digestjson)
 ### fromBase64
 
 Re-exports [fromBase64](index.md#frombase64)
+
+***
+
+### fromBase64Url
+
+Re-exports [fromBase64Url](index.md#frombase64url)
 
 ***
 
@@ -130,6 +142,12 @@ Re-exports [Refusal](index.md#refusal)
 ### toBase64
 
 Re-exports [toBase64](index.md#tobase64)
+
+***
+
+### toBase64Url
+
+Re-exports [toBase64Url](index.md#tobase64url)
 
 ***
 

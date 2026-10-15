@@ -213,6 +213,27 @@ The size is read from the text's length before anything is decoded, so a text pa
 
 ***
 
+### base64UrlBytes()
+
+> **base64UrlBytes**(`s`, `maxBytes`): `Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+
+The bytes of `s` as `fromBase64Url` reads them, or "too-large" when they would be more than `maxBytes`, or
+"malformed". The size is read from the text's length before anything is decoded, so a text past the bound is never
+decoded.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `s` | `unknown` |
+| `maxBytes` | `number` |
+
+#### Returns
+
+`Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+
+***
+
 ### canonicalJson()
 
 > **canonicalJson**(`v`): `string` \| [`CoreRefusal`](#corerefusal)
@@ -255,9 +276,31 @@ SHA-256 over the RFC 8785 form of `v`. Takes any value and refuses, as `core/con
 
 > **fromBase64**(`s`): `Uint8Array`\<`ArrayBufferLike`\> \| `null`
 
-The bytes of `s` when it is padded standard base64 (RFC 4648 §4) in its canonical form (RFC 4648 §3.5), or null: a
-text whose last character before the padding has a bit set past the last byte is not that form. Every rail's
-standard base64 is read by this one function.
+The bytes of `s` when it is padded standard base64 (RFC 4648 §4) in its canonical form (RFC 4648 §3.5), or null: the
+standard alphabet, `=` padding to a multiple of four characters, and zero bits past the last whole byte in the last
+character before the padding. A text whose last character before the padding has a bit set past the last byte is not
+that form. Every rail's standard base64 is read by this one function, in one pass over the text.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `s` | `unknown` |
+
+#### Returns
+
+`Uint8Array`\<`ArrayBufferLike`\> \| `null`
+
+***
+
+### fromBase64Url()
+
+> **fromBase64Url**(`s`): `Uint8Array`\<`ArrayBufferLike`\> \| `null`
+
+The bytes of `s` when it is base64url without padding (RFC 4648 §5), the base64url of RFC 7515 §2, in its canonical
+form (RFC 4648 §3.5), or null: the URL-safe alphabet alone, no `=` padding, a length that is not one more than a
+multiple of four, and zero bits past the last whole byte in the last character. Every base64url this package reads,
+a JWS or SD-JWT segment's and an MPP challenge's included, is read by this one function, in one pass over the text.
 
 #### Parameters
 
@@ -528,7 +571,26 @@ it), a missing peer dependency, and malformed input. A string the package does n
 
 > **toBase64**(`b`): `string`
 
-Padded standard base64 (RFC 4648 §4) of `b`, in the canonical form `fromBase64` reads.
+Padded standard base64 (RFC 4648 §4) of `b`, in the canonical form `fromBase64` reads, in one pass over the bytes.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `b` | `Uint8Array` |
+
+#### Returns
+
+`string`
+
+***
+
+### toBase64Url()
+
+> **toBase64Url**(`b`): `string`
+
+base64url without padding (RFC 4648 §5) of `b`, in the canonical form `fromBase64Url` reads, in one pass over the
+bytes.
 
 #### Parameters
 

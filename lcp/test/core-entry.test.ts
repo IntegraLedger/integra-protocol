@@ -1,10 +1,11 @@
 // The `./core` entry point holds the core functions the package root exports, and nothing else: the ATR's assembly and
 // its hash, hash comparison, the hash's string, structured and raw forms, the https-link rule, the RFC 8785 form of a
-// JSON value and its digest, JSON reading capped at 64 levels, the rails' base64 readers and writer, `isRefusal` and
-// `readToRepeat`. Each is the root's own function object, one function reached by two paths, so a refusal made through
-// one path is a refusal to the other path's `isRefusal`, and both paths' `readToRepeat` answer alike. The codes are the
-// ones docs/reference/refusals.md lists, and its marks say which is a read to repeat. The base64 texts are RFC 4648
-// §10's, the canonical form's (§3.5), and the URL-safe alphabet's (§5).
+// JSON value and its digest, JSON reading capped at 64 levels, the base64 and base64url readers and writers, `isRefusal`
+// and `readToRepeat`. Each is the root's own function object, one function reached by two paths, so a refusal made
+// through one path is a refusal to the other path's `isRefusal`, and both paths' `readToRepeat` answer alike. The codes
+// are the ones docs/reference/refusals.md lists, and its marks say which is a read to repeat. The base64 texts are RFC
+// 4648 §10's, the canonical form's (§3.5), and the URL-safe alphabet's (§5), and the base64url texts RFC 4648 §10's
+// without padding, as RFC 7515 §2 writes them.
 import { describe, expect, expectTypeOf, it } from "vitest";
 import * as core from "../src/core.js";
 import * as root from "../src/index.js";
@@ -15,9 +16,11 @@ const CORE = rowsOf(
   [
     "assemble",
     "base64Bytes",
+    "base64UrlBytes",
     "canonicalJson",
     "digestJson",
     "fromBase64",
+    "fromBase64Url",
     "fromLcpString",
     "fromLegalContext",
     "fromRawBytes",
@@ -30,12 +33,13 @@ const CORE = rowsOf(
     "parseJson",
     "readToRepeat",
     "toBase64",
+    "toBase64Url",
     "toLcpString",
     "toLegalContext",
     "toRawBytes",
   ] as const,
   "the core functions the package root exports",
-  { exact: 20 },
+  { exact: 23 },
 );
 
 const ID = "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40";
@@ -106,6 +110,36 @@ describe("the ./core entry point", () => {
       // Past the bound, a text is too large whatever its form; within it, a form fromBase64 does not read is malformed.
       expect(base64Bytes("Zm9vYmF=", 4)).toBe("too-large");
       for (const text of ["Zm9vYmF=", "Zm9vYg", "-_8=", 42]) expect(base64Bytes(text, 1024)).toBe("malformed");
+    }
+  });
+
+  it("fromBase64Url reads, through either path, the canonical form toBase64Url writes and nothing else", () => {
+    const foobar = utf8.encode("foobar");
+    for (const { fromBase64Url, toBase64Url } of [core, root]) {
+      expect(toBase64Url(foobar)).toBe("Zm9vYmFy");
+      expect(toBase64Url(foobar.subarray(0, 4))).toBe("Zm9vYg");
+      expect(toBase64Url(foobar.subarray(0, 5))).toBe("Zm9vYmE");
+      expect(toBase64Url(new Uint8Array([0xfb, 0xff]))).toBe("-_8");
+      for (const n of [0, 1, 2, 3, 4, 5, 6]) {
+        expect(fromBase64Url(toBase64Url(foobar.subarray(0, n)))).toEqual(foobar.subarray(0, n));
+      }
+      // The same bytes in a form not canonical (a bit set past the last byte), padded, and in the standard alphabet.
+      for (const text of ["Zm9vYh", "Zm9vYmF", "Zm9vYg==", "+/8", "Zm9v Ymfy", 42]) {
+        expect(fromBase64Url(text)).toBeNull();
+      }
+    }
+  });
+
+  it("base64UrlBytes reads, through either path, what fromBase64Url reads, bounded by its size before decoding", () => {
+    const foobar = utf8.encode("foobar");
+    for (const { base64UrlBytes } of [core, root]) {
+      expect(base64UrlBytes("Zm9vYmFy", 6)).toEqual(foobar);
+      expect(base64UrlBytes("Zm9vYmE", 5)).toEqual(foobar.subarray(0, 5));
+      expect(base64UrlBytes("Zm9vYmFy", 5)).toBe("too-large");
+      expect(base64UrlBytes("Zm9vYmE", 4)).toBe("too-large");
+      // Past the bound, a text is too large whatever its form; within it, a form fromBase64Url does not read is malformed.
+      expect(base64UrlBytes("Zm9vYmF", 4)).toBe("too-large");
+      for (const text of ["Zm9vYmF", "Zm9vYg==", "+/8", 42]) expect(base64UrlBytes(text, 1024)).toBe("malformed");
     }
   });
 });

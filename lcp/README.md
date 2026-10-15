@@ -206,6 +206,7 @@ Each entry point is imported by its subpath. The core:
 | `digestJson(v)`, `canonicalJson(v)` | SHA-256 over the RFC 8785 form of a JSON value, and that form. Each takes a value of any type and refuses one that is not JSON (`core/content-not-json`). |
 | `parseJson(text)` | JSON reading capped at 64 levels of nesting. |
 | `fromBase64(s)`, `base64Bytes(s, maxBytes)`, `toBase64(b)` | Padded standard base64 (RFC 4648 §4) read in its canonical form only (RFC 4648 §3.5), or null; read with a bound on its size, checked before decoding, or `"too-large"` or `"malformed"`; and written: the one base64 rule every rail's bytes are read by. |
+| `fromBase64Url(s)`, `base64UrlBytes(s, maxBytes)`, `toBase64Url(b)` | base64url without padding (RFC 4648 §5), as RFC 7515 §2 writes it, read in its canonical form only (RFC 4648 §3.5), or null; read with a bound on its size, checked before decoding, or `"too-large"` or `"malformed"`; and written: the one base64url rule every JWS and SD-JWT segment and MPP challenge is read by. |
 | `BINDINGS` | Every pairing this package implements. |
 | `pairingOf(option)` | The x402 pairing that serves an x402 option. |
 

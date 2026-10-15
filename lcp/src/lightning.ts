@@ -6,7 +6,6 @@
  */
 import { canonicalJson, fromLegalContext, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import { b64uEncode } from "./internal/base64url.js";
 import {
   decode,
   FIELD,
@@ -31,6 +30,7 @@ import {
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
+import { toBase64Url } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -476,7 +476,7 @@ function lnUnplaced(pairing: LnMppPairingId): (c: MppChallenge) => MppChallenge 
       rest = { ...request, methodDetails: details };
     }
     const text = canonicalJson(rest);
-    return typeof text === "string" ? { ...c, request: b64uEncode(new TextEncoder().encode(text)) } : c;
+    return typeof text === "string" ? { ...c, request: toBase64Url(new TextEncoder().encode(text)) } : c;
   };
 }
 
