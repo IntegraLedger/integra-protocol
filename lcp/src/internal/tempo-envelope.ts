@@ -26,7 +26,6 @@ const WEBAUTHN_MIN = 128;
 const WEBAUTHN_MAX = 2048;
 const P256 = 0x01;
 const WEBAUTHN = 0x02;
-const KEYCHAIN = 0x03;
 const KEYCHAIN_V2 = 0x04;
 
 /**
@@ -97,25 +96,29 @@ function primitiveSigner(sig: Uint8Array, hash: Uint8Array): Hex | Refusal {
 
 /**
  * The sender of a signed `0x76` transaction, as Tempo recovers it from the sender's signature over what the sender
- * signed (`senderSigned`): a primitive signature's signer, or for a keychain signature (`0x03`, or `0x04` whose inner
- * signature signs keccak256(`0x04` ‖ that hash ‖ the account), each a 20-byte account and a primitive signature) that
- * account. Any other signature is `tempo/tx-malformed`, a `0x05` type byte among them: Tempo's transaction
- * specification lists the secp256k1, P256, WebAuthn and keychain signature types and no other ("Signature Types"), and
- * its signature validation takes any other format as invalid ("Transaction Validation", step 1: "Otherwise invalid").
- * Tempo's node answers any other type byte "Unknown signature type identifier" (tempoxyz/tempo `7d4fd03`,
- * `crates/primitives/src/transaction/tt_signature.rs`: `TempoSignature::from_bytes` reads `0x03` and `0x04` and passes
- * every other signature to `PrimitiveSignature::from_bytes`, which reads 65 bytes, `0x01` and `0x02`).
+ * signed (`senderSigned`): a primitive signature's signer, or for a keychain signature (`0x04`, a 20-byte account and a
+ * primitive signature over keccak256(`0x04` ‖ that hash ‖ the account)) that account. A keychain signature of type
+ * `0x03` is `tempo/tx-malformed`: Tempo's transaction specification rejects that format from T1C onward ("Keychain";
+ * "Transaction Validation", step 1), and Tempo's node refuses it once T1C is active (tempoxyz/tempo `7d4fd03`,
+ * `crates/revm/src/handler.rs`: `validate_version(cfg.spec().is_t1c())`, which answers `LegacyKeychainSignature`), from
+ * timestamp 1773327600 on chain 4217 and 1773068400 on chain 42431 (`crates/hardfork/src/constants.rs`,
+ * `MAINNET_T1C_TIMESTAMP` and `MODERATO_T1C_TIMESTAMP`). Any other signature is `tempo/tx-malformed`, a `0x05` type
+ * byte among them: Tempo's transaction specification lists the secp256k1, P256, WebAuthn and keychain signature types
+ * and no other ("Signature Types"), and its signature validation takes any other format as invalid ("Transaction
+ * Validation", step 1: "Otherwise invalid"). Tempo's node answers any other type byte "Unknown signature type
+ * identifier" (tempoxyz/tempo `7d4fd03`, `crates/primitives/src/transaction/tt_signature.rs`:
+ * `TempoSignature::from_bytes` reads `0x03` and `0x04` and passes every other signature to
+ * `PrimitiveSignature::from_bytes`, which reads 65 bytes, `0x01` and `0x02`).
  */
 export function tempoSender(wire: Uint8Array): Hex | Refusal {
   const items = decodeEnvelope(wire);
   if (isRefusal(items)) return items;
   const sig = (items[items.length - 1] as Extract<RlpItem, { kind: "bytes" }>).bytes;
   const hash = keccak(senderSigned(items));
-  if (sig.length !== SECP256K1_LENGTH && (sig[0] === KEYCHAIN || sig[0] === KEYCHAIN_V2)) {
+  if (sig.length !== SECP256K1_LENGTH && sig[0] === KEYCHAIN_V2) {
     const account = sig.subarray(1, 21);
     if (account.length !== 20) return refusal("tempo/tx-malformed");
-    const signed = sig[0] === KEYCHAIN_V2 ? keccak(concat([Uint8Array.of(KEYCHAIN_V2), hash, account])) : hash;
-    const inner = primitiveSigner(sig.subarray(21), signed);
+    const inner = primitiveSigner(sig.subarray(21), keccak(concat([Uint8Array.of(KEYCHAIN_V2), hash, account])));
     return isRefusal(inner) ? inner : hexOf(account);
   }
   return primitiveSigner(sig, hash);

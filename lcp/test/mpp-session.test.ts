@@ -728,6 +728,7 @@ describe("mpp-session-tempo.json", () => {
       sessionProtocol?: string;
       transactionChainId?: number;
       faults?: string[];
+      senderSignature?: string;
       payer?: Address;
       payee?: Address;
       token?: Address;
@@ -738,12 +739,12 @@ describe("mpp-session-tempo.json", () => {
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 5,
       keep: [
-        "the v2 descriptor rows, which carry no sessionProtocol, transactionChainId or faults",
-        (r) => r.sessionProtocol === undefined && r.transactionChainId === undefined && r.faults === undefined,
+        "the v2 descriptor rows, which carry no sessionProtocol, transactionChainId, faults or senderSignature",
+        (r) => r.sessionProtocol === undefined && r.transactionChainId === undefined && r.faults === undefined && r.senderSignature === undefined,
       ],
       leave: [
-        'the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, and the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs',
-        (r) => r.sessionProtocol === "v1" || r.transactionChainId !== undefined || r.faults !== undefined,
+        'the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs, and the senderSignature rows, which "agreedRefusals: an opening whose transaction carries a 0x03 keychain signature" runs',
+        (r) => r.sessionProtocol === "v1" || r.transactionChainId !== undefined || r.faults !== undefined || r.senderSignature !== undefined,
       ],
     });
     const Tx = TempoTransaction.z_TxEnvelopeTempo;
@@ -776,9 +777,9 @@ describe("mpp-session-tempo.json", () => {
   });
 
   // The payer is the address Tempo recovers from the open transaction's signature (draft-tempo-session-00 :1181-1182).
-  // Tempo's signature forms (tempoxyz/tempo 9bb63953, crates/primitives/src/transaction/tt_signature.rs): secp256k1's 65
-  // bytes, P256 (0x01), WebAuthn (0x02), and keychain (0x03, and 0x04 whose inner signature signs keccak256(0x04 ‖ the
-  // hash ‖ the account)), each an account and an inner signature. Each signature here is written with ox's
+  // Tempo's signature forms (tempoxyz/tempo 9bb63953, crates/primitives/src/transaction/tt_signature.rs): secp256k1's
+  // 65 bytes, P256 (0x01), WebAuthn (0x02), and keychain (0x04, whose inner signature signs keccak256(0x04 ‖ the hash ‖
+  // the account)), an account and an inner signature. Each signature here is written with ox's
   // SignatureEnvelope.serialize, P256's and WebAuthn's signed with noble's p256, and its sender is ox's extractAddress
   // with root true. An opening built for that sender gives H; one built for another payer is refused.
   it("v2: the descriptor's payer is the open transaction's sender, in each Tempo signature form", async () => {
@@ -806,7 +807,6 @@ describe("mpp-session-tempo.json", () => {
       ["secp256k1", secp],
       ["p256", async (hash) => ({ type: "p256", signature: rs(hash), publicKey, prehash: false })],
       ["webAuthn", async (hash) => ({ type: "webAuthn", signature: rs(hash), publicKey, metadata: webAuthn })],
-      ["keychain v1", async (hash) => ({ type: "keychain", version: "v1", userAddress: OTHER, inner: await secp(hash) })],
       ["keychain v2", async (hash) => ({ type: "keychain", version: "v2", userAddress: OTHER, inner: await secp(keccak256(concat(["0x04", hash, OTHER]))) })],
     ];
     const senders: string[] = [];
@@ -823,8 +823,9 @@ describe("mpp-session-tempo.json", () => {
       expect(await sessionTempo.bound(await openedBy(another, wire)), name).toEqual({ refused: true, code: "tempo/descriptor-mismatch" });
     }
     const p256Address = `0x${keccak256(point.subarray(1)).slice(26)}`;
-    expect(senders).toEqual([f.payer, p256Address, p256Address, OTHER, OTHER].map((a) => a.toLowerCase()));
-    // Any other signature form, a secp256k1 v outside 0, 1, 27, 28 and 35 up, or an s in the upper half of the order
+    expect(senders).toEqual([f.payer, p256Address, p256Address, OTHER].map((a) => a.toLowerCase()));
+    // Any other signature form, the 0x03 keychain form among them (Tempo's transaction specification rejects it from
+    // T1C onward, "Keychain"), a secp256k1 v outside 0, 1, 27, 28 and 35 up, or an s in the upper half of the order
     // gives no sender.
     const n = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
     const highS = (sig: ViemHex) => {
@@ -833,6 +834,7 @@ describe("mpp-session-tempo.json", () => {
     };
     for (const [name, signer] of [
       ["type 0x09", async () => `0x09${"11".repeat(129)}` as ViemHex],
+      ["keychain 0x03", async (hash: ViemHex) => Sig.serialize({ type: "keychain", version: "v1", userAddress: f.payer, inner: await secp(hash) } as never)],
       ["v 29", async (hash: ViemHex) => `${(await sig65(hash)).slice(0, 130)}1d` as ViemHex],
       ["high s", async (hash: ViemHex) => highS(await sig65(hash))],
     ] as const) {
@@ -845,13 +847,25 @@ describe("mpp-session-tempo.json", () => {
   // computeChannelId (:299-312) does. A row's channelId is that keccak256 over the row's payer, encoded with viem; the
   // transaction's sender is fixed.payer.
   it("agreedRefusals: a v1 opening whose channelId is not its transaction's", async () => {
-    type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; faults?: string[]; payer: `0x${string}`; channelId: `0x${string}`; expect: string };
+    type Row = {
+      case: string;
+      sessionProtocol?: string;
+      transactionChainId?: number;
+      faults?: string[];
+      senderSignature?: string;
+      payer: `0x${string}`;
+      channelId: `0x${string}`;
+      expect: string;
+    };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 1,
-      keep: ["the v1 channelId rows", (r) => r.sessionProtocol === "v1" && r.transactionChainId === undefined && r.faults === undefined],
+      keep: [
+        "the v1 channelId rows",
+        (r) => r.sessionProtocol === "v1" && r.transactionChainId === undefined && r.faults === undefined && r.senderSignature === undefined,
+      ],
       leave: [
-        'the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, and the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs',
-        (r) => r.sessionProtocol === undefined || r.transactionChainId !== undefined || r.faults !== undefined,
+        'the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs, and the senderSignature rows, which "agreedRefusals: an opening whose transaction carries a 0x03 keychain signature" runs',
+        (r) => r.sessionProtocol === undefined || r.transactionChainId !== undefined || r.faults !== undefined || r.senderSignature !== undefined,
       ],
     });
     const seven = ["address", "address", "address", "bytes32", "address", "address", "uint256"].map((type) => ({ type }));
@@ -971,7 +985,7 @@ describe("mpp-session-tempo.json", () => {
       exact: 2,
       keep: ["the transactionChainId rows", (r) => r.transactionChainId !== undefined],
       leave: [
-        "the descriptor and channelId rows, which the two tests above run, and the faults rows, which the test below runs",
+        "the descriptor and channelId rows, which the two tests above run, and the faults and senderSignature rows, which the two tests below run",
         (r) => r.transactionChainId === undefined,
       ],
     });
@@ -1043,7 +1057,10 @@ describe("mpp-session-tempo.json", () => {
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 26,
       keep: ["the faults rows", (r) => r.faults !== undefined],
-      leave: ["the one-fault rows, which the three tests above run", (r) => r.faults === undefined],
+      leave: [
+        "the one-fault rows: the descriptor, channelId and transactionChainId rows, which the three tests above run, and the senderSignature rows, which the test below runs",
+        (r) => r.faults === undefined,
+      ],
     });
     const ALONE: Record<Fault, (v1: boolean) => string> = {
       chain: () => "tempo/tx-malformed",
@@ -1103,6 +1120,54 @@ describe("mpp-session-tempo.json", () => {
       const refused = { refused: true, code: row.expect };
       expect(await sessionTempo.bound(both), row.case).toEqual(refused);
       expect(await sessionTempo.reference(both), row.case).toEqual(refused);
+    }
+  });
+
+  // Tempo's transaction specification (docs.tempo.xyz, Tempo Transactions Specification, "Keychain" and "Transaction
+  // Validation", step 1): "The legacy `0x03` format is rejected from T1C onward." tempoxyz/tempo 7d4fd03 activates T1C
+  // on chain 4217 at 1773327600 and on chain 42431 at 1773068400 (crates/hardfork/src/constants.rs), and its handler
+  // refuses a 0x03 signature once T1C is active (crates/revm/src/handler.rs, validate_version). A row's opening is
+  // build's from fixed.payer for its protocol's challenge, completed with that open call in a transaction of TS2's
+  // other fields whose signature ox's SignatureEnvelope.serialize writes as a keychain signature for fixed.payer, its
+  // inner signature by the row's accessKey; ox's extractAddress reads fixed.payer from it, and its bytes hash to the
+  // row's expectSha256 (GNU coreutils sha256sum). The same opening under the 0x04 keychain signature gives H.
+  it("agreedRefusals: an opening whose transaction carries a 0x03 keychain signature", async () => {
+    type Row = { case: string; sessionProtocol?: string; senderSignature?: string; accessKey: ViemHex; expectSha256: string; expect: string };
+    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
+      exact: 2,
+      keep: ["the senderSignature rows", (r) => r.senderSignature !== undefined],
+      leave: ["the descriptor, channelId, transactionChainId and faults rows, which the tests above run", (r) => r.senderSignature === undefined],
+    });
+    const Sig = TempoTransaction.z_SignatureEnvelope;
+    const Tx = TempoTransaction.z_TxEnvelopeTempo;
+    for (const row of rows) {
+      expect(row.senderSignature, row.case).toBe("keychain-v1");
+      const v1 = row.sessionProtocol === "v1";
+      const ch = placed(v1 ? V1 : V2);
+      const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+      if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+      const data = u.funding.call.data;
+      const keychain = (version: "v1" | "v2") => async (hash: ViemHex) => {
+        const signed = version === "v1" ? hash : keccak256(concat(["0x04", hash, f.payer]));
+        const inner = await sign({ hash: signed, privateKey: row.accessKey });
+        const envelope = { type: "keychain", version, userAddress: f.payer, inner: { type: "secp256k1", signature: { r: BigInt(inner.r), s: BigInt(inner.s), yParity: inner.yParity } } };
+        expect(Sig.extractAddress({ payload: hash, signature: envelope as never, root: true }).toLowerCase(), row.case).toBe(f.payer.toLowerCase());
+        return Sig.serialize(envelope as never);
+      };
+      const opened = async (version: "v1" | "v2") =>
+        u.complete(toHex(await openWire(data, keychain(version), v1 ? f.escrowV1 : f.escrowV2)), `0x${"66".repeat(65)}`) as MppCredential;
+      expect(await sessionTempo.bound(await opened("v2")), row.case).toBe(H);
+      const cred = await opened("v1");
+      const wire = toBytes(cred.payload["transaction"] as ViemHex);
+      expect(sha256(wire), row.case).toBe(row.expectSha256);
+      const sig = fromRlp(toHex(wire.subarray(1)))[13] as ViemHex;
+      expect(sig.slice(0, 4), row.case).toBe("0x03");
+      expect(Tx.deserialize(toHex(wire) as never).signature?.type, row.case).toBe("keychain");
+      const refused = { refused: true, code: row.expect };
+      expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
+      expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
+      const within = { challenge: { ...(v1 ? V1 : V2), id: "seller-own-id" }, opening: cred, cumulativeAmount: 1n, action: "voucher" };
+      expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
     }
   });
 
