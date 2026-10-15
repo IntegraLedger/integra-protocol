@@ -32,6 +32,9 @@ jobs:
           EXEMPT: 9dbb65d8c408e1234ef5661fb5a287db3522480e
         run: |
           set -euo pipefail
+          if [ "$(git rev-parse --is-shallow-repository)" != false ]; then
+            echo "the checkout is shallow: the step reads every commit reachable from $GITHUB_SHA, and a shallow history holds only some"; exit 1
+          fi
           unsigned=$(git log --format='%H %(trailers:key=Signed-off-by,valueonly,separator=%x2C)' "$GITHUB_SHA" |
             awk -v exempt="$EXEMPT" 'NF<2 && $1 != exempt')
           agent=$(git rev-list "$GITHUB_SHA" | grep -vx "$EXEMPT" | while read -r c; do
