@@ -1645,6 +1645,25 @@
      }
     },
     "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with extra.forwardTonAmount 2^120 − 1: build attaches more TON than the forward amount, and the attached value is a Grams, below 2^120",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg=",
+      "forwardTonAmount": "1329227995784915872903807060280344575"
+     }
+    },
+    "expect": "tvm/option-malformed"
    }
   ]
  }

@@ -982,8 +982,9 @@ function rawAddress(s: unknown): Address | null {
 
 /**
  * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra`, the amount as a Jetton amount
- * below 2^120 and `maxTimeoutSeconds` a positive integer below 2^32, which `build` writes into the request (the
- * wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds`). The network is
+ * below 2^120, a forward TON amount below 2^120 − 1 (`build` attaches more TON than it, and the attached value is a
+ * `Grams`, below 2^120), and `maxTimeoutSeconds` a positive integer below 2^32, which `build` writes into the request
+ * (the wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds`). The network is
  * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
  * read at; any other `tvm:` network is `tvm/network-malformed`. `pairingOf`, `advertise`, `read` and `build` apply it,
  * and `bound` and `reference` hold the option a presented payment echoes to it.
@@ -1001,7 +1002,7 @@ const check: OptionFilter = (o) => {
   if (rawAddress(o.asset) === null || rawAddress(o.payTo) === null) return refusal("tvm/option-malformed");
   if (extra?.["areFeesSponsored"] !== true) return refusal("tvm/option-malformed");
   const forwardTon = extra["forwardTonAmount"];
-  if (forwardTon !== undefined && decimalBelow(forwardTon, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
+  if (forwardTon !== undefined && decimalBelow(forwardTon, COINS_LIMIT - 1n) === undefined) return refusal("tvm/option-malformed");
   const response = extra["responseDestination"];
   if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
   if (decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
