@@ -1136,7 +1136,7 @@ export interface Echoed {
  * name. A challenge they refuse gives their refusal, and one that does not offer `pairing` (another intent, method,
  * credential type, mode or `usdc` profile, or no `expires` where `pairing` needs it) is `mpp/not-this-pairing`, as
  * `advertise` and `build` answer for the same challenge. Each pairing's `build` takes the chosen challenge through this
- * one step, its `bound` and `reference` the echoed one (`echoedFor`), and a session's `closeRef` the issued one
+ * one step (`chosenHeld`), its `bound` and `reference` the echoed one (`echoedFor`), and a session's `closeRef` the issued one
  * (`issuedFor`), so none of them takes a challenge `pairingsOf` would not name for that pairing.
  */
 export function checkedFor(c: unknown, pairing: MppPairingId): Checked | Refusal {
@@ -1212,14 +1212,31 @@ export function requestAddress(e: Echoed, key: string): Hex | Refusal {
   return isAddress(v) ? v : refusal("mpp/request-malformed");
 }
 
-/** The buyer's chosen challenge for `pairing`, held to its filter (`checkedFor`), whose id derives from `h`. */
+/**
+ * The buyer's chosen challenge for `pairing` (`chosenHeld`), whose id derives from `h`, else `mpp/id-not-ours`. A value
+ * that is not a challenge with a string id is `mpp/input-malformed`.
+ */
 export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairingId): Checked | Refusal {
   if (!isChallengeShape(challenge) || typeof challenge.id !== "string") return refusal("mpp/input-malformed");
-  const checked = checkedFor(challenge, pairing);
-  if (isRefusal(checked)) return checked;
-  const fromId = challengeIdH(challenge);
-  if (typeof fromId !== "string" || typeof h !== "string" || !hashEquals(fromId, h)) return refusal("mpp/id-not-ours");
-  return checked;
+  const held = chosenHeld(challenge, pairing);
+  if (isRefusal(held)) return held;
+  if (typeof h !== "string" || !hashEquals(held.h, h)) return refusal("mpp/id-not-ours");
+  return held.checked;
+}
+
+/**
+ * A chosen challenge, held for `pairing` as `bound` holds the challenge a credential echoes (`echoedFor`), with
+ * `bound`'s code for each fault, in `bound`'s order: its shape, with a string id, and its size as the least credential
+ * echoing it, `{ challenge, payload: {} }`, has it (`mpp/credential-malformed`); its realm; its id, which must derive
+ * from an H in the form its intent and method take (`mpp/id-not-ours`); its `opaque`, which must be present and carry
+ * a `legalContext` naming that H (`mpp/opaque-not-this-hash`, or `mpp/opaque-malformed` for one that is not a map of
+ * strings); its request; its intent and method, which must be `pairing`'s; and `pairing`'s filter (`checkedFor`). Each
+ * MPP `build` holds the chosen challenge through this one step before it builds anything, so no `complete` is handed a
+ * challenge `bound` refuses. Each `build` checks the shape and the id's type itself first, with its own code.
+ */
+export function chosenHeld(challenge: MppChallenge, pairing: MppPairingId): { h: AtrHash; checked: Checked } | Refusal {
+  const held = heldFor({ challenge, payload: {} }, pairing, true);
+  return isRefusal(held) ? held : { h: held.h!, checked: held.checked };
 }
 
 // ── Problem types.

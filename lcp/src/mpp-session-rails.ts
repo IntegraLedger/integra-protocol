@@ -163,7 +163,9 @@ export interface HederaSessionUnsigned {
 
 /**
  * The values a Solana channel client composes the `open` from; `complete` takes the composed open payload, which carries
- * `authentication` when the challenge's `voucherSigner` is `operator` and none otherwise, and checks it as `bound` does.
+ * `authentication` when the challenge's `voucherSigner` is `operator` and none otherwise, and checks it as `bound` does,
+ * in `bound`'s order: an open that is not an object, or whose credential is over the credential size bound, is
+ * `mpp/credential-malformed`, and then one whose `action` is not `open` is `mpp/session-action`.
  */
 export interface SolanaSessionUnsigned {
   request: {
@@ -863,9 +865,9 @@ function solanaCloseRef(chosen: MppChallenge, channel: string): Omit<SvmCloseRef
 
 /**
  * The values the buyer's channel client composes the `open` from: the salt (H's first 8 bytes), the program, the
- * network and the request's blockhash and slot. `complete` checks the composed open as `bound` does before returning
- * the credential: an open whose message has address table lookups is `svm/read-first`, since `complete` reads no table;
- * its credential, `{challenge, payload}`, is checked through `fetchPresented` and `bound`.
+ * network and the request's blockhash and slot. `complete` checks the composed open as `bound` does, in `bound`'s order,
+ * before returning the credential: an open whose message has address table lookups is `svm/read-first`, since
+ * `complete` reads no table; its credential, `{challenge, payload}`, is checked through `fetchPresented` and `bound`.
  */
 async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<SolanaSessionUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("svm/input-malformed");
@@ -885,7 +887,6 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
       recentSlot: BigInt(checked.details["recentSlot"] as string),
     },
     complete(open: { [k: string]: Json }): MppCredential | Refusal {
-      if (!isObject(open) || open["action"] !== "open") return refusal("mpp/session-action");
       const credential: MppCredential = { challenge, payload: open };
       const o = solanaOpening(credential);
       return isRefusal(o) ? o : credential;
@@ -1124,7 +1125,9 @@ function xrplCloseRef(chosen: MppChallenge, channel: string): Omit<XrplCloseRef,
 /**
  * The `PaymentChannelCreate` for the wallet to sign, with one LCP memo carrying H and no `NetworkID` (each network the
  * challenge can name has an id of at most 1024), and the first claim's bytes on the resulting channel. `complete` checks
- * the signed blob as `bound` does before returning the credential, its `NetworkID` among the checks.
+ * the signed blob as `bound` does before returning the credential, in `bound`'s order: `bound`'s read of the opening
+ * (`xrplOpening`), the credential's size, the blob's type (`xrpl/blob-malformed`) and its `NetworkID` among the checks;
+ * then the claim signature, which `bound` does not read: hex, else `mpp/credential-malformed`.
  */
 async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSessionUnsigned | Refusal> {
   if (!isObject(choice) || !isObject(choice.xrpl)) return refusal("mpp/input-malformed");
@@ -1177,16 +1180,15 @@ async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSes
   return {
     request: { kind: "xrpl-session-open", txJson, claim: { channelId, drops, bytes: claimBytes } },
     async complete(signed: { signedBlob: string; claimSignature: string }): Promise<MppCredential | Refusal> {
-      if (!isObject(signed) || typeof signed.signedBlob !== "string" || typeof signed.claimSignature !== "string" || !HEX.test(signed.claimSignature)) {
-        return refusal("mpp/credential-malformed");
-      }
+      if (!isObject(signed)) return refusal("mpp/credential-malformed");
       const credential: MppCredential = {
         challenge,
         source,
         payload: { action: "open", transaction: signed.signedBlob, amount, signature: signed.claimSignature },
       };
       const o = await xrplOpening(credential);
-      return isRefusal(o) ? o : credential;
+      if (isRefusal(o)) return o;
+      return typeof signed.claimSignature === "string" && HEX.test(signed.claimSignature) ? credential : refusal("mpp/credential-malformed");
     },
   };
 }

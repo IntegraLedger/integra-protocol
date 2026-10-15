@@ -34,8 +34,7 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
-  challengeIdH,
-  checkedFor,
+  chosenHeld,
   credentialOf,
   decodeObject,
   deepFreeze,
@@ -395,15 +394,20 @@ export function sessionNetwork(c: MppChallenge): `eip155:${number}` | Refusal {
 
 // ── Shared steps.
 
-/** The checked challenge `build` answers: held to `pairing`'s filter (`checkedFor`), with an id that carries `h`. */
+/**
+ * The checked challenge `build` answers: a challenge (else `mpp/challenge-malformed`) with a string id (else
+ * `mpp/id-not-ours`), held as `bound` holds an echoed one (`chosenHeld`), whose id carries `h`, and `from` an address.
+ */
 function offerFor(choice: MppChoice, h: AtrHash, pairing: ChannelId): Checked | Refusal {
   if (!isObject(choice) || !isObject(choice.challenge)) return refusal("mpp/input-malformed");
-  const checked = checkedFor(choice.challenge, pairing);
-  if (isRefusal(checked)) return checked;
-  const fromId = challengeIdH(choice.challenge);
-  if (typeof fromId !== "string" || typeof h !== "string" || !hashEquals(fromId, h)) return refusal("mpp/id-not-ours");
+  const c = choice.challenge;
+  if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
+  if (typeof c.id !== "string") return refusal("mpp/id-not-ours");
+  const held = chosenHeld(c, pairing);
+  if (isRefusal(held)) return held;
+  if (typeof h !== "string" || !hashEquals(held.h, h)) return refusal("mpp/id-not-ours");
   if (!isAddress(choice.from)) return refusal("mpp/input-malformed");
-  return checked;
+  return held.checked;
 }
 
 /** H from an echoed challenge of `pairing`'s intent and method, with the echoed challenge and the payload. */

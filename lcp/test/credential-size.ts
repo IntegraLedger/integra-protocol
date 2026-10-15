@@ -1,6 +1,6 @@
 // A credential's size as the credential size bound measures it, and a challenge padded to bring a credential to a
-// given size: the helpers the credentialSize, completeOrder, voucherSize and inChannelSize rows (mpp-challenge.json)
-// share.
+// given size: the helpers the credentialSize, completeOrder, voucherSize, inChannelSize and buildChallenge rows
+// (mpp-challenge.json) share.
 import type { MppChallenge } from "../src/mpp.js";
 
 /** A credential's size as credentialSize's about measures it, and as `bound` does. */

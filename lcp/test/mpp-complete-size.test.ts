@@ -98,10 +98,25 @@ const buyer = (file: string, pairing: string, name: "B2" | "B6"): BuyerRow | und
 /** The address of a CAIP-10 account: what follows its namespace and reference. */
 const accountOf = (row: BuyerRow) => row.input.account.split(":").slice(2).join(":");
 const refused = (code: string): Refused => ({ refused: true, code });
+/** A build's refusal, as `built` throws it, so that a run can tell it from its complete's answer (`answered`). */
+class BuildRefused extends Error {
+  constructor(readonly refusal: Refused) {
+    super(`build refused: ${refusal.code}`);
+  }
+}
 /** A build's answer, which these rows' inputs never have refused. */
 function built<U>(u: U | Refused): U {
-  if (typeof u === "object" && u !== null && "refused" in u) throw new Error(`build refused: ${(u as Refused).code}`);
+  if (typeof u === "object" && u !== null && "refused" in u) throw new BuildRefused(u as Refused);
   return u as U;
+}
+/** What a run of build and complete gives: build's refusal, or complete's answer. */
+async function answered(run: Promise<unknown>): Promise<{ by: "build" | "complete"; answer: unknown }> {
+  try {
+    return { by: "complete", answer: await run };
+  } catch (e) {
+    if (e instanceof BuildRefused) return { by: "build", answer: e.refusal };
+    throw e;
+  }
 }
 const decoded = (c: MppChallenge): { [k: string]: Json } => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
 
@@ -475,7 +490,7 @@ describe("x402 exact Stellar: complete refuses a signed envelope over 8,192 char
 // it reads nothing of the payment).
 describe("mpp-challenge.json completeOrder: a complete checks the credential in its bound's order", () => {
   type OrderRow = { case: string; pairing: string; fault: string; size: number; expect: string; bound?: string; boundTakes?: true };
-  const ROWS_ORDER = rowsOf<OrderRow>(MC.completeOrder.rows, "mpp-challenge.json completeOrder.rows", { exact: 12 });
+  const ROWS_ORDER = rowsOf<OrderRow>(MC.completeOrder.rows, "mpp-challenge.json completeOrder.rows", { exact: 14 });
   /** The pairing's credential, completed from its B2 and B6 rows under its credentialSize challenge. */
   const taken = async (pairing: string) => {
     const { placed, complete } = setUp(pairing);
@@ -503,6 +518,8 @@ describe("mpp-challenge.json completeOrder: a complete checks the credential in 
   const otherChain = (TX.agreedRefusals.rows[0].transactions as Hex[])[0]!;
   const xrplB2 = buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B2")!;
   const lightningB2 = buyer("mpp-charge-lightning.json", "mpp/charge/lightning", "B2")!;
+  const solanaB2 = buyer("mpp-session-hedera-solana-xrpl.json", "mpp/session/solana", "B2")!;
+  const solanaOpen = buyer("mpp-session-hedera-solana-xrpl.json", "mpp/session/solana", "B6")!.input.presented!.payload;
 
   type Fault = { complete(challenge: Placed): Promise<unknown>; credential(challenge: Placed): Promise<MppCredential> };
   const FAULTS: Record<string, Fault> = {
@@ -552,6 +569,10 @@ describe("mpp-challenge.json completeOrder: a complete checks the credential in 
     "a preimage that is not 64 hex digits": {
       complete: async (challenge) => built(await chargeLightning.build({ challenge }, lightningB2.advertised)).complete("00"),
       credential: (challenge) => swapped("mpp/charge/lightning", challenge, "preimage", "00"),
+    },
+    "an opening whose action is voucher": {
+      complete: (challenge) => P["mpp/session/solana"]!.run(challenge, solanaB2, { payload: { ...solanaOpen, action: "voucher" } }),
+      credential: (challenge) => swapped("mpp/session/solana", challenge, "action", "voucher"),
     },
   };
 
@@ -646,4 +667,97 @@ describe("mpp-challenge.json inChannelSize: the channel members of the sessions 
       }
     });
   }
+});
+
+// buildChallenge: each MPP build holds the chosen challenge as bound holds the challenge a credential echoes, with
+// bound's code for each fault, in bound's order, before it builds anything, so no complete is handed a challenge bound
+// refuses.
+describe("mpp-challenge.json buildChallenge: each build holds the chosen challenge as bound holds an echoed one", () => {
+  type ChallengeRow = { case: string; opaque?: string | null; legalContext?: string; leastSize?: number; expect: string };
+  const ROWS_CHALLENGE = rowsOf<ChallengeRow>(MC.buildChallenge.rows, "mpp-challenge.json buildChallenge.rows", { exact: 5 });
+  /** `placed` with the row's fault. */
+  const faulty = (placed: Placed, row: ChallengeRow): Placed => {
+    if (row.opaque === null) {
+      const { opaque: _, ...rest } = placed;
+      return rest;
+    }
+    if (row.opaque !== undefined) return { ...placed, opaque: row.opaque };
+    if (row.legalContext !== undefined) {
+      const map = JSON.parse(Buffer.from(placed.opaque!, "base64url").toString("utf8")) as Record<string, string>;
+      return { ...placed, opaque: Buffer.from(JSON.stringify({ ...map, legalContext: row.legalContext })).toString("base64url") };
+    }
+    return described(placed, descriptionFor({ challenge: placed, payload: {} }, row.leastSize!));
+  };
+
+  it("each row makes one fault", () => {
+    for (const row of ROWS_CHALLENGE) {
+      expect([row.opaque !== undefined, row.legalContext !== undefined, row.leastSize !== undefined].filter(Boolean)).toHaveLength(1);
+    }
+  });
+  for (const id of PAIRINGS) {
+    describe(id, () => {
+      for (const row of ROWS_CHALLENGE) {
+        it(row.case, async () => {
+          const { placed, complete } = setUp(id);
+          expect(placed.opaque).toBeDefined();
+          const plain = (await complete(placed)) as MppCredential;
+          const challenge = faulty(placed, row);
+          if (row.leastSize !== undefined) expect(sizeOf({ challenge, payload: {} })).toBe(row.leastSize);
+          expect(await answered(complete(challenge))).toEqual({ by: "build", answer: refused(row.expect) });
+          expect(await P[id]!.bound({ ...plain, challenge })).toEqual(refused(row.expect));
+        });
+      }
+    });
+  }
+
+  // The EVM transaction charge's complete holds the echoed challenge (echoedFor) before it reads the transaction, as
+  // bound does: so whatever transaction it is given, build and complete give bound's code for the row's challenge.
+  describe("mpp/charge/evm/transaction: build and complete give bound's code, whatever the transaction", () => {
+    const b2 = buyer("mpp-charge-evm-transaction.json", "mpp/charge/evm/transaction", "B2")!;
+    const run = async (challenge: Placed, signature: Hex) =>
+      built(await evmTransaction.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(signature);
+    for (const row of ROWS_CHALLENGE) {
+      it(row.case, async () => {
+        const { placed } = setUp("mpp/charge/evm/transaction");
+        const plain = (await run(placed, await mv11Transaction())) as MppCredential;
+        const challenge = faulty(placed, row);
+        for (const signature of ["0xzz", "0x02c0", await mv11Transaction()] as Hex[]) {
+          expect((await answered(run(challenge, signature))).answer).toEqual(refused(row.expect));
+          expect(await evmTransaction.bound({ ...plain, challenge, payload: { ...plain.payload, signature } })).toEqual(refused(row.expect));
+        }
+      });
+    }
+  });
+});
+
+// A session complete reads the opening it is given as bound reads it, in bound's order. The Solana session's complete
+// refuses an opening that is not an object with mpp/credential-malformed, as bound refuses a credential carrying it;
+// the XRPL session's reads the blob's type in bound's read of the opening (xrpl/blob-malformed), and the claim
+// signature, which bound does not read, after it.
+describe("a session complete gives bound's code for an opening member of another type, in bound's order", () => {
+  const FILE = "mpp-session-hedera-solana-xrpl.json";
+
+  it("mpp/session/solana: an opening that is not an object is mpp/credential-malformed, as bound gives it", async () => {
+    const b2 = buyer(FILE, "mpp/session/solana", "B2")!;
+    const { placed } = setUp("mpp/session/solana");
+    for (const open of [null, "x", 5]) {
+      expect(await P["mpp/session/solana"]!.run(placed, b2, { payload: open as never })).toEqual(refused("mpp/credential-malformed"));
+      expect(await sessionSolana.bound({ challenge: placed, payload: open })).toEqual(refused("mpp/credential-malformed"));
+    }
+  });
+
+  it("mpp/session/xrpl: a blob that is not a string is xrpl/blob-malformed, before the claim signature, as bound gives it", async () => {
+    const b2 = buyer(FILE, "mpp/session/xrpl", "B2")!;
+    const b6 = buyer(FILE, "mpp/session/xrpl", "B6")!.input.presented!;
+    const { placed, h } = setUp("mpp/session/xrpl");
+    const run = (payload: Payload) => P["mpp/session/xrpl"]!.run(placed, b2, { payload });
+    const plain = (await run(b6.payload)) as MppCredential;
+    for (const signature of [b6.payload["signature"] as string, "zz"]) {
+      expect(await run({ ...b6.payload, transaction: 5, signature })).toEqual(refused("xrpl/blob-malformed"));
+      expect(await sessionXrpl.bound({ ...plain, payload: { ...plain.payload, transaction: 5, signature } })).toEqual(refused("xrpl/blob-malformed"));
+    }
+    // A claim signature that is not hex is complete's own check: bound does not read it.
+    expect(await run({ ...b6.payload, signature: "zz" })).toEqual(refused("mpp/credential-malformed"));
+    expect(await sessionXrpl.bound({ ...plain, payload: { ...plain.payload, signature: "zz" } })).toBe(h);
+  });
 });

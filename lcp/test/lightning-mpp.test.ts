@@ -287,6 +287,14 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
   // "`ln` + BIP-0173 currency prefix (e.g. `lnbc` for Bitcoin mainnet, `lntb` for Bitcoin testnet, `lntbs` for Bitcoin
   // signet, and `lnbcrt` for Bitcoin regtest)". draft-lightning-session-00 defines no `network`, so the session reads
   // `methodDetails.network` by the charge's rule.
+  /**
+   * `offer` as the buyer's chosen challenge: with the id and the `opaque` that `place` writes for S1's deposit invoice,
+   * which `build` holds as `bound` holds an echoed challenge.
+   */
+  const chosen = (offer: MppChallenge) => {
+    const placed = opened(deposit).challenge;
+    return { ...offer, id: placed.id, opaque: placed.opaque } as MppChallenge & { id: string };
+  };
   /** The open credential of a placed session challenge, echoed with `request` in place of the one placed. */
   const echoing = (request: Json) => {
     const credential = opened(deposit);
@@ -304,7 +312,7 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
       it(name, async () => {
         const offer = challengeOf(S.S1, { depositInvoice: invoice, methodDetails: details });
         expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual({ refused: true, code: "ln/currency-network" });
-        const challenge = { ...offer, id: opened(deposit).challenge.id } as MppChallenge & { id: string };
+        const challenge = chosen(offer);
         expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual({ refused: true, code: "ln/currency-network" });
         const echo = echoing(set(S.S1.request, { depositInvoice: invoice, methodDetails: details }));
         expect(await sessionLightning.bound(echo)).toEqual({ refused: true, code: "ln/currency-network" });
@@ -343,7 +351,7 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
       it(row.case, async () => {
         const offer = challengeOf(S.S1, row.requestSet ?? {}, row.challengeSet ?? {});
         expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual(row.expect);
-        const challenge = { ...offer, id: opened(deposit).challenge.id } as MppChallenge & { id: string };
+        const challenge = chosen(offer);
         expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual(row.expect);
         if (row.expect.code === "ln/currency-network" && row.challengeSet === undefined) {
           const echo = echoing(set(S.S1.request, row.requestSet));

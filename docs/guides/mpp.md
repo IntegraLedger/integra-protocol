@@ -183,9 +183,13 @@ gives H there and `reference` gives `hedera/chain-id-unnamed` without it.
 the pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which
 must name the pairing (`pairingsOfPlaced`). A challenge those checks refuse gives their code, and one that offers only
 other pairings (another credential type, mode or `usdc` profile, or no `expires` where the pairing needs it) is
-`mpp/not-this-pairing`, as `advertise` and `build` answer for the same challenge; `build` holds the chosen challenge
-to the same filter. `pairingsOf` makes every check `build`, `bound` and `reference` make on the challenge alone: on
-Lightning, that the invoice decodes with one `h` field and no `d`, carries the request's payment hash and the currency
+`mpp/not-this-pairing`, as `advertise` and `build` answer for the same challenge. `build` holds the chosen challenge
+as `bound` holds an echoed one, with `bound`'s code for each fault, in `bound`'s order, before it builds anything: the
+least credential echoing it, `{ challenge, payload: {} }`, within the credential size bound, its realm, an id that
+derives from H, an `opaque` that names that H (else `mpp/opaque-not-this-hash`), its request, its intent and method,
+and the same filter. So no `complete` is handed a challenge `bound` refuses. `pairingsOf` makes every check `build`,
+`bound` and `reference` make on the challenge alone: on Lightning, that the invoice decodes with one `h` field and no
+`d`, carries the request's payment hash and the currency
 of the `network` the challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or
 `confidential` transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the build writes; on
 Permit2 and the Tempo charges, an `amount` above its `splits`, and on Tempo their form; on the Stellar charge, an

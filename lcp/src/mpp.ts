@@ -29,11 +29,11 @@ import {
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
   attributionMemo,
-  challengeIdH,
   challengeHash,
   checkAttribution,
   checkChallenge,
   checkedFor,
+  chosenHeld,
   credentialOf,
   decodeObject,
   deepFreeze,
@@ -294,17 +294,19 @@ function identifiesSender(t: unknown, asset: unknown): t is TransferLog {
 // ── Shared steps.
 
 /**
- * The checked challenge `build` answers: it is held to `pairing`'s filter (`checkedFor`), its id carries `h`, and
- * `from` is an address.
+ * The checked challenge `build` answers: a challenge (else `mpp/challenge-malformed`) with a string id (else
+ * `mpp/id-not-ours`), held as `bound` holds an echoed one (`chosenHeld`), whose id carries `h`, and `from` an address.
  */
 function offerFor(choice: MppChoice, h: AtrHash, pairing: ChargeId): Checked | Refusal {
   if (!isObject(choice) || !isObject(choice.challenge)) return refusal("mpp/input-malformed");
-  const checked = checkedFor(choice.challenge, pairing);
-  if (isRefusal(checked)) return checked;
-  const fromId = challengeIdH(choice.challenge);
-  if (typeof fromId !== "string" || typeof h !== "string" || !hashEquals(fromId, h)) return refusal("mpp/id-not-ours");
+  const c = choice.challenge;
+  if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
+  if (typeof c.id !== "string") return refusal("mpp/id-not-ours");
+  const held = chosenHeld(c, pairing);
+  if (isRefusal(held)) return held;
+  if (typeof h !== "string" || !hashEquals(held.h, h)) return refusal("mpp/id-not-ours");
   if (!isAddress(choice.from)) return refusal("mpp/input-malformed");
-  return checked;
+  return held.checked;
 }
 
 /** H from an echoed challenge of `pairing`'s intent and method, with the echoed challenge and the payload. */
@@ -686,12 +688,13 @@ function eip1559ChainId(wire: Uint8Array): bigint | undefined {
 
 /**
  * The call's request for the buyer's signer, on the challenge's chain. On `hash`, `complete` takes the transaction hash;
- * on `transaction`, the signed transaction, 1 to 65,536 bytes of hex, else `mpp/credential-malformed`. It holds the
- * credential with `bound`'s hold of the echoed challenge (`echoedFor`), which `bound` makes before its verdict: a
- * credential over the credential size bound is `mpp/credential-malformed`, as `bound` gives it. It then reads the
- * transaction as draft-evm-charge-00's transaction verification reads it before it broadcasts (L696-697 and L873-879
- * at tempoxyz/mpp-specs 08e7dd87): an EIP-1559 transaction, else `mpp/credential-malformed`, whose chain id is the
- * challenge's `methodDetails.chainId`, else `evm/chain-mismatch`. `bound` reads nothing of it (`mpp/no-signed-place`).
+ * on `transaction`, the signed transaction. It checks in `bound`'s order: first `bound`'s hold of the echoed challenge
+ * (`echoedFor`), which `bound` makes before its verdict, so a credential over the credential size bound is
+ * `mpp/credential-malformed`, as `bound` gives it; then the transaction, 1 to 65,536 bytes of hex, else
+ * `mpp/credential-malformed`, read as draft-evm-charge-00's transaction verification reads it before it broadcasts
+ * (L696-697 and L873-879 at tempoxyz/mpp-specs 08e7dd87): an EIP-1559 transaction, else `mpp/credential-malformed`,
+ * whose chain id is the challenge's `methodDetails.chainId`, else `evm/chain-mismatch`. `bound` reads nothing of it
+ * (`mpp/no-signed-place`).
  */
 function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
@@ -710,10 +713,10 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
           if (hash === null) return refusal("mpp/credential-malformed");
           return measured({ challenge, source, payload: { type: "hash", hash: signedTxOrHash } });
         }
-        if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
         const credential: MppCredential = { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
         const held = echoedFor(credential, pairing);
         if (isRefusal(held)) return held;
+        if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
         const txChain = eip1559ChainId(bytesOf(signedTxOrHash)!);
         if (txChain === undefined) return refusal("mpp/credential-malformed");
         if (txChain !== BigInt(chainId)) return refusal("evm/chain-mismatch");

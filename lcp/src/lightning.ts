@@ -4,7 +4,7 @@
  * `x402` slot names the invoice instead. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The
  * payer signs nothing; it pays the invoice.
  */
-import { canonicalJson, fromLegalContext, parseJson, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, fromLegalContext, hashEquals, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import {
   decode,
@@ -22,8 +22,10 @@ import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type 
 import {
   credentialOf,
   checkChallenge,
+  chosenHeld,
   decodeObject,
   echoedFor,
+  isChallengeShape,
   measured,
   measuring,
   measuringAsync,
@@ -526,13 +528,23 @@ function lnAdvertiseBeforeCarrier(pairing: LnMppPairingId) {
   };
 }
 
+/**
+ * The payment of the chosen challenge's invoice. The challenge is held as `bound` holds an echoed one, with `bound`'s
+ * code for each fault, in `bound`'s order (`chosenHeld`), then its invoice as `bound` reads it (`lnChallengeChecks`),
+ * whose `h` must be the hash the challenge's id derives from (`mpp/carrier-not-challenge`); an id that derives from a
+ * hash other than `h` is then `mpp/id-not-ours`. A challenge that is not challenge-shaped is `mpp/challenge-malformed`.
+ */
 function lnBuild(pairing: LnMppPairingId) {
   return async (choice: LnMppChoice, h: AtrHash): Promise<LnMppUnsigned | Refusal> => {
     if (!isObject(choice) || !isObject(choice.challenge) || typeof choice.challenge.id !== "string") {
       return refusal("mpp/credential-malformed");
     }
-    const b = lnChallengeChecks(pairing, choice.challenge, h, true);
+    if (!isChallengeShape(choice.challenge)) return refusal("mpp/challenge-malformed");
+    const held = chosenHeld(choice.challenge, pairing);
+    if (isRefusal(held)) return held;
+    const b = lnChallengeChecks(pairing, choice.challenge, held.h, true);
     if (isRefusal(b)) return b;
+    if (typeof h !== "string" || !hashEquals(held.h, h)) return refusal("mpp/id-not-ours");
     const returnInvoice = choice.returnInvoice;
     if (pairing === LN_SESSION && !amountless(returnInvoice)) return refusal("ln/return-invoice-malformed");
     const invoice = lnInvoice(pairing, decodeObject(choice.challenge.request)!);
