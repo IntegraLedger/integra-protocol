@@ -293,7 +293,7 @@ jobs:
           echo "$RUNNER_TEMP/pnpm" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @integraledger/lcp run build
-      - name: The TypeScript samples in the READMEs and docs/ not marked no-check compile, run and print what the page shows
+      - name: The samples in every README.md and in docs/ not marked no-check are fenced ts, compile, run and print what the page shows
         run: node scripts/docs-samples.mjs
       - name: The generated reference pages and the README's pairing list match the package
         run: node scripts/docs-reference.mjs --check

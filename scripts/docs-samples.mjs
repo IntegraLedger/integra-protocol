@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-// Compiles and runs every TypeScript sample in the READMEs and docs/ against the built lcp package.
+// Compiles and runs every TypeScript sample in the READMEs (every README.md in the tree, outside node_modules and
+// build output) and in the pages under docs/ (except the generated API pages) against the built lcp package.
 //
-// A sample is a fence whose info string starts with `ts` or `typescript` and does not contain `no-check`. Each one is
-// a complete ESM program. It is written to lcp/.samples/, so `@integraledger/lcp` resolves to the package itself,
-// type-checked with lcp/tsconfig.docs.json, then run with node. When the next fence after a sample, with only blank
-// lines between them, is a `text` fence, the program's standard output must equal that fence's content.
+// A fence opens with three or more backticks or tildes, indented or not, and closes with at least as many of the same
+// character at the same indentation. A sample is a fence whose info string starts with `ts` or `typescript` and does
+// not contain `no-check`. A fence whose info string starts with another TypeScript or JavaScript name (`tsx`, `mts`,
+// `cts`, `js`, `jsx`, `mjs`, `cjs`, `javascript`, or `ts` or `typescript` with a capital letter) fails unless it
+// contains `no-check`, so no sample leaves the run by its label. Each sample is a complete ESM program. It is written
+// to lcp/.samples/, so `@integraledger/lcp` resolves to the package itself, type-checked with lcp/tsconfig.docs.json,
+// then run with node. When the next fence after a sample, with only blank lines between them, is a `text` fence, the
+// program's standard output must equal that fence's content.
 //
 // Usage: node scripts/docs-samples.mjs [file.md ...]   (from the repository root, after lcp is built; with no file,
 // every README and page under docs/)
@@ -22,9 +27,21 @@ if (!existsSync(join(lcp, "dist", "index.js"))) {
   process.exit(1);
 }
 
-/** The Markdown files whose samples run: the READMEs and every page under docs/ except the generated API pages. */
+/** The Markdown files whose samples run: every README.md and every page under docs/ except the generated API pages. */
 function sources() {
-  const files = [join(root, "README.md"), join(lcp, "README.md")].filter(existsSync);
+  const files = [];
+  const readmes = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+      if (e.name === "node_modules" || e.name === "dist" || e.name === "out" || e.name.startsWith(".")) continue;
+      const p = join(dir, e.name);
+      if (e.isDirectory()) {
+        if (p !== join(root, "docs")) readmes(p);
+      } else if (e.name === "README.md") {
+        files.push(p);
+      }
+    }
+  };
+  readmes(root);
   const walk = (dir) => {
     for (const name of readdirSync(dir).sort()) {
       const p = join(dir, name);
@@ -44,16 +61,17 @@ function fences(text) {
   const lines = text.split("\n");
   const found = [];
   for (let i = 0; i < lines.length; i++) {
-    const open = /^(`{3,})(.*)$/.exec(lines[i]);
+    const open = /^([ \t]*)(`{3,}|~{3,})(.*)$/.exec(lines[i]);
     if (open === null) continue;
-    const marker = open[1];
+    const [, indent, marker, info] = open;
+    const close = new RegExp(`^${indent}${marker[0]}{${marker.length},}[ \\t]*$`);
     const body = [];
     let j = i + 1;
-    while (j < lines.length && !(lines[j].startsWith(marker) && lines[j].slice(marker.length).trim() === "")) {
-      body.push(lines[j]);
+    while (j < lines.length && !close.test(lines[j])) {
+      body.push(lines[j].startsWith(indent) ? lines[j].slice(indent.length) : lines[j]);
       j++;
     }
-    found.push({ info: open[2].trim(), body: body.join("\n"), line: i + 1, end: j });
+    found.push({ info: info.trim(), body: body.join("\n"), line: i + 1, end: j });
     i = j;
   }
   return found.map((f, k) => {
@@ -68,13 +86,17 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
 
 const samples = [];
+const refused = [];
 const named = process.argv.slice(2).map((f) => resolve(f));
 for (const file of named.length > 0 ? named : sources()) {
   const where = relative(root, file);
   for (const f of fences(readFileSync(file, "utf8"))) {
     const lang = f.info.split(/\s+/)[0];
-    if (lang !== "ts" && lang !== "typescript") continue;
     if (/\bno-check\b/.test(f.info)) continue;
+    if (lang !== "ts" && lang !== "typescript") {
+      if (/^(?:[cm]?[jt]sx?|typescript|javascript)$/i.test(lang)) refused.push(`${where}:${f.line} is fenced \`${lang}\``);
+      continue;
+    }
     const name = `${where.replace(/[^A-Za-z0-9]+/g, "-")}-${f.line}.ts`;
     writeFileSync(join(out, name), `${f.body}\n`);
     samples.push({ where: `${where}:${f.line}`, name, output: f.output });
@@ -82,6 +104,7 @@ for (const file of named.length > 0 ? named : sources()) {
 }
 
 let failed = 0;
+for (const r of refused) console.error(`FAIL ${r}: a sample is fenced \`ts\`, and any other TypeScript or JavaScript fence is marked no-check`);
 let typeErrors = "";
 try {
   if (samples.length > 0) {
@@ -120,4 +143,5 @@ if (typeErrors !== "") {
   process.exit(1);
 }
 console.log(`${samples.length - failed} of ${samples.length} samples type-check, run and print what the docs show`);
-process.exit(failed === 0 ? 0 : 1);
+if (refused.length > 0) console.error(`${refused.length} fence(s) labelled as TypeScript or JavaScript other than ts, without no-check`);
+process.exit(failed === 0 && refused.length === 0 ? 0 : 1);

@@ -102,7 +102,7 @@ The same pages are published at [lcp.integraledger.com](https://lcp.integraledge
 | [`lcp/`](./lcp) | The `@integraledger/lcp` package: `src/`, its tests, `vectors/` and `profiles/`. |
 | [`docs/`](./docs) | The documentation, in Markdown. It is the single source of the documentation site. |
 | [`website/`](./website) | The documentation site app, built from `docs/`. It is not part of any published package. |
-| [`scripts/`](./scripts) | The checks that compile and run the TypeScript samples in the READMEs and `docs/` not marked `no-check`, and regenerate the reference pages. |
+| [`scripts/`](./scripts) | The checks that compile and run the TypeScript samples in every README and in `docs/` not marked `no-check`, and regenerate the reference pages. |
 
 ## Building and testing
 
@@ -119,7 +119,7 @@ pnpm -r --if-present run test
 # The shared vectors, byte-exact
 pnpm --filter @integraledger/lcp exec vitest run test/vectors.test.ts test/core.test.ts
 
-# The TypeScript samples in the READMEs and docs/ not marked no-check compile, run and print what the page shows
+# The samples in every README.md and in docs/ not marked no-check are fenced ts, compile, run and print what the page shows
 node scripts/docs-samples.mjs
 
 # The generated reference pages and the README's pairing list match the package, lcp/src/internal/codes.ts holds the
@@ -143,8 +143,8 @@ Contributions are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. Ever
 [Developer Certificate of Origin](https://developercertificate.org): add `Signed-off-by: Your Name <you@example.com>`
 with `git commit -s`. On every push to `main`, CI reads every commit in `main`'s history except one merge commit, exempt
 by its sha, and fails if a commit has no `Signed-off-by:` trailer or its message matches the agent pattern in
-`.github/workflows/ci.yml`. The TypeScript samples in the READMEs and
-`docs/` not marked `no-check` are compiled and run in CI after each push to `main`, so a change that alters behaviour
+`.github/workflows/ci.yml`. The TypeScript samples in every README and
+in `docs/` not marked `no-check` are compiled and run in CI after each push to `main`, so a change that alters behaviour
 updates the samples that show it.
 
 This project follows the [Contributor Covenant](./CODE_OF_CONDUCT.md).
