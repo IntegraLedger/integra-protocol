@@ -140,7 +140,8 @@ export type MppUnsigned =
   | {
       /**
        * push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed
-       * transaction, and refuses one signed for a chain other than `chainId` with `tempo/tx-malformed`.
+       * transaction, and refuses one that does not decode, an empty one among them, or that is signed for a chain other
+       * than `chainId` with `tempo/tx-malformed`, as `bound` refuses it.
        */
       request: {
         kind: "tempo-call";
@@ -155,7 +156,8 @@ export type MppUnsigned =
       /**
        * A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one
        * per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes
-       * the signed transaction, and refuses one signed for a chain other than `chainId` with `tempo/tx-malformed`.
+       * the signed transaction, and refuses one that does not decode, an empty one among them, or that is signed for a
+       * chain other than `chainId` with `tempo/tx-malformed`, as `bound` refuses it.
        */
       request: {
         kind: "tempo-calls";
@@ -700,8 +702,9 @@ function transferCalldata(to: Hex, amount: bigint): Hex {
 
 /**
  * The Tempo charge's calls for the buyer's signer. On push, `complete` takes the transaction hash; on memo, the signed
- * transaction, read as `bound` reads it: one that does not decode gives `decodeTempoTx`'s refusal, and one signed for a
- * chain other than the request's `chainId` is `tempo/tx-malformed`.
+ * transaction, read as `bound` reads it: one that is not hex bytes, or is over 64 KiB, is `mpp/credential-malformed`;
+ * one that does not decode, an empty one among them, gives `decodeTempoTx`'s refusal, `tempo/tx-malformed`; and one
+ * signed for a chain other than the request's `chainId` is `tempo/tx-malformed`.
  */
 function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
@@ -733,7 +736,7 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
         if (normalHash(signedTxOrHash) === null) return refusal("mpp/credential-malformed");
         return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
       }
-      if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(signedTxOrHash, 0, MAX_WIRE)) return refusal("mpp/credential-malformed");
       const tx = decodeTempoTx(bytesOf(signedTxOrHash)!);
       if (isRefusal(tx)) return tx;
       if (tx.chainId !== BigInt(chainId)) return refusal("tempo/tx-malformed");

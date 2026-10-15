@@ -281,7 +281,7 @@ The id of each MPP pairing `pairingsOf` can name.
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction, and refuses one signed for a chain other than `chainId` with `tempo/tx-malformed`. |
+| `request` | `object` | push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction, and refuses one that does not decode, an empty one among them, or that is signed for a chain other than `chainId` with `tempo/tx-malformed`, as `bound` refuses it. |
 | `request.broadcast` | `boolean` | - |
 | `request.call` | `object` | - |
 | `request.call.data` | [`Hex`](evm.md#hex) | - |
@@ -299,7 +299,7 @@ The id of each MPP pairing `pairingsOf` can name.
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction, and refuses one signed for a chain other than `chainId` with `tempo/tx-malformed`. |
+| `request` | `object` | A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction, and refuses one that does not decode, an empty one among them, or that is signed for a chain other than `chainId` with `tempo/tx-malformed`, as `bound` refuses it. |
 | `request.broadcast` | `boolean` | - |
 | `request.calls` | readonly `object`[] | - |
 | `request.chainId` | `number` | - |
@@ -386,8 +386,9 @@ EIP-3009's `ReceiveWithAuthorization`: the same fields as `TransferWithAuthoriza
 
 > **voucher**(`funded`): [`Refusal`](index.md#refusal) \| [`VoucherTypedData`](#vouchertypeddata)
 
-`funded`: the funding signature, transaction hash or signed `0x76` transaction. A `0x76` transaction signed for a
-chain other than `funding.chainId` is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses it.
+`funded`: the funding signature, transaction hash or signed `0x76` transaction. A `tempo-call` funding's signed
+transaction that does not decode, an empty one among them, or that is signed for a chain other than
+`funding.chainId` is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses it.
 
 ###### Parameters
 

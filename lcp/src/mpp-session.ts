@@ -129,8 +129,9 @@ export type SessionUnsigned = {
     | { kind: "evm-calls"; chainId: number; calls: { to: Hex; data: Hex }[]; broadcast: true }
     | { kind: "tempo-call"; chainId: number; call: { to: Hex; data: Hex }; validBefore: number; broadcast: false };
   /**
-   * `funded`: the funding signature, transaction hash or signed `0x76` transaction. A `0x76` transaction signed for a
-   * chain other than `funding.chainId` is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses it.
+   * `funded`: the funding signature, transaction hash or signed `0x76` transaction. A `tempo-call` funding's signed
+   * transaction that does not decode, an empty one among them, or that is signed for a chain other than
+   * `funding.chainId` is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses it.
    */
   voucher(funded: Hex): VoucherTypedData | Refusal;
   complete(funded: Hex, voucherSignature: Hex): MppCredential | Refusal;
@@ -1254,7 +1255,8 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
  * The opening's signed transaction, checked in the order of draft-tempo-session-00's open verification: the transaction
  * first ("Decode the signed transaction from `transaction`, verify it calls `open()` on the expected escrow contract with
  * correct parameters. Recover the `payer` address from the transaction"), then the channel id, and on v2 the descriptor
- * ("For v2, servers MUST also verify the payload `descriptor`"). So of two faults, the transaction's is named.
+ * ("For v2, servers MUST also verify the payload `descriptor`"). So of a fault in the transaction and another in the
+ * payload's channel id or descriptor, the transaction's is named.
  *
  * The transaction is signed for the challenge's chain, `methodDetails.chainId` (4217 where a v1 challenge names none):
  * the draft binds the channel to the escrow and the chain, and the server broadcasts this transaction there. A
@@ -1264,13 +1266,14 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
  * 0, 1, 2 and 5 of `open(payee, operator, token, deposit, salt, authorizedSigner)`), and the signature gives the sender
  * (`tempoSender`), the payer the draft recovers from the transaction; else `tempo/tx-malformed`.
  *
- * On v1, the payload's `channelId` is the channel this transaction opens: `evmChannelId` over the sender, the call's
- * payee, token and authorizedSigner, H, the escrow and the chain, as the draft computes it from the payer it recovers
- * from the transaction. Else `mpp/channel-not-bound`. On v2, the payload's descriptor matches that transaction, as the
- * draft requires: it carries H as its salt and gives the payload's channel id (`descriptorSalt`), and it names the
- * call's payee, operator, token and authorizedSigner, the sender as its `payer`, and the expiring nonce hash of this
- * transaction under that sender (`expiringNonceHash`). A descriptor naming another party or another hash gives a
- * channel id this transaction does not open: `tempo/descriptor-mismatch`.
+ * Then the payload's `channelId` is read, where the draft compares the channel id: one that is not a 32-byte hash is
+ * `mpp/credential-malformed`. On v1, it is the channel this transaction opens: `evmChannelId` over the sender, the
+ * call's payee, token and authorizedSigner, H, the escrow and the chain, as the draft computes it from the payer it
+ * recovers from the transaction. Else `mpp/channel-not-bound`. On v2, the payload's descriptor matches that
+ * transaction, as the draft requires: it carries H as its salt and gives the payload's channel id (`descriptorSalt`),
+ * and it names the call's payee, operator, token and authorizedSigner, the sender as its `payer`, and the expiring nonce
+ * hash of this transaction under that sender (`expiringNonceHash`). A descriptor naming another party or another hash
+ * gives a channel id this transaction does not open: `tempo/descriptor-mismatch`.
  */
 function tempoOpened(
   presented: MppCredential,
@@ -1297,13 +1300,13 @@ function tempoOpened(
   if (input.length !== (p.version === "v2" ? 196 : 164)) return refusal("tempo/tx-malformed");
   const saltAt = 4 + 32 * (p.version === "v2" ? 4 : 3);
   if (!sameBytes(hexOf(input.subarray(saltAt, saltAt + 32)), e.h)) return refusal("tempo/salt-not-bound");
-  const channel = normalHash(e.payload["channelId"]);
-  if (channel === null) return refusal("mpp/credential-malformed");
   const args = input.subarray(4);
   const called = (p.version === "v2" ? [0, 1, 2, 5] : [0, 1, 4]).map((i) => addressAt(args, i));
   if (called.includes(undefined)) return refusal("tempo/tx-malformed");
   const sender = tempoSender(raw);
   if (isRefusal(sender)) return sender;
+  const channel = normalHash(e.payload["channelId"]);
+  if (channel === null) return refusal("mpp/credential-malformed");
   if (p.version === "v2") {
     const salt = descriptorSalt(e.payload, p);
     if (typeof salt !== "string" || !hashEquals(salt, e.h)) return refusal("tempo/descriptor-mismatch");
@@ -1349,8 +1352,9 @@ async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
 
 /**
  * The open call for the buyer's signer, and the voucher and credential of the signed transaction. That transaction is
- * read as `bound` reads it: one that does not decode gives `decodeTempoTx`'s refusal, and one signed for a chain other
- * than the challenge's, `methodDetails.chainId`, is `tempo/tx-malformed`.
+ * read as `bound` reads it: one that is not hex bytes, or is over 64 KiB, is `mpp/credential-malformed`; one that does
+ * not decode, an empty one among them, gives `decodeTempoTx`'s refusal, `tempo/tx-malformed`; and one signed for a
+ * chain other than the challenge's, `methodDetails.chainId`, is `tempo/tx-malformed`.
  */
 async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
   const o = offerFor(choice, h, SESSION_TEMPO);
@@ -1378,7 +1382,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
   const source = `did:pkh:eip155:${p.chainId}:${from}`;
 
   const opened = (signedTx: Hex) => {
-    const wire = isHexBytes(signedTx, 1, MAX_WIRE) ? bytesOf(signedTx)! : undefined;
+    const wire = isHexBytes(signedTx, 0, MAX_WIRE) ? bytesOf(signedTx)! : undefined;
     if (wire === undefined) return refusal("mpp/credential-malformed");
     const tx = decodeTempoTx(wire);
     if (isRefusal(tx)) return tx;
@@ -1582,13 +1586,14 @@ async function subscriptionReference(input: unknown): Promise<SessionRef | Refus
 
 /**
  * The network and the key authorization's digest, for a key authorization that authorizes the challenge's issued key
- * (`authorizedKey`). The key authorization is the opening, and its echoed challenge is held to the pairing's filter
- * (`checkedFor`), whose refusal it gives, as `bound` and `closeRef` hold theirs.
+ * (`authorizedKey`). The key authorization is the opening, and it is held as `bound` holds it (`echoedFor`), whose
+ * refusal it gives: the credential's shape, H from the echoed challenge's id, the challenge's intent and method, which
+ * must be the pairing's, and the pairing's filter.
  */
 async function subscriptionRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
   const payload = payloadOf(presented);
   if (isRefusal(payload)) return payload;
-  const held = checkedFor(presented.challenge, SUBSCRIPTION);
+  const held = echoedFor(presented, SUBSCRIPTION);
   if (isRefusal(held)) return held;
   const p = paramsOf(presented.challenge);
   if (isRefusal(p)) return p;
@@ -1678,16 +1683,17 @@ async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refu
 }
 
 /**
- * The network and the payload's `channelId`, lowercase. An opening's echoed challenge is held to `pairing`'s filter
- * (`checkedFor`), whose refusal it gives, as `bound` and `closeRef` hold theirs; a within or close payment's challenge,
- * which the seller issues naming the channel, is read without it.
+ * The network and the payload's `channelId`, lowercase. An opening is held as `bound` holds it (`echoedFor`), whose
+ * refusal it gives: the credential's shape, H from the echoed challenge's id, the challenge's intent and method, which
+ * must be `pairing`'s, and `pairing`'s filter. A within or close payment's challenge, which the seller issues naming the
+ * channel, is read without them.
  */
 function refFrom(pairing: typeof SESSION_EVM | typeof SESSION_TEMPO, kind: (presented: MppCredential) => "open" | "within" | "close" | Refusal) {
   return async (presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> => {
     const payload = payloadOf(presented);
     if (isRefusal(payload)) return payload;
     if (kind(presented) === "open") {
-      const held = checkedFor(presented.challenge, pairing);
+      const held = echoedFor(presented, pairing);
       if (isRefusal(held)) return held;
     }
     const p = paramsOf(presented.challenge);

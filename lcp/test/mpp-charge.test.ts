@@ -22,6 +22,7 @@ import {
   type Hex as ViemHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { Transaction as TempoTransaction } from "viem/tempo";
 import { TRANSFER_TOPIC, type EvmLog, type EvmRef, type Permit2TypedData } from "../src/evm.js";
 import {
   attributionMemo,
@@ -737,6 +738,16 @@ describe("mpp-charge-tempo-memo.json", () => {
       expect(u.complete(toHex(wireT(M.MV7.expectCalldata, row.transactionChainId))), row.case).toEqual(refused);
       expect(await tempoMemo.bound(presented(ch, row.transactionChainId)), row.case).toEqual(refused);
       expect(await tempoMemo.reference(presented(ch, row.transactionChainId)), row.case).toEqual(refused);
+    }
+    // viem's tempo Transaction.deserialize reads neither "0x76", the type byte with no RLP list after it, nor "0x", no
+    // bytes at all, as a Tempo transaction: complete refuses each with tempo/tx-malformed, the code bound gives the
+    // credential that carries it.
+    for (const undecodable of ["0x76", "0x"] as const) {
+      const txMalformed = { refused: true, code: "tempo/tx-malformed" };
+      const carrying = { challenge: ch, source: "", payload: { type: "transaction", signature: undecodable } } as MppCredential;
+      expect(() => TempoTransaction.deserialize(undecodable as never), undecodable).toThrow();
+      expect(u.complete(undecodable), undecodable).toEqual(txMalformed);
+      expect(await tempoMemo.bound(carrying), undecodable).toEqual(txMalformed);
     }
     const bare = JSON.parse(fromB64u(C_T.request));
     delete bare.methodDetails.chainId;

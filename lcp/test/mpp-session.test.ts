@@ -1004,6 +1004,17 @@ describe("mpp-session-tempo.json", () => {
       expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
       const within = { challenge: { ...(v1 ? V1 : V2), id: "seller-own-id" }, opening: cred, cumulativeAmount: 1n, action: "voucher" };
       expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
+      // viem's tempo Transaction.deserialize reads neither "0x76", the type byte with no RLP list after it, nor "0x", no
+      // bytes at all, as a Tempo transaction: voucher and complete refuse each with tempo/tx-malformed, the code bound
+      // gives the credential that carries it.
+      for (const undecodable of ["0x76", "0x"] as const) {
+        const label = `${row.case}: ${undecodable}`;
+        const txMalformed = { refused: true, code: "tempo/tx-malformed" };
+        expect(() => TempoTransaction.deserialize(undecodable as never), label).toThrow();
+        expect(own.u.voucher(undecodable), label).toEqual(txMalformed);
+        expect(own.u.complete(undecodable, voucherSignature), label).toEqual(txMalformed);
+        expect(await sessionTempo.bound(carrying(own, undecodable)), label).toEqual(txMalformed);
+      }
     }
     const bare = JSON.parse(f.requestV1);
     delete bare.methodDetails.chainId;
@@ -1023,13 +1034,14 @@ describe("mpp-session-tempo.json", () => {
   // `descriptor`, the computed `channelId`, the descriptor `expiringNonceHash`". Each opening here is build's, its
   // transaction laid out as openWire lays one out, with each fault the row names applied; a v2 descriptor's
   // expiringNonceHash is keccak256 of the bytes the sender signed and the payer, and its channel id the draft's keccak256
-  // (:339-352), both computed with viem. Each fault alone is refused with its own code, and the two together with the
-  // code of the one the draft checks first, the row's.
+  // (:339-352), both computed with viem. A payload channelId that is not a hash is read where the draft compares the
+  // channel id it computes, after the payer is recovered. Each fault alone is refused with its own code, and the two
+  // together with the code of the one the draft checks first, the row's.
   it("agreedRefusals: an opening with two faults is refused for the one the draft checks first", async () => {
-    type Fault = "chain" | "noOpen" | "twoOpens" | "length" | "salt" | "word" | "sender" | "channelId";
+    type Fault = "chain" | "noOpen" | "twoOpens" | "length" | "salt" | "word" | "sender" | "channelId" | "channelIdNotHash";
     type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; faults?: Fault[]; expect: string };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
-      exact: 17,
+      exact: 26,
       keep: ["the faults rows", (r) => r.faults !== undefined],
       leave: ["the one-fault rows, which the three tests above run", (r) => r.faults === undefined],
     });
@@ -1042,6 +1054,7 @@ describe("mpp-session-tempo.json", () => {
       word: () => "tempo/tx-malformed",
       sender: () => "tempo/tx-malformed",
       channelId: (v1) => (v1 ? "mpp/channel-not-bound" : "tempo/descriptor-mismatch"),
+      channelIdNotHash: () => "mpp/credential-malformed",
     };
     const nine = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
     const low = (a: string) => a.toLowerCase() as `0x${string}`;
@@ -1069,6 +1082,7 @@ describe("mpp-session-tempo.json", () => {
         );
       }
       if (has("channelId")) payload["channelId"] = `0x${"22".repeat(32)}`;
+      if (has("channelIdNotHash")) payload["channelId"] = "0x12";
       return { ...own, payload };
     };
     for (const v1 of [false, true]) {

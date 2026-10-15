@@ -396,4 +396,54 @@ describe("channel.ref holds an opening's echoed challenge to the pairing's filte
     const within = { ...bearer, payload: { action: "bearer", sessionId, preimage: "33".repeat(32) } };
     expect(await sessionLightning.channel.ref(within)).toEqual({ network: "lightning", channel: sessionId });
   });
+
+  // channel.ref holds an opening as bound holds it, so the two give one code for a fault before the filter too. MPP's
+  // credential carries the challenge it answers as a required object with id, realm, method, intent and request
+  // (draft-httpauth-payment-01 at 08e7dd87, lines 610-624): one without it, or with an empty one, is
+  // mpp/credential-malformed. A challenge of another intent or method is not the pairing's: mpp/not-this-pairing. A Tempo
+  // subscription challenge's id is the bare base64url of H, and every other challenge's carries its position (profile
+  // mpp/charge rule 2), so a session's challenge echoed with a subscription's intent and method, or a subscription's with
+  // another intent or method, is mpp/id-not-ours.
+  type Opened = { bound: Ref; channel: { kind: (c: MppCredential) => unknown; ref: Ref } };
+  const as = (intent: string, method: string) => (c: MppCredential) => ({ ...c, challenge: { ...c.challenge, intent, method } }) as MppCredential;
+  const noChallenge = (c: MppCredential) => {
+    const { challenge: _challenge, ...rest } = c;
+    return rest as unknown as MppCredential;
+  };
+  const emptyChallenge = (c: MppCredential) => ({ ...c, challenge: {} }) as unknown as MppCredential;
+  const EVM = "mpp-session-evm.json";
+  const TEMPO = "mpp-session-tempo.json";
+  const SUBSCRIPTION = "mpp-subscription-tempo.json";
+  const LIGHTNING = "mpp-session-lightning.json";
+  const OTHER = rowsOf<[string, Opened, string, (c: MppCredential) => MppCredential, string]>(
+    [
+      ["session/evm, a challenge whose method is lightning", sessionEvm, EVM, as("session", "lightning"), "mpp/not-this-pairing"],
+      ["session/evm, a challenge whose method is solana", sessionEvm, EVM, as("session", "solana"), "mpp/not-this-pairing"],
+      ["session/evm, a challenge with a Tempo subscription's intent and method", sessionEvm, EVM, as("subscription", "tempo"), "mpp/id-not-ours"],
+      ["session/evm, no challenge", sessionEvm, EVM, noChallenge, "mpp/credential-malformed"],
+      ["session/evm, an empty challenge", sessionEvm, EVM, emptyChallenge, "mpp/credential-malformed"],
+      ["session/tempo, a challenge whose method is lightning", sessionTempo, TEMPO, as("session", "lightning"), "mpp/not-this-pairing"],
+      ["session/tempo, a challenge whose method is solana", sessionTempo, TEMPO, as("session", "solana"), "mpp/not-this-pairing"],
+      ["session/tempo, a challenge with a Tempo subscription's intent and method", sessionTempo, TEMPO, as("subscription", "tempo"), "mpp/id-not-ours"],
+      ["session/tempo, no challenge", sessionTempo, TEMPO, noChallenge, "mpp/credential-malformed"],
+      ["session/tempo, an empty challenge", sessionTempo, TEMPO, emptyChallenge, "mpp/credential-malformed"],
+      ["subscription/tempo, a challenge whose method is lightning", subscriptionTempo, SUBSCRIPTION, as("subscription", "lightning"), "mpp/id-not-ours"],
+      ["subscription/tempo, a challenge whose intent is session", subscriptionTempo, SUBSCRIPTION, as("session", "tempo"), "mpp/id-not-ours"],
+      ["subscription/tempo, no challenge", subscriptionTempo, SUBSCRIPTION, noChallenge, "mpp/credential-malformed"],
+      ["subscription/tempo, an empty challenge", subscriptionTempo, SUBSCRIPTION, emptyChallenge, "mpp/credential-malformed"],
+      ["session/lightning, a challenge whose intent is charge", sessionLightning, LIGHTNING, as("charge", "lightning"), "mpp/not-this-pairing"],
+      ["session/lightning, a challenge whose method is solana", sessionLightning, LIGHTNING, as("session", "solana"), "mpp/not-this-pairing"],
+      ["session/lightning, no challenge", sessionLightning, LIGHTNING, noChallenge, "mpp/credential-malformed"],
+      ["session/lightning, an empty challenge", sessionLightning, LIGHTNING, emptyChallenge, "mpp/credential-malformed"],
+    ],
+    "the openings of another pairing, or with no challenge, for each session pairing's channel.ref",
+    { exact: 18 },
+  );
+  it.each(OTHER)("%s: channel.ref gives bound's code", async (_, pairing, file, change, code) => {
+    const own = presented(file, 1);
+    expect(await pairing.channel.kind(own)).toBe("open");
+    const c = change(own);
+    expect(await pairing.bound(c)).toEqual(refused(code));
+    expect(await pairing.channel.ref(c)).toEqual(refused(code));
+  });
 });
