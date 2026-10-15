@@ -57,9 +57,11 @@ node scripts/docs-reference.mjs --check
   that the page marks as a read to repeat exactly the codes `readToRepeat` answers true for. After a change to the
   registry, the exports, the vectors or the refusal codes, run `node scripts/docs-reference.mjs` and commit what it
   writes.
-- The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm build` inside that folder. After a change
-  to a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API pages it writes under
-  `docs/reference/api/`; CI checks that they match the source.
+- The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm run browser && pnpm build` inside that
+  folder, on Linux x64. `pnpm run browser` fetches the browser build the Mermaid diagrams are drawn in, Chrome Headless
+  Shell, which `website/scripts/browser.mjs` pins by version and by the SHA-256 of its archive, and the build refuses
+  any other. After a change to a doc comment or an export in `lcp/src`, run `pnpm run api` there and commit the API
+  pages it writes under `docs/reference/api/`; CI checks that they match the source.
 - `node scripts/check-lcp-documents.mjs --out website/out`, after the site's build, checks that the LCP documents the
   site publishes equal `lcp/profiles/` byte for byte, each with its type and caching. With no `--out`, it checks the
   live site the same way, after a deploy.
@@ -72,11 +74,16 @@ node scripts/docs-reference.mjs --check
   highlighted. It checks that both give the same HTML, and that `const` and `myObject` take github-light-default's
   colours. Each line is tokenized to its end however long that takes (`tokenizeTimeLimit: 0`), so a busy machine
   colours the code as an idle one does.
-- Two builds of one commit on one machine are byte-equal. The build ID, which every page carries and which names the
-  folder of the build's manifests under `/_next/static/`, is the commit's sha (`website/next.config.ts`); with
-  uncommitted changes it is the sha and a digest of those changes. The machine's Chrome and fonts draw the Mermaid
-  diagrams. CI's site job checks it with the step "Two builds of one commit are byte-equal", which builds again and
-  compares the two `website/out` trees with `diff -r`. To check it, in `website/`:
+- `node scripts/check-diagrams.mjs`, in `website/` after the site's build, draws every Mermaid diagram in the pages
+  twice, the second time under a font configuration that changes every font's rendering, and checks that both give the
+  same SVGs. It checks that a diagram with a character Inter does not draw is refused, and that the site serves the
+  Inter files the diagrams are drawn in.
+- Two builds of one commit are byte-equal. The build ID, which every page carries and which names the folder of the
+  build's manifests under `/_next/static/`, is the commit's sha (`website/next.config.ts`); with uncommitted changes
+  it is the sha and a digest of those changes. The Mermaid diagrams are drawn in the browser build and the font the
+  repository pins, with no font of the machine's. CI's site job checks it with the step "Two builds of one commit are
+  byte-equal", which fetches the browser again, builds again and compares the two `website/out` trees with `diff -r`.
+  To check it, in `website/`:
 
   ```sh
   first=$(mktemp -d) && pnpm build && mv out "$first/out" && rm -rf .next && pnpm build && diff -r --brief "$first/out" out

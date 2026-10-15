@@ -17,17 +17,21 @@ pnpm install --frozen-lockfile
 pnpm --filter @integraledger/lcp run build
 ```
 
-The build renders the Mermaid diagrams in Google Chrome. Set `CHROME_PATH` to a Chrome or Chromium
-executable if Chrome is not installed where Playwright looks for it.
-
 Then, in this folder:
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm run browser # fetch the browser that draws the Mermaid diagrams into .browser/, checked by its SHA-256
 pnpm run api     # regenerate the API pages (reference/api/ in the documentation folder) from ../lcp/src
 pnpm build       # write the static site to out/
 pnpm dev         # serve it locally with live reload
 ```
+
+The diagrams are drawn in one browser build on every machine: Chrome Headless Shell 156.0.8078.4 for Linux x64, the
+build the locked `playwright-core` names, from Chrome for Testing's
+[download bucket](https://googlechromelabs.github.io/chrome-for-testing/). `scripts/browser.mjs` holds its version, its
+address and the SHA-256 of its archive; `pnpm run browser` fetches the archive, checks it and unpacks it. The build
+uses no other browser, and on a machine without it, or on another platform, it stops and names the command.
 
 ## What the build does
 
@@ -43,9 +47,12 @@ pnpm dev         # serve it locally with live reload
   supported TypeScript range ends at 6.0. Hovering, focusing or clicking an identifier in a checked
   block shows its type and documentation: the build writes each page's distinct popups to
   `/twoslash/<path>.json`, which the page fetches when a reader first opens one.
-- Renders each ```` ```mermaid ```` block to SVG with the `mermaid` package, in a headless Google Chrome,
-  once in a light and once in a dark theme. Both SVGs are in the page's HTML, and the page shows the one
-  for the reader's theme; no diagram code runs in the browser.
+- Renders each ```` ```mermaid ```` block to SVG with the `mermaid` package, in the pinned Chrome Headless
+  Shell, once in a light and once in a dark theme. Every text is measured and drawn in Inter, from the
+  `@fontsource-variable/inter` package, and in no font of the machine's: the browser has a font
+  configuration of its own with no font in it. A diagram with a character Inter does not draw fails the
+  build. Both SVGs are in the page's HTML, and the page shows the one for the reader's theme; the site serves
+  the same Inter files, and no diagram code runs in the browser.
 - Writes `/llms.txt`, `/llms-full.txt`, each page as Markdown at `/md/<path>.md`, the search index,
   `sitemap.xml`, `robots.txt` and `/.well-known/security.txt`.
 - Then `scripts/lcp-documents.mjs` writes each LCP document, byte for byte from `../lcp/profiles/`, at its
