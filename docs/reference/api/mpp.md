@@ -524,7 +524,7 @@ refuses one over the credential size bound, 64 KiB, with `mpp/credential-malform
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | The transfer to sign for the challenge's chain, `chainId`, at that network's version: 0x00 on chain 1, mainnet, and 0x80 on any other. `complete` takes the signed transaction's bytes, and refuses a value that is not a `Uint8Array` with `mpp/credential-malformed`; bytes that are empty, over 16,384 bytes or that a Stacks node does not decode with `mpp/stacks-tx-malformed`; and a transaction of another chain id or version with `stacks/chain-mismatch`, as `bound` refuses them. |
+| `request` | `object` | The transfer to sign for the challenge's chain, `chainId`, at that network's version: 0x00 on chain 1, mainnet, and 0x80 on any other. `complete` takes the signed transaction's bytes, and refuses a value that is not a `Uint8Array` with `mpp/credential-malformed`. It then checks in `bound`'s order: a credential over the credential size bound, its echoed challenge included, is `mpp/credential-malformed`, read first; then bytes that are empty, over 16,384 bytes or that a Stacks node does not decode are `mpp/stacks-tx-malformed`, and a transaction of another chain id or version is `stacks/chain-mismatch`, as `bound` refuses them. |
 | `request.anchorMode` | `"onChainOnly"` | - |
 | `request.args` | `object` | - |
 | `request.args.amount` | `string` | - |

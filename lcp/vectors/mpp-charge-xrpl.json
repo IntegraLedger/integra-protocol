@@ -349,7 +349,7 @@
   ]
  },
  "completeBlob": {
-  "about": "complete reads the signed blob it is given as bound reads the credential it makes, in bound's order: the credential's size (mpp-challenge.json credentialSize), then the blob as decodeBlob reads it: hex bytes, else xrpl/blob-malformed, of at most 4,096 hex digits, else xrpl/blob-too-large, that decode as a transaction, else xrpl/blob-malformed. Each row's blob is the row's blobBytes zero bytes in hex, and its credential is B6's payment with that blob. complete refuses each row's blob with the row's code, and bound refuses the credential with it: zero bytes within both bounds do not decode as a transaction. At 32,400 bytes the credential measures 65,535 and at 32,401 bytes 65,537, so the credential bound is read first there.",
+  "about": "complete reads the signed blob it is given as bound reads the credential it makes, in bound's order: the credential's size (mpp-challenge.json credentialSize), then the blob as decodeBlob reads it: hex bytes, else xrpl/blob-malformed, of at most 4,096 hex digits, else xrpl/blob-too-large, that decode as a transaction, else xrpl/blob-malformed. A row's blob, unless the row is padded, is the row's blobBytes zero bytes in hex, and its credential is B6's payment with that blob. complete refuses such a blob with the row's code, and bound refuses the credential with it: zero bytes within both bounds do not decode as a transaction. At 32,400 bytes the credential measures 65,535 and at 32,401 bytes 65,537, so the credential bound is read first there. A row with padded true is a blob that decodes: B6's transaction, decoded and re-encoded with ripple-binary-codec 2.11.0, its TxnSignature replaced by as many bytes of 0x11 as bring the blob to the row's blobBytes bytes. bound does not verify the signature, so at a row marked taken complete returns the credential, B6's payment with that blob, and bound gives H for it; at a row with expect, complete refuses with the row's code, and bound refuses the credential with it.",
   "rows": [
    {
     "case": "a blob of 2,047 bytes, one under the blob bound",
@@ -375,6 +375,24 @@
     "case": "a blob of 32,401 bytes, whose credential is over the credential size bound",
     "blobBytes": 32401,
     "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "a blob of 2,047 bytes that decodes, one under the blob bound",
+    "blobBytes": 2047,
+    "padded": true,
+    "taken": true
+   },
+   {
+    "case": "a blob of 2,048 bytes that decodes, 4,096 hex digits, at the blob bound",
+    "blobBytes": 2048,
+    "padded": true,
+    "taken": true
+   },
+   {
+    "case": "a blob of 2,049 bytes that decodes, one over the blob bound",
+    "blobBytes": 2049,
+    "padded": true,
+    "expect": "xrpl/blob-too-large"
    }
   ]
  }

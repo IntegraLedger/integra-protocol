@@ -213,7 +213,8 @@ fault in a credential over the bound, such as a Stellar envelope over 8,192 char
 over 16,384 bytes or a Tempo key authorization over 8,192 bytes, is `mpp/credential-malformed`, as `bound` gives it.
 One rule covers the credentials in a channel too: a `buildWithin`'s `complete` measures the in-channel credential it
 would return, and a session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` measure the payment they
-are given before they read it, with the same bound and code.
+are given before they read it, with the same bound and code, except the Stripe subscription's, which read only the
+activation receipt.
 
 `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature

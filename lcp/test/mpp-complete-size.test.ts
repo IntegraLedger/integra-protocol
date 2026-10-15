@@ -4,6 +4,7 @@
 // build and complete give on its vector file's B2 inputs and the payment its B6 row carries, under that file's placed
 // challenge with a description of as many characters as bring the credential to the row's size.
 import { xdr } from "@stellar/stellar-sdk/base";
+import { decode as decodeXrpl, encode as encodeXrpl } from "ripple-binary-codec";
 import { describe, expect, it } from "vitest";
 import { concat, toHex, type Hex } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
@@ -388,23 +389,36 @@ describe("mpp-challenge.json credentialSize: every complete measures its credent
 });
 
 describe("mpp-charge-xrpl.json completeBlob: complete reads the blob as bound reads it, after the credential's size", () => {
-  type BlobRow = { case: string; blobBytes: number; expect: string };
-  const ROWS_BLOB = rowsOf<BlobRow>(load("mpp-charge-xrpl.json").completeBlob.rows, "mpp-charge-xrpl.json completeBlob.rows", { exact: 5 });
+  type BlobRow = { case: string; blobBytes: number; padded?: true; taken?: true; expect?: string };
+  const ROWS_BLOB = rowsOf<BlobRow>(load("mpp-charge-xrpl.json").completeBlob.rows, "mpp-charge-xrpl.json completeBlob.rows", { exact: 8 });
   const { placed } = setUp("mpp/charge/xrpl");
   const b2 = buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B2")!;
   const i = b2.input.inputs!;
   const choice = { challenge: placed, account: accountOf(b2), fee: i.fee!, sequence: i.sequence!, lastLedgerSequence: i.lastLedgerSequence! };
   const credentialOf = (blob: string) => ({ challenge: placed, payload: { type: "transaction", blob } });
+  /** B6's transaction re-encoded with a TxnSignature of as many bytes of 0x11 as bring the blob to `bytes` bytes. */
+  const padded = (bytes: number): string => {
+    const tx = decodeXrpl(buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B6")!.input.presented!.payload["blob"] as string);
+    const at = (n: number) => encodeXrpl({ ...tx, TxnSignature: "11".repeat(n) });
+    const blob = at(bytes - (at(1000).length / 2 - 1000));
+    expect(blob.length / 2).toBe(bytes);
+    return blob;
+  };
 
   it("the credential measures 65,535 with a blob of 32,400 bytes and 65,537 with one of 32,401", () => {
     expect([sizeOf(credentialOf("00".repeat(32_400))), sizeOf(credentialOf("00".repeat(32_401)))]).toEqual([65_535, 65_537]);
   });
   for (const row of ROWS_BLOB) {
     it(row.case, async () => {
-      const blob = "00".repeat(row.blobBytes);
+      const blob = row.padded ? padded(row.blobBytes) : "00".repeat(row.blobBytes);
       const made = await built(await chargeXrpl.build(choice, b2.advertised)).complete(blob);
-      expect(made).toEqual(refused(row.expect));
-      expect(await chargeXrpl.bound(credentialOf(blob))).toEqual(refused(row.expect));
+      if (row.taken) {
+        expect(made).toEqual(credentialOf(blob));
+        expect(await chargeXrpl.bound(made)).toBe(b2.advertised);
+      } else {
+        expect(made).toEqual(refused(row.expect!));
+        expect(await chargeXrpl.bound(credentialOf(blob))).toEqual(refused(row.expect!));
+      }
     });
   }
 });
