@@ -13,7 +13,7 @@ import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -268,7 +268,7 @@ function ccdOption(o: unknown): o is PaymentRequirements {
     isAccount(o["payTo"]) &&
     isObject(extra) &&
     isAccount(extra["feePayer"]) &&
-    typeof amount === "string" &&
+    isAmount(amount) &&
     DECIMAL.test(amount) &&
     BigInt(amount) < UINT64_LIMIT &&
     isTimeoutSeconds(o["maxTimeoutSeconds"])

@@ -269,7 +269,7 @@ describe("NEP-366 delegate actions against near-api-js 7.3.1", () => {
       const option: PaymentRequirements = {
         scheme: "exact",
         network: r.below(2) === 0 ? "near:mainnet" : "near:testnet",
-        amount: r.uint(128).toString(),
+        amount: (r.uint(128) || 1n).toString(),
         asset: r.account(),
         payTo: r.account(),
         maxTimeoutSeconds: 1 + r.below(3600),

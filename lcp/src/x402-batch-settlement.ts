@@ -77,6 +77,7 @@ import {
   advertiseFor,
   chosen,
   filterOf,
+  isAmount,
   isTimeoutSeconds,
   legalContextOf,
   offeredAt,
@@ -393,10 +394,14 @@ function batchIdOf(option: PaymentRequirements): BatchPairingId | undefined {
   return undefined;
 }
 
-/** True when the amount is a decimal below 2^128 and the timeout a positive safe integer. */
+/**
+ * True when the amount is `"0"` or a positive amount (`isAmount`) below 2^128, and the timeout a positive safe integer.
+ * The EVM and Solana batch-settlement schemes take a zero price: their facilitator validates `amount` as a
+ * non-negative base-10 integer string.
+ */
 function payable(o: PaymentRequirements): boolean {
   return (
-    typeof o.amount === "string" &&
+    (o.amount === "0" || isAmount(o.amount)) &&
     DECIMAL.test(o.amount) &&
     BigInt(o.amount) < U128_LIMIT &&
     isTimeoutSeconds(o.maxTimeoutSeconds)
@@ -418,15 +423,18 @@ function svmPayable(o: PaymentRequirements): boolean {
 
 const isId = (id: BatchPairingId) => (o: PaymentRequirements): boolean => batchIdOf(o) === id;
 
-/** What the Cloudflare pairing serves: an option whose timeout is a positive safe integer. */
+/**
+ * What the Cloudflare pairing serves: an option whose amount is positive (`isAmount`) and whose timeout is a positive
+ * safe integer.
+ */
 function cfPayable(o: PaymentRequirements): boolean {
-  return isTimeoutSeconds(o.maxTimeoutSeconds);
+  return isAmount(o.amount) && isTimeoutSeconds(o.maxTimeoutSeconds);
 }
 
 /**
  * Each pairing's option filter, which its `advertise`, `read`, `build`, `buildWithin`, `bound`, `reference` and channel
  * reads apply: an option the pairing names, refused `x402/option-malformed` where its `build` cannot pay it or, on
- * Cloudflare, where its `maxTimeoutSeconds` is not a positive safe integer.
+ * Cloudflare, where its `amount` is not a positive amount or its `maxTimeoutSeconds` not a positive safe integer.
  */
 const FILTER: Readonly<Record<BatchPairingId, OptionFilter>> = {
   [EVM_ID]: filterOf(isId(EVM_ID), evmPayable),

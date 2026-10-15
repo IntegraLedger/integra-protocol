@@ -738,6 +738,108 @@
      }
     },
     "expect": "tron/address-malformed"
+   },
+   {
+    "case": "the option with amount \"0\", zero",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "0",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
+   },
+   {
+    "case": "the option with amount \"010\", which has a leading zero",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "010",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
+   },
+   {
+    "case": "the option with amount \"1.5\", which is not an integer",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "1.5",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
+   },
+   {
+    "case": "the option with amount \"-1\", which is negative",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "-1",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
+   },
+   {
+    "case": "the option with amount \"\", which is empty",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
+   },
+   {
+    "case": "the option with amount 10000, a number, not a string",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": 10000,
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
    }
   ]
  }

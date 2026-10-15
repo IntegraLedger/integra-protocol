@@ -8,7 +8,7 @@ import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
-import { advertiseFor, chosen, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -113,10 +113,10 @@ function isAddress(s: unknown): s is string {
 
 /**
  * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra` (its fee payer, no transfer
- * method, and no flow other than `"authorization"`), the amount as a decimal below 2^64 and `maxTimeoutSeconds` a
- * positive safe integer, which `build` writes into the asset transfer and its last valid round. `pairingOf`,
- * `advertise`, `read` and `build` apply it, and `bound` and `reference` hold the option a presented payment echoes to
- * it. Without algosdk no option is served.
+ * method, and no flow other than `"authorization"`), the amount a positive decimal (`isAmount`) below 2^64 and
+ * `maxTimeoutSeconds` a positive safe integer, which `build` writes into the asset transfer and its last valid round.
+ * `pairingOf`, `advertise`, `read` and `build` apply it, and `bound` and `reference` hold the option a presented payment
+ * echoes to it. Without algosdk no option is served.
  */
 function check(o: PaymentRequirements): true | Refusal | undefined {
   if (!isObject(o) || typeof o.network !== "string" || !o.network.startsWith("algorand:")) return undefined;
@@ -131,7 +131,7 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   if (uint64Of(o.asset) === undefined || !isAddress(o.payTo) || (feePayer !== undefined && !isAddress(feePayer))) {
     return refusal("avm/option-malformed");
   }
-  if (uint64Of(o.amount) === undefined || !isTimeoutSeconds(o.maxTimeoutSeconds)) {
+  if (!isAmount(o.amount) || uint64Of(o.amount) === undefined || !isTimeoutSeconds(o.maxTimeoutSeconds)) {
     return refusal("avm/option-malformed");
   }
   return true;

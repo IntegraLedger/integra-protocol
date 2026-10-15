@@ -59,6 +59,7 @@ import {
   advertiseFor,
   chosen,
   paymentWith,
+  isAmount,
   isTimeoutSeconds,
   readFor,
   type OptionFilter,
@@ -417,6 +418,7 @@ function isPayable(o: PaymentRequirements): boolean {
     extra["version"] !== "" &&
     isAddress(o.asset) &&
     isAddress(o.payTo) &&
+    isAmount(o.amount) &&
     uint256Of(o.amount) !== undefined &&
     isTimeoutSeconds(o.maxTimeoutSeconds)
   );
@@ -585,6 +587,7 @@ function isBreadthPayable(id: X402PairingId) {
   const escrow = schemeOf(id) === "auth-capture";
   return (o: PaymentRequirements): boolean =>
     isObject(o) &&
+    isAmount(o.amount) &&
     uint256Of(o.amount) !== undefined &&
     isTimeoutSeconds(o.maxTimeoutSeconds) &&
     (!escrow ||

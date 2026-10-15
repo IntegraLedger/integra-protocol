@@ -853,6 +853,108 @@
      }
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"0\", zero",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "0",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"010\", which has a leading zero",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "010",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"1.5\", which is not an integer",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "1.5",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"-1\", which is negative",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "-1",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"\", which is empty",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the option with amount 10000, a number, not a string",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": 10000,
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
    }
   ]
  }

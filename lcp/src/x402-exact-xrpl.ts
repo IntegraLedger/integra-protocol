@@ -9,6 +9,7 @@ import {
   advertiseFor,
   chosen,
   filterOf,
+  isAmount,
   isTimeoutSeconds,
   offeredAt,
   paymentWith,
@@ -41,6 +42,7 @@ import {
 
 const ID = "x402/exact/xrpl" as const;
 const AMOUNT = /^[0-9]+(\.[0-9]+)?$/;
+const NONZERO = /[1-9]/;
 const DROPS = /^[1-9][0-9]{0,16}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
 
@@ -75,14 +77,15 @@ function isThis(option: PaymentRequirements): boolean {
 const filter = filterOf(isThis, payable);
 
 /**
- * True when `build` can write the Payment's `Amount`, XRP drops or an issued amount with `extra.issuer`, and the timeout
- * is a positive safe integer.
+ * True when `build` can write the Payment's `Amount`, and the timeout is a positive safe integer. XRP is a positive
+ * amount of drops (`isAmount`) below 10^17; an issued currency is a decimal `value` above zero with `extra.issuer`, the
+ * form the XRPL `exact` scheme gives that `amount`.
  */
 function payable(o: PaymentRequirements): boolean {
   if (typeof o.amount !== "string" || typeof o.asset !== "string" || typeof o.payTo !== "string") return false;
   if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return false;
-  if (o.asset === "XRP") return DROPS.test(o.amount);
-  return AMOUNT.test(o.amount) && typeof o.extra?.["issuer"] === "string";
+  if (o.asset === "XRP") return isAmount(o.amount) && DROPS.test(o.amount);
+  return AMOUNT.test(o.amount) && NONZERO.test(o.amount) && typeof o.extra?.["issuer"] === "string";
 }
 
 /**

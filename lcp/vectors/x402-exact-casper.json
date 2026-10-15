@@ -684,6 +684,114 @@
      }
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"0\", zero",
+    "pairing": "x402/exact/casper",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "casper:casper-test",
+     "amount": "0",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "payTo": "007a9f9948cb7b258d18f3c5e85780372971b5b40096e724c9e596c284a01445fa",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "Casper X402 Token",
+      "version": "1"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"010\", which has a leading zero",
+    "pairing": "x402/exact/casper",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "casper:casper-test",
+     "amount": "010",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "payTo": "007a9f9948cb7b258d18f3c5e85780372971b5b40096e724c9e596c284a01445fa",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "Casper X402 Token",
+      "version": "1"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"1.5\", which is not an integer",
+    "pairing": "x402/exact/casper",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "casper:casper-test",
+     "amount": "1.5",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "payTo": "007a9f9948cb7b258d18f3c5e85780372971b5b40096e724c9e596c284a01445fa",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "Casper X402 Token",
+      "version": "1"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"-1\", which is negative",
+    "pairing": "x402/exact/casper",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "casper:casper-test",
+     "amount": "-1",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "payTo": "007a9f9948cb7b258d18f3c5e85780372971b5b40096e724c9e596c284a01445fa",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "Casper X402 Token",
+      "version": "1"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"\", which is empty",
+    "pairing": "x402/exact/casper",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "casper:casper-test",
+     "amount": "",
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "payTo": "007a9f9948cb7b258d18f3c5e85780372971b5b40096e724c9e596c284a01445fa",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "Casper X402 Token",
+      "version": "1"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount 10000, a number, not a string",
+    "pairing": "x402/exact/casper",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "casper:casper-test",
+     "amount": 10000,
+     "asset": "17be3c3dc67ddf193b8f64bfc2421826407470f88b3dab68184ebffebdd57f59",
+     "payTo": "007a9f9948cb7b258d18f3c5e85780372971b5b40096e724c9e596c284a01445fa",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "Casper X402 Token",
+      "version": "1"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
    }
   ]
  }

@@ -578,6 +578,156 @@
      }
     },
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"0\", zero",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": "0",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "captureDeadline": 1790003600,
+      "refundDeadline": 1790086400,
+      "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minFeeBps": 0,
+      "maxFeeBps": 100
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"010\", which has a leading zero",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": "010",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "captureDeadline": 1790003600,
+      "refundDeadline": 1790086400,
+      "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minFeeBps": 0,
+      "maxFeeBps": 100
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"1.5\", which is not an integer",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": "1.5",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "captureDeadline": 1790003600,
+      "refundDeadline": 1790086400,
+      "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minFeeBps": 0,
+      "maxFeeBps": 100
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"-1\", which is negative",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": "-1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "captureDeadline": 1790003600,
+      "refundDeadline": 1790086400,
+      "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minFeeBps": 0,
+      "maxFeeBps": 100
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"\", which is empty",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": "",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "captureDeadline": 1790003600,
+      "refundDeadline": 1790086400,
+      "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minFeeBps": 0,
+      "maxFeeBps": 100
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount 10000, a number, not a string",
+    "pairing": "x402/auth-capture/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": 10000,
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "captureDeadline": 1790003600,
+      "refundDeadline": 1790086400,
+      "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minFeeBps": 0,
+      "maxFeeBps": 100
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  },

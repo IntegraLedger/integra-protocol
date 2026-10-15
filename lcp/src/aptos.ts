@@ -11,6 +11,7 @@ import type { AptosPaymentPayload } from "./internal/aptos.js";
 import {
   advertiseFor,
   chosen,
+  isAmount,
   isTimeoutSeconds,
   legalContextOf,
   paymentWith,
@@ -277,7 +278,8 @@ function aptosOptionCheck(option: unknown): Refusal | undefined {
   const payTo = option["payTo"];
   if (typeof asset !== "string" || !ADDRESS_64.test(asset)) return refusal("x402/option-not-this-pairing");
   if (typeof payTo !== "string" || !ADDRESS_64.test(payTo)) return refusal("x402/option-not-this-pairing");
-  if (decimalBelow(option["amount"], U64_LIMIT) === undefined) return refusal("x402/option-not-this-pairing");
+  const amount = option["amount"];
+  if (!isAmount(amount) || decimalBelow(amount, U64_LIMIT) === undefined) return refusal("x402/option-not-this-pairing");
   if (!isTimeoutSeconds(option["maxTimeoutSeconds"])) return refusal("x402/option-not-this-pairing");
   return undefined;
 }

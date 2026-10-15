@@ -47,7 +47,10 @@ export function isEntity(s: unknown): s is string {
   return typeof s === "string" && ENTITY.test(s);
 }
 
-/** A decimal below 2^63, zero included: an x402 Hedera option's amount, and each MPP Hedera charge split's amount. */
+/**
+ * A decimal below 2^63, zero included: the width of an x402 Hedera option's amount, which the option filter also holds
+ * positive, and each MPP Hedera charge split's amount.
+ */
 export function amountOf(s: unknown): bigint | undefined {
   if (typeof s !== "string" || !DECIMAL.test(s)) return undefined;
   const v = BigInt(s);

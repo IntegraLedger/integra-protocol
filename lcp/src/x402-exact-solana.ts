@@ -28,6 +28,7 @@ import {
   advertiseFor,
   chosen,
   filterOf,
+  isAmount,
   isTimeoutSeconds,
   offeredAt,
   paymentWith,
@@ -93,10 +94,10 @@ function isThis(option: PaymentRequirements): boolean {
  */
 const filter = filterOf(isThis, payable);
 
-/** True when the amount is a u64 in decimal and the timeout a positive safe integer. */
+/** True when the amount is a positive u64 in decimal (`isAmount`) and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
   return (
-    typeof o.amount === "string" &&
+    isAmount(o.amount) &&
     DECIMAL.test(o.amount) &&
     BigInt(o.amount) < U64_LIMIT &&
     isTimeoutSeconds(o.maxTimeoutSeconds)

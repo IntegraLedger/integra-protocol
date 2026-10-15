@@ -325,6 +325,120 @@
      }
     },
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"0\", zero",
+    "pairing": "x402/exact/eip155/erc7710",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "0",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "erc7710"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"010\", which has a leading zero",
+    "pairing": "x402/exact/eip155/erc7710",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "010",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "erc7710"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"1.5\", which is not an integer",
+    "pairing": "x402/exact/eip155/erc7710",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "1.5",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "erc7710"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"-1\", which is negative",
+    "pairing": "x402/exact/eip155/erc7710",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "-1",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "erc7710"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"\", which is empty",
+    "pairing": "x402/exact/eip155/erc7710",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "erc7710"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount 10000, a number, not a string",
+    "pairing": "x402/exact/eip155/erc7710",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": 10000,
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "erc7710"
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

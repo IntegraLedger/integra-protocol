@@ -1664,6 +1664,114 @@
      }
     },
     "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"0\", zero",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "0",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"010\", which has a leading zero",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "010",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"1.5\", which is not an integer",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "1.5",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"-1\", which is negative",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "-1",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"\", which is empty",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with amount 10000, a number, not a string",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": 10000,
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
    }
   ]
  }

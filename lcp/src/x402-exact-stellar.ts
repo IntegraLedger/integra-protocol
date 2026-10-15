@@ -25,6 +25,7 @@ import {
   carriesRefusedMember,
   chosen,
   filterOf,
+  isAmount,
   isTimeoutSeconds,
   legalContextOf,
   offeredAt,
@@ -71,13 +72,13 @@ function isThis(option: PaymentRequirements): boolean {
 const filter = filterOf(isThis, payable);
 
 /**
- * True when the amount is an i128 of 0 or more in decimal and the timeout a positive safe integer of at most
+ * True when the amount is a positive i128 in decimal (`isAmount`) and the timeout a positive safe integer of at most
  * 5 × (2^32 − 1) seconds: `build` sets the authorization entry's expiration ledger, a `uint32`, to the current ledger
  * plus `ceil(maxTimeoutSeconds / 5)`.
  */
 function payable(o: PaymentRequirements): boolean {
   return (
-    typeof o.amount === "string" &&
+    isAmount(o.amount) &&
     AMOUNT.test(o.amount) &&
     BigInt(o.amount) < I128_LIMIT &&
     isTimeoutSeconds(o.maxTimeoutSeconds) &&

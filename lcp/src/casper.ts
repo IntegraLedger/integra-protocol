@@ -6,7 +6,7 @@ import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -264,6 +264,7 @@ function casperOption(o: unknown): o is PaymentRequirements {
     typeof o["asset"] === "string" &&
     PACKAGE.test(o["asset"]) &&
     isAddress(o["payTo"]) &&
+    isAmount(o["amount"]) &&
     uint256Of(o["amount"]) !== undefined &&
     isObject(extra) &&
     isName(extra["name"]) &&

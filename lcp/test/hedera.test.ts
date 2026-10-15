@@ -97,13 +97,13 @@ describe("x402-exact-hedera.json", () => {
 
   // bound and reference hold the presented option to the filter read applies: under an option read offers they give
   // H and V2's reference; under one it does not offer (a timeout that is not a positive integer, or an amount that is
-  // not a decimal: x402's PaymentRequirements gives `amount` as a string of atomic units and `maxTimeoutSeconds` as a
-  // number of seconds, and build writes the transfers from the amount) they refuse with the row's code, the one
-  // advertise and build give.
+  // not the canonical decimal of a positive integer: x402's PaymentRequirements gives `amount` as a string of atomic
+  // units and `maxTimeoutSeconds` as a number of seconds, and build writes the transfers from the amount) they refuse
+  // with the row's code, the one advertise and build give.
   it("V2 presented under an option read offers gives H and V2's reference, and under one it does not offer is refused", async () => {
     const doc = exactHedera.advertise(required, H, V.fixed.link, O);
     if ("refused" in doc) throw new Error(doc.code);
-    for (const row of rowsOf(V.V2.presentedOptions, "x402-exact-hedera.json V2.presentedOptions", { exact: 2 })) {
+    for (const row of rowsOf(V.V2.presentedOptions, "x402-exact-hedera.json V2.presentedOptions", { exact: 3 })) {
       const p = presentedOf(V.V2.expectTransactionBase64, row.accepted);
       const offered = !("refused" in exactHedera.read({ ...doc, accepts: [row.accepted] }));
       expect([row.case, offered]).toEqual([row.case, row.expect === undefined]);
@@ -130,28 +130,19 @@ describe("x402-exact-hedera.json", () => {
     });
   });
 
-  // x402's Hedera scheme gives `amount` no sign rule, and hiero-consensus-node's CryptoTransferValidator refuses a
-  // transfer list for a non-zero sum or a repeated account, not for a zero row. The body bytes are hiero-sdk-python
-  // 0.2.10's generated protobufs (protobuf 7.36.2, SerializeToString(deterministic=True)) for V2's inputs with amount
-  // 0, the tool that wrote V2: a zero `amount` (AccountAmount field 2) is not written.
-  const zeroAmountBody =
-    "0a0d0a060880e2cfaa06120318d309120218031880c2d72f22020878324d6c63703a7368613235363a30786261373831366266386630316366" +
-    "656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616472100a0e0a050a" +
-    "0318b32b0a050a0318d209";
-  it("an option whose amount is 0 is served: advertise, read, pairingOf and build", async () => {
-    const zero = { ...O, amount: "0" };
-    const doc = exactHedera.advertise({ ...required, accepts: [zero] }, H, V.fixed.link, zero);
+  // x402 v2's PaymentRequirements gives `amount` as the atomic amount in a string, and the filter holds it to the
+  // canonical decimal of a positive integer (x402-option-amount.test.ts), below 2^63, AccountAmount's `sint64`:
+  // docs/reference/refusals.md gives `hedera/option-malformed` for an option outside that.
+  it("an option whose amount is 0 or 2^63 is not served: advertise and build refuse it, read and pairingOf do not offer it", async () => {
+    const doc = exactHedera.advertise(required, H, V.fixed.link, O);
     if ("refused" in doc) throw new Error(doc.code);
-    const r = exactHedera.read(doc);
-    if ("refused" in r) throw new Error(r.code);
-    expect(r.offer.options).toEqual([zero]);
-    expect(pairingOf(zero)).toBe("x402/exact/hedera");
-    expect(hex((await unsigned(zero)).request.bodyBytes)).toBe(zeroAmountBody);
-    const tooLarge = { ...O, amount: "9223372036854775808" };
-    expect(exactHedera.advertise({ ...required, accepts: [tooLarge] }, H, V.fixed.link, tooLarge)).toEqual({
-      refused: true,
-      code: "hedera/option-malformed",
-    });
+    for (const amount of ["0", "9223372036854775808"]) {
+      const o = { ...O, amount };
+      expect(exactHedera.advertise({ ...required, accepts: [o] }, H, V.fixed.link, o)).toEqual({ refused: true, code: "hedera/option-malformed" });
+      expect(exactHedera.read({ ...doc, accepts: [o] })).toEqual({ refused: true, code: "x402/no-payable-option" });
+      expect(pairingOf(o)).toBeUndefined();
+      await expect(unsigned(o)).rejects.toThrow("hedera/option-malformed");
+    }
   });
 
   it("V3: the list form gives H; an inconsistent list is refused", async () => {
@@ -332,18 +323,19 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     }
   });
 
-  // x402's Hedera scheme gives `amount` no sign rule; the request carries the option's amount as written.
-  it("an option whose amount is 0 is served: advertise, read, pairingOf and build", async () => {
+  // The executor's filter holds `amount` to the canonical decimal of a positive integer, as x402/exact/hedera's does.
+  it("an option whose amount is 0 is not served: advertise and build refuse it, read and pairingOf do not offer it", async () => {
     const zero = { ...OX, amount: "0" };
-    const doc = exactHederaExecutor.advertise({ ...required, accepts: [zero] }, H, X.fixed.link, zero);
-    if ("refused" in doc) throw new Error(doc.code);
-    const r = exactHederaExecutor.read(doc);
-    if ("refused" in r) throw new Error(r.code);
-    expect(r.offer.options).toEqual([zero]);
-    expect(pairingOf(zero)).toBe("x402/exact/hedera/transfer-executor");
-    const b = await exactHederaExecutor.build({ required: doc, accepted: zero, now: X.fixed.now }, H);
-    if ("refused" in b) throw new Error(b.code);
-    expect(b.request).toEqual({ ...X.build.expectRequest, amount: "0" });
+    expect(exactHederaExecutor.advertise({ ...required, accepts: [zero] }, H, X.fixed.link, zero)).toEqual({
+      refused: true,
+      code: "hedera/option-malformed",
+    });
+    expect(exactHederaExecutor.read({ ...advertised(), accepts: [zero] })).toEqual({ refused: true, code: "x402/no-payable-option" });
+    expect(pairingOf(zero)).toBeUndefined();
+    expect(await exactHederaExecutor.build({ required: { ...required, accepts: [zero] }, accepted: zero, now: X.fixed.now }, H)).toEqual({
+      refused: true,
+      code: "hedera/option-malformed",
+    });
   });
 
   it("build's request, and complete", async () => {

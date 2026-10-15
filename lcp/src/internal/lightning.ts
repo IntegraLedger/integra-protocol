@@ -9,7 +9,7 @@ import { isObject, normalHash } from "../fields.js";
 import type { Bolt11, LnNetwork } from "../lightning.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequirements } from "../x402.js";
-import { isTimeoutSeconds, type OptionFilter } from "./x402.js";
+import { isAmount, isTimeoutSeconds, type OptionFilter } from "./x402.js";
 
 const MAX_INVOICE = 8192;
 const MAX_FIELDS = 64;
@@ -244,7 +244,8 @@ function requestHashOf(o: PaymentRequirements): string | undefined {
 
 /**
  * x402's client checks on the option's own fields: `extra.paymentFlow` `upfront`, `asset` `BTC`, `payTo` 66 lowercase
- * hex digits, `amount` a positive decimal, `maxTimeoutSeconds` a positive safe integer; else `x402/option-malformed`.
+ * hex digits, `amount` a positive decimal (`isAmount`) of at most 78 digits, `maxTimeoutSeconds` a positive safe
+ * integer; else `x402/option-malformed`.
  */
 function optionFields(o: PaymentRequirements): Refusal | null {
   if (
@@ -253,7 +254,7 @@ function optionFields(o: PaymentRequirements): Refusal | null {
     o.asset !== "BTC" ||
     typeof o.payTo !== "string" ||
     !PAY_TO.test(o.payTo) ||
-    typeof o.amount !== "string" ||
+    !isAmount(o.amount) ||
     !POSITIVE.test(o.amount) ||
     !isTimeoutSeconds(o.maxTimeoutSeconds)
   ) {

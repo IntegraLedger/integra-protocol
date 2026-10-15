@@ -19,6 +19,7 @@ import {
 import {
   advertiseFor,
   chosen,
+  isAmount,
   isTimeoutSeconds,
   paymentWith,
   presentedWith,
@@ -366,7 +367,7 @@ const check: OptionFilter = (o) => {
   if (o.network !== "near:mainnet" && o.network !== "near:testnet") return refusal("near/network-malformed");
   if (typeof o.asset !== "string" || !ACCOUNT.test(o.asset)) return refusal("near/option-malformed");
   if (typeof o.payTo !== "string" || !ACCOUNT.test(o.payTo)) return refusal("near/option-malformed");
-  if (decimalBelow(o.amount, U128_LIMIT) === undefined) return refusal("near/option-malformed");
+  if (!isAmount(o.amount) || decimalBelow(o.amount, U128_LIMIT) === undefined) return refusal("near/option-malformed");
   if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return refusal("near/option-malformed");
   return true;
 };

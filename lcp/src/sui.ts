@@ -13,6 +13,7 @@ import type { SuiPaymentPayload } from "./internal/sui.js";
 import {
   advertiseFor,
   chosen,
+  isAmount,
   isTimeoutSeconds,
   paymentWith,
   presentedWith,
@@ -266,7 +267,8 @@ function suiOptionCheck(option: unknown): Refusal | undefined {
   const asset = option["asset"];
   if (typeof payTo !== "string" || !PAY_TO.test(payTo)) return refusal("x402/option-not-this-pairing");
   if (typeof asset !== "string" || !COIN_TYPE.test(asset)) return refusal("x402/option-not-this-pairing");
-  if (decimalBelow(option["amount"], U64_LIMIT) === undefined) return refusal("x402/option-not-this-pairing");
+  const amount = option["amount"];
+  if (!isAmount(amount) || decimalBelow(amount, U64_LIMIT) === undefined) return refusal("x402/option-not-this-pairing");
   if (!isTimeoutSeconds(option["maxTimeoutSeconds"])) return refusal("x402/option-not-this-pairing");
   return undefined;
 }
