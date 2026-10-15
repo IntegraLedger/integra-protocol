@@ -2399,6 +2399,64 @@
      }
     },
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"00\", which has a leading zero",
+    "pairing": "x402/batch-settlement/cloudflare",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "cloudflare:402",
+     "amount": "00",
+     "asset": "USD",
+     "payTo": "merchant",
+     "maxTimeoutSeconds": 30,
+     "extra": {
+      "version": "1.0.0"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"00\", a zero price with a leading zero, which the pairing takes only as \"0\"",
+    "pairing": "x402/batch-settlement/eip155",
+    "payment": "/buyer/rows/3/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "eip155:84532",
+     "amount": "00",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"00\", a zero price with a leading zero, which the pairing takes only as \"0\"",
+    "pairing": "x402/batch-settlement/solana",
+    "payment": "/buyer/rows/5/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "00",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

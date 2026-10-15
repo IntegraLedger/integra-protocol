@@ -47,6 +47,8 @@ const ISSUED = /^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$/;
 const DROPS = /^[1-9][0-9]{0,16}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
 const I64_LIMIT = 2n ** 63n;
+/** AccountID 1, rippled's `noAccount()` (XRPLF/rippled `00e64075`, `src/libxrpl/protocol/AccountID.cpp:165-170`). */
+const NO_ACCOUNT = 1n;
 
 interface XrplChoice {
   required: PaymentRequired;
@@ -80,43 +82,55 @@ const filter = filterOf(isThis, payable);
 
 /**
  * True when `build` can write the Payment's `Destination` and `Amount`, and the timeout is a positive safe integer.
- * `payTo` is a classic address whose checksum holds. XRP is a positive amount of drops (`isAmount`) below 10^17; an
- * issued currency is a `value` rippled reads exactly (`isIssuedValue`), the form the XRPL `exact` scheme gives that
- * `amount`, with an `extra.issuer` that is a classic address whose checksum holds.
+ * `payTo` is a classic address whose checksum holds (`accountOf`), and its AccountID is not 0, which rippled 3.4.1
+ * (XRPLF/rippled `00e64075`) refuses as any Payment's `Destination`
+ * (`src/libxrpl/tx/transactors/payment/Payment.cpp:178-184`). XRP is a positive amount of drops (`isAmount`) below
+ * 10^17. An issued currency's `amount` is the canonical decimal of a positive STAmount value, which rippled reads
+ * exactly (`isIssuedValue`), the form the XRPL `exact` scheme gives that `amount`, and its `extra.issuer` is a classic
+ * address whose checksum holds. On an issued currency neither `payTo` nor the issuer is AccountID 0 or 1: rippled does
+ * not read an issued amount whose issuer is 0 (`src/libxrpl/protocol/STAmount.cpp:155-158`), and the payment engine
+ * that every issued-currency Payment runs through (`Payment.cpp:611-613`, `:638`) refuses 1, `noAccount()`, as the
+ * destination or the issuer (`src/libxrpl/tx/paths/PaySteps.cpp:188-190`). The XRP Payment `build` writes, with no
+ * `SendMax` or paths, does not run through that engine (`Payment.cpp:611`, `:756-758`), so an XRP `payTo` may be 1.
  */
 function payable(o: PaymentRequirements): boolean {
-  if (typeof o.amount !== "string" || typeof o.asset !== "string" || !isClassicAddress(o.payTo)) return false;
+  if (typeof o.amount !== "string" || typeof o.asset !== "string") return false;
   if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return false;
-  if (o.asset === "XRP") return isAmount(o.amount) && DROPS.test(o.amount);
-  return isIssuedValue(o.amount) && isClassicAddress(o.extra?.["issuer"]);
+  if (o.asset === "XRP") return accountOf(o.payTo) > 0n && isAmount(o.amount) && DROPS.test(o.amount);
+  return accountOf(o.payTo) > NO_ACCOUNT && accountOf(o.extra?.["issuer"]) > NO_ACCOUNT && isIssuedValue(o.amount);
 }
 
 /**
- * True for a classic address whose checksum holds: base58 with the XRPL alphabet that decodes to version 0, a 20-byte
- * AccountID and the first 4 bytes of its double SHA-256 (`accountIdOf`), the form the XRPL `exact` scheme gives `payTo`
- * and `extra.issuer`.
+ * The AccountID of a classic address whose checksum holds, as a number, else -1: base58 with the XRPL alphabet of
+ * version 0, a 20-byte AccountID and a 4-byte checksum, the first 4 bytes of the double SHA-256 of the two
+ * (`accountIdOf`), the form the XRPL `exact` scheme gives `payTo` and `extra.issuer`.
  */
-function isClassicAddress(v: unknown): v is string {
-  return typeof v === "string" && accountIdOf(v) !== null;
+function accountOf(v: unknown): bigint {
+  const id = typeof v === "string" ? accountIdOf(v) : null;
+  return id === null ? -1n : id.reduce((n, b) => (n << 8n) | BigInt(b), 0n);
 }
 
 /**
- * True when `s` is the canonical decimal of a positive STAmount value, the one spelling of a value that rippled 3.4.1
- * (XRPLF/rippled `00e64075`) reads exactly. An STAmount value is a mantissa of 10^15 to 10^16 - 1 at an offset of -96 to
- * 80 (`include/xrpl/protocol/STAmount.h:35-40,61-68`): IOUAmount rounds a value of more than 16 significant digits and
+ * True when `s` is the canonical decimal of a positive STAmount value, which rippled 3.4.1 (XRPLF/rippled `00e64075`)
+ * reads exactly. An STAmount value is a mantissa of 10^15 to 10^16 - 1 at an offset of -96 to 80
+ * (`include/xrpl/protocol/STAmount.h:35-40,61-68`): IOUAmount rounds a value of more than 16 significant digits and
  * reads one below 10^-81 as zero (`src/libxrpl/protocol/IOUAmount.cpp:29-36,58-68`). `partsFromString`
  * (`src/libxrpl/protocol/STNumber.cpp:159-216`) refuses a leading zero, and reads the digits with the point removed as a
  * `uint64` (`:192`, `:198`) that `STAmount::iou` casts to `int64` (`src/libxrpl/protocol/STAmount.cpp:291`), so they are
  * below 2^63; that also holds the value below the largest offset. So: no sign, exponent or leading zero, a fraction that
- * ends in a digit other than 0, at most 16 significant digits, at least 10^-81, and digits below 2^63.
+ * ends in a digit other than 0, at most 16 significant digits, at least 10^-81, and digits below 2^63. More than 19
+ * digits, leading zeros aside, the width of 2^63, are refused before any further step reads them, so each step takes
+ * time linear in the length of `s`.
  */
 function isIssuedValue(s: string): boolean {
   const m = ISSUED.exec(s);
   if (m === null) return false;
   const fraction = m[2]?.slice(1) ?? "";
   const digits = (m[1]! + fraction).replace(/^0+/, "");
-  if (digits === "" || digits.replace(/0+$/, "").length > 16 || BigInt(digits) >= I64_LIMIT) return false;
-  return digits.length - 1 - fraction.length - 15 >= -96;
+  if (digits === "" || digits.length > 19) return false;
+  let significant = digits.length;
+  while (digits[significant - 1] === "0") significant--;
+  return significant <= 16 && BigInt(digits) < I64_LIMIT && digits.length - 1 - fraction.length - 15 >= -96;
 }
 
 /**

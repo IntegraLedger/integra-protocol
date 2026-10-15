@@ -98,10 +98,10 @@ const placedBy = (b: { advertise(doc: PaymentRequired, h: AtrHash, link: string,
 // and the digits with the point removed read as a uint64 (:192, :198) that STAmount::iou casts to int64
 // (src/libxrpl/protocol/STAmount.cpp:291). An STAmount value is 10^15 to 10^16 - 1 at an offset of -96 to 80
 // (include/xrpl/protocol/STAmount.h:35-40, 61-68); IOUAmount rounds past 16 significant digits and reads a value below
-// 10^-81 as zero (src/libxrpl/protocol/IOUAmount.cpp:29-36, 58-68). So the pairing offers the one spelling of each value
-// rippled reads exactly: no leading zero, a fraction that ends in a non-zero digit, at most 16 significant digits, at
-// least 10^-81, and digits below 2^63. For each value it offers, ripple-binary-codec, the payer's encoder, encodes the
-// Payment build writes and decodes the same value text.
+// 10^-81 as zero (src/libxrpl/protocol/IOUAmount.cpp:29-36, 58-68). So the pairing offers the canonical decimal of a
+// positive STAmount value, which rippled reads exactly: no leading zero, a fraction that ends in a non-zero digit, at
+// most 16 significant digits, at least 10^-81, and digits below 2^63. For each value it offers, ripple-binary-codec, the
+// payer's encoder, encodes the Payment build writes and decodes the same value text.
 describe("x402/exact/xrpl: an issued-currency option's amount is the canonical decimal of a positive STAmount value", () => {
   // The issued-currency option of specs/schemes/exact/scheme_exact_xrpl.md (x402-foundation/x402 e95b06661e), without
   // its `extra.invoiceId`, which the pairing's `advertise` places, and with x402-exact-xrpl.json's destination as
@@ -156,7 +156,7 @@ describe("x402/exact/xrpl: an issued-currency option's amount is the canonical d
     ['"1" + 200 zeros', `1${z(200)}`, "10^200"],
   ];
 
-  it.each(OFFERED)("offers $0, $2, and build's Payment encodes and decodes with that value", async (_, amount) => {
+  it.each(OFFERED.map(([label, amount, why]) => [`${label}, ${why}`, amount] as const))("offers %s, and build's Payment encodes and decodes with that value", async (_, amount) => {
     const o = withAmount(IOU, amount);
     expect(offered(xrpl, [o])).toEqual([o]);
     const placed = placedBy(exactXrpl, o) as PaymentRequired;
@@ -174,18 +174,38 @@ describe("x402/exact/xrpl: an issued-currency option's amount is the canonical d
     expect([back.Amount.value, back.SendMax.value]).toEqual([amount, amount]);
   });
 
-  it.each(REFUSED)("does not offer $0, $2, and advertise refuses it with x402/option-malformed", (_, amount) => {
+  it.each(REFUSED.map(([label, amount, why]) => [`${label}, ${why}`, amount] as const))("does not offer %s, and advertise refuses it with x402/option-malformed", (_, amount) => {
     const o = withAmount(IOU, amount);
     expect(offered(xrpl, [o])).toEqual(NOT_OFFERED);
     expect(placedBy(exactXrpl, o)).toEqual(MALFORMED);
+  });
+
+  // More than 19 digits, leading zeros aside, the width of 2^63, are refused before any further step reads them, so each
+  // answer takes time linear in the amount's length. This value is 1,000,002 characters long.
+  it('does not offer "1" + 1,000,000 zeros + "1", and advertise, bound and reference refuse it with x402/option-malformed', async () => {
+    const amount = `1${z(1_000_000)}1`;
+    expect(offered(xrpl, [withAmount(IOU, amount)])).toEqual(NOT_OFFERED);
+    expect(placedBy(exactXrpl, withAmount(IOU, amount))).toEqual(MALFORMED);
+    // x402-exact-xrpl.json's payment, presented under its own option made this issued currency.
+    const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-xrpl.json", import.meta.url), "utf8"));
+    const payment = V.buyer.rows[1].input.presented;
+    const presented = { ...payment, accepted: { ...payment.accepted, asset: IOU.asset, amount, extra: { ...payment.accepted.extra, issuer: IOU.extra!["issuer"] } } };
+    expect(await exactXrpl.bound(presented)).toEqual(MALFORMED);
+    expect(await exactXrpl.reference(presented)).toEqual(MALFORMED);
   });
 });
 
 // The XRPL exact scheme gives `payTo` as an "XRPL classic address receiving the payment" and `extra.issuer` as the
 // "Classic address of the IOU issuer" (specs/schemes/exact/scheme_exact_xrpl.md, "Field Definitions"): base58 with the
-// XRPL alphabet of version 0 and a 20-byte AccountID, whose last 4 bytes are its double SHA-256 checksum. The scheme's
-// own example payTo, rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9, fails that checksum.
-describe("x402/exact/xrpl: payTo and an issued currency's extra.issuer are classic addresses whose checksum holds", () => {
+// XRPL alphabet of version 0, a 20-byte AccountID, and a 4-byte checksum, the first 4 bytes of the double SHA-256 of the
+// two. The scheme's own example payTo, rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9, fails that checksum. rippled 3.4.1
+// (XRPLF/rippled 00e64075) refuses AccountID 0, rrrrrrrrrrrrrrrrrrrrrhoLvTp, as any Payment's Destination
+// (src/libxrpl/tx/transactors/payment/Payment.cpp:178-184) and as an issuer (src/libxrpl/protocol/STAmount.cpp:155-158).
+// The payment engine that every issued-currency Payment runs through (Payment.cpp:611-613, :638) refuses AccountID 1,
+// rrrrrrrrrrrrrrrrrrrrBZbvji, rippled's noAccount(), as the destination or the issuer
+// (src/libxrpl/tx/paths/PaySteps.cpp:188-190). The XRP Payment build writes, with no SendMax or paths, does not run
+// through that engine (Payment.cpp:611, :756-758), so an XRP payTo may be AccountID 1.
+describe("x402/exact/xrpl: payTo and an issued currency's extra.issuer are classic addresses whose checksum holds and whose AccountID rippled takes there", () => {
   const xrpl = X402.find((b) => b.id === "x402/exact/xrpl")!;
   const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-xrpl.json", import.meta.url), "utf8"));
   const XRP: PaymentRequirements = V.fixed.option;
@@ -196,6 +216,8 @@ describe("x402/exact/xrpl: payTo and an issued currency's extra.issuer are class
     extra: { areFeesSponsored: false, issuer: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q" },
   };
   const withExtra = (o: PaymentRequirements, extra: Record<string, unknown>) => ({ ...o, extra }) as PaymentRequirements;
+  const ACCOUNT_ZERO = "rrrrrrrrrrrrrrrrrrrrrhoLvTp";
+  const ACCOUNT_ONE = "rrrrrrrrrrrrrrrrrrrrBZbvji";
   const REFUSED: readonly [string, PaymentRequirements][] = [
     ["payTo rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9, the scheme's example, whose checksum fails", { ...XRP, payTo: "rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9" }],
     ["payTo rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyM, the file's destination with its last character changed", { ...XRP, payTo: "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyM" }],
@@ -206,6 +228,11 @@ describe("x402/exact/xrpl: payTo and an issued currency's extra.issuer are class
     ["an issued currency with extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2r, whose checksum fails", withExtra(IOU, { areFeesSponsored: false, issuer: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2r" })],
     ["an issued currency with no extra.issuer", withExtra(IOU, { areFeesSponsored: false })],
     ["an issued currency with extra.issuer 1, a number", withExtra(IOU, { areFeesSponsored: false, issuer: 1 })],
+    ["payTo rrrrrrrrrrrrrrrrrrrrrhoLvTp, AccountID 0", { ...XRP, payTo: ACCOUNT_ZERO }],
+    ["an issued currency with payTo rrrrrrrrrrrrrrrrrrrrrhoLvTp, AccountID 0", { ...IOU, payTo: ACCOUNT_ZERO }],
+    ["an issued currency with payTo rrrrrrrrrrrrrrrrrrrrBZbvji, AccountID 1", { ...IOU, payTo: ACCOUNT_ONE }],
+    ["an issued currency with extra.issuer rrrrrrrrrrrrrrrrrrrrrhoLvTp, AccountID 0", withExtra(IOU, { areFeesSponsored: false, issuer: ACCOUNT_ZERO })],
+    ["an issued currency with extra.issuer rrrrrrrrrrrrrrrrrrrrBZbvji, AccountID 1", withExtra(IOU, { areFeesSponsored: false, issuer: ACCOUNT_ONE })],
   ];
 
   it("offers the file's XRP option and the issued-currency option with the scheme's example issuer", () => {
@@ -213,9 +240,35 @@ describe("x402/exact/xrpl: payTo and an issued currency's extra.issuer are class
     expect(offered(xrpl, [IOU])).toEqual([IOU]);
   });
 
+  it("rrrrrrrrrrrrrrrrrrrrrhoLvTp and rrrrrrrrrrrrrrrrrrrrBZbvji are AccountIDs 0 and 1, as ripple-binary-codec encodes them", () => {
+    // An Account field: its header 0x81, the length 20, and the AccountID.
+    expect([encode({ Account: ACCOUNT_ZERO }), encode({ Account: ACCOUNT_ONE })]).toEqual([`8114${"00".repeat(20)}`, `8114${"00".repeat(19)}01`]);
+  });
+
+  it("offers the file's XRP option with payTo rrrrrrrrrrrrrrrrrrrrBZbvji, AccountID 1, which an XRP Payment may pay", () => {
+    const o = { ...XRP, payTo: ACCOUNT_ONE };
+    expect(offered(xrpl, [o])).toEqual([o]);
+  });
+
   it.each(REFUSED)("does not offer the option with %s, and advertise refuses it with x402/option-malformed", (_, o) => {
     expect(offered(xrpl, [o])).toEqual(NOT_OFFERED);
     expect(placedBy(exactXrpl, o)).toEqual(MALFORMED);
+  });
+});
+
+// "00" is zero written with a leading zero. The EVM and Solana batch-settlement pairings take a zero price only as "0",
+// and the Cloudflare pairing takes none, so no batch-settlement pairing offers "00".
+describe('x402/batch-settlement: no pairing offers amount "00"', () => {
+  const BATCH = ROWS.filter((r) => r.pairing.id.startsWith("x402/batch-settlement/"));
+
+  it("the three batch-settlement pairings each offer an option from the vector files", () => {
+    expect(BATCH.map((r) => r.pairing.id).sort()).toEqual(["x402/batch-settlement/cloudflare", "x402/batch-settlement/eip155", "x402/batch-settlement/solana"]);
+  });
+
+  it.each(BATCH.map((r) => [r.pairing.id, r] as const))('%s does not offer its option with amount "00", and advertise refuses it with x402/option-malformed', (_, { pairing, option }) => {
+    const o = withAmount(option!, "00");
+    expect(offered(pairing, [o])).toEqual(NOT_OFFERED);
+    expect(placedBy(pairing, o)).toEqual(MALFORMED);
   });
 });
 
