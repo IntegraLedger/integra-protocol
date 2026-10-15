@@ -172,10 +172,12 @@ async function reference(input: unknown): Promise<StellarRef | Refusal> {
 }
 
 /**
- * A push credential (`type="hash"`) with the landed envelope written under `FETCHED`, as `transaction`; any member the
- * credential carries already is kept and not read. Other credentials are returned unchanged. Under a request with `feePayer` true a push credential is `mpp/credential-type`, and nothing is read: MPP's
- * Stellar charge forbids push mode when the server sponsors the fee. A read that fails, or finds nothing, is a refusal
- * the seller retries; a transaction the ledger records as `FAILED` is refused `stellar/tx-failed`.
+ * A push credential (`type="hash"`) with the landed envelope written under `FETCHED`, as `transaction`. Every other
+ * member of the credential is copied unchanged and not read; a `FETCHED` member it carries is replaced by this read.
+ * Other credentials are returned unchanged. Under a request with `feePayer` true a push credential is
+ * `mpp/credential-type`, and nothing is read: MPP's Stellar charge forbids push mode when the server sponsors the fee.
+ * A read that fails, or finds nothing, is a refusal the seller retries; a transaction the ledger records as `FAILED` is
+ * refused `stellar/tx-failed`.
  */
 async function fetchPresented(
   credential: MppCredential,

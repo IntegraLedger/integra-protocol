@@ -135,10 +135,10 @@ async function reference(input: unknown): Promise<Omit<XrplRef, "fromLedger"> | 
 
 /**
  * A push credential (`type="hash"`) with the signed blob, read by that hash once the transaction is in a validated
- * ledger, written under `FETCHED` as `blob`; any member the credential carries already is kept and not read. Other
- * credentials are returned unchanged. A read that fails, finds nothing, or finds the transaction
- * not yet validated is a refusal the seller retries; a validated result other than `tesSUCCESS` is refused
- * `xrpl/not-success`. At most two calls.
+ * ledger, written under `FETCHED` as `blob`. Every other member of the credential is copied unchanged and not read; a
+ * `FETCHED` member it carries is replaced by this read. Other credentials are returned unchanged. A read that fails,
+ * finds nothing, or finds the transaction not yet validated is a refusal the seller retries; a validated result other
+ * than `tesSUCCESS` is refused `xrpl/not-success`. At most two calls.
  */
 async function fetchPresented(
   credential: MppCredential,

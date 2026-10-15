@@ -896,15 +896,16 @@ describe("mpp-charge-tempo-push.json", () => {
   });
 
   // The landed logs are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries:
-  // a credential the buyer sends with a string-keyed `landed` of logs that would bind H is tempo/read-first, as it is
-  // without one, and one held with both is read by its FETCHED member alone.
+  // a credential the buyer sends with a string-keyed `landed` of logs that bind H under FETCHED is tempo/read-first, as
+  // it is without one, and one held with both is read by its FETCHED member alone.
   it("the landed logs are read only from fetchPresented's FETCHED member, never from a string-keyed landed", async () => {
     const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
     if ("refused" in u) throw new Error(u.code);
     const sent = u.complete(PU.MV13.T_P) as MppCredential;
     const fetched = await tempoPush.fetchPresented(sent, readerFor("eip155:42431", receipt));
-    const landed = (logs: unknown) => (c: unknown) => ({ ...(c as object), landed: { transaction: PU.MV13.T_P, blockNumber: 100n, logs } });
-    await readsOnlyFetched(tempoPush, sent, fetched, H, landed(receipt.logs), landed([]), "tempo/read-first");
+    const read = (logs: unknown) => ({ transaction: PU.MV13.T_P, blockNumber: 100n, logs });
+    const landed = (c: unknown, l: unknown) => ({ ...(c as object), landed: l });
+    await readsOnlyFetched(tempoPush, sent, fetched, H, read(receipt.logs), read([]), landed, "tempo/read-first");
   });
 });
 

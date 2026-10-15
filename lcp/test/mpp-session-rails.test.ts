@@ -419,14 +419,15 @@ describe("mpp/session/hedera", () => {
   });
 
   // The landed logs are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries:
-  // an opening the buyer sends with a string-keyed `landed` holding HS3's ChannelOpened log, which would bind H, is
-  // hedera/read-first, as it is without one, and one held with both is read by its FETCHED member alone.
+  // an opening the buyer sends with a string-keyed `landed` holding HS3's ChannelOpened log, which binds H under
+  // FETCHED, is hedera/read-first, as it is without one, and one held with both is read by its FETCHED member alone.
   it("the landed logs are read only from fetchPresented's FETCHED member, never from a string-keyed landed", async () => {
     const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
     const sent = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
     const fetched = await sessionHedera.fetchPresented(sent, hederaReader({ [V.HS3.txHash]: receipt }));
-    const landed = (logs: unknown) => (c: unknown) => ({ ...(c as object), landed: { transaction: V.HS3.txHash, blockNumber: 40_000_000n, logs } });
-    await readsOnlyFetched(sessionHedera, sent, fetched, V.HS3.expectBound, landed([V.HS3.log]), landed([]), "hedera/read-first");
+    const read = (logs: unknown) => ({ transaction: V.HS3.txHash, blockNumber: 40_000_000n, logs });
+    const landed = (c: unknown, l: unknown) => ({ ...(c as object), landed: l });
+    await readsOnlyFetched(sessionHedera, sent, fetched, V.HS3.expectBound, read([V.HS3.log]), read([]), landed, "hedera/read-first");
   });
 });
 
@@ -1119,20 +1120,22 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
 
   // The tables are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries. rows[4]'s
   // opening, under the operator challenge, names account 4 through TABLE, whose entry there is the channel: read, it is
-  // svm/signer-not-operator. Sent with a string-keyed tables naming the operator at that index, which would give H, it
-  // is svm/read-first to bound, reference and buildWithin, as it is without one; held with both, the read alone is read.
+  // svm/signer-not-operator. Under FETCHED, a table naming the operator at that index gives H; sent as a string-keyed
+  // tables, it is svm/read-first to bound, reference and buildWithin, as it is without one; held with both, the read
+  // alone is read.
   it("the tables are read only from fetchPresented's FETCHED member: a string-keyed tables naming the operator is never H", async () => {
     const row = rows[4]!;
     const sent = presentedOf(row, "operator");
     const fetched = await sessionSolana.fetchPresented(sent, tableReader(row.accounts!).reader);
-    const tables = (t: unknown) => (c: unknown) => ({ ...(c as object), tables: t });
-    const operatorAt4 = tables([{ address: TABLE, writable: [], readonly: [R[21].operator] }]);
-    await readsOnlyFetched(sessionSolana, sent, fetched, refused(row.bound!), operatorAt4, operatorAt4, "svm/read-first");
+    const tables = (c: unknown, read: unknown) => ({ ...(c as object), tables: (read as { tables: unknown }).tables });
+    const operatorAt4 = { tables: [{ address: TABLE, writable: [], readonly: [R[21].operator] }] };
+    expect(await sessionSolana.bound({ ...sent, [FETCHED]: operatorAt4 } as MppCredential)).toBe(H);
+    await readsOnlyFetched(sessionSolana, sent, fetched, refused(row.bound!), operatorAt4, operatorAt4, tables, "svm/read-first");
     const within = (opening: unknown) =>
       sessionSolana.buildWithin({ challenge: operator, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
     expect(await within(fetched)).toEqual(refused(row.bound!));
-    expect(await within(operatorAt4(sent))).toEqual(refused("svm/read-first"));
-    expect(await within(operatorAt4(fetched))).toEqual(refused(row.bound!));
+    expect(await within(tables(sent, operatorAt4))).toEqual(refused("svm/read-first"));
+    expect(await within(tables(fetched, operatorAt4))).toEqual(refused(row.bound!));
     // On a client channel, buildWithin builds for the signer the read names, from the held opening, a spread or an
     // Object.assign copy of it; a JSON round trip or a structuredClone of it, and a string-keyed tables naming another
     // signer, are svm/read-first.
@@ -1144,11 +1147,11 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
     for (const held of [fetched2, { ...(fetched2 as object) }, Object.assign({}, fetched2)]) {
       expect(await build(held)).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: client2.signer }] });
     }
-    const otherSigner = tables([{ address: TABLE, writable: [], readonly: [R[21].channel] }]);
-    for (const copy of [JSON.parse(JSON.stringify(fetched2)), structuredClone(fetched2), otherSigner(sent2)]) {
+    const otherSigner = { tables: [{ address: TABLE, writable: [], readonly: [R[21].channel] }] };
+    for (const copy of [JSON.parse(JSON.stringify(fetched2)), structuredClone(fetched2), tables(sent2, otherSigner)]) {
       expect(await build(copy)).toEqual(refused("svm/read-first"));
     }
-    expect(await build(otherSigner(fetched2))).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: client2.signer }] });
+    expect(await build(tables(fetched2, otherSigner))).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: client2.signer }] });
   });
 
   it("fetchPresented of an opening without lookups adds tables empty and reads nothing", async () => {

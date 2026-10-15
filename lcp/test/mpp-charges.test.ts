@@ -30,7 +30,6 @@ import {
   chargeSolana,
   chargeStellar,
   chargeXrpl,
-  FETCHED,
   issuedDigest,
   network,
   pairingsOf,
@@ -45,7 +44,7 @@ import { stellarLocate, type StellarReader, type StellarRef } from "../src/stell
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
-import { readsOnlyFetched } from "./mpp-fixtures.js";
+import { heldOf, readsOnlyFetched } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
@@ -286,8 +285,8 @@ describe("mpp-charge-solana.json", () => {
   });
 
   // The landed wire is read only from the member FETCHED keys, which fetchPresented writes and no wire form carries: a
-  // signature credential the buyer sends with a payload transaction, the wire that would bind H, is svm/read-first, as
-  // it is without one (refusals' last row), and one held with both is read by its FETCHED member alone.
+  // signature credential the buyer sends with a payload transaction, the wire that binds H under FETCHED, is
+  // svm/read-first, as it is without one (refusals[6]), and one held with both is read by its FETCHED member alone.
   it("push: the landed wire is read only from fetchPresented's FETCHED member, never from a payload transaction", async () => {
     const landed: SvmLanded = {
       wire: Uint8Array.from(Buffer.from(V.push.landedWireBase64, "base64")),
@@ -301,9 +300,11 @@ describe("mpp-charge-solana.json", () => {
     } as unknown as SvmReader;
     const sent = credential(placed, { type: "signature", signature: V.push.txid });
     const fetched = await chargeSolana.fetchPresented(sent, reader);
-    const carrying = (wire: string) => (c: unknown) => ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, transaction: wire } });
-    await readsOnlyFetched(chargeSolana, sent, fetched, V.push.expectBound, carrying(V.push.landedWireBase64), carrying(V.plant.wireBase64), "svm/read-first");
-    const row = V.refusals[V.refusals.length - 1];
+    const carrying = (c: unknown, read: unknown) =>
+      ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, transaction: (read as { transaction: string }).transaction } });
+    const forged = { transaction: V.push.landedWireBase64 };
+    await readsOnlyFetched(chargeSolana, sent, fetched, V.push.expectBound, forged, { transaction: V.plant.wireBase64 }, carrying, "svm/read-first");
+    const row = V.refusals[6];
     expect(row.payload).toEqual({ ...sent.payload, transaction: V.push.landedWireBase64 });
   });
 
@@ -416,8 +417,8 @@ describe("mpp-charge-stellar.json", () => {
   });
 
   // The landed envelope is read only from the member FETCHED keys, which fetchPresented writes and no wire form carries:
-  // a hash credential the buyer sends with a payload transaction, the envelope that would bind H, is stellar/read-first,
-  // as it is without one (refusals[2]), and one held with both is read by its FETCHED member alone.
+  // a hash credential the buyer sends with a payload transaction, the envelope that binds H under FETCHED, is
+  // stellar/read-first, as it is without one (refusals[2]), and one held with both is read by its FETCHED member alone.
   it("the landed envelope is read only from fetchPresented's FETCHED member, never from a hash credential's transaction", async () => {
     const reader = {
       network: "stellar:testnet",
@@ -425,9 +426,10 @@ describe("mpp-charge-stellar.json", () => {
     } as unknown as StellarReader;
     const sent = credential(V.sourceAccount.challenge, V.refusals[0].payload);
     const fetched = await chargeStellar.fetchPresented(sent, reader);
-    const carrying = (xdr: string) => (c: unknown) => ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, transaction: xdr } });
-    const other = V.sourceAccount.refusals[2].envelope as string;
-    await readsOnlyFetched(chargeStellar, sent, fetched, H, carrying(V.V3.envelope), carrying(other), "stellar/read-first");
+    const carrying = (c: unknown, read: unknown) =>
+      ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, transaction: (read as { transaction: string }).transaction } });
+    const other = { transaction: V.sourceAccount.refusals[2].envelope as string };
+    await readsOnlyFetched(chargeStellar, sent, fetched, H, { transaction: V.V3.envelope }, other, carrying, "stellar/read-first");
     const row = V.refusals[2];
     expect(row.payload).toEqual({ ...V.refusals[0].payload, transaction: V.V3.envelope });
     expect(await chargeStellar.bound(credential(V.sourceAccount.challenge, row.payload))).toEqual(refused(row.expect));
@@ -571,9 +573,9 @@ describe("mpp-charge-stellar.json", () => {
         const envelope: string = row.envelope ?? S.envelope;
         const hash: string = row.hash ?? S.hash;
         let presented: MppCredential = credential(challenge, { type: "transaction", transaction: envelope });
-        if (row.type === "hash" && row.carriesTransaction === true) {
-          presented = { ...credential(challenge, { type: "hash", hash }), [FETCHED]: { transaction: envelope } } as MppCredential;
-          const reader = readerOf(hash, { status: "SUCCESS", envelope, ledger: 990 });
+        if (row.type === "hash" && row.fetched !== undefined) {
+          presented = heldOf({ presented: credential(challenge, { type: "hash", hash }), fetched: row.fetched });
+          const reader = readerOf(hash, { status: "SUCCESS", envelope: row.fetched.transaction, ledger: 990 });
           expect(await chargeStellar.fetchPresented(credential(challenge, { type: "hash", hash }), reader), row.case).toEqual(refused(row.expect));
         } else if (row.type === "hash") {
           const fetched = await chargeStellar.fetchPresented(
@@ -772,8 +774,8 @@ describe("mpp-charge-xrpl.json", () => {
   });
 
   // The blob read by hash is read only from the member FETCHED keys, which fetchPresented writes and no wire form
-  // carries: a hash credential the buyer sends with a payload blob, the one that would bind H, is xrpl/read-first, as it
-  // is without one (refusals[3]), and one held with both is read by its FETCHED member alone.
+  // carries: a hash credential the buyer sends with a payload blob, the one that binds H under FETCHED, is
+  // xrpl/read-first, as it is without one (refusals[3]), and one held with both is read by its FETCHED member alone.
   it("push: the blob is read only from fetchPresented's FETCHED member, never from a hash credential's blob", async () => {
     const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment" };
     const reader: XrplReader = {
@@ -784,8 +786,9 @@ describe("mpp-charge-xrpl.json", () => {
     };
     const sent = credential(placed, V.refusals[0].payload);
     const fetched = await chargeXrpl.fetchPresented(sent, reader);
-    const carrying = (blob: string) => (c: unknown) => ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, blob } });
-    await readsOnlyFetched(chargeXrpl, sent, fetched, H, carrying(V.V3.blob), carrying(V.plant.blob), "xrpl/read-first");
+    const carrying = (c: unknown, read: unknown) =>
+      ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, blob: (read as { blob: string }).blob } });
+    await readsOnlyFetched(chargeXrpl, sent, fetched, H, { blob: V.V3.blob }, { blob: V.plant.blob }, carrying, "xrpl/read-first");
     const row = V.refusals[3];
     expect(row.payload).toEqual({ ...V.refusals[0].payload, blob: V.V3.blob });
     expect(await chargeXrpl.bound(credential(placed, row.payload))).toEqual(refused(row.expect));

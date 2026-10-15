@@ -150,9 +150,9 @@ describe("mpp-charge-hedera.json", () => {
   it("the landed memo and network are read only from fetchPresented's FETCHED member, never from a string-keyed landed", async () => {
     const sent = credential({ type: "hash", transactionId: V.push.transactionId });
     const fetched = await chargeHedera.fetchPresented(sent, reader(V.fetchPresented.reader, V.fetchPresented.entries) as never);
-    const landed = (l: unknown) => (c: unknown) => ({ ...(c as object), landed: l });
-    const wrong = landed({ network: V.fetchPresented.reader, memo: "not an attribution memo" });
-    await readsOnlyFetched(chargeHedera, sent, fetched, H, landed(V.fetchPresented.expectLanded), wrong, "hedera/read-first");
+    const landed = (c: unknown, l: unknown) => ({ ...(c as object), landed: l });
+    const wrong = { network: V.fetchPresented.reader, memo: "not an attribution memo" };
+    await readsOnlyFetched(chargeHedera, sent, fetched, H, V.fetchPresented.expectLanded, wrong, landed, "hedera/read-first");
     const pull = credential({ type: "transaction", transaction: V.build.expectTransactionBase64 });
     const other = V.fetchPresented.reader === "hedera:mainnet" ? "hedera:testnet" : "hedera:mainnet";
     expect(await chargeHedera.reference({ ...pull, landed: { network: other } })).toEqual(await chargeHedera.reference(pull));

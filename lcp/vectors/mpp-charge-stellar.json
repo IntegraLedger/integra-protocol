@@ -271,10 +271,12 @@
   ],
   "refusals": [
    {
-    "case": "this envelope pushed under the place section's challenge, whose feePayer is true: fetchPresented reads nothing, and bound and reference refuse it holding this envelope as its fetched transaction (carriesTransaction: written under lcp's FETCHED member, as fetchPresented writes it)",
+    "case": "this envelope pushed under the place section's challenge, whose feePayer is true: fetchPresented, bound and reference refuse it before any read, even held with fetched, this envelope as its fetched transaction, written under lcp's FETCHED member",
     "challenge": "place",
     "type": "hash",
-    "carriesTransaction": true,
+    "fetched": {
+     "transaction": "AAAAAgAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAGAUFvxAAAAQHZ8CimhFEbntlMEQitqV1GFNoIBSc23hUFNAZHP1iLJSoZGTa/m5OAoBustKEBua9bhAZWgxOCIFRD08+ksFAM="
+    },
     "expect": "mpp/credential-type"
    },
    {
@@ -319,11 +321,13 @@
     "expect": "stellar/no-address-auth"
    },
    {
-    "case": "a hash credential under this challenge holding this envelope as its fetched transaction (carriesTransaction: written under lcp's FETCHED member, as fetchPresented writes it), whose hash is not 64 hexadecimal digits (draft-stellar-charge-00: hash is the Stellar transaction hash, a 64-character hex string)",
+    "case": "a hash credential under this challenge whose hash is not 64 hexadecimal digits (draft-stellar-charge-00: hash is the Stellar transaction hash, a 64-character hex string), held with fetched, this envelope as its fetched transaction, written under lcp's FETCHED member",
     "challenge": "sourceAccount",
     "type": "hash",
     "hash": "not-a-transaction-hash",
-    "carriesTransaction": true,
+    "fetched": {
+     "transaction": "AAAAAgAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAAAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAGAUFvxAAAAQHZ8CimhFEbntlMEQitqV1GFNoIBSc23hUFNAZHP1iLJSoZGTa/m5OAoBustKEBua9bhAZWgxOCIFRD08+ksFAM="
+    },
     "expect": "mpp/credential-malformed"
    }
   ],

@@ -197,12 +197,12 @@ async function reference(
 
 /**
  * A push credential (`type="signature"`) with the landed wire, read at `confirmed`, written under `FETCHED` as
- * `transaction`; any member the credential carries already is kept and not read. Other credentials are returned
- * unchanged. A read that fails, finds nothing or gives an answer of neither documented shape
- * is a refusal the seller retries. A transaction that landed with an error at `confirmed` is read once more at
- * `finalized`: it is refused `svm/err` when that read holds it with an error, and `svm/not-final`, a read to repeat,
- * when that read does not hold it yet, since a block that is not finalized can be replaced; when that read holds it
- * without an error, the wire it gives is added.
+ * `transaction`. Every other member of the credential is copied unchanged and not read; a `FETCHED` member it carries
+ * is replaced by this read. Other credentials are returned unchanged. A read that fails, finds nothing or gives an
+ * answer of neither documented shape is a refusal the seller retries. A transaction that landed with an error at
+ * `confirmed` is read once more at `finalized`: it is refused `svm/err` when that read holds it with an error, and
+ * `svm/not-final`, a read to repeat, when that read does not hold it yet, since a block that is not finalized can be
+ * replaced; when that read holds it without an error, the wire it gives is added.
  */
 async function fetchPresented(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,

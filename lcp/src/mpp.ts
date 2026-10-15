@@ -878,18 +878,19 @@ async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: 
 }
 
 /**
- * Reads the pushed transaction's receipt and returns the credential with the read under `FETCHED`: the transaction,
- * its block and the receipt's logs from `currency`. Any member the credential carries already is kept and not read. No receipt is `tempo/not-found` and a failed read `tempo/unreadable`: reads to
- * repeat, not a refusal of the payment. A revert whose block is at or below the reader's `finalized` mark is
- * `tempo/reverted`: nothing moved. A revert above that mark, or where the mark cannot be read, is `tempo/not-final`, a
- * read to repeat: the block can be replaced by one in which the transaction succeeds. A `TransferWithMemo` log from
- * `currency` that is not of the event's form, a 32-byte sender and recipient topic and an amount word, is
- * `tempo/unreadable` too: the reader's answer is not well formed. A receipt that succeeded whose logs from `currency`
- * do not hold exactly one `TransferWithMemo` with this challenge's attribution memo, the log `bound` reads, is read at
- * the same mark: above it, or where it cannot be read, it is `tempo/not-final`, since a block that replaces it can hold
- * other logs; at or below it the credential is returned with the read, and `bound` gives the verdict. The mark is read
- * only for a revert or such a receipt. A reader that is missing or for another network than the challenge names is
- * `tempo/wrong-reader`. At most two calls.
+ * Reads the pushed transaction's receipt and returns the credential with the read under `FETCHED`: the transaction, its
+ * block and the receipt's logs from `currency`. Every other member of the credential is copied unchanged and not read;
+ * a `FETCHED` member it carries is replaced by this read. No receipt is `tempo/not-found` and a failed read
+ * `tempo/unreadable`: reads to repeat, not a refusal of the payment. A revert whose block is at or below the reader's
+ * `finalized` mark is `tempo/reverted`: nothing moved. A revert above that mark, or where the mark cannot be read, is
+ * `tempo/not-final`, a read to repeat: the block can be replaced by one in which the transaction succeeds. A
+ * `TransferWithMemo` log from `currency` that is not of the event's form, a 32-byte sender and recipient topic and an
+ * amount word, is `tempo/unreadable` too: the reader's answer is not well formed. A receipt that succeeded whose logs
+ * from `currency` do not hold exactly one `TransferWithMemo` with this challenge's attribution memo, the log `bound`
+ * reads, is read at the same mark: above it, or where it cannot be read, it is `tempo/not-final`, since a block that
+ * replaces it can hold other logs; at or below it the credential is returned with the read, and `bound` gives the
+ * verdict. The mark is read only for a revert or such a receipt. A reader that is missing or for another network than
+ * the challenge names is `tempo/wrong-reader`. At most two calls.
  */
 async function pushFetchPresented(presented: MppCredential, reader: EvmReader): Promise<LandedCredential | Refusal> {
   if (

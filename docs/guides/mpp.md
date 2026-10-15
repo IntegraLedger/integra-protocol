@@ -175,7 +175,9 @@ gives the answer the same credential without it gives, `<rail>/read-first` where
 carries a symbol-keyed member: `JSON.parse` makes none, and `JSON.stringify` and `structuredClone` drop it. So the
 seller keeps the object `fetchPresented` returned, or a spread or `Object.assign` copy of it, both of which copy the
 member; a copy made through JSON or `structuredClone` is read as a credential `fetchPresented` has not read. Calling
-`bound` first, and `fetchPresented` when it answers `<rail>/read-first`, reads only what the seller's reader read.
+`bound` first, and `fetchPresented` when it answers `<rail>/read-first`, reads only what the seller's reader read; a
+Hedera pull credential whose request names no `chainId` gets its network only through `fetchPresented`, since `bound`
+gives H there and `reference` gives `hedera/chain-id-unnamed` without it.
 
 `bound`, `reference` and `fetchPresented` start from the echoed challenge's H, require its intent and method to be
 the pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which

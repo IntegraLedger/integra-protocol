@@ -1115,12 +1115,12 @@ type HederaLandedCharge = MppCredential & { [FETCHED]: { network: HederaNetwork;
 
 /**
  * The credential with the read written under `FETCHED`: the charge's network (the request's `chainId`, or
- * `defaultNetwork` when the request names none), and for a push credential (`type="hash"`) the memo of the
- * landed SUCCESS entry. Any member the credential carries already is kept and not read. The reader must be of that
- * network. A read that fails, or finds no transaction or no counted
- * user entry yet, is a refusal the seller retries (`hedera/unreadable`, `hedera/not-found`). Counted user entries with
- * no SUCCESS among them are `hedera/not-success`: the transaction reached consensus and failed, so its transfers were
- * not made, and a later read gives the same answer.
+ * `defaultNetwork` when the request names none), and for a push credential (`type="hash"`) the memo of the landed
+ * SUCCESS entry. Every other member of the credential is copied unchanged and not read; a `FETCHED` member it carries
+ * is replaced by this read. The reader must be of that network. A read that fails, or finds no transaction or no
+ * counted user entry yet, is a refusal the seller retries (`hedera/unreadable`, `hedera/not-found`). Counted user
+ * entries with no SUCCESS among them are `hedera/not-success`: the transaction reached consensus and failed, so its
+ * transfers were not made, and a later read gives the same answer.
  */
 async function fetchCharge(
   input: unknown,

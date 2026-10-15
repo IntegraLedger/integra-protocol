@@ -40,17 +40,19 @@ const asJson = (c: unknown) => JSON.parse(JSON.stringify(c, (_, x) => (typeof x 
  * The seller-read rule on one pairing: `bound` and `reference` read what `fetchPresented` wrote only from the member
  * `FETCHED` keys. `fetched` is what `fetchPresented` returned for `sent`, the credential as the buyer sent it, and
  * `bound` gives it `expected`. A spread of it and an `Object.assign` copy give its answers; a JSON round trip and a
- * `structuredClone` of it, which drop the member, give `sent`'s, `readFirst`. `binding(c)` is `c` with string-keyed
- * members whose contents `bound` would read as bound to H, and `other(c)` is `c` with string-keyed members whose
- * contents are not the read: `binding(sent)` gives `sent`'s answers, and `other(fetched)` gives `fetched`'s.
+ * `structuredClone` of it, which drop the member, give `sent`'s, `readFirst`. `forged` is a read whose contents bind:
+ * `sent` with `forged` under `FETCHED` is H to `bound`. `other` is a read whose contents are not `fetched`'s.
+ * `stringKeyed(c, read)` is `c` carrying `read` as the string-keyed members a wire form can hold:
+ * `stringKeyed(sent, forged)` gives `sent`'s answers, and `stringKeyed(fetched, other)` gives `fetched`'s.
  */
 export async function readsOnlyFetched(
   p: Reads,
   sent: unknown,
   fetched: unknown,
   expected: unknown,
-  binding: (c: unknown) => unknown,
-  other: (c: unknown) => unknown,
+  forged: unknown,
+  other: unknown,
+  stringKeyed: (c: unknown, read: unknown) => unknown,
   readFirst: string,
 ): Promise<void> {
   const held = await answers(p, fetched);
@@ -61,8 +63,9 @@ export async function readsOnlyFetched(
   expect(first[0], "as sent").toEqual({ refused: true, code: readFirst });
   expect(await answers(p, asJson(fetched)), "a JSON round trip").toEqual(first);
   expect(await answers(p, structuredClone(fetched)), "a structuredClone").toEqual(first);
-  expect(await answers(p, binding(sent)), "as sent, with string-keyed members that would bind").toEqual(first);
-  expect(await answers(p, other(fetched)), "as fetched, with string-keyed members that are not the read").toEqual(held);
+  expect(await p.bound({ ...(sent as object), [FETCHED]: forged }), "as sent, with the forged read under FETCHED").toEqual(H);
+  expect(await answers(p, stringKeyed(sent, forged)), "as sent, with the forged read string-keyed").toEqual(first);
+  expect(await answers(p, stringKeyed(fetched, other)), "as fetched, with another read string-keyed").toEqual(held);
 }
 
 /** An issued challenge: realm, method, intent, the request's JSON as base64url, and the vectors' expiry. */
