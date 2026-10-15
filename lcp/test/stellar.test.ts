@@ -28,6 +28,7 @@ import { rowsOf } from "./rows.js";
 import type { TransactionEnvelopeWire } from "@stellar/stellar-sdk/xdr";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
+const EVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-eip155-eip3009.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
 const O: PaymentRequirements = V.fixed.option;
 const refused = (code: string) => ({ refused: true, code });
@@ -856,6 +857,18 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
           transferEventOf(topic, "A".repeat(1028)),
           transferEventOf([name, from, to, "A".repeat(1028)], value),
         ];
+      },
+    // With the SDK here; stellar-peer-missing.test.ts reads the same row without it. The row's accepts, then that accepts
+    // with x402-exact-eip155-eip3009.json's option added, which is another pairing's.
+    "read of a challenge whose accepts holds no Stellar option, with @stellar/stellar-sdk and without it: here no option at all":
+      async () => {
+        const [row] = rowsOf(V.agreedRefusals.rows as { accepts?: PaymentRequirements[] }[], "x402-exact-stellar.json agreedRefusals.rows", {
+          exact: 1,
+          keep: ["the row with accepts", (r) => r.accepts !== undefined],
+          leave: ["every other row", (r) => r.accepts === undefined],
+        });
+        const doc = (accepts: PaymentRequirements[]) => ({ x402Version: 2 as const, resource: V.fixed.resource, accepts, extensions: V.V3.extensions });
+        return [exactStellar.read(doc(row!.accepts!)), exactStellar.read(doc([...row!.accepts!, EVM.fixed.O]))];
       },
   };
 

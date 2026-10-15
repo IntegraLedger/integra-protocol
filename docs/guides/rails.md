@@ -141,8 +141,10 @@ peer dependency. Install the one for each rail you use:
 | TON | `@ton/core` and its peer `@ton/crypto` |
 | Algorand | `algosdk` |
 
-Without its peer, a rail's functions refuse with `<rail>/peer-missing`, or the pairing serves no option. Every other
-rail needs nothing more than the package.
+Without its peer, a rail's functions refuse with `<rail>/peer-missing`, or the pairing serves no option. An x402
+pairing refuses a missing peer only through an option of its own: its `read`, `advertise`, `bound` and `reference` give
+a document, offer or payment holding none the answer they give with the peer. Every other rail needs nothing more than
+the package.
 
 ## Reading settlement
 

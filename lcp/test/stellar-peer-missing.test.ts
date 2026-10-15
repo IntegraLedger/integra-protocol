@@ -1,13 +1,20 @@
 // @stellar/stellar-sdk is an optional peer. With it absent, the stellar entry points and the package root still import,
 // the root pairingOf names no Stellar option, and each function whose type carries a refusal and needs the peer refuses
 // `stellar/peer-missing` (the vectors' refusal), never throwing. muxedFor, a writer whose type carries no refusal,
-// throws TypeError.
+// throws TypeError. x402/exact/stellar's read, advertise, bound and reference need the peer only for a Stellar option:
+// the option filter refuses each one `stellar/peer-missing`, and a document, offer or payment with no Stellar option
+// gets the answer it gets with the peer.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { PaymentRequirements } from "../src/x402.js";
+import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
 const M = JSON.parse(readFileSync(new URL("../vectors/mpp-charge-stellar.json", import.meta.url), "utf8"));
+const EVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-eip155-eip3009.json", import.meta.url), "utf8"));
 const CODE = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "stellar/peer-missing").expect as string;
+/** V3's challenge, which the pairing reads with the peer, with `accepts` replaced. */
+const challenge = (accepts: PaymentRequirements[]) => ({ x402Version: 2 as const, resource: V.fixed.resource, accepts, extensions: V.V3.extensions });
 
 vi.mock("@stellar/stellar-sdk/base", () => {
   throw new Error("Cannot find package '@stellar/stellar-sdk'");
@@ -34,7 +41,7 @@ describe("without @stellar/stellar-sdk", () => {
   });
 
   // The choice is V2's simulated transaction for V3's option and the payment is V3's, which the pairing builds, binds and
-  // references with the peer (x402-exact-stellar.json).
+  // references with the peer (x402-exact-stellar.json). bound and reference read a payment's version before its option.
   it("x402/exact/stellar's build, bound and reference refuse peer-missing, as its advertise does", { timeout: IMPORT_MS }, async () => {
     const { exactStellar } = await import("../src/x402-exact-stellar.js");
     const refused = { refused: true, code: CODE };
@@ -44,13 +51,71 @@ describe("without @stellar/stellar-sdk", () => {
     const presented = { x402Version: 2, accepted: V.V3.accepted, payload: { transaction: V.V3.envelope }, extensions: V.V3.extensions };
     expect(await exactStellar.bound(presented)).toEqual(refused);
     expect(await exactStellar.reference(presented)).toEqual(refused);
+    const notV2 = { refused: true, code: "x402/not-v2" };
+    expect(await exactStellar.bound({ ...presented, x402Version: 1 })).toEqual(notV2);
+    expect(await exactStellar.reference({ ...presented, x402Version: 1 })).toEqual(notV2);
   });
 
   // The document is V3's challenge, which the pairing reads with the peer: its hash, link and V3's option.
-  it("x402/exact/stellar's read refuses peer-missing, as its advertise does", { timeout: IMPORT_MS }, async () => {
+  it("x402/exact/stellar's read refuses peer-missing for a challenge holding a Stellar option, as its advertise does", { timeout: IMPORT_MS }, async () => {
     const { exactStellar } = await import("../src/x402-exact-stellar.js");
-    const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.V3.accepted], extensions: V.V3.extensions };
-    expect(exactStellar.read(required)).toEqual({ refused: true, code: CODE });
+    expect(exactStellar.read(challenge([V.V3.accepted]))).toEqual({ refused: true, code: CODE });
+  });
+
+  // The row runs in stellar.test.ts with the peer, on the same challenge.
+  it("x402/exact/stellar's read of a challenge holding no Stellar option: the vectors' row, the answer it gets with the peer", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const [row] = rowsOf(V.agreedRefusals.rows as { accepts?: PaymentRequirements[]; expect: string }[], "x402-exact-stellar.json agreedRefusals.rows", {
+      exact: 1,
+      keep: ["the row with accepts, read with the peer and without it", (r) => r.accepts !== undefined],
+      leave: ["every other row", (r) => r.accepts === undefined],
+    });
+    const refused = { refused: true, code: row!.expect };
+    expect(exactStellar.read(challenge(row!.accepts!))).toEqual(refused);
+    expect(exactStellar.read(challenge([...row!.accepts!, EVM.fixed.O]))).toEqual(refused);
+  });
+
+  // A fault of the challenge itself is read before any option, so it gets the code it gets with the peer, even when the
+  // challenge holds a Stellar option.
+  it("x402/exact/stellar's read answers a challenge's own fault as it does with the peer", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const { extensions: _extensions, ...without } = challenge([V.V3.accepted]);
+    expect(exactStellar.read(without as never)).toEqual({ refused: true, code: "x402/no-legal-context" });
+    expect(exactStellar.read({ ...challenge([V.V3.accepted]), x402Version: 1 } as never)).toEqual({ refused: true, code: "x402/not-v2" });
+  });
+
+  // V3's option beside another pairing's: only the Stellar option is refused for want of the peer. The other pairing's
+  // read serves its own option from the same challenge.
+  it("x402/exact/stellar refuses peer-missing for the Stellar option of a challenge only, and the other pairing reads its own", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const { exactEip3009 } = await import("../src/x402.js");
+    const refused = { refused: true, code: CODE };
+    const both = challenge([V.V3.accepted, EVM.fixed.O]);
+    expect(exactStellar.read(both)).toEqual(refused);
+    const evm = exactEip3009.read(both);
+    expect("refused" in evm ? evm : evm.offer.options).toEqual([EVM.fixed.O]);
+    const issued = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.fixed.option, EVM.fixed.O] };
+    expect(exactStellar.advertise(issued, V.fixed.H, V.fixed.link, V.fixed.option)).toEqual(refused);
+    expect(exactStellar.advertise(issued, V.fixed.H, V.fixed.link, EVM.fixed.O)).toEqual({ refused: true, code: "x402/option-not-this-pairing" });
+    const presented = { x402Version: 2, accepted: EVM.fixed.O, payload: { transaction: V.V3.envelope }, extensions: V.V3.extensions };
+    expect(await exactStellar.bound(presented)).toEqual({ refused: true, code: "x402/option-not-this-pairing" });
+    expect(await exactStellar.reference(presented)).toEqual({ refused: true, code: "x402/option-not-this-pairing" });
+  });
+
+  // advertise checks the document's version, its accepts and the offer's place in it, then holds the offer to the filter,
+  // which refuses a Stellar offer peer-missing: the order every x402 pairing's advertise answers in (advertiseFor).
+  it("x402/exact/stellar's advertise refuses peer-missing at the filter, after the document and the offer's place", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    const O = V.fixed.option;
+    const doc = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [O] };
+    const advertise = (d: unknown, offer: unknown) => exactStellar.advertise(d as never, V.fixed.H, V.fixed.link, offer as never);
+    expect([
+      advertise({ ...doc, x402Version: 1 }, O),
+      advertise({ ...doc, accepts: "none" }, O),
+      advertise({ ...doc, accepts: [EVM.fixed.O] }, O),
+      advertise({ ...doc, accepts: [O, EVM.fixed.O] }, EVM.fixed.O),
+      advertise(doc, O),
+    ]).toEqual(["x402/not-v2", "x402/option-malformed", "x402/option-not-in-document", "x402/option-not-this-pairing", CODE].map((code) => ({ refused: true, code })));
   });
 
   // V3's option is placed: with the peer, unplaced sets its muxed payTo back to the base account, which is the fixed

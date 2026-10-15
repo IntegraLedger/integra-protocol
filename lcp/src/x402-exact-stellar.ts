@@ -22,7 +22,6 @@ import { isObject, normalHash } from "./fields.js";
 import {
   acceptedBy,
   advertiseFor,
-  carriesRefusedMember,
   chosen,
   filterOf,
   isAmount,
@@ -32,6 +31,7 @@ import {
   readFor,
   withOption,
   x402Broadcaster,
+  type OptionFilter,
   type X402Read,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -60,18 +60,29 @@ interface StellarChoice {
   payer: string;
 }
 
-/** True for an option this pairing can pay. */
-function isThis(option: PaymentRequirements): boolean {
+/**
+ * True for an option of this pairing as far as it is read without @stellar/stellar-sdk: `exact` on a Stellar network,
+ * with fees sponsored.
+ */
+function isStellarExact(option: PaymentRequirements): boolean {
   if (!isObject(option) || option.scheme !== "exact" || !isStellarNetwork(option.network)) return false;
-  if (!isContract(option.asset) || !(isAccount(option.payTo) || isMuxed(option.payTo))) return false;
   return isObject(option.extra) && option.extra["areFeesSponsored"] === true;
 }
 
+/** True for an option this pairing can pay: `isStellarExact`, with a contract `asset` and a `G…` or `M…` `payTo`. */
+function isThis(option: PaymentRequirements): boolean {
+  return isStellarExact(option) && isContract(option.asset) && (isAccount(option.payTo) || isMuxed(option.payTo));
+}
+
+const served = filterOf(isThis, payable);
+
 /**
  * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
- * pairing that `build` can pay (`payable`), else `x402/option-malformed`.
+ * pairing that `build` can pay (`payable`), else `x402/option-malformed`. Without @stellar/stellar-sdk the asset and
+ * `payTo` strkeys cannot be read, so an option `isStellarExact` takes is `stellar/peer-missing`, and any other option
+ * gets the answer it gets with the SDK: it is not this pairing's.
  */
-const filter = filterOf(isThis, payable);
+const filter: OptionFilter = (o) => (isStellarExact(o) && !hasPeer() ? refusal("stellar/peer-missing") : served(o));
 
 /**
  * True when the amount is a positive i128 in decimal (`isAmount`) and the timeout a positive safe integer of at most
@@ -90,8 +101,9 @@ function payable(o: PaymentRequirements): boolean {
 
 /**
  * The option with `payTo` back to its base `G…` account: the option as the seller issued it. An option that carries a
- * `refused` member is `x402/option-malformed`. Without @stellar/stellar-sdk no `payTo` can be read, so any other option
- * is `stellar/peer-missing`. A value that is not an object comes back as it is.
+ * `refused` member is `x402/option-malformed`. Without @stellar/stellar-sdk the option's `payTo` cannot be read, so any
+ * other option is `stellar/peer-missing`, a refusal of that one option. A value that is not an object comes back as it
+ * is.
  */
 function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
@@ -103,7 +115,8 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 /**
  * The challenge's `extensions.legalContext` set, and the chosen option's `payTo` set to `muxedFor(payTo, h)`. A
  * challenge, or an option in its `accepts`, that carries a `refused` member is `x402/option-malformed`. Without
- * @stellar/stellar-sdk any other option cannot be read or placed: `stellar/peer-missing`.
+ * @stellar/stellar-sdk a Stellar offer cannot be read or placed: the filter refuses it `stellar/peer-missing`, after the
+ * document's version and `accepts` and the offer's place in them are checked.
  */
 function advertise(
   doc: PaymentRequired,
@@ -112,8 +125,6 @@ function advertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
-  if (carriesRefusedMember(doc)) return refusal("x402/option-malformed");
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   const placed = advertiseFor(filter)(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   if (!isAccount(offer.payTo)) return refusal("stellar/carrier-occupied");
@@ -122,10 +133,10 @@ function advertise(
 
 /**
  * The buyer's reading of the challenge: its hash, its link and the options this pairing can pay. Without
- * @stellar/stellar-sdk no option can be read: `stellar/peer-missing`.
+ * @stellar/stellar-sdk the filter refuses each Stellar option `stellar/peer-missing`, so a challenge holding one is
+ * `stellar/peer-missing` (`readFor`), and a challenge holding none gets the answer it gets with the SDK.
  */
 function read(doc: PaymentRequired): X402Read | Refusal {
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   return readFor(filter)(doc);
 }
 
@@ -159,7 +170,6 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
 
 /** The option, the echoed hash and the decoded transfer of a payment, or the refusal that names what is wrong. */
 function presentedOf(presented: unknown) {
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = acceptedBy(presented["accepted"], filter);
   if (isRefusal(accepted)) return accepted;
