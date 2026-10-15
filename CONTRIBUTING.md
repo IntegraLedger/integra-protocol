@@ -68,10 +68,11 @@ node scripts/docs-reference.mjs --check
   highlighted. It checks that both give the same HTML, and that `const` and `myObject` take github-light-default's
   colours. Each line is tokenized to its end however long that takes (`tokenizeTimeLimit: 0`), so a busy machine
   colours the code as an idle one does.
-- Two builds of one commit are byte-equal. The build ID, which every page carries and which names the folder of the
-  build's manifests under `/_next/static/`, is the commit's sha (`website/next.config.ts`); with uncommitted changes
-  it is the sha and a digest of those changes. CI's site job checks it with the step of that name, which builds again
-  and compares the two `website/out` trees with `diff -r`. To check it, in `website/`:
+- Two builds of one commit on one machine are byte-equal. The build ID, which every page carries and which names the
+  folder of the build's manifests under `/_next/static/`, is the commit's sha (`website/next.config.ts`); with
+  uncommitted changes it is the sha and a digest of those changes. The machine's Chrome and fonts draw the Mermaid
+  diagrams. CI's site job checks it with the step "Two builds of one commit are byte-equal", which builds again and
+  compares the two `website/out` trees with `diff -r`. To check it, in `website/`:
 
   ```sh
   first=$(mktemp -d) && pnpm build && mv out "$first/out" && rm -rf .next && pnpm build && diff -r --brief "$first/out" out
