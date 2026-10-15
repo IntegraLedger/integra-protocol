@@ -187,7 +187,8 @@ const WITHIN_NOT_BUILT = ["topUp", "use", "bearer"];
 /**
  * The checks `buildWithin` makes on its input before any channel value is read, in the input's member order: the
  * within challenge's shape and its intent and method; the opening, by `opened`, bound to `h`; the cumulative amount
- * below `limit`; and the action, `voucher` or `close`.
+ * below `limit`; and the action, `voucher` or `close`. An action in `notBuilt` is `mpp/within-action-not-built`, and any
+ * other is `mpp/session-action`.
  */
 export async function withinChecks<O>(
   w: SessionWithin,
@@ -195,6 +196,7 @@ export async function withinChecks<O>(
   intentAndMethod: string,
   opened: (opening: MppCredential) => Promise<(O & { h: AtrHash }) | Refusal>,
   limit: bigint,
+  notBuilt: readonly string[] = WITHIN_NOT_BUILT,
 ): Promise<O | Refusal> {
   if (!isObject(w)) return refusal("mpp/input-malformed");
   const c = w.challenge;
@@ -206,7 +208,7 @@ export async function withinChecks<O>(
   if (typeof w.cumulativeAmount !== "bigint" || w.cumulativeAmount < 0n || w.cumulativeAmount >= limit) {
     return refusal("mpp/input-malformed");
   }
-  if (WITHIN_NOT_BUILT.includes(w.action as string)) return refusal("mpp/within-action-not-built");
+  if (notBuilt.includes(w.action as string)) return refusal("mpp/within-action-not-built");
   if (w.action !== "voucher" && w.action !== "close") return refusal("mpp/session-action");
   return o;
 }

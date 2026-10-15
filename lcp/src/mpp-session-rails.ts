@@ -524,9 +524,20 @@ async function hederaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Heder
   };
 }
 
-/** The network and the payload's `channelId`, lowercase; on a within or close payment, read from the payment itself. */
+/**
+ * The kind of a Hedera session payment by its action, one of the four draft-hedera-session-00 defines: `open`, `topUp`,
+ * `voucher` and `close`. Any other action, `use` among them, is `mpp/session-action`.
+ */
+function hederaKind(presented: MppCredential): Kind | Refusal {
+  return actionKind(presented, ["voucher", "topUp"]);
+}
+
+/**
+ * The network and the payload's `channelId`, lowercase; on a within or close payment, read from the payment itself. An
+ * action `channel.kind` refuses is refused here with its code.
+ */
 async function hederaRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
-  const k = actionKind(presented, ["voucher", "topUp", "use"]);
+  const k = hederaKind(presented);
   if (isRefusal(k)) return k;
   let details: { [k: string]: Json };
   if (k === "open") {
@@ -546,10 +557,11 @@ async function hederaRef(presented: MppCredential): Promise<{ network: string; c
 
 /**
  * A voucher, or a close's final voucher, on the channel the held opening opened: `hederaVoucher` with the channel id,
- * the escrow and the chain from the opening, signed as EIP-712.
+ * the escrow and the chain from the opening, signed as EIP-712. A `topUp` is not built; an action the draft does not
+ * define, such as `use`, is `mpp/session-action`.
  */
 async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const o = await withinChecks(w, h, "session/hedera", async (p) => opening(p, HEDERA), U128);
+  const o = await withinChecks(w, h, "session/hedera", async (p) => opening(p, HEDERA), U128, ["topUp"]);
   if (isRefusal(o)) return o;
   const network = hederaSessionNetworkOf(o.checked.details);
   if (isRefusal(network)) return network;
@@ -1144,7 +1156,7 @@ export const sessionHedera = Object.freeze({
   },
   closeRef: hederaCloseRef,
   channel: Object.freeze({
-    kind: (p: MppCredential) => actionKind(p, ["voucher", "topUp", "use"]),
+    kind: (p: MppCredential) => hederaKind(p),
     ref: hederaRef,
     boundWithin: notBoundWithin,
     until: (_p: MppCredential): number | undefined => undefined,

@@ -343,6 +343,22 @@ describe("mpp/session/hedera", () => {
     expect(sessionHedera.channel.until(cred(C_H, { action: "open" }))).toBeUndefined();
   });
 
+  // draft-hedera-session-00 L840-845 at tempoxyz/mpp-specs 08e7dd87: the payload's `action` is one of `open`, `topUp`,
+  // `voucher` and `close`. A `use`, which the draft does not define, is refused by each function that reads an action;
+  // the same payment as a voucher is within, names its channel and is built, and a `topUp` is not built.
+  it("a use, which the Hedera draft does not define, is mpp/session-action from channel.kind, channel.ref and buildWithin", async () => {
+    const opened = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
+    const paid = (action: string) => cred(C_H, { action, channelId: V.HS1.expectChannelId, cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` });
+    const within = (action: string) => sessionHedera.buildWithin({ challenge: C_H, opening: opened, cumulativeAmount: 100n, action } as SessionWithin, H);
+    expect(sessionHedera.channel.kind(paid("voucher"))).toBe("within");
+    expect(await sessionHedera.channel.ref(paid("voucher"))).toEqual({ network: "hedera:testnet", channel: V.HS1.expectChannelId });
+    expect(await within("voucher")).not.toHaveProperty("refused");
+    expect(sessionHedera.channel.kind(paid("use"))).toEqual(refused("mpp/session-action"));
+    expect(await sessionHedera.channel.ref(paid("use"))).toEqual(refused("mpp/session-action"));
+    expect(await within("use")).toEqual(refused("mpp/session-action"));
+    expect(await within("topUp")).toEqual(refused("mpp/within-action-not-built"));
+  });
+
   it("plant 1: another agreement's channel, and a log from another emitter, are refused, never H", async () => {
     const r4 = V.HS4;
     const reader = hederaReader({ [r4.openTx]: asReceipt(r4.openReceipt) });
@@ -1156,6 +1172,12 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     const voucher = cred(c, { action: "voucher", channelId: V.SV2.channel });
     return [sessionSolana.channel.kind(voucher), await sessionSolana.channel.ref(voucher), await sessionSolana.channel.boundWithin(voucher)];
   };
+  /** channel.kind and channel.ref of a Hedera payment under `action`, and buildWithin of `action` on HS3's opening. */
+  const hederaActionCalls = async (action: string) => {
+    const paid = cred(C_H, { action, channelId: V.HS1.expectChannelId, cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` });
+    const within = await sessionHedera.buildWithin({ challenge: C_H, opening: hs3, cumulativeAmount: 100n, action } as SessionWithin, H);
+    return [sessionHedera.channel.kind(paid), await sessionHedera.channel.ref(paid), within];
+  };
 
   // Each input a row changes is accepted as given, so each refusal below is the change's.
   it("the inputs the rows change, as given, are accepted", async () => {
@@ -1174,6 +1196,9 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     for (const c of [client, C_S]) {
       expect(await solanaVoucherCalls(c)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")]);
     }
+    const [kind, ref, within] = await hederaActionCalls("voucher");
+    expect([kind, ref]).toEqual(["within", { network: "hedera:testnet", channel: V.HS1.expectChannelId }]);
+    expect(within).not.toHaveProperty("refused");
   });
 
   const cases: Record<string, () => Promise<unknown[]>> = {
@@ -1259,6 +1284,8 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       ],
     "a solana voucher, its challenge's voucherSigner operator (draft-solana-session-00 L1324-1326 at tempoxyz/mpp-specs 08e7dd87: in operator mode MUST NOT authenticate the caller)":
       async () => solanaVoucherCalls(operator),
+    "a hedera use (draft-hedera-session-00 L840-845 at tempoxyz/mpp-specs 08e7dd87: the payload's action is one of open, topUp, voucher and close)":
+      async () => hederaActionCalls("use"),
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });

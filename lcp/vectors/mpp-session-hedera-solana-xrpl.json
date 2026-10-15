@@ -665,6 +665,10 @@
    {
     "case": "a solana voucher, its challenge's voucherSigner operator (draft-solana-session-00 L1324-1326 at tempoxyz/mpp-specs 08e7dd87: in operator mode MUST NOT authenticate the caller)",
     "expect": "mpp/session-action"
+   },
+   {
+    "case": "a hedera use (draft-hedera-session-00 L840-845 at tempoxyz/mpp-specs 08e7dd87: the payload's action is one of open, topUp, voucher and close)",
+    "expect": "mpp/session-action"
    }
   ]
  },
