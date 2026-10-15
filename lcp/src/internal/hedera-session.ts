@@ -40,8 +40,15 @@ export interface HederaVoucherTypedData {
 
 /** A reader of a Hedera network's JSON-RPC relay: an `EvmReader` on a `hedera:` network. */
 export type HederaEvmReader = Omit<EvmReader, "network"> & { readonly network: HederaNetwork };
-/** The opening's read keys: the reported open transaction and its `ChannelOpened` log from the escrow. */
-export type HederaSessionRef = Omit<EvmRef, "network"> & { network: HederaNetwork; transaction: Hex };
+/**
+ * The opening's read keys: the reported open transaction, and either its `ChannelOpened` log from the escrow naming the
+ * channel (`bindingLog`), or, where the channel is not known, the escrow alone (`escrow`, the challenge's
+ * `methodDetails.escrowContract`, lowercase), whose one `ChannelOpened` log in the transaction `recover` and `status`
+ * read.
+ */
+export type HederaSessionRef =
+  | { network: HederaNetwork; transaction: Hex; bindingLog: NonNullable<EvmRef["bindingLog"]>; escrow?: never }
+  | { network: HederaNetwork; transaction: Hex; escrow: Hex; bindingLog?: never };
 /**
  * A close: the transaction whose `ChannelClosed` log from the escrow names the channel, and `search`, the log filter
  * that finds that transaction when no one reports it.

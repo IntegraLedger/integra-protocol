@@ -126,6 +126,10 @@ const leaf = log(DELEGATION_MANAGER, [REDEEMED_DELEGATION_TOPIC, topic(PAYER), t
 const memo = (to: Hex, value: bigint) => log(TOKEN, [TRANSFER_WITH_MEMO_TOPIC, topic(PAYER), topic(to), H], uint(value));
 const deposited = log(BATCH_SETTLEMENT, [DEPOSITED_TOPIC, CHANNEL]);
 const sessionEscrow = "0x1111111111111111111111111111111111111111" as Hex;
+/** The Hedera escrow's `ChannelOpened(channel, payer, payee)` with its four data words: token, signer, salt H, deposit. */
+const channelOpened = (channel: Hex): EvmLog =>
+  log(sessionEscrow, [CHANNEL_OPENED_TOPIC as Hex, channel, topic(PAYER), topic(PAYEE)], ("0x" +
+    [hex64(TOKEN), hex64(STRANGER), H.slice(2), hex64(uint(VALUE))].join("")) as Hex);
 const keyId = PAYEE;
 const witness = log(ACCOUNT_KEYCHAIN, [KEY_AUTHORIZATION_WITNESS_TOPIC, topic(PAYER), H]);
 const toPayee = digest({ to: PAYEE });
@@ -365,6 +369,17 @@ const ROWS: Row[] = [
     [
       { why: "reverted", logs: [log(sessionEscrow, [CHANNEL_OPENED_TOPIC as Hex, CHANNEL, topic(PAYER), topic(PAYEE)])], reverted: true },
       { why: "binding-log-not-found", logs: [] },
+    ],
+  ],
+  // The escrow alone: status reads the escrow's one ChannelOpened with four topics and four data words, as recover does.
+  [
+    "mpp/session/hedera",
+    "the opening, by the escrow alone",
+    HEDERA,
+    { transaction: TX, escrow: sessionEscrow },
+    [
+      { why: "reverted", logs: [], reverted: true },
+      { why: "binding-log-not-found", logs: [channelOpened(CHANNEL), channelOpened(NONCE)] },
     ],
   ],
   [
@@ -731,6 +746,17 @@ describe("an EVM, Tempo or Hedera session recover gives a revert or a verdict re
         { why: "hedera/reverted", logs: [hederaOpened], reverted: true },
         // The escrow's `ChannelOpened` for another channel.
         { why: "hedera/channel-log-not-found", logs: [{ ...hederaOpened, topics: [CHANNEL_OPENED_TOPIC as Hex, NONCE, topic(PAYER), topic(PAYEE)] }] },
+      ],
+      "hedera/not-final",
+    ],
+    [
+      "mpp/session/hedera",
+      HEDERA,
+      { escrow: sessionEscrow },
+      [
+        { why: "hedera/reverted", logs: [], reverted: true },
+        // Two of the escrow's `ChannelOpened` logs, for two channels.
+        { why: "hedera/channel-log-not-found", logs: [channelOpened(CHANNEL), channelOpened(NONCE)] },
       ],
       "hedera/not-final",
     ],

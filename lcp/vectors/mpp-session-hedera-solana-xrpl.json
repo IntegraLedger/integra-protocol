@@ -850,5 +850,205 @@
     "note": "presented is this file's XS2 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "HS6": {
+  "about": "recover and status where the opening names no channel, as a transaction and its challenge reported without the credential do not: reference writes the transaction and the escrow alone, the challenge's methodDetails.escrowContract in lower case (fixed.escrow), and recover reads the one ChannelOpened log from the escrow with four topics and four 32-byte data words, giving its data word 2. Each receipt is read in a block at or below the reader's finalized mark. Row 0 is HS4's live opening receipt, whose one ChannelOpened gives HS4's salt; row 1 adds HS3's ChannelOpened from the same escrow, naming HS1's channel, so two are logged; row 2 is HS4's live close receipt, which logs the escrow's ChannelClosed and no ChannelOpened; row 3 names HS1's channel in a binding log over HS4's opening receipt, whose one ChannelOpened names HS4's channel; row 4 is HS4's opening receipt with status 0 and no logs, as a reverted transaction's receipt holds none. Zero logs, two, or a given channel that no log names is hedera/channel-log-not-found, and a revert hedera/reverted. expectStatus is status's answer for the same ref and receipt: status reads the escrow alone as recover does, so the escrow's one ChannelOpened settles the opening at its block (blockNumber a decimal string), and zero logs or two are failed binding-log-not-found; it reads a binding log by that log, so row 3 is failed binding-log-not-found; a revert is failed reverted.",
+  "rows": [
+   {
+    "case": "one ChannelOpened from the escrow: HS4's opening receipt",
+    "ref": {
+     "network": "hedera:testnet",
+     "transaction": "0x109d8a611ce3a54019be191c7992faf5798b498af0904cf185282cca5f806f66",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae"
+    },
+    "receipt": {
+     "status": 1,
+     "blockNumber": "40845556",
+     "logs": [
+      {
+       "address": "0x0000000000000000000000000000000000001549",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+        "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+      },
+      {
+       "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+       "topics": [
+        "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+        "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000001549000000000000000000000000000000000000000000000000000000000000000074149ff9c871fcfe58844600a2de78eeea94a2da90ab2c0a6d2eb26a3ef31cae0000000000000000000000000000000000000000000000000000000000002710"
+      }
+     ]
+    },
+    "expectSalt": "0x74149ff9c871fcfe58844600a2de78eeea94a2da90ab2c0a6d2eb26a3ef31cae",
+    "expectStatus": {
+     "state": "settled",
+     "finality": "finalized",
+     "blockNumber": "40845556"
+    }
+   },
+   {
+    "case": "two ChannelOpened logs from the escrow: HS4's opening receipt with HS3's log",
+    "ref": {
+     "network": "hedera:testnet",
+     "transaction": "0x109d8a611ce3a54019be191c7992faf5798b498af0904cf185282cca5f806f66",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae"
+    },
+    "receipt": {
+     "status": 1,
+     "blockNumber": "40845556",
+     "logs": [
+      {
+       "address": "0x0000000000000000000000000000000000001549",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+        "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+      },
+      {
+       "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+       "topics": [
+        "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+        "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000001549000000000000000000000000000000000000000000000000000000000000000074149ff9c871fcfe58844600a2de78eeea94a2da90ab2c0a6d2eb26a3ef31cae0000000000000000000000000000000000000000000000000000000000002710"
+      },
+      {
+       "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+       "topics": [
+        "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+        "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+        "0x000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe00"
+       ],
+       "data": "0x00000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000000000ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000989680"
+      }
+     ]
+    },
+    "expect": "hedera/channel-log-not-found",
+    "expectStatus": {
+     "state": "failed",
+     "why": "binding-log-not-found"
+    }
+   },
+   {
+    "case": "no ChannelOpened from the escrow: HS4's close receipt",
+    "ref": {
+     "network": "hedera:testnet",
+     "transaction": "0x6e1b68acd0ae78b0f92dab65e25f44cf2bc590d6d71f20c0121081a6f10c86ed",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae"
+    },
+    "receipt": {
+     "status": 1,
+     "blockNumber": "40845559",
+     "logs": [
+      {
+       "address": "0x0000000000000000000000000000000000001549",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000000fa0"
+      },
+      {
+       "address": "0x0000000000000000000000000000000000001549",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000001770"
+      },
+      {
+       "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+       "topics": [
+        "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
+        "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000000fa00000000000000000000000000000000000000000000000000000000000001770"
+      }
+     ]
+    },
+    "expect": "hedera/channel-log-not-found",
+    "expectStatus": {
+     "state": "failed",
+     "why": "binding-log-not-found"
+    }
+   },
+   {
+    "case": "a binding log naming HS1's channel over HS4's opening receipt, whose one ChannelOpened names HS4's channel",
+    "ref": {
+     "network": "hedera:testnet",
+     "transaction": "0x109d8a611ce3a54019be191c7992faf5798b498af0904cf185282cca5f806f66",
+     "bindingLog": {
+      "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+      "topic0": "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+      "index": 1,
+      "value": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815"
+     }
+    },
+    "receipt": {
+     "status": 1,
+     "blockNumber": "40845556",
+     "logs": [
+      {
+       "address": "0x0000000000000000000000000000000000001549",
+       "topics": [
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+        "0x0000000000000000000000008aaf6690c2a6397d595f97e224fc19759de6fdae"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+      },
+      {
+       "address": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+       "topics": [
+        "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+        "0x6d0dc29fe1ce582acd6d65450582421e7800d0447c6bf5bcfb15b99cebc5cba7",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0",
+        "0x0000000000000000000000000080f617e5f61f60d7b195dcc955287d4f8df1d0"
+       ],
+       "data": "0x0000000000000000000000000000000000000000000000000000000000001549000000000000000000000000000000000000000000000000000000000000000074149ff9c871fcfe58844600a2de78eeea94a2da90ab2c0a6d2eb26a3ef31cae0000000000000000000000000000000000000000000000000000000000002710"
+      }
+     ]
+    },
+    "expect": "hedera/channel-log-not-found",
+    "expectStatus": {
+     "state": "failed",
+     "why": "binding-log-not-found"
+    }
+   },
+   {
+    "case": "HS4's opening receipt with status 0 and no logs, as a reverted transaction's receipt holds none",
+    "ref": {
+     "network": "hedera:testnet",
+     "transaction": "0x109d8a611ce3a54019be191c7992faf5798b498af0904cf185282cca5f806f66",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae"
+    },
+    "receipt": {
+     "status": 0,
+     "blockNumber": "40845556",
+     "logs": []
+    },
+    "expect": "hedera/reverted",
+    "expectStatus": {
+     "state": "failed",
+     "why": "reverted"
+    }
+   }
+  ]
  }
 }

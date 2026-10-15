@@ -7,8 +7,8 @@
 import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
-import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmRef } from "./evm.js";
-import { failedAt, finalAt, isLog, isReceipt } from "./internal/evm.js";
+import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmReceipt, type EvmRef } from "./evm.js";
+import { failedAt, finalAt, isLog, isReceipt, settledAt } from "./internal/evm.js";
 import { isAddress, normalHash } from "./fields.js";
 import {
   CHANNEL_CLOSED_TOPIC,
@@ -261,15 +261,18 @@ async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmR
   return { ...presented, landed: { transaction: tx as Hex, blockNumber: receipt.blockNumber, logs } };
 }
 
-/** The `ChannelOpened` logs from `escrow` among `logs` that name `channel`, with four words of data. */
-function channelOpened(logs: readonly unknown[], escrow: Hex, channel: string): EvmLog[] {
+/**
+ * The `ChannelOpened` logs from `escrow` among `logs` with four topics and four words of data that name `channel`, or
+ * name any channel where `channel` is null. `escrow` and `channel` are lowercase.
+ */
+function channelOpened(logs: readonly unknown[], escrow: Hex, channel: string | null): EvmLog[] {
   return logs.filter(
     (l): l is EvmLog =>
       isLog(l) &&
       l.address.toLowerCase() === escrow &&
       l.topics.length === 4 &&
       l.topics[0]!.toLowerCase() === CHANNEL_OPENED_TOPIC &&
-      l.topics[1]!.toLowerCase() === channel &&
+      (channel === null || l.topics[1]!.toLowerCase() === channel) &&
       bytesOf(l.data)?.length === 128,
   );
 }
@@ -311,7 +314,13 @@ async function hederaBound(input: unknown): Promise<AtrHash | Refusal> {
   return e.h;
 }
 
-/** The opening's read keys: the reported open transaction and its `ChannelOpened` log naming the channel. */
+/**
+ * The opening's read keys: the reported open transaction and its `ChannelOpened` log from the escrow naming the
+ * channel. Where the opening names no channel (`payload.channelId` absent), as a transaction and its challenge reported
+ * without the credential do not, they are the transaction and the escrow alone, the challenge's
+ * `methodDetails.escrowContract`, lowercase: `recover` and `status` read the escrow's one `ChannelOpened` log there. A
+ * `txHash`, or a `channelId` that is present, that is not a 32-byte hash is `mpp/credential-malformed`.
+ */
 async function hederaReference(input: unknown): Promise<HederaSessionRef | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
@@ -322,8 +331,10 @@ async function hederaReference(input: unknown): Promise<HederaSessionRef | Refus
   const escrow = hederaEscrow(e.checked);
   if (isRefusal(escrow)) return escrow;
   const tx = normalHash(e.payload["txHash"]);
+  if (tx === null) return refusal("mpp/credential-malformed");
+  if (e.payload["channelId"] === undefined) return { network, transaction: tx as Hex, escrow };
   const channel = normalHash(e.payload["channelId"]);
-  if (tx === null || channel === null) return refusal("mpp/credential-malformed");
+  if (channel === null) return refusal("mpp/credential-malformed");
   return {
     network,
     transaction: tx as Hex,
@@ -331,61 +342,111 @@ async function hederaReference(input: unknown): Promise<HederaSessionRef | Refus
   };
 }
 
-/** The opening, read like any EVM payment through the relay; or a reported close, whose `ChannelClosed` names the channel. */
-async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: HederaEvmReader): Promise<EvmBreadthStatus> {
-  const evmRef: EvmRef & { transaction: Hex } =
-    isObject(ref) && "phase" in ref
-      ? {
-          network: ref.network,
-          transaction: ref.transaction,
-          bindingLog: { address: ref.escrow, topic0: CHANNEL_CLOSED_TOPIC, index: 1, value: ref.channel },
-        }
-      : ref;
-  return evmStatus(evmRef, reader as EvmReader);
+/**
+ * The escrow and the channel an opening ref names, lowercase: its binding log's address and value, or its escrow and no
+ * channel. Null for a ref that names neither or both, a binding log that is not an object with an address `address` and
+ * a 32-byte `value`, or an escrow that is not an address.
+ */
+function openingKeys(ref: HederaSessionRef): { escrow: Hex; channel: string | null } | null {
+  const b: unknown = ref.bindingLog;
+  const escrow: unknown = ref.escrow;
+  if (b !== undefined && escrow === undefined) {
+    if (!isObject(b) || !isAddress(b["address"])) return null;
+    const channel = normalHash(b["value"]);
+    return channel === null ? null : { escrow: (b["address"] as string).toLowerCase() as Hex, channel };
+  }
+  if (escrow === undefined || b !== undefined || !isAddress(escrow)) return null;
+  return { escrow: escrow.toLowerCase() as Hex, channel: null };
 }
 
 /**
- * Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log naming the channel. A ref or reader that is
- * not an object, or a reader for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge, and
- * so is a ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` is present and not an object with an
- * address `address` and a 32-byte `value`, the members `recover` reads; nothing is read for any of them. A failed read,
- * or a reader answer that is not a receipt or holds a log that is not an object with a string `address`, an array of
- * string `topics` and a string `data`, is `hedera/unreadable`. No receipt is `hedera/not-found`. A reverted one is
- * `hedera/reverted`, whether or not it holds the opening's log, and a receipt with no `ChannelOpened` log from the binding
- * log's address naming its channel with four words of data is `hedera/channel-log-not-found`. Both are given only where
- * the receipt's block is at or below the reader's `finalized` mark: above it, or where that mark cannot be read, each is
- * `hedera/not-final`, a read to repeat, as the EVM and Tempo recovers answer, since a block above the mark can be
- * replaced by one in which the transaction succeeds or holds other logs. The mark is read only for those. A ref with no
- * binding log names no log to read: once the receipt is not a revert, it is `hedera/channel-log-not-found`. At most two
- * calls.
+ * The opening's receipt, read by `transaction`, and its `ChannelOpened` logs from the escrow naming the channel, or
+ * naming any channel where `keys` names none (`channelOpened`): `recover` and `status` read an opening alike. A failed
+ * read, or a reader answer that is not a receipt or holds a log that is not an object with a string `address`, an
+ * array of string `topics` and a string `data`, is `"unreadable"`; no receipt is `"not-found"`. One call.
+ */
+async function openingRead(
+  transaction: Hex,
+  keys: { escrow: Hex; channel: string | null },
+  reader: HederaEvmReader,
+): Promise<{ receipt: EvmReceipt; opened: EvmLog[] } | "not-found" | "unreadable"> {
+  let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
+  try {
+    receipt = await reader.receipt(transaction);
+  } catch {
+    return "unreadable";
+  }
+  if (receipt === null) return "not-found";
+  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return "unreadable";
+  return { receipt, opened: channelOpened(receipt.logs, keys.escrow, keys.channel) };
+}
+
+/**
+ * The opening, read like any EVM payment through the relay by its `ChannelOpened` log naming the channel; or a reported
+ * close, whose `ChannelClosed` names the channel. An opening ref that names the escrow alone is read as `recover` reads
+ * it: the receipt's one `ChannelOpened` log from the escrow with four topics and four 32-byte words of data settles the
+ * opening, at the highest finality mark its block reached. None, or more than one, is failed `binding-log-not-found`,
+ * and a revert failed `reverted`, each where the receipt's block is at or below the reader's `finalized` mark, and
+ * pending above it or where that mark cannot be read. No receipt is pending `not-found`, and a failed read or a reader
+ * answer that is not a receipt pending `unreadable`. A ref that names neither a binding log nor an escrow, or both, an
+ * escrow that is not an address, a `transaction` that is not a 32-byte hash, or a reader for another network than the
+ * ref's, is pending `unreadable`, with nothing read.
+ */
+async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: HederaEvmReader): Promise<EvmBreadthStatus> {
+  if (isObject(ref) && "phase" in ref) {
+    const close: EvmRef & { transaction: Hex } = {
+      network: ref.network,
+      transaction: ref.transaction,
+      bindingLog: { address: ref.escrow, topic0: CHANNEL_CLOSED_TOPIC, index: 1, value: ref.channel },
+    };
+    return evmStatus(close, reader as EvmReader);
+  }
+  if (!isObject(ref) || (ref.bindingLog !== undefined && ref.escrow === undefined)) {
+    return evmStatus(ref as EvmRef & { transaction: Hex }, reader as EvmReader);
+  }
+  const keys = openingKeys(ref);
+  if (keys === null || normalHash(ref.transaction) === null || !isObject(reader) || reader.network !== ref.network) {
+    return { state: "pending", why: "unreadable" };
+  }
+  const read = await openingRead(ref.transaction, keys, reader);
+  if (typeof read === "string") return { state: "pending", why: read };
+  const { receipt, opened } = read;
+  if (receipt.status === 0) return failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
+  if (opened.length !== 1) return failedAt(receipt.blockNumber, "binding-log-not-found", reader as EvmReader);
+  return settledAt(receipt.blockNumber, reader as EvmReader);
+}
+
+/**
+ * Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log, from what a transaction and its challenge
+ * identify. The ref names the log by its binding log's address and value (the escrow and the channel, as `reference`
+ * writes them from an opening that names the channel), or by `escrow` alone, the challenge's
+ * `methodDetails.escrowContract`, where the channel is not known. The log read is the one log in the receipt from that
+ * address with four topics, `topics[0]` `CHANNEL_OPENED_TOPIC` and, where the binding log names a channel, `topics[1]`
+ * that value (hex in either case), and four 32-byte words of data. A ref or reader that is not an object, or a reader
+ * for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge, and so is a ref whose
+ * `transaction` is not a 32-byte hash, that names neither a `bindingLog` nor an `escrow`, or both, whose `bindingLog` is
+ * not an object with an address `address` and a 32-byte `value`, or whose `escrow` is not an address; nothing is read
+ * for any of them. A failed read, or a reader answer that is not a receipt or holds a log that is not an object with a
+ * string `address`, an array of string `topics` and a string `data`, is `hedera/unreadable`. No receipt is
+ * `hedera/not-found`. A reverted one is `hedera/reverted`, whether or not it holds the opening's log, and a receipt that
+ * holds no such log, or more than one, is `hedera/channel-log-not-found`. Both are given only where the receipt's block
+ * is at or below the reader's `finalized` mark: above it, or where that mark cannot be read, each is `hedera/not-final`,
+ * a read to repeat, as the EVM and Tempo recovers answer, since a block above the mark can be replaced by one in which
+ * the transaction succeeds or holds other logs. The mark is read only for those. At most two calls.
  */
 async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
-  const b = ref.bindingLog;
-  const readable = b === undefined || (isObject(b) && isAddress(b.address) && normalHash(b.value) !== null);
-  if (normalHash(ref.transaction) === null || !readable) return refusal("hedera/wrong-reader");
-  let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
-  try {
-    receipt = await reader.receipt(ref.transaction);
-  } catch {
-    return refusal("hedera/unreadable");
-  }
-  if (receipt === null) return refusal("hedera/not-found");
-  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
+  const keys = openingKeys(ref);
+  if (normalHash(ref.transaction) === null || keys === null) return refusal("hedera/wrong-reader");
+  const read = await openingRead(ref.transaction, keys, reader);
+  if (read === "not-found") return refusal("hedera/not-found");
+  if (read === "unreadable") return refusal("hedera/unreadable");
+  const { receipt, opened } = read;
   if (receipt.status === 0) {
-    const read = await failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
-    return read.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
+    const reverted = await failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
+    return reverted.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
   }
-  if (b === undefined) return refusal("hedera/channel-log-not-found");
-  const log = receipt.logs.find(
-    (l) =>
-      l.address.toLowerCase() === b.address.toLowerCase() &&
-      l.topics.length === 4 &&
-      l.topics[0]!.toLowerCase() === CHANNEL_OPENED_TOPIC &&
-      l.topics[1]!.toLowerCase() === b.value.toLowerCase(),
-  );
-  const data = log === undefined ? undefined : bytesOf(log.data);
-  if (data !== undefined && data.length === 128) return hexOf(wordAt(data, 2)!) as AtrHash;
+  if (opened.length === 1) return hexOf(wordAt(bytesOf(opened[0]!.data)!, 2)!) as AtrHash;
   return (await finalAt(receipt.blockNumber, reader as EvmReader))
     ? refusal("hedera/channel-log-not-found")
     : refusal("hedera/not-final");

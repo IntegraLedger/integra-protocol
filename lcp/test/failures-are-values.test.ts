@@ -889,11 +889,12 @@ describe("mpp", () => {
     expect(marks).toBe(0);
   });
   // The ref reference writes for HS4's opening (mpp-session-hedera-solana-xrpl.json) names the transaction, a 32-byte
-  // hash, and the binding log, whose address is the escrow's and whose value is the channel, a 32-byte hash; hex digits
-  // read the same in either case (docs/guides/rails.md). A ref whose transaction or binding log is not of that form is a
-  // ref recover cannot read: `hedera/wrong-reader`, with nothing read, as the XRPL session's recover answers one
-  // (docs/guides/mpp.md, "Answering the buyer").
-  it("sessionHedera.recover refuses a ref whose transaction is not a 32-byte hash, or whose bindingLog is not an object with an address and a 32-byte value, as hedera/wrong-reader, with nothing read", async () => {
+  // hash, and either the binding log, whose address is the escrow's and whose value is the channel, a 32-byte hash, or,
+  // where the opening names no channel, the escrow alone, an address; hex digits read the same in either case
+  // (docs/guides/rails.md). A ref whose transaction, binding log or escrow is not of that form, or that names neither the
+  // binding log nor the escrow, or both, is a ref recover cannot read: `hedera/wrong-reader`, with nothing read, as the
+  // XRPL session's recover answers one (docs/guides/mpp.md, "Answering the buyer").
+  it("sessionHedera.recover refuses a ref whose transaction is not a 32-byte hash, whose bindingLog is not an object with an address and a 32-byte value, whose escrow is not an address, or that names neither or both, as hedera/wrong-reader, with nothing read", async () => {
     const S = load("mpp-session-hedera-solana-xrpl.json");
     const network = "hedera:testnet";
     const open = S.HS4.openReceipt;
@@ -907,11 +908,14 @@ describe("mpp", () => {
     };
     const b = { address: S.fixed.escrow.toLowerCase(), topic0: CHANNEL_OPENED_TOPIC, index: 1, value: S.HS4.channel };
     const ref = { network, transaction: S.HS4.openTx, bindingLog: b };
+    const escrowRef = { network, transaction: S.HS4.openTx, escrow: b.address };
     const upper = (h: string) => `0x${h.slice(2).toUpperCase()}`;
     const controls = [
       ref,
       { ...ref, transaction: upper(ref.transaction) },
       { ...ref, bindingLog: { ...b, address: upper(b.address), value: upper(b.value) } },
+      escrowRef,
+      { ...escrowRef, escrow: upper(b.address) },
     ];
     for (const control of controls) {
       reads = 0;
@@ -927,14 +931,15 @@ describe("mpp", () => {
       ...[1, null, H, b.address.slice(0, 40)].map((address) => ({ ...b, address })),
       ...[5, null, b.address, `${b.value}00`].map((value) => ({ ...b, value })),
     ];
+    const escrows: unknown[] = [...NOT_OBJECTS, {}, H, b.address.slice(0, 40), `${b.address}00`];
     const malformed: [string, unknown][] = [
-      ...rowsOf(bindingLogs, "bindingLogs", {
-        keep: ["the binding logs a ref carries", (bl) => bl !== undefined],
-        leave: ["undefined, a ref with no binding log, which recover reads: it is not a malformed ref", (bl) => bl === undefined],
-      })
-        .map((bl): [string, unknown] => [`bindingLog ${JSON.stringify(bl)}`, { ...ref, bindingLog: bl }]),
+      ...rowsOf(bindingLogs, "bindingLogs").map((bl): [string, unknown] => [`bindingLog ${JSON.stringify(bl)}`, { ...ref, bindingLog: bl }]),
+      ...rowsOf(escrows, "escrows").map((e): [string, unknown] => [`escrow ${JSON.stringify(e)}`, { ...escrowRef, escrow: e }]),
       ...[null, 1, H.slice(0, 64), `${H}00`].map((t): [string, unknown] => [`transaction ${String(t)}`, { ...ref, transaction: t }]),
+      ...[null, 1, H.slice(0, 64), `${H}00`].map((t): [string, unknown] => [`transaction ${String(t)}, escrow`, { ...escrowRef, transaction: t }]),
       ["no transaction", without("transaction")(ref)],
+      ["neither a binding log nor an escrow", without("bindingLog")(ref)],
+      ["both a binding log and an escrow", { ...ref, escrow: b.address }],
     ];
     for (const [label, bad] of malformed) {
       reads = 0;

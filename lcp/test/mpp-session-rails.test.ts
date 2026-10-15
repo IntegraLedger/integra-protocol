@@ -204,7 +204,9 @@ describe("mpp/session/hedera", () => {
   // A receipt status of 0 is a transaction that failed (EIP-658, the JSON-RPC receipt's 0x0), whose logs the chain
   // reverted: refusals.md gives `hedera/reverted` for a session opening that reverted. HS3's and HS4's openings with
   // status 1 give H and HS4's salt; with status 0 each is a revert, whatever logs the reader gives with it, and a ref
-  // naming no binding log reads the revert first. A log of another shape is read first of all: `hedera/unreadable`.
+  // naming the escrow alone reads the revert first, and with status 1 the salt of the escrow's one ChannelOpened. A ref
+  // naming neither the escrow nor a binding log is `hedera/wrong-reader`. A log of another shape is read first of all:
+  // `hedera/unreadable`.
   it("recover: a reverted opening is hedera/reverted, as the EVM and Tempo recovers answer a revert", async () => {
     const r4 = V.HS4;
     const opaque = b64u(canonicalJson({ legalContext: toLcpString(r4.salt), legalContextUrl: V.fixed.link }) as string);
@@ -221,9 +223,12 @@ describe("mpp/session/hedera", () => {
       expect(await sessionHedera.recover(ref, at(receipt))).toBe(salt);
       expect(await sessionHedera.recover(ref, at({ ...receipt, status: 0 }))).toEqual(refused("hedera/reverted"));
       expect(await sessionHedera.recover(ref, at({ ...receipt, status: 0, logs: [] }))).toEqual(refused("hedera/reverted"));
-      const { bindingLog: _bindingLog, ...unbound } = ref;
-      expect(await sessionHedera.recover(unbound, at({ ...receipt, status: 0 }))).toEqual(refused("hedera/reverted"));
-      expect(await sessionHedera.recover(unbound, at(receipt))).toEqual(refused("hedera/channel-log-not-found"));
+      if (ref.bindingLog === undefined) throw new Error("no binding log");
+      const { bindingLog, ...unbound } = ref;
+      const escrowOnly = { ...unbound, escrow: bindingLog.address };
+      expect(await sessionHedera.recover(escrowOnly, at({ ...receipt, status: 0 }))).toEqual(refused("hedera/reverted"));
+      expect(await sessionHedera.recover(escrowOnly, at(receipt))).toBe(salt);
+      expect(await sessionHedera.recover(unbound as never, at(receipt))).toEqual(refused("hedera/wrong-reader"));
       const misshapen = { ...receipt, status: 0, logs: [...receipt.logs, { ...receipt.logs[0], data: undefined }] };
       expect(await sessionHedera.recover(ref, at(misshapen))).toEqual(refused("hedera/unreadable"));
     }
@@ -256,6 +261,65 @@ describe("mpp/session/hedera", () => {
       state: "failed",
       why: "binding-log-not-found",
     });
+  });
+
+  // HS6 (mpp-session-hedera-solana-xrpl.json): an opening reported as its transaction and its challenge, without the
+  // credential, names no channel. reference writes the transaction and the challenge's escrow, and recover reads the
+  // escrow's one ChannelOpened log in the receipt: HS4's live opening gives HS4's salt, and two such logs, none, a
+  // binding log naming a channel no log names, or a revert are refused. Each refusal is given at or below the reader's
+  // finalized mark (50,000,000 here, above HS4's block), and is hedera/not-final above it. status reads the same ref as
+  // recover does, and each row's expectStatus is its answer at the mark: settled where recover gives the salt, and
+  // failed where recover refuses; above the mark (both marks below the block here) the settlement is at `latest` and
+  // each failed answer pending.
+  it("HS6: recover and status from the escrow where the opening names no channel", async () => {
+    const r4 = V.HS4;
+    const opaque = b64u(canonicalJson({ legalContext: toLcpString(r4.salt), legalContextUrl: V.fixed.link }) as string);
+    const reported = cred({ ...C_H, id: r4.challengeId, opaque }, { action: "open", txHash: r4.openTx, cumulativeAmount: "0", signature: "0x00" });
+    const rows = rowsOf(V.HS6.rows, "mpp-session-hedera-solana-xrpl.json HS6.rows", { exact: 5 });
+    expect(await sessionHedera.reference(reported)).toEqual(rows[0].ref);
+    const below = (r: EvmReceipt) => ({ ...hederaReader({}), receipt: async () => r, blockNumber: async () => r.blockNumber - 1n });
+    for (const row of rows) {
+      const receipt = asReceipt(row.receipt);
+      const reader = hederaReader({ [row.ref.transaction]: receipt });
+      if (row.expectSalt !== undefined) {
+        expect(await sessionHedera.recover(row.ref, reader), row.case).toBe(row.expectSalt);
+        expect(await sessionHedera.recover(row.ref, below(receipt)), row.case).toBe(row.expectSalt);
+      } else {
+        expect(await sessionHedera.recover(row.ref, reader), row.case).toEqual(refused(row.expect));
+        expect(await sessionHedera.recover(row.ref, below(receipt)), row.case).toEqual(refused("hedera/not-final"));
+      }
+      const { state, why, finality, blockNumber } = row.expectStatus;
+      if (state === "settled") {
+        expect(row.expectSalt, row.case).toBeDefined();
+        expect(await sessionHedera.status(row.ref, reader), row.case).toEqual({ state, finality, blockNumber: BigInt(blockNumber) });
+        expect(await sessionHedera.status(row.ref, below(receipt)), row.case).toEqual({ state, finality: "latest", blockNumber: BigInt(blockNumber) });
+      } else {
+        expect([state, row.expectSalt], row.case).toEqual(["failed", undefined]);
+        expect(await sessionHedera.status(row.ref, reader), row.case).toEqual({ state, why });
+        expect(await sessionHedera.status(row.ref, below(receipt)), row.case).toEqual({ state: "pending", why });
+      }
+    }
+    // One receipt read for the escrow alone; a reader that finds none, or whose read fails, is pending.
+    let reads = 0;
+    const counted = { ...hederaReader({}), receipt: async () => (reads++, null) };
+    expect(await sessionHedera.status(rows[0].ref, counted)).toEqual({ state: "pending", why: "not-found" });
+    expect(reads).toBe(1);
+    const failing = { ...hederaReader({}), receipt: async () => Promise.reject(new ReaderError("transport")) };
+    expect(await sessionHedera.status(rows[0].ref, failing)).toEqual({ state: "pending", why: "unreadable" });
+    // A ref status cannot read, or a reader for another network, is pending unreadable, with nothing read.
+    const { escrow, ...neither } = rows[0].ref;
+    const unreadable: [string, unknown, HederaEvmReader][] = [
+      ["neither a binding log nor an escrow", neither, counted],
+      ["both a binding log and an escrow", { ...rows[3].ref, escrow }, counted],
+      ["an escrow that is not an address", { ...rows[0].ref, escrow: `${escrow}00` }, counted],
+      ["a transaction that is not a 32-byte hash", { ...rows[0].ref, transaction: rows[0].ref.transaction.slice(0, 64) }, counted],
+      ["a reader for another network", rows[0].ref, { ...counted, network: "hedera:mainnet" }],
+    ];
+    for (const [label, ref, reader] of unreadable) {
+      reads = 0;
+      expect(await sessionHedera.status(ref as never, reader), label).toEqual({ state: "pending", why: "unreadable" });
+      expect(reads, label).toBe(0);
+    }
   });
 
   it("HS5: channel kinds, boundWithin and until", async () => {

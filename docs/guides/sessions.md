@@ -279,8 +279,13 @@ channel is read by the same mark: `hedera/not-final` above it, and landed at or 
 list of logs), or that holds a log that is not an object with a string `address`, an array of string `topics` and a
 string `data`, is `hedera/unreadable`, a read to repeat, and no mark is read for it. `recover` reads the same mark: an
 opening that reverted, whether or not its receipt holds the opening's log, is `hedera/reverted`, and a receipt without
-the opening's `ChannelOpened` log `hedera/channel-log-not-found`, each only once its block is at or below the reader's
-`finalized` mark, and `hedera/not-final` above that mark or where it cannot be read. On
+exactly one opening `ChannelOpened` log `hedera/channel-log-not-found`, each only once its block is at or below the
+reader's `finalized` mark, and `hedera/not-final` above that mark or where it cannot be read. `recover` works from what
+a transaction and its challenge identify: where the opening names no channel, as a transaction reported without its
+credential does not, `reference` gives the transaction and the challenge's `methodDetails.escrowContract`, and
+`recover` reads the escrow's one `ChannelOpened` log, with four topics and four data words, in that transaction.
+`status` reads that escrow-only reference as `recover` does: the escrow's one such log settles the opening, and none,
+or more than one, is failed `binding-log-not-found` at or below the reader's `finalized` mark and pending above it. On
 `mpp/subscription/tempo`,
 the close is the account keychain's `KeyRevoked` naming the payer's account and the access key, so `closeRef(challenge,
 channel, account)` takes the account the activation registered the key for, which `keySearch` reads from the
