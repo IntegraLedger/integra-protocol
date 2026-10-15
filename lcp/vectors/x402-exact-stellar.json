@@ -1004,6 +1004,40 @@
      }
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"abc\", which is not a decimal i128",
+    "pairing": "x402/exact/stellar",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "abc",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 5 x (2^32 - 1) + 1: the entry's expiration ledger, a uint32, is the current ledger plus ceil(maxTimeoutSeconds / 5)",
+    "pairing": "x402/exact/stellar",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO",
+     "maxTimeoutSeconds": 21474836476,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

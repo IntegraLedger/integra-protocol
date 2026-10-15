@@ -66,8 +66,11 @@ function isThis(option: PaymentRequirements): boolean {
   return invoiceId === undefined || typeof invoiceId === "string";
 }
 
-/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
-const filter = filterOf(isThis);
+/**
+ * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
+ * pairing whose `Amount` `build` can write (`payable`), else `x402/option-malformed`.
+ */
+const filter = filterOf(isThis, payable);
 
 /** True when `build` can write the Payment's `Amount`: XRP drops, or an issued amount with `extra.issuer`. */
 function payable(o: PaymentRequirements): boolean {
@@ -93,7 +96,7 @@ function advertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
-  const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
+  const placed = advertiseFor(filter)(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   const invoiceId = toLcpString(h);
   const current = offer.extra?.["invoiceId"];
@@ -111,7 +114,6 @@ async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymen
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (!payable(accepted)) return refusal("x402/option-malformed");
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (accepted.extra!["invoiceId"] !== toLcpString(h)) return refusal("xrpl/carrier-mismatch");
   const u32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;

@@ -383,12 +383,21 @@ describe("the identity digest and the reference", () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
     expect(await exactEip3009.reference(p)).toEqual(keysOfV2);
   });
-  it("reference gives the same keys whatever the accepted option's maxTimeoutSeconds", async () => {
+  // x402 v2's PaymentRequirements gives maxTimeoutSeconds as a number of seconds; build writes now plus it into
+  // validBefore, so the pairing's filter serves a positive safe integer and no other value.
+  it("reference records no maxTimeoutSeconds: every timeout the filter serves gives the same keys, and one it does not is refused as bound and advertise refuse it", async () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
+    const served = rowsOf([1, 3600, Number.MAX_SAFE_INTEGER].map((t) => ({ ...p.accepted, maxTimeoutSeconds: t })), "the accepted options with maxTimeoutSeconds 1, 3600 and 2^53 - 1", { exact: 3 });
+    for (const accepted of served) expect(await exactEip3009.reference({ ...p, accepted })).toEqual(keysOfV2);
     const untimed = structuredClone(p);
     delete (untimed.accepted as Partial<PaymentRequirements>).maxTimeoutSeconds;
     const timeouts = rowsOf([0, 1.5].map((t) => ({ ...p.accepted, maxTimeoutSeconds: t })).concat(untimed.accepted), "the accepted options with maxTimeoutSeconds 0, 1.5 and none", { exact: 3 });
-    for (const accepted of timeouts) expect(await exactEip3009.reference({ ...p, accepted })).toEqual(keysOfV2);
+    for (const accepted of timeouts) {
+      const doc = { x402Version: 2, resource: { url: "https://pairing.invalid/" }, accepts: [accepted] } as PaymentRequired;
+      expect(await exactEip3009.reference({ ...p, accepted })).toEqual(refused("x402/option-malformed"));
+      expect(await exactEip3009.bound({ ...p, accepted })).toEqual(refused("x402/option-malformed"));
+      expect(exactEip3009.advertise(doc, H, LINK, accepted)).toEqual(refused("x402/option-malformed"));
+    }
   });
   it("authorizer gives the authorization's from, lowercase, and refuses what bound refuses", async () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;

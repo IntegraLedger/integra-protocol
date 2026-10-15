@@ -392,6 +392,7 @@ function batchIdOf(option: PaymentRequirements): BatchPairingId | undefined {
   return undefined;
 }
 
+/** True when the amount is a decimal below 2^128 and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
   return (
     typeof o.amount === "string" &&
@@ -402,12 +403,28 @@ function payable(o: PaymentRequirements): boolean {
   );
 }
 
+/**
+ * What the EVM `build` can pay: `payable`, and a `payTo` and asset that are not the zero address, since the channel
+ * contract's `deposit` refuses a configuration whose receiver or token is.
+ */
+function evmPayable(o: PaymentRequirements): boolean {
+  return payable(o) && nonZeroAddress(o.payTo) && nonZeroAddress(o.asset);
+}
+
+/** What the Solana `build` can pay: `payable`, with the amount below 2^64, the voucher's `u64`. */
+function svmPayable(o: PaymentRequirements): boolean {
+  return payable(o) && BigInt(o.amount) < U64_LIMIT;
+}
+
 const isId = (id: BatchPairingId) => (o: PaymentRequirements): boolean => batchIdOf(o) === id;
 
-/** Each pairing's option filter, which its `read`, `build` and `bound` apply; its `advertise` adds what `build` can pay. */
+/**
+ * Each pairing's option filter, which its `advertise`, `read`, `build`, `buildWithin`, `bound`, `reference` and channel
+ * reads apply: an option the pairing names, refused `x402/option-malformed` where its `build` cannot pay it.
+ */
 const FILTER: Readonly<Record<BatchPairingId, OptionFilter>> = {
-  [EVM_ID]: filterOf(isId(EVM_ID)),
-  [SVM_ID]: filterOf(isId(SVM_ID)),
+  [EVM_ID]: filterOf(isId(EVM_ID), evmPayable),
+  [SVM_ID]: filterOf(isId(SVM_ID), svmPayable),
   [CF_ID]: filterOf(isId(CF_ID)),
 };
 
@@ -466,15 +483,14 @@ function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
 /**
  * The opening's two authorizations: the deposit's token authorization, then the voucher. A `from` or `payerAuthorizer`
  * that is not an address string, an `authSalt` that is not a string of `0x` and 64 hex digits, or a `deposit` or `now`
- * out of range is `x402/option-malformed`, as is a `from`, or an option's `payTo` or `asset`, that is the zero address:
- * the channel contract's `deposit` refuses a configuration whose payer, receiver or token is.
+ * out of range is `x402/option-malformed`, as is a `from` that is the zero address: the channel contract's `deposit`
+ * refuses a configuration whose payer is. The option filter refuses an option whose `payTo` or asset is.
  */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, FILTER[EVM_ID]);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (!payable(accepted)) return refusal("x402/option-malformed");
   const salt = normalHash(h);
   if (salt === null || !isAddress(c.from) || !isAddress(c.payerAuthorizer) || !isHash32(c.authSalt)) {
     return refusal("x402/option-malformed");
@@ -778,7 +794,7 @@ function evmAdvertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
-  return advertiseFor(filterOf(isId(EVM_ID), payable))(doc, h, link, offer, agreementUrl);
+  return advertiseFor(FILTER[EVM_ID])(doc, h, link, offer, agreementUrl);
 }
 
 /**
@@ -1016,7 +1032,6 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   const ok = chosen(c.required, c.accepted, FILTER[SVM_ID]);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (!payable(accepted) || BigInt(accepted.amount) >= U64_LIMIT) return refusal("x402/option-malformed");
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const extra = accepted.extra!;
   const memo = extra["memo"];
@@ -1187,7 +1202,7 @@ function svmAdvertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
-  const placed = advertiseFor(filterOf(isId(SVM_ID), (o) => payable(o) && BigInt(o.amount) < U64_LIMIT))(doc, h, link, offer, agreementUrl);
+  const placed = advertiseFor(FILTER[SVM_ID])(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   const memo = toLcpString(h);
   const current = offer.extra?.["memo"];

@@ -982,7 +982,8 @@ function rawAddress(s: unknown): Address | null {
 
 /**
  * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra`, the amount as a Jetton amount
- * below 2^120 and `maxTimeoutSeconds` a positive safe integer, which `build` writes into the request. The network is
+ * below 2^120 and `maxTimeoutSeconds` a positive integer below 2^32, which `build` writes into the request (the
+ * wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds`). The network is
  * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
  * read at; any other `tvm:` network is `tvm/network-malformed`. `pairingOf`, `advertise`, `read` and `build` apply it,
  * and `bound` and `reference` hold the option a presented payment echoes to it.
@@ -1004,7 +1005,8 @@ const check: OptionFilter = (o) => {
   const response = extra["responseDestination"];
   if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
   if (decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
-  if (!Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds < 1) return refusal("tvm/option-malformed");
+  const t = o.maxTimeoutSeconds;
+  if (!isUint32(t) || t < 1) return refusal("tvm/option-malformed");
   return true;
 };
 

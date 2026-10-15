@@ -1028,13 +1028,13 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
     for (const amount of ["1", (2n ** 128n - 1n).toString()]) expect(batchEvm.channel.kind(refund(amount)), amount).toBe("within");
   });
 
-  it("the EVM build refuses a from, or an option's payTo or asset, that is the zero address, and builds with a zero payerAuthorizer", async () => {
+  it("the EVM build refuses a from, or an option's payTo or asset, that is the zero address, and builds with a zero payerAuthorizer; the filter refuses such an option at advertise and read too", async () => {
     const zeros = carrying("zeroMembers", 1);
     expect(zeros.map((r) => [r.pairing, r.call, r.zeroMembers])).toEqual([["x402/batch-settlement/eip155", "build", ["from", "payTo", "asset"]]]);
     const ZERO = "0x0000000000000000000000000000000000000000";
+    const placed = unwrap(batchEvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [E.option] }, H, V.fixed.link, E.option));
     const choiceWith = (option: PaymentRequirements, inChoice: Record<string, unknown>) => {
-      const doc = unwrap(batchEvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [option] }, H, V.fixed.link, option));
-      const base = { required: doc, accepted: doc.accepts[0]!, from: E.payer, now: E.now, payerAuthorizer: E.payerAuthorizer, deposit: BigInt(E.deposit), authSalt: E.authSalt };
+      const base = { required: { ...placed, accepts: [option] }, accepted: option, from: E.payer, now: E.now, payerAuthorizer: E.payerAuthorizer, deposit: BigInt(E.deposit), authSalt: E.authSalt };
       return { ...base, ...inChoice };
     };
     for (const r of zeros) {
@@ -1042,6 +1042,9 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
         const option: PaymentRequirements = member === "from" ? E.option : { ...E.option, [member]: ZERO };
         const choice = choiceWith(option, member === "from" ? { from: ZERO } : {});
         expect(await batchEvm.build(choice, H), member).toEqual(refused(r.expect));
+        if (member === "from") continue;
+        expect(batchEvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [option] }, H, V.fixed.link, option), member).toEqual(refused(r.expect));
+        expect(batchEvm.read(choice.required), member).toEqual(refused("x402/no-payable-option"));
       }
     }
     expect("refused" in (await batchEvm.build(choiceWith(E.option, { payerAuthorizer: ZERO }), H))).toBe(false);

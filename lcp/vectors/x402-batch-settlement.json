@@ -1023,7 +1023,7 @@
   ]
  },
  "ES9": {
-  "case": "pairingOf and advertise of fixed.svm.option, whose extra.withdrawDelay is 3600, with maxTimeoutSeconds replaced by each row's value. x402 751590a2, scheme_batch_settlement_svm.md L235 and L247: maxTimeoutSeconds is a number, and withdrawDelay MUST be >= maxTimeoutSeconds. That comparison is read only when maxTimeoutSeconds is a JSON number, never by converting a string or an array to one; an option whose maxTimeoutSeconds is of another type is named, and advertise refuses it, as build does, because its timeout is not a positive safe integer. A row without maxTimeoutSeconds removes the member. expectAdvertise null: the option is advertised.",
+  "case": "pairingOf and advertise of fixed.svm.option, whose extra.withdrawDelay is 3600, with maxTimeoutSeconds replaced by each row's value. x402 751590a2, scheme_batch_settlement_svm.md L235 and L247: maxTimeoutSeconds is a number, and withdrawDelay MUST be >= maxTimeoutSeconds. That comparison is read only when maxTimeoutSeconds is a JSON number, never by converting a string or an array to one; an option whose maxTimeoutSeconds is of another type is not one the pairing's filter serves, because its timeout is not a positive safe integer: advertise and build refuse it, and pairingOf names no pairing for it. A row without maxTimeoutSeconds removes the member. expectAdvertise null: the option is advertised.",
   "rows": [
    {
     "maxTimeoutSeconds": 3600,
@@ -1037,38 +1037,38 @@
    },
    {
     "maxTimeoutSeconds": "3601",
-    "expectPairing": "x402/batch-settlement/solana",
+    "expectPairing": null,
     "expectAdvertise": "x402/option-malformed"
    },
    {
     "maxTimeoutSeconds": " 4e3 ",
-    "expectPairing": "x402/batch-settlement/solana",
+    "expectPairing": null,
     "expectAdvertise": "x402/option-malformed"
    },
    {
     "maxTimeoutSeconds": [
      3601
     ],
-    "expectPairing": "x402/batch-settlement/solana",
+    "expectPairing": null,
     "expectAdvertise": "x402/option-malformed"
    },
    {
     "maxTimeoutSeconds": null,
-    "expectPairing": "x402/batch-settlement/solana",
+    "expectPairing": null,
     "expectAdvertise": "x402/option-malformed"
    },
    {
     "maxTimeoutSeconds": true,
-    "expectPairing": "x402/batch-settlement/solana",
+    "expectPairing": null,
     "expectAdvertise": "x402/option-malformed"
    },
    {
     "maxTimeoutSeconds": "abc",
-    "expectPairing": "x402/batch-settlement/solana",
+    "expectPairing": null,
     "expectAdvertise": "x402/option-malformed"
    },
    {
-    "expectPairing": "x402/batch-settlement/solana",
+    "expectPairing": null,
     "expectAdvertise": "x402/option-malformed"
    }
   ]
@@ -1943,6 +1943,87 @@
      }
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the EVM option with payTo the zero address, which the channel contract's deposit refuses as receiver",
+    "pairing": "x402/batch-settlement/eip155",
+    "payment": "/buyer/rows/3/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "eip155:84532",
+     "amount": "1000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x0000000000000000000000000000000000000000",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the EVM option with asset the zero address, which the channel contract's deposit refuses as token",
+    "pairing": "x402/batch-settlement/eip155",
+    "payment": "/buyer/rows/3/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "eip155:84532",
+     "amount": "1000",
+     "asset": "0x0000000000000000000000000000000000000000",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the EVM option with amount \"abc\", which is not a decimal below 2^128",
+    "pairing": "x402/batch-settlement/eip155",
+    "payment": "/buyer/rows/3/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "eip155:84532",
+     "amount": "abc",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the Solana option with amount 2^64, which is not a u64",
+    "pairing": "x402/batch-settlement/solana",
+    "payment": "/buyer/rows/5/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "18446744073709551616",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

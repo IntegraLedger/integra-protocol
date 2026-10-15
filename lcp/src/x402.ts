@@ -55,10 +55,9 @@ import {
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,
-  MAX_OPTIONS,
   acceptedBy,
   advertiseFor,
-  isOffered,
+  chosen,
   paymentWith,
   readFor,
   type OptionFilter,
@@ -231,25 +230,20 @@ export function tie(
   return ["x402", { accepts, request }];
 }
 
-/** The filter of EVM pairing `id` at advertise: `evmNames`, and `build` can pay the option. */
-function evmServes(id: X402PairingId, payable: (o: PaymentRequirements) => boolean): OptionFilter {
-  const names = evmNames(id);
-  return (o) => {
-    const f = names(o);
-    if (f !== true) return f;
-    return payable(o) ? true : refusal("x402/option-malformed");
-  };
-}
-
 /**
- * The filter of EVM pairing `id` at read and at bound: the option names `id`. An option of `id`'s scheme that the
- * option filter refuses gives that refusal; any other option is not this pairing's.
+ * The option filter of EVM pairing `id`, the one its `advertise`, `read`, `build`, `bound` and `reference` apply and
+ * through which the root `pairingOf` names it: the option names `id`, and `build` can pay it. An option of `id`'s scheme
+ * that the option filter refuses gives that refusal, one `build` cannot pay is `x402/option-malformed`, and any other
+ * option is not this pairing's. So no EVM pairing's `read` offers an option its `build` or `bound` refuses on what the
+ * option alone says.
  */
-function evmNames(id: X402PairingId): OptionFilter {
+function evmFilter(id: X402PairingId): OptionFilter {
+  const payable = id === ID ? isPayable : isBreadthPayable(id);
   return (o) => {
     const f = optionFilter(o);
     if (isRefusal(f)) return o.scheme === schemeOf(id) ? f : undefined;
-    return f === optionIdOf(id) ? true : undefined;
+    if (f !== optionIdOf(id)) return undefined;
+    return payable(o) ? true : refusal("x402/option-malformed");
   };
 }
 
@@ -257,11 +251,8 @@ function evmNames(id: X402PairingId): OptionFilter {
 async function build(choice: X402Choice, h: AtrHash): Promise<Unsigned | Refusal> {
   if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
-  if (!isObject(required) || required.x402Version !== 2) return refusal("x402/not-v2");
-  if (!Array.isArray(required.accepts) || required.accepts.length > MAX_OPTIONS) return refusal("x402/option-malformed");
-  if (!isOffered(required.accepts, accepted)) return refusal("x402/option-not-in-document");
-  if (evmPairingOf(accepted) !== ID) return refusal("x402/option-not-this-pairing");
-  if (!isPayable(accepted)) return refusal("x402/option-malformed");
+  const wrong = chosen(required, accepted, evmFilter(ID));
+  if (wrong !== true) return wrong;
   if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
   const nonce = normalHash(h);
   if (nonce === null) return refusal("x402/payload-malformed");
@@ -330,7 +321,6 @@ async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
   if (!isAddress(a.from) || !isAddress(a.to) || uint256Of(a.value) === undefined || validBefore === undefined) {
     return refusal("x402/payload-malformed");
   }
-  if (!isAddress(accepted.asset)) return refusal("x402/option-malformed");
   const idDigest = await authorizationIdDigest(a.from, a.to, a.value);
   if (isRefusal(idDigest)) return idDigest;
   const asset = accepted.asset as Hex;
@@ -388,8 +378,8 @@ export const exactEip3009 = Object.freeze({
   claims: true as boolean,
   unplaced,
   tie,
-  advertise: advertiseFor(evmServes(ID, isPayable)),
-  read: readFor(evmNames(ID)),
+  advertise: advertiseFor(evmFilter(ID)),
+  read: readFor(evmFilter(ID)),
   build,
   bound,
   reference,
@@ -402,7 +392,7 @@ export const exactEip3009 = Object.freeze({
 function paymentOf(presented: unknown): Eip3009Payment | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   if (carriesRefused(presented)) return refusal("x402/payload-malformed");
-  const accepted = acceptedBy(presented["accepted"], evmNames(ID));
+  const accepted = acceptedBy(presented["accepted"], evmFilter(ID));
   if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
@@ -471,6 +461,8 @@ const MAX_MEMBER = 256;
 const NONCE_DECIMAL = /^[0-9]{1,78}$/;
 const NONCE_HEX = /^0x[0-9a-fA-F]{64}$/;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Hex;
+const UINT48_LIMIT = 2 ** 48;
+const UINT120_LIMIT = 1n << 120n;
 const AUTH_CAPTURE_REQUIRED = [
   "captureAuthorizer",
   "captureDeadline",
@@ -584,15 +576,24 @@ function isReferenceManager(manager: unknown, network: unknown): boolean {
   );
 }
 
-/** An option `build` can use: its amount and time bound, and for auth-capture the token's EIP-712 name and version. */
+/**
+ * An option `build` can use: its amount and time bound; for auth-capture also the token's EIP-712 name and version, the
+ * escrow terms `authCaptureTerms` reads, and a `maxTimeoutSeconds` below 2^48, since `now` plus it is the payment's
+ * `preApprovalExpiry`, a `uint48`.
+ */
 function isBreadthPayable(id: X402PairingId) {
+  const escrow = schemeOf(id) === "auth-capture";
   return (o: PaymentRequirements): boolean =>
     isObject(o) &&
     uint256Of(o.amount) !== undefined &&
     Number.isSafeInteger(o.maxTimeoutSeconds) &&
     o.maxTimeoutSeconds > 0 &&
-    (schemeOf(id) !== "auth-capture" ||
-      (isObject(o.extra) && isNonEmpty(o.extra["name"]) && isNonEmpty(o.extra["version"])));
+    (!escrow ||
+      (isObject(o.extra) &&
+        isNonEmpty(o.extra["name"]) &&
+        isNonEmpty(o.extra["version"]) &&
+        o.maxTimeoutSeconds < UINT48_LIMIT &&
+        !isRefusal(authCaptureTerms(o))));
 }
 
 /** The checks every breadth `build` makes on the choice, giving the chain id, the `now + maxTimeoutSeconds` bound and H. */
@@ -603,13 +604,8 @@ function choiceOf(
 ): { chainId: number; deadline: bigint; h: AtrHash } | Refusal {
   if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
-  if (!isObject(required) || required.x402Version !== 2) return refusal("x402/not-v2");
-  if (!Array.isArray(required.accepts) || required.accepts.length > MAX_OPTIONS) return refusal("x402/option-malformed");
-  if (!isOffered(required.accepts, accepted)) return refusal("x402/option-not-in-document");
-  const f = optionFilter(accepted);
-  if (isRefusal(f)) return f;
-  if (f !== optionIdOf(id)) return refusal("x402/option-not-this-pairing");
-  if (!isBreadthPayable(id)(accepted)) return refusal("x402/option-malformed");
+  const wrong = chosen(required, accepted, evmFilter(id));
+  if (wrong !== true) return wrong;
   if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
   const nonce = normalHash(h);
   if (nonce === null) return refusal("x402/payload-malformed");
@@ -617,10 +613,10 @@ function choiceOf(
 }
 
 
-/** A presented payment whose `accepted` its `read` offers (`evmNames`), with its payload as an object. */
+/** A presented payment whose `accepted` its `read` offers (`evmFilter`), with its payload as an object. */
 function presentedAs(id: X402PairingId, presented: unknown): { p: PaymentPayload; payload: Record<string, unknown> } | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = acceptedBy(presented["accepted"], evmNames(id));
+  const accepted = acceptedBy(presented["accepted"], evmFilter(id));
   if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
@@ -999,7 +995,14 @@ interface AuthCaptureTerms {
   info: (payer: Hex, salt: Hex, preApprovalExpiry: bigint) => PaymentInfo;
 }
 
-/** The escrow terms an auth-capture option fixes, or `x402/option-malformed`. */
+/**
+ * The escrow terms an auth-capture option fixes, or `x402/option-malformed`: `captureAuthorizer` and `feeRecipient`
+ * addresses, `receiverAuthorizer` and `policy` addresses when present (absent reads as the zero address), the amount
+ * below 2^120 (`PaymentInfo.maxAmount`, a `uint120`), `captureDeadline` and `refundDeadline` below 2^48 (`uint48`), and
+ * `minFeeBps` and `maxFeeBps` at most 65,535 (`uint16`). An option whose `paymentFlow` is `authorization` settles as the
+ * escrow's `charge`, which the auth-capture EVM scheme allows only with a non-zero `receiverAuthorizer`. The option
+ * filter (`isBreadthPayable`) applies this, so `build`, `bound` and `reference` read the terms of an option it serves.
+ */
 function authCaptureTerms(o: PaymentRequirements): AuthCaptureTerms | Refusal {
   const extra = o.extra as Record<string, unknown>;
   const deployment = deploymentOf(extra)!;
@@ -1022,17 +1025,22 @@ function authCaptureTerms(o: PaymentRequirements): AuthCaptureTerms | Refusal {
   if (authorizationExpiry === undefined || refundExpiry === undefined || maxAmount === undefined) {
     return refusal("x402/option-malformed");
   }
+  if (maxAmount >= UINT120_LIMIT || authorizationExpiry >= UINT48_LIMIT || refundExpiry >= UINT48_LIMIT) {
+    return refusal("x402/option-malformed");
+  }
   if (minFeeBps === undefined || maxFeeBps === undefined || minFeeBps > 65535n || maxFeeBps > 65535n) {
     return refusal("x402/option-malformed");
   }
   const zero = (a: Hex) => a.toLowerCase() === ZERO_ADDRESS;
+  const flow = extra["paymentFlow"] === "authorization" ? "authorization" : "escrow";
+  if (flow === "authorization" && zero(receiverAuthorizer)) return refusal("x402/option-malformed");
   return {
     chainId: chainIdOf(o.network)!,
     deployment,
     bound: !zero(receiverAuthorizer) || !zero(policy),
     receiverAuthorizer,
     policy,
-    flow: extra["paymentFlow"] === "authorization" ? "authorization" : "escrow",
+    flow,
     info: (payer, salt, preApprovalExpiry) => ({
       operator,
       payer,
@@ -1061,10 +1069,8 @@ function authCaptureBuild(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
     const c = choiceOf(id, choice, h);
     if (isRefusal(c)) return c;
     const { required, accepted, from } = choice;
-    const t = authCaptureTerms(accepted);
-    if (isRefusal(t)) return t;
-    const salt = t.bound ? bindSalt(t.receiverAuthorizer, t.policy, c.h) : c.h;
-    if (isRefusal(salt)) return refusal("x402/option-malformed");
+    const t = authCaptureTerms(accepted) as AuthCaptureTerms;
+    const salt = t.bound ? (bindSalt(t.receiverAuthorizer, t.policy, c.h) as Hex) : c.h;
     const signatureNonce = paymentHash(t.chainId, t.deployment.escrow, t.info(ZERO_ADDRESS, salt, c.deadline));
     if (isRefusal(signatureNonce)) return refusal("x402/option-malformed");
     const salts = t.bound ? { salt, saltNonce: c.h } : { salt };
@@ -1129,7 +1135,10 @@ function authCaptureBuild(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
 
 /**
  * A presented auth-capture payment: H (the salt when unbound, the saltNonce when bound, whose commitment must be the
- * salt), the payer, and the signed nonce checked against the `signatureNonce` recomputed with payer zero.
+ * salt), the payer, and the signed nonce checked against the `signatureNonce` recomputed with payer zero. Under an
+ * option that binds neither a receiver authorizer nor a policy, the scheme's payload carries no `saltNonce`; a payload
+ * that carries one is a binding option's payment, whose H is that `saltNonce` and not the salt, so it is
+ * `x402/salt-not-bound`.
  */
 function authCapturePresented(
   id: typeof AC_EIP3009 | typeof AC_PERMIT2,
@@ -1139,8 +1148,7 @@ function authCapturePresented(
   if (isRefusal(got)) return got;
   const { p, payload } = got;
   if (!isSignature(payload["signature"], 1)) return refusal("x402/signature-malformed");
-  const t = authCaptureTerms(p.accepted);
-  if (isRefusal(t)) return t;
+  const t = authCaptureTerms(p.accepted) as AuthCaptureTerms;
   const salt = saltOf(payload["salt"]);
   if (salt === undefined) return refusal("x402/salt-malformed");
   let h: AtrHash = salt;
@@ -1150,6 +1158,8 @@ function authCapturePresented(
     const commitment = bindSalt(t.receiverAuthorizer, t.policy, saltNonce);
     if (isRefusal(commitment) || commitment !== salt) return refusal("x402/salt-not-bound");
     h = saltNonce;
+  } else if (payload["saltNonce"] !== undefined) {
+    return refusal("x402/salt-not-bound");
   }
   let payer: string;
   let signed: AtrHash | undefined;
@@ -1301,8 +1311,8 @@ function binding<Id extends X402PairingId, M extends BreadthMembers>(
     claims,
     unplaced,
     tie,
-    advertise: advertiseFor(evmServes(id, isBreadthPayable(id))),
-    read: readFor(evmNames(id)),
+    advertise: advertiseFor(evmFilter(id)),
+    read: readFor(evmFilter(id)),
     ...members,
   });
 }

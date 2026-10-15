@@ -1,10 +1,11 @@
 /**
- * BOLT11 decoding and the x402 Lightning option filters. `../lightning.ts` decodes with `decode` (its `decodeBolt11`
- * returns the result) and filters its options with these; the root's `pairingOf` names an x402 Lightning option's
+ * BOLT11 decoding, the x402 Lightning option checks and the option filters built on them. `../lightning.ts` decodes
+ * with `decode` (its `decodeBolt11` returns the result), reads an invoice's `h` or `m` field with `fieldHash` (its
+ * `invoiceH`), and filters and checks its options with these; the root's `pairingOf` names an x402 Lightning option's
  * pairing through `lnbtcPairingOf`. No entry point exports these names.
  */
-import type { Json } from "../core.js";
-import { isObject } from "../fields.js";
+import { fromRawBytes, type AtrHash, type Json } from "../core.js";
+import { isObject, normalHash } from "../fields.js";
 import type { Bolt11, LnNetwork } from "../lightning.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequirements } from "../x402.js";
@@ -17,6 +18,9 @@ const CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3] as const;
 const CURRENCIES = ["bcrt", "tbs", "tb", "bc"] as const;
 const AMOUNT = /^([0-9]+)([munp]?)$/;
+const PAY_TO = /^[0-9a-f]{66}$/;
+const REQUEST_HASH = /^[0-9a-f]{64}$/;
+const POSITIVE = /^[1-9][0-9]{0,77}$/;
 /** Tagged field types, as the Bech32 value of their letter. */
 export const FIELD = { p: 1, s: 16, h: 23, m: 27, x: 6, d: 13 } as const;
 export const NETWORKS: { readonly [n in LnNetwork]: Bolt11["currency"] } = {
@@ -182,20 +186,92 @@ export function isLnOption(o: unknown): o is PaymentRequirements & { extra: { in
   return isObject(extra) && typeof extra["invoice"] === "string";
 }
 
+/** The one 32-byte `h` or `m` field of an invoice, as the hash it carries. */
+export function fieldHash(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
+  if (!isObject(b) || !Array.isArray(b.tags)) return refusal("ln/invoice-malformed");
+  const type = FIELD[field];
+  const count = b.tags.filter((t) => t === type).length;
+  if (count === 0) return field === "h" ? refusal("ln/no-description-hash") : refusal("ln/no-metadata");
+  if (count > 1) return refusal("ln/field-repeated");
+  const bytes = field === "h" ? b.descriptionHash : b.metadata;
+  const h = bytes === null ? null : fromRawBytes(bytes);
+  return h ?? refusal("ln/field-length");
+}
+
 /**
- * The option filter of the x402 Lightning pairing whose invoice has an `m` field (`want` true) or none: an `exact`
- * option on a Lightning network whose invoice decodes, with an `m` field or without one. An invoice that does not
- * decode gives the decoder's refusal; one without an `m` field is `ln/no-metadata` where the pairing needs one, and one
- * with an `m` field is `ln/not-this-pairing` where the pairing has none. The pairing's `read` offers the options it
- * serves, and its `bound` holds a presented payment's option to it.
+ * The x402 option checks both Lightning pairings make, on an `exact` option on a Lightning network with an invoice, in
+ * this order: the invoice decodes (else the decoder's refusal); its `m` field, where `m` is a hash or `"any"`, is one
+ * 32-byte field (`ln/no-metadata`, `ln/field-repeated`, `ln/field-length`) carrying `m` when `m` is a hash
+ * (`ln/no-metadata`), and where `m` is null the invoice has none (`ln/not-this-pairing`); its `h` field is one 32-byte
+ * field (`ln/no-description-hash`, `ln/field-repeated`, `ln/field-length`) equal to `extra.requestHash`, 64 lowercase
+ * hex digits (`ln/request-hash-mismatch`); its currency is the one x402 gives the option's `network`
+ * (`ln/currency-network`); and x402's client checks on the option's own fields hold (`x402/option-malformed`). Each
+ * pairing's option filter makes them with `m` `"any"` or null, so its `read` offers only an option its `advertise`,
+ * `build` and `bound` take; `advertise` and `build` make them with the ATR hash on `x402/exact/lnbtc`.
  */
-function withMetadata(want: boolean): OptionFilter {
+export function optionChecks(o: LnOption, m: AtrHash | "any" | null): Bolt11 | Refusal {
+  const b = decode(o.extra.invoice);
+  if (isRefusal(b)) return b;
+  if (m !== null) {
+    const carried = fieldHash(b, "m");
+    if (isRefusal(carried)) return carried;
+    if (m !== "any" && carried !== normalHash(m)) return refusal("ln/no-metadata");
+  } else if (b.tags.includes(FIELD.m)) {
+    return refusal("ln/not-this-pairing");
+  }
+  const d = fieldHash(b, "h");
+  if (isRefusal(d)) return d;
+  const requestHash = requestHashOf(o);
+  if (requestHash === undefined || d !== `0x${requestHash}`) return refusal("ln/request-hash-mismatch");
+  if (NETWORKS[o.network as LnNetwork] !== b.currency) return refusal("ln/currency-network");
+  return optionFields(o) ?? b;
+}
+
+/**
+ * The checks on the offer the seller sends before its node writes the invoice, which carries no invoice to read: a
+ * 64-lowercase-hex-digit `extra.requestHash` (`ln/request-hash-mismatch`), then x402's client checks.
+ */
+export function offerChecks(o: PaymentRequirements & { extra: { [k: string]: Json } }): Refusal | null {
+  if (requestHashOf(o) === undefined) return refusal("ln/request-hash-mismatch");
+  return optionFields(o);
+}
+
+/** `extra.requestHash` when it is 64 lowercase hex digits. */
+function requestHashOf(o: PaymentRequirements): string | undefined {
+  const requestHash = isObject(o.extra) ? o.extra["requestHash"] : undefined;
+  return typeof requestHash === "string" && REQUEST_HASH.test(requestHash) ? requestHash : undefined;
+}
+
+/**
+ * x402's client checks on the option's own fields: `extra.paymentFlow` `upfront`, `asset` `BTC`, `payTo` 66 lowercase
+ * hex digits, `amount` a positive decimal, `maxTimeoutSeconds` a positive safe integer; else `x402/option-malformed`.
+ */
+function optionFields(o: PaymentRequirements): Refusal | null {
+  if (
+    !isObject(o.extra) ||
+    o.extra["paymentFlow"] !== "upfront" ||
+    o.asset !== "BTC" ||
+    typeof o.payTo !== "string" ||
+    !PAY_TO.test(o.payTo) ||
+    typeof o.amount !== "string" ||
+    !POSITIVE.test(o.amount) ||
+    !Number.isSafeInteger(o.maxTimeoutSeconds) ||
+    o.maxTimeoutSeconds <= 0
+  ) {
+    return refusal("x402/option-malformed");
+  }
+  return null;
+}
+
+/** An `exact` option on a Lightning network with a string `extra.invoice`. */
+export type LnOption = PaymentRequirements & { extra: { invoice: string } };
+
+/** The option filter over `optionChecks` with `m`: an option they pass is served, else their refusal. */
+function filterWith(m: "any" | null): OptionFilter {
   return (o) => {
     if (!isLnOption(o)) return undefined;
-    const b = decode(o.extra.invoice);
-    if (isRefusal(b)) return b;
-    if (b.tags.includes(FIELD.m) === want) return true;
-    return want ? refusal("ln/no-metadata") : refusal("ln/not-this-pairing");
+    const b = optionChecks(o, m);
+    return isRefusal(b) ? b : true;
   };
 }
 
@@ -206,18 +282,29 @@ export function isLnOffer(o: unknown): o is PaymentRequirements & { extra: { [k:
   return typeof n === "string" && Object.hasOwn(NETWORKS, n) && isObject(o["extra"]);
 }
 
-/** `x402/exact/lnbtc`'s option filter: its invoice has an `m` field (`ln/no-metadata` otherwise). */
-export const lnbtcFilter = withMetadata(true);
-/** `x402/exact/lnbtc/invoice-named`'s option filter: its invoice has no `m` field (`ln/not-this-pairing` otherwise). */
-export const namedFilter = withMetadata(false);
+/**
+ * `x402/exact/lnbtc`'s option filter: `optionChecks` with the invoice's `m` field read but not compared, so an invoice
+ * without one is `ln/no-metadata`. Its `read` offers the options it serves, and its `bound` and `reference` hold a
+ * presented payment's option to it.
+ */
+export const lnbtcFilter = filterWith("any");
+/**
+ * `x402/exact/lnbtc/invoice-named`'s option filter: `optionChecks` with no `m` field allowed, so an invoice with one is
+ * `ln/not-this-pairing`. Its `read` offers the options it serves, and its `bound` and `reference` hold a presented
+ * payment's option to it.
+ */
+export const namedFilter = filterWith(null);
 
 /**
- * Which of the two x402 Lightning pairings an option belongs to: by whether its invoice has an `m` field. An option
- * whose `extra` has no `invoice` is the offer the seller sends before its node writes the invoice, so it is
- * `x402/exact/lnbtc`; an `invoice-named` option carries its invoice at issue.
+ * Which of the two x402 Lightning pairings an option belongs to: by whether its invoice has an `m` field, when the
+ * pairing's filter serves it. An option whose `extra` has no `invoice` is the offer the seller sends before its node
+ * writes the invoice, so it is `x402/exact/lnbtc` when `offerChecks` passes; an `invoice-named` option carries its
+ * invoice at issue.
  */
 export function lnbtcPairingOf(option: unknown): "x402/exact/lnbtc" | "x402/exact/lnbtc/invoice-named" | undefined {
-  if (isLnOffer(option) && !Object.hasOwn(option.extra, "invoice")) return "x402/exact/lnbtc";
+  if (isLnOffer(option) && !Object.hasOwn(option.extra, "invoice")) {
+    return offerChecks(option) === null ? "x402/exact/lnbtc" : undefined;
+  }
   if (lnbtcFilter(option as PaymentRequirements) === true) return "x402/exact/lnbtc";
   if (namedFilter(option as PaymentRequirements) === true) return "x402/exact/lnbtc/invoice-named";
   return undefined;

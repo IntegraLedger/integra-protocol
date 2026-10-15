@@ -367,6 +367,44 @@
      }
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with amount \"abc\", which is not a uint256",
+    "pairing": "x402/upto/eip155/permit2",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "eip155:84532",
+     "amount": "abc",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "facilitatorAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/upto/eip155/permit2",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "eip155:84532",
+     "amount": "5000000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "facilitatorAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

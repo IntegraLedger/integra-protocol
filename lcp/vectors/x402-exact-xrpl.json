@@ -454,6 +454,24 @@
      }
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the XRP option with amount \"1.5\", which is not a whole number of drops",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1.5",
+     "asset": "XRP",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

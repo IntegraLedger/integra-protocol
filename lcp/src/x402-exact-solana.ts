@@ -18,6 +18,7 @@ import {
   wireOf,
   TOKEN,
   TOKEN_2022,
+  type SolanaNetwork,
   type SvmPaymentPayload,
   type SvmRef,
   type SvmTx,
@@ -84,8 +85,11 @@ function isThis(option: PaymentRequirements): boolean {
   return memo === undefined || (typeof memo === "string" && utf8Length(memo) <= MAX_MEMO);
 }
 
-/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
-const filter = filterOf(isThis);
+/**
+ * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
+ * pairing whose amount `build` can pay (`payable`), else `x402/option-malformed`.
+ */
+const filter = filterOf(isThis, payable);
 
 /** True when the amount is a u64 in decimal. */
 function payable(o: PaymentRequirements): boolean {
@@ -109,7 +113,7 @@ function advertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
-  const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
+  const placed = advertiseFor(filter)(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   const memo = toLcpString(h);
   const current = offer.extra?.["memo"];
@@ -127,7 +131,6 @@ async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (!payable(accepted)) return refusal("x402/option-malformed");
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const memo = accepted.extra!["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
@@ -195,8 +198,7 @@ async function reference(presented: unknown): Promise<Omit<SvmRef, "fromSlot"> |
   if (isRefusal(p)) return p;
   const h = boundOf(p.accepted, p.tx);
   if (typeof h !== "string") return h;
-  if (!isSolanaNetwork(p.accepted.network)) return refusal("svm/network-malformed");
-  return svmReference(p.accepted.network, p.tx);
+  return svmReference(p.accepted.network as SolanaNetwork, p.tx);
 }
 
 const pattern: LcpPattern = Object.freeze({

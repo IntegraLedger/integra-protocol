@@ -4,10 +4,21 @@
  * `x402` slot names the invoice instead. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The
  * payer signs nothing; it pays the invoice.
  */
-import { canonicalJson, fromLegalContext, fromRawBytes, parseJson, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, fromLegalContext, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { b64uEncode } from "./internal/base64url.js";
-import { decode, FIELD, isLnOffer, isLnOption, lnbtcFilter, namedFilter, NETWORKS } from "./internal/lightning.js";
+import {
+  decode,
+  FIELD,
+  fieldHash,
+  isLnOffer,
+  isLnOption,
+  lnbtcFilter,
+  namedFilter,
+  offerChecks,
+  optionChecks,
+  type LnOption,
+} from "./internal/lightning.js";
 import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import {
   credentialOf,
@@ -72,10 +83,7 @@ export type LnPaymentPayload = {
 const MAX_ACCEPTS_READ = 32;
 const MAX_ATR = 1_048_576;
 const SKEW_SECONDS = 60;
-const PAY_TO = /^[0-9a-f]{66}$/;
-const REQUEST_HASH = /^[0-9a-f]{64}$/;
 const PREIMAGE = /^[0-9a-f]{64}$/;
-const POSITIVE = /^[1-9][0-9]{0,77}$/;
 /** The ATR's text: strict UTF-8 with a byte-order mark kept, so an ATR that begins with one is not one JSON object. */
 const atrText = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
@@ -89,14 +97,7 @@ export async function decodeBolt11(invoice: string): Promise<Bolt11 | Refusal> {
 
 /** The one 32-byte `h` or `m` field of an invoice, as the hash it carries. */
 export function invoiceH(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
-  if (!isObject(b) || !Array.isArray(b.tags)) return refusal("ln/invoice-malformed");
-  const type = FIELD[field];
-  const count = b.tags.filter((t) => t === type).length;
-  if (count === 0) return field === "h" ? refusal("ln/no-description-hash") : refusal("ln/no-metadata");
-  if (count > 1) return refusal("ln/field-repeated");
-  const bytes = field === "h" ? b.descriptionHash : b.metadata;
-  const h = bytes === null ? null : fromRawBytes(bytes);
-  return h ?? refusal("ln/field-length");
+  return fieldHash(b, field);
 }
 
 /**
@@ -187,58 +188,6 @@ function hex(b: Uint8Array): string {
   return s;
 }
 
-/** An `exact` option on a Lightning network with a string `extra.invoice`. */
-type LnOption = PaymentRequirements & { extra: { invoice: string } };
-
-/**
- * The x402 option checks both Lightning pairings make on the invoice and the option. `h` is the ATR hash the
- * invoice's `m` must carry, or null where `m` must be absent.
- */
-function checkOption(o: LnOption, h: AtrHash | null): Bolt11 | Refusal {
-  const b = decode(o.extra.invoice);
-  if (isRefusal(b)) return b;
-  if (h !== null) {
-    const m = invoiceH(b, "m");
-    if (isRefusal(m)) return m;
-    if (m !== normalHash(h)) return refusal("ln/no-metadata");
-  } else if (b.tags.includes(FIELD.m)) {
-    return refusal("ln/not-this-pairing");
-  }
-  const d = invoiceH(b, "h");
-  if (isRefusal(d)) return d;
-  const requestHash = o.extra["requestHash"];
-  if (typeof requestHash !== "string" || !REQUEST_HASH.test(requestHash) || d !== `0x${requestHash}`) {
-    return refusal("ln/request-hash-mismatch");
-  }
-  const network = optionNetworkRefused(o, b);
-  if (network !== null) return network;
-  const malformed = optionFields(o);
-  return malformed ?? b;
-}
-
-/** `ln/currency-network` unless the invoice's currency is the one x402 gives the option's `network`. */
-function optionNetworkRefused(o: PaymentRequirements, b: Bolt11): Refusal | null {
-  return NETWORKS[o.network as LnNetwork] === b.currency ? null : refusal("ln/currency-network");
-}
-
-/** x402's client checks on the option's own fields: `paymentFlow`, `asset`, `payTo`, `amount`, `maxTimeoutSeconds`. */
-function optionFields(o: PaymentRequirements): Refusal | null {
-  if (
-    !isObject(o.extra) ||
-    o.extra["paymentFlow"] !== "upfront" ||
-    o.asset !== "BTC" ||
-    typeof o.payTo !== "string" ||
-    !PAY_TO.test(o.payTo) ||
-    typeof o.amount !== "string" ||
-    !POSITIVE.test(o.amount) ||
-    !Number.isSafeInteger(o.maxTimeoutSeconds) ||
-    o.maxTimeoutSeconds <= 0
-  ) {
-    return refusal("x402/option-malformed");
-  }
-  return null;
-}
-
 /**
  * The option without `extra.invoice`, the dynamic field that carries the hash on `x402/exact/lnbtc`. An option that
  * carries a `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
@@ -258,16 +207,14 @@ function completeFor(required: PaymentRequired, accepted: PaymentRequirements): 
 }
 
 /**
- * The read keys: the network of the invoice's currency, which is the option's `network`, as `advertise` checks it
- * (`ln/currency-network` otherwise); the invoice's payment hash; and its timestamp plus expiry plus x402's 60 s skew.
+ * The read keys of a payment whose option the pairing's filter serves: the option's `network`, which is the network of
+ * the invoice's currency; the invoice's payment hash; and its timestamp plus expiry plus x402's 60 s skew.
  */
 async function x402Reference(presented: unknown, want: boolean): Promise<LnRef | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = acceptedBy(presented["accepted"], want ? lnbtcFilter : namedFilter);
   if (isRefusal(accepted)) return accepted;
   const b = decode((accepted as LnOption).extra.invoice) as Bolt11;
-  const network = optionNetworkRefused(accepted, b);
-  if (network !== null) return network;
   return { network: accepted.network, paymentHash: hex(b.paymentHash), settleBy: b.timestamp + b.expiry + SKEW_SECONDS };
 }
 
@@ -300,7 +247,7 @@ function lnbtcAdvertise(
 ): PaymentRequired | Refusal {
   const placed = lnbtcShared(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
-  const b = checkOption(offer as PaymentRequirements & { extra: { invoice: string } }, h);
+  const b = optionChecks(offer as LnOption, h);
   return isRefusal(b) ? b : placed;
 }
 
@@ -320,33 +267,29 @@ function lnbtcAdvertiseBeforeCarrier(
 ): PaymentRequired | Refusal {
   const placed = lnbtcBeforeShared(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
-  const requestHash = (offer.extra as { [k: string]: Json })["requestHash"];
-  if (typeof requestHash !== "string" || !REQUEST_HASH.test(requestHash)) return refusal("ln/request-hash-mismatch");
-  return optionFields(offer) ?? placed;
+  return offerChecks(offer as PaymentRequirements & { extra: { [k: string]: Json } }) ?? placed;
 }
 
 async function lnbtcBuild(c: { required: PaymentRequired; accepted: PaymentRequirements }, h: AtrHash): Promise<LnUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filterOf(isLnOption));
   if (wrong !== true) return wrong;
-  const accepted = c.accepted as PaymentRequirements & { extra: { invoice: string } };
-  const b = checkOption(accepted, h);
+  const accepted = c.accepted as LnOption;
+  const b = optionChecks(accepted, h);
   if (isRefusal(b)) return b;
   return { request: { kind: "bolt11-pay", invoice: accepted.extra.invoice }, complete: completeFor(c.required, c.accepted) };
 }
 
 /**
- * The hash in the invoice the payer paid: its `m` field, from an invoice whose currency is the one the option's
- * `network` names, as `advertise` checks it (`ln/currency-network` otherwise). No signature is verified here.
+ * The hash in the invoice the payer paid: its `m` field, from an option the pairing's filter serves, so the invoice's
+ * fields, its currency and the option's own fields are the ones `advertise` and `build` check. No signature is
+ * verified here.
  */
 async function lnbtcBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = acceptedBy(presented["accepted"], lnbtcFilter);
   if (isRefusal(accepted)) return accepted;
-  const b = decode((accepted as LnOption).extra.invoice) as Bolt11;
-  const m = invoiceH(b, "m");
-  if (isRefusal(m)) return m;
-  return optionNetworkRefused(accepted, b) ?? m;
+  return fieldHash(decode((accepted as LnOption).extra.invoice) as Bolt11, "m");
 }
 
 export const exactLnbtc = Object.freeze({
@@ -392,7 +335,7 @@ function namedAdvertise(
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
   if (isLnOption(offer)) {
-    const b = checkOption(offer, null);
+    const b = optionChecks(offer, null);
     if (isRefusal(b)) return b;
   }
   return namedShared(doc, h, link, offer, agreementUrl);
@@ -415,23 +358,21 @@ async function namedBuild(
   if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filterOf(isLnOption));
   if (wrong !== true) return wrong;
-  const accepted = c.accepted as PaymentRequirements & { extra: { invoice: string } };
-  const b = checkOption(accepted, null);
+  const accepted = c.accepted as LnOption;
+  const b = optionChecks(accepted, null);
   if (isRefusal(b)) return b;
   if (!atrNamesInvoice(c.atr, accepted.extra.invoice)) return refusal("ln/invoice-not-named");
   return { request: { kind: "bolt11-pay", invoice: accepted.extra.invoice }, complete: completeFor(c.required, c.accepted) };
 }
 
 /**
- * The candidate hash: the echoed legal context's value. The paid invoice carries none; the seller's digest over the option
- * it issued, invoice included, is what ties this payment to the ATR.
+ * The candidate hash: the echoed legal context's value, under an option the pairing's filter serves. The paid invoice
+ * carries none; the seller's digest over the option it issued, invoice included, is what ties this payment to the ATR.
  */
 async function namedBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   const accepted = acceptedBy(presented["accepted"], namedFilter);
   if (isRefusal(accepted)) return accepted;
-  const b = checkOption(accepted as LnOption, null);
-  if (isRefusal(b)) return b;
   const extensions = presented["extensions"];
   const lc = isObject(extensions) ? extensions["legalContext"] : undefined;
   const decoded = isObject(lc) ? fromLegalContext({ legalContext: lc["info"] }) : null;

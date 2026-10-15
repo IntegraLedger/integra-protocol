@@ -236,13 +236,15 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
 
 /**
  * The x402 pairing that serves an option: for an `exact` option on a Lightning network, `x402/exact/lnbtc` when its
- * invoice has an `m` field or is not yet written, and `x402/exact/lnbtc/invoice-named` when it has none; else the
- * first x402 pairing in `BINDINGS` whose `read` offers it, on a document holding that option alone. Undefined when
- * none does.
+ * invoice has an `m` field, and `x402/exact/lnbtc/invoice-named` when it has none, each when that pairing's option
+ * filter serves it; else the first x402 pairing in `BINDINGS` whose `read` offers it, on a document holding that option
+ * alone. Undefined when none does. Each pairing's `read` applies the one filter its `advertise`, `build`, `bound` and
+ * `reference` apply, so the pairing named takes the option at every step.
  *
  * No two x402 pairings' `read` offers one option, except the two ERC-7710 levels, which share the `erc7710` option: this
  * names `x402/exact/eip155/erc7710`, and `pairingOfPayment` names the level from a payment. No `read` offers the
- * Lightning offer the seller sends before its node writes the invoice; this names `x402/exact/lnbtc` for it. A Worker
+ * Lightning offer the seller sends before its node writes the invoice; this names `x402/exact/lnbtc` for it when its
+ * `extra.requestHash` and its own fields pass the checks that pairing's `advertiseBeforeCarrier` makes. A Worker
  * that serves one pairing need not import this function, which loads every pairing: the pairing's own `read`, on a
  * document holding the option, or its `bound`, on a presented payment, answers for that pairing alone.
  */

@@ -363,6 +363,101 @@
      "maxTimeoutSeconds": 300
     },
     "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option on Bitcoin testnet3, whose invoice's currency is mainnet's",
+    "pairing": "x402/exact/lnbtc",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000933ea01ad0ee984209779ba",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu"
+     }
+    },
+    "expect": "ln/currency-network"
+   },
+   {
+    "case": "the option whose extra.requestHash is not the invoice's description hash",
+    "pairing": "x402/exact/lnbtc",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c010",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu"
+     }
+    },
+    "expect": "ln/request-hash-mismatch"
+   },
+   {
+    "case": "the option with no extra.paymentFlow, which x402's client checks require to be upfront",
+    "pairing": "x402/exact/lnbtc",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option whose invoice has no description hash (h) field; the signature is not read",
+    "pairing": "x402/exact/lnbtc",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqygl26j"
+     }
+    },
+    "expect": "ln/no-description-hash"
    }
   ]
  }

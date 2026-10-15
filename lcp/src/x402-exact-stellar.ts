@@ -42,6 +42,7 @@ import {
 const ID = "x402/exact/stellar" as const;
 const AMOUNT = /^(0|[1-9][0-9]{0,38})$/;
 const I128_LIMIT = 1n << 127n;
+const UINT32_MAX = 0xffffffff;
 
 /**
  * The buyer's inputs to `build`: the chosen option, the buyer's simulated transaction, the current ledger, and the
@@ -62,17 +63,25 @@ function isThis(option: PaymentRequirements): boolean {
   return isObject(option.extra) && option.extra["areFeesSponsored"] === true;
 }
 
-/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
-const filter = filterOf(isThis);
+/**
+ * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
+ * pairing that `build` can pay (`payable`), else `x402/option-malformed`.
+ */
+const filter = filterOf(isThis, payable);
 
-/** True when the amount is an i128 of 0 or more in decimal and the timeout a positive safe integer. */
+/**
+ * True when the amount is an i128 of 0 or more in decimal and the timeout a positive safe integer of at most
+ * 5 × (2^32 − 1) seconds: `build` sets the authorization entry's expiration ledger, a `uint32`, to the current ledger
+ * plus `ceil(maxTimeoutSeconds / 5)`.
+ */
 function payable(o: PaymentRequirements): boolean {
   return (
     typeof o.amount === "string" &&
     AMOUNT.test(o.amount) &&
     BigInt(o.amount) < I128_LIMIT &&
     Number.isSafeInteger(o.maxTimeoutSeconds) &&
-    o.maxTimeoutSeconds > 0
+    o.maxTimeoutSeconds > 0 &&
+    Math.ceil(o.maxTimeoutSeconds / 5) <= UINT32_MAX
   );
 }
 
@@ -102,7 +111,7 @@ function advertise(
 ): PaymentRequired | Refusal {
   if (carriesRefusedMember(doc)) return refusal("x402/option-malformed");
   if (!hasPeer()) return refusal("stellar/peer-missing");
-  const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
+  const placed = advertiseFor(filter)(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   if (!isAccount(offer.payTo)) return refusal("stellar/carrier-occupied");
   return withOption(placed, offeredAt(placed.accepts, offer), { ...offer, payTo: muxedFor(offer.payTo, h) });
@@ -130,7 +139,6 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted } = c;
-  if (!payable(accepted)) return refusal("x402/option-malformed");
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!Number.isSafeInteger(c.currentLedger) || c.currentLedger < 0) return refusal("stellar/tx-malformed");
   const m = unmux(accepted.payTo);

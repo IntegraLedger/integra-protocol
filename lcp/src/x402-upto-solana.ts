@@ -99,8 +99,11 @@ function isThis(option: PaymentRequirements): boolean {
   return flow === undefined || flow === "escrow";
 }
 
-/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
-const filter = filterOf(isThis);
+/**
+ * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
+ * pairing that `build` can pay (`payable`), else `x402/option-malformed`.
+ */
+const filter = filterOf(isThis, payable);
 
 /** True when the amount is a u64 in decimal and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
@@ -133,7 +136,7 @@ function advertise(
   offer: PaymentRequirements,
   agreementUrl?: string,
 ): PaymentRequired | Refusal {
-  const placed = advertiseFor(filterOf(isThis, payable))(doc, h, link, offer, agreementUrl);
+  const placed = advertiseFor(filter)(doc, h, link, offer, agreementUrl);
   if (isRefusal(placed)) return placed;
   if (offer.extra?.["paymentFlow"] !== "escrow") return refusal("x402/flow-missing");
   const memo = toLcpString(h);
@@ -155,7 +158,6 @@ async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmP
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (!payable(accepted)) return refusal("x402/option-malformed");
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const extra = accepted.extra!;
   const memo = extra["memo"];
