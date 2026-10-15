@@ -87,10 +87,12 @@ import {
   withOption,
   withoutExtra,
   type OptionFilter,
+  x402Broadcaster,
   type X402Read,
+  x402Shape,
 } from "./internal/x402.js";
 import { decimalBelow, toBase64 } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
+import { broadcastsWithin } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -838,9 +840,24 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 }
 
 /**
- * `x402/batch-settlement/eip155`. The payee broadcasts (`broadcaster` answers `"payee"`): for every payment of the
- * channel: the seller's facilitator executes the deposit's token authorization, redeems vouchers when it claims, and
- * executes a refund; `status` reads them, and `channel.kind` classifies each payment.
+ * The `broadcaster` of a batch-settlement channel: `"payee"`, for a payment within `x402Shape`'s gate whose payload
+ * `type` is one `kind`, the pairing's `channel.kind`, takes. A payment of a type `kind` refuses
+ * `x402/channel-kind-unknown` gets `x402/not-an-opening`, as `bound` refuses it.
+ */
+function batchBroadcaster(kind: (p: BatchPaymentPayload) => unknown) {
+  return broadcastsWithin((presented) => {
+    const shape = x402Shape(presented);
+    if (isRefusal(shape)) return shape;
+    const k = kind(presented as BatchPaymentPayload);
+    return isRefusal(k) && k.code === "x402/channel-kind-unknown" ? refusal("x402/not-an-opening") : true;
+  }, "payee");
+}
+
+/**
+ * `x402/batch-settlement/eip155`. The payee broadcasts (`broadcaster` answers `"payee"` for each payment type
+ * `channel.kind` takes): for every payment of the channel: the seller's facilitator executes the deposit's token
+ * authorization, redeems vouchers when it claims, and executes a refund; `status` reads them, and `channel.kind`
+ * classifies each payment. A payment of any other type gets `x402/not-an-opening`, as `bound` refuses it.
  */
 export const batchEvm = Object.freeze({
   id: EVM_ID,
@@ -868,7 +885,7 @@ export const batchEvm = Object.freeze({
   build: evmBuild,
   buildWithin: evmBuildWithin,
   bound: evmBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: batchBroadcaster(evmKind),
   reference: evmReference,
   status: evmDepositStatus,
   recover: evmRecover,
@@ -1264,10 +1281,11 @@ function svmUnplaced(option: PaymentRequirements): PaymentRequirements | Refusal
 }
 
 /**
- * `x402/batch-settlement/solana`. The payee broadcasts (`broadcaster` answers `"payee"`): for every payment of the
- * channel: the seller's facilitator, the `feePayer`, co-signs and sends the deposit and top-up transactions the payer
- * signed, redeems vouchers when it settles, and sends the refund; `status` reads them, and `channel.kind` classifies
- * each payment.
+ * `x402/batch-settlement/solana`. The payee broadcasts (`broadcaster` answers `"payee"` for each payment type
+ * `channel.kind` takes): for every payment of the channel: the seller's facilitator, the `feePayer`, co-signs and sends
+ * the deposit and top-up transactions the payer signed, redeems vouchers when it settles, and sends the refund;
+ * `status` reads them, and `channel.kind` classifies each payment. A payment of any other type gets
+ * `x402/not-an-opening`, as `bound` refuses it.
  */
 export const batchSvm = Object.freeze({
   id: SVM_ID,
@@ -1294,7 +1312,7 @@ export const batchSvm = Object.freeze({
   build: svmBuild,
   buildWithin: svmBuildWithin,
   bound: svmBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: batchBroadcaster(svmKind),
   reference: svmReferenceOf,
   status: svmChannelStatus,
   recover: svmBatchRecover,
@@ -1363,5 +1381,5 @@ export const batchCloudflare = Object.freeze({
   read: (doc: PaymentRequired): X402Read | Refusal => readFor(FILTER[CF_ID])(doc),
   build: cfBuild,
   bound: cfBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee", { payload: null }),
 });

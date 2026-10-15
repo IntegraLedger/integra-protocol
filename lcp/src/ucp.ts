@@ -19,7 +19,7 @@ import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
 import { checkoutBinding, checkoutJwtOf, type Presented } from "./ap2.js";
 import type { LcpPattern } from "./index.js";
 import { agreementFault, agreementUrlFault, isAgreementUrl } from "./internal/agreement.js";
-import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
+import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -112,7 +112,7 @@ export interface UcpBinding<Id extends string, O extends Option> {
   build(offer: UcpOffer, h: AtrHash): Promise<Unsigned | Refusal>;
   bound(presented: unknown): Promise<AtrHash | Refusal>;
   /** Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`). */
-  broadcaster(presented: unknown): Promise<Broadcaster>;
+  broadcaster(presented: unknown): Promise<Broadcaster | Refusal>;
 }
 
 /**
@@ -242,6 +242,11 @@ async function boundAp2(presented: unknown): Promise<AtrHash | Refusal> {
   return lc.h;
 }
 
+/** The shape gate `checkoutBinding` applies first, as `boundAp2` does: an object, else `ap2/mandate-malformed`. */
+function mandateShape(presented: unknown): true | Refusal {
+  return isObject(presented) ? true : refusal("ap2/mandate-malformed");
+}
+
 async function buildUnsigned(): Promise<Unsigned | Refusal> {
   return refusal("ucp/nothing-to-sign");
 }
@@ -304,7 +309,8 @@ function unsignedPattern(noun: "checkout" | "booking"): LcpPattern {
 
 /**
  * `ucp/checkout/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
- * executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+ * executes the payment the buyer's checkout mandate authorizes; nothing here reads it. A value that is not a JSON
+ * object gets `ap2/mandate-malformed`, as `bound` refuses it.
  */
 export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> = Object.freeze({
   id: "ucp/checkout/ap2-mandate",
@@ -316,7 +322,7 @@ export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> 
   read: readShown(readAp2),
   build: buildAp2,
   bound: boundAp2,
-  broadcaster: broadcasts("payee"),
+  broadcaster: broadcastsWithin(mandateShape, "payee"),
 });
 
 /**
@@ -338,7 +344,8 @@ export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Obj
 
 /**
  * `ucp/booking/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
- * executes the payment the buyer's checkout mandate authorizes; nothing here reads it.
+ * executes the payment the buyer's checkout mandate authorizes; nothing here reads it. A value that is not a JSON
+ * object gets `ap2/mandate-malformed`, as `bound` refuses it.
  */
 export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOption> = Object.freeze({
   id: "ucp/booking/ap2-mandate",
@@ -350,7 +357,7 @@ export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOpt
   read: readShown(readAp2),
   build: buildAp2,
   bound: boundAp2,
-  broadcaster: broadcasts("payee"),
+  broadcaster: broadcastsWithin(mandateShape, "payee"),
 });
 
 /**

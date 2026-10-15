@@ -43,7 +43,7 @@ import {
 } from "../src/mpp.js";
 import type { SessionWithinUnsigned } from "../src/mpp-session.js";
 import { described, descriptionFor, sizeOf } from "./credential-size.js";
-import type { Json } from "../src/index.js";
+import { BINDINGS, type Json } from "../src/index.js";
 import { H, challenge, link, load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -511,6 +511,48 @@ describe("mpp-challenge.json withinChallenge: buildWithin reads the within chall
       expect(await answers(made)).toEqual(await answers(plain));
       const closeRef = (s.pairing as unknown as { closeRef(c: MppChallenge, channel: string): unknown }).closeRef;
       expect(closeRef(named, channel)).toEqual(refused("mpp/channel-named"));
+    });
+  }
+
+  // buildWithin holds the within challenge through the gate broadcaster and the channel members apply first
+  // (credentialShape): the least credential echoing it, { challenge, payload: {} }, within the credential size bound.
+  // One at the bound builds, and its in-channel credential is over the bound; one over the bound is refused. A member
+  // nested past the depth bound is not one of MPP's challenge members, so buildWithin reads none of it, and on the
+  // credential that echoes it broadcaster and channel.kind both refuse with mpp/credential-malformed.
+  for (const pairing of Object.keys(setUps)) {
+    it(`${pairing}: buildWithin, channel.kind and broadcaster agree at the credential bounds and one past them`, async () => {
+      const s = setUps[pairing]!({ case: "", pairing, expect: "" });
+      const w = (c: MppChallenge): SessionWithin => ({ challenge: c, opening: s.opening, cumulativeAmount: 100n, action: "voucher" }) as SessionWithin;
+      const plain = unsigned(await s.pairing.buildWithin(w(s.control), H)).complete([s.signature]) as MppCredential;
+      const broadcaster = BINDINGS.find((b) => b.id === pairing)!.broadcaster as (p: unknown) => Promise<unknown>;
+      const MALFORMED = refused("mpp/credential-malformed");
+      const taken = async (c: MppCredential) => {
+        expect(s.pairing.channel.kind(c)).not.toHaveProperty("refused");
+        expect(["payer", "payee"]).toContain(await broadcaster(c));
+      };
+      const refusedBoth = async (c: MppCredential) => {
+        expect(s.pairing.channel.kind(c)).toEqual(MALFORMED);
+        expect(await broadcaster(c)).toEqual(MALFORMED);
+      };
+      const least = { challenge: s.control, payload: {} };
+      const at = described(s.control, descriptionFor(least, 65_536));
+      const over = described(s.control, descriptionFor(least, 65_537));
+      expect([sizeOf({ challenge: at, payload: {} }), sizeOf({ challenge: over, payload: {} })]).toEqual([65_536, 65_537]);
+      expect(unsigned(await s.pairing.buildWithin(w(at), H)).complete([s.signature])).toEqual(MALFORMED);
+      expect(await s.pairing.buildWithin(w(over), H)).toEqual(MALFORMED);
+      await taken(plain);
+      await taken({ ...plain, challenge: described(s.control, descriptionFor(plain, 65_536)) } as MppCredential);
+      await refusedBoth({ ...plain, challenge: described(s.control, descriptionFor(plain, 65_537)) } as MppCredential);
+      const nested = (n: number): Json => (n === 0 ? "x" : [nested(n - 1)]);
+      const depthOf = (v: unknown): number =>
+        typeof v === "object" && v !== null ? 1 + Math.max(0, ...Object.values(v).map(depthOf)) : 0;
+      for (const [n, depth] of [[14, 16], [15, 17]] as const) {
+        const deep = { ...s.control, deep: nested(n) };
+        expect(unsigned(await s.pairing.buildWithin(w(deep), H)).complete([s.signature])).toEqual(plain);
+        const echoed = { ...plain, challenge: deep } as MppCredential;
+        expect(depthOf(echoed)).toBe(depth);
+        await (depth === 16 ? taken(echoed) : refusedBoth(echoed));
+      }
     });
   }
 

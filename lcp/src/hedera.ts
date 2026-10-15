@@ -18,13 +18,12 @@ import {
   type ExecutorPayload,
   type ExecutorPaymentPayload,
 } from "./internal/hedera.js";
-import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
-  broadcasterByType,
+  byType,
   challengeBound,
   checkedFor,
   checkAttribution,
@@ -32,6 +31,7 @@ import {
   credentialOf,
   FETCHED,
   fetchedOf,
+  mppBroadcaster,
   place,
   read as readMpp,
   tie as tieMpp,
@@ -770,7 +770,7 @@ export const exactHedera = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: hederaStatus,
   recover,
@@ -1006,7 +1006,7 @@ export const exactHederaExecutor = Object.freeze({
   read: readExecutor,
   build: buildExecutor,
   bound: boundExecutor,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference: referenceExecutor,
   status: executorStatus,
 });
@@ -1303,8 +1303,8 @@ const chargePattern: LcpPattern = deepFreeze({
  * `mpp/charge/hedera`. `broadcaster` answers by the credential's `type`, as the charge's `build` writes the request:
  * `hash`, the default, whose request carries `broadcast: true`, `"payer"`: the payer's signer broadcast the body and
  * presents the transaction id, which `fetchPresented` reads, then `status`; `transaction`, whose request carries no
- * `broadcast`, `"payee"`: the seller's server broadcasts the signed transaction, and `status` reads it. Any other
- * credential gets `bound`'s refusal.
+ * `broadcast`, `"payee"`: the seller's server broadcasts the signed transaction, and `status` reads it. A credential of
+ * any other type gets `mpp/credential-type`, as `bound` refuses it.
  */
 export const chargeHedera = Object.freeze({
   id: CHARGE,
@@ -1325,7 +1325,7 @@ export const chargeHedera = Object.freeze({
     return isRefusal(id) ? undefined : txIdMirror(id);
   },
   bound: boundCharge,
-  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, boundCharge),
+  broadcaster: mppBroadcaster(byType({ transaction: "payee", hash: "payer" })),
   reference: referenceCharge,
   status: hederaStatus,
 });

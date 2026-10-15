@@ -17,10 +17,10 @@ import {
   presentedWith,
   readFor,
   type OptionFilter,
+  x402Broadcaster,
   type X402Read,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   LEGAL_CONTEXT,
@@ -673,7 +673,7 @@ export const exactStarknet = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: starknetStatus,
 });

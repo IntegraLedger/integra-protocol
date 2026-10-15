@@ -8,9 +8,8 @@ import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
-import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -440,7 +439,7 @@ export const exactAvm = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: avmStatus,
   recover: avmRecover,

@@ -37,10 +37,10 @@ import {
   withExtra,
   withOption,
   withoutExtra,
+  x402Broadcaster,
   type X402Read,
 } from "./internal/x402.js";
 import { toBase64 } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { SvmUnsigned } from "./x402-exact-solana.js";
 import {
@@ -287,7 +287,7 @@ export const uptoSvm = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: svmChannelStatus,
   recover: svmRecover,

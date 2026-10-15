@@ -52,7 +52,7 @@ import {
   transferParts,
   type ReceiveTypedData,
 } from "./internal/evm.js";
-import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
+import type { Broadcaster } from "./internal/broadcaster.js";
 import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,
@@ -65,6 +65,7 @@ import {
   readFor,
   type OptionFilter,
   type X402Advertise,
+  x402Broadcaster,
   type X402Read,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -390,7 +391,7 @@ export const exactEip3009 = Object.freeze({
   read: readFor(evmFilter(ID)),
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee", { refused: () => refusal("x402/payload-malformed") }),
   reference,
   authorizer,
   status: eip3009Status,
@@ -1296,7 +1297,7 @@ type BreadthBase<Id extends X402PairingId> = {
   readonly tie: typeof tie;
   readonly advertise: X402Advertise;
   readonly read: (doc: unknown) => X402Read | Refusal;
-  readonly broadcaster: (presented: unknown) => Promise<Broadcaster>;
+  readonly broadcaster: (presented: unknown) => Promise<Broadcaster | Refusal>;
 };
 
 /** The members each x402 EVM breadth pairing gives itself. */
@@ -1323,7 +1324,7 @@ function binding<Id extends X402PairingId, M extends BreadthMembers>(
     tie,
     advertise: advertiseFor(evmFilter(id)),
     read: readFor(evmFilter(id)),
-    broadcaster: broadcasts("payee"),
+    broadcaster: x402Broadcaster("payee"),
     ...members,
   });
 }

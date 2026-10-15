@@ -18,8 +18,8 @@ import {
   optionChecks,
   type LnOption,
 } from "./internal/lightning.js";
-import { broadcasts, broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import type { Broadcaster } from "./internal/broadcaster.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import {
   credentialOf,
   checkChallenge,
@@ -29,8 +29,10 @@ import {
   measured,
   measuring,
   measuringAsync,
+  mppBroadcaster,
   place,
   read as mppRead,
+  sessionBroadcaster,
   tie as mppTie,
   type MppChallenge,
   type MppCredential,
@@ -333,7 +335,7 @@ export const exactLnbtc = Object.freeze({
   read: readFor(lnbtcFilter) as (doc: PaymentRequired) => X402Read | Refusal,
   build: lnbtcBuild,
   bound: lnbtcBound,
-  broadcaster: broadcasts("payer"),
+  broadcaster: x402Broadcaster("payer", { payload: null }),
   reference: (presented: unknown) => x402Reference(presented, true),
 });
 
@@ -425,7 +427,7 @@ export const exactLnbtcNamed = Object.freeze({
   read: readFor(namedFilter) as (doc: PaymentRequired) => X402Read | Refusal,
   build: namedBuild,
   bound: namedBound,
-  broadcaster: broadcasts("payer"),
+  broadcaster: x402Broadcaster("payer", { payload: null }),
   reference: (presented: unknown) => x402Reference(presented, false),
 });
 
@@ -648,7 +650,7 @@ function lnMppBinding<P extends LnMppPairingId>(id: P, carrier: string, proves: 
     advertiseBeforeCarrier: lnAdvertiseBeforeCarrier(id),
     build: lnBuild(id),
     bound: lnBound(id),
-    broadcaster: broadcasts("payer"),
+    broadcaster: mppBroadcaster(() => "payer"),
     reference: lnReference(id),
   });
 }
@@ -697,15 +699,13 @@ async function sessionRef(presented: unknown): Promise<{ network: string; channe
 /**
  * Who sends a Lightning session payment, by its action, as draft-lightning-session-00 has it: the payer's node the
  * deposit an opening presents the preimage of, and a top-up's new deposit; a bearer proof moves nothing, and draws on
- * the deposit the payer sent; the seller's node the close's refund of the unspent balance to the return invoice.
- * Undefined for a credential `credentialOf` refuses or any other action.
+ * the deposit the payer sent; the seller's node the close's refund of the unspent balance to the return invoice. Any
+ * other action is `ln/no-payment-in-action`, as `bound` refuses it.
  */
-function sessionBroadcaster(presented: unknown): Broadcaster | undefined {
-  const c = credentialOf(presented);
-  if (isRefusal(c)) return undefined;
-  const a = c.payload["action"];
+function sessionBroadcasts(credential: MppCredential): Broadcaster | Refusal {
+  const a = credential.payload["action"];
   if (a === OPEN || a === "bearer" || a === "topUp") return "payer";
-  return a === "close" ? "payee" : undefined;
+  return a === "close" ? "payee" : refusal("ln/no-payment-in-action");
 }
 
 /** A bearer proof carries no hash; a topUp is within the session and is found by `ref`. */
@@ -716,14 +716,15 @@ async function sessionBoundWithin(_presented: unknown): Promise<AtrHash | Refusa
 const MPP_LN_SESSION_PROVES = MPP_LN_PROVES + " The close is the seller's report.";
 
 /**
- * `mpp/session/lightning`. `broadcaster` answers by the payment's action (`sessionBroadcaster`). `"payer"`: the opening
- * and a top-up, whose deposits the payer's node paid, and a bearer proof, which draws on them; the seller's node, which
- * received each deposit, confirms it, and no `status` reads it. `"payee"`: the close, whose refund the seller's node
- * pays. Any other payment gets `bound`'s refusal.
+ * `mpp/session/lightning`. `broadcaster` answers by the payment's action (`sessionBroadcasts`), for the actions
+ * `channel.kind` takes. `"payer"`: the opening and a top-up, whose deposits the payer's node paid, and a bearer proof,
+ * which draws on them; the seller's node, which received each deposit, confirms it, and no `status` reads it.
+ * `"payee"`: the close, whose refund the seller's node pays. Any other action gets `ln/no-payment-in-action`, as `bound`
+ * refuses it.
  */
 export const sessionLightning = Object.freeze({
   ...lnMppBinding(LN_SESSION, "request.depositInvoice#h", MPP_LN_SESSION_PROVES),
-  broadcaster: broadcastsByKind(sessionBroadcaster, lnBound(LN_SESSION), () => refusal("mpp/session-action")),
+  broadcaster: sessionBroadcaster(sessionKind, sessionBroadcasts, () => refusal("ln/no-payment-in-action")),
   channel: Object.freeze({
     kind: measuring(sessionKind),
     ref: measuringAsync(sessionRef),

@@ -15,7 +15,7 @@ import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash } 
 import { normalHash } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { fromBase64Url } from "./rail-bytes.js";
-import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
+import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import {
@@ -92,7 +92,7 @@ export interface CardPairing<PairingId extends CardPairingId, U> {
   build(doc: unknown, h: AtrHash): Promise<U | Refusal>;
   bound(presented: unknown): Promise<AtrHash | Refusal>;
   /** Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`). */
-  broadcaster(presented: unknown): Promise<Broadcaster>;
+  broadcaster(presented: unknown): Promise<Broadcaster | Refusal>;
 }
 
 const MAX_CHECKOUT_ID = 128;
@@ -502,7 +502,8 @@ const sellerReferencePattern: LcpPattern = deepFreeze({
 
 /**
  * `card/visa-tap`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment to its
- * processor; nothing here reads it.
+ * processor; nothing here reads it. A value that is not an object gets `card/tap-signature-input-malformed`, as
+ * `bound` refuses it.
  */
 export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze({
   id: "card/visa-tap",
@@ -514,12 +515,13 @@ export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze(
   read: readShown,
   build: tapBuild,
   bound: tapBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: broadcastsWithin(tapShape, "payee"),
 });
 
 /**
  * `card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
- * payment the mandate authorizes to its processor; nothing here reads it.
+ * payment the mandate authorizes to its processor; nothing here reads it. A value that is not an object gets
+ * `card/vi-malformed`, as `bound` refuses it.
  */
 export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned> = Object.freeze({
   id: "card/mastercard-vi/immediate",
@@ -531,12 +533,13 @@ export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned
   read: readCheckoutShown,
   build: viBuild,
   bound: viImmediateBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: broadcastsWithin(viShape, "payee"),
 });
 
 /**
  * `card/mastercard-vi/autonomous`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
- * payment the mandates authorize to its processor; nothing here reads it.
+ * payment the mandates authorize to its processor; nothing here reads it. A value that is not an object gets
+ * `card/vi-malformed`, as `bound` refuses it.
  */
 export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsigned> = Object.freeze({
   id: "card/mastercard-vi/autonomous",
@@ -548,7 +551,7 @@ export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsign
   read: readCheckoutShown,
   build: viBuild,
   bound: viAutonomousBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: broadcastsWithin(viShape, "payee"),
 });
 
 /**
@@ -801,6 +804,16 @@ function isVisibleAscii(s: string): boolean {
     if (c < 0x21 || c > 0x7e) return false;
   }
   return true;
+}
+
+/** The shape gate `tapBound` applies first: an object, else `card/tap-signature-input-malformed`. */
+function tapShape(presented: unknown): true | Refusal {
+  return isObject(presented) ? true : refusal("card/tap-signature-input-malformed");
+}
+
+/** The shape gate the VI `bound`s apply first: an object, else `card/vi-malformed`. */
+function viShape(presented: unknown): true | Refusal {
+  return isObject(presented) ? true : refusal("card/vi-malformed");
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {

@@ -18,6 +18,7 @@ import { deepFreeze, isObject, normalHash } from "../fields.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentPayload, PaymentRequired, PaymentRequirements, X402Offer } from "../x402.js";
 import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./agreement.js";
+import { broadcastsWithin, type Broadcaster } from "./broadcaster.js";
 
 export const LEGAL_CONTEXT = "legalContext";
 
@@ -215,6 +216,44 @@ export function acceptedBy(accepted: unknown, filter: OptionFilter): PaymentRequ
   const f = filter(accepted as PaymentRequirements);
   if (f === undefined) return refusal("x402/option-not-this-pairing");
   return f === true ? (accepted as PaymentRequirements) : f;
+}
+
+/**
+ * The refusals an x402 pairing's `bound` gives a payment outside its shape gate, where they are not x402's own: one that
+ * is not an x402 v2 object (`envelope`, else `x402/not-v2`); one that carries a `refused` member, where `bound` reads
+ * that before `accepted` (`refused`); and one whose `payload` is not an object (`payload`, else
+ * `x402/payload-malformed`, or `null` where `bound` reads no payload).
+ */
+export interface X402ShapeRefusals {
+  readonly envelope?: () => Refusal;
+  readonly refused?: () => Refusal;
+  readonly payload?: (() => Refusal) | null;
+}
+
+/**
+ * The shape gate an x402 pairing's `bound` applies before anything else: the payment is an x402 v2 object, its
+ * `accepted` an object and its `payload` an object, each refused as `refusals` names. Which option `accepted` is, and
+ * what the payload carries, are not read here.
+ */
+export function x402Shape(presented: unknown, refusals: X402ShapeRefusals = {}): true | Refusal {
+  if (!isObject(presented) || presented["x402Version"] !== 2) {
+    return refusals.envelope === undefined ? refusal("x402/not-v2") : refusals.envelope();
+  }
+  if (refusals.refused !== undefined && carriesRefused(presented)) return refusals.refused();
+  if (!isObject(presented["accepted"])) return refusal("x402/payload-malformed");
+  if (refusals.payload === null || isObject(presented["payload"])) return true;
+  return refusals.payload === undefined ? refusal("x402/payload-malformed") : refusals.payload();
+}
+
+/**
+ * The `broadcaster` of an x402 pairing whose every payment takes one path: `answer` for a payment within `x402Shape`'s
+ * gate, and the refusal `bound` gives any other.
+ */
+export function x402Broadcaster(
+  answer: Broadcaster,
+  refusals?: X402ShapeRefusals,
+): (presented: unknown) => Promise<Broadcaster | Refusal> {
+  return broadcastsWithin((presented) => x402Shape(presented, refusals), answer);
 }
 
 /** A presented payment's `accepted`, held to the filter by `acceptedBy`, its `payload` object and its `extensions`. */

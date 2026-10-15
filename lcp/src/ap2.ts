@@ -18,7 +18,7 @@ import {
 import { deepFreeze, jsonBytes, normalHash, sameJson } from "./fields.js";
 import type { LcpPattern } from "./index.js";
 import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { broadcasts } from "./internal/broadcaster.js";
+import { broadcastsWithin } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   decodeJsonSegment,
@@ -157,6 +157,11 @@ export async function readMandate(m: unknown): Promise<MandateContent | Refusal>
   if (typeof checkoutHash !== "string" || !CHECKOUT_HASH.test(checkoutHash)) return refusal("ap2/mandate-malformed");
   if (checkoutJwt !== undefined && typeof checkoutJwt !== "string") return refusal("ap2/mandate-malformed");
   return checkoutJwt === undefined ? { checkout_hash: checkoutHash } : { checkout_hash: checkoutHash, checkout_jwt: checkoutJwt };
+}
+
+/** The shape gate `checkoutBinding` applies first, as `bound` does: a JSON object, else `ap2/mandate-malformed`. */
+function mandateShape(p: unknown): true | Refusal {
+  return isJsonObject(p) ? true : refusal("ap2/mandate-malformed");
 }
 
 /**
@@ -314,7 +319,8 @@ const pattern: LcpPattern = deepFreeze({
 
 /**
  * `ap2/checkout-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment processor
- * executes the payment the closed Checkout Mandate authorizes; nothing here reads it.
+ * executes the payment the closed Checkout Mandate authorizes; nothing here reads it. A value that is not a JSON object
+ * gets `ap2/mandate-malformed`, as `bound` refuses it.
  */
 export const checkoutMandate = Object.freeze({
   id: ID,
@@ -326,7 +332,7 @@ export const checkoutMandate = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: broadcastsWithin(mandateShape, "payee"),
 });
 
 function isOption(o: unknown): o is CheckoutOption {

@@ -18,10 +18,10 @@ import {
   presentedWith,
   readFor,
   type OptionFilter,
+  x402Broadcaster,
   type X402Read,
 } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -411,7 +411,7 @@ export const exactAptos = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: aptosStatus,
 });

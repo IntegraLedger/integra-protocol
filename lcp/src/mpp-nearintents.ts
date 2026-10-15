@@ -6,8 +6,10 @@
 import { fromLcpString, hashEquals, toLcpString, type AtrHash } from "./core.js";
 import { isObject, normalHash } from "./fields.js";
 import {
+  byType,
   deepFreeze,
   echoedFor,
+  mppBroadcaster,
   placeCarrier,
   read,
   tie,
@@ -16,7 +18,6 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import { isExternalId } from "./mpp-rail-checks.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -84,8 +85,9 @@ const pattern: LcpPattern = deepFreeze({
 });
 
 /**
- * `mpp/charge/nearintents`. The payer broadcasts (`broadcaster` answers `"payer"`): it sends its deposit before
- * presenting the deposit's hash. Settlement is the seller's report: no `fetchPresented`, `status` or `recover` reads
+ * `mpp/charge/nearintents`. The payer broadcasts (`broadcaster` answers `"payer"` for a credential of `type` `hash`):
+ * it sends its deposit before presenting the deposit's hash. Settlement is the seller's report: no `fetchPresented`,
+ * `status` or `recover` reads it. A credential of any other type gets `near/not-hash-credential`, as `bound` refuses
  * it.
  */
 export const chargeNearIntents = Object.freeze({
@@ -98,5 +100,5 @@ export const chargeNearIntents = Object.freeze({
   advertise,
   read,
   bound,
-  broadcaster: broadcasts("payer"),
+  broadcaster: mppBroadcaster(byType({ hash: "payer" }, () => refusal("near/not-hash-credential"))),
 });

@@ -20,7 +20,7 @@ import {
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
-import { broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
+import { broadcasterOf, type Broadcaster } from "./internal/broadcaster.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import { decode as decodeInvoice, FIELD } from "./internal/lightning.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
@@ -1052,21 +1052,70 @@ export function pushedField(presented: unknown, type: string, field: string): st
 }
 
 /**
- * The `broadcaster` of an MPP pairing that takes credentials of more than one payload `type`: the answer `types` gives
- * the credential's `type`. A credential `credentialOf` refuses, or one of a type `types` does not name, gets the
- * refusal `bound` gives it, else `mpp/credential-type`.
+ * The shape gate `challengeBound` applies before any other check: `credentialOf`'s shape, at most 64 KiB as JSON, and
+ * at most 16 arrays and objects deep. Any other value is `mpp/credential-malformed`.
  */
-export function broadcasterByType(
-  types: { readonly [type: string]: Broadcaster },
-  bound: (presented: unknown) => Promise<unknown>,
+export function credentialShape(c: unknown): MppCredential | Refusal {
+  return shapeGate(c, true);
+}
+
+/**
+ * `credentialShape`'s gate, with `credentialOf`'s checks in its order and the size last. Without `bound`, as
+ * `issuedFor` reads an issued challenge, which need not carry H, the challenge's id is not read.
+ */
+function shapeGate(c: unknown, bound: boolean): MppCredential | Refusal {
+  if (!isObject(c) || carriesRefused(c) || !isObject(c.challenge) || !isObject(c.payload)) {
+    return refusal("mpp/credential-malformed");
+  }
+  if (!isChallengeShape(c.challenge) || (bound && typeof c.challenge.id !== "string")) return refusal("mpp/credential-malformed");
+  if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
+  return jsonWithin(c, MAX_CREDENTIAL) ? (c as unknown as MppCredential) : refusal("mpp/credential-malformed");
+}
+
+/**
+ * The `broadcaster` of an MPP pairing: `answer` reads a credential within `credentialShape`'s gate, which every MPP
+ * `bound` applies first, and gives who broadcasts it, or, for a credential of a type or action the pairing does not
+ * take, the refusal `bound` gives it. Any other credential is `mpp/credential-malformed`, as `bound` refuses it.
+ */
+export function mppBroadcaster(
+  answer: (credential: MppCredential) => Broadcaster | Refusal,
 ): (presented: unknown) => Promise<Broadcaster | Refusal> {
-  const kindOf = (presented: unknown): Broadcaster | undefined => {
-    const c = credentialOf(presented);
-    if (isRefusal(c)) return undefined;
-    const t = c.payload["type"];
-    return typeof t === "string" && Object.hasOwn(types, t) ? types[t] : undefined;
+  return broadcasterOf((presented) => {
+    const c = credentialShape(presented);
+    return isRefusal(c) ? c : answer(c);
+  });
+}
+
+/**
+ * The answer `types` names for a credential's payload `type`: the types the pairing takes, each with who broadcasts it.
+ * A credential of any other type gets `notTaken`'s refusal, the one the pairing's `bound` gives it, `mpp/credential-type`
+ * where none is given.
+ */
+export function byType(
+  types: { readonly [type: string]: Broadcaster },
+  notTaken: () => Refusal = () => refusal("mpp/credential-type"),
+): (credential: MppCredential) => Broadcaster | Refusal {
+  return (credential) => {
+    const t = credential.payload["type"];
+    return typeof t === "string" && Object.hasOwn(types, t) ? types[t]! : notTaken();
   };
-  return broadcastsByKind(kindOf, bound, () => refusal("mpp/credential-type"));
+}
+
+/**
+ * The `broadcaster` of an MPP session: `kind`, the session's `channel.kind`, decides which actions it takes, and
+ * `answer` reads who broadcasts a credential of one of them. A credential whose action `kind` refuses
+ * `mpp/session-action` gets `notTaken`'s refusal, the one the session's `bound` gives a credential that is not an
+ * opening.
+ */
+export function sessionBroadcaster(
+  kind: (credential: MppCredential) => unknown,
+  answer: (credential: MppCredential) => Broadcaster | Refusal,
+  notTaken: () => Refusal,
+): (presented: unknown) => Promise<Broadcaster | Refusal> {
+  return mppBroadcaster((c) => {
+    const k = kind(c);
+    return isRefusal(k) && k.code === "mpp/session-action" ? notTaken() : answer(c);
+  });
 }
 
 /**
@@ -1079,32 +1128,29 @@ export function challengeBound(c: unknown): { h: AtrHash; request: { [k: string]
 }
 
 /**
- * The checks `challengeBound` makes, in its order. With `bound`, the challenge has an id, the id derives from H and
- * `opaque` names H. Without it, as `issuedFor` reads an issued challenge, which need not carry H, the id is not read
- * and an `opaque` that is present must decode as a map of strings.
+ * The checks `challengeBound` makes, in its order, the first of them `credentialShape`'s gate. With `bound`, the
+ * challenge has an id, the id derives from H and `opaque` names H. Without it, as `issuedFor` reads an issued
+ * challenge, which need not carry H, the id is not read and an `opaque` that is present must decode as a map of
+ * strings.
  */
 function echoedRead(c: unknown, bound: boolean): { h: AtrHash | undefined; request: { [k: string]: Json } } | Refusal {
-  if (!isObject(c) || carriesRefused(c) || !isObject(c.challenge) || !isObject(c.payload)) {
-    return refusal("mpp/credential-malformed");
-  }
-  if (!isChallengeShape(c.challenge) || (bound && typeof c.challenge.id !== "string")) return refusal("mpp/credential-malformed");
-  if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
-  if (!jsonWithin(c, MAX_CREDENTIAL)) return refusal("mpp/credential-malformed");
-  if (!hasHashableRealm(c.challenge)) return refusal("mpp/challenge-malformed");
+  const credential = shapeGate(c, bound);
+  if (isRefusal(credential)) return credential;
+  if (!hasHashableRealm(credential.challenge)) return refusal("mpp/challenge-malformed");
   let h: AtrHash | undefined;
   if (bound) {
-    const fromId = challengeIdH(c.challenge);
+    const fromId = challengeIdH(credential.challenge);
     if (typeof fromId !== "string") return fromId;
-    if (c.challenge.opaque === undefined) return refusal("mpp/opaque-not-this-hash");
-    const map = decodeStringMap(c.challenge.opaque);
+    if (credential.challenge.opaque === undefined) return refusal("mpp/opaque-not-this-hash");
+    const map = decodeStringMap(credential.challenge.opaque);
     if (map === undefined) return refusal("mpp/opaque-malformed");
     const lc = map["legalContext"] === undefined ? null : fromLcpString(map["legalContext"]);
     if (lc === null || !hashEquals(lc, fromId)) return refusal("mpp/opaque-not-this-hash");
     h = fromId;
-  } else if (c.challenge.opaque !== undefined && decodeStringMap(c.challenge.opaque) === undefined) {
+  } else if (credential.challenge.opaque !== undefined && decodeStringMap(credential.challenge.opaque) === undefined) {
     return refusal("mpp/opaque-malformed");
   }
-  const request = decodeObject(c.challenge.request);
+  const request = decodeObject(credential.challenge.request);
   if (request === undefined) return refusal("mpp/request-malformed");
   return { h, request };
 }

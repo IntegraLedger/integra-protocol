@@ -8,7 +8,7 @@ import { decode as decodeXrpl, encode as encodeXrpl } from "ripple-binary-codec"
 import { describe, expect, it } from "vitest";
 import { concat, toHex, type Hex } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
-import type { Json } from "../src/index.js";
+import { BINDINGS, type Json } from "../src/index.js";
 import type { StellarPaymentPayload } from "../src/internal/stellar.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
@@ -776,6 +776,76 @@ describe("each build holds a snapshot of the chosen challenge's own members", ()
           expect(await P[id]!.bound(JSON.parse(JSON.stringify(made)))).toEqual(await P[id]!.bound(JSON.parse(JSON.stringify(plain))));
         } finally {
           afterBuild = undefined;
+        }
+      });
+    });
+  }
+});
+
+// Each build holds the chosen challenge through the shape gate bound and broadcaster apply first (credentialShape):
+// the least credential echoing it, { challenge, payload: {} }, within the credential size bound and 16 arrays and
+// objects deep. So at each bound and one past it, build, bound and the pairing's broadcaster give one answer. A
+// challenge's MPP members are strings, so a challenge nested past the depth bound carries a member build does not read
+// (challengeSnapshot): build answers and its credential carries none of it, and a credential that echoes the member
+// itself is mpp/credential-malformed from bound and broadcaster alike.
+describe("build, bound and broadcaster give one answer at the credential bounds and one past them", () => {
+  const broadcasterOf = (id: string) => BINDINGS.find((b) => b.id === id)!.broadcaster as (p: unknown) => Promise<unknown>;
+  /** A string inside `n` arrays. */
+  const nested = (n: number): Json => (n === 0 ? "x" : [nested(n - 1)]);
+  /** The number of arrays and objects around a value's deepest member, as the depth bound counts them. */
+  const depthOf = (v: unknown): number =>
+    typeof v === "object" && v !== null ? 1 + Math.max(0, ...Object.values(v).map(depthOf)) : 0;
+  const taken = (b: unknown) => expect(["payer", "payee"]).toContain(b);
+  const MALFORMED = refused("mpp/credential-malformed");
+
+  for (const id of PAIRINGS) {
+    describe(id, () => {
+      it("size: build holds a chosen challenge whose least credential is at the bound, and refuses one over it", async () => {
+        const { placed, complete } = setUp(id);
+        const plain = (await complete(placed)) as MppCredential;
+        const least = { challenge: placed, payload: {} };
+        const at = described(placed, descriptionFor(least, 65_536));
+        const over = described(placed, descriptionFor(least, 65_537));
+        expect(sizeOf({ challenge: at, payload: {} })).toBe(65_536);
+        expect(sizeOf({ challenge: over, payload: {} })).toBe(65_537);
+        // complete's credential carries a payload too, so it is over the bound under `at`.
+        expect(await answered(complete(at))).toEqual({ by: "complete", answer: MALFORMED });
+        expect(await answered(complete(over))).toEqual({ by: "build", answer: MALFORMED });
+        for (const challenge of [at, over]) {
+          expect(await P[id]!.bound({ ...plain, challenge })).toEqual(MALFORMED);
+          expect(await broadcasterOf(id)({ ...plain, challenge })).toEqual(MALFORMED);
+        }
+      });
+
+      it("size: bound and broadcaster take a credential at the bound and refuse one over it", async () => {
+        const { placed, h, complete } = setUp(id);
+        const plain = (await complete(placed)) as MppCredential;
+        const answer = P[id]!.answer === undefined ? h : refused(P[id]!.answer!);
+        const at = { ...plain, challenge: described(placed, descriptionFor(plain, 65_536)) };
+        const over = { ...plain, challenge: described(placed, descriptionFor(plain, 65_537)) };
+        expect([sizeOf(at), sizeOf(over)]).toEqual([65_536, 65_537]);
+        expect(await P[id]!.bound(at)).toEqual(answer);
+        taken(await broadcasterOf(id)(at));
+        expect(await P[id]!.bound(over)).toEqual(MALFORMED);
+        expect(await broadcasterOf(id)(over)).toEqual(MALFORMED);
+      });
+
+      it("depth: a challenge 16 deep in its credential is taken and one 17 deep is refused; build reads neither", async () => {
+        const { placed, h, complete } = setUp(id);
+        const plain = (await complete(placed)) as MppCredential;
+        const answer = P[id]!.answer === undefined ? h : refused(P[id]!.answer!);
+        for (const [n, depth] of [[14, 16], [15, 17]] as const) {
+          const challenge = { ...placed, deep: nested(n) } as Placed;
+          const echoed = { ...plain, challenge };
+          expect(depthOf(echoed)).toBe(depth);
+          expect(await answered(complete(challenge))).toEqual({ by: "complete", answer: plain });
+          if (depth === 16) {
+            expect(await P[id]!.bound(echoed)).toEqual(answer);
+            taken(await broadcasterOf(id)(echoed));
+          } else {
+            expect(await P[id]!.bound(echoed)).toEqual(MALFORMED);
+            expect(await broadcasterOf(id)(echoed)).toEqual(MALFORMED);
+          }
         }
       });
     });

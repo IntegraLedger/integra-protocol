@@ -17,7 +17,7 @@ import {
 } from "./internal/core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
 import { AGREEMENT_URL_SNAKE, agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { broadcasts, type Broadcaster } from "./internal/broadcaster.js";
+import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
@@ -68,7 +68,7 @@ export interface AcpBinding<Id extends string> {
   build(choice: AcpChoice, h: AtrHash): Promise<Unsigned | Refusal>;
   bound(presented: unknown): Promise<AtrHash | Refusal>;
   /** Who broadcasts what the payer presents: the seller, which completes the payment (`"payee"`). */
-  broadcaster(presented: unknown): Promise<Broadcaster>;
+  broadcaster(presented: unknown): Promise<Broadcaster | Refusal>;
 }
 
 const MAX_SESSION_BYTES = 1_048_576;
@@ -270,8 +270,17 @@ const undelegatedPattern: LcpPattern = Object.freeze({
 });
 
 /**
- * `acp/checkout/delegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's PSP charges the vault
- * token the buyer's agent obtained; nothing here reads it.
+ * The shape gate `boundDelegated` applies first: an object whose `allowance` has the members and member types ACP's
+ * allowance has, else `acp/allowance-malformed`.
+ */
+function allowanceShape(presented: unknown): true | Refusal {
+  return isObject(presented) && isAllowance(presented["allowance"]) ? true : refusal("acp/allowance-malformed");
+}
+
+/**
+ * `acp/checkout/delegated`. The payee broadcasts (`broadcaster` answers `"payee"` for a payment within `bound`'s shape
+ * gate, `allowanceShape`): the seller's PSP charges the vault token the buyer's agent obtained; nothing here reads it.
+ * Any other value gets `acp/allowance-malformed`, as `bound` refuses it.
  */
 export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
   id: "acp/checkout/delegated",
@@ -283,7 +292,7 @@ export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
   read,
   build: buildDelegated,
   bound: boundDelegated,
-  broadcaster: broadcasts("payee"),
+  broadcaster: broadcastsWithin(allowanceShape, "payee"),
 });
 
 /**

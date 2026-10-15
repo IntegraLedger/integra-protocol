@@ -21,9 +21,9 @@ import {
   type SourcePayment,
 } from "./internal/stellar.js";
 import {
-  broadcasterByType,
   chosenFor,
   credentialOf,
+  decodeObject,
   deepFreeze,
   echoedFor,
   expiresOf,
@@ -31,6 +31,7 @@ import {
   fetchedOf,
   isObject,
   measured,
+  mppBroadcaster,
   placeCarrier,
   pushedField,
   read,
@@ -41,6 +42,7 @@ import {
   type MppCredential,
 } from "./mpp-challenge.js";
 import { isFeePayer, isStellarRecipient } from "./mpp-rail-checks.js";
+import type { Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -318,9 +320,26 @@ const pattern: LcpPattern = deepFreeze({
 });
 
 /**
- * `mpp/charge/stellar`. `broadcaster` answers by the credential's `type`. `transaction`, `"payee"`: the seller's server
- * submits the signed transaction, and `status` reads it. `hash`, `"payer"`: the payer broadcast the transaction, which
- * `fetchPresented` reads, then `status`. Any other credential gets `bound`'s refusal.
+ * Who broadcasts a Stellar charge credential, by its `type`: a `transaction`, which the seller's server submits, and,
+ * where the echoed request's `feePayer` is not `true`, a `hash`, which the payer broadcast. Under `feePayer` true MPP's
+ * Stellar charge forbids push mode, so a `hash` credential there is `mpp/credential-type`, as `bound` refuses it, and so
+ * is a credential of any other type.
+ */
+function broadcasterFor(credential: MppCredential): Broadcaster | Refusal {
+  const type = credential.payload["type"];
+  if (type === "transaction") return "payee";
+  if (type !== "hash") return refusal("mpp/credential-type");
+  const request = decodeObject(credential.challenge.request);
+  const details = request === undefined ? undefined : request["methodDetails"];
+  return isObject(details) && details["feePayer"] === true ? refusal("mpp/credential-type") : "payer";
+}
+
+/**
+ * `mpp/charge/stellar`. `broadcaster` answers by the credential's `type` (`broadcasterFor`). `transaction`, `"payee"`:
+ * the seller's server submits the signed transaction, and `status` reads it. `hash`, where the request's `feePayer` is
+ * not true, `"payer"`: the payer broadcast the transaction, which `fetchPresented` reads, then `status`. A `hash`
+ * credential under `feePayer` true, and a credential of any other type, get `mpp/credential-type`, as `bound` refuses
+ * them.
  */
 export const chargeStellar = Object.freeze({
   id: ID,
@@ -333,7 +352,7 @@ export const chargeStellar = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, bound),
+  broadcaster: mppBroadcaster(broadcasterFor),
   reference,
   status: stellarStatus,
   fetchPresented,

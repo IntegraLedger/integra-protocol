@@ -8,7 +8,7 @@ import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
 import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmReceipt, type EvmRef } from "./evm.js";
-import { broadcasts, broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
+import type { Broadcaster } from "./internal/broadcaster.js";
 import { failedAt, finalAt, isLog, isReceipt, settledAt } from "./internal/evm.js";
 import { isAddress, normalHash } from "./fields.js";
 import {
@@ -85,6 +85,7 @@ import {
   measuringAsync,
   place,
   read,
+  sessionBroadcaster,
   tie,
   type Checked,
   type Echoed,
@@ -602,14 +603,17 @@ function hederaKind(presented: MppCredential): Kind | Refusal {
 /**
  * Who broadcasts a Hedera session payment, by its action, as draft-hedera-session-00 has it: the payer an opening or a
  * top-up, each a transaction it broadcast and names by `txHash`; the seller's server a voucher, which it redeems when
- * it closes, and the close, which it sends. Undefined for a credential `credentialOf` refuses or any other action.
+ * it closes, and the close, which it sends. Any other action is `mpp/session-action`, as `bound` refuses it.
  */
-function hederaBroadcaster(presented: unknown): Broadcaster | undefined {
-  const c = credentialOf(presented);
-  if (isRefusal(c)) return undefined;
-  const action = c.payload["action"];
+function hederaBroadcasts(credential: MppCredential): Broadcaster | Refusal {
+  const action = credential.payload["action"];
   if (action === "open" || action === "topUp") return "payer";
-  return action === "voucher" || action === "close" ? "payee" : undefined;
+  return action === "voucher" || action === "close" ? "payee" : refusal("mpp/session-action");
+}
+
+/** The actions an XRPL session takes: the opening, a voucher and the close. */
+function xrplKind(presented: MppCredential): Kind | Refusal {
+  return actionKind(presented, ["voucher"]);
 }
 
 /**
@@ -1326,10 +1330,11 @@ function sessionPattern(p: Pick<LcpPattern, "pattern" | "buyerSigns" | "zeroPart
 }
 
 /**
- * `mpp/session/hedera`. `broadcaster` answers by the payment's action (`hederaBroadcaster`). `"payer"`: the opening,
- * whose two calls the payer's signer broadcasts, and a top-up; `fetchPresented` reads the landed opening named by
- * `txHash` (`landedTx`), then `status`. `"payee"`: a voucher, which the seller's server redeems when it closes, and the
- * close, the escrow call it sends, which `closeRef` and `status` read. Any other payment gets `bound`'s refusal.
+ * `mpp/session/hedera`. `broadcaster` answers by the payment's action (`hederaBroadcasts`), for the actions
+ * `channel.kind` takes. `"payer"`: the opening, whose two calls the payer's signer broadcasts, which `fetchPresented`
+ * reads, named by `txHash` (`landedTx`), then `status`; and a top-up, which no member reads, so the seller confirms it
+ * outside the package. `"payee"`: a voucher, which the seller's server redeems when it closes, and the close, the escrow
+ * call it sends, which `closeRef` and `status` read. Any other action gets `mpp/session-action`, as `bound` refuses it.
  */
 export const sessionHedera = Object.freeze({
   id: HEDERA,
@@ -1356,7 +1361,7 @@ export const sessionHedera = Object.freeze({
   build: hederaBuild,
   buildWithin: hederaBuildWithin,
   bound: hederaBound,
-  broadcaster: broadcastsByKind(hederaBroadcaster, hederaBound, () => refusal("mpp/session-action")),
+  broadcaster: sessionBroadcaster(hederaKind, hederaBroadcasts, () => refusal("mpp/session-action")),
   reference: hederaReference,
   status: hederaStatus,
   recover: hederaRecover,
@@ -1376,11 +1381,13 @@ export const sessionHedera = Object.freeze({
 });
 
 /**
- * `mpp/session/solana`. The payee broadcasts every payment (`broadcaster` answers `"payee"`), as
- * draft-solana-session-00 has it: the seller's server co-signs and broadcasts the opening and a top-up, each a
- * transaction the payer signed, once `fetchPresented` has read the opening's address lookup tables (it reads no landed
- * payment); it redeems vouchers and the operator's `use` metering when it settles, and broadcasts the close. `status`
- * and `closeRef` read them.
+ * `mpp/session/solana`. The payee broadcasts every payment the session takes (`broadcaster` answers `"payee"` for the
+ * actions `channel.kind` takes), as draft-solana-session-00 has it: the seller's server co-signs and broadcasts the
+ * opening and a top-up, each a transaction the payer signed, once `fetchPresented` has read the opening's address
+ * lookup tables (it reads no landed payment); it redeems vouchers and the operator's `use` metering when it settles,
+ * and broadcasts the close. `status` and `closeRef` read them. Any other action, a voucher where the challenge's
+ * `voucherSigner` is `operator` and a `use` where it is not among them, gets `mpp/session-action`, as `bound` refuses
+ * it.
  */
 export const sessionSolana = Object.freeze({
   id: SOLANA,
@@ -1407,7 +1414,7 @@ export const sessionSolana = Object.freeze({
   build: solanaBuild,
   buildWithin: solanaBuildWithin,
   bound: solanaBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: sessionBroadcaster(solanaKind, () => "payee", () => refusal("mpp/session-action")),
   reference: solanaReference,
   status: solanaStatus,
   fetchPresented: solanaFetchPresented,
@@ -1421,9 +1428,11 @@ export const sessionSolana = Object.freeze({
 });
 
 /**
- * `mpp/session/xrpl`. The payee broadcasts every payment (`broadcaster` answers `"payee"`): the seller's server submits
- * the signed `PaymentChannelCreate` the opening carries, which `status` reads, redeems claims when it closes, and sends
- * the close, which `closeRef` and `status` read.
+ * `mpp/session/xrpl`. The payee broadcasts every payment the session takes (`broadcaster` answers `"payee"` for the
+ * actions `channel.kind` takes: the opening, a voucher and the close): the seller's server submits the signed
+ * `PaymentChannelCreate` the opening carries, which `status` reads, redeems claims when it closes, and sends the close,
+ * which `closeRef` and `status` read. Any other action, a top-up among them, gets `mpp/session-action`, as `bound`
+ * refuses it.
  */
 export const sessionXrpl = Object.freeze({
   id: XRPL,
@@ -1448,13 +1457,13 @@ export const sessionXrpl = Object.freeze({
   build: xrplBuild,
   buildWithin: xrplBuildWithin,
   bound: xrplBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: sessionBroadcaster(xrplKind, () => "payee", () => refusal("mpp/session-action")),
   reference: xrplReference,
   status: xrplStatusOf,
   recover: xrplRecover,
   closeRef: xrplCloseRef,
   channel: Object.freeze({
-    kind: measuring((p: MppCredential) => actionKind(p, ["voucher"])),
+    kind: measuring((p: MppCredential) => xrplKind(p)),
     ref: measuringAsync(xrplRef),
     boundWithin: measuringAsync(notBoundWithin),
     until: xrplUntil,

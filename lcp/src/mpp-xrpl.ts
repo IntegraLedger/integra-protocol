@@ -16,7 +16,7 @@ import {
   type XrplTxJson,
 } from "./internal/xrpl.js";
 import {
-  broadcasterByType,
+  byType,
   chosenFor,
   credentialOf,
   deepFreeze,
@@ -25,6 +25,7 @@ import {
   fetchedOf,
   isObject,
   measured,
+  mppBroadcaster,
   placeCarrier,
   pushedField,
   read,
@@ -293,7 +294,8 @@ const pattern: LcpPattern = deepFreeze({
 /**
  * `mpp/charge/xrpl`. `broadcaster` answers by the credential's `type`. `transaction`, `"payee"`: the seller's server
  * submits the signed blob, and `status` reads it. `hash`, `"payer"`: the payer broadcast the transaction, which
- * `fetchPresented` reads, then `status`. Any other credential gets `bound`'s refusal.
+ * `fetchPresented` reads, then `status`. A credential of any other type gets `mpp/credential-type`, as `bound` refuses
+ * it.
  */
 export const chargeXrpl = Object.freeze({
   id: ID,
@@ -306,7 +308,7 @@ export const chargeXrpl = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasterByType({ transaction: "payee", hash: "payer" }, bound),
+  broadcaster: mppBroadcaster(byType({ transaction: "payee", hash: "payer" })),
   reference,
   status: xrplStatus,
   recover: xrplInvoiceOf,

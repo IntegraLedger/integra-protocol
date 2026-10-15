@@ -27,7 +27,7 @@ import {
   type SvmTx,
 } from "./internal/svm.js";
 import {
-  broadcasterByType,
+  byType,
   chosenFor,
   credentialOf,
   deepFreeze,
@@ -36,6 +36,7 @@ import {
   fetchedOf,
   isObject,
   measured,
+  mppBroadcaster,
   placeCarrier,
   pushedField,
   read,
@@ -48,7 +49,6 @@ import {
 } from "./mpp-challenge.js";
 import { isSolanaExternalId, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { toBase64 } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -477,7 +477,7 @@ function pullPairing<Id extends typeof ID | "mpp/charge/usdc/solana">(spec: Sola
     read,
     build: (choice: SolanaChargeChoice, h: AtrHash) => build(spec, choice, h),
     bound: (input: unknown) => bound(spec, input),
-    broadcaster: broadcasts("payee"),
+    broadcaster: mppBroadcaster(byType({ transaction: "payee" })),
     reference: (input: unknown) => reference(spec, input),
     status: svmStatus,
     recover,
@@ -493,14 +493,11 @@ export function solanaChargePairing<Id extends typeof ID | "mpp/charge/usdc/sola
  * `mpp/charge/solana`. `broadcaster` answers by the credential's `type`, as draft-solana-charge-00 has it:
  * `transaction` and `bundle`, `"payee"`, signed transactions the seller's server broadcasts (a bundle's in order),
  * naming the signature to `status`; `signature`, `"payer"`, a transaction the payer broadcast, which `fetchPresented`
- * reads, then `status`. Any other credential gets `bound`'s refusal.
+ * reads, then `status`. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it.
  */
 export const chargeSolana = Object.freeze({
   ...pullPairing(SOLANA),
-  broadcaster: broadcasterByType(
-    { transaction: "payee", bundle: "payee", signature: "payer" },
-    (input: unknown) => bound(SOLANA, input),
-  ),
+  broadcaster: mppBroadcaster(byType({ transaction: "payee", bundle: "payee", signature: "payer" })),
   fetchPresented: (credential: MppCredential, reader: SvmReader) => fetchPresented(SOLANA, credential, reader),
   landedTx: (presented: unknown): string | undefined => {
     const signature = pushedField(presented, "signature", "signature");

@@ -34,6 +34,7 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
+  byType,
   challengeSnapshot,
   chosenHeld,
   credentialOf,
@@ -52,6 +53,7 @@ import {
   place,
   read,
   requestAddress,
+  sessionBroadcaster,
   subscriptionPeriod,
   tie,
   unixOf,
@@ -72,7 +74,7 @@ import {
   transferParts,
   type ReceiveTypedData,
 } from "./internal/evm.js";
-import { broadcasts, broadcastsByKind, type Broadcaster } from "./internal/broadcaster.js";
+import type { Broadcaster } from "./internal/broadcaster.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readKeyAuthorization, type KeyAuthorizationRead } from "./internal/key-authorization.js";
 import { keyAccount } from "./internal/tempo.js";
@@ -743,6 +745,12 @@ export function evmSessionResume(c: MppChallenge): { network: string; channel: H
 
 type Opening = { type: string; o: { [k: string]: Json } };
 
+/**
+ * The payload `type`s an EVM session opening takes, which `evmOpened` reads, each with who broadcasts the funding it
+ * carries: the payer a `hash`, the seller's server an `authorization` or a `permit2`. A top-up takes the same types.
+ */
+const EVM_FUNDING: { readonly [type: string]: Broadcaster } = { hash: "payer", authorization: "payee", permit2: "payee" };
+
 /** The opening of an EVM session payload: the `open` payload, or a voucher's `deposit` whose action is `open`. */
 function evmOpening(payload: { [k: string]: Json }): Opening | Refusal {
   if (payload["action"] === "open") return { type: str(payload["type"]), o: payload };
@@ -782,7 +790,7 @@ function evmOpened(
   const opening = evmOpening(e.payload);
   if (isRefusal(opening)) return opening;
   const { type, o } = opening;
-  if (type !== "hash" && type !== "authorization" && type !== "permit2") return refusal("mpp/credential-type");
+  if (!Object.hasOwn(EVM_FUNDING, type)) return refusal("mpp/credential-type");
   const salt = normalHash(o["salt"]);
   if (salt === null) return refusal("mpp/credential-malformed");
   if (!hashEquals(salt, e.h)) return refusal("mpp/salt-not-this-hash");
@@ -824,31 +832,24 @@ function evmOpened(
 }
 
 /**
- * Who broadcasts an EVM session funding whose payload `type` is `t`: the payer a `hash`, the seller's server an
- * `authorization` or a `permit2`. Undefined for any other.
+ * Who broadcasts an EVM session payment, by its action, as draft-evm-session-00 has it: an opening by its `type`
+ * (`EVM_FUNDING`), else `mpp/credential-type`; a top-up by its `type` likewise, else `mpp/not-an-opening`; a voucher,
+ * which the seller's server redeems when it settles or closes, `"payee"`, or, carrying an opening `deposit`, by that
+ * deposit's `type`, else `mpp/credential-type`; a close, the escrow call the seller's server sends, `"payee"`. Each
+ * refusal is the one `bound` gives the credential. Any other action is `mpp/not-an-opening`, as `bound` refuses it.
  */
-function evmFunder(t: Json | undefined): Broadcaster | undefined {
-  if (t === "hash") return "payer";
-  return t === "authorization" || t === "permit2" ? "payee" : undefined;
-}
-
-/**
- * Who broadcasts an EVM session payment, by its action, as draft-evm-session-00 has it: an opening or a top-up by its
- * `type` (`evmFunder`); a voucher, which the seller's server redeems when it settles or closes, `"payee"`, or, carrying
- * an opening `deposit`, by that deposit's `type`; a close, the escrow call the seller's server sends, `"payee"`.
- * Undefined for a credential `credentialOf` refuses, any other action, or a type `evmFunder` does not name.
- */
-function evmBroadcaster(presented: unknown): Broadcaster | undefined {
-  const c = credentialOf(presented);
-  if (isRefusal(c)) return undefined;
-  const p = c.payload;
+function evmBroadcasts(credential: MppCredential): Broadcaster | Refusal {
+  const p = credential.payload;
   const action = p["action"];
-  if (action === "open" || action === "topUp") return evmFunder(p["type"]);
+  const funding = byType(EVM_FUNDING);
+  if (action === "open") return funding(credential);
+  if (action === "topUp") return byType(EVM_FUNDING, () => refusal("mpp/not-an-opening"))(credential);
   if (action === "voucher") {
     const deposit = p["deposit"];
-    return isObject(deposit) && deposit["action"] === "open" ? evmFunder(deposit["type"]) : "payee";
+    if (!isObject(deposit) || deposit["action"] !== "open") return "payee";
+    return funding({ ...credential, payload: deposit as { [k: string]: Json } });
   }
-  return action === "close" ? "payee" : undefined;
+  return action === "close" ? "payee" : refusal("mpp/not-an-opening");
 }
 
 async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -1859,12 +1860,14 @@ function refFrom(pairing: typeof SESSION_EVM | typeof SESSION_TEMPO, kind: (pres
 const noEnd = (_presented: MppCredential): number | undefined => undefined;
 
 /**
- * `mpp/session/evm`. `broadcaster` answers by the payment's action and type (`evmBroadcaster`). `"payer"`: an opening
- * or a top-up of type `hash`, which the payer broadcast; for an opening, `landedTx` and `reference` name that
- * transaction, and `status` reads it, and its `build` writes `broadcast: true`. `"payee"`: an opening or a top-up of
- * type `authorization` or `permit2`, which the seller's server submits to the escrow, naming an opening's transaction
- * to `status`; a voucher, which it redeems when it settles or closes; and the close, the escrow call it sends, which
- * `closeRef` and `status` read. Any other payment gets `bound`'s refusal.
+ * `mpp/session/evm`. `broadcaster` answers by the payment's action and type (`evmBroadcasts`), for the actions
+ * `channel.kind` takes. `"payer"`: an opening or a top-up of type `hash`, which the payer broadcast. For an opening,
+ * `landedTx` and `reference` name that transaction, `status` reads it, and its `build` writes `broadcast: true`; a
+ * top-up no member reads, so the seller confirms it outside the package. `"payee"`: an opening or a top-up of type
+ * `authorization` or `permit2`, which the seller's server submits to the escrow, naming an opening's transaction to
+ * `status`; a voucher, which it redeems when it settles or closes; and the close, the escrow call it sends, which
+ * `closeRef` and `status` read. Any other credential gets the refusal `bound` gives it: `mpp/credential-type` for an
+ * opening of another type, and `mpp/not-an-opening` for a top-up of another type or any other action.
  */
 export const sessionEvm = Object.freeze({
   id: SESSION_EVM,
@@ -1889,7 +1892,7 @@ export const sessionEvm = Object.freeze({
   build: evmBuild,
   buildWithin: evmBuildWithin,
   bound: evmBound,
-  broadcaster: broadcastsByKind(evmBroadcaster, evmBound, () => refusal("mpp/session-action")),
+  broadcaster: sessionBroadcaster(evmKind, evmBroadcasts, () => refusal("mpp/not-an-opening")),
   reference: evmReference,
   status: pairingStatus(SESSION_EVM),
   recover: evmRecover,
@@ -1904,10 +1907,21 @@ export const sessionEvm = Object.freeze({
 });
 
 /**
- * `mpp/session/tempo`, whose `build` writes `broadcast: false`. The payee broadcasts every payment (`broadcaster`
- * answers `"payee"`), as draft-tempo-session-00 has it: the seller's server broadcasts the signed transaction of an
- * opening or a top-up, which `status` reads, redeems vouchers when it settles or closes, and sends the close, which
- * `closeRef` and `status` read.
+ * Who broadcasts a Tempo session payment: the seller's server, every payment the session takes, as
+ * draft-tempo-session-00 has it. An opening of a `type` other than `transaction`, the one `bound` takes, is
+ * `mpp/not-an-opening`, as `bound` refuses it.
+ */
+function tempoBroadcasts(credential: MppCredential): Broadcaster | Refusal {
+  const p = credential.payload;
+  return p["action"] === "open" && p["type"] !== "transaction" ? refusal("mpp/not-an-opening") : "payee";
+}
+
+/**
+ * `mpp/session/tempo`, whose `build` writes `broadcast: false`. The payee broadcasts every payment the session takes
+ * (`broadcaster` answers `"payee"` for the actions `channel.kind` takes, and an opening of `type` `transaction`), as
+ * draft-tempo-session-00 has it: the seller's server broadcasts the signed transaction of an opening or a top-up, which
+ * `status` reads, redeems vouchers when it settles or closes, and sends the close, which `closeRef` and `status` read.
+ * Any other credential gets `mpp/not-an-opening`, as `bound` refuses it.
  */
 export const sessionTempo = Object.freeze({
   id: SESSION_TEMPO,
@@ -1927,7 +1941,7 @@ export const sessionTempo = Object.freeze({
   build: tempoBuild,
   buildWithin: tempoBuildWithin,
   bound: tempoBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: sessionBroadcaster(tempoKind, tempoBroadcasts, () => refusal("mpp/not-an-opening")),
   reference: tempoReference,
   status: pairingStatus(SESSION_TEMPO),
   recover: tempoRecover,
@@ -1941,9 +1955,11 @@ export const sessionTempo = Object.freeze({
 });
 
 /**
- * `mpp/subscription/tempo`. The payee broadcasts (`broadcaster` answers `"payee"`): the payer's root key signs a key
- * authorization, and the seller's server sends the activation transaction that registers its access key, and each
- * later transfer under that key; `status` reads the activation, and `keySearch` the transfers.
+ * `mpp/subscription/tempo`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
+ * `keyAuthorization`, the one `channel.kind` takes): the payer's root key signs a key authorization, and the seller's
+ * server sends the activation transaction that registers its access key, and each later transfer under that key;
+ * `status` reads the activation, and `keySearch` the transfers. A credential of any other type gets
+ * `mpp/not-an-opening`, as `bound` refuses it.
  */
 export const subscriptionTempo = Object.freeze({
   id: SUBSCRIPTION,
@@ -1970,7 +1986,7 @@ export const subscriptionTempo = Object.freeze({
   read,
   build: subscriptionBuild,
   bound: subscriptionBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: sessionBroadcaster(subscriptionKind, () => "payee", () => refusal("mpp/not-an-opening")),
   reference: subscriptionReference,
   status: pairingStatus(SUBSCRIPTION),
   closeRef: subscriptionCloseRef,

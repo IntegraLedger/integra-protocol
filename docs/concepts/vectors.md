@@ -23,7 +23,7 @@ its specification leaves to the implementation. Each file's `about` names its so
 | The core | `core-vectors.json` | The ATR's exact bytes and hash for given inputs, the https-link rule, the JSON nesting cap, and the `assemble` refusals its rows name. |
 | The buyer gate | `buyer.json` | What a buyer does with an advertised challenge: when it signs, and each decline. |
 | Each pairing | `x402-*.json`, `mpp-*.json`, `acp-checkout.json`, `ucp.json`, `ap2-checkout-mandate.json`, `ack-payment-request.json`, `card.json` | The placed challenge, what the payer signs with H in it, H read back from the payment, and the settlement read. |
-| Who broadcasts | `broadcaster.json` | Each pairing's `broadcaster` answer: from the pairing alone, or by the kind of payment, one credential of each kind, and the refusal of a credential whose kind cannot be read, which is `bound`'s. |
+| Who broadcasts | `broadcaster.json` | Each pairing's `broadcaster` answer: one for every payment it takes, or by the kind of payment, with a credential of each kind; and payments of a type, kind or shape the pairing does not take, each refused with `bound`'s code. |
 | Shared readers | `sd-jwt.json`, `decoder-caps.json`, `discovery.json`, `a2a-legal-context.json` | The SD-JWT reader, the decoders' limits, the discovery document and the A2A extension. |
 
 The [vector files reference](../reference/vectors.md) lists every file with its `about`.

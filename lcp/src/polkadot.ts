@@ -10,8 +10,7 @@ import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from 
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
-import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
-import { broadcasts } from "./internal/broadcaster.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -685,7 +684,7 @@ export const exactPolkadotRemark = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: polkadotStatus,
   recover: polkadotRecover,

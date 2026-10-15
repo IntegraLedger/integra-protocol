@@ -9,6 +9,7 @@ import { toLcpString, type AtrHash, type Json } from "./core.js";
 import { normalHash } from "./fields.js";
 import {
   credentialOf,
+  credentialShape,
   decodeObject,
   deepFreeze,
   echoedFor,
@@ -22,7 +23,7 @@ import {
   type MppPairingId,
 } from "./mpp-challenge.js";
 import { stripeMetadataValid } from "./mpp-method-checks.js";
-import { broadcasts } from "./internal/broadcaster.js";
+import { broadcastsWithin } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 
@@ -132,7 +133,7 @@ function pairingOf<Id extends ConfirmOnly>(id: Id, carrier: string, p: LcpPatter
     read,
     build,
     bound: boundAs(id),
-    broadcaster: broadcasts("payee"),
+    broadcaster: broadcastsWithin(credentialShape, "payee"),
   });
 }
 

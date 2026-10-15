@@ -23,6 +23,7 @@ import { memoArgument } from "./internal/stacks.js";
 import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
 import { keyString } from "./internal/svm.js";
 import {
+  byType,
   chosenFor,
   credentialOf,
   deepFreeze,
@@ -31,6 +32,7 @@ import {
   isHexBytes,
   isObject,
   measured,
+  mppBroadcaster,
   pairingsOf,
   place,
   read,
@@ -44,7 +46,6 @@ import {
 } from "./mpp-challenge.js";
 import { isJcsRequest, stacksNetworkOf } from "./mpp-method-checks.js";
 import { solanaChargePairing } from "./mpp-solana.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { stacksRecover, stacksStatus, stacksTxid, type StacksRef } from "./stacks.js";
 import type { LcpPattern } from "./x402.js";
@@ -309,8 +310,9 @@ async function evmAuthorizer(input: unknown): Promise<Hex | Refusal> {
 }
 
 /**
- * `mpp/charge/usdc/evm`. The payee broadcasts (`broadcaster` answers `"payee"`): the payer signs an EIP-3009
- * authorization, and the seller's server submits it and pays the gas; `status` reads that transaction.
+ * `mpp/charge/usdc/evm`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
+ * `authorization`): the payer signs an EIP-3009 authorization, and the seller's server submits it and pays the gas;
+ * `status` reads that transaction. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it.
  */
 export const chargeUsdcEvm = Object.freeze({
   id: EVM,
@@ -337,7 +339,7 @@ export const chargeUsdcEvm = Object.freeze({
   read,
   build: evmBuild as (choice: MppChoice, h: AtrHash) => Promise<UsdcUnsigned | Refusal>,
   bound: evmBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: mppBroadcaster(byType({ authorization: "payee" })),
   reference: evmReference,
   authorizer: evmAuthorizer,
   status: boundStatus([AUTHORIZATION_USED_TOPIC]),
@@ -347,7 +349,8 @@ export const chargeUsdcEvm = Object.freeze({
 
 /**
  * `mpp/charge/usdc/solana`, which takes only `type="transaction"` credentials. The payee broadcasts (`broadcaster`
- * answers `"payee"`): the seller's server broadcasts the transaction the payer signed, and `status` reads it.
+ * answers `"payee"` for them): the seller's server broadcasts the transaction the payer signed, and `status` reads it.
+ * A credential of any other type gets `mpp/credential-type`, as `bound` refuses it.
  */
 export const chargeUsdcSolana = solanaChargePairing({
   id: SOLANA,
@@ -528,8 +531,9 @@ async function stacksReference(input: unknown): Promise<StacksRef | Refusal> {
 }
 
 /**
- * `mpp/charge/usdc/stacks`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server sponsors and
- * broadcasts the Stacks transaction the payer signed; `status` reads it.
+ * `mpp/charge/usdc/stacks`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
+ * `transaction`): the seller's server sponsors and broadcasts the Stacks transaction the payer signed; `status` reads
+ * it. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it.
  */
 export const chargeUsdcStacks = Object.freeze({
   id: STACKS,
@@ -556,7 +560,7 @@ export const chargeUsdcStacks = Object.freeze({
   read,
   build: stacksBuild,
   bound: stacksBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: mppBroadcaster(byType({ transaction: "payee" })),
   reference: stacksReference,
   status: stacksStatus,
   recover: stacksRecover,
@@ -695,8 +699,9 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
 }
 
 /**
- * `mpp/charge/usdc/gateway`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server submits the
- * burn intent the payer signed through Circle Gateway, which settles it; no `status` reads it.
+ * `mpp/charge/usdc/gateway`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
+ * `transfer`): the seller's server submits the burn intent the payer signed through Circle Gateway, which settles it;
+ * no `status` reads it. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it.
  */
 export const chargeUsdcGateway = Object.freeze({
   id: GATEWAY,
@@ -724,5 +729,5 @@ export const chargeUsdcGateway = Object.freeze({
   read,
   build: gatewayBuild,
   bound: gatewayBound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: mppBroadcaster(byType({ transfer: "payee" })),
 });

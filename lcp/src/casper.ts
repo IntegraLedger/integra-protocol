@@ -6,9 +6,8 @@ import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -434,7 +433,11 @@ export const exactCasper = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee", {
+    envelope: () => refusal("casper/payload-malformed"),
+    refused: () => refusal("casper/payload-malformed"),
+    payload: () => refusal("casper/payload-malformed"),
+  }),
   reference,
   status: casperStatus,
   recover: casperRecover,

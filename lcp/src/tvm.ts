@@ -21,10 +21,10 @@ import {
   presentedWith,
   readFor,
   type OptionFilter,
+  x402Broadcaster,
   type X402Read,
 } from "./internal/x402.js";
 import { decimalBelow, fromBase64 } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /**
@@ -1356,7 +1356,7 @@ export const exactTvm = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: tvmStatus,
   recover: tvmRecover,

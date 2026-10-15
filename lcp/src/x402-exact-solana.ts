@@ -36,10 +36,10 @@ import {
   withExtra,
   withOption,
   withoutExtra,
+  x402Broadcaster,
   type X402Read,
 } from "./internal/x402.js";
 import { toBase64 } from "./rail-bytes.js";
-import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -240,7 +240,7 @@ export const exactSvm = Object.freeze({
   read,
   build,
   bound,
-  broadcaster: broadcasts("payee"),
+  broadcaster: x402Broadcaster("payee"),
   reference,
   status: svmStatus,
   recover: svmRecover,
