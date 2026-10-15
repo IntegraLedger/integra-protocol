@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { decode } from "ripple-binary-codec";
 import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { resigned } from "./fixtures/xrpl-resign.js";
 import { pairingOf, type AtrHash } from "../src/index.js";
 import { decodeBlob, mppInvoiceId, x402InvoiceId, xrplStatus, type XrplReader, type XrplRef } from "../src/xrpl.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -71,7 +72,7 @@ describe("x402-exact-xrpl.json", () => {
     const { SigningPubKey: _, TxnSignature: __, ...signed } = decode(V.V2.blob) as Record<string, unknown>;
     expect(u.request.txJson).toEqual(signed);
     expect(u.request.txJson).toEqual(V.V2.expectTxJson);
-    const completed = u.complete(V.V2.blob);
+    const completed = await u.complete(V.V2.blob);
     if ("refused" in completed) throw new Error(completed.code);
     expect(await exactXrpl.bound(completed)).toBe(H);
   });
@@ -265,6 +266,34 @@ describe("x402-exact-xrpl.json agreedRefusals: every row runs", () => {
       ).flat();
     },
   };
+
+  // The rows whose blobs are read on a network: V2's option on the row's network, and V2's Payment re-signed with each of
+  // the row's networkIds (the same steps without one give V2's blob). bound, reference and build's complete read the
+  // blob's NetworkID by rippled's rule, so each call is refused. On xrpl:21337 the Payment carrying 21337 is taken.
+  type NetworkRow = { case: string; network: `xrpl:${number}`; networkIds?: number[]; blobs: string[]; expect: string };
+  const networkRows = (V.agreedRefusals.rows as NetworkRow[]).filter((r) => r.network !== undefined);
+  const onNetwork = (network: `xrpl:${number}`) => ({ ...V.V2.accepted, network }) as PaymentRequirements;
+  const calls = async (accepted: PaymentRequirements, blob: string) => {
+    const u = await build(accepted);
+    if ("refused" in u) throw new Error(u.code);
+    return [await exactXrpl.bound(payment(blob, accepted)), await exactXrpl.reference(payment(blob, accepted)), await u.complete(blob)];
+  };
+  for (const r of networkRows) {
+    cases[r.case] = async () => {
+      expect(resigned(V.V2.blob)).toBe(V.V2.blob);
+      expect(r.networkIds?.map((n) => resigned(V.V2.blob, n)) ?? [V.V2.blob]).toEqual(r.blobs);
+      return (await Promise.all(r.blobs.map((blob) => calls(onNetwork(r.network), blob)))).flat();
+    };
+  }
+  it("the network rows: three, and the Payment carrying xrpl:21337's own id is taken there", async () => {
+    expect(networkRows.map((r) => r.network)).toEqual(["xrpl:1", "xrpl:21337", "xrpl:21337"]);
+    const own = resigned(V.V2.blob, 21337);
+    const [bound, reference, completed] = await calls(onNetwork("xrpl:21337"), own);
+    expect(bound).toBe(H);
+    expect(reference).toMatchObject({ network: "xrpl:21337" });
+    expect(completed).toMatchObject({ payload: { signedTxBlob: own } });
+    expect(await calls(V.V2.accepted, V.V2.blob)).toMatchObject([H, V.V2.expectReference, { payload: { signedTxBlob: V.V2.blob } }]);
+  });
 
   const rows = rowsOf(V.agreedRefusals.rows as { case: string; expect: string }[], "x402-exact-xrpl.json agreedRefusals.rows", {
     exact: Object.keys(cases).length,

@@ -23,9 +23,11 @@ import {
   decodePresented,
   isXrplNetwork,
   networkId,
+  networkIdHeld,
   sameInvoice,
   x402InvoiceId,
   xrplStatus,
+  type XrplNetwork,
   type XrplPaymentPayload,
   type XrplRef,
   type XrplTxJson,
@@ -162,7 +164,10 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(filter)(doc);
 }
 
-/** The Payment for the wallet to sign, with `InvoiceID` = SHA-256 of the option's `extra.invoiceId`. */
+/**
+ * The Payment for the wallet to sign, with `InvoiceID` = SHA-256 of the option's `extra.invoiceId`, and `NetworkID` the
+ * network's id where it is above 1024. `complete` reads the signed blob's `NetworkID` as `bound` does.
+ */
 async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymentPayload> | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filter);
@@ -198,16 +203,21 @@ async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymen
   };
   return {
     request: { kind: "xrpl-tx", txJson },
-    complete(signedBlob: string): XrplPaymentPayload | Refusal {
+    async complete(signedBlob: string): Promise<XrplPaymentPayload | Refusal> {
       if (typeof signedBlob !== "string" || !HEX.test(signedBlob)) return refusal("xrpl/blob-malformed");
-      return paymentWith(required, accepted, { signedTxBlob: signedBlob });
+      const payment = paymentWith(required, accepted, { signedTxBlob: signedBlob });
+      const blob = await decodePresented(payment.payload, signedBlob);
+      if (isRefusal(blob)) return blob;
+      return networkIdHeld(blob.tx, accepted.network as XrplNetwork) ? payment : refusal("xrpl/network-mismatch");
     },
   };
 }
 
 /**
  * The option, the hash and the decoded blob of a payment, or the refusal that names what is wrong. The blob is decoded
- * once per payload object, so `bound` and `reference` on one payment share one decode.
+ * once per payload object, so `bound` and `reference` on one payment share one decode. Its `NetworkID` is read first, as
+ * rippled 3.4.1 reads it (`networkIdHeld`): none on a network whose id is at most 1024, the network's own id above that,
+ * else `xrpl/network-mismatch`.
  */
 async function presentedOf(presented: unknown) {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
@@ -217,6 +227,7 @@ async function presentedOf(presented: unknown) {
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const blob = await decodePresented(payload, payload["signedTxBlob"]);
   if (isRefusal(blob)) return blob;
+  if (!networkIdHeld(blob.tx, accepted.network as XrplNetwork)) return refusal("xrpl/network-mismatch");
   if (blob.tx.TransactionType !== "Payment") return refusal("xrpl/not-payment");
   if (typeof blob.tx.InvoiceID !== "string") return refusal("xrpl/no-invoice-id");
   const h = fromLcpString(accepted.extra?.["invoiceId"] as string);

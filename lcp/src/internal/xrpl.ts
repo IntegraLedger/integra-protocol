@@ -63,7 +63,12 @@ export type XrplStatus =
 /** What the wallet signs, and how its signed blob completes the payment. */
 export interface XrplUnsigned<P> {
   request: { kind: "xrpl-tx"; txJson: XrplTxJson };
-  complete(signedBlob: string): P | Refusal;
+  /**
+   * The payment of the wallet's signed blob, hex, read as `bound` reads it: a blob that does not decode, or is
+   * multi-signed, gets the refusal `bound` gives it, and one whose `NetworkID` the option's network does not take
+   * (`networkIdHeld`) is `xrpl/network-mismatch`.
+   */
+  complete(signedBlob: string): Promise<P | Refusal>;
 }
 
 /**
