@@ -274,12 +274,12 @@ jobs:
           // entry of the block it opens, so no other setting is read, in any spelling. Any other key, such as
           // allowBuilds, allowSkills, ignoredBuiltDependencies, pnpmfile, globalPnpmfile or configDependencies, is
           // refused by name, and so is a line indented under a setting, which would continue its value. packages is the
-          // root's alone, and every block holds an entry. resolvePeersFromWorkspaceRoot may stand, as false only, so
-          // that a missing peer is not linked to the root's copy. Each line may end in a comment, one or more spaces,
-          // "#" and any text, and what comes before it is held as the line would be without one; a "#" with no space
-          // before it, or inside quotes, is part of the value.
+          // root's alone, and every block holds an entry. autoInstallPeers may stand, as false only, so that no peer
+          // enters an install unless a package declares it. Each line may end in a comment, one or more spaces, "#" and
+          // any text, and what comes before it is held as the line would be without one; a "#" with no space before
+          // it, or inside quotes, is part of the value.
           const settings = ["minimumReleaseAge: 1440", "trustPolicy: no-downgrade", "strictDepBuilds: true"];
-          const optional = ["resolvePeersFromWorkspaceRoot: false"];
+          const optional = ["autoInstallPeers: false"];
           const blocks = [
             "permissions:", "minimumReleaseAgeExclude:", "overrides:", "catalog:", "catalogs:", "patchedDependencies:",
           ];
@@ -459,13 +459,13 @@ jobs:
           JS
           # Second, pnpm's own reading in each folder that holds a workspace file, before it installs anything: each of
           # the three settings exactly, every override an exact version or a removal below an exact version, every
-          # catalog entry an exact version, resolvePeersFromWorkspaceRoot unset or false, and no pnpmfile,
-          # globalPnpmfile or configDependencies, whatever else pnpm reads besides the text.
+          # catalog entry an exact version, autoInstallPeers unset or false, and no pnpmfile, globalPnpmfile or
+          # configDependencies, whatever else pnpm reads besides the text.
           files=$(git ls-files -- pnpm-workspace.yaml '*/pnpm-workspace.yaml')
           for f in $files; do
             d=$(dirname "$f")
             for want in minimumReleaseAge=1440 trustPolicy=no-downgrade strictDepBuilds=true overrides=exact \
-              catalogs=exact resolvePeersFromWorkspaceRoot=false pnpmfile=undefined globalPnpmfile=undefined \
+              catalogs=exact autoInstallPeers=false pnpmfile=undefined globalPnpmfile=undefined \
               configDependencies=undefined; do
               key=${want%%=*}
               if ! have=$(pnpm --dir "$d" config get "$key"); then
@@ -487,8 +487,8 @@ jobs:
                 have=$(printf '%s\n' "$have" | grep -nvxE "$exact" || true)
                 have=${have:-exact}
               fi
-              # resolvePeersFromWorkspaceRoot is false wherever it is set, and may be unset.
-              if [ "$key" = resolvePeersFromWorkspaceRoot ] && [ "$have" = undefined ]; then continue; fi
+              # autoInstallPeers is false wherever it is set, and may be unset.
+              if [ "$key" = autoInstallPeers ] && [ "$have" = undefined ]; then continue; fi
               if [ "$have" != "${want#*=}" ]; then
                 printf 'pnpm reads %s in %s as "%s", not "%s"\n' "$key" "$d" "$have" "${want#*=}"
                 exit 1
@@ -518,7 +518,7 @@ jobs:
             printf 'these workflow lines set the install policy around the files:\n%s\n' "$around"
             exit 1
           fi
-          echo "$(printf '%s\n' "$files" | wc -l) workspace file(s), the root's and one in each folder its packages exclude: pnpm reads minimumReleaseAge 1440, trustPolicy no-downgrade and strictDepBuilds true in each, every override as an exact version or a removal below one, every catalog entry as an exact version, resolvePeersFromWorkspaceRoot unset or false, and no pnpmfile, globalPnpmfile or configDependencies; each records build and skills decisions only as false, excludes from the age only exact @integraledger/<name>@<x.y.z> versions a lockfile installs, pins overrides and catalog entries only to exact registry versions, removes a dependency only below an exact parent version, patches only exact versions from patches/ files git lists, sets resolvePeersFromWorkspaceRoot only to false, and holds nothing else, a comment after a line included; the root's packages are relative globs; every manifest's overrides and resolutions are exact versions; every lockfile takes each package from the registry by its integrity and links only to a workspace package; every .npmrc holds only comments, registry=https://registry.npmjs.org/ and engine-strict=true; git lists no .pnpmfile.cjs or .pnpmfile.mjs; none of the $# workflow(s) sets pnpm's settings"
+          echo "$(printf '%s\n' "$files" | wc -l) workspace file(s), the root's and one in each folder its packages exclude: pnpm reads minimumReleaseAge 1440, trustPolicy no-downgrade and strictDepBuilds true in each, every override as an exact version or a removal below one, every catalog entry as an exact version, autoInstallPeers unset or false, and no pnpmfile, globalPnpmfile or configDependencies; each records build and skills decisions only as false, excludes from the age only exact @integraledger/<name>@<x.y.z> versions a lockfile installs, pins overrides and catalog entries only to exact registry versions, removes a dependency only below an exact parent version, patches only exact versions from patches/ files git lists, sets autoInstallPeers only to false, and holds nothing else, a comment after a line included; the root's packages are relative globs; every manifest's overrides and resolutions are exact versions; every lockfile takes each package from the registry by its integrity and links only to a workspace package; every .npmrc holds only comments, registry=https://registry.npmjs.org/ and engine-strict=true; git lists no .pnpmfile.cjs or .pnpmfile.mjs; none of the $# workflow(s) sets pnpm's settings"
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r --if-present run build
       - run: pnpm -r --if-present run typecheck
