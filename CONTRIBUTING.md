@@ -107,13 +107,14 @@ dispatched by hand, and from the publish workflow before it packs. Its other ste
   a block scalar, so the text a block scalar holds is never read as a step.
 - **The install policy:** both `pnpm-workspace.yaml` files set `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade`
   and `strictDepBuilds: true`, and no other setting but `packages` (`"*"` and `"!website"`, so `pnpm -r` reaches every
-  package), `allowBuilds` (denials only), `minimumReleaseAgeExclude` (`@integraledger/*` only) and `overrides`
-  (registry versions only). Every package in both lockfiles comes from the registry by its integrity, and no
-  dependency is a file, directory, link, git or tarball source. No workflow sets pnpm's settings by a `pnpm_config_`
-  environment variable, a `--config.` flag or the `pnpm config` command, its alias or its shorthands. The step reads
-  the committed files and the workflows' lines. A workflow step that rewrites a checked file before the install, such
-  as a `sed -i` on `pnpm-workspace.yaml`, or that builds a setting's name at run time, is code, like a step that
-  deletes this check, and this check does not read it.
+  package), `permissions` (each package's `build` and `skills` decisions, every one `false`), `minimumReleaseAgeExclude`
+  (`@integraledger/*` only) and `overrides` (registry versions only). `allowBuilds` and `allowSkills` are refused, so
+  every package decision is in one place. Every package in both lockfiles comes from the registry by its integrity, and
+  no dependency is a file, directory, link, git or tarball source. No workflow sets pnpm's settings by a `pnpm_config_`
+  environment variable, a `--config.` flag or the `pnpm config` command, its alias or its shorthands. The step reads the
+  committed files and the workflows' lines. A workflow step that rewrites a checked file before the install, such as a
+  `sed -i` on `pnpm-workspace.yaml`, or that builds a setting's name at run time, is code, like a step that deletes this
+  check, and this check does not read it.
 - **One-way imports:** no package here, nor the root `package.json`, depends on or names another `@integraledger`
   package, however the name is loaded or resolved; the site names only `@integraledger/lcp`. Each workspace package
   has a `build`, `typecheck` and `test` script that is not empty, since `pnpm -r` skips a package without one.
