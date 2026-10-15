@@ -343,7 +343,9 @@ They do not show who paid it, and no public ledger shows the payment. Its pairin
 
 On Lightning, `build` checks the binding and the invoice's form: that the invoice carries H where its pairing places
 it (or, on `x402/exact/lnbtc/invoice-named`, carries no `m`), that it answers this request, and that its currency is
-the one the network names. It verifies no signature and does not compare the invoice's amount or payee with the offer.
+the one the network names. On x402, the pairing's option filter makes every one of these checks but H's, so its `read`
+offers only an option whose invoice and own fields pass them, and its `bound` and `reference` hold a presented payment's
+option to the same checks. It verifies no signature and does not compare the invoice's amount or payee with the offer.
 The checks x402 requires of a client on the invoice (its signature, a payee equal to `payTo`, an amount present and
 equal to the option's, and its expiry) are the payer's, done by its wallet or node.
 
