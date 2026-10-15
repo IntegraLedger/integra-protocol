@@ -60,6 +60,13 @@
    },
    "otherCredentialType": "signed",
    "expectOther": "hedera/option-malformed"
+  },
+  "ecdsa": {
+   "case": "complete with an ECDSA(secp256k1) signature over the body build writes (expectBodyBytes). expectTransactionBase64 is the Transaction written by hand in Python 3.12.3 in the protobuf wire format from HAPI's messages (hiero-consensus-node basic_types.proto, transaction.proto and transaction_contents.proto): field 5, signedTransactionBytes, holding SignedTransaction {1: bodyBytes, 2: SignatureMap {1: SignaturePair {1: pubKeyPrefix, the full 33-byte compressed key; 6: ECDSA_secp256k1, the 64-byte r and s}}}. The same writer gives expectTransactionBase64 for the Ed25519 pair (field 3). The key is the secp256k1 scalar 01 repeated 32 times; the signature is ECDSA over Keccak-256 of the body bytes, as hiero-sdk-python's PrivateKey.sign makes it, with an RFC 6979 nonce and low s, by hand-written Keccak-256 and secp256k1 arithmetic.",
+   "privateKey": "0101010101010101010101010101010101010101010101010101010101010101",
+   "publicKey": "031b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+   "signature": "9b072d1aa2057f80778ddeb288a135b48a8480408a820a2a50b9f969c0d4a1a73282ce92a5613469b1afbe696f8e5eefde03ce906cfadb8ce45bdca76e75a21d",
+   "expectTransactionBase64": "KvgBCowBCg0KBgiA4s+qBhIDGLMrEgIYAxiAwtcvIgIIeDJCMHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMGQ2Njg3M2ExZGI5NTVhcioSKAoDGMkqEgoKAxizKxCfloABEgkKAxjSCRCAiXoSCgoEGLKSBBCgjQYSZwplCiEDG4TFVnsSZECZXT7VqroFZdceGDRgSBn/nBf16dXdB48yQJsHLRqiBX+Ad43esoihNbSKhIBAioIKKlC5+WnA1KGnMoLOkqVhNGmxr75pb45e794DzpBs+tuM5Fvcp251oh0="
   }
  },
  "bound": {

@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { ed25519 } from "@noble/curves/ed25519.js";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { base58 } from "@scure/base";
 import { deserialize, serialize } from "borsh";
 import { KeyType, PublicKey, SCHEMA } from "near-api-js";
@@ -104,6 +105,27 @@ describe("x402-exact-near.json", () => {
 
   // JSON reads 0.0 as the number 0 (RFC 8259 section 6: a number is digits with an optional fraction), so a signer's
   // answer with keyType written 0.0 is keyType 0.
+  // secp256k1: under a secp256k1 access key the delegate action ends in key type 1 and the key's 64 bytes, and complete
+  // with keyType 1 writes a 65-byte signature. Each is held to the value written by hand from borsh, NEP-366 and NEP-461
+  // (secp256k1's case); the signature verifies over the request hash under that key (@noble/curves).
+  it("secp256k1: build under a secp256k1 key and complete with keyType 1 give the delegate written by hand", async () => {
+    const S = V.secp256k1;
+    const key = base58.decode(S.publicKey.slice("secp256k1:".length));
+    expect(Buffer.from(secp256k1.getPublicKey(Uint8Array.from(Buffer.from(S.privateKey, "hex")), false)).toString("hex")).toBe(
+      `04${Buffer.from(key).toString("hex")}`,
+    );
+    const u = await exactNear.build({ ...choice(), publicKey: S.publicKey }, H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(Buffer.from(u.request.hash).toString("hex")).toBe(S.expectRequestHash);
+    const signature = Uint8Array.from(Buffer.from(S.signature, "hex"));
+    expect(secp256k1.verify(signature.subarray(0, 64), u.request.hash, Uint8Array.of(4, ...key), { prehash: false })).toBe(true);
+    const p = u.complete({ keyType: 1, bytes: signature });
+    if ("refused" in p) throw new Error(p.code);
+    expect(p.payload.signedDelegateAction).toBe(S.expectSignedDelegateAction);
+    expect(Buffer.from(p.payload.signedDelegateAction, "base64").length - 66).toBe(S.expectDelegateActionBytes);
+    expect(await exactNear.bound(p)).toBe(H);
+  });
+
   it("V2: complete with keyType written 0.0 gives V2's payment", async () => {
     expect(V.V2.keyTypeWritten.keyType).toBe(0);
     const u = await exactNear.build(choice(), H);

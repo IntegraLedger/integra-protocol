@@ -185,6 +185,26 @@ describe("mpp-charge-solana.json", () => {
     expect(sha256(Uint8Array.from(Buffer.from(cr.payload["transaction"] as string, "base64")))).toBe(V.build.buildWireSha256);
   });
 
+  // sol's request names currency "sol": build writes a System Program transfer of the amount in lamports where a token
+  // request has its TransferChecked. sol.expectMessageBase64 is the message written by hand from the Solana message
+  // format, with no Solana library (sol's case), and build's message is held to it byte for byte.
+  it("sol: build on a native SOL request gives the System transfer message written by hand from the message format, byte for byte", async () => {
+    const challenge = withRequest(V.challenge, V.sol.request);
+    const solPlaced = chargeSolana.advertise([challenge], H, V.fixed.link, challenge);
+    if (!Array.isArray(solPlaced)) throw new Error(solPlaced.code);
+    const u = await chargeSolana.build(
+      {
+        challenge: solPlaced[0] as MppChallenge & { id: string },
+        payer: V.fixed.payer,
+        computeUnitLimit: V.build.computeUnitLimit,
+        computeUnitPrice: BigInt(V.build.computeUnitPrice),
+      },
+      H,
+    );
+    if ("refused" in u) throw new Error(u.code);
+    expect(Buffer.from(u.request.message).toString("base64")).toBe(V.sol.expectMessageBase64);
+  });
+
   it("refusals", async () => {
     for (const row of rowsOf(V.refusals, "mpp-charge-solana.json refusals")) {
       const challenge = row.externalId === undefined ? placed : withRequest(placed, { ...V.fixed.request, externalId: row.externalId });
@@ -667,6 +687,29 @@ describe("mpp-charge-xrpl.json", () => {
     expect(await chargeXrpl.build({ challenge: memos as never, account: V.fixed.account, fee: "12", sequence: 7, lastLedgerSequence: 1000 }, H)).toEqual(
       refused(V.refusals[1].expect),
     );
+  });
+
+  // An issued currency's Amount and SendMax are its {currency, issuer, value} amount, and the request's tags ride as
+  // DestinationTag and SourceTag; an MPT's Amount is its {mpt_issuance_id, value} amount, with no SendMax. Each
+  // expectTxJson is written by hand from xrpl.org's Payment fields (the rows' cases), and build's txJson is held to it.
+  it("build.issued and build.mpt: an issued currency's SendMax and tags, and an MPT's amount, as written by hand", async () => {
+    for (const row of [V.build.issued, V.build.mpt]) {
+      const challenge = withRequest(V.challenge, row.request);
+      const rowPlaced = chargeXrpl.advertise([challenge], H, V.fixed.link, challenge);
+      if (!Array.isArray(rowPlaced)) throw new Error(rowPlaced.code);
+      const u = await chargeXrpl.build(
+        {
+          challenge: rowPlaced[0] as MppChallenge & { id: string },
+          account: V.fixed.account,
+          fee: V.build.fee,
+          sequence: V.build.sequence,
+          lastLedgerSequence: V.build.lastLedgerSequence,
+        },
+        H,
+      );
+      if ("refused" in u) throw new Error(u.code);
+      expect(u.request.txJson).toStrictEqual(row.expectTxJson);
+    }
   });
 
   it("push: fetchPresented reads the blob by hash; read-first before it", async () => {

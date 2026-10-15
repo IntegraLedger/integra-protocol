@@ -845,5 +845,14 @@
     "expect": "near/option-malformed"
    }
   ]
+ },
+ "secp256k1": {
+  "case": "build under the payer's secp256k1 access key (keyType 1), the public key of the scalar 01 repeated 32 times, written as near-api-js writes it, then complete with keyType 1 and the 65-byte signature over the request hash: r, s and the recovery id, ECDSA with an RFC 6979 nonce and low s. Each value is written by hand in Python 3.12.3 from borsh (a string as its u32 LE length and UTF-8, integers little-endian), NEP-366's DelegateAction and SignedDelegate (the key as a type byte and its 64 bytes, x then y; the signature as a type byte and its 65 bytes) and NEP-461's prefix 2^30 + 366, with hashlib and hand-written secp256k1 arithmetic. The same writer gives V1's expectRequestHash and V2's expectSignedDelegateAction under the Ed25519 key.",
+  "privateKey": "0101010101010101010101010101010101010101010101010101010101010101",
+  "publicKey": "secp256k1:Yupq21BV61j6SMaWtDW5wtnq48cnFVcJQk4h3Nh4qNH2GBzqasSkjTTTMuRsjMKVKpYd6ECNHYx7DLoGtK8tgic",
+  "expectDelegateActionBytes": 353,
+  "expectRequestHash": "a0beffd6212763e2cf7887aceaeabd10a56164ebf02f45a53cb66a4f05f5f368",
+  "signature": "92e4bb0f80316fcdc7ad34a7e40436ba58016bbd7064f566f6d8f39ef817bf2d57d8c3a9ed859d0cad7123938448c16dfcc904faa705fe6b18ed39d3d4ef84f300",
+  "expectSignedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAARuExVZ7EmRAmV0+1aq6BWXXHhg0YEgZ/5wX9enV3QePcL6vj1iLVBUH/tamQsWrQt/fgSCn9jneUSLUemmo6NEBkuS7D4Axb83HrTSn5AQ2ulgBa71wZPVm9tjznvgXvy1X2MOp7YWdDK1xI5OESMFt/MkE+qcF/msY7TnT1O+E8wA="
  }
 }

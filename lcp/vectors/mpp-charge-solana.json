@@ -284,5 +284,20 @@
     "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "sol": {
+  "case": "build on the challenge placed from request, whose currency is sol, with build's computeUnitLimit and computeUnitPrice: the message is SetComputeUnitLimit and SetComputeUnitPrice, a System Program transfer (instruction 2 as a u32 LE, then the lamports as a u64 LE) of amount lamports from the payer to the recipient, and one Memo v3 instruction carrying L, the fee payer being feePayerKey. expectMessageBase64 is that v0 message written by hand in Python 3.12.3 from the Solana message format, with no Solana library: the header, the account keys in @solana/kit's order (the fee payer, then writable signers, writable accounts and read-only accounts, each class by address), the blockhash, the compiled instructions and no address table lookups. The same writer gives build.buildMessageSha256 for the USDC message.",
+  "request": {
+   "amount": "1000",
+   "currency": "sol",
+   "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "methodDetails": {
+    "network": "devnet",
+    "feePayer": true,
+    "feePayerKey": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+   }
+  },
+  "expectMessageBase64": "gAIAAwaBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI3JXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQEAAUCIE4AAAQACQMBAAAAAAAAAAMCAQIMAgAAAOgDAAAAAAAABQBNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQA"
  }
 }

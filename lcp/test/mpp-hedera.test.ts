@@ -2,6 +2,8 @@
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { keccak_256 } from "@noble/hashes/sha3.js";
 import { canonicalJson, toLcpString, type AtrHash } from "../src/index.js";
 import { chargeHedera, hederaStatus, type HederaUnsigned } from "../src/hedera.js";
 import { attributionMemo, checkAttribution, type MppChallenge, type MppCredential } from "../src/mpp.js";
@@ -74,6 +76,24 @@ describe("mpp-charge-hedera.json", () => {
     const key = createPublicKey({ key: { kty: "OKP", crv: "Ed25519", x: publicKey.toString("base64url") }, format: "jwk" });
     expect(verify(null, u.request.bodyBytes, key, signature)).toBe(true);
     expect(u.complete({ publicKey, signature, type: "ed25519" })).toBe(V.build.expectTransactionBase64);
+  });
+
+  // build.ecdsa: an ECDSA(secp256k1) pair goes in SignaturePair field 6 with the 33-byte compressed key as its prefix.
+  // Its signature verifies over Keccak-256 of the body under that key (@noble/curves), and complete's Transaction is held
+  // to the one written by hand in the protobuf wire format (build.ecdsa's case).
+  it("build.ecdsa: complete with an ECDSA(secp256k1) signature gives the Transaction written by hand", async () => {
+    const u = (await chargeHedera.build({ id: V.fixed.challengeId, realm: V.fixed.realm }, V.fixed.request, {
+      payer: V.fixed.payer,
+      node: V.fixed.node,
+      validStart: { seconds: BigInt(V.fixed.validStart.seconds), nanos: V.fixed.validStart.nanos },
+      maxFee: BigInt(V.fixed.maxFee),
+    })) as HederaUnsigned;
+    const E = V.build.ecdsa;
+    const publicKey = Uint8Array.from(Buffer.from(E.publicKey, "hex"));
+    const signature = Uint8Array.from(Buffer.from(E.signature, "hex"));
+    expect(hex(secp256k1.getPublicKey(Uint8Array.from(Buffer.from(E.privateKey, "hex"))))).toBe(E.publicKey);
+    expect(secp256k1.verify(signature, keccak_256(u.request.bodyBytes), publicKey, { prehash: false })).toBe(true);
+    expect(u.complete({ publicKey, signature, type: "ecdsa-secp256k1" })).toBe(E.expectTransactionBase64);
   });
 
   // draft-hedera-charge-00 (abstract): "Two credential types are supported: `type="hash"` (default), where the client

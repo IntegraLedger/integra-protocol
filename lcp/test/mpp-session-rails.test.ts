@@ -894,6 +894,30 @@ describe("mpp/session/xrpl", () => {
     expect(JSON.stringify(c)).toBe(JSON.stringify({ challenge: C_X, source: `did:pkh:xrpl:1:${V.XS2.account}`, payload: V.XS2.expectOpenPayload }));
   });
 
+  // XS2.withCancelAfter: build given xrpl.cancelAfter writes CancelAfter beside XS2's fields. Its expectTxJson is written by
+  // hand from xrpl.org's PaymentChannelCreate (its case), and build's txJson is held to it.
+  it("XS2.withCancelAfter: build with cancelAfter writes the channel's CancelAfter, as written by hand", async () => {
+    const u = await sessionXrpl.build(
+      {
+        challenge: C_X,
+        from: V.XS2.account,
+        now: 1790000000,
+        deposit: BigInt(V.XS2.deposit),
+        xrpl: {
+          publicKey: (decodeXrpl(V.XS2.blob) as { PublicKey: string }).PublicKey,
+          settleDelay: V.XS2.settleDelay,
+          fee: V.XS2.fee,
+          sequence: V.XS2.sequence,
+          lastLedgerSequence: V.XS2.lastLedgerSequence,
+          cancelAfter: V.XS2.cancelAfter,
+        },
+      },
+      H,
+    );
+    if ("refused" in u) throw new Error(u.code);
+    expect(u.request.txJson).toStrictEqual(V.XS2.withCancelAfter.expectTxJson);
+  });
+
   it("build refuses a request whose amount is not a u64 of drops, and builds the largest u64", async () => {
     const choice = (challenge: MppChallenge & { id: string }) => ({
       challenge,

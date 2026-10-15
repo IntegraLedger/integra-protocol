@@ -77,7 +77,72 @@
   "case": "build gives V3's decoded fields other than SigningPubKey and TxnSignature",
   "fee": "12",
   "sequence": 7,
-  "lastLedgerSequence": 1000
+  "lastLedgerSequence": 1000,
+  "issued": {
+   "case": "build, with build's fee, sequence and lastLedgerSequence, on the challenge placed from request: an issued currency (draft-xrpl-charge-00's Issued Currency Challenge: USD of rwzRswng9sqR9Buw2T8FG18K4n8xdd1dCa) with methodDetails.destinationTag and sourceTag. expectTxJson is written by hand from xrpl.org's Payment and Transaction Common Fields: Amount and SendMax the issued currency amount {currency, issuer, value}, DestinationTag and SourceTag the request's, InvoiceID H's 64 hex digits in upper case.",
+   "request": {
+    "amount": "10",
+    "currency": {
+     "currency": "USD",
+     "issuer": "rwzRswng9sqR9Buw2T8FG18K4n8xdd1dCa"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+    "methodDetails": {
+     "network": "testnet",
+     "destinationTag": 12345,
+     "sourceTag": 593184257
+    }
+   },
+   "expectTxJson": {
+    "TransactionType": "Payment",
+    "Flags": 0,
+    "Account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "Destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+    "Amount": {
+     "currency": "USD",
+     "issuer": "rwzRswng9sqR9Buw2T8FG18K4n8xdd1dCa",
+     "value": "10"
+    },
+    "SendMax": {
+     "currency": "USD",
+     "issuer": "rwzRswng9sqR9Buw2T8FG18K4n8xdd1dCa",
+     "value": "10"
+    },
+    "DestinationTag": 12345,
+    "SourceTag": 593184257,
+    "InvoiceID": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+    "Fee": "12",
+    "Sequence": 7,
+    "LastLedgerSequence": 1000
+   }
+  },
+  "mpt": {
+   "case": "build, with build's fee, sequence and lastLedgerSequence, on the challenge placed from request: an MPT. Its mpt_issuance_id is 48 hex digits as XLS-33 forms one: the issuance's Sequence, 7, as a big-endian UInt32, then the issuer's AccountID, that of rwzRswng9sqR9Buw2T8FG18K4n8xdd1dCa decoded by hand from base58 with the XRPL alphabet, its checksum checked. expectTxJson is written by hand from xrpl.org's Payment and Transaction Common Fields: Amount the MPT amount {mpt_issuance_id, value}, no SendMax, InvoiceID H's 64 hex digits in upper case.",
+   "request": {
+    "amount": "100",
+    "currency": {
+     "mpt_issuance_id": "000000076D94E8380AB39734F76D9A64E13B2078EF42AFBD"
+    },
+    "recipient": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+    "methodDetails": {
+     "network": "testnet"
+    }
+   },
+   "expectTxJson": {
+    "TransactionType": "Payment",
+    "Flags": 0,
+    "Account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "Destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+    "Amount": {
+     "mpt_issuance_id": "000000076D94E8380AB39734F76D9A64E13B2078EF42AFBD",
+     "value": "100"
+    },
+    "InvoiceID": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+    "Fee": "12",
+    "Sequence": 7,
+    "LastLedgerSequence": 1000
+   }
+  }
  },
  "refusals": [
   {
