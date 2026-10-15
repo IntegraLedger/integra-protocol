@@ -13,7 +13,7 @@ import { C_E } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
-const rows = rowsOf(load("core-vectors.json").links.rows, "core-vectors.json links.rows") as {
+const rows = rowsOf(load("core-vectors.json").links.rows, "core-vectors.json links.rows", { exact: 32 }) as {
   name: string;
   case: string;
   link: string;

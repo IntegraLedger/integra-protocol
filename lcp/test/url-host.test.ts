@@ -1,11 +1,12 @@
 // The URL Standard's host parser and domain parser as this package carries them, and the link rules that read a URL
 // with them. Expected values come from the URL Standard (url.spec.whatwg.org): the table of host parser results in §3
-// and the registrable-domain table in §3.2, which shows إختبار as the host xn--kgbechtv. The conformance files are run
-// in url-host-conformance.test.ts.
+// and the registrable-domain table in §3.2, which shows إختبار as the host xn--kgbechtv; RFC 3492's own encoder
+// (rfc3492.ts) for a long label. The conformance files are run in url-host-conformance.test.ts.
 import { describe, expect, it } from "vitest";
 import { domainToAscii, isHttpsLink, isOtherSchemeLink, parseHost } from "../src/core.js";
 import * as root from "../src/index.js";
 import { readUrl } from "../src/internal/url-host.js";
+import { rfc3492Encode } from "./rfc3492.js";
 import { rowsOf } from "./rows.js";
 import { readFileSync } from "node:fs";
 
@@ -80,12 +81,23 @@ describe("domainToAscii: the URL Standard's domain parser (§3.3)", () => {
     expect(domainToAscii("a\ud800.example")).toBeNull();
     expect(parseHost("a\ud800.example", true)).toBe("a%EF%BF%BD.example");
   });
+  it("reads a label of any length: a letter and 300,000 combining acute accents", () => {
+    // UAX #15: a and the first U+0301 compose to U+00E1, and each later U+0301 is blocked by the one before it, of the
+    // same combining class (230). The label is valid in UTS #46, and RFC 3492 encodes it (rfc3492.ts). A label that
+    // begins with a combining mark is refused (UTS #46 section 4.1).
+    const marks = "\u0301".repeat(300_000);
+    const label = `xn--${rfc3492Encode([0xe1, ...Array<number>(299_999).fill(0x301)])}`;
+    expect(domainToAscii(`a${marks}`)).toBe(label);
+    expect(parseHost(`a${marks}.example`)).toBe(`${label}.example`);
+    expect(domainToAscii(marks)).toBeNull();
+  });
 });
 
 describe("the link rules read a URL with this package's parser, on every runtime", () => {
   const rows = rowsOf(
     JSON.parse(readFileSync(new URL("../vectors/core-vectors.json", import.meta.url), "utf8")).links.rows,
     "core-vectors.json links.rows",
+    { exact: 32 },
   ) as { name: string; link: string; accept: boolean; refusedAs: string }[];
   it("give every links row's answer with the runtime's URL removed", () => {
     const saved = globalThis.URL;
@@ -108,13 +120,32 @@ describe("the link rules read a URL with this package's parser, on every runtime
 describe("readUrl: the scheme and authority of an absolute URL (URL Standard §4.4)", () => {
   it("reads the scheme, host, port and credentials", () => {
     const https = { scheme: "https", host: "example.com" };
-    expect(readUrl("HTTPS://User:Pw@EXAMPLE.com:0443/p?q#f")).toEqual({ ...https, credentials: true, port: 443 });
+    expect(readUrl("HTTPS://User:Pw@EXAMPLE.com:0444/p?q#f")).toEqual({ ...https, credentials: true, port: 444 });
     expect(readUrl("https://:@example.com/")).toEqual({ ...https, credentials: false, port: null });
     const v6 = { scheme: "http", host: "[::ffff:c000:201]", credentials: false, port: null };
     expect(readUrl("http://[::FFFF:192.0.2.1]:/")).toEqual(v6);
     expect(readUrl("foo://ex%41mple:7/")).toEqual({ scheme: "foo", host: "ex%41mple", credentials: false, port: 7 });
     expect(readUrl("mailto:a b@c")).toEqual({ scheme: "mailto", host: null, credentials: false, port: null });
     expect(readUrl("file://localhost/x")).toEqual({ scheme: "file", host: "", credentials: false, port: null });
+    // Leading and trailing C0 controls and spaces are removed, then every tab and newline.
+    const http = { scheme: "http", host: "h", credentials: false, port: null };
+    expect(readUrl(" \u0000\u001fhttp://\th\n/x \u001f")).toEqual(http);
+  });
+  it("gives a null port for the scheme's default port, as the URL record holds it (§4.2's special schemes)", () => {
+    const ports = [
+      ["http://h:80/", null],
+      ["http://h:0080/", null],
+      ["http://h:443/", 443],
+      ["HTTPS://h:443/", null],
+      ["https://h:80/", 80],
+      ["ws://h:80/", null],
+      ["wss://h:443/", null],
+      ["ftp://h:21/", null],
+      ["ftp://h:22/", 22],
+      ["foo://h:80/", 80],
+      ["https://h:/", null],
+    ] as const;
+    for (const [url, port] of ports) expect([url, readUrl(url)?.port]).toEqual([url, port]);
   });
   it("fails where the authority fails, and never on a path, query or fragment", () => {
     const failing = ["https://", "https://u@/x", "https://h:65536/", "https://h:1x/", "foo://a b/", "foo://:1/"];

@@ -284,6 +284,8 @@ VerifyDnsLength false; the result fails when it is empty or holds a forbidden do
 true, every domain is read by ToASCII with CheckHyphens, UseSTD3ASCIIRules and VerifyDnsLength true as well, and its
 result is the answer. A lone surrogate is read as U+FFFD, which every domain parse refuses.
 
+A domain of length n takes O(n log n) time. The Standard sets no bound on the length when `beStrict` is false.
+
 #### Parameters
 
 | Parameter | Type | Default value |
@@ -552,10 +554,12 @@ The URL Standard's host parser (§3.5), with the host serializer (§3.6): the se
 `[…]` is read by the IPv6 parser and serialized in brackets, compressed. With `isOpaque` true (the host of a URL
 whose scheme is not special) any other input is an opaque host: it fails on a forbidden host code point, and is
 otherwise UTF-8 percent-encoded with the C0 control percent-encode set. Otherwise the input is percent-decoded,
-decoded as UTF-8, and read by the domain parser (`domainToAscii` with `beStrict` false); a domain whose last label is
-a number is read by the IPv4 parser, in decimal, `0x` hex or `0`-led octal parts, and serialized as four decimal
-numbers. The empty string is an opaque host, and a failure otherwise. A lone surrogate is read as U+FFFD, and so are
-percent-encoded bytes that are not UTF-8, which the domain parser fails on.
+decoded as UTF-8, and read by the domain parser (`domainToAscii` with `beStrict` false); a domain whose last label,
+after one trailing dot, is a number is read by the IPv4 parser, in decimal, `0x` hex or `0`-led octal parts, and
+serialized as four decimal numbers. The empty string is an opaque host, and a failure otherwise. A lone surrogate is
+read as U+FFFD, and so are percent-encoded bytes that are not UTF-8, which the domain parser fails on.
+
+An input of length n takes O(n log n) time. The Standard sets no bound on the length.
 
 #### Parameters
 

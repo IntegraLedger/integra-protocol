@@ -38,7 +38,7 @@
 # dealings in these Data Files or Software without prior written
 # authorization of the copyright holder.
 
-"""Unicode 17.0.0 data for the URL host rule in _url.py. Written by scripts/idna/idna-data.mjs from:
+"""Unicode 17.0.0 data for a copy of the URL Standard's host parser. Written by scripts/idna/idna-data.mjs from:
 
 - https://www.unicode.org/Public/17.0.0/idna/IdnaMappingTable.txt
   SHA-256 87f05505dc026fdb2bff16132bdc68a8014675836882a9a2b1844540ad3be382

@@ -10,7 +10,15 @@
  */
 import * as D from "./idna-data.js";
 
-const SPECIAL = new Set(["ftp", "file", "http", "https", "ws", "wss"]);
+/** The special schemes, each with its default port (§4.2). */
+const SPECIAL = new Map<string, number | null>([
+  ["ftp", 21],
+  ["file", null],
+  ["http", 80],
+  ["https", 443],
+  ["ws", 80],
+  ["wss", 443],
+]);
 /** The forbidden host code points (§3.5). */
 const FORBIDDEN_HOST = /[\u0000\t\n\r #/:<>?@[\\\]^|]/;
 /** The forbidden domain code points: the forbidden host code points, the C0 controls, `%` and U+007F. */
@@ -93,13 +101,18 @@ export function nfc(cps: readonly number[]): number[] {
   const ordered: number[] = [];
   let marks: number[] = [];
   const byClass = (a: number, b: number) => ccc(a) - ccc(b);
+  // A run of marks has no bound on its length, so it is appended one code point at a time.
+  const flush = () => {
+    for (const m of marks.sort(byClass)) ordered.push(m);
+    marks = [];
+  };
   for (const cp of flat) {
     if (ccc(cp) === 0) {
-      ordered.push(...marks.sort(byClass), cp);
-      marks = [];
+      flush();
+      ordered.push(cp);
     } else marks.push(cp);
   }
-  ordered.push(...marks.sort(byClass));
+  flush();
   const out: number[] = [];
   let starter = -1;
   for (const cp of ordered) {
@@ -151,14 +164,59 @@ function digitOf(c: number | undefined): number | undefined {
   return undefined;
 }
 
-/** The code points an ASCII Punycode string encodes, or null where RFC 3492's decoder fails. */
-function punycodeDecode(text: string): number[] | null {
+/**
+ * A Fenwick tree over the positions 0 to size − 1, each holding 0 or 1: it changes a position, counts the ones before
+ * a position, and finds the position of the k-th one, each in O(log size) time.
+ */
+class Ones {
+  readonly #tree: Int32Array;
+  /** All positions hold 0, or all hold 1 when `full` is true. */
+  constructor(size: number, full: boolean) {
+    this.#tree = new Int32Array(size + 1);
+    if (full) for (let i = 1; i <= size; i++) this.#tree[i] = i & -i;
+  }
+  /** Adds `d` to position `p`. */
+  add(p: number, d: 1 | -1): void {
+    for (let i = p + 1; i < this.#tree.length; i += i & -i) this.#tree[i]! += d;
+  }
+  /** The number of ones at the positions before `p`. */
+  before(p: number): number {
+    let sum = 0;
+    for (let i = p; i > 0; i -= i & -i) sum += this.#tree[i]!;
+    return sum;
+  }
+  /** The position of the k-th one, counting from 1, where at least k positions hold one. */
+  nth(k: number): number {
+    let p = 0;
+    let step = 1;
+    while (step * 2 < this.#tree.length) step *= 2;
+    for (; step > 0; step >>= 1) {
+      if (p + step < this.#tree.length && this.#tree[p + step]! < k) {
+        p += step;
+        k -= this.#tree[p]!;
+      }
+    }
+    return p;
+  }
+}
+
+/**
+ * The code points an ASCII Punycode string encodes, or null where RFC 3492's decoder fails. The RFC's decoder inserts
+ * each code point it reads into the output at the position it reads. Here each insertion is recorded, then placed from
+ * the last to the first: the output slots that no later insertion takes hold the earlier code points in order, so an
+ * insertion at position i takes the (i + 1)-th of those slots, which a Fenwick tree finds. A string of n characters
+ * takes O(n log n) time.
+ */
+export function punycodeDecode(text: string): number[] | null {
   const delimiter = text.lastIndexOf("-");
-  const out = delimiter > 0 ? codePoints(text.slice(0, delimiter)) : [];
+  const basic = delimiter > 0 ? codePoints(text.slice(0, delimiter)) : [];
   let pos = delimiter > 0 ? delimiter + 1 : 0;
   let n = 0x80;
   let i = 0;
   let bias = 72;
+  let length = basic.length;
+  const inserted: number[] = [];
+  const at: number[] = [];
   while (pos < text.length) {
     const oldI = i;
     let w = 1;
@@ -172,52 +230,83 @@ function punycodeDecode(text: string): number[] | null {
       if (w > Math.floor(MAXINT / (BASE - t))) return null;
       w *= BASE - t;
     }
-    bias = adapt(i - oldI, out.length + 1, oldI === 0);
-    if (Math.floor(i / (out.length + 1)) > MAXINT - n) return null;
-    n += Math.floor(i / (out.length + 1));
-    i %= out.length + 1;
+    bias = adapt(i - oldI, length + 1, oldI === 0);
+    if (Math.floor(i / (length + 1)) > MAXINT - n) return null;
+    n += Math.floor(i / (length + 1));
+    i %= length + 1;
     if (n > 0x10ffff) return null;
-    out.splice(i, 0, n);
+    inserted.push(n);
+    at.push(i);
+    length++;
     i++;
   }
+  const out = new Array<number>(length).fill(-1);
+  const open = new Ones(length, true);
+  for (let j = inserted.length - 1; j >= 0; j--) {
+    const slot = open.nth(at[j]! + 1);
+    out[slot] = inserted[j]!;
+    open.add(slot, -1);
+  }
+  let next = 0;
+  for (let slot = 0; slot < length; slot++) if (out[slot] === -1) out[slot] = basic[next++]!;
   return out;
 }
 
-/** RFC 3492's encoding of a label, or null where the encoder fails. */
-function punycodeEncode(cps: readonly number[]): string | null {
+/**
+ * RFC 3492's encoding of a label, or null where the encoder fails. The RFC's main loop takes each distinct code point
+ * past U+007F, from the least, and scans the whole label for it, adding one to delta for each code point less than it
+ * and writing delta at each of its occurrences. Here the positions of those code points are sorted once, by code point
+ * and then by position, and a Fenwick tree over the label counts the code points less than the current one between two
+ * positions, so each stretch of the scan is one count, checked against the same bound of 2^31 − 1. A label of n code
+ * points takes O(n log n) time.
+ */
+export function punycodeEncode(cps: readonly number[]): string | null {
   let out = fromCodePoints(cps.filter((c) => c < 0x80));
   const b = out.length;
   let h = b;
   if (b > 0) out += "-";
+  const order: number[] = [];
+  const handled = new Ones(cps.length, false);
+  cps.forEach((c, p) => {
+    if (c < 0x80) handled.add(p, 1);
+    else order.push(p);
+  });
+  order.sort((p, q) => cps[p]! - cps[q]! || p - q);
   let n = 0x80;
   let delta = 0;
   let bias = 72;
-  while (h < cps.length) {
-    let m = Infinity;
-    for (const c of cps) if (c >= n && c < m) m = c;
+  for (let first = 0; first < order.length; ) {
+    const m = cps[order[first]!]!;
+    let end = first + 1;
+    while (end < order.length && cps[order[end]!] === m) end++;
     if (m - n > Math.floor((MAXINT - delta) / (h + 1))) return null;
     delta += (m - n) * (h + 1);
     n = m;
-    for (const c of cps) {
-      if (c < n) {
-        delta++;
-        if (delta > MAXINT) return null;
-      } else if (c === n) {
-        let q = delta;
-        for (let k = BASE; ; k += BASE) {
-          const t = threshold(k, bias);
-          if (q < t) break;
-          out += DIGITS[t + ((q - t) % (BASE - t))];
-          q = Math.floor((q - t) / (BASE - t));
-        }
-        out += DIGITS[q];
-        bias = adapt(delta, h + 1, h === b);
-        delta = 0;
-        h++;
+    // The scan: from position `from` up to each position of m, then to the end of the label.
+    let from = 0;
+    for (let j = first; j < end; j++) {
+      const p = order[j]!;
+      delta += handled.before(p) - handled.before(from);
+      if (delta > MAXINT) return null;
+      let q = delta;
+      for (let k = BASE; ; k += BASE) {
+        const t = threshold(k, bias);
+        if (q < t) break;
+        out += DIGITS[t + ((q - t) % (BASE - t))];
+        q = Math.floor((q - t) / (BASE - t));
       }
+      out += DIGITS[q];
+      bias = adapt(delta, h + 1, h === b);
+      delta = 0;
+      h++;
+      from = p + 1;
     }
+    delta += handled.before(cps.length) - handled.before(from);
+    if (delta > MAXINT) return null;
+    for (let j = first; j < end; j++) handled.add(order[j]!, 1);
     delta++;
     n++;
+    first = end;
   }
   return out;
 }
@@ -344,6 +433,8 @@ function toAscii(domain: string, flags: Strictness): string | null {
  * VerifyDnsLength false; the result fails when it is empty or holds a forbidden domain code point. With `beStrict`
  * true, every domain is read by ToASCII with CheckHyphens, UseSTD3ASCIIRules and VerifyDnsLength true as well, and its
  * result is the answer. A lone surrogate is read as U+FFFD, which every domain parse refuses.
+ *
+ * A domain of length n takes O(n log n) time. The Standard sets no bound on the length when `beStrict` is false.
  */
 export function domainToAscii(domain: string, beStrict = false): string | null {
   if (typeof domain !== "string") return null;
@@ -557,10 +648,12 @@ function percentDecode(s: string): string | null {
  * `[…]` is read by the IPv6 parser and serialized in brackets, compressed. With `isOpaque` true (the host of a URL
  * whose scheme is not special) any other input is an opaque host: it fails on a forbidden host code point, and is
  * otherwise UTF-8 percent-encoded with the C0 control percent-encode set. Otherwise the input is percent-decoded,
- * decoded as UTF-8, and read by the domain parser (`domainToAscii` with `beStrict` false); a domain whose last label is
- * a number is read by the IPv4 parser, in decimal, `0x` hex or `0`-led octal parts, and serialized as four decimal
- * numbers. The empty string is an opaque host, and a failure otherwise. A lone surrogate is read as U+FFFD, and so are
- * percent-encoded bytes that are not UTF-8, which the domain parser fails on.
+ * decoded as UTF-8, and read by the domain parser (`domainToAscii` with `beStrict` false); a domain whose last label,
+ * after one trailing dot, is a number is read by the IPv4 parser, in decimal, `0x` hex or `0`-led octal parts, and
+ * serialized as four decimal numbers. The empty string is an opaque host, and a failure otherwise. A lone surrogate is
+ * read as U+FFFD, and so are percent-encoded bytes that are not UTF-8, which the domain parser fails on.
+ *
+ * An input of length n takes O(n log n) time. The Standard sets no bound on the length.
  */
 export function parseHost(input: string, isOpaque = false): string | null {
   if (typeof input !== "string") return null;
@@ -586,7 +679,7 @@ export type UrlAuthority = {
   host: string | null;
   /** Whether the URL has a username or a password that is not empty. */
   credentials: boolean;
-  /** The port, or null where the URL names none. */
+  /** The port, or null where the URL names none or names its scheme's default port, as the URL record holds it. */
   port: number | null;
 };
 
@@ -596,7 +689,13 @@ export type UrlAuthority = {
  * and fragment states accept every input, so they are not read.
  */
 export function readUrl(input: string): UrlAuthority | null {
-  const s = input.toWellFormed().replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, "").replace(/[\t\n\r]/g, "");
+  // Leading and trailing C0 controls and spaces are removed, then every tab and newline.
+  const w = input.toWellFormed();
+  let start = 0;
+  let end = w.length;
+  while (start < end && w.charCodeAt(start) <= 0x20) start++;
+  while (end > start && w.charCodeAt(end - 1) <= 0x20) end--;
+  const s = w.slice(start, end).replace(/[\t\n\r]/g, "");
   const m = /^[A-Za-z][A-Za-z0-9+.-]*:/.exec(s);
   if (m === null) return null;
   const scheme = m[0].slice(0, -1).toLowerCase();
@@ -645,6 +744,7 @@ export function readUrl(input: string): UrlAuthority | null {
     if (digits !== "") {
       port = Number(digits);
       if (port > 65_535) return null;
+      if (port === SPECIAL.get(scheme)) port = null;
     }
   }
   return { scheme, host, credentials: userinfo !== "" && userinfo !== ":", port };

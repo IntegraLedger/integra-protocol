@@ -3,7 +3,8 @@
 // node_modules/.cache/url-conformance/:
 // - Unicode's IdnaTestV2.txt 17.0.0, every row: UTS #46 ToASCII with the file's own flags (domainToAscii strict), and
 //   with the URL Standard's flags (domainToAscii), where the file's status codes for the flags the Standard sets false
-//   (A4_1 and A4_2 for VerifyDnsLength, U1 for UseSTD3ASCIIRules, V2 and V3 for CheckHyphens) are not failures;
+//   (A4_1 and A4_2 for VerifyDnsLength, U1 for UseSTD3ASCIIRules, V2 and V3 for CheckHyphens) are not failures; and
+//   the Punycode encoder and decoder against RFC 3492's own procedures (rfc3492.ts) on every label of every row;
 // - Unicode's NormalizationTest.txt 17.0.0, every row and every code point part 1 does not list (normalization form C);
 // - the web-platform-tests url suite at 42cbc75a: toascii.json, IdnaTestV2.json and urltestdata.json's rows with no
 //   base, each as its harness reads it, through the URL https://<input>/x or the input itself.
@@ -14,7 +15,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { domainToAscii, parseHost } from "../src/core.js";
-import { nfc, readUrl } from "../src/internal/url-host.js";
+import { nfc, punycodeDecode, punycodeEncode, readUrl } from "../src/internal/url-host.js";
+import { rfc3492Decode, rfc3492Encode } from "./rfc3492.js";
 import { rowsOf } from "./rows.js";
 
 const WPT_PIN = "42cbc75a89c64ce896ad20736f2393dba7ba2e91";
@@ -87,7 +89,7 @@ function report(set: string, compared: number, differing: string[]): void {
   console.log(`${runtime} differs from ${set} in ${differing.length} of ${compared} rows${which}`);
 }
 
-type IdnaRow = { line: number; source: string; toAsciiN: string; statuses: string[] };
+type IdnaRow = { line: number; source: string; toUnicode: string; toAsciiN: string; statuses: string[] };
 const idnaRows = (): IdnaRow[] =>
   rowsOf(
     dataLines(read("idnaTest")).map(([line, c]) => {
@@ -95,7 +97,8 @@ const idnaRows = (): IdnaRow[] =>
       const toUnicode = c[1] === "" ? source : c[1] === '""' ? "" : unescape(c[1]!);
       const toAsciiN = c[3] === "" ? toUnicode : c[3] === '""' ? "" : unescape(c[3]!);
       const status = c[4] || c[2] || "[]";
-      return { line, source, toAsciiN, statuses: status.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean) };
+      const statuses = status.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean);
+      return { line, source, toUnicode, toAsciiN, statuses };
     }),
     "IdnaTestV2.txt 17.0.0",
     { exact: 6391 },
@@ -125,6 +128,19 @@ describe("Unicode IdnaTestV2.txt 17.0.0", () => {
     const fit = rows.filter((r) => whole(r) && !/(^|\.)(\d+|0x[0-9a-f]*)\.?$/i.test(expected(r) ?? ""));
     const differing = fit.filter((r) => runtimeHost(r.source) !== expected(r));
     report("IdnaTestV2.txt under the URL Standard's flags", fit.length, differing.map((r) => `line ${r.line}`));
+  }, 0);
+  it("every row: the Punycode encoder and decoder give RFC 3492's answers for each label of its three columns", () => {
+    // Each label of source, toUnicode and toAsciiN is encoded as code points, and each ASCII label is decoded, after
+    // xn-- where it begins with that prefix in any case.
+    const labels = idnaRows().flatMap((r) => [r.source, r.toUnicode, r.toAsciiN].flatMap((s) => s.split(".")));
+    const ascii = labels.filter((l) => ASCII.test(l)).map((l) => (/^xn--/i.test(l) ? l.slice(4) : l));
+    const cps = labels.map((l) => Array.from(l, (c) => c.codePointAt(0)!));
+    const encodeDiffer = cps.filter((l) => punycodeEncode(l) !== rfc3492Encode(l));
+    const decodeDiffer = ascii.filter((l) => JSON.stringify(punycodeDecode(l)) !== JSON.stringify(rfc3492Decode(l)));
+    expect([encodeDiffer.map((l) => str(l)), decodeDiffer]).toEqual([[], []]);
+    // The file's counts: 37,680 labels, 20,400 of them ASCII, of which 16,496 decode to a code point past U+007F.
+    const decoded = ascii.filter((l) => rfc3492Decode(l)?.some((c) => c >= 0x80));
+    expect([labels.length, ascii.length, decoded.length]).toEqual([37_680, 20_400, 16_496]);
   }, 0);
 });
 
@@ -200,14 +216,12 @@ describe("web-platform-tests url at 42cbc75a", () => {
       leave: ["rows with a base, which a relative reference resolves against", (r) => r.base != null],
       exact: 560,
     });
-    const DEFAULT_PORT: Record<string, string> = { ftp: "21", http: "80", https: "443", ws: "80", wss: "443" };
     const userinfo = (r: Row) => (r.username ?? "") + (r.password ?? "") !== "";
     const want = (r: Row) => (r.failure ? null : [r.protocol, r.hostname, r.port, userinfo(r)]);
     const ours = (r: Row) => {
       const u = readUrl(r.input);
       if (u === null) return null;
-      const port = u.port === null || String(u.port) === DEFAULT_PORT[u.scheme] ? "" : String(u.port);
-      return [`${u.scheme}:`, u.host ?? "", port, u.credentials];
+      return [`${u.scheme}:`, u.host ?? "", u.port === null ? "" : String(u.port), u.credentials];
     };
     expect(rows.filter((r) => r.failure).length).toBe(207);
     expect(rows.filter((r) => JSON.stringify(ours(r)) !== JSON.stringify(want(r))).map((r) => r.input)).toEqual([]);

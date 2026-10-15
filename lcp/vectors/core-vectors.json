@@ -368,7 +368,7 @@
     "accept": false,
     "refusedAs": "legal-context-malformed",
     "placedAs": "link-not-https",
-    "note": "Unicode IdnaTestV2.txt 17.0.0 gives aب̈‌̈بb the status [B5]: the ZWNJ meets ContextJ (RFC 5892 appendix A.1), and the label, which starts with L and holds AL, fails RFC 5893 section 2 rule 5. Every criterion is checked, whatever comes before it in the label."
+    "note": "Unicode IdnaTestV2.txt 17.0.0 gives aب̈‌̈بb the status [B5]: the ZWNJ meets ContextJ (RFC 5892 appendix A.1), and the label, which starts with L and holds AL, fails RFC 5893 section 2 rule 5. A ZWNJ that meets ContextJ does not exempt the label from the bidi rule."
    },
    {
     "name": "LK29",
@@ -390,7 +390,7 @@
    },
    {
     "name": "LK31",
-    "case": "an http link whose host holds a right-to-left label of two Arabic Letter code points between left-to-right labels",
+    "case": "an http link whose host holds a right-to-left label of two code points of Bidi_Class AL between left-to-right labels",
     "link": "http://v.٭؝.com/x",
     "accept": false,
     "refusedAs": "link-not-https",

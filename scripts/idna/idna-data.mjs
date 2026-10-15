@@ -277,7 +277,8 @@ function python(t, list) {
   const head = [
     ...notice().map((l) => (l === "" ? "#" : `# ${l}`)),
     "",
-    `"""Unicode ${UNICODE_VERSION} data for the URL host rule in _url.py. Written by scripts/idna/idna-data.mjs from:`,
+    `"""Unicode ${UNICODE_VERSION} data for a copy of the URL Standard's host parser. ` +
+      "Written by scripts/idna/idna-data.mjs from:",
     "",
     ...sourceLines(list),
     "",
