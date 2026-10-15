@@ -4,9 +4,11 @@
 // mpp-session.test.ts (the EVM session's `hash` and `authorization` openings, the Tempo session's opening).
 //
 // `broadcaster` answers only for a payment of a type and kind the pairing takes, within the shape gate its `bound`
-// applies first, and gives any other payment the refusal `bound` gives it. The fuzz below holds that over every pairing:
-// from each payment a pairing takes, it changes one thing (the payload's `type`, its `action`, an opening `deposit`'s
-// `type`, or the payment's shape) and asks both functions.
+// applies first, and gives any other payment the refusal `bound` gives that fault. A session's or batch channel's
+// action other than the opening, which `bound` does not read, is read by `channel.kind`: one it refuses for the
+// payment's own content gets its refusal. The fuzz below holds that over every pairing: from each payment a pairing
+// takes, it changes one thing (the payload's `type`, its `action`, an opening `deposit`'s `type`, the members a
+// hand-built table names, or the payment's shape) and asks `bound`, `channel.kind` and `broadcaster`.
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS, isRefusal, type Binding, type Broadcaster } from "../src/index.js";
@@ -18,11 +20,11 @@ const PKG = JSON.parse(readFileSync(new URL("../package.json", import.meta.url),
 
 type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: string };
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
-type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string };
+type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
 const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 67 });
 const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 35 });
-const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 35 });
+const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 37 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
 const answerOf = (id: string): Broadcaster | null => PAIRINGS.find((r) => r.pairing === id)!.broadcaster;
 
@@ -217,40 +219,106 @@ function shapeChanges(seed: unknown): unknown[] {
   return out;
 }
 
-// ── What `bound` says each change is, read from `bound` and `channel.kind`, not from `broadcaster`.
+/**
+ * Payments the changes above do not make, per family, each the seed with members changed by hand. MPP charges:
+ * payload `type`s that are not plain strings, or not the spelling a draft gives. MPP sessions: each action that is not
+ * the opening, with and without the members a close or a voucher carries (`voucher`, `authentication`), and actions
+ * that are not plain strings. Batch-settlement channels: refunds of each `amount` the channel contract does and does
+ * not take, a voucher with an `amount`, a deposit with no `deposit` or no transaction, and types that are not plain
+ * strings. Other x402 pairings: a payload object that carries nothing.
+ */
+function byHand(b: Binding, seed: unknown): unknown[] {
+  if (!isObj(seed) || !isObj(seed["payload"])) return [];
+  const p = seed["payload"];
+  const odd: readonly unknown[] = ["__proto__", "toString", "", null, true, [], {}];
+  const out: unknown[] = [];
+  if (b.id.startsWith("mpp/session/") || b.id.startsWith("mpp/subscription/")) {
+    for (const a of ["voucher", "topUp", "close", "use", "bearer"]) {
+      const bare = set(set(set(p, "action", a), "voucher", ABSENT), "authentication", ABSENT);
+      out.push(
+        { ...seed, payload: bare },
+        { ...seed, payload: { ...bare, voucher: {} } },
+        { ...seed, payload: { ...bare, authentication: {} } },
+        { ...seed, payload: { ...bare, voucher: {}, authentication: {} } },
+      );
+    }
+    for (const a of [...odd, "OPEN", ["open"]]) out.push({ ...seed, payload: set(p, "action", a) });
+  } else if (b.id.startsWith("mpp/")) {
+    for (const t of [...odd, "HASH", ["hash"], ["transaction"]]) out.push({ ...seed, payload: set(p, "type", t) });
+  } else if (b.id.startsWith("x402/batch-settlement/")) {
+    const amounts: readonly unknown[] = [
+      "0", "x", "-1", "1.5", " 1", "0x10", "1e3", "340282366920938463463374607431768211456",
+      "340282366920938463463374607431768211455", "1", "01", 1, null, ABSENT,
+    ];
+    for (const amount of amounts) out.push({ ...seed, payload: set(set(p, "type", "refund"), "amount", amount) });
+    out.push({ ...seed, payload: { ...p, type: "voucher", amount: "0" } });
+    out.push({ ...seed, payload: set(p, "deposit", ABSENT) });
+    const deposit = p["deposit"];
+    if (isObj(deposit)) {
+      out.push({ ...seed, payload: { ...p, deposit: set(deposit, "transaction", ABSENT) } });
+      out.push({ ...seed, payload: { ...p, deposit: { ...deposit, transaction: "x" } } });
+    }
+    for (const t of [...odd, "DEPOSIT", ["deposit"]]) out.push({ ...seed, payload: set(p, "type", t) });
+  } else if (seed["x402Version"] === 2) {
+    out.push({ ...seed, payload: {} });
+  }
+  return out;
+}
+
+// ── What `broadcaster` gives each change, read from `bound` and `channel.kind`, not from `broadcaster`.
 
 /** The codes an MPP charge's `bound` gives a credential of a type it does not take. */
 const TYPE_CODES = new Set(["mpp/credential-type", "near/not-hash-credential"]);
 /** The codes an MPP session's `bound` gives an opening of a type it does not take. */
 const OPENING_TYPE_CODES = new Set(["mpp/credential-type", "mpp/not-an-opening"]);
+/** The codes a session's or batch channel's `channel.kind` gives a payment of an action or type it does not take. */
+const KIND_CODES = new Set(["mpp/session-action", "x402/channel-kind-unknown"]);
+/** The codes a session's or batch channel's `bound` gives every payment that is not an opening: it reads none. */
+const NOT_OPENING_CODES = new Set([
+  "mpp/not-an-opening",
+  "mpp/session-action",
+  "ln/no-payment-in-action",
+  "x402/not-an-opening",
+]);
 
 /**
- * True when `bound` (or, for an action, the session's `channel.kind`) shows the changed payment is of a type or kind
- * the pairing does not take. An MPP charge: `bound` refuses its type. The EVM `transaction` and `hash` charges, whose
- * `bound` binds nothing: a type other than the two their pairings name. An MPP session: `channel.kind` refuses its
- * action, or `bound` refuses an opening's type; on the EVM session also a voucher's opening `deposit` of a type `bound`
- * refuses, and a top-up of a type `bound` would refuse in an opening. A batch-settlement channel: `channel.kind`
- * refuses its payload type.
+ * The refusal `broadcaster` gives a payment whose type, action or members are changed, or undefined where it answers.
+ * An MPP charge: `bound`'s code where `bound` refuses its type. The EVM `transaction` and `hash` charges, whose `bound`
+ * binds nothing: `bound`'s code for a type other than the two their pairings name. A session or a batch-settlement
+ * channel, by its `channel.kind`, called here:
+ * - `channel.kind` refuses its action or type: `bound`'s code;
+ * - `channel.kind` refuses it for anything else, and `bound` refuses it as not an opening, so does not read it:
+ *   `channel.kind`'s code; where `bound` reads it (a deposit), its faults beyond the gate do not change the answer;
+ * - `channel.kind` takes it: an opening of a type `bound` refuses gets `bound`'s code; on the EVM session also a
+ *   voucher's opening `deposit` of a type `bound` refuses, and a top-up of a type `bound` would refuse in an opening.
+ * Each payment changed here carries its seed's challenge, so `channel.kind` refuses none for the challenge.
  */
-async function notTaken(b: Binding, m: unknown): Promise<boolean> {
-  if (!isObj(m) || !isObj(m["payload"])) return false;
+async function expected(b: Binding, m: unknown): Promise<string | undefined> {
+  if (!isObj(m) || !isObj(m["payload"])) return undefined;
   const p = m["payload"];
-  const kind = (b as { channel?: { kind: (x: never) => unknown } }).channel?.kind;
-  if (b.id.startsWith("x402/batch-settlement/") && kind !== undefined) {
-    const k = kind(m as never);
-    return isRefusal(k) && k.code === "x402/channel-kind-unknown";
-  }
-  if (!b.id.startsWith("mpp/")) return false;
-  if (b.id === "mpp/charge/evm/transaction" || b.id === "mpp/charge/evm/hash") return p["type"] !== "transaction" && p["type"] !== "hash";
   const code = codeOf(await b.bound(m));
-  if (kind === undefined) return code !== undefined && TYPE_CODES.has(code);
-  const k = kind(m as never);
-  if (isRefusal(k) && k.code === "mpp/session-action") return true;
-  if (p["action"] === "open") return code !== undefined && OPENING_TYPE_CODES.has(code);
-  if (b.id !== "mpp/session/evm") return false;
-  if (p["action"] === "voucher" && isObj(p["deposit"]) && p["deposit"]["action"] === "open") return code === "mpp/credential-type";
-  if (p["action"] === "topUp") return codeOf(await b.bound({ ...m, payload: { ...p, action: "open" } })) === "mpp/credential-type";
-  return false;
+  const kind = (b as { channel?: { kind: (x: never) => unknown } }).channel?.kind;
+  if (kind !== undefined) {
+    const k = kind(m as never);
+    if (isRefusal(k)) {
+      if (KIND_CODES.has(k.code)) return code;
+      return code !== undefined && NOT_OPENING_CODES.has(code) ? k.code : undefined;
+    }
+    if (!b.id.startsWith("mpp/")) return undefined;
+    if (p["action"] === "open") return code !== undefined && OPENING_TYPE_CODES.has(code) ? code : undefined;
+    if (b.id !== "mpp/session/evm") return undefined;
+    if (p["action"] === "voucher" && isObj(p["deposit"]) && p["deposit"]["action"] === "open") {
+      return code === "mpp/credential-type" ? code : undefined;
+    }
+    if (p["action"] !== "topUp") return undefined;
+    const asOpening = codeOf(await b.bound({ ...m, payload: { ...p, action: "open" } }));
+    return asOpening === "mpp/credential-type" ? code : undefined;
+  }
+  if (!b.id.startsWith("mpp/")) return undefined;
+  if (b.id === "mpp/charge/evm/transaction" || b.id === "mpp/charge/evm/hash") {
+    return p["type"] !== "transaction" && p["type"] !== "hash" ? code : undefined;
+  }
+  return code !== undefined && TYPE_CODES.has(code) ? code : undefined;
 }
 
 describe("broadcaster on every pairing", () => {
@@ -286,20 +354,26 @@ describe("broadcaster by the kind of payment", () => {
   }
 });
 
-describe("a payment of a type, kind or shape the pairing does not take gets bound's refusal", () => {
+describe("a payment of a type, kind or shape the pairing does not take gets the refusal of what reads it", () => {
   for (const row of REFUSALS) {
     it(row.case, async () => {
       const b = byId(row.pairing);
       const presented = expand(row.presented);
       expect([codeOf(await b.bound(presented)), codeOf(await b.broadcaster(presented))]).toEqual([
-        row.expectRefusal,
+        row.bound ?? row.expectRefusal,
         row.expectRefusal,
       ]);
+      // A row whose `bound` names `bound`'s code is an action `bound` does not read: `channel.kind` reads it.
+      if (row.bound !== undefined) {
+        expect(NOT_OPENING_CODES.has(row.bound)).toBe(true);
+        const kind = (b as { channel: { kind: (x: never) => unknown } }).channel.kind;
+        expect(codeOf(kind(presented as never))).toBe(row.expectRefusal);
+      }
     });
   }
 });
 
-describe("the fuzz: broadcaster refuses exactly where bound refuses the type, kind or shape, with bound's code", () => {
+describe("the fuzz: broadcaster refuses where bound or channel.kind refuses type, kind or shape, with its code", () => {
   const all = candidates();
   for (const b of BINDINGS) {
     it(`${b.id}`, { timeout: 300_000 }, async () => {
@@ -307,24 +381,26 @@ describe("the fuzz: broadcaster refuses exactly where bound refuses the type, ki
       expect(seeds.length, `${b.id}: a payment the pairing takes`).toBeGreaterThan(0);
       let answered = 0;
       let refused = 0;
+      let handMade = 0;
       for (const seed of seeds) {
         const atSeed = codeOf(await b.bound(seed));
         const seedAnswer = await b.broadcaster(seed);
         expect(isRefusal(seedAnswer), `${b.id}: the seed is taken`).toBe(false);
         if (answerOf(b.id) !== null) expect(seedAnswer).toBe(answerOf(b.id));
         answered++;
-        const changes: [unknown, "shape" | "kind"][] = [
+        const changes: [unknown, "shape" | "kind" | "by hand"][] = [
           ...shapeChanges(seed).map((m): [unknown, "shape"] => [m, "shape"]),
           ...kindChanges(seed).map((m): [unknown, "kind"] => [m, "kind"]),
+          ...byHand(b, seed).map((m): [unknown, "by hand"] => [m, "by hand"]),
         ];
+        handMade += byHand(b, seed).length;
         for (const [m, what] of changes) {
           const fromBound = codeOf(await b.bound(m));
           const fromBroadcaster = await b.broadcaster(m);
           const label = `${b.id}, ${what}: ${JSON.stringify(m)?.slice(0, 160)}`;
-          const refuses = what === "shape" ? fromBound !== atSeed : await notTaken(b, m);
-          expect(isRefusal(fromBroadcaster), label).toBe(refuses);
+          const want = what === "shape" ? (fromBound !== atSeed ? fromBound : undefined) : await expected(b, m);
+          expect(codeOf(fromBroadcaster) ?? "an answer", label).toBe(want ?? "an answer");
           if (isRefusal(fromBroadcaster)) {
-            expect(fromBroadcaster.code, label).toBe(fromBound);
             refused++;
           } else {
             expect(fromBroadcaster === "payer" || fromBroadcaster === "payee", label).toBe(true);
@@ -333,8 +409,172 @@ describe("the fuzz: broadcaster refuses exactly where bound refuses the type, ki
         }
       }
       expect(answered, `${b.id}: answers`).toBeGreaterThan(0);
+      const family = b.id.startsWith("mpp/") || b.id.startsWith("x402/");
+      if (family) expect(handMade, `${b.id}: payments by hand`).toBeGreaterThan(0);
       if (UNGATED.includes(b.id)) expect(refused, `${b.id}: refuses nothing`).toBe(0);
       else expect(refused, `${b.id}: refusals`).toBeGreaterThan(0);
+    });
+  }
+});
+
+// ── Under another challenge than the seed's, written by hand: what `bound`, `channel.kind` and `broadcaster` give.
+
+/** The credential with its echoed request changed by `change`. */
+function withRequest(c: Obj, change: (request: Obj) => unknown): Obj {
+  const challenge = c["challenge"] as Obj;
+  const request = JSON.parse(Buffer.from(challenge["request"] as string, "base64url").toString("utf8")) as Obj;
+  const encoded = Buffer.from(JSON.stringify(change(request)), "utf8").toString("base64url");
+  return { ...c, challenge: { ...challenge, request: encoded } };
+}
+/** The credential under its challenge in operator mode, with the request's `recipient` as the operator key. */
+const operator = (c: Obj): Obj =>
+  withRequest(c, (r) => {
+    const details = { ...(r["methodDetails"] as Obj), voucherSigner: "operator", operator: r["recipient"] };
+    return { ...r, methodDetails: details };
+  });
+const withPayload = (c: Obj, payload: Obj): Obj => ({ ...c, payload: { ...(c["payload"] as Obj), ...payload } });
+const closeWith = (c: Obj, members: Obj): Obj => {
+  const bare = set(set(c["payload"] as Obj, "voucher", ABSENT), "authentication", ABSENT);
+  return { ...c, payload: { ...bare, action: "close", ...members } };
+};
+const otherScheme = (c: Obj): Obj => ({ ...c, accepted: { ...(c["accepted"] as Obj), scheme: "exact" } });
+
+type ChallengeRow = {
+  case: string;
+  pairing: string;
+  change: (seed: Obj) => unknown;
+  bound: string;
+  kind: string;
+  broadcaster: string;
+};
+const SOLANA = "mpp/session/solana";
+const BATCH_EVM = "x402/batch-settlement/eip155";
+const BATCH_SVM = "x402/batch-settlement/solana";
+const CHALLENGE_ROWS = rowsOf<ChallengeRow>(
+  [
+    {
+      case: "operator mode: a close with authentication and no voucher is taken",
+      pairing: SOLANA,
+      change: (c) => closeWith(operator(c), { authentication: {} }),
+      bound: "mpp/session-action",
+      kind: "close",
+      broadcaster: "payee",
+    },
+    {
+      case: "operator mode: a close with neither member gets channel.kind's code",
+      pairing: SOLANA,
+      change: (c) => closeWith(operator(c), {}),
+      bound: "mpp/session-action",
+      kind: "mpp/credential-malformed",
+      broadcaster: "mpp/credential-malformed",
+    },
+    {
+      case: "operator mode: a close with a voucher gets channel.kind's code",
+      pairing: SOLANA,
+      change: (c) => closeWith(operator(c), { voucher: {} }),
+      bound: "mpp/session-action",
+      kind: "mpp/credential-malformed",
+      broadcaster: "mpp/credential-malformed",
+    },
+    {
+      case: "operator mode: a use is taken",
+      pairing: SOLANA,
+      change: (c) => withPayload(operator(c), { action: "use" }),
+      bound: "mpp/session-action",
+      kind: "within",
+      broadcaster: "payee",
+    },
+    {
+      case: "operator mode: a voucher is an action the session does not take",
+      pairing: SOLANA,
+      change: (c) => withPayload(operator(c), { action: "voucher" }),
+      bound: "mpp/session-action",
+      kind: "mpp/session-action",
+      broadcaster: "mpp/session-action",
+    },
+    {
+      case: "a close with neither member, under a challenge of another method: the challenge decides",
+      pairing: SOLANA,
+      change: (c) => closeWith({ ...c, challenge: { ...(c["challenge"] as Obj), method: "evm" } }, {}),
+      bound: "mpp/not-this-pairing",
+      kind: "mpp/not-this-pairing",
+      broadcaster: "payee",
+    },
+    {
+      case: "a close with neither member, under a request that does not decode: the challenge decides",
+      pairing: SOLANA,
+      change: (c) => closeWith({ ...c, challenge: { ...(c["challenge"] as Obj), request: "!" } }, {}),
+      bound: "mpp/request-malformed",
+      kind: "mpp/request-malformed",
+      broadcaster: "payee",
+    },
+    {
+      case: "a close with neither member, under a request whose methodDetails is not an object: the challenge decides",
+      pairing: SOLANA,
+      change: (c) => closeWith(withRequest(c, (r) => ({ ...r, methodDetails: "x" })), {}),
+      bound: "mpp/request-malformed",
+      kind: "mpp/request-malformed",
+      broadcaster: "payee",
+    },
+    {
+      case: "a refund of amount 0 whose accepted names another scheme gets channel.kind's code for the payload",
+      pairing: BATCH_EVM,
+      change: (c) => withPayload(otherScheme(c), { type: "refund", amount: "0" }),
+      bound: "x402/option-not-this-pairing",
+      kind: "x402/option-not-this-pairing",
+      broadcaster: "x402/payload-malformed",
+    },
+    {
+      case: "a payment of type transfer whose accepted names another scheme gets bound's code for the type",
+      pairing: BATCH_EVM,
+      change: (c) => withPayload(otherScheme(c), { type: "transfer" }),
+      bound: "x402/option-not-this-pairing",
+      kind: "x402/option-not-this-pairing",
+      broadcaster: "x402/not-an-opening",
+    },
+    {
+      case: "a refund whose accepted names another scheme is taken",
+      pairing: BATCH_EVM,
+      change: (c) => withPayload(otherScheme(c), { type: "refund" }),
+      bound: "x402/option-not-this-pairing",
+      kind: "x402/option-not-this-pairing",
+      broadcaster: "payee",
+    },
+    {
+      case: "a refund whose accepted names another scheme is taken",
+      pairing: BATCH_SVM,
+      change: (c) => withPayload(otherScheme(c), { type: "refund" }),
+      bound: "x402/option-not-this-pairing",
+      kind: "x402/option-not-this-pairing",
+      broadcaster: "payee",
+    },
+    {
+      case: "a payment of type transfer whose accepted names another scheme gets bound's code for the type",
+      pairing: BATCH_SVM,
+      change: (c) => withPayload(otherScheme(c), { type: "transfer" }),
+      bound: "x402/option-not-this-pairing",
+      kind: "x402/option-not-this-pairing",
+      broadcaster: "x402/not-an-opening",
+    },
+  ],
+  "the payments under another challenge",
+  { exact: 13 },
+);
+
+describe("under another challenge: the challenge decides only where channel.kind reads it", () => {
+  const all = candidates();
+  for (const row of CHALLENGE_ROWS) {
+    it(`${row.pairing}: ${row.case}`, async () => {
+      const b = byId(row.pairing);
+      const [seed] = await seedsOf(b, all);
+      const m = row.change(seed as Obj);
+      const kind = (b as { channel: { kind: (x: never) => unknown } }).channel.kind(m as never);
+      const answer = await b.broadcaster(m);
+      expect([codeOf(await b.bound(m)), codeOf(kind) ?? kind, codeOf(answer) ?? answer]).toEqual([
+        row.bound,
+        row.kind,
+        row.broadcaster,
+      ]);
     });
   }
 });

@@ -1105,16 +1105,22 @@ export function byType(
  * The `broadcaster` of an MPP session: `kind`, the session's `channel.kind`, decides which actions it takes, and
  * `answer` reads who broadcasts a credential of one of them. A credential whose action `kind` refuses
  * `mpp/session-action` gets `notTaken`'s refusal, the one the session's `bound` gives a credential that is not an
- * opening.
+ * opening. `bound` reads no action but the opening, so `kind` is the reader of the rest: a credential `kind` refuses
+ * for its own content, such as a close that lacks the member its mode requires, gets `kind`'s refusal. Where `kind`
+ * refuses because `challenge`, its read of the echoed challenge, refuses, the challenge decides, and `answer` reads the
+ * credential. `kind` refuses an opening for its action alone.
  */
 export function sessionBroadcaster(
   kind: (credential: MppCredential) => unknown,
   answer: (credential: MppCredential) => Broadcaster | Refusal,
   notTaken: () => Refusal,
+  challenge: (credential: MppCredential) => unknown = () => undefined,
 ): (presented: unknown) => Promise<Broadcaster | Refusal> {
   return mppBroadcaster((c) => {
     const k = kind(c);
-    return isRefusal(k) && k.code === "mpp/session-action" ? notTaken() : answer(c);
+    if (!isRefusal(k)) return answer(c);
+    if (k.code === "mpp/session-action") return notTaken();
+    return isRefusal(challenge(c)) ? answer(c) : k;
   });
 }
 

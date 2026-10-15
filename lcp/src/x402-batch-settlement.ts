@@ -489,16 +489,21 @@ async function evmChannelRef(p: unknown): Promise<{ network: string; channel: st
 /**
  * A deposit is the opening and a voucher is within. A refund with no `amount` is the close; one with an `amount` is
  * within, where that amount is a positive decimal below 2^128, as the channel contract's `refund` and
- * `refundWithSignature` take a `uint128` and refuse 0. Any other amount is `x402/payload-malformed`.
+ * `refundWithSignature` take a `uint128` and refuse 0. Any other amount is `x402/payload-malformed`. The payment is
+ * held to the pairing's filter first (`payloadOf`), and its payload read by `evmPayloadKind`.
  */
 function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal {
   const x = payloadOf(p, EVM_ID);
-  if (isRefusal(x)) return x;
-  const t = x.payload["type"];
+  return isRefusal(x) ? x : evmPayloadKind(x.payload);
+}
+
+/** `evmKind`'s read of the payload, which reads no option; `broadcaster` makes it too. */
+function evmPayloadKind(payload: Record<string, unknown>): "open" | "within" | "close" | Refusal {
+  const t = payload["type"];
   if (t === "deposit") return "open";
   if (t === "voucher") return "within";
   if (t === "refund") {
-    const amount = x.payload["amount"];
+    const amount = payload["amount"];
     if (amount === undefined) return "close";
     const a = decimalBelow(amount, U128_LIMIT);
     return a === undefined || a === 0n ? refusal("x402/payload-malformed") : "within";
@@ -841,15 +846,21 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 /**
  * The `broadcaster` of a batch-settlement channel: `"payee"`, for a payment within `x402Shape`'s gate whose payload
- * `type` is one `kind`, the pairing's `channel.kind`, takes. A payment of a type `kind` refuses
- * `x402/channel-kind-unknown` gets `x402/not-an-opening`, as `bound` refuses it.
+ * `kind`, the payload read of the pairing's `channel.kind`, takes. A payment of a type `kind` refuses
+ * `x402/channel-kind-unknown` gets `x402/not-an-opening`, as `bound` refuses it. `bound` reads a `deposit` alone, so
+ * `kind` is the reader of every other type: a payment it refuses for its content, such as a refund whose `amount` the
+ * channel contract does not take, gets `kind`'s refusal. A deposit's content is `bound`'s to read. `kind` reads no
+ * option, so which option `accepted` is does not change the answer.
  */
-function batchBroadcaster(kind: (p: BatchPaymentPayload) => unknown) {
+function batchBroadcaster(kind: (payload: Record<string, unknown>) => unknown) {
   return broadcastsWithin((presented) => {
     const shape = x402Shape(presented);
     if (isRefusal(shape)) return shape;
-    const k = kind(presented as BatchPaymentPayload);
-    return isRefusal(k) && k.code === "x402/channel-kind-unknown" ? refusal("x402/not-an-opening") : true;
+    const payload = (presented as { payload: Record<string, unknown> }).payload;
+    const k = kind(payload);
+    if (!isRefusal(k)) return true;
+    if (k.code === "x402/channel-kind-unknown") return refusal("x402/not-an-opening");
+    return payload["type"] === "deposit" ? true : k;
   }, "payee");
 }
 
@@ -857,7 +868,9 @@ function batchBroadcaster(kind: (p: BatchPaymentPayload) => unknown) {
  * `x402/batch-settlement/eip155`. The payee broadcasts (`broadcaster` answers `"payee"` for each payment type
  * `channel.kind` takes): for every payment of the channel: the seller's facilitator executes the deposit's token
  * authorization, redeems vouchers when it claims, and executes a refund; `status` reads them, and `channel.kind`
- * classifies each payment. A payment of any other type gets `x402/not-an-opening`, as `bound` refuses it.
+ * classifies each payment. A payment of any other type gets `x402/not-an-opening`, as `bound` refuses it. `bound` reads
+ * a deposit alone, so `channel.kind` reads the rest: a refund whose `amount` is not a positive decimal below 2^128 gets
+ * `x402/payload-malformed`, as `channel.kind` refuses it.
  */
 export const batchEvm = Object.freeze({
   id: EVM_ID,
@@ -885,7 +898,7 @@ export const batchEvm = Object.freeze({
   build: evmBuild,
   buildWithin: evmBuildWithin,
   bound: evmBound,
-  broadcaster: batchBroadcaster(evmKind),
+  broadcaster: batchBroadcaster(evmPayloadKind),
   reference: evmReference,
   status: evmDepositStatus,
   recover: evmRecover,
@@ -951,14 +964,24 @@ function svmTxOf(payload: Record<string, unknown>): SvmTx | undefined | Refusal 
   return decodeSvmTx(wire);
 }
 
+/**
+ * A voucher is within and a refund is the close. A deposit is the opening where its channel instruction is an `open`,
+ * and within where it is a `top_up`; a deposit with no transaction that decodes is `x402/payload-malformed`, and one
+ * whose channel instruction does not read gets that refusal. Any other type is `x402/channel-kind-unknown`. The payment
+ * is held to the pairing's filter first (`payloadOf`), and its payload read by `svmPayloadKind`.
+ */
 function svmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal {
   const x = payloadOf(p, SVM_ID);
-  if (isRefusal(x)) return x;
-  const t = x.payload["type"];
+  return isRefusal(x) ? x : svmPayloadKind(x.payload);
+}
+
+/** `svmKind`'s read of the payload, which reads no option; `broadcaster` makes it too. */
+function svmPayloadKind(payload: Record<string, unknown>): "open" | "within" | "close" | Refusal {
+  const t = payload["type"];
   if (t === "voucher") return "within";
   if (t === "refund") return "close";
   if (t === "deposit") {
-    const tx = svmTxOf(x.payload);
+    const tx = svmTxOf(payload);
     if (tx === undefined || isRefusal(tx)) return refusal("x402/payload-malformed");
     const ix = channelInstruction(tx);
     if (isRefusal(ix)) return ix;
@@ -1312,7 +1335,7 @@ export const batchSvm = Object.freeze({
   build: svmBuild,
   buildWithin: svmBuildWithin,
   bound: svmBound,
-  broadcaster: batchBroadcaster(svmKind),
+  broadcaster: batchBroadcaster(svmPayloadKind),
   reference: svmReferenceOf,
   status: svmChannelStatus,
   recover: svmBatchRecover,

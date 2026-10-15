@@ -1,5 +1,5 @@
 {
-  "about": "Who broadcasts what a payer presents under each pairing, as its `broadcaster` answers: \"payer\", which sent the payment before presenting it, so the seller reads a landed payment, or \"payee\", the seller, or the facilitator or processor acting for it, which sends or executes what the payer presented. `broadcaster` answers only for a payment of a type and kind the pairing takes, within the shape gate its `bound` applies first, and gives any other payment the refusal `bound` gives it. `pairings` holds every pairing once, with its answer where every payment it takes has the same one, and null where it answers by the kind of payment; `kinds` holds answers for credentials of each kind, each copied from the pairing's own vector file's buyer row with only its payload changed, or, where its `case` says so, under another challenge: on the EVM `transaction` and `hash` charges, a challenge carrying only the members a credential needs, or the challenge `place` places; on the card and Stripe pairings, the challenge `advertise` places; and on the Stellar charge's hash credential, a request whose feePayer is false. `refusals` holds payments of a type, kind or shape the pairing does not take: `bound` and `broadcaster` each refuse one with `expectRefusal`. A value {\"$repeat\": [s, n]} in a row stands for the string s repeated n times. Each row's `source` names the specification the answer is read from; the MPP drafts are cited at tempoxyz/mpp-specs 08e7dd87.",
+  "about": "Who broadcasts what a payer presents under each pairing, as its `broadcaster` answers: \"payer\", which sent the payment before presenting it, so the seller reads a landed payment, or \"payee\", the seller, or the facilitator or processor acting for it, which sends or executes what the payer presented. `broadcaster` answers only for a payment of a type and kind the pairing takes, within the shape gate its `bound` applies first, and gives any other payment the refusal `bound` gives it. `pairings` holds every pairing once, with its answer where every payment it takes has the same one, and null where it answers by the kind of payment; `kinds` holds answers for credentials of each kind, each copied from the pairing's own vector file's buyer row with only its payload changed, or, where its `case` says so, under another challenge: on the EVM `transaction` and `hash` charges, a challenge carrying only the members a credential needs, or the challenge `place` places; on the card and Stripe pairings, the challenge `advertise` places; and on the Stellar charge's hash credential, a request whose feePayer is false. `refusals` holds payments of a type, kind or shape the pairing does not take: `bound` and `broadcaster` each refuse one with `expectRefusal`, except where the row has a `bound`, which names the code `bound` gives: a session's or channel's action other than the opening, which `bound` does not read, and which `channel.kind` and `broadcaster` each refuse with `expectRefusal`. A value {\"$repeat\": [s, n]} in a row stands for the string s repeated n times. Each row's `source` names the specification the answer is read from; the MPP drafts are cited at tempoxyz/mpp-specs 08e7dd87.",
   "pairings": [
     {
       "pairing": "x402/exact/eip155/eip3009",
@@ -1999,6 +1999,114 @@
       "pairing": "card/visa-tap",
       "presented": "x",
       "expectRefusal": "card/tap-signature-input-malformed"
+    },
+    {
+      "case": "mpp/session/solana: its opening with action close and neither voucher nor authentication, under a challenge with no voucherSigner, whose client mode requires a voucher",
+      "pairing": "mpp/session/solana",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "solana",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJtZXRob2REZXRhaWxzIjp7ImNoYW5uZWxQcm9ncmFtIjoiQ0hOTHhZdlZBMjhNSlA5UHJGdURYY2N1b0dYQXg3akJhY2ZMRWthaHlHc1giLCJkZWNpbWFscyI6NiwiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyS2V5IjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJncmFjZVBlcmlvZFNlY29uZHMiOjkwMCwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjM1MjExNDA5MyJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "action": "close",
+          "channelId": "FHsU5w9q78JYgE6HbSDQimKJEBZRNLQxGAvE6b8DvdQH",
+          "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHepu6Dl28Sc+H12jfd9JFQLnPZeiHRMa+xPXPRRWKq/dSquiRSjhK6cT3siKTUQWx03g+qkvOrjaHDQnsFRoOgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cv2Q4GeONEFNuI/pcllypAMKvV5K+T2SRxXCSMvu5FavUVfkeC1Z8MvZo26+2QNOZw4AUYhIgasifcg1XZ79Avu3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDBgAFAkANAwAGAAkDAQAAAAAAAAANDgEACQoBAwQCCAUHDAsNIQG6eBa/jwHP6oCWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAA="
+        }
+      },
+      "expectRefusal": "mpp/credential-malformed",
+      "bound": "mpp/session-action"
+    },
+    {
+      "case": "x402/batch-settlement/eip155: its deposit with type refund and amount 0, which the channel contract does not refund",
+      "pairing": "x402/batch-settlement/eip155",
+      "presented": {
+        "x402Version": 2,
+        "resource": {
+          "url": "https://api.seller.example/v1/quote"
+        },
+        "accepted": {
+          "scheme": "batch-settlement",
+          "network": "eip155:84532",
+          "amount": "1000",
+          "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+          "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+          "maxTimeoutSeconds": 3600,
+          "extra": {
+            "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+            "withdrawDelay": 900,
+            "name": "USDC",
+            "version": "2"
+          }
+        },
+        "payload": {
+          "type": "refund",
+          "amount": "0",
+          "channelConfig": {
+            "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+            "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+            "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+            "withdrawDelay": 900,
+            "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+          },
+          "voucher": {
+            "channelId": "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+            "maxClaimableAmount": "1000",
+            "signature": "0xeaadd469778d85cee58ea5c232a3b9009cb03c4771626b885c209759580df8b5572742e58a71529f7367e72fd5913a25f638e3cbde9a989054ccf1998db7514e1b"
+          },
+          "deposit": {
+            "amount": "100000",
+            "authorization": {
+              "erc3009Authorization": {
+                "validAfter": "0",
+                "validBefore": "1790003600",
+                "salt": "0x0000000000000000000000000000000000000000000000000000000000000001",
+                "signature": "0x1a8c019f1b4b29fb865d8aa3378cda488a550220180f8e16a65f430ec37888f741e7457488332d9b1560cc73bbab13e39ab0e320c92305847b07146d0e8cd0271c"
+              }
+            }
+          }
+        },
+        "extensions": {
+          "legalContext": {
+            "info": {
+              "type": "sha256",
+              "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+              "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+            },
+            "schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "const": "sha256"
+                },
+                "value": {
+                  "type": "string",
+                  "pattern": "^0x[0-9a-f]{64}$"
+                },
+                "legalContextUrl": {
+                  "type": "string",
+                  "pattern": "^https://"
+                }
+              },
+              "required": [
+                "type",
+                "value",
+                "legalContextUrl"
+              ]
+            }
+          }
+        }
+      },
+      "expectRefusal": "x402/payload-malformed",
+      "bound": "x402/not-an-opening"
     }
   ]
 }
