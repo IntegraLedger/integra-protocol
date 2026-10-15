@@ -503,7 +503,8 @@ describe("mpp/session/solana", () => {
     expect(new TextDecoder().decode(proof)).toBe(V.SV3.expectProofText);
     const d = sha256(proof);
     expect(d.startsWith(V.SV3.expectProofSha256Prefix) && d.endsWith(V.SV3.expectProofSha256Suffix)).toBe(true);
-    const use = cred(C_S, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.fixed.MV1, payer: V.SV3.payer, signature: "x" } });
+    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
+    const use = cred(operator, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.fixed.MV1, payer: V.SV3.payer, signature: "x" } });
     expect(await sessionSolana.channel.boundWithin(use)).toBe(H);
     expect(await sessionSolana.channel.boundWithin(cred(C_S, { action: "voucher", channelId: V.SV2.channel }))).toEqual(refused("mpp/not-bound-within"));
   });
@@ -599,7 +600,8 @@ describe("mpp/session/solana", () => {
     expect(getU64Decoder().decode(Buffer.from(V.fixed.H2.slice(2, 18), "hex")).toString()).toBe(V.plants.solana.expectSaltH2);
     expect(sessionSalt(V.fixed.H2).toString()).toBe(V.plants.solana.expectSaltH2);
     expect(await sessionSolana.bound(open(V.plants.solana.wireBase64, V.plants.solana.channel))).toEqual(refused(V.plants.solana.expect));
-    const use = cred(C_S, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.plants.solana.useWrongChallengeId, payer: V.SV3.payer, signature: "x" } });
+    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
+    const use = cred(operator, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.plants.solana.useWrongChallengeId, payer: V.SV3.payer, signature: "x" } });
     expect(await sessionSolana.channel.boundWithin(use)).toEqual(refused(V.plants.solana.expectUse));
   });
 
@@ -635,6 +637,30 @@ describe("mpp/session/solana", () => {
       const u = await sessionSolana.build({ challenge: c, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
       if ("refused" in u) throw new Error(u.code);
       expect(u.complete(open)).toEqual(expected);
+    }
+  });
+
+  // draft-solana-session-00 L1338 at tempoxyz/mpp-specs 08e7dd87: the `use` action "is valid only when `voucherSigner`
+  // is `operator`"; `client` is the default when the challenge omits it (L258). A `use` echoing SV5's operator challenge
+  // is within and gives H; one echoing a client challenge, or C_S with no voucherSigner, is refused by each function
+  // that reads it. A voucher under either challenge stays within, and only `use` gives H.
+  it("SV5: a use is within only on an operator channel; channel.kind, channel.ref and channel.boundWithin refuse it on a client channel", async () => {
+    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
+    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
+    const use = (c: MppChallenge & { id: string }) =>
+      cred(c, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: c.id, payer: V.SV3.payer, signature: "x" } });
+    expect(sessionSolana.channel.kind(use(operator))).toBe("within");
+    expect(await sessionSolana.channel.ref(use(operator))).toEqual({ network: V.SV2.expectReference.network, channel: V.SV2.channel });
+    expect(await sessionSolana.channel.boundWithin(use(operator))).toBe(H);
+    for (const c of [client, C_S]) {
+      expect(sessionSolana.channel.kind(use(c))).toEqual(refused("mpp/session-action"));
+      expect(await sessionSolana.channel.ref(use(c))).toEqual(refused("mpp/session-action"));
+      expect(await sessionSolana.channel.boundWithin(use(c))).toEqual(refused("mpp/session-action"));
+    }
+    for (const c of [operator, client, C_S]) {
+      const voucher = cred(c, { action: "voucher", channelId: V.SV2.channel });
+      expect(sessionSolana.channel.kind(voucher)).toBe("within");
+      expect(await sessionSolana.channel.boundWithin(voucher)).toEqual(refused("mpp/not-bound-within"));
     }
   });
 });
@@ -1082,6 +1108,11 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     if ("refused" in u) throw new Error(u.code);
     return [await sessionSolana.bound(cred(c, payload)), await sessionSolana.reference(cred(c, payload)), u.complete(payload)];
   };
+  /** channel.kind, channel.ref and channel.boundWithin of a `use` echoing challenge `c`, its proof naming `c`'s id. */
+  const solanaUseCalls = async (c: MppChallenge & { id: string }) => {
+    const use = cred(c, { action: "use", channelId: V.SV2.channel, authentication: proofFor(c) });
+    return [sessionSolana.channel.kind(use), await sessionSolana.channel.ref(use), await sessionSolana.channel.boundWithin(use)];
+  };
 
   // Each input a row changes is accepted as given, so each refusal below is the change's.
   it("the inputs the rows change, as given, are accepted", async () => {
@@ -1096,6 +1127,7 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       const [bound, reference, completed] = await solanaCalls(c, payload);
       expect([bound, reference, completed]).toEqual([H, V.SV2.expectReference, { challenge: c, payload }]);
     }
+    expect(await solanaUseCalls(operator)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, H]);
   });
 
   const cases: Record<string, () => Promise<unknown[]>> = {
@@ -1173,6 +1205,11 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       async () => [
         ...(await solanaCalls(client, { ...solanaOpen, authentication: proofFor(client) })),
         ...(await solanaCalls(C_S, { ...solanaOpen, authentication: proofFor(C_S) })),
+      ],
+    "a solana use, its challenge's voucherSigner client or absent (draft-solana-session-00 L1338 at tempoxyz/mpp-specs 08e7dd87: valid only when voucherSigner is operator)":
+      async () => [
+        ...(await solanaUseCalls(client)),
+        ...(await solanaUseCalls(C_S)),
       ],
   };
 

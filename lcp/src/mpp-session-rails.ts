@@ -632,11 +632,27 @@ async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot">
   return isRefusal(ref) ? ref : { ...ref, channel: open.channel };
 }
 
-/** A `use` credential echoing the opening challenge whose bearer proof names that challenge's id gives its H. */
+/**
+ * The kind of a Solana session payment by its action. draft-solana-session-00's `use` action is valid only when the
+ * echoed challenge's `voucherSigner` is `operator`: a `use` whose challenge names `client`, or no `voucherSigner`, is
+ * `mpp/session-action`.
+ */
+function solanaKind(presented: MppCredential): Kind | Refusal {
+  const k = actionKind(presented, ["voucher", "topUp", "use"]);
+  if (isRefusal(k) || presented.payload["action"] !== "use") return k;
+  const details = echoedDetails(presented, "solana");
+  if (isRefusal(details)) return details;
+  return details["voucherSigner"] === "operator" ? k : refusal("mpp/session-action");
+}
+
+/**
+ * A `use` credential echoing the opening challenge whose bearer proof names that challenge's id gives its H. A `use`
+ * whose challenge's `voucherSigner` is not `operator` is `mpp/session-action`, as `channel.kind` answers it.
+ */
 async function solanaBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
-  const k = actionKind(presented, ["voucher", "topUp", "use"]);
+  const k = solanaKind(presented);
   if (isRefusal(k)) return k;
   if (presented.payload["action"] !== "use") return refusal("mpp/not-bound-within");
   const e = echoedFor(presented, SOLANA);
@@ -646,9 +662,12 @@ async function solanaBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
   return e.h;
 }
 
-/** The network and the payload's `channelId`, re-encoded; on a within or close payment, read from the payment itself. */
+/**
+ * The network and the payload's `channelId`, re-encoded; on a within or close payment, read from the payment itself. A
+ * `use` whose challenge's `voucherSigner` is not `operator` is `mpp/session-action`, as `channel.kind` answers it.
+ */
 async function solanaRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
-  const k = actionKind(presented, ["voucher", "topUp", "use"]);
+  const k = solanaKind(presented);
   if (isRefusal(k)) return k;
   let details: { [k: string]: Json };
   if (k === "open") {
@@ -1165,7 +1184,7 @@ export const sessionSolana = Object.freeze({
   status: solanaStatus,
   closeRef: solanaCloseRef,
   channel: Object.freeze({
-    kind: (p: MppCredential) => actionKind(p, ["voucher", "topUp", "use"]),
+    kind: (p: MppCredential) => solanaKind(p),
     ref: solanaRef,
     boundWithin: solanaBoundWithin,
     until: (_p: MppCredential): number | undefined => undefined,

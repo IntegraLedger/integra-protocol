@@ -634,6 +634,10 @@
    {
     "case": "a solana opening with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: MUST be absent for client)",
     "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "a solana use, its challenge's voucherSigner client or absent (draft-solana-session-00 L1338 at tempoxyz/mpp-specs 08e7dd87: valid only when voucherSigner is operator)",
+    "expect": "mpp/session-action"
    }
   ]
  },
