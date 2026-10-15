@@ -58,7 +58,7 @@ import {
 } from "./internal/xrpl-session.js";
 import { decodeBlob, decodePresented, type XrplNetwork, type XrplReader, type XrplRef, type XrplStatus, type XrplTxJson } from "./internal/xrpl.js";
 import {
-  checkChallenge,
+  checkedFor,
   chosenFor,
   credentialOf,
   decodeObject,
@@ -457,7 +457,7 @@ async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Pr
 
 /** The read keys of a close, from the issued challenge and the channel: a reported transaction, or the log search. */
 function hederaCloseRef(chosen: MppChallenge, channel: string): Omit<HederaCloseRef, "transaction"> | Refusal {
-  const checked = chosenChallenge(chosen, HEDERA);
+  const checked = checkedFor(chosen, HEDERA);
   if (isRefusal(checked)) return checked;
   const network = hederaSessionNetworkOf(checked.details);
   if (isRefusal(network)) return network;
@@ -697,7 +697,7 @@ async function solanaStatus(ref: (SvmRef & { transaction: string }) | SvmCloseRe
 }
 
 function solanaCloseRef(chosen: MppChallenge, channel: string): Omit<SvmCloseRef, "transaction"> | Refusal {
-  const checked = chosenChallenge(chosen, SOLANA);
+  const checked = checkedFor(chosen, SOLANA);
   if (isRefusal(checked)) return checked;
   const network = solanaNetworkOf(checked.details, true);
   if (network === null) return refusal("svm/network-undeclared");
@@ -952,7 +952,7 @@ async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, r
 }
 
 function xrplCloseRef(chosen: MppChallenge, channel: string): Omit<XrplCloseRef, "transaction"> | Refusal {
-  const checked = chosenChallenge(chosen, XRPL);
+  const checked = checkedFor(chosen, XRPL);
   if (isRefusal(checked)) return checked;
   const network = xrplNetworkOf(checked.details);
   if (isRefusal(network)) return network;
@@ -1053,15 +1053,6 @@ async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWit
       return { challenge, payload: { action, channelId, amount: drops.toString(), signature } };
     },
   };
-}
-
-// ── The seller's side of a reported close.
-
-/** The issued challenge, checked, naming `pairing`. */
-function chosenChallenge(chosen: MppChallenge, pairing: typeof HEDERA | typeof SOLANA | typeof XRPL): Checked | Refusal {
-  const checked = checkChallenge(chosen, true);
-  if (isRefusal(checked)) return checked;
-  return checked.pairings.includes(pairing) ? checked : refusal("mpp/not-this-pairing");
 }
 
 // ── Resume.

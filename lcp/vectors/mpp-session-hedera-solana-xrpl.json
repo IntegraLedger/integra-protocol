@@ -1102,5 +1102,100 @@
     }
    }
   ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request without currency",
+    "pairing": "mpp/session/hedera",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "hedera",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyNSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6Mjk2LCJlc2Nyb3dDb250cmFjdCI6IjB4OEFhZjY2OTBDMmE2Mzk3ZDU5NUY5N0UyMjRmQzE5NzU5RGU2ZmRhRSJ9LCJyZWNpcGllbnQiOiIweDc0MmQzNWNjNjYzNGMwNTMyOTI1YTNiODQ0YmM5ZTc1OTVmOGZlMDAiLCJzdWdnZXN0ZWREZXBvc2l0IjoiMTAwMDAwMDAiLCJ1bml0VHlwZSI6ImxsbV90b2tlbiJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "methodDetails.chainId 1, which is not 295 or 296",
+    "pairing": "mpp/session/hedera",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "hedera",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoxLCJlc2Nyb3dDb250cmFjdCI6IjB4OEFhZjY2OTBDMmE2Mzk3ZDU5NUY5N0UyMjRmQzE5NzU5RGU2ZmRhRSJ9LCJyZWNpcGllbnQiOiIweDc0MmQzNWNjNjYzNGMwNTMyOTI1YTNiODQ0YmM5ZTc1OTVmOGZlMDAiLCJzdWdnZXN0ZWREZXBvc2l0IjoiMTAwMDAwMDAiLCJ1bml0VHlwZSI6ImxsbV90b2tlbiJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "hedera/chain-id-unnamed"
+   },
+   {
+    "case": "the request without currency",
+    "pairing": "mpp/session/solana",
+    "credential": "/buyer/rows/3/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyNSIsIm1ldGhvZERldGFpbHMiOnsiY2hhbm5lbFByb2dyYW0iOiJDSE5MeFl2VkEyOE1KUDlQckZ1RFhjY3VvR1hBeDdqQmFjZkxFa2FoeUdzWCIsImRlY2ltYWxzIjo2LCJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJLZXkiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsImdyYWNlUGVyaW9kU2Vjb25kcyI6OTAwLCJuZXR3b3JrIjoiZGV2bmV0IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiMzUyMTE0MDkzIn0sInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "svm/input-malformed"
+   },
+   {
+    "case": "methodDetails.channelId, a channel named for resumption",
+    "pairing": "mpp/session/solana",
+    "credential": "/buyer/rows/3/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJtZXRob2REZXRhaWxzIjp7ImNoYW5uZWxJZCI6IjExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwiY2hhbm5lbFByb2dyYW0iOiJDSE5MeFl2VkEyOE1KUDlQckZ1RFhjY3VvR1hBeDdqQmFjZkxFa2FoeUdzWCIsImRlY2ltYWxzIjo2LCJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJLZXkiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsImdyYWNlUGVyaW9kU2Vjb25kcyI6OTAwLCJuZXR3b3JrIjoiZGV2bmV0IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiMzUyMTE0MDkzIn0sInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/channel-named"
+   },
+   {
+    "case": "the request without amount",
+    "pairing": "mpp/session/xrpl",
+    "credential": "/buyer/rows/5/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "xrpl",
+     "intent": "session",
+     "request": "eyJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "recipient with its last character changed, whose checksum fails",
+    "pairing": "mpp/session/xrpl",
+    "credential": "/buyer/rows/5/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "xrpl",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeXIifQ",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   }
+  ]
  }
 }

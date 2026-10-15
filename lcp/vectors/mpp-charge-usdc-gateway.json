@@ -190,5 +190,40 @@
     "note": "presented is the payment built from fixed.payerKey and M5's payload: its burn intent's EIP-712 domain separator is M5.expectDomainSeparator and its digest has M5.expectDigest's prefix and suffix, and its signature is the payer key's RFC 6979 signature of that digest."
    }
   ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request with a space after its first colon, not its RFC 8785 form",
+    "pairing": "mpp/charge/usdc/gateway",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiAiMjUwMDAwMDAiLCJjdXJyZW5jeSI6InVzZGMiLCJtZXRob2REZXRhaWxzIjp7ImdhdGV3YXkiOnsiYWNjZXB0ZWRTb3VyY2VzIjpbImVpcDE1NTo1MDQyMDAyIl0sImRlc3RpbmF0aW9uTmV0d29yayI6ImVpcDE1NTo4NDUzMiIsIm1heEZlZSI6IjUwMDAwMCJ9LCJ0eXBlIjoiZ2F0ZXdheSJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-not-jcs"
+   },
+   {
+    "case": "recipient 5, which the salt's preimage carries as a string",
+    "pairing": "mpp/charge/usdc/gateway",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIyNTAwMDAwMCIsImN1cnJlbmN5IjoidXNkYyIsIm1ldGhvZERldGFpbHMiOnsiZ2F0ZXdheSI6eyJhY2NlcHRlZFNvdXJjZXMiOlsiZWlwMTU1OjUwNDIwMDIiXSwiZGVzdGluYXRpb25OZXR3b3JrIjoiZWlwMTU1Ojg0NTMyIiwibWF4RmVlIjoiNTAwMDAwIn0sInR5cGUiOiJnYXRld2F5In0sInJlY2lwaWVudCI6NX0",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   }
+  ]
  }
 }

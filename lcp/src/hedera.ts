@@ -9,7 +9,7 @@ import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import {
   amountOf,
-  chargeLegs,
+  chargeRequestLegs,
   hederaChargeRequest,
   hederaNetworkOfChainId,
   INT64_LIMIT,
@@ -23,6 +23,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   attributionMemo,
   challengeBound,
+  checkedFor,
   checkAttribution,
   credentialOf,
   place,
@@ -1046,7 +1047,7 @@ async function buildCharge(
   if (typeof id !== "string" || typeof realm !== "string" || !id.isWellFormed() || !realm.isWellFormed()) {
     return refusal("mpp/challenge-malformed");
   }
-  const legs = chargeLegs(request);
+  const legs = chargeRequestLegs(request);
   if (isRefusal(legs)) return legs;
   const vs = isObject(c) ? c.validStart : undefined;
   if (
@@ -1091,7 +1092,10 @@ async function buildCharge(
   };
 }
 
-/** The echoed challenge's hash and request, checked to be a Hedera charge, with the credential's payload type. */
+/**
+ * The echoed challenge's hash and request, checked to be a Hedera charge and held to its filter (`checkedFor`), with
+ * the credential's payload type.
+ */
 function chargeCredential(
   credential: MppCredential,
 ): { h: AtrHash; challenge: MppCredential["challenge"]; request: MppHederaRequest; type: "transaction" | "hash" } | Refusal {
@@ -1099,6 +1103,8 @@ function chargeCredential(
   if (isRefusal(cb)) return cb;
   const { challenge, payload } = credential;
   if (challenge.method !== "hedera" || challenge.intent !== "charge") return refusal("mpp/not-this-pairing");
+  const held = checkedFor(challenge, CHARGE);
+  if (isRefusal(held)) return held;
   const type = payload["type"];
   if (type !== "transaction" && type !== "hash") return refusal("mpp/credential-type");
   return { h: cb.h, challenge, request: cb.request, type };

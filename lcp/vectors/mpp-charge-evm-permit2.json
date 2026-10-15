@@ -170,5 +170,40 @@
     "note": "presented is this file's MV6 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from draft-evm-charge-00's Permit2 Payload (L397-494 at tempoxyz/mpp-specs 08e7dd87): permitted and transferDetails from the request, the permit nonce the challengeHash (keccak256 of the challenge's id and realm, eth-utils 6.0.0) as a uint256, deadline the challenge's expires, witness {challengeHash, externalId \"\" when the request names none}, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of MV6.expectDigest. MV6's complete gives it whole."
    }
   ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request without amount",
+    "pairing": "mpp/charge/evm/permit2",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJwZXJtaXQyIiwiYXV0aG9yaXphdGlvbiJdLCJwZXJtaXQyQWRkcmVzcyI6IjB4MDAwMDAwMDAwMDIyRDQ3MzAzMEYxMTZkREVFOUY2QjQzYUM3OEJBMyJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "amount 0: permit2 pays the recipient amount less the splits, which must be above zero, and authorization stays offered",
+    "pairing": "mpp/charge/evm/permit2",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIwIiwiY3VycmVuY3kiOiIweDAzNkNiRDUzODQyYzU0MjY2MzRlNzkyOTU0MWVDMjMxOGYzZENGN2UiLCJtZXRob2REZXRhaWxzIjp7ImNoYWluSWQiOjg0NTMyLCJjcmVkZW50aWFsVHlwZXMiOlsicGVybWl0MiIsImF1dGhvcml6YXRpb24iXSwicGVybWl0MkFkZHJlc3MiOiIweDAwMDAwMDAwMDAyMkQ0NzMwMzBGMTE2ZERFRTlGNkI0M2FDNzhCQTMifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/not-this-pairing"
+   }
+  ]
  }
 }

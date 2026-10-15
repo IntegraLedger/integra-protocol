@@ -71,6 +71,14 @@ describe("mpp/charge/card (M1)", () => {
     expect(requestOf(u).externalId).toBeUndefined();
   });
 
+  // bound holds the echoed challenge to the pairing's filter before it refuses for want of a signed place: an
+  // externalId that is not a string (draft-card-charge-00 L236) is refused as pairingsOf refuses it.
+  it("bound refuses an echoed challenge pairingsOf does not name with its code, before mpp/no-signed-place", async () => {
+    const p = placed(chargeCard, c);
+    const echoed = { ...p, request: b64u(JSON.stringify({ ...requestOf(p), externalId: 7 })) };
+    expect(await chargeCard.bound(credential(echoed))).toEqual({ refused: true, code: "mpp/request-malformed" });
+  });
+
   it("build and bound refuse: nothing the buyer signs has a place for H", async () => {
     const p = placed(chargeCard, c);
     expect(await chargeCard.build({ challenge: p as MppChallenge & { id: string }, from: "0x", now: 0 }, F.H)).toEqual(

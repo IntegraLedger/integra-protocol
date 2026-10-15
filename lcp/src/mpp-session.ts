@@ -35,7 +35,7 @@ import {
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
   challengeIdH,
-  checkChallenge,
+  checkedFor,
   credentialOf,
   decodeObject,
   deepFreeze,
@@ -48,6 +48,7 @@ import {
   place,
   read,
   requestAddress,
+  subscriptionPeriod,
   tie,
   unixOf,
   type Checked,
@@ -257,8 +258,6 @@ const MAX_CALLDATA = 131_072;
 const U96 = 1n << 96n;
 const U128 = 1n << 128n;
 const KEY_TYPES = { secp256k1: 0, p256: 1, webAuthn: 2 } as const;
-const DAY = 86_400n;
-const WEEK = 604_800n;
 
 // ── Channel ids.
 
@@ -360,11 +359,11 @@ export function sessionNetwork(c: MppChallenge): `eip155:${number}` | Refusal {
 
 // ── Shared steps.
 
+/** The checked challenge `build` answers: held to `pairing`'s filter (`checkedFor`), with an id that carries `h`. */
 function offerFor(choice: MppChoice, h: AtrHash, pairing: ChannelId): Checked | Refusal {
   if (!isObject(choice) || !isObject(choice.challenge)) return refusal("mpp/input-malformed");
-  const checked = checkChallenge(choice.challenge, true);
+  const checked = checkedFor(choice.challenge, pairing);
   if (isRefusal(checked)) return checked;
-  if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
   const fromId = challengeIdH(choice.challenge);
   if (typeof fromId !== "string" || typeof h !== "string" || !hashEquals(fromId, h)) return refusal("mpp/id-not-ours");
   if (!isAddress(choice.from)) return refusal("mpp/input-malformed");
@@ -1277,8 +1276,7 @@ async function tempoBound(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys of the session's opening: the escrow's `ChannelOpened` naming the channel. `settleBy` is the opening
- * transaction's `validBefore`, else the challenge's `expires`; with neither, or with an `expires` read there that is
- * not a date, it is `mpp/expires-required`.
+ * transaction's `validBefore`, else the challenge's `expires`, a date the pairing's filter requires.
  */
 async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
   const presented = credentialOf(input);
@@ -1286,10 +1284,7 @@ async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
   const o = tempoOpened(presented);
   if (isRefusal(o)) return o;
   const topic0 = o.params.version === "v2" ? CHANNEL_OPENED_V2_TOPIC : CHANNEL_OPENED_V1_TOPIC;
-  const expires = o.validBefore === null ? o.checked.expires : undefined;
-  if (isRefusal(expires)) return expires;
-  const settleBy = o.validBefore ?? (expires === undefined ? undefined : BigInt(expires));
-  if (settleBy === undefined) return refusal("mpp/expires-required");
+  const settleBy = o.validBefore ?? BigInt(o.checked.expires as number);
   return {
     network: o.params.network,
     settleBy: settleBy.toString(),
@@ -1508,7 +1503,7 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
     keyType: KEY_TYPES[key.keyType],
     keyId: key.accessKeyAddress,
     expiry: BigInt(unixOf(str(r["subscriptionExpires"]))!),
-    limits: [{ token: currency, limit: BigInt(str(r["amount"])), period: BigInt(str(r["periodCount"])) * (r["periodUnit"] === "week" ? WEEK : DAY) }],
+    limits: [{ token: currency, limit: BigInt(str(r["amount"])), period: subscriptionPeriod(r) }],
     allowedCalls: [{ target: currency, selectorRules: [{ selector: TRANSFER_WITH_MEMO_SELECTOR, recipients: [str(r["recipient"]) as Hex] }] }],
     witness: normalHash(h)!,
   };

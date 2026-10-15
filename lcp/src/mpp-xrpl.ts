@@ -165,7 +165,6 @@ async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUn
   const r = checked.request;
   const d = checked.details;
   if (!sameInvoice(d["invoiceId"], mppInvoiceId(h))) return refusal("xrpl/carrier-mismatch");
-  if (d["memos"] !== undefined) return refusal("xrpl/memos-not-carried");
   const u32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
   if (
     typeof choice.account !== "string" ||

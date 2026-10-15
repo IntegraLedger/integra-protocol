@@ -812,5 +812,40 @@
     "note": "presented is this file's M4 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request without amount",
+    "pairing": "mpp/charge/usdc/stacks",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJjdXJyZW5jeSI6IlNUMVBRSFFLVjBSSlhaRlkxREdYOE1OU05ZVkUzVkdaSlNSVFBHWkdNLnVzZGN4Ojp1c2RjeC10b2tlbiIsIm1ldGhvZERldGFpbHMiOnsic3RhY2tzIjp7ImFzc2V0TmFtZSI6InVzZGN4LXRva2VuIiwiY2hhaW5JZCI6IjIxNDc0ODM2NDgiLCJjb250cmFjdEFkZHJlc3MiOiJTVDFQUUhRS1YwUkpYWkZZMURHWDhNTlNOWVZFM1ZHWkpTUlRQR1pHTSIsImNvbnRyYWN0TmFtZSI6InVzZGN4IiwiZGVjaW1hbHMiOjYsImZ1bmN0aW9uTmFtZSI6InRyYW5zZmVyIiwibmV0d29yayI6InRlc3RuZXQifSwidHlwZSI6InN0YWNrcyJ9LCJyZWNpcGllbnQiOiJTVDNGQlIyQUdLNUg5UUJESDNFRU42REY4RUs4Slk3Ulg4TlFYTU5SUSJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "methodDetails.stacks without contractName",
+    "pairing": "mpp/charge/usdc/stacks",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJTVDFQUUhRS1YwUkpYWkZZMURHWDhNTlNOWVZFM1ZHWkpTUlRQR1pHTS51c2RjeDo6dXNkY3gtdG9rZW4iLCJtZXRob2REZXRhaWxzIjp7InN0YWNrcyI6eyJhc3NldE5hbWUiOiJ1c2RjeC10b2tlbiIsImNoYWluSWQiOiIyMTQ3NDgzNjQ4IiwiY29udHJhY3RBZGRyZXNzIjoiU1QxUFFIUUtWMFJKWFpGWTFER1g4TU5TTllWRTNWR1pKU1JUUEdaR00iLCJkZWNpbWFscyI6NiwiZnVuY3Rpb25OYW1lIjoidHJhbnNmZXIiLCJuZXR3b3JrIjoidGVzdG5ldCJ9LCJ0eXBlIjoic3RhY2tzIn0sInJlY2lwaWVudCI6IlNUM0ZCUjJBR0s1SDlRQkRIM0VFTjZERjhFSzhKWTdSWDhOUVhNTlJRIn0",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   }
+  ]
  }
 }

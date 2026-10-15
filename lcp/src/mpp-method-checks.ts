@@ -2,8 +2,9 @@
  * The request checks of MPP's `card`, `stripe` and `usdc` challenges, which `pairingsOf` runs for each (intent, method)
  * and which name the pairing a challenge offers. `usdc` names its pairing by `methodDetails.type`.
  */
-import type { Json } from "./core.js";
+import { canonicalJson, type Json } from "./core.js";
 import { isAddress } from "./fields.js";
+import { b64uEncode } from "./internal/base64url.js";
 import type { MppChallenge, MppPairingId } from "./mpp-challenge.js";
 import { solanaChargePairings, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -82,12 +83,23 @@ export function usdcProfile(d: Obj): { type: string; details: Obj } | Refusal {
 }
 
 /**
+ * True when a challenge's `request` parameter is the base64url, without padding, of the UTF-8 of the RFC 8785 form of
+ * `parsed`, its own parse: the bytes `usdc`'s request hash covers.
+ */
+export function isJcsRequest(requestParam: string, parsed: unknown): boolean {
+  const text = canonicalJson(parsed as Json);
+  return typeof text === "string" && b64uEncode(new TextEncoder().encode(text)) === requestParam;
+}
+
+/**
  * `charge` on `usdc`: the active profile, `amount` a positive integer string, `recipient` a string, and what each
  * profile's build reads: EVM `chainId` and addresses; the Solana charge's checks on the Solana details, whose `network`
  * is required, and on `externalId`, its carrier; Stacks `chainId` and the token contract. The Gateway build reads
- * `recipient` and the request's hash, and none of the Gateway details. No other profile reads `externalId`.
+ * `recipient` and the request's hash, and none of the Gateway details. No other profile reads `externalId`. The EVM and
+ * Gateway derivations hash the request as received, so on those profiles it is in its RFC 8785 form
+ * (`mpp/request-not-jcs`).
  */
-export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly MppPairingId[] | Refusal {
+export function usdcChargePairings(r: Obj, d: Obj, c: MppChallenge): readonly MppPairingId[] | Refusal {
   const profile = usdcProfile(d);
   if (isRefusal(profile)) return profile;
   const p = profile.details;
@@ -99,7 +111,7 @@ export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly M
       if (!isPositiveInt(p["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"])) {
         return refusal("mpp/request-malformed");
       }
-      return ["mpp/charge/usdc/evm"];
+      return isJcsRequest(c.request, r) ? ["mpp/charge/usdc/evm"] : refusal("mpp/request-not-jcs");
     }
     case "solana": {
       const network = solanaNetworkOf(p, true);
@@ -121,7 +133,7 @@ export function usdcChargePairings(r: Obj, d: Obj, _c: MppChallenge): readonly M
       return ["mpp/charge/usdc/stacks"];
     }
     default:
-      return ["mpp/charge/usdc/gateway"];
+      return isJcsRequest(c.request, r) ? ["mpp/charge/usdc/gateway"] : refusal("mpp/request-not-jcs");
   }
 }
 

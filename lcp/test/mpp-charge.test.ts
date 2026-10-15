@@ -49,13 +49,15 @@ import {
   memoCalldata,
 } from "../src/tempo.js";
 import { counting } from "./fixtures/counting-reader.js";
-import { C_E, C_T, H, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
+import { C_E, C_T, H, b64u, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const A = load("mpp-charge-evm-authorization.json");
 const P = load("mpp-charge-evm-permit2.json");
 const TX = load("mpp-charge-evm-transaction.json");
 const HS = load("mpp-charge-evm-hash.json");
+/** An EVM charge challenge without `credentialTypes`, which offers the `transaction` and `hash` pairings. */
+const C_EH = challenge("evm", "charge", TX.fixed.R_ENoTypes);
 const M = load("mpp-charge-tempo-memo.json");
 const PU = load("mpp-charge-tempo-push.json");
 
@@ -441,7 +443,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(keys).toEqual(HS.MV12.expectReference);
     expect(HS.MV12.expectReference.transferLog.digest).toBe(sha256(toBytes(A.fixed.payer)));
     expect(HS.MV12.expectReference.transferLog.topic0).toBe(keccak256(toBytes("Transfer(address,address,uint256)")));
-    expect(await evmTransaction.reference({ challenge: C_E, source: cred.source } as MppCredential)).toEqual(HS.MV12.expectReference);
+    expect(await evmTransaction.reference({ challenge: C_EH, source: cred.source } as MppCredential)).toEqual(HS.MV12.expectReference);
     const transfer = (address: string): EvmLog => ({
       address: address as `0x${string}`,
       topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)],
@@ -458,8 +460,28 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(evmHash.pattern).toEqual(Object.fromEntries(Object.entries(HS.pattern).filter(([k]) => k !== "claims")));
   });
 
+  // Neither pairing binds (nothing the payer signs carries H), and both hold the echoed challenge to their filter first:
+  // a challenge pairingsOf does not name for them is refused with its code, by bound and by reference.
+  it("MV11 and MV12: bound and reference refuse a challenge pairingsOf does not name for the pairing, with its code", async () => {
+    const source = A.MV5.expectSource;
+    const types = placedOf(C_E);
+    const noAmount = { ...placedOf(C_EH), request: b64u(JSON.stringify({ ...JSON.parse(TX.fixed.R_ENoTypes), amount: undefined })) };
+    for (const pairing of [evmTransaction, evmHash]) {
+      const payload = { type: "hash", hash: HS.MV12.hash };
+      expect(pairingsOf(C_E)).toEqual(["mpp/charge/evm/permit2", "mpp/charge/evm/authorization"]);
+      expect(await pairing.bound({ challenge: types, source, payload })).toEqual({ refused: true, code: "mpp/not-this-pairing" });
+      expect(await pairing.reference({ challenge: types, source, payload } as MppCredential)).toEqual({ refused: true, code: "mpp/not-this-pairing" });
+      expect(await pairing.bound({ challenge: placedOf(C_EH), source, payload })).toEqual({ refused: true, code: "mpp/no-signed-place" });
+      expect(await pairing.bound({ challenge: noAmount, source, payload })).toEqual({ refused: true, code: "mpp/request-malformed" });
+      expect(await pairing.reference({ challenge: noAmount, source, payload } as MppCredential)).toEqual({
+        refused: true,
+        code: "mpp/request-malformed",
+      });
+    }
+  });
+
   it("MV12: only a Transfer from the credential's source is the payment; another account's is not", async () => {
-    const keys = await evmHash.reference({ challenge: C_E, source: A.MV5.expectSource } as MppCredential);
+    const keys = await evmHash.reference({ challenge: C_EH, source: A.MV5.expectSource } as MppCredential);
     if ("refused" in keys) throw new Error(keys.code);
     const ref = { ...keys, transaction: HS.MV12.hash };
     const transfer = (from: string, to: string, value: bigint): EvmLog => ({
@@ -479,8 +501,8 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(await status([transfer(A.fixed.payer, HS.MV12.otherSender, 1n)])).toEqual(HS.MV12.expectSettled);
     const stranger = transfer(HS.MV12.otherSender, RECIPIENT_E, 10000n);
     expect(await status([stranger, transfer(A.fixed.payer, RECIPIENT_E, 10000n)])).toEqual(HS.MV12.expectSettled);
-    expect(await evmHash.reference({ challenge: C_E } as MppCredential)).toEqual(HS.MV12.expectNoSource);
-    expect(await evmTransaction.reference({ challenge: C_E, source: "did:pkh:eip155:84532:0x01" } as MppCredential))
+    expect(await evmHash.reference({ challenge: C_EH } as MppCredential)).toEqual(HS.MV12.expectNoSource);
+    expect(await evmTransaction.reference({ challenge: C_EH, source: "did:pkh:eip155:84532:0x01" } as MppCredential))
       .toEqual(HS.MV12.expectNoSource);
     // A reference that does not identify the payer's Transfer cannot be read.
     const { transferLog: _sender, ...unidentified } = ref;
@@ -493,7 +515,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
   // transfer log address is any other string names no emitter a receipt can hold, and the rails guide ("Reading
   // settlement") reads a transfer log not of the form its pairing writes as pending `unreadable`, with nothing read.
   it("MV12: a reference whose asset or transfer log address is not an address is pending unreadable, nothing read", async () => {
-    const keys = await evmHash.reference({ challenge: C_E, source: A.MV5.expectSource } as MppCredential);
+    const keys = await evmHash.reference({ challenge: C_EH, source: A.MV5.expectSource } as MppCredential);
     if ("refused" in keys) throw new Error(keys.code);
     const ref = (asset: string, address: string) => ({
       ...keys,
@@ -532,7 +554,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
   });
 
   it("MV12: the payer's Transfer to the receive-policy guard is failed receive-policy-blocked, never the payment", async () => {
-    const keys = await evmHash.reference({ challenge: C_E, source: A.MV5.expectSource } as MppCredential);
+    const keys = await evmHash.reference({ challenge: C_EH, source: A.MV5.expectSource } as MppCredential);
     if ("refused" in keys) throw new Error(keys.code);
     const ref = { ...keys, transaction: HS.MV12.hash };
     const status = async (logs: EvmLog[]) =>

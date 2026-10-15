@@ -68,13 +68,13 @@
     }
    },
    {
-    "case": "BOLT11's own L1 invoice in its place",
+    "case": "BOLT11's own L1 invoice in its place, whose payment hash is not the challenge's",
     "requestSet": {
      "methodDetails.invoice": "lnbc20m1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqs9qrsgq7ea976txfraylvgzuxs8kgcw23ezlrszfnh8r6qtfpr6cxga50aj6txm9rxrydzd06dfeawfk6swupvz4erwnyutnjq7x39ymw6j38gp7ynn44"
     },
     "expect": {
      "refused": true,
-     "code": "mpp/carrier-not-challenge"
+     "code": "ln/payment-hash-mismatch"
     }
    },
    {
@@ -184,6 +184,41 @@
      }
     ],
     "note": "presented is this file's L3 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "a request description",
+    "pairing": "mpp/charge/lightning",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "lightning",
+     "intent": "charge",
+     "expires": "2026-09-21T14:18:20Z",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5Ijoic2F0IiwiZGVzY3JpcHRpb24iOiJXZWF0aGVyIiwibWV0aG9kRGV0YWlscyI6eyJpbnZvaWNlIjoibG5iYzI1MG4xcDR0end1cXBwNTR5M3U5czh5bGVtc3Y4bDNld3l6enUwa2xodWp2dXZta2w2bGxjaHEyM3Z5OHJ6anNmMHFzcDV6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWdzaHA1aGZ1cGQwdTBxODg3NXMycGdyMDltdDN6eXdjcXhjZHJqY3RoNDg5NXpybGtydXNxemtrc3hxemZ2OXFyc2dxMDBzNHhqeHRydXR2enA3eXptZHl5cXB5a3Z2bm54ZzZ2YWNtbjQ0bnFscXFzZXB3NnZ5OGtqdnE1czhqcnhxOGF5eTNwYTd4cnd6MHp4OGFuZ2syMHR0bjBhd3h1bWpza21heGYwcXFjemhraG0iLCJuZXR3b3JrIjoibWFpbm5ldCIsInBheW1lbnRIYXNoIjoiYTkyM2MyYzBlNGZlNzcwNjFmZjFjYjg4MjE3MWY2ZmRmOTI2NzE5YmI3ZjVmZmUyZTA1NDU4NDM4YzUyODI1ZSJ9fQ",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "ln/description-present"
+   },
+   {
+    "case": "expires one second after the invoice's expiry",
+    "pairing": "mpp/charge/lightning",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "lightning",
+     "intent": "charge",
+     "expires": "2026-09-21T14:18:21Z",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5Ijoic2F0IiwibWV0aG9kRGV0YWlscyI6eyJpbnZvaWNlIjoibG5iYzI1MG4xcDR0end1cXBwNTR5M3U5czh5bGVtc3Y4bDNld3l6enUwa2xodWp2dXZta2w2bGxjaHEyM3Z5OHJ6anNmMHFzcDV6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWdzaHA1aGZ1cGQwdTBxODg3NXMycGdyMDltdDN6eXdjcXhjZHJqY3RoNDg5NXpybGtydXNxemtrc3hxemZ2OXFyc2dxMDBzNHhqeHRydXR2enA3eXptZHl5cXB5a3Z2bm54ZzZ2YWNtbjQ0bnFscXFzZXB3NnZ5OGtqdnE1czhqcnhxOGF5eTNwYTd4cnd6MHp4OGFuZ2syMHR0bjBhd3h1bWpza21heGYwcXFjemhraG0iLCJuZXR3b3JrIjoibWFpbm5ldCIsInBheW1lbnRIYXNoIjoiYTkyM2MyYzBlNGZlNzcwNjFmZjFjYjg4MjE3MWY2ZmRmOTI2NzE5YmI3ZjVmZmUyZTA1NDU4NDM4YzUyODI1ZSJ9fQ",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "ln/expires-after-invoice"
    }
   ]
  }

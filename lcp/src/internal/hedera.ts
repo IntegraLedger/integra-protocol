@@ -93,7 +93,7 @@ export function chargeLegs(
  * The Hedera request checks a charge challenge must pass before it is placed. The request is read as MPP's challenge
  * reader takes it, base64url without padding in its canonical form (RFC 4648 §3.5) of strict UTF-8 JSON text whose
  * leading byte-order mark is kept as a character, or it is `mpp/request-malformed`: a request whose text begins with a
- * byte-order mark is not JSON.
+ * byte-order mark is not JSON. Then `chargeRequestLegs`.
  */
 export function hederaChargeRequest(c: MppChallenge): true | Refusal {
   if (!isObject(c) || c.method !== "hedera" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
@@ -106,14 +106,24 @@ export function hederaChargeRequest(c: MppChallenge): true | Refusal {
     return refusal("mpp/request-malformed");
   }
   if (!isObject(request)) return refusal("mpp/request-malformed");
+  const legs = chargeRequestLegs(request);
+  return isRefusal(legs) ? legs : true;
+}
+
+/**
+ * The checks of a decoded Hedera charge request, which `pairingsOf` makes and the charge's `build` makes on the request
+ * it is given: `chargeLegs`, then `methodDetails` absent or an object (`mpp/request-malformed`) whose `chainId`, when
+ * present, is 295 or 296. Gives the legs.
+ */
+export function chargeRequestLegs(request: unknown): ReturnType<typeof chargeLegs> {
   const legs = chargeLegs(request);
   if (isRefusal(legs)) return legs;
-  const md = request["methodDetails"];
+  const md = (request as { [k: string]: unknown })["methodDetails"];
   if (md !== undefined && !isObject(md)) return refusal("mpp/request-malformed");
   const chainId = isObject(md) ? md["chainId"] : undefined;
   if (chainId !== undefined) {
     const n = hederaNetworkOfChainId(chainId);
     if (isRefusal(n)) return n;
   }
-  return true;
+  return legs;
 }

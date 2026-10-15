@@ -22,14 +22,13 @@ import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
 import { b64uDecode, b64uEncode } from "./internal/base64url.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
+import { decode as decodeInvoice, FIELD } from "./internal/lightning.js";
 import type { unmux as StellarUnmux } from "./internal/stellar.js";
 import {
-  USDC_PROFILES,
   cardChargePairings,
   stripeChargePairings,
   stripeSubscriptionPairings,
   usdcChargePairings,
-  usdcProfile,
 } from "./mpp-method-checks.js";
 import {
   hederaChargePairings,
@@ -451,7 +450,10 @@ export function expiresOf(checked: Checked): number | Refusal {
  * Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money. An
  * `expires` that is present must be an RFC 3339 date-time, else `mpp/expires-required`. Without `expires`, the pairings
  * whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
- * it, are left out, and a challenge left with no pairing is `mpp/expires-required`.
+ * it, are left out, and a challenge left with no pairing is `mpp/expires-required`. These checks are each pairing's one
+ * filter: they include every check its `build`, `bound` and `reference` make on the challenge alone, and those take
+ * only a challenge `pairingsOfPlaced` names for the pairing, refusing any other with the code these checks give it
+ * (`mpp/not-this-pairing` where they name only other pairings).
  */
 export function pairingsOf(c: MppChallenge): readonly MppPairingId[] | Refusal {
   const checked = checkChallenge(c, false);
@@ -459,20 +461,23 @@ export function pairingsOf(c: MppChallenge): readonly MppPairingId[] | Refusal {
 }
 
 /**
- * The pairings a placed challenge offers: `pairingsOf` over the challenge with its `opaque` removed, so the LCP members
- * `place` wrote are not read as an occupied carrier. None when the challenge does not read.
+ * The pairings a placed challenge offers: `pairingsOf`'s checks over the challenge with its `opaque` removed, so the LCP
+ * members `place` wrote are not read as an occupied carrier, and with the carrier the seller writes after `place`
+ * required where `pairingsOf` takes a challenge without it (the Lightning invoice). These are the pairings whose `build`
+ * takes the challenge and whose `bound` and `reference` take it echoed. None when the challenge does not read.
  */
 export function pairingsOfPlaced(c: MppChallenge): readonly MppPairingId[] {
   if (!isObject(c)) return [];
   const { opaque: _placed, ...issued } = c;
-  const p = pairingsOf(issued as MppChallenge);
-  return Array.isArray(p) ? p : [];
+  const checked = checkChallenge(issued, false, true);
+  return isRefusal(checked) ? [] : checked.pairings;
 }
 
 /**
- * The checks of `pairingsOf`. With `placed`, `opaque` may carry the LCP members `place` writes.
+ * The checks of `pairingsOf`. With `placed`, `opaque` may carry the LCP members `place` writes. With `carried`, the
+ * carrier the seller writes after `place`, which `pairingsOf` takes absent (the Lightning invoice), is required.
  */
-export function checkChallenge(c: unknown, placed: boolean): Checked | Refusal {
+export function checkChallenge(c: unknown, placed: boolean, carried = false): Checked | Refusal {
   if (!isChallengeShape(c) || !hasHashableRealm(c)) return refusal("mpp/challenge-malformed");
   const key = `${c.intent}/${c.method}`;
   const check = Object.hasOwn(PAIRING_CHECKS, key) ? PAIRING_CHECKS[key] : undefined;
@@ -489,7 +494,7 @@ export function checkChallenge(c: unknown, placed: boolean): Checked | Refusal {
   const md = request["methodDetails"];
   const details = md === undefined ? {} : isObject(md) ? (md as { [k: string]: Json }) : undefined;
   if (details === undefined) return refusal("mpp/request-malformed");
-  const named = check(request, details, c);
+  const named = check(request, details, c, carried);
   if (isRefusal(named)) return named;
   const pairings = expires === undefined ? named.filter((p) => !NEEDS_EXPIRES.has(p)) : named;
   if (pairings.length === 0 && named.length > 0) return refusal("mpp/expires-required");
@@ -500,13 +505,16 @@ export type PairingCheck = (
   request: { [k: string]: Json },
   details: { [k: string]: Json },
   challenge: MppChallenge,
+  carried: boolean,
 ) => readonly MppPairingId[] | Refusal;
 
 /**
  * `charge` on `evm`: `chainId` a positive safe integer, `currency` and `recipient` addresses, `amount` a decimal, and
  * `permit2Address` and `externalId`, when present, an address and a string; then the pairings `credentialTypes` names
  * (absent: `transaction` and `hash`). `splits`, when present, holds 1 to 10 entries, each an address `recipient` and a
- * decimal `amount`, zero included, and leaves only `permit2`.
+ * decimal `amount`, zero included, and leaves only `permit2`. `permit2` pays the recipient `amount` less the splits,
+ * which must be above zero (MPP's EVM charge: the splits' sum *"MUST be strictly less than `amount`"*); where it is
+ * not, `permit2` is left out, and a challenge left with no pairing is `mpp/input-malformed`, the code its `build` gives.
  */
 function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c: MppChallenge): readonly MppPairingId[] | Refusal {
   if (!isPositiveInt(d["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
@@ -538,6 +546,11 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c
   if (listed.includes("mpp/charge/evm/permit2") && c.expires !== undefined) {
     if (d["permit2Address"] !== undefined && !isAddress(d["permit2Address"])) return refusal("mpp/request-malformed");
     if (r["externalId"] !== undefined && typeof r["externalId"] !== "string") return refusal("mpp/request-malformed");
+    const split = Array.isArray(splits) ? splits.reduce((sum: bigint, x) => sum + BigInt((x as { amount: string }).amount), 0n) : 0n;
+    if (BigInt(r["amount"]) - split <= 0n) {
+      listed = listed.filter((p) => p !== "mpp/charge/evm/permit2");
+      if (listed.length === 0) return refusal("mpp/input-malformed");
+    }
   }
   return listed;
 }
@@ -599,15 +612,20 @@ function tempoSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
   return ["mpp/session/tempo"];
 }
 
+/**
+ * `subscription` on `tempo`: an access key with an address and a key type Tempo defines; `subscriptionExpires` an RFC
+ * 3339 date-time from 1970, the key authorization's uint64 expiry; `chainId` a positive safe integer; `currency` and
+ * `recipient` addresses and `amount` a decimal; and a period of 1 to 10^16 − 1 days or weeks that is below 2^64 seconds,
+ * the key authorization's uint64 period. Else `mpp/request-malformed`.
+ */
 function subscriptionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
   const key = d["accessKey"];
   if (!isObject(key) || !isAddress(key["accessKeyAddress"])) return refusal("mpp/access-key-malformed");
   if (key["keyType"] !== "p256" && key["keyType"] !== "secp256k1" && key["keyType"] !== "webAuthn") {
     return refusal("mpp/access-key-malformed");
   }
-  if (typeof r["subscriptionExpires"] !== "string" || unixOf(r["subscriptionExpires"]) === undefined) {
-    return refusal("mpp/request-malformed");
-  }
+  const until = typeof r["subscriptionExpires"] === "string" ? unixOf(r["subscriptionExpires"]) : undefined;
+  if (until === undefined || until < 0) return refusal("mpp/request-malformed");
   if (!isPositiveInt(d["chainId"])) return refusal("mpp/chain-id-required");
   if (!isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
@@ -616,21 +634,53 @@ function subscriptionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
   if (typeof r["periodCount"] !== "string" || !/^[1-9][0-9]{0,15}$/.test(r["periodCount"])) {
     return refusal("mpp/request-malformed");
   }
+  if (subscriptionPeriod(r) >= 1n << 64n) return refusal("mpp/request-malformed");
   return ["mpp/subscription/tempo"];
 }
 
+/** A Tempo subscription request's period in seconds: `periodCount` days or weeks, as `periodUnit` names. */
+export function subscriptionPeriod(r: { [k: string]: Json }): bigint {
+  return BigInt(r["periodCount"] as string) * (r["periodUnit"] === "week" ? 604_800n : 86_400n);
+}
+
+/** MPP Lightning's network names and the BOLT11 currency of each. */
+const LN_CURRENCIES: { readonly [network: string]: string } = Object.freeze({ mainnet: "bc", signet: "tbs", regtest: "bcrt" });
+
 /**
- * Lightning: the payment hash as 64 lowercase hex digits, in `methodDetails` (charge) or in `request` (session), and
- * the invoice, when present, a string. The invoice is made after the hash, so it may be absent here. `amount` and
- * `currency` are not read.
+ * Lightning: the payment hash as 64 lowercase hex digits, in `methodDetails` (charge) or in `request` (session); the
+ * request without a `description`; and `methodDetails.network`, when present, a network MPP Lightning defines, else
+ * `ln/currency-network`. The invoice (`methodDetails.invoice`, or the session's `depositInvoice`), when present, is a
+ * string that decodes as BOLT11 with one `h` field (else `mpp/carrier-not-challenge`, the code its comparison with H
+ * gives) and no `d` field (`ln/description-inline`), whose payment hash is the request's (`ln/payment-hash-mismatch`),
+ * whose currency is the one `network` names, when it names one (`ln/currency-network`), and whose expiry is no earlier
+ * than `expires`, when the challenge carries one (`ln/expires-after-invoice`). The seller's node writes the invoice
+ * after the hash, so `pairingsOf` takes a challenge without it; the pairing's filter (`checkedFor`, `pairingsOfPlaced`)
+ * refuses one without it, `ln/invoice-malformed`.
+ * `amount` and `currency` are not read.
  */
 function lightningPairings(pairing: "mpp/charge/lightning" | "mpp/session/lightning"): PairingCheck {
   const charge = pairing === "mpp/charge/lightning";
-  return (r, d) => {
+  return (r, d, c, carried) => {
     const hash = charge ? d["paymentHash"] : r["paymentHash"];
     if (typeof hash !== "string" || !/^[0-9a-f]{64}$/.test(hash)) return refusal("ln/payment-hash-required");
     const invoice = charge ? d["invoice"] : r["depositInvoice"];
     if (invoice !== undefined && typeof invoice !== "string") return refusal("mpp/request-malformed");
+    if (invoice === undefined && carried) return refusal("ln/invoice-malformed");
+    const network = d["network"];
+    const currency = typeof network === "string" && Object.hasOwn(LN_CURRENCIES, network) ? LN_CURRENCIES[network] : undefined;
+    if (invoice === undefined) {
+      if (r["description"] !== undefined) return refusal("ln/description-present");
+      return network !== undefined && currency === undefined ? refusal("ln/currency-network") : [pairing];
+    }
+    const b = decodeInvoice(invoice);
+    if (isRefusal(b)) return b;
+    if (b.tags.filter((t) => t === FIELD.h).length !== 1) return refusal("mpp/carrier-not-challenge");
+    if (b.tags.includes(FIELD.d)) return refusal("ln/description-inline");
+    if (r["description"] !== undefined) return refusal("ln/description-present");
+    if (hexOf(b.paymentHash) !== `0x${hash}`) return refusal("ln/payment-hash-mismatch");
+    if (network !== undefined && currency !== b.currency) return refusal("ln/currency-network");
+    const expires = c.expires === undefined ? undefined : unixOf(c.expires);
+    if (expires !== undefined && expires > b.timestamp + b.expiry) return refusal("ln/expires-after-invoice");
     return [pairing];
   };
 }
@@ -966,8 +1016,8 @@ export function challengeBound(c: unknown): { h: AtrHash; request: { [k: string]
 }
 
 /**
- * An echoed challenge as a credential presents it: the request decoded, with no member of it checked. Each pairing
- * reads, and checks, only the request members its own read keys or derivation use.
+ * An echoed challenge as a credential presents it, held to its pairing's filter (`checkedFor`): the request decoded,
+ * and each pairing reads the request members its own read keys or derivation use.
  */
 export interface Echoed {
   challenge: MppChallenge & { id: string };
@@ -982,9 +1032,23 @@ export interface Echoed {
 }
 
 /**
- * The echoed challenge of a credential for `pairing`: H from `challengeBound`, and the challenge's intent and method,
- * which must be `pairing`'s, with, on `usdc`, the profile `methodDetails.type` names. The request's checks are not run
- * again here: they are `advertise`'s and `build`'s.
+ * A challenge as placed, held to `pairing`'s filter: `pairingsOf`'s checks over it, with the LCP members `place` writes
+ * allowed in `opaque` and the Lightning invoice required (`pairingsOfPlaced`), and `pairing` among the pairings they
+ * name. A challenge they refuse gives their refusal, and one that does not offer `pairing` (another intent, method,
+ * credential type, mode or `usdc` profile, or no `expires` where `pairing` needs it) is `mpp/not-this-pairing`, as
+ * `advertise` and `build` answer for the same challenge. Each pairing's `build` takes the chosen challenge through this
+ * one step, and its `bound` and `reference` the echoed one (`echoedFor`), so none of them takes a challenge
+ * `pairingsOf` would not name for that pairing.
+ */
+export function checkedFor(c: unknown, pairing: MppPairingId): Checked | Refusal {
+  const checked = checkChallenge(c, true, true);
+  if (isRefusal(checked)) return checked;
+  return checked.pairings.includes(pairing) ? checked : refusal("mpp/not-this-pairing");
+}
+
+/**
+ * The echoed challenge of a credential for `pairing`: H from `challengeBound`, the challenge's intent and method, which
+ * must be `pairing`'s, and the challenge held to `pairing`'s filter (`checkedFor`), whose refusal it gives.
  */
 export function echoedFor(
   c: unknown,
@@ -995,13 +1059,10 @@ export function echoedFor(
   const credential = c as MppCredential;
   const [, intent, method] = pairing.split("/");
   if (credential.challenge.intent !== intent || credential.challenge.method !== method) return refusal("mpp/not-this-pairing");
+  const held = checkedFor(credential.challenge, pairing);
+  if (isRefusal(held)) return held;
   const echoed = echoedOf(credential.challenge as MppChallenge & { id: string }, b.request);
   if (isRefusal(echoed)) return echoed;
-  if (method === "usdc") {
-    const profile = usdcProfile(echoed.details);
-    if (isRefusal(profile)) return profile;
-    if (USDC_PROFILES[profile.type] !== pairing) return refusal("mpp/not-this-pairing");
-  }
   return { h: b.h, checked: echoed, payload: credential.payload };
 }
 
@@ -1024,12 +1085,11 @@ export function requestAddress(e: Echoed, key: string): Hex | Refusal {
   return isAddress(v) ? v : refusal("mpp/request-malformed");
 }
 
-/** The buyer's chosen challenge for `pairing`, checked as placed, whose id derives from `h`. */
+/** The buyer's chosen challenge for `pairing`, held to its filter (`checkedFor`), whose id derives from `h`. */
 export function chosenFor(challenge: unknown, h: AtrHash, pairing: MppPairingId): Checked | Refusal {
   if (!isChallengeShape(challenge) || typeof challenge.id !== "string") return refusal("mpp/input-malformed");
-  const checked = checkChallenge(challenge, true);
+  const checked = checkedFor(challenge, pairing);
   if (isRefusal(checked)) return checked;
-  if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
   const fromId = challengeIdH(challenge);
   if (typeof fromId !== "string" || typeof h !== "string" || !hashEquals(fromId, h)) return refusal("mpp/id-not-ours");
   return checked;

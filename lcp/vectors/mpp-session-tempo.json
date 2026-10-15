@@ -276,5 +276,40 @@
     "note": "presented is the v2 open, built from fixed.payerKey and TS1 to TS4: its transaction is TS2's wire, of length TS2.expectLength and SHA-256 TS2.expectSha256, and its signature signs the zero voucher, whose EIP-712 digest is TS4.expectVoucher0. It is also written by hand in Python 3.12.3 from draft-tempo-session-00's open payload (L850-915 at tempoxyz/mpp-specs 08e7dd87): channelId TS3.expectChannelId; the descriptor of fixed.payer, the request's recipient and currency, a zero operator and authorizedSigner, salt H and TS2.expectNonceHash; the transaction, of TS2.expectLength bytes and SHA-256 TS2.expectSha256; authorizedSigner equal to the descriptor's (L872-873); cumulativeAmount 0; and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of TS4.expectVoucher0. complete gives the same members and values, written in another order than the draft's example."
    }
   ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request without currency",
+    "pairing": "mpp/session/tempo",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "tempo",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJtZXRob2REZXRhaWxzIjp7ImNoYWluSWQiOjQyNDMxLCJlc2Nyb3dDb250cmFjdCI6IjB4NEQ1MDUwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsInNlc3Npb25Qcm90b2NvbCI6InYyIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Q2M2NjM0QzA1MzI5MjVhM2I4NDRCYzllNzU5NWY4ZkUwMCJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "methodDetails.sessionProtocol \"v3\"",
+    "pairing": "mpp/session/tempo",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "tempo",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MjBjMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6NDI0MzEsImVzY3Jvd0NvbnRyYWN0IjoiMHg0RDUwNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwic2Vzc2lvblByb3RvY29sIjoidjMifSwicmVjaXBpZW50IjoiMHg3NDJkMzVDYzY2MzRDMDUzMjkyNWEzYjg0NEJjOWU3NTk1ZjhmRTAwIn0",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/session-protocol"
+   }
+  ]
  }
 }

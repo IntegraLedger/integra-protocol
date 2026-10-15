@@ -42,7 +42,7 @@ import {
   type MppChoice,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { stacksNetworkOf } from "./mpp-method-checks.js";
+import { isJcsRequest, stacksNetworkOf } from "./mpp-method-checks.js";
 import { solanaChargePairing } from "./mpp-solana.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { stacksRecover, stacksStatus, stacksTxid, type StacksRef } from "./stacks.js";
@@ -83,7 +83,7 @@ export async function usdcRequestHash(requestParam: string): Promise<Hex | Refus
     return refusal("mpp/request-malformed");
   }
   if (parsed === undefined) return refusal("mpp/request-malformed");
-  if (canonicalJson(parsed) !== text) return refusal("mpp/request-not-jcs");
+  if (!isJcsRequest(requestParam, parsed)) return refusal("mpp/request-not-jcs");
   return keccakHex(bytes);
 }
 

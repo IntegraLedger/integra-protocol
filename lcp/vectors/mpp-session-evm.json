@@ -771,5 +771,40 @@
     "note": "presented is the open by ReceiveWithAuthorization, built from fixed.payerKey and ES1 to ES5: its authorization's EIP-712 digest is ES4.expectDigest and its signature has ES4.expectSignature's prefix and suffix; voucherSignature signs the zero voucher, whose EIP-712 digest is ES5.expectVoucherDigest. It is also written by hand in Python 3.12.3 from draft-evm-session-00's open payload of type authorization (L1395-1420 at tempoxyz/mpp-specs 08e7dd87): channelId ES1.expectChannelId, the authorization to the escrow of ES2's deposit with nonce ES3.expectNonce and validBefore the challenge's expires, salt H, a zero authorizedSigner, cumulativeAmount 0, and the signature and voucherSignature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of ES4.expectDigest and of ES5.expectVoucherDigest. complete gives the same members and values, written in another order than the draft's example."
    }
   ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request without currency",
+    "pairing": "mpp/session/evm",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJtZXRob2REZXRhaWxzIjp7ImNoYWluSWQiOjg0NTMyLCJjcmVkZW50aWFsVHlwZXMiOlsiaGFzaCIsImF1dGhvcml6YXRpb24iLCJwZXJtaXQyIl0sImVzY3Jvd0NvbnRyYWN0IjoiMHgxMjM0NTY3ODkwQWJjZEVGMTIzNDU2Nzg5MGFCY2RlZjEyMzQ1Njc4In0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "methodDetails.credentialTypes \"abc\"",
+    "pairing": "mpp/session/evm",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6ImFiYyIsImVzY3Jvd0NvbnRyYWN0IjoiMHgxMjM0NTY3ODkwQWJjZEVGMTIzNDU2Nzg5MGFCY2RlZjEyMzQ1Njc4In0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/credential-types"
+   }
+  ]
  }
 }

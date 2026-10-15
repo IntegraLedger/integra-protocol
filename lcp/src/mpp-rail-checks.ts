@@ -7,7 +7,8 @@ import type { Json } from "./core.js";
 import { isAddress } from "./fields.js";
 import type { HederaNetwork } from "./hedera.js";
 import { hederaChargeRequest } from "./internal/hedera.js";
-import { keyBytes, type SolanaNetwork } from "./internal/svm.js";
+import { keyBytes, TOKEN, TOKEN_2022, type SolanaNetwork } from "./internal/svm.js";
+import { accountIdOf } from "./internal/xrpl-session.js";
 import type { XrplNetwork } from "./internal/xrpl.js";
 import type { MppChallenge, MppPairingId } from "./mpp-challenge.js";
 import { refusal, type Refusal } from "./refusal.js";
@@ -141,7 +142,11 @@ export function hederaChargePairings(_r: Obj, _d: Obj, c: MppChallenge): readonl
 
 /**
  * `charge` on `solana`: `amount` a positive u64, `currency` `"sol"` or a mint, `recipient` a key, `externalId` absent
- * or a string of at most 566 bytes, and `methodDetails.network` one of MPP's three names (absent: mainnet).
+ * or a string of at most 566 bytes, and `methodDetails.network` one of MPP's three names (absent: mainnet). Then what
+ * `build` reads of `methodDetails` in place of its own inputs, in the form it builds with, else `svm/input-malformed`:
+ * no `splits` and no `confidential` transfer, which it does not build; a `recentBlockhash` that is a string is a key;
+ * and, for a mint, a `decimals` that is a number is an integer from 0 to 255, and a `tokenProgram` that is a string is
+ * Token or Token-2022.
  */
 export function solanaChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const network = solanaNetworkOf(d, false);
@@ -152,6 +157,16 @@ export function solanaChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | 
   if (!isSolanaExternalId(r["externalId"])) return refusal("mpp/request-malformed");
   if (d["feePayer"] !== undefined && typeof d["feePayer"] !== "boolean") return refusal("mpp/request-malformed");
   if (d["feePayer"] === true && !isKey(d["feePayerKey"])) return refusal("mpp/request-malformed");
+  if (d["splits"] !== undefined || d["confidential"] === true) return refusal("svm/input-malformed");
+  if (typeof d["recentBlockhash"] === "string" && !isKey(d["recentBlockhash"])) return refusal("svm/input-malformed");
+  if (r["currency"] !== "sol") {
+    const decimals = d["decimals"];
+    if (typeof decimals === "number" && !(Number.isInteger(decimals) && decimals >= 0 && decimals <= 255)) {
+      return refusal("svm/input-malformed");
+    }
+    const program = d["tokenProgram"];
+    if (typeof program === "string" && program !== TOKEN && program !== TOKEN_2022) return refusal("svm/input-malformed");
+  }
   return ["mpp/charge/solana"];
 }
 
@@ -188,7 +203,7 @@ export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairingId[] |
 /**
  * `charge` on `xrpl`: `methodDetails.network` present, `recipient` a classic address, `currency` XRP, an issued
  * currency or an MPT, `amount` a positive decimal (whole drops for XRP), and the optional `invoiceId` 64 hex digits and
- * tags uint32.
+ * tags uint32. `methodDetails.memos` is absent: `build` writes no memo but the LCP one (`xrpl/memos-not-carried`).
  */
 export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const network = xrplNetworkOf(d);
@@ -208,6 +223,7 @@ export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Re
   for (const k of ["destinationTag", "sourceTag"]) {
     if (d[k] !== undefined && !isUint32(d[k])) return refusal("mpp/request-malformed");
   }
+  if (d["memos"] !== undefined) return refusal("xrpl/memos-not-carried");
   return ["mpp/charge/xrpl"];
 }
 
@@ -263,8 +279,9 @@ export function solanaSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] |
 }
 
 /**
- * `session` on `xrpl`: `channelId` absent or `""`; `network` named; `currency` absent or `"XRP"`; a classic recipient;
- * `amount` a u64 in drops, written in decimal with no sign, point or leading zero.
+ * `session` on `xrpl`: `channelId` absent or `""`; `network` named; `currency` absent or `"XRP"`; a classic recipient
+ * whose checksum holds, as the channel id `build` derives reads it; `amount` a u64 in drops, written in decimal with no
+ * sign, point or leading zero.
  */
 export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const channel = r["channelId"] ?? d["channelId"];
@@ -272,6 +289,8 @@ export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | R
   const network = xrplNetworkOf(d);
   if (typeof network !== "string") return network;
   if (r["currency"] !== undefined && r["currency"] !== "XRP") return refusal("xrpl/currency-not-xrp");
-  if (!isXrplAddress(r["recipient"]) || !isDrops(r["amount"])) return refusal("mpp/request-malformed");
+  if (!isXrplAddress(r["recipient"]) || accountIdOf(r["recipient"]) === null || !isDrops(r["amount"])) {
+    return refusal("mpp/request-malformed");
+  }
   return ["mpp/session/xrpl"];
 }

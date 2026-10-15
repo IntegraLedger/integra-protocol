@@ -335,7 +335,7 @@ async function buildSolMessage(i: {
 /**
  * The message for the payer to sign: the request's transfer (a token `TransferChecked`, or a System `transfer` for
  * `"sol"`) with the memo the request's `externalId` carries, which must be this H's LCP string. Splits and confidential
- * transfers are not built.
+ * transfers are not built: the pairing's filter refuses a challenge that asks for them (`svm/input-malformed`).
  */
 async function build(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
@@ -349,7 +349,6 @@ async function build(
   const d = spec.details(checked);
   const memo = toLcpString(h);
   if (r["externalId"] !== memo) return refusal("svm/carrier-mismatch");
-  if (d["splits"] !== undefined || d["confidential"] === true) return refusal("svm/input-malformed");
   if (keyBytes(choice.payer) === null) return refusal("svm/input-malformed");
   const feePayer = d["feePayer"] === true ? (d["feePayerKey"] as string) : choice.payer;
   const recentBlockhash = typeof d["recentBlockhash"] === "string" ? d["recentBlockhash"] : choice.recentBlockhash;

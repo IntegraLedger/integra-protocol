@@ -554,10 +554,10 @@ describe("mpp-charge-stellar.json", () => {
         const challenge = { ...S.challenge, request: Buffer.from(canonicalJson(request) as string, "utf8").toString("base64url") };
         const { id: _id, opaque: _opaque, ...offer } = challenge;
         expect(pairingsOf(offer), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
-        const fetched = await chargeStellar.fetchPresented(credential(challenge, { type: "hash", hash: S.hash }), reader);
-        if ("refused" in fetched) throw new Error(fetched.code);
-        expect(await chargeStellar.bound(fetched), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
-        expect(await chargeStellar.reference(fetched), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
+        const presented = credential(challenge, { type: "hash", hash: S.hash });
+        expect(await chargeStellar.fetchPresented(presented, reader), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
+        expect(await chargeStellar.bound(presented), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
+        expect(await chargeStellar.reference(presented), JSON.stringify(feePayer)).toEqual(refused("stellar/option-malformed"));
       }
     });
   });

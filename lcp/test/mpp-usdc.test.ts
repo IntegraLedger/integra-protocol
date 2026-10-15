@@ -130,8 +130,10 @@ describe("mpp/charge/usdc/evm (M3)", () => {
 
   it("a request re-encoded with a space after a colon gives mpp/request-not-jcs", async () => {
     const cred = await signed();
-    const notJcs = placedWith(chargeUsdcEvm, issued(EVM.M3.notJcsRequestJson));
+    const notJcs = { ...cred.challenge, request: b64u(EVM.M3.notJcsRequestJson) };
     expect(fromB64u(notJcs.request)).toBe(EVM.M3.notJcsRequestJson);
+    expect(pairingsOf(issued(EVM.M3.notJcsRequestJson))).toEqual(EVM.M3.expectNotJcs);
+    expect(chargeUsdcEvm.advertise([issued(EVM.M3.notJcsRequestJson)], F.H, F.link, issued(EVM.M3.notJcsRequestJson))).toEqual(EVM.M3.expectNotJcs);
     expect(await chargeUsdcEvm.bound({ ...cred, challenge: notJcs })).toEqual(EVM.M3.expectNotJcs);
   });
 
@@ -180,7 +182,7 @@ describe("mpp/charge/usdc/evm (M3)", () => {
 
 // usdc's EVM, Stacks and Gateway profiles read no `externalId` (their builds take none, and their derivations hash the
 // request as issued); the Solana profile carries the LCP memo in it, as the Solana charge does, so only there is it
-// checked.
+// checked. Each request is written in its RFC 8785 form (canonicalize), as the EVM and Gateway derivations need.
 describe("externalId is checked only where it is the carrier", () => {
   for (const [name, requestJson, pairing] of [
     ["evm", EVM.M3.requestJson, "mpp/charge/usdc/evm"],
@@ -189,7 +191,7 @@ describe("externalId is checked only where it is the carrier", () => {
   ] as const) {
     it(`${name}: an externalId of null or a number names the pairing`, () => {
       for (const externalId of [null, 5]) {
-        expect(pairingsOf(issued(JSON.stringify({ ...JSON.parse(requestJson), externalId })))).toEqual([pairing]);
+        expect(pairingsOf(issued(canonicalize({ ...JSON.parse(requestJson), externalId }) as string))).toEqual([pairing]);
       }
     });
   }
@@ -295,7 +297,7 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
     ];
     for (const e of edits) {
       const r = { ...request, methodDetails: { ...request.methodDetails, gateway: { ...request.methodDetails.gateway, ...e } } };
-      expect([e, pairingsOf(issued(JSON.stringify(r)))]).toEqual([e, ["mpp/charge/usdc/gateway"]]);
+      expect([e, pairingsOf(issued(canonicalize(r) as string))]).toEqual([e, ["mpp/charge/usdc/gateway"]]);
     }
   });
 
