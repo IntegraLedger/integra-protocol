@@ -98,7 +98,10 @@ export interface TvmRef {
   transferBodyHash: Hex;
   /** The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. */
   jettonWallet: string;
-  /** The representation hash of the signed W5 request: the body of the message to the payer's wallet. */
+  /**
+   * The representation hash of the signed W5 request: the whole body of the message to the payer's wallet, its
+   * signature and any bit or reference after `has_other_actions` 0, which W5 does not read, included.
+   */
   requestBodyHash: Hex;
   /** The payer's W5 wallet, raw: the address TON sends the settlement message to. */
   wallet: string;
@@ -213,6 +216,11 @@ const COINS_LIMIT = 1n << 120n;
 const UINT32_LIMIT = 2 ** 32;
 const RAW_ADDRESS = /^-?[0-9]{1,10}:[0-9a-fA-F]{64}$/;
 const SIGNATURE_BITS = 512;
+/**
+ * The fewest bits of a request W5 reads as signed: the op, wallet id, `valid_until` and seqno, then the signature
+ * (wallet_v5.fc, `recv_internal`). W5 takes a shorter body as a plain transfer and runs no request.
+ */
+const REQUEST_MIN_BITS = 32 + 32 + 32 + 32 + SIGNATURE_BITS;
 const SEND_MODE = 3;
 /**
  * The head read first must pass `validUntil` by more than this many seconds before a request whose Jetton transfer no
@@ -677,7 +685,14 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
 /**
  * Reads the signed request in a settlement BoC: an internal message whose body is a W5 `internal_signed` request with
  * exactly one `action_send_msg` behind an empty list, carrying a Jetton transfer whose forward payload is a reference
- * to a text comment holding an LCP string. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
+ * to a text comment holding an LCP string. The request is read as W5's `internal_signed` path reads it
+ * (ton-blockchain/wallet-contract-v5 `contracts/wallet_v5.fc`, `recv_internal`, `process_signed_request` and
+ * `process_actions`): at least 640 bits, its signature the body's last 512 bits, and the signed part the rest with all
+ * its references, in which the wallet id, `valid_until`, seqno, the action list's `Maybe ^Cell` and
+ * `has_other_actions` are read; W5 reads nothing after `has_other_actions` 0, and neither does this, so bits and
+ * references there are carried, not read. A body W5 does not run as a signed request, or whose signed part ends before
+ * those fields, is `tvm/not-w5-signed`, and an empty action list or `has_other_actions` 1 is `tvm/actions`. The
+ * signature is not verified. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
  * refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are the representation hashes TON gives,
  * for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
  * it, at the configuration lcp holds for `network`, as `bound` and `reference` read the payment of an option on that
@@ -723,14 +738,19 @@ function carrierIn(settlementBoc: string, config: TonConfiguration): {
   let validUntil: number;
   let actions: Cell;
   try {
-    const s = message.body.beginParse();
-    if (s.remainingBits < 32 || s.loadUint(32) !== OP.internalSigned) return refusal("tvm/not-w5-signed");
+    const body = message.body;
+    const op = body.beginParse();
+    if (op.remainingBits < 32 || op.loadUint(32) !== OP.internalSigned || body.bits.length < REQUEST_MIN_BITS) {
+      return refusal("tvm/not-w5-signed");
+    }
+    const signedPart = peer!.beginCell().storeBits(body.bits.substring(0, body.bits.length - SIGNATURE_BITS));
+    for (const r of body.refs) signedPart.storeRef(r);
+    const s = signedPart.endCell().beginParse().skip(32);
     s.loadUint(32);
     validUntil = s.loadUint(32);
     s.loadUint(32);
     const list = s.loadMaybeRef();
     if (list === null || s.loadBit()) return refusal("tvm/actions");
-    if (s.remainingBits !== SIGNATURE_BITS || s.remainingRefs !== 0) return refusal("tvm/not-w5-signed");
     actions = list;
   } catch {
     return refusal("tvm/not-w5-signed");

@@ -143,7 +143,7 @@ The read keys a payment's settlement is read by.
 | ------ | ------ | ------ |
 | <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. |
 | <a id="property-network-1"></a> `network` | `` `tvm:${number}` `` | - |
-| <a id="property-requestbodyhash"></a> `requestBodyHash` | `` `0x${string}` `` | The representation hash of the signed W5 request: the body of the message to the payer's wallet. |
+| <a id="property-requestbodyhash"></a> `requestBodyHash` | `` `0x${string}` `` | The representation hash of the signed W5 request: the whole body of the message to the payer's wallet, its signature and any bit or reference after `has_other_actions` 0, which W5 does not read, included. |
 | <a id="property-transferbodyhash"></a> `transferBodyHash` | `` `0x${string}` `` | The representation hash of the Jetton transfer body the W5 request sends. |
 | <a id="property-validuntil"></a> `validUntil` | `number` | - |
 | <a id="property-wallet"></a> `wallet` | `string` | The payer's W5 wallet, raw: the address TON sends the settlement message to. |
@@ -240,7 +240,14 @@ TEP-74's text comment: 32 zero bits, then the UTF-8 of the hash's LCP string. A 
 
 Reads the signed request in a settlement BoC: an internal message whose body is a W5 `internal_signed` request with
 exactly one `action_send_msg` behind an empty list, carrying a Jetton transfer whose forward payload is a reference
-to a text comment holding an LCP string. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
+to a text comment holding an LCP string. The request is read as W5's `internal_signed` path reads it
+(ton-blockchain/wallet-contract-v5 `contracts/wallet_v5.fc`, `recv_internal`, `process_signed_request` and
+`process_actions`): at least 640 bits, its signature the body's last 512 bits, and the signed part the rest with all
+its references, in which the wallet id, `valid_until`, seqno, the action list's `Maybe ^Cell` and
+`has_other_actions` are read; W5 reads nothing after `has_other_actions` 0, and neither does this, so bits and
+references there are carried, not read. A body W5 does not run as a signed request, or whose signed part ends before
+those fields, is `tvm/not-w5-signed`, and an empty action list or `has_other_actions` 1 is `tvm/actions`. The
+signature is not verified. The BoC's bytes are read as TON deserializes a bag of cells, and bytes TON
 refuses are `tvm/boc-malformed`. `requestBodyHash` and `transferBodyHash` are the representation hashes TON gives,
 for any cell TON reads, a pruned branch of any level mask included. Each message is read as TON's action phase sends
 it, at the configuration lcp holds for `network`, as `bound` and `reference` read the payment of an option on that

@@ -575,6 +575,100 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
+  // W5 runs an internal message's body as a signed request when it begins with internal_signed (0x73696e74) and holds
+  // at least 640 bits: the body's last 512 bits are the signature, and the rest, with all its references, is the signed
+  // part, from which W5 reads the wallet id, valid_until, seqno, the action list's Maybe ^Cell and has_other_actions,
+  // and nothing after has_other_actions 0 (ton-blockchain/wallet-contract-v5 contracts/wallet_v5.fc, recv_internal,
+  // process_signed_request and process_actions). Each body here is V2's request written again with @ton/core 0.63.1,
+  // signed with fixed.seedHex over its signed part, in V2's settlement. A form W5 sends the transfer from binds H, its
+  // requestBodyHash the whole body's hash. A form W5 sends nothing from is refused, and two forms whose signed part ends
+  // before has_other_actions are refused whatever the signature's bits. TON's emulator (@ton/sandbox 0.45.0) running the
+  // published W5 code gives the same verdict on each form: the V3b rows and agreedRefusals rows 84 to 98.
+  it("the W5 request is read as W5's internal_signed path reads it, and nothing after has_other_actions 0 is read", async () => {
+    const p = await signed();
+    const root = Cell.fromBase64(p.payload.settlementBoc);
+    const v2 = root.refs[0]!;
+    const actions = v2.refs[0]!;
+    const cell = (bits: string, refs: Cell[] = []) => {
+      const b = beginCell();
+      for (const bit of bits) b.storeBit(bit === "1");
+      refs.forEach((r) => b.storeRef(r));
+      return b.endCell();
+    };
+    const head = (op: number) => {
+      const b = beginCell().storeUint(op, 32).storeUint(V.fixed.walletId, 32).storeUint(V.V3.expectReference.validUntil, 32);
+      const s = b.storeUint(V.fixed.seqno, 32).endCell().bits;
+      return Array.from({ length: s.length }, (_, i) => (s.at(i) ? "1" : "0")).join("");
+    };
+    const signedBody = (signedPart: Cell, signature?: Buffer) => {
+      const b = beginCell().storeBits(signedPart.bits).storeBuffer(signature ?? Buffer.from(ed25519.sign(signedPart.hash(), seed)));
+      signedPart.refs.forEach((r) => b.storeRef(r));
+      return b.endCell();
+    };
+    // The op, wallet id, valid_until and seqno, then `fields` (default: the Maybe bit 1 and has_other_actions 0) and
+    // `refs` (default: V2's action list), signed.
+    const request = (o: { op?: number; fields?: string; refs?: Cell[]; signature?: Buffer } = {}) =>
+      signedBody(cell(head(o.op ?? 0x73696e74) + (o.fields ?? "10"), o.refs ?? [actions]), o.signature);
+    expect(request().equals(v2)).toBe(true);
+    const settle = (body: Cell) => replaced(root, [0], body).toBoc({ idx: false, crc32: true }).toString("base64");
+    const zeros = Buffer.alloc(64, 0);
+    const ones = Buffer.alloc(64, 0xff);
+    const library = libraryOf([]);
+    const sends: [string, Cell][] = [
+      ["one bit 1 after has_other_actions 0", request({ fields: "101" })],
+      ["one bit 0 after has_other_actions 0", request({ fields: "100" })],
+      ["64 bits after has_other_actions 0", request({ fields: `10${"01".repeat(32)}` })],
+      ["one more reference after the action list", request({ refs: [actions, cell("")] })],
+      ["three more references after the action list", request({ refs: [actions, cell(""), cell("1"), cell("01", [cell("")])] })],
+      ["a library cell as one more reference after the action list", request({ refs: [actions, library] })],
+      ["four bits and one more reference after has_other_actions 0", request({ fields: "100110", refs: [actions, cell("")] })],
+    ];
+    const v2Bits = head(0x73696e74) + "10";
+    const nothing: [string, Cell, string][] = [
+      ["a body of 16 bits", cell("0111001101101001", [actions]), "tvm/not-w5-signed"],
+      ["op signed_external", request({ op: 0x7369676e }), "tvm/not-w5-signed"],
+      ["op extension_action", request({ op: 0x6578746e }), "tvm/not-w5-signed"],
+      ["a body of 639 bits", cell((v2Bits + "0".repeat(512)).slice(0, 639), [actions]), "tvm/not-w5-signed"],
+      ["a body of 630 bits whose bits after seqno read as an empty list", cell((head(0x73696e74) + "00").padEnd(630, "0")), "tvm/not-w5-signed"],
+      ["a body of 640 bits, signed", request({ fields: "" }), "tvm/not-w5-signed"],
+      ["a body of 640 bits, its signature 64 zero bytes", request({ fields: "", signature: zeros }), "tvm/not-w5-signed"],
+      ["a body of 640 bits, its signature 64 bytes 0xff", request({ fields: "", signature: ones }), "tvm/not-w5-signed"],
+      ["the Maybe bit 1 and no reference", request({ refs: [] }), "tvm/not-w5-signed"],
+      ["no has_other_actions bit, signed", request({ fields: "1" }), "tvm/not-w5-signed"],
+      ["no has_other_actions bit, its signature 64 zero bytes", request({ fields: "1", signature: zeros }), "tvm/not-w5-signed"],
+      ["no has_other_actions bit, its signature 64 bytes 0xff", request({ fields: "1", signature: ones }), "tvm/not-w5-signed"],
+      ["the Maybe bit 0: no action list", request({ fields: "00", refs: [] }), "tvm/actions"],
+      ["has_other_actions 1 and nothing after", request({ fields: "11" }), "tvm/actions"],
+    ];
+    const got: unknown[] = [];
+    const want: unknown[] = [];
+    for (const [form, body] of sends) {
+      const boc = settle(body);
+      const c = tvmCarrier(boc, REF.network);
+      const requestBodyHash = `0x${hashHex(body)}`;
+      got.push([form, await exactTvm.bound(payment(boc)), await exactTvm.reference(payment(boc)), "refused" in c ? c : [c.h, c.requestBodyHash]]);
+      want.push([form, H, { ...V.V3.expectReference, requestBodyHash }, [H, requestBodyHash]]);
+    }
+    for (const [form, body, code] of nothing) {
+      const boc = settle(body);
+      got.push([form, await exactTvm.bound(payment(boc)), tvmCarrier(boc, REF.network)]);
+      want.push([form, { refused: true, code }, { refused: true, code }]);
+    }
+    expect(rowsOf(got, "the forms above", { exact: 21 })).toEqual(want);
+  });
+
+  it("V3b: a W5 request with bits or references after has_other_actions 0 binds H, its keys the vector's", async () => {
+    for (const row of rowsOf(V.V3b.rows, "x402-exact-tvm.json V3b.rows", { exact: 6 })) {
+      const pay = payment(row.settlementBoc);
+      const c = tvmCarrier(row.settlementBoc, row.expectReference.network);
+      expect([row.case, await exactTvm.bound(pay), await exactTvm.reference(pay)]).toEqual([row.case, row.expectBound, row.expectReference]);
+      expect([row.case, "refused" in c ? c : [c.h, c.requestBodyHash, c.wallet, c.validUntil]]).toEqual([
+        row.case,
+        [row.expectBound, row.expectReference.requestBodyHash, row.expectReference.wallet, row.expectReference.validUntil],
+      ]);
+    }
+  });
+
   // Each form is one TON's bag-of-cells deserialization refuses (ton-blockchain/ton crypto/vm/boc.cpp and
   // crypto/vm/cells/DataCell.cpp, at the function each names), written into V2's settlement and into its Jetton transfer
   // body. bound and tvmCarrier read the settlement and recover reads the body, and each refuses every form with
