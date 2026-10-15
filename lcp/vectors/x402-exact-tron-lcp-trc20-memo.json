@@ -740,7 +740,7 @@
     "expect": "tron/address-malformed"
    },
    {
-    "case": "the option with amount \"0\", zero",
+    "case": "the option with amount \"0\", which is zero",
     "pairing": "x402/exact/tron/lcp-trc20-memo",
     "payment": "/buyer/rows/1/input/presented",
     "accepted": {

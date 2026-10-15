@@ -397,7 +397,7 @@ function batchIdOf(option: PaymentRequirements): BatchPairingId | undefined {
 /**
  * True when the amount is `"0"` or a positive amount (`isAmount`) below 2^128, and the timeout a positive safe integer.
  * The EVM and Solana batch-settlement schemes take a zero price: their facilitator validates `amount` as a
- * non-negative base-10 integer string.
+ * non-negative base-10 integer string. On EVM a zero price opens no channel: `evmBuild` refuses an opening under it.
  */
 function payable(o: PaymentRequirements): boolean {
   return (
@@ -434,7 +434,8 @@ function cfPayable(o: PaymentRequirements): boolean {
 /**
  * Each pairing's option filter, which its `advertise`, `read`, `build`, `buildWithin`, `bound`, `reference` and channel
  * reads apply: an option the pairing names, refused `x402/option-malformed` where its `build` cannot pay it or, on
- * Cloudflare, where its `amount` is not a positive amount or its `maxTimeoutSeconds` not a positive safe integer.
+ * Cloudflare, where its `amount` is not a positive amount or its `maxTimeoutSeconds` not a positive safe integer. The
+ * EVM filter takes amount `"0"`, which `buildWithin` pays and the opening's `build` refuses.
  */
 const FILTER: Readonly<Record<BatchPairingId, OptionFilter>> = {
   [EVM_ID]: filterOf(isId(EVM_ID), evmPayable),
@@ -499,11 +500,18 @@ function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
  * that is not an address string, an `authSalt` that is not a string of `0x` and 64 hex digits, or a `deposit` or `now`
  * out of range is `x402/option-malformed`, as is a `from` that is the zero address: the channel contract's `deposit`
  * refuses a configuration whose payer is. The option filter refuses an option whose `payTo` or asset is.
+ *
+ * An option whose amount is `"0"` is `x402/option-malformed` here, though the filter takes it. On the channel a deposit
+ * opens, `totalClaimed` and the server's `chargedCumulativeAmount` are 0: the scheme's server requires the opening
+ * voucher's `maxClaimableAmount` to equal `chargedCumulativeAmount + amount`, which is 0, and its facilitator ("Not
+ * below claimed") requires it to be strictly greater than `totalClaimed`. So a zero price is paid by a later voucher
+ * (`buildWithin`), never by an opening.
  */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, FILTER[EVM_ID]);
   if (ok !== true) return ok;
+  if (c.accepted.amount === "0") return refusal("x402/option-malformed");
   const { accepted, required } = c;
   const salt = normalHash(h);
   if (salt === null || !isAddress(c.from) || !isAddress(c.payerAuthorizer) || !isHash32(c.authSalt)) {

@@ -7,13 +7,18 @@
 // - batch-settlement on EVM and Solana takes a zero price: "`requirements.amount` ... the facilitator MUST validate it as
 //   a non-negative base-10 integer string" (specs/schemes/batch-settlement/scheme_batch_settlement_evm.md, "Not below
 //   claimed"), and both scheme texts name "a zero-price route" (scheme_batch_settlement_svm.md, "Monotonic amount"), so
-//   those two pairings' `read` offers "0" and refuses the other five;
+//   those two pairings' `read` offers "0" and refuses the other five; the EVM pairing's opening `build` refuses it
+//   (below);
 // - XRPL `exact` gives an issued currency's `amount` as "the exact XRPL issued-currency `value` string", with "10.5" and
 //   "0.01" as examples (specs/schemes/exact/scheme_exact_xrpl.md, "IOU (Issued Currency)"), so an issued-currency option
-//   takes a decimal value above zero.
+//   takes that value, in the canonical decimal form of a positive STAmount value (below).
+import { readFileSync } from "node:fs";
+import { decode, encode } from "ripple-binary-codec";
 import { describe, expect, it } from "vitest";
-import { isRefusal } from "../src/index.js";
-import type { PaymentRequirements } from "../src/x402.js";
+import { isRefusal, type AtrHash } from "../src/index.js";
+import { batchEvm, batchSvm } from "../src/x402-batch-settlement.js";
+import { exactXrpl } from "../src/x402-exact-xrpl.js";
+import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 import { OPTIONS, X402, docOf, type X402Pairing } from "./x402-presentations.js";
 
@@ -81,22 +86,184 @@ describe("every x402 pairing's read offers an option's amount only as the canoni
   });
 });
 
-describe("x402/exact/xrpl: an issued-currency option's amount is a decimal value above zero", () => {
+/** SHA-256("abc"), FIPS 180-2. */
+const H: AtrHash = "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+const LINK = "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f";
+const MALFORMED = { refused: true, code: "x402/option-malformed" };
+const placedBy = (b: { advertise(doc: PaymentRequired, h: AtrHash, link: string, offer: PaymentRequirements): unknown }, o: PaymentRequirements) =>
+  b.advertise({ x402Version: 2, resource: { url: "https://api.seller.example/v1/quote" }, accepts: [o] }, H, LINK, o);
+
+// An XRPL issued-currency `amount` is the `value` of the Payment's Amount and SendMax, which rippled 3.4.1
+// (XRPLF/rippled 00e64075) reads with partsFromString (src/libxrpl/protocol/STNumber.cpp:159-216): no leading zero,
+// and the digits with the point removed read as a uint64 (:192, :198) that STAmount::iou casts to int64
+// (src/libxrpl/protocol/STAmount.cpp:291). An STAmount value is 10^15 to 10^16 - 1 at an offset of -96 to 80
+// (include/xrpl/protocol/STAmount.h:35-40, 61-68); IOUAmount rounds past 16 significant digits and reads a value below
+// 10^-81 as zero (src/libxrpl/protocol/IOUAmount.cpp:29-36, 58-68). So the pairing offers the one spelling of each value
+// rippled reads exactly: no leading zero, a fraction that ends in a non-zero digit, at most 16 significant digits, at
+// least 10^-81, and digits below 2^63. For each value it offers, ripple-binary-codec, the payer's encoder, encodes the
+// Payment build writes and decodes the same value text.
+describe("x402/exact/xrpl: an issued-currency option's amount is the canonical decimal of a positive STAmount value", () => {
   // The issued-currency option of specs/schemes/exact/scheme_exact_xrpl.md (x402-foundation/x402 e95b06661e), without
-  // its `extra.invoiceId`, which the pairing's `advertise` places.
+  // its `extra.invoiceId`, which the pairing's `advertise` places, and with x402-exact-xrpl.json's destination as
+  // `payTo`: the example's payTo, rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9, fails the classic address checksum.
   const IOU: PaymentRequirements = {
     scheme: "exact",
     network: "xrpl:0",
     asset: "524C555344000000000000000000000000000000",
-    payTo: "rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9",
+    payTo: "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
     amount: "10.5",
     maxTimeoutSeconds: 600,
     extra: { areFeesSponsored: false, assetTransferMethod: "ticketSequence", issuer: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q" },
   };
   const xrpl = X402.find((b) => b.id === "x402/exact/xrpl")!;
+  const z = (n: number): string => "0".repeat(n);
+  /** Each value as [label, amount, why]. */
+  const OFFERED: readonly [string, string, string][] = [
+    ['"10.5"', "10.5", "the scheme's example"],
+    ['"0.01"', "0.01", "the scheme's example"],
+    ['"1"', "1", "one"],
+    ['"9999999999999999"', "9999999999999999", "16 significant digits"],
+    ['"1234567890.123456"', "1234567890.123456", "16 significant digits with a fraction"],
+    ['"9223372036854775000"', "9223372036854775000", "the largest value of 16 significant digits whose digits are below 2^63"],
+    ['"0." + 80 zeros + "1"', `0.${z(80)}1`, "10^-81, the smallest positive STAmount value"],
+  ];
+  const REFUSED: readonly [string, string, string][] = [
+    ['"0"', "0", "zero"],
+    ['"0.0"', "0.0", "zero"],
+    ['"0.00"', "0.00", "zero"],
+    ['"-1"', "-1", "negative"],
+    ['"010"', "010", "a leading zero"],
+    ['"010.5"', "010.5", "a leading zero"],
+    ['"00.5"', "00.5", "two zeros before the point"],
+    ['"10.50"', "10.50", "a fraction that ends in a zero"],
+    ['"1.0"', "1.0", "a fraction that is a bare zero"],
+    ['"0.10"', "0.10", "a fraction that ends in a zero"],
+    ['".5"', ".5", "no digit before the point"],
+    ['"5."', "5.", "no digit after the point"],
+    ['"1e3"', "1e3", "an exponent"],
+    ['"+1"', "+1", "a sign"],
+    ['"12345678901234567"', "12345678901234567", "17 significant digits"],
+    ['"1.2345678901234567"', "1.2345678901234567", "17 significant digits"],
+    ['"9223372036854775807"', "9223372036854775807", "2^63 - 1, 19 significant digits"],
+    ['"99999999999999999" + 79 zeros', `99999999999999999${z(79)}`, "17 significant digits at offset 80"],
+    ['"0." + 81 zeros + "1"', `0.${z(81)}1`, "10^-82, below the smallest positive STAmount value"],
+    ['"9223372036854776000"', "9223372036854776000", "16 significant digits whose digits are not below 2^63"],
+    ['"9300000000000000000"', "9300000000000000000", "digits from 2^63 to 2^64 - 1, which rippled reads as negative"],
+    ['"1" + 20 zeros', `1${z(20)}`, "10^20, digits not below 2^64, which rippled cannot read"],
+    ['"9999999999999999" + 80 zeros', `9999999999999999${z(80)}`, "the largest STAmount value written in full"],
+    ['"1" + 95 zeros', `1${z(95)}`, "10^95"],
+    ['"1" + 96 zeros', `1${z(96)}`, "10^96, past the largest offset, 80"],
+    ['"1" + 200 zeros', `1${z(200)}`, "10^200"],
+  ];
 
-  it("offers the scheme's examples \"10.5\" and \"0.01\", and not \"0\", \"0.0\" or \"0.00\"", () => {
-    for (const amount of ["10.5", "0.01"]) expect([amount, offered(xrpl, [withAmount(IOU, amount)])]).toEqual([amount, [withAmount(IOU, amount)]]);
-    for (const amount of ["0", "0.0", "0.00"]) expect([amount, offered(xrpl, [withAmount(IOU, amount)])]).toEqual([amount, NOT_OFFERED]);
+  it.each(OFFERED)("offers $0, $2, and build's Payment encodes and decodes with that value", async (_, amount) => {
+    const o = withAmount(IOU, amount);
+    expect(offered(xrpl, [o])).toEqual([o]);
+    const placed = placedBy(exactXrpl, o) as PaymentRequired;
+    const u = await exactXrpl.build(
+      { required: placed, accepted: placed.accepts[0]!, account: "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC", fee: "12", sequence: 0, ticketSequence: 7, lastLedgerSequence: 1000 },
+      H,
+    );
+    if (isRefusal(u)) throw new Error(u.code);
+    const tx = u.request.txJson;
+    expect([tx.Amount, tx.SendMax]).toEqual([
+      { currency: IOU.asset, issuer: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q", value: amount },
+      { currency: IOU.asset, issuer: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q", value: amount },
+    ]);
+    const back = decode(encode({ ...tx, SigningPubKey: "" } as never)) as unknown as { Amount: { value: string }; SendMax: { value: string } };
+    expect([back.Amount.value, back.SendMax.value]).toEqual([amount, amount]);
+  });
+
+  it.each(REFUSED)("does not offer $0, $2, and advertise refuses it with x402/option-malformed", (_, amount) => {
+    const o = withAmount(IOU, amount);
+    expect(offered(xrpl, [o])).toEqual(NOT_OFFERED);
+    expect(placedBy(exactXrpl, o)).toEqual(MALFORMED);
+  });
+});
+
+// The XRPL exact scheme gives `payTo` as an "XRPL classic address receiving the payment" and `extra.issuer` as the
+// "Classic address of the IOU issuer" (specs/schemes/exact/scheme_exact_xrpl.md, "Field Definitions"): base58 with the
+// XRPL alphabet of version 0 and a 20-byte AccountID, whose last 4 bytes are its double SHA-256 checksum. The scheme's
+// own example payTo, rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9, fails that checksum.
+describe("x402/exact/xrpl: payTo and an issued currency's extra.issuer are classic addresses whose checksum holds", () => {
+  const xrpl = X402.find((b) => b.id === "x402/exact/xrpl")!;
+  const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-xrpl.json", import.meta.url), "utf8"));
+  const XRP: PaymentRequirements = V.fixed.option;
+  const IOU: PaymentRequirements = {
+    ...XRP,
+    asset: "524C555344000000000000000000000000000000",
+    amount: "10.5",
+    extra: { areFeesSponsored: false, issuer: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q" },
+  };
+  const withExtra = (o: PaymentRequirements, extra: Record<string, unknown>) => ({ ...o, extra }) as PaymentRequirements;
+  const REFUSED: readonly [string, PaymentRequirements][] = [
+    ["payTo rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9, the scheme's example, whose checksum fails", { ...XRP, payTo: "rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9" }],
+    ["payTo rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyM, the file's destination with its last character changed", { ...XRP, payTo: "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyM" }],
+    ["payTo T776755V6AJXyATM72Jk5jWeR6z1NhUFJdqSgjCYdD7CgN7, the file's destination as a testnet X-address", { ...XRP, payTo: "T776755V6AJXyATM72Jk5jWeR6z1NhUFJdqSgjCYdD7CgN7" }],
+    ["payTo rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN with a trailing space", { ...XRP, payTo: "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN " }],
+    ["payTo 0x0000000000000000000000000000000000000000, an EVM address", { ...XRP, payTo: "0x0000000000000000000000000000000000000000" }],
+    ["an issued currency with payTo rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9", { ...IOU, payTo: "rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9" }],
+    ["an issued currency with extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2r, whose checksum fails", withExtra(IOU, { areFeesSponsored: false, issuer: "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2r" })],
+    ["an issued currency with no extra.issuer", withExtra(IOU, { areFeesSponsored: false })],
+    ["an issued currency with extra.issuer 1, a number", withExtra(IOU, { areFeesSponsored: false, issuer: 1 })],
+  ];
+
+  it("offers the file's XRP option and the issued-currency option with the scheme's example issuer", () => {
+    expect(offered(xrpl, [XRP])).toEqual([XRP]);
+    expect(offered(xrpl, [IOU])).toEqual([IOU]);
+  });
+
+  it.each(REFUSED)("does not offer the option with %s, and advertise refuses it with x402/option-malformed", (_, o) => {
+    expect(offered(xrpl, [o])).toEqual(NOT_OFFERED);
+    expect(placedBy(exactXrpl, o)).toEqual(MALFORMED);
+  });
+});
+
+// On the EVM batch-settlement pairing a zero price is paid within a channel, never by its opening. The facilitator's
+// "Not below claimed" check, for "voucher and deposit payloads", requires the voucher's `maxClaimableAmount` to be
+// "strictly greater than `totalClaimed`", which is 0 on a new channel, and the server's "Verify" step requires a deposit's
+// voucher to equal `chargedCumulativeAmount + paymentRequirements.amount`, which is 0 there
+// (specs/schemes/batch-settlement/scheme_batch_settlement_evm.md). So the opening's `build` refuses an option whose
+// amount is "0", while `read` offers it and `buildWithin` writes a later voucher under it. The Solana text's strict
+// floor names voucher verify and the top-up deposit only ("Monotonic amount", scheme_batch_settlement_svm.md), so the
+// Solana opening's `build` takes "0".
+describe("x402/batch-settlement: a zero price opens no EVM channel", () => {
+  const V = JSON.parse(readFileSync(new URL("../vectors/x402-batch-settlement.json", import.meta.url), "utf8"));
+  const E = V.fixed.evm;
+  const S = V.fixed.svm;
+  const evmOpening = (doc: PaymentRequired) =>
+    batchEvm.build(
+      { required: doc, accepted: doc.accepts[0]!, from: E.payer, now: E.now, payerAuthorizer: E.payerAuthorizer, deposit: BigInt(E.deposit), authSalt: E.authSalt },
+      H,
+    );
+
+  it("the EVM opening's build refuses amount \"0\" with x402/option-malformed and builds amount \"1\"; read offers \"0\" and buildWithin writes a voucher of 1 under it", async () => {
+    const zero = placedBy(batchEvm, { ...E.option, amount: "0" }) as PaymentRequired;
+    const one = placedBy(batchEvm, { ...E.option, amount: "1" }) as PaymentRequired;
+    expect(isRefusal(batchEvm.read(zero))).toBe(false);
+    expect(await evmOpening(zero)).toEqual(MALFORMED);
+    expect(isRefusal(await evmOpening(one))).toBe(false);
+    const within = await batchEvm.buildWithin({ required: zero, accepted: zero.accepts[0]!, channelConfig: E.config, maxClaimableAmount: 1n }, H);
+    if (isRefusal(within)) throw new Error(within.code);
+    expect(within.requests).toHaveLength(1);
+  });
+
+  it("the Solana opening's build takes amount \"0\"", async () => {
+    const zero = placedBy(batchSvm, { ...S.option, amount: "0" }) as PaymentRequired;
+    const u = await batchSvm.build(
+      {
+        required: zero,
+        accepted: zero.accepts[0]!,
+        payer: S.payer,
+        payerAuthorizer: S.payer,
+        deposit: BigInt(S.deposit),
+        salt: 42n,
+        openSlot: BigInt(S.openSlot),
+        tokenProgram: S.tokenProgram,
+        recentBlockhash: S.blockhash,
+      },
+      H,
+    );
+    expect(isRefusal(u)).toBe(false);
   });
 });

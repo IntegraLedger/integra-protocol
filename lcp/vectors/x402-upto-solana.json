@@ -601,7 +601,7 @@
     "expect": "x402/option-malformed"
    },
    {
-    "case": "the option with amount \"0\", zero",
+    "case": "the option with amount \"0\", which is zero",
     "pairing": "x402/upto/solana",
     "payment": "/buyer/rows/1/input/presented",
     "accepted": {

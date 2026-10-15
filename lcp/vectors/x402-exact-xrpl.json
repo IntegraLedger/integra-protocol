@@ -544,6 +544,554 @@
      }
     },
     "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"0\", which is zero",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "0",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"0.0\", which is zero",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "0.0",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"-1\", which is negative",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "-1",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"010\", which has a leading zero",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "010",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"010.5\", which has a leading zero",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "010.5",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"00.5\", which has two zeros before the point",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "00.5",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"10.50\", whose fraction ends in a zero",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "10.50",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"1.0\", whose fraction is a bare zero",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1.0",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"0.10\", whose fraction ends in a zero",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "0.10",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \".5\", which has no digit before the point",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": ".5",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"5.\", which has no digit after the point",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "5.",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"1e3\", which has an exponent",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1e3",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"+1\", which has a sign",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "+1",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"12345678901234567\", 17 significant digits, more than the 16 an STAmount value holds",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "12345678901234567",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"1.2345678901234567\", 17 significant digits, more than the 16 an STAmount value holds",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1.2345678901234567",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"9223372036854775807\" (2^63 - 1), 19 significant digits, more than the 16 an STAmount value holds",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "9223372036854775807",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"99999999999999999\" followed by 79 zeros, 17 significant digits, more than the 16 an STAmount value holds",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "999999999999999990000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"0.\" followed by 81 zeros and \"1\" (10^-82), below 10^-81, the smallest positive STAmount value",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000001",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"1\" followed by 96 zeros (10^96), above an STAmount value's largest offset, 80",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"1\" followed by 200 zeros (10^200), above an STAmount value's largest offset, 80",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"9300000000000000000\", whose digits are not below 2^63",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "9300000000000000000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"1\" followed by 20 zeros (10^20), whose digits are not below 2^63",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "100000000000000000000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"9999999999999999\" followed by 80 zeros, the largest STAmount value written in full, whose digits are not below 2^63",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "999999999999999900000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"9223372036854776000\", 16 significant digits whose digits are not below 2^63",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "9223372036854776000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000 and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q, the XRPL exact scheme's IOU example) with amount \"1\" followed by 95 zeros (10^95), whose digits are not below 2^63",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with payTo rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9, the XRPL exact scheme's example payTo, whose classic address checksum fails",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1000000",
+     "asset": "XRP",
+     "payTo": "rN7n3473SaZBCG4dFL83w7a1RXtXtbk2D9",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with payTo T776755V6AJXyATM72Jk5jWeR6z1NhUFJdqSgjCYdD7CgN7, the file's destination as a testnet X-address, which is not a classic address",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "1000000",
+     "asset": "XRP",
+     "payTo": "T776755V6AJXyATM72Jk5jWeR6z1NhUFJdqSgjCYdD7CgN7",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000, the XRPL exact scheme's IOU example) with amount \"10.5\" and extra.issuer rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2r, the example's issuer with its last character changed, whose classic address checksum fails",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "10.5",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "issuer": "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2r"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option as an issued currency (asset 524C555344000000000000000000000000000000, the XRPL exact scheme's IOU example) with amount \"10.5\" and no extra.issuer",
+    "pairing": "x402/exact/xrpl",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "amount": "10.5",
+     "asset": "524C555344000000000000000000000000000000",
+     "payTo": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false,
+      "invoiceId": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
    }
   ]
  }

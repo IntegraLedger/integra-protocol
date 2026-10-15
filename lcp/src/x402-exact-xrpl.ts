@@ -31,6 +31,7 @@ import {
   type XrplTxJson,
   type XrplUnsigned,
 } from "./internal/xrpl.js";
+import { accountIdOf } from "./internal/xrpl-session.js";
 import { isObject, normalHash } from "./fields.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -41,10 +42,11 @@ import {
 } from "./x402.js";
 
 const ID = "x402/exact/xrpl" as const;
-const AMOUNT = /^[0-9]+(\.[0-9]+)?$/;
-const NONZERO = /[1-9]/;
+/** A decimal with no sign, exponent or leading zero, whose fraction, if any, ends in a digit other than 0. */
+const ISSUED = /^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$/;
 const DROPS = /^[1-9][0-9]{0,16}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
+const I64_LIMIT = 2n ** 63n;
 
 interface XrplChoice {
   required: PaymentRequired;
@@ -71,21 +73,50 @@ function isThis(option: PaymentRequirements): boolean {
 
 /**
  * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
- * pairing whose `Amount` `build` can write and whose timeout is a positive safe integer (`payable`), else
- * `x402/option-malformed`.
+ * pairing whose `Destination` and `Amount` `build` can write and whose timeout is a positive safe integer (`payable`),
+ * else `x402/option-malformed`.
  */
 const filter = filterOf(isThis, payable);
 
 /**
- * True when `build` can write the Payment's `Amount`, and the timeout is a positive safe integer. XRP is a positive
- * amount of drops (`isAmount`) below 10^17; an issued currency is a decimal `value` above zero with `extra.issuer`, the
- * form the XRPL `exact` scheme gives that `amount`.
+ * True when `build` can write the Payment's `Destination` and `Amount`, and the timeout is a positive safe integer.
+ * `payTo` is a classic address whose checksum holds. XRP is a positive amount of drops (`isAmount`) below 10^17; an
+ * issued currency is a `value` rippled reads exactly (`isIssuedValue`), the form the XRPL `exact` scheme gives that
+ * `amount`, with an `extra.issuer` that is a classic address whose checksum holds.
  */
 function payable(o: PaymentRequirements): boolean {
-  if (typeof o.amount !== "string" || typeof o.asset !== "string" || typeof o.payTo !== "string") return false;
+  if (typeof o.amount !== "string" || typeof o.asset !== "string" || !isClassicAddress(o.payTo)) return false;
   if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return false;
   if (o.asset === "XRP") return isAmount(o.amount) && DROPS.test(o.amount);
-  return AMOUNT.test(o.amount) && NONZERO.test(o.amount) && typeof o.extra?.["issuer"] === "string";
+  return isIssuedValue(o.amount) && isClassicAddress(o.extra?.["issuer"]);
+}
+
+/**
+ * True for a classic address whose checksum holds: base58 with the XRPL alphabet that decodes to version 0, a 20-byte
+ * AccountID and the first 4 bytes of its double SHA-256 (`accountIdOf`), the form the XRPL `exact` scheme gives `payTo`
+ * and `extra.issuer`.
+ */
+function isClassicAddress(v: unknown): v is string {
+  return typeof v === "string" && accountIdOf(v) !== null;
+}
+
+/**
+ * True when `s` is the canonical decimal of a positive STAmount value, the one spelling of a value that rippled 3.4.1
+ * (XRPLF/rippled `00e64075`) reads exactly. An STAmount value is a mantissa of 10^15 to 10^16 - 1 at an offset of -96 to
+ * 80 (`include/xrpl/protocol/STAmount.h:35-40,61-68`): IOUAmount rounds a value of more than 16 significant digits and
+ * reads one below 10^-81 as zero (`src/libxrpl/protocol/IOUAmount.cpp:29-36,58-68`). `partsFromString`
+ * (`src/libxrpl/protocol/STNumber.cpp:159-216`) refuses a leading zero, and reads the digits with the point removed as a
+ * `uint64` (`:192`, `:198`) that `STAmount::iou` casts to `int64` (`src/libxrpl/protocol/STAmount.cpp:291`), so they are
+ * below 2^63; that also holds the value below the largest offset. So: no sign, exponent or leading zero, a fraction that
+ * ends in a digit other than 0, at most 16 significant digits, at least 10^-81, and digits below 2^63.
+ */
+function isIssuedValue(s: string): boolean {
+  const m = ISSUED.exec(s);
+  if (m === null) return false;
+  const fraction = m[2]?.slice(1) ?? "";
+  const digits = (m[1]! + fraction).replace(/^0+/, "");
+  if (digits === "" || digits.replace(/0+$/, "").length > 16 || BigInt(digits) >= I64_LIMIT) return false;
+  return digits.length - 1 - fraction.length - 15 >= -96;
 }
 
 /**
