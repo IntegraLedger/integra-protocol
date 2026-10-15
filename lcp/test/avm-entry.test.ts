@@ -438,7 +438,7 @@ describe("a genesis id that begins with the byte-order mark", () => {
     const row = rowsOf(V.build.rows as { case: string; genesisId: string; expectPaymentTxid?: string }[], "x402-exact-algorand.json build.rows", {
       exact: 1,
       keep: ["row 1, the genesis id that begins with the mark", (r) => r.genesisId.startsWith("\ufeff")],
-      leave: ["the rows whose genesis id holds a lone surrogate or is the file's own; avm.test.ts runs every row", (r) => !r.genesisId.startsWith("\ufeff")],
+      leave: ["the rows build refuses: a lone surrogate, another network, an entry longer than the carrier reads; avm.test.ts runs every row", (r) => !r.genesisId.startsWith("\ufeff")],
     })[0]!;
     const u = await exactAvm.build({ required, accepted: O, payer: V.fixed.payer, params: { ...params, genesisId: row.genesisId } }, H);
     if ("refused" in u) throw new Error(u.code);

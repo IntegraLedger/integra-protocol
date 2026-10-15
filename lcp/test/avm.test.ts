@@ -449,7 +449,7 @@ describe("x402-exact-algorand.json", () => {
   // canonical form; bytesToSign is "TX" and the payment's encoding, so its SHA-512/256 is the payment's id, and bound
   // reads the payment build writes. Rows 2 and 3 pin the order: the genesis id is checked before the genesis hash.
   it("build: the rows' genesis ids and genesis hashes", async () => {
-    for (const row of rowsOf(V.build.rows, "x402-exact-algorand.json build.rows", { exact: 4 })) {
+    for (const row of rowsOf(V.build.rows, "x402-exact-algorand.json build.rows", { exact: 5 })) {
       const p = { ...params, genesisId: row.genesisId, genesisHash: row.genesisHash ?? params.genesisHash };
       const u = await exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: p }, H);
       if (row.expect !== undefined) {
@@ -470,6 +470,76 @@ describe("x402-exact-algorand.json", () => {
       });
     }
     expect([V.build.rows[0].genesisId.isWellFormed(), V.build.rows[2].genesisId.isWellFormed()]).toEqual([false, false]);
+  });
+
+  // A payment entry's length from the msgpack specification's formats: the entry with the file's genesis id,
+  // testnet-v1.0, a fixstr of 13 bytes, with a genesis id of n bytes of UTF-8 in its place, written as a fixstr below 32
+  // bytes, a str 8 below 256, a str 16 below 65,536 and a str 32 above. The fee payer's entry is V2's, 374 bytes; the
+  // standalone entry is V1's 268-byte transaction under {sig, txn}: a fixmap, the fixstr keys sig and txn of 4 bytes
+  // each, and a bin 8 of the 64-byte signature. Its base64 is 4 characters for each 3 bytes or part of 3 (RFC 4648 §4).
+  // The carrier reads an entry of at most 8,192 characters, as build's docblock says: 6,144 bytes.
+  const ENTRY_BYTES = new Map<PaymentRequirements, number>([
+    [O, Buffer.from(V.V2.expectPaymentGroup[1], "base64").length],
+    [V.fixed.OStandalone, V.V1.expectEncodedLength + 1 + 4 + 2 + 64 + 4],
+  ]);
+  const MAX_ENTRY = 8192;
+  const strBytes = (n: number) => (n < 32 ? 1 : n < 256 ? 2 : n < 65536 ? 3 : 5) + n;
+  const entryLength = (o: PaymentRequirements, genesisId: string) =>
+    4 * Math.ceil((ENTRY_BYTES.get(o)! - 13 + strBytes(Buffer.byteLength(genesisId, "utf8"))) / 3);
+  const buildWith = (o: PaymentRequirements, genesisId: string) =>
+    exactAvm.build({ required: required(o), accepted: o, payer: V.fixed.payer, params: { ...params, genesisId } }, H);
+
+  it("build writes a payment entry of 8,192 base64 characters, and refuses a genesis id one byte longer", async () => {
+    expect([...ENTRY_BYTES.values()]).toEqual([374, 343]);
+    for (const o of ENTRY_BYTES.keys()) {
+      // The longest genesis id of x whose entry is 6,144 bytes: a str 16, 3 bytes and the id's.
+      const longest = MAX_ENTRY / 4 * 3 - (ENTRY_BYTES.get(o)! - 13 + 3);
+      const u = await buildWith(o, "x".repeat(longest));
+      if ("refused" in u) throw new Error(`${longest}: ${u.code}`);
+      const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
+      if ("refused" in payment) throw new Error(payment.code);
+      expect(payment.payload.paymentGroup[payment.payload.paymentIndex]!.length, String(longest)).toBe(MAX_ENTRY);
+      expect(await exactAvm.bound(payment)).toBe(H);
+      expect(await buildWith(o, "x".repeat(longest + 1)), String(longest + 1)).toEqual({
+        refused: true,
+        code: "avm/option-malformed",
+      });
+    }
+    expect(V.build.rows[4].genesisId).toBe("x".repeat(MAX_ENTRY / 4 * 3 - (374 - 13 + 3) + 1));
+  });
+
+  // Genesis ids of x, é (2 bytes of UTF-8) and U+1F600 (4 bytes), at each length, under the fee payer's option and the
+  // standalone one. build refuses exactly those whose entry passes 8,192 characters, and every payment it completes
+  // passes bound.
+  it("every payment build completes passes bound", async () => {
+    const lengths = [
+      1, 12, 31, 32, 255, 256, 1000, 1445, 1446, 1452, 1453, 2890, 2891, 2905, 2906, 4000, 5700, 5779, 5780, 5781, 5810,
+      5811, 5812, 6000, 9000, 70000,
+    ];
+    let built = 0;
+    let refused = 0;
+    for (const o of ENTRY_BYTES.keys()) {
+      for (const c of ["x", "é", "\u{1f600}"]) {
+        for (const n of lengths) {
+          const genesisId = c.repeat(n);
+          const option = o.extra?.["feePayer"] === undefined ? "standalone" : "fee payer";
+          const name = `${option}, ${n} × U+${c.codePointAt(0)!.toString(16)}`;
+          const u = await buildWith(o, genesisId);
+          if (entryLength(o, genesisId) > MAX_ENTRY) {
+            expect(u, name).toEqual({ refused: true, code: "avm/option-malformed" });
+            refused++;
+            continue;
+          }
+          if ("refused" in u) throw new Error(`${name}: ${u.code}`);
+          const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
+          if ("refused" in payment) throw new Error(payment.code);
+          expect(payment.payload.paymentGroup[payment.payload.paymentIndex]!.length, name).toBe(entryLength(o, genesisId));
+          expect(await exactAvm.bound(payment), name).toBe(H);
+          built++;
+        }
+      }
+    }
+    expect([built, refused]).toEqual([85, 71]);
   });
 
   it("a genesis hash of another network is refused", async () => {

@@ -7,7 +7,7 @@
 import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import { readEntry, type AvmPaymentPayload } from "./internal/avm.js";
+import { readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
 import { advertiseFor, chosen, paymentWith, presentedWith, readFor, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -87,6 +87,11 @@ const MAX_GROUP = 16;
 const MAX_ENTRY = 8192;
 const MAX_NOTE = 4096;
 const MAX_TXN_LIFE = 1000n;
+/**
+ * A 64-byte signature that is not all zero bytes, which the encoding writes in full: the entry `build` checks is as
+ * long as any `complete` writes.
+ */
+const FULL_SIGNATURE = new Uint8Array(64).fill(1);
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const ENCODER = new TextEncoder();
 /**
@@ -158,14 +163,8 @@ export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastVal
   if (group.length < 1 || group.length > MAX_GROUP) return refusal("avm/group-too-large");
   const i = p.paymentIndex;
   if (!Number.isSafeInteger(i) || i < 0 || i >= group.length) return refusal("avm/index-out-of-range");
-  const entry = group[i];
-  if (typeof entry !== "string" || entry.length > MAX_ENTRY) return refusal("avm/txn-malformed");
-  const bytes = fromBase64(entry);
-  if (bytes === null) return refusal("avm/txn-malformed");
-  const read = readEntry(bytes, MSGPACK_MAX_DEPTH);
-  if (read === "malformed") return refusal("avm/txn-malformed");
-  if (read === "not-axfer") return refusal("avm/not-axfer");
-  if (read.note.length > MAX_NOTE) return refusal("avm/txn-malformed");
+  const read = paymentEntry(group[i]);
+  if (isRefusal(read)) return read;
   let note: string;
   try {
     note = UTF8.decode(read.note);
@@ -175,6 +174,22 @@ export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastVal
   const h = fromLcpString(note);
   if (h === null) return refusal("avm/note-not-lcp");
   return { h, txid: read.txid, lastValid: read.lastValid };
+}
+
+/**
+ * One payment entry as `avmCarrier` reads it: base64 of at most `MAX_ENTRY` characters, read by `readEntry` within
+ * `MSGPACK_MAX_DEPTH`, with a note of at most `MAX_NOTE` bytes. An entry algod reads as another transaction type is
+ * `avm/not-axfer`; any other entry outside these bounds is `avm/txn-malformed`.
+ */
+function paymentEntry(entry: unknown): AvmEntry | Refusal {
+  if (typeof entry !== "string" || entry.length > MAX_ENTRY) return refusal("avm/txn-malformed");
+  const bytes = fromBase64(entry);
+  if (bytes === null) return refusal("avm/txn-malformed");
+  const read = readEntry(bytes, MSGPACK_MAX_DEPTH);
+  if (read === "malformed") return refusal("avm/txn-malformed");
+  if (read === "not-axfer") return refusal("avm/not-axfer");
+  if (read.note.length > MAX_NOTE) return refusal("avm/txn-malformed");
+  return read;
 }
 
 function advertise(
@@ -200,8 +215,9 @@ function urlSafe(s: string): string {
  * The asset transfer the payer signs, with the hash's LCP string as its note; with the option's fee payer, grouped
  * after that fee payer's zero payment, which carries both fees. The suggested parameters' genesis id is written as each
  * transaction's `gen`, a msgpack string, so one holding a lone surrogate, which UTF-8 cannot encode, is
- * `avm/option-malformed`. The payment entry is read as `avmCarrier` reads it, so `build` writes no payment `bound`
- * refuses. Without algosdk, `avm/peer-missing`.
+ * `avm/option-malformed`. The payment entry is read as `avmCarrier` reads it, with a 64-byte signature in place, as
+ * `complete` writes it, so `build` writes no payment `bound` refuses: an entry `avmCarrier` would refuse, one whose
+ * base64 is longer than 8,192 characters included, is `avm/option-malformed`. Without algosdk, `avm/peer-missing`.
  */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; payer: string; params: AvmParams },
@@ -279,9 +295,8 @@ async function build(
     return refusal("avm/option-malformed");
   }
   const payment = group[paymentIndex]!;
-  if (typeof readEntry(sdk.encodeMsgpack(new sdk.SignedTransaction({ txn: payment })), MSGPACK_MAX_DEPTH) !== "object") {
-    return refusal("avm/option-malformed");
-  }
+  const signed = sdk.encodeMsgpack(new sdk.SignedTransaction({ txn: payment, sig: FULL_SIGNATURE }));
+  if (isRefusal(paymentEntry(toBase64(signed)))) return refusal("avm/option-malformed");
   return {
     request: { kind: "algorand-txn", bytes: payment.bytesToSign() },
     complete(signature: Uint8Array): AvmPaymentPayload | Refusal {
