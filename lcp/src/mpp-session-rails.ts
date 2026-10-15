@@ -1021,8 +1021,11 @@ function xrplOpeningChannel(tx: XrplTxJson): string | Refusal {
 }
 
 /**
- * The channel: on `open` its id from the signed blob (`xrplOpeningChannel`); on `voucher` and `close` the payload's, in
- * upper case.
+ * The channel: on `open` its id from the signed blob (`xrplOpeningChannel`), once the opening reads as `bound` reads it
+ * (`xrplOpening`), with `bound`'s codes: a single-signed `PaymentChannelCreate` whose `NetworkID` a node of the
+ * challenge's network takes (`networkIdHeld`, else `xrpl/network-mismatch`) and whose one LCP memo is the echoed
+ * challenge's H (else `xrpl/no-memo`, `xrpl/memo-count` or `mpp/carrier-not-challenge`); on `voucher` and `close` the
+ * payload's, in upper case.
  */
 async function xrplRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
   const k = actionKind(presented, ["voucher"]);
@@ -1035,15 +1038,11 @@ async function xrplRef(presented: MppCredential): Promise<{ network: string; cha
     const c = presented.payload["channelId"];
     return typeof c === "string" && HASH256.test(c) ? { network, channel: c.toUpperCase() } : refusal("mpp/credential-malformed");
   }
-  const e = echoedFor(presented, XRPL);
-  if (isRefusal(e)) return e;
-  const network = xrplNetworkOf(e.checked.details);
+  const o = await xrplOpening(presented);
+  if (isRefusal(o)) return o;
+  const network = xrplNetworkOf(o.checked.details);
   if (isRefusal(network)) return network;
-  const blob = e.payload["transaction"];
-  if (typeof blob !== "string") return refusal("xrpl/blob-malformed");
-  const decoded = await decodePresented(e.payload, blob);
-  if (isRefusal(decoded)) return decoded;
-  const id = xrplOpeningChannel(decoded.tx);
+  const id = xrplOpeningChannel(o.tx);
   return isRefusal(id) ? id : { network, channel: id };
 }
 

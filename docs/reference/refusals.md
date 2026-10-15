@@ -447,14 +447,14 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/carrier-not-lcp` | The x402 XRPL option's `extra.invoiceId` is not an ATR hash in LCP string form. |
 | `xrpl/carrier-occupied` | `advertise` finds the option's `extra.invoiceId`, or the MPP challenge's `invoiceId`, already holding a value other than the one derived from H. |
 | `xrpl/currency-not-xrp` | An MPP XRPL session challenge names a `currency` other than `XRP`. |
-| `xrpl/memo-count` | The XRPL session opening carries more than 8 memos, or more than one memo carrying an LCP string. |
+| `xrpl/memo-count` | The XRPL session opening carries more than 8 memos, or more than one memo carrying an LCP string (`bound`, `reference`, and `channel.ref` of the opening). |
 | `xrpl/memos-not-carried` | An MPP XRPL charge challenge's `methodDetails` carries `memos`, which `build` does not write: `pairingsOf` refuses it, and so does each function that holds the challenge to the pairing's filter. |
 | `xrpl/multisigned` | The signed blob presented to `x402/exact/xrpl`, `mpp/charge/xrpl` or the `mpp/session/xrpl` opening, or given to the `build`'s `complete` of any of them, carries `Signers`: the XRPL pairings take a transaction the payer signed with a single key, whose transaction hash is the one that can land. |
 | `xrpl/network-malformed` | The MPP XRPL challenge's `methodDetails.network` is not one of the XRPL network names this package maps. |
-| `xrpl/network-mismatch` | The signed blob of an `x402/exact/xrpl` payment, an `mpp/charge/xrpl` credential or an `mpp/session/xrpl` opening, or one given to their `build`'s `complete`, carries a `NetworkID` a node of the option's or challenge's network does not take, as rippled 3.4.1's `preflight0` reads it (`src/libxrpl/tx/Transactor.cpp` L73-93): a network whose id is at most 1024, as each network the MPP pairings name is, takes no `NetworkID`, and one above 1024 takes its own id only. |
+| `xrpl/network-mismatch` | The signed blob of an `x402/exact/xrpl` payment, an `mpp/charge/xrpl` credential or an `mpp/session/xrpl` opening (to `channel.ref` too), or one given to their `build`'s `complete`, carries a `NetworkID` a node of the option's or challenge's network does not take, as rippled 3.4.1's `preflight0` reads it (`src/libxrpl/tx/Transactor.cpp` L73-93): a network whose id is at most 1024, as each network the MPP pairings name is, takes no `NetworkID`, and one above 1024 takes its own id only. |
 | `xrpl/network-missing` | The MPP XRPL challenge's `methodDetails` names no `network`, which has no default. |
 | `xrpl/no-invoice-id` | The XRPL `Payment` carries no `InvoiceID`, or the validated transaction a recovery reads has no 256-bit `InvoiceID`. |
-| `xrpl/no-memo` | The XRPL session opening carries no memo whose `MemoData` is an ATR hash in LCP string form. |
+| `xrpl/no-memo` | The XRPL session opening carries no memo whose `MemoData` is an ATR hash in LCP string form (`bound`, `reference`, and `channel.ref` of the opening). |
 | `xrpl/not-channel-create` | The XRPL session opening or the transaction a recovery reads is not a `PaymentChannelCreate`, or the opening `channel.ref` or `buildWithin` reads lacks the source, destination or sequence its channel id is derived from. |
 | `xrpl/not-found` | **Read to repeat.** The XRPL reader found no transaction for the reference. |
 | `xrpl/not-payment` | The XRPL signed blob presented for a charge is not a `Payment`. |

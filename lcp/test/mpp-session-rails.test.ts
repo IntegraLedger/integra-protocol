@@ -1939,6 +1939,33 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     return out;
   };
 
+  // Rows 27 to 30: channel.ref of an xrpl opening reads it as bound does, the memo and NetworkID, with bound's codes.
+  const lcpMemo = (tx: { Memos: { Memo: { MemoData: string } }[] }) =>
+    tx.Memos.findIndex((m) => Buffer.from(m.Memo.MemoData, "hex").toString("utf8").includes(H.slice(2)));
+  const xs2 = decodeXrpl(V.XS2.blob) as { Memos: { Memo: { MemoData: string } }[] };
+  const otherH = (() => {
+    const at = lcpMemo(xs2);
+    if (at === -1) throw new Error("XS2 carries no memo naming H");
+    const text = Buffer.from(xs2.Memos[at]!.Memo.MemoData, "hex").toString("utf8").replace(H.slice(2), "11".repeat(32));
+    const memos = xs2.Memos.map((m, k) => (k === at ? { Memo: { ...m.Memo, MemoData: Buffer.from(text, "utf8").toString("hex").toUpperCase() } } : m));
+    return encodeXrpl({ ...xs2, Memos: memos } as never);
+  })();
+  const { Memos: _memos, ...noMemos } = xs2;
+  const refOf = async (blobs: string[]) => {
+    const out: unknown[] = [];
+    for (const blob of blobs) out.push(await sessionXrpl.bound(xrplOpen(blob)), await sessionXrpl.channel.ref(xrplOpen(blob)));
+    return out;
+  };
+  const refRows = (V.agreedRefusals.rows as Row[]).slice(27, 31);
+  it("channel.ref of XS2's opening, which bound takes, gives its channel", async () => {
+    expect(await sessionXrpl.bound(xrplOpen(V.XS2.blob))).toBe(H);
+    expect(await sessionXrpl.channel.ref(xrplOpen(V.XS2.blob))).toMatchObject({ channel: V.XS2.expectChannel });
+  });
+  cases[refRows[0]!.case] = () => refOf(networkRow.blobs!);
+  cases[refRows[1]!.case] = () => refOf([encodeXrpl(noMemos as never), encodeXrpl({ ...xs2, Memos: [{ Memo: { MemoData: "00" } }] } as never)]);
+  cases[refRows[2]!.case] = () => refOf([otherH]);
+  cases[refRows[3]!.case] = () => refOf([withMemos(9)]);
+
   const rows = rowsOf(V.agreedRefusals.rows as Row[], "mpp-session-hedera-solana-xrpl.json agreedRefusals.rows", { exact: Object.keys(cases).length });
 
   it("names a case for every row, and no other", () => {

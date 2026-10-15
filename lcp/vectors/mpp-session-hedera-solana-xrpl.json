@@ -859,6 +859,22 @@
      }
     ],
     "expect": "svm/read-first"
+   },
+   {
+    "case": "channel.ref of an xrpl opening whose PaymentChannelCreate carries NetworkID on testnet, row 24's blobs: channel.ref reads an opening as bound reads it, NetworkID by networkIdHeld, with bound's code, and bound gives the same",
+    "expect": "xrpl/network-mismatch"
+   },
+   {
+    "case": "channel.ref of an xrpl opening without an LCP memo, XS2's opening with no Memos and with one memo that is not an LCP string (MemoData 00): channel.ref reads the memo as bound reads it, and bound gives the same",
+    "expect": "xrpl/no-memo"
+   },
+   {
+    "case": "channel.ref of an xrpl opening whose LCP memo names a hash other than the echoed challenge's H, XS2's memo text with H's digits written as 11 repeated: channel.ref reads the memo as bound reads it, and bound gives the same",
+    "expect": "mpp/carrier-not-challenge"
+   },
+   {
+    "case": "channel.ref of an xrpl opening with more than 8 memos, row 6's opening: channel.ref reads the memos as bound reads them, and bound gives the same",
+    "expect": "xrpl/memo-count"
    }
   ]
  },
