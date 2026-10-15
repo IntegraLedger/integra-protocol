@@ -335,13 +335,17 @@ describe("mpp-session-evm.json", () => {
 });
 
 /** The vector's T for a v2 open call `calldata`, signed by the payer over keccak256(0x76 ‖ rlp(fields)). */
-async function openWire(calldata: ViemHex, signer: (hash: ViemHex) => Promise<ViemHex> = sig65): Promise<Uint8Array> {
+async function openWire(
+  calldata: ViemHex,
+  signer: (hash: ViemHex) => Promise<ViemHex> = sig65,
+  escrow: string = T.fixed.escrowV2,
+): Promise<Uint8Array> {
   const fields = [
     num(42431),
     num(1),
     num(2),
     num(200000),
-    [[T.fixed.escrowV2, "0x", calldata]],
+    [[escrow, "0x", calldata]],
     [],
     toHex((1n << 256n) - 1n),
     "0x",
@@ -700,8 +704,12 @@ describe("mpp-session-tempo.json", () => {
   // encodeForSigning gives under it, and its channel id is the draft's keccak256 (:339-352) over that descriptor, encoded
   // with viem. A voucher carries the descriptor and no transaction, so its salt is read through the channel id alone.
   it("agreedRefusals: a v2 opening whose descriptor's expiringNonceHash or payer is not its transaction's", async () => {
-    type Row = { case: string; payer?: `0x${string}`; expiringNonceHash: `0x${string}`; expect: string };
-    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", { exact: 2 });
+    type Row = { case: string; sessionProtocol?: string; payer?: `0x${string}`; expiringNonceHash: `0x${string}`; expect: string };
+    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
+      exact: 2,
+      keep: ["the v2 rows, which carry no sessionProtocol", (r) => r.sessionProtocol === undefined],
+      leave: ['the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs', (r) => r.sessionProtocol === "v1"],
+    });
     const Tx = TempoTransaction.z_TxEnvelopeTempo;
     const nine = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
     const low = (a: string) => a.toLowerCase() as `0x${string}`;
@@ -791,6 +799,89 @@ describe("mpp-session-tempo.json", () => {
       ["high s", async (hash: ViemHex) => highS(await sig65(hash))],
     ] as const) {
       expect(await sessionTempo.bound(await openedBy(f.payer, await openWire(data, signer))), name).toEqual({ refused: true, code: "tempo/tx-malformed" });
+    }
+  });
+
+  // Tempo's session draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-session-00.md :865-867 and :1180-1183): for v1,
+  // the server recovers the payer from the signed open transaction and computes the channelId from it, as the escrow's
+  // computeChannelId (:299-312) does. A row's channelId is that keccak256 over the row's payer, encoded with viem; the
+  // transaction's sender is fixed.payer.
+  it("agreedRefusals: a v1 opening whose channelId is not its transaction's", async () => {
+    type Row = { case: string; sessionProtocol?: string; payer: `0x${string}`; channelId: `0x${string}`; expect: string };
+    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
+      exact: 1,
+      keep: ["the v1 rows", (r) => r.sessionProtocol === "v1"],
+      leave: ['the v2 rows, which "agreedRefusals: a v2 opening whose descriptor\'s expiringNonceHash or payer is not its transaction\'s" runs', (r) => r.sessionProtocol === undefined],
+    });
+    const seven = ["address", "address", "address", "bytes32", "address", "address", "uint256"].map((type) => ({ type }));
+    const low = (a: string) => a.toLowerCase() as `0x${string}`;
+    const u = unsignedOf(await sessionTempo.build({ challenge: placed(V1), from: f.payer, now: f.now, deposit }, H));
+    if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+    expect(u.funding.call.data).toBe(T.TS5.expectOpenCalldata);
+    const cred = u.complete(toHex(await openWire(u.funding.call.data, sig65, f.escrowV1)), `0x${"66".repeat(65)}`) as MppCredential;
+    expect(cred.payload["channelId"]).toBe(T.TS5.expectChannelId);
+    expect(await sessionTempo.bound(cred)).toBe(H);
+    for (const row of rows) {
+      const channelId = keccak256(encodeAbiParameters(seven, [low(row.payer), low(f.recipient), low(f.pathUSD), H, ZERO, low(f.escrowV1), 42431n]));
+      expect(channelId, row.case).toBe(row.channelId);
+      const planted = { ...cred, payload: { ...cred.payload, channelId: row.channelId } };
+      const refused = { refused: true, code: row.expect };
+      expect(await sessionTempo.bound(planted), row.case).toEqual(refused);
+      expect(await sessionTempo.reference(planted), row.case).toEqual(refused);
+      const within = { challenge: { ...V1, id: "seller-own-id" }, opening: planted, cumulativeAmount: 1n, action: "voucher" };
+      expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
+    }
+  });
+
+  // The same rule from the transaction's side: a v1 open transaction opens the channel computeChannelId
+  // (draft-tempo-session-00 :299-312) gives over its sender and the payee, token, salt and authorizedSigner of its open
+  // call, open(payee, token, deposit, salt, authorizedSigner) (:429-435), each call encoded here with viem. build's
+  // channelId is over the buyer's address and the challenge's recipient and currency, so a transaction whose call names
+  // another party, or that another key signs, opens another channel. The second key's address, 0x3C44…93BC, is the
+  // third of Hardhat's default development accounts.
+  it("v1: the payload's channelId is the channel its open transaction opens", async () => {
+    const OTHER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as const;
+    const otherKey = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" as const;
+    expect(privateKeyToAccount(otherKey).address).toBe(OTHER);
+    const byOther = async (hash: ViemHex) => {
+      const s = await sign({ hash, privateKey: otherKey });
+      return concat([s.r, s.s, toHex(Number(s.v), { size: 1 })]);
+    };
+    const v1Open = parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]);
+    const args: readonly unknown[] = [f.recipient.toLowerCase(), f.pathUSD, deposit, H, ZERO];
+    const call = (a: readonly unknown[]) => encodeFunctionData({ abi: v1Open, functionName: "open", args: a as never });
+    expect(call(args)).toBe(T.TS5.expectOpenCalldata);
+    const wire = (a: readonly unknown[], signer = sig65) => openWire(call(a), signer, f.escrowV1);
+    const ch = placed(V1);
+    const openedBy = async (from: `0x${string}`, signed: Uint8Array) =>
+      unsignedOf(await sessionTempo.build({ challenge: ch, from, now: f.now, deposit }, H)).complete(toHex(signed), `0x${"66".repeat(65)}`) as MppCredential;
+    expect(await sessionTempo.bound(await openedBy(f.payer, await wire(args)))).toBe(H);
+    expect(await sessionTempo.bound(await openedBy(OTHER, await wire(args, byOther)))).toBe(H);
+    const mismatch = { refused: true, code: "mpp/channel-not-bound" };
+    const cases: [string, Promise<MppCredential>][] = [
+      ["the call's payee another", wire([OTHER, ...args.slice(1)]).then((w) => openedBy(f.payer, w))],
+      ["the call's token another", wire([args[0], OTHER, ...args.slice(2)]).then((w) => openedBy(f.payer, w))],
+      ["the call's authorizedSigner another", wire([...args.slice(0, 4), OTHER]).then((w) => openedBy(f.payer, w))],
+      ["another key signs", wire(args, byOther).then((w) => openedBy(f.payer, w))],
+      ["the credential names another payer", wire(args).then((w) => openedBy(OTHER, w))],
+    ];
+    for (const [name, made] of cases) {
+      const cred = await made;
+      expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
+      expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
+    }
+    // A signature that gives no sender, a secp256k1 v outside 0, 1, 27, 28 and 35 up, is refused as on v2, and so is a
+    // payee, token or authorizedSigner word whose first 12 bytes are not zero, which ABI decoding does not take as an
+    // address.
+    const malformedTx = { refused: true, code: "tempo/tx-malformed" };
+    const v29 = async (hash: ViemHex) => `${(await sig65(hash)).slice(0, 130)}1d` as ViemHex;
+    expect(await sessionTempo.bound(await openedBy(f.payer, await wire(args, v29)))).toEqual(malformedTx);
+    for (const word of [0, 1, 4]) {
+      const data = call(args);
+      const at = 10 + 64 * word;
+      const dirty = `${data.slice(0, at)}01${data.slice(at + 2)}` as ViemHex;
+      const cred = await openedBy(f.payer, await openWire(dirty, sig65, f.escrowV1));
+      expect(await sessionTempo.bound(cred), `word ${word}`).toEqual(malformedTx);
     }
   });
 

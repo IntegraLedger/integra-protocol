@@ -1253,7 +1253,11 @@ async function tempoBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
  * payer draft-tempo-session-00 recovers from the transaction) and the expiring nonce hash of this transaction under
  * that sender (`expiringNonceHash`), which the draft requires the descriptor's `expiringNonceHash` to match: a
  * descriptor naming another payer or another hash gives a channel id this transaction does not open. Else
- * `tempo/descriptor-mismatch`.
+ * `tempo/descriptor-mismatch`. On v1, the payload's `channelId` is the channel this transaction opens: `evmChannelId`
+ * over the sender, the call's payee, token and authorizedSigner (words 0, 1 and 4 of `open(payee, token, deposit,
+ * salt, authorizedSigner)`), H, the escrow and the chain, as draft-tempo-session-00 computes it from the payer it
+ * recovers from the transaction. Else `mpp/channel-not-bound`; a sender that cannot be read, or an argument word that
+ * is not an address, is `tempo/tx-malformed`.
  */
 function tempoOpened(
   presented: MppCredential,
@@ -1290,6 +1294,16 @@ function tempoOpened(
     if (!sameBytes(d.payer, sender)) return refusal("tempo/descriptor-mismatch");
     const nonceHash = expiringNonceHash(raw, sender);
     if (typeof nonceHash !== "string" || !sameBytes(nonceHash, d.expiringNonceHash)) return refusal("tempo/descriptor-mismatch");
+  } else {
+    const sender = tempoSender(raw);
+    if (isRefusal(sender)) return sender;
+    const args = input.subarray(4);
+    const payee = addressAt(args, 0);
+    const token = addressAt(args, 1);
+    const signer = addressAt(args, 4);
+    if (payee === undefined || token === undefined || signer === undefined) return refusal("tempo/tx-malformed");
+    const opened = evmChannelId({ payer: sender, payee, token, salt: e.h, authorizedSigner: signer, escrow: p.escrow, chainId: p.chainId });
+    if (typeof opened !== "string" || !sameBytes(opened, channel)) return refusal("mpp/channel-not-bound");
   }
   return { h: e.h, checked: e.checked, params: p, validBefore: tx.validBefore, channel };
 }
