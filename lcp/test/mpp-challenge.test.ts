@@ -2,6 +2,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { concat, encodePacked, keccak256, toBytes, toHex, toRlp } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import {
   chargeHedera,
   chargeSolana,
@@ -737,6 +738,29 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     }
     throw new Error(`no padding gives ${size} bytes`);
   };
+  /**
+   * An EIP-1559 transaction of exactly `size` bytes on C_E's chain, signed by the payer key with viem: a call to C_E's
+   * currency whose input is zero bytes enough to reach `size`.
+   */
+  const evmWireOf = async (size: number) => {
+    const signer = privateKeyToAccount(A.fixed.payerKey);
+    const signed = (n: number) =>
+      signer.signTransaction({
+        type: "eip1559",
+        chainId: R_E.methodDetails.chainId,
+        nonce: 0,
+        maxPriorityFeePerGas: 1n,
+        maxFeePerGas: 2n,
+        gas: 60_000n,
+        to: R_E.currency,
+        data: `0x${"00".repeat(n)}`,
+      });
+    for (let n = size - (await signed(0)).length / 2 - 64; n < size; n++) {
+      const w = await signed(n);
+      if ((w.length - 2) / 2 === size) return w;
+    }
+    throw new Error(`no padding gives ${size} bytes`);
+  };
   const ZERO = "0x0000000000000000000000000000000000000000" as const;
   /** A TIP-20 channel reserve descriptor of well-formed values: MV7's payer, C_T's recipient and currency, and H. */
   const descriptor = {
@@ -770,8 +794,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     for (const bytes of [1, 8192]) expect(auth.complete(`0x${"11".repeat(bytes)}`)).not.toHaveProperty("refused");
     expect((await built(evmHash.build({ challenge: chCalls, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
     expect((await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
-    const wire = `0x${"11".repeat(65_536)}` as const;
-    expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(wire)).not.toHaveProperty("refused");
+    expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(await evmWireOf(65_536))).not.toHaveProperty("refused");
     expect((await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H))).complete(tempoWireOf(65_536))).not.toHaveProperty("refused");
     expect(await evmAuthorization.bound(await credential())).toBe(H);
     expect(parseChallenges(Array.from({ length: 32 }, (_, k) => payment(k)))).toHaveLength(32);

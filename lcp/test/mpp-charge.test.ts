@@ -426,6 +426,38 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(evmTransaction.pattern).toEqual(Object.fromEntries(Object.entries(TX.pattern).filter(([k]) => k !== "claims")));
   });
 
+  // draft-evm-charge-00 (tempoxyz/mpp-specs 08e7dd87) L696-697 and L873-879: the transaction credential carries an
+  // EIP-1559 transaction, which the server deserializes and holds to methodDetails.chainId before it broadcasts. build's
+  // complete reads it so, and refuses any other with mpp/credential-malformed; bound reads nothing of it.
+  it("agreedRefusals: build's complete refuses a transaction for another chain, or bytes that are not an EIP-1559 transaction", async () => {
+    type Row = { case: string; chainIds?: number[]; transactions: ViemHex[]; expect: string };
+    const rows = rowsOf(TX.agreedRefusals.rows as Row[], "mpp-charge-evm-transaction.json agreedRefusals.rows", { exact: 2 });
+    const signer = privateKeyToAccount(TX.fixed.payerKey);
+    const t = TX.MV11.transaction;
+    const fields = { nonce: t.nonce, gas: BigInt(t.gas), to: t.to as ViemHex, data: TX.MV11.expectCalldata as ViemHex };
+    const fees = { maxPriorityFeePerGas: BigInt(t.maxPriorityFeePerGas), maxFeePerGas: BigInt(t.maxFeePerGas) };
+    const mv11 = await signer.signTransaction({ type: "eip1559", chainId: t.chainId, ...fields, ...fees });
+    expect(sha256(toBytes(mv11))).toBe(TX.MV11.expectRawSha256);
+    // Row 0's transactions are MV11's with each chainId; row 1's are MV11's transfer as a legacy and as an EIP-2930
+    // transaction, then MV11's with a zero byte after it.
+    const otherChains = await Promise.all(rows[0]!.chainIds!.map((chainId) => signer.signTransaction({ type: "eip1559", chainId, ...fields, ...fees })));
+    expect(otherChains).toEqual(rows[0]!.transactions);
+    const gasPrice = BigInt(t.maxFeePerGas);
+    const legacy = await signer.signTransaction({ type: "legacy", chainId: t.chainId, ...fields, gasPrice });
+    const eip2930 = await signer.signTransaction({ type: "eip2930", chainId: t.chainId, ...fields, gasPrice, accessList: [] });
+    expect([legacy, eip2930, `${mv11}00`]).toEqual(rows[1]!.transactions);
+    const ch = placedOf(challenge("evm", "charge", TX.fixed.R_ENoTypes));
+    const u = await evmTransaction.build({ challenge: ch, from: signer.address, now: A.fixed.now }, H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(u.complete(mv11)).toEqual({ challenge: ch, source: `did:pkh:eip155:${t.chainId}:${signer.address}`, payload: { type: "transaction", signature: mv11 } });
+    // An access list nests three lists deep in the transaction's list; a transaction that carries one is taken too.
+    const listed = await signer.signTransaction({ type: "eip1559", chainId: t.chainId, ...fields, ...fees, accessList: [{ address: fields.to, storageKeys: [H] }] });
+    expect(u.complete(listed)).not.toHaveProperty("refused");
+    for (const r of rows) {
+      for (const w of r.transactions) expect([r.case, w, u.complete(w)]).toEqual([r.case, w, { refused: true, code: r.expect }]);
+    }
+  });
+
   // MV12.expectCalldata is eth-abi 6.0.0's transfer(address,uint256) of the request's recipient and amount; viem 2.57.4's
   // encodeFunctionData re-derives it here, and build's whole request, broadcast by the payer, is held to it.
   it("MV12: the hash credential's request, byte for byte as eth-abi and viem encode the transfer, the network reference, and transferPresent", async () => {

@@ -47,6 +47,32 @@
   "publicProof": false,
   "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction (`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, and the settlement transaction it reported succeeded and moved the token. This does not show that amount, payee, asset or timing match the ATR's content."
  },
+ "agreedRefusals": {
+  "about": "Refusal codes the specification leaves to the implementation. bound reads nothing of a transaction credential (mpp/no-signed-place). build's complete reads the signed transaction as the specification's transaction verification reads it before broadcasting (draft-evm-charge-00 at tempoxyz/mpp-specs 08e7dd87, L696-697 and L873-879): an EIP-1559 transaction, 0x02 then the RLP list of its twelve fields, whose chainId is the challenge's methodDetails.chainId, 84532 for MV11. It refuses any other with mpp/credential-malformed, the code it gives a transaction that is not hex bytes or is over 64 KiB.",
+  "rows": [
+   {
+    "case": "build's complete with MV11's transfer signed for another chain than the challenge's: MV11's transaction with chainId 1, then 84531, signed by the payer key with viem 2.57.4's signTransaction (draft-evm-charge-00 at tempoxyz/mpp-specs 08e7dd87 L876-879: the server deserializes the transaction and verifies that its chainId matches methodDetails.chainId)",
+    "chainIds": [
+     1,
+     84531
+    ],
+    "transactions": [
+     "0x02f8af0180843b9aca00847735940082ea6094036cbd53842c5426634e7929541ec2318f3dcf7e80b844a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c0000000000000000000000000000000000000000000000000000000000002710c080a01c2d2428c32475730f4ae88beaadb6ad576b38093850696c4800e9d4ba4769b4a0067c2b396b3da2a02a04e3d77a150090cccf191b6901f7b9e803e9f66fd2fa5e",
+     "0x02f8b283014a3380843b9aca00847735940082ea6094036cbd53842c5426634e7929541ec2318f3dcf7e80b844a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c0000000000000000000000000000000000000000000000000000000000002710c001a066061b722517808b94c341673dda6345ca73107cbef93da42b5455df7a14b53da004ada079305dbc2d323aca7f01b62fcca4e1b478a688ea3048f447a44f3847b1"
+    ],
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "build's complete with signed bytes that are not an EIP-1559 transaction: MV11's transfer on chain 84532 as a legacy (EIP-155) and as an EIP-2930 transaction, each signed by the payer key with viem 2.57.4's signTransaction, gasPrice MV11's maxFeePerGas and the EIP-2930 one's access list empty; and MV11's transaction followed by one zero byte (draft-evm-charge-00 at tempoxyz/mpp-specs 08e7dd87 L696-697: the signature field contains an EIP-1559, type 2, transaction, RLP-encoded)",
+    "transactions": [
+     "0xf8ab80847735940082ea6094036cbd53842c5426634e7929541ec2318f3dcf7e80b844a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000000000000000000000000000000000000000027108302948ca035ae0a1fc8c77436af04a2960f6a0b05284206ae6020e75e5c22d6a9d0b32dc6a01b0c89367b154880955f9c12abe85d22260c37dc4f9a5c090b31af69eab84bf7",
+     "0x01f8ad83014a3480847735940082ea6094036cbd53842c5426634e7929541ec2318f3dcf7e80b844a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c0000000000000000000000000000000000000000000000000000000000002710c080a06738d5ad090f498afd4c8db349040d7b929f6906a9eb2da668b6eea149b15707a04abf1cbb2f22d36a94473f3b3853d58dd2ec4454d6d71d68f413d4e0ec3f99c3",
+     "0x02f8b283014a3480843b9aca00847735940082ea6094036cbd53842c5426634e7929541ec2318f3dcf7e80b844a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c0000000000000000000000000000000000000000000000000000000000002710c080a0a34e3677320eb8cde04a5f489093250f04ed0e3413517a86c8b75da2e1eeaa6fa01f202c859f65562aff60a16693504cf11a5c5482756b391d92f344993e9a7cb700"
+    ],
+    "expect": "mpp/credential-malformed"
+   }
+  ]
+ },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
   "rows": [

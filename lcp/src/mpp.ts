@@ -71,6 +71,7 @@ import { chargeStellar } from "./mpp-stellar.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { rlpDecode, rlpUint } from "./rlp.js";
 import { failedIfFinal, finalAt, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "./tempo.js";
@@ -169,7 +170,12 @@ export type MppUnsigned =
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
     }
   | {
-      /** An EIP-1559 transaction of the call, or its hash once broadcast. */
+      /**
+       * An EIP-1559 transaction of the call, or its hash once broadcast. Unbroadcast, `complete` takes the signed
+       * transaction, and refuses one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields)
+       * or is signed for a chain other than `chainId` with `mpp/credential-malformed`, the code it gives bytes that are
+       * not hex or are over 64 KiB.
+       */
       request: { kind: "evm-call"; chainId: number; call: { to: Hex; data: Hex }; broadcast: boolean };
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
     };
@@ -624,6 +630,38 @@ async function permit2Authorizer(input: unknown): Promise<Hex | Refusal> {
 
 // ── mpp/charge/evm/transaction and mpp/charge/evm/hash.
 
+/** EIP-1559's transaction type, its EIP-2718 envelope byte. */
+const EIP1559_TYPE = 0x02;
+/** The places among an EIP-1559 transaction's fields of its destination and data (byte strings) and access list. */
+const EIP1559_BYTES = [5, 7];
+const EIP1559_ACCESS_LIST = 8;
+
+/**
+ * The chain id of a signed EIP-1559 transaction: `0x02`, then the RLP list of its twelve fields, chainId, nonce,
+ * maxPriorityFeePerGas, maxFeePerGas, gasLimit, destination, amount, data, accessList, signatureYParity, signatureR and
+ * signatureS (EIP-1559), each integer canonical and the access list a list. Undefined for any other bytes.
+ */
+function eip1559ChainId(wire: Uint8Array): bigint | undefined {
+  if (wire[0] !== EIP1559_TYPE) return undefined;
+  const top = rlpDecode(wire.subarray(1), 3);
+  if (top === undefined || top.kind !== "list" || top.items.length !== 12) return undefined;
+  for (const [i, item] of top.items.entries()) {
+    if (i === EIP1559_ACCESS_LIST) {
+      if (item.kind !== "list") return undefined;
+    } else if (EIP1559_BYTES.includes(i)) {
+      if (item.kind !== "bytes") return undefined;
+    } else if (rlpUint(item) === undefined) return undefined;
+  }
+  return rlpUint(top.items[0]);
+}
+
+/**
+ * The call's request for the buyer's signer, on the challenge's chain. On `hash`, `complete` takes the transaction hash;
+ * on `transaction`, the signed transaction, as draft-evm-charge-00's transaction verification reads it before it
+ * broadcasts (L696-697 and L873-879 at tempoxyz/mpp-specs 08e7dd87): an EIP-1559 transaction whose chain id is the
+ * challenge's `methodDetails.chainId`, else `mpp/credential-malformed`. `bound` reads nothing of it
+ * (`mpp/no-signed-place`), so `complete` gives the code it gives every input it cannot take.
+ */
 function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
     const o = offerFor(choice, h, pairing);
@@ -642,6 +680,7 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
           return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
         }
         if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
+        if (eip1559ChainId(bytesOf(signedTxOrHash)!) !== BigInt(chainId)) return refusal("mpp/credential-malformed");
         return { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
       },
     };
