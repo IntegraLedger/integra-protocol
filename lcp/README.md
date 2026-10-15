@@ -196,7 +196,7 @@ Each entry point is imported by its subpath. The core:
 | `newAtrId()` | A random RFC 9562 version 4 UUID for the ATR's `id`. |
 | `hash(bytes)` | SHA-256 over the bytes as given, as `0x` and lowercase hex. |
 | `hashEquals(a, b)` | True when both are 32-byte hashes, in either case, with the same bytes. |
-| `isRefusal(v)` | True only for a refusal made by the same loaded copy of this package: how a caller tells a refusal from a result. Load one copy. |
+| `isRefusal(v)` | True only for a refusal a copy of this package made, whichever installed copy made it: how a caller tells a refusal from a result. |
 | `readToRepeat(code)` | True when a refusal code is a read to repeat: its answer rests on a read of the rail that may answer differently later, with nothing the caller must change, so the caller asks again later. |
 | `toLcpString(h)`, `fromLcpString(s)` | H as `lcp:sha256:0x…` (`LCP §8.1`), and back. |
 | `toLegalContext(h, url, spelling?)`, `fromLegalContext(o)` | H and the link as `{ legalContext: { type, value, legalContextUrl } }` (`LCP §8.1`), and back. |

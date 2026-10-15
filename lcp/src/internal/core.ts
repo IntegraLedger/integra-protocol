@@ -180,9 +180,11 @@ export function canonicalJson(v: Json): string | CoreRefusal {
  * `v` written as JSON in one walk that checks each member as it reads it, reading each member once; undefined when `v`
  * is not a JSON value this package writes. A value is null, a boolean, a string free of unpaired surrogates, a number
  * (with `integersOnly` a safe integer, otherwise finite), an array with no holes, or an object whose prototype is
- * `Object.prototype` or null, with no symbol-keyed property and no key holding an unpaired surrogate; arrays and
- * objects nest at most 64 levels. Each primitive is written as `JSON.stringify` writes it, and object members in the
- * order given or, with `sorted`, by the UTF-16 code units of their names. `toJSON` is never called.
+ * `Object.prototype` or null, with no enumerable symbol-keyed property and no key holding an unpaired surrogate; arrays
+ * and objects nest at most 64 levels. An object's members are its enumerable own string-keyed properties: a
+ * non-enumerable property, whatever its key, is not read, as a refusal's mark is not. Each primitive is written as
+ * `JSON.stringify` writes it, and object members in the order given or, with `sorted`, by the UTF-16 code units of
+ * their names. `toJSON` is never called.
  */
 function writeJson(v: unknown, depth: number, integersOnly: boolean, sorted: boolean): string | undefined {
   if (v === null || typeof v === "boolean") return JSON.stringify(v);
@@ -205,7 +207,7 @@ function writeJson(v: unknown, depth: number, integersOnly: boolean, sorted: boo
   }
   const proto = Object.getPrototypeOf(v);
   if (proto !== Object.prototype && proto !== null) return undefined;
-  if (Object.getOwnPropertySymbols(v).length > 0) return undefined;
+  if (Object.getOwnPropertySymbols(v).some((s) => Object.prototype.propertyIsEnumerable.call(v, s))) return undefined;
   const keys = Object.keys(v);
   if (sorted) keys.sort();
   const members: string[] = [];

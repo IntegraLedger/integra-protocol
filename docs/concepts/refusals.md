@@ -23,9 +23,9 @@ The [refusal code reference](../reference/refusals.md) lists every code with its
 
 ## Checking a result
 
-`isRefusal(result)` is how a caller tells a refusal from a result: it is true only for a refusal made by the same loaded
-copy of this package, and false for every result, the hashes `bound` returns included. A refusal from a second copy of
-the package reads as a result, so load one copy. Test it before using a result:
+`isRefusal(result)` is how a caller tells a refusal from a result: it is true only for a refusal a copy of this package
+made, and false for every result, the hashes `bound` returns included. Every installed copy of the package recognises
+the refusals of every other, as when two installs serve one process. Test it before using a result:
 
 ```ts
 import { assemble, isRefusal, newAtrId } from "@integraledger/lcp";
@@ -45,7 +45,10 @@ core/slot-reserved
 ## Where a refusal comes from
 
 Only the package makes refusals. `isRefusal`, which the package's own entry points use as well, recognises a refusal by
-where it was made, not by its members, so a value you pass in is never returned to you as a refusal, whatever it holds.
+a mark the package sets on it, not by its members: a non-enumerable own property keyed by the registered symbol
+`Symbol.for("@integraledger/lcp/refusal")`. JSON carries no symbol, and a spread or a `structuredClone` copy holds no
+non-enumerable property, so a value read from JSON or copied is not a refusal, and a value you pass in is never returned
+to you as a refusal, whatever members it holds. `JSON.stringify` and `canonicalJson` write a refusal as its two members.
 A presented payment or credential that the package would otherwise hand back to you unchanged is refused as malformed
 when it carries a `refused` member: `mpp/credential-malformed` for an MPP credential, `x402/payload-malformed` for an
 x402 EIP-3009 payment and `casper/payload-malformed` for a Casper payment. `unplaced`, which gives back the option or

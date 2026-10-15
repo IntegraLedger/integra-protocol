@@ -7,8 +7,9 @@
 // own codes from a caller's. It also checks that page against the source both ways: the page lists every code the
 // source passes to refusal("…") as a string literal, and every code the page lists is passed that way. Any other use
 // of refusal, such as a call with another argument, an alias or an import that renames it, fails the check, since its
-// code cannot be read; a comment is not a use. Each total the page states ("This page lists all N codes") and each cell
-// of its namespace table must count its rows, no code may be listed twice, and the table gives each namespace once.
+// code cannot be read; a comment is not a use, nor is a word in a string literal that is not such a call's code. Each
+// total the page states ("This page lists all N codes") and each cell of its namespace table must count its rows, no
+// code may be listed twice, and the table gives each namespace once.
 // It marks each code in refusals.md that readToRepeat answers true for, from the set that function answers from
 // (lcp/src/internal/reads-to-repeat.ts): the meaning of each such code, and of no other, begins with "**Read to
 // repeat.**". Every code in that set must be one the page lists.
@@ -243,13 +244,14 @@ function codeOf(text) {
  * uses `refusal` in any other way (another argument, no call, an alias, an import that renames it), whose code no check
  * can read; the codes refusals.md lists; and the faults in the page's counts: a stated total or namespace cell that
  * differs from its rows, a code listed more than once, a namespace the table lists more than once, or a table row for a
- * namespace with no codes. A comment is not a use.
+ * namespace with no codes. A comment is not a use, nor is a word in a string literal, such as a module specifier or a
+ * registered symbol's key, once each `refusal("…")` call is read.
  */
 function refusalCodes() {
   const inSource = new Set();
   const unread = [];
+  const blank = (s) => s.replace(/[^\n]/g, " ");
   const literal = new RegExp(String.raw`\brefusal${CODE_ARGUMENT}`, "g");
-  const other = new RegExp(String.raw`\brefusal\b(?!${CODE_ARGUMENT})`, "g");
   const walk = (dir) => {
     for (const f of readdirSync(dir, { withFileTypes: true })) {
       const p = join(dir, f.name);
@@ -257,7 +259,11 @@ function refusalCodes() {
       else if (f.name.endsWith(".ts")) {
         const text = codeOf(readFileSync(p, "utf8"));
         for (const m of text.matchAll(literal)) inSource.add(m[1] ?? m[2]);
-        for (const m of text.matchAll(other)) unread.push(`${relative(root, p)}:${text.slice(0, m.index).split("\n").length}`);
+        // With each call read blanked, and the text of every other string literal, each `refusal` left is a use.
+        const rest = text
+          .replace(literal, blank)
+          .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (m) => m[0] + blank(m.slice(1, -1)) + m[0]);
+        for (const m of rest.matchAll(/\brefusal\b/g)) unread.push(`${relative(root, p)}:${rest.slice(0, m.index).split("\n").length}`);
       }
     }
   };

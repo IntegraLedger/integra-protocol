@@ -421,6 +421,21 @@ describe("digestJson", () => {
     };
     expect(await digestJson(reordered)).toBe("0xcfe6c196f3349d47f51598551a066e8a9661534eb89af6ed3b359e09acd1a256");
   });
+  // An object's members are its enumerable own string-keyed properties, the ones JSON.stringify writes (ECMAScript's
+  // SerializeJSONObject), and a member's name is a string (RFC 8259, section 4): an enumerable symbol-keyed property is
+  // refused as no JSON value, and a non-enumerable property, whatever its key, is not read.
+  it("refuses an enumerable symbol-keyed property and reads no non-enumerable property", async () => {
+    const key = Symbol("k");
+    const shown = { a: 1, [key]: 2 };
+    expect(canonicalJson(shown as never)).toEqual({ refused: true, code: "core/content-not-json" });
+    expect(await digestJson(shown as never)).toEqual({ refused: true, code: "core/content-not-json" });
+    const hidden = { a: 1 };
+    Object.defineProperty(hidden, key, { value: 2 });
+    Object.defineProperty(hidden, "b", { value: 3 });
+    expect(canonicalJson(hidden)).toBe('{"a":1}');
+    expect(JSON.stringify(hidden)).toBe('{"a":1}');
+    expect(await digestJson(hidden)).toBe(await digestJson({ a: 1 }));
+  });
   it("canonicalJson is the form digestJson hashes", async () => {
     const text = canonicalJson(O);
     expect(text).toBe(

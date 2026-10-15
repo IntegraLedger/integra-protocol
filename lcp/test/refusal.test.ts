@@ -1,13 +1,17 @@
 // Refusals are values the package makes. A value handed in, whatever its members, is never passed back as a refusal:
-// `isRefusal` recognises only what `refusal` made, and the readers that hand a caller's payment or credential back,
+// `isRefusal` recognises only what `refusal` made, in this or another installed copy of the package, by the mark it
+// sets, which JSON and a copy do not carry; and the readers that hand a caller's payment or credential back,
 // and the functions that return a copy of a seller's document, refuse one that carries a `refused` member with their
 // own malformed-input code.
-import { readdirSync, readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { place as a2aPlace } from "../src/a2a.js";
 import { delegated as acpDelegated, undelegated as acpUndelegated } from "../src/acp.js";
 import { checkoutMandate } from "../src/ap2.js";
-import { assemble, BINDINGS, fromLcpString, isRefusal as rootIsRefusal } from "../src/index.js";
+import { assemble, BINDINGS, canonicalJson, fromLcpString, isRefusal as rootIsRefusal } from "../src/index.js";
 import { place } from "../src/mpp.js";
 import { credentialOf } from "../src/mpp-challenge.js";
 import { isRefusal, refusal } from "../src/refusal.js";
@@ -43,14 +47,57 @@ describe("isRefusal", () => {
     expect(rootIsRefusal).toBe(isRefusal);
   });
 
-  it("is false for a refusal another loaded copy of the module made, and that copy's isRefusal for this one's", async () => {
-    // A query string makes the module loader evaluate the file again: a second copy, as two installs of the package give.
+  it("is true for a refusal another loaded copy of the module made, and that copy's isRefusal for this one's", async () => {
+    // A query string makes the module loader evaluate the file again: a second copy of the module in one process.
     const specifier = "../src/refusal.js?second-copy";
     const second = (await import(specifier)) as typeof import("../src/refusal.js");
     expect(second.isRefusal).not.toBe(isRefusal);
     expect(second.isRefusal(second.refusal("x402/not-v2"))).toBe(true);
-    expect(isRefusal(second.refusal("x402/not-v2"))).toBe(false);
-    expect(second.isRefusal(refusal("x402/not-v2"))).toBe(false);
+    expect(isRefusal(second.refusal("x402/not-v2"))).toBe(true);
+    expect(second.isRefusal(refusal("x402/not-v2"))).toBe(true);
+  });
+
+  // Two installs of the package each hold their own built files, and the module loader keys a module by its path: the
+  // built refusal module, copied with the one module it imports under two directories, loads as two modules.
+  it("is true for a refusal the built module made under another path, both ways", async () => {
+    const built = new URL("../dist/", import.meta.url);
+    const root = mkdtempSync(join(tmpdir(), "lcp-refusal-"));
+    try {
+      const copies: (typeof import("../src/refusal.js"))[] = [];
+      for (const name of rowsOf(["a", "b"], "two install directories", { exact: 2 })) {
+        mkdirSync(join(root, name, "internal"), { recursive: true });
+        for (const file of ["refusal.js", "internal/reads-to-repeat.js"]) copyFileSync(new URL(file, built), join(root, name, file));
+        copies.push(await import(pathToFileURL(join(root, name, "refusal.js")).href));
+      }
+      const [a, b] = copies as [typeof import("../src/refusal.js"), typeof import("../src/refusal.js")];
+      expect(a.isRefusal).not.toBe(b.isRefusal);
+      expect(a.isRefusal).not.toBe(isRefusal);
+      expect(b.isRefusal(a.refusal("x402/not-v2"))).toBe(true);
+      expect(a.isRefusal(b.refusal("x402/not-v2"))).toBe(true);
+      expect(isRefusal(a.refusal("x402/not-v2"))).toBe(true);
+      expect(a.isRefusal(refusal("x402/not-v2"))).toBe(true);
+      expect(b.isRefusal({ ...a.refusal("x402/not-v2") })).toBe(false);
+      expect(a.isRefusal(structuredClone(b.refusal("x402/not-v2")))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // The mark is a property defined with only a value, so it is non-enumerable, non-writable and non-configurable
+  // (ECMAScript's ValidateAndApplyPropertyDescriptor gives each absent attribute false); JSON.stringify and Object.keys read enumerable string-keyed
+  // properties only, in the order they were created (ECMAScript's SerializeJSONObject and EnumerableOwnProperties);
+  // canonicalJson writes members by the UTF-16 code units of their names (RFC 8785, section 3.2.3).
+  it("carries its mark as a non-enumerable own property keyed by the registered symbol, which JSON does not write", () => {
+    const made = refusal("x402/not-v2");
+    expect(Object.getOwnPropertyDescriptor(made, Symbol.for("@integraledger/lcp/refusal"))).toEqual({
+      value: true,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    expect(Object.keys(made)).toEqual(["refused", "code"]);
+    expect(JSON.stringify(made)).toBe('{"refused":true,"code":"x402/not-v2"}');
+    expect(canonicalJson(made)).toBe('{"code":"x402/not-v2","refused":true}');
   });
 
   it("is false for a value of the same shape that the package did not make", () => {
@@ -59,7 +106,21 @@ describe("isRefusal", () => {
     expect(isRefusal(JSON.parse(JSON.stringify(made)))).toBe(false);
     expect(isRefusal(structuredClone(made))).toBe(false);
     expect(isRefusal({ ...made })).toBe(false);
+    expect(isRefusal(Object.assign({}, made))).toBe(false);
     for (const v of [null, undefined, "x402/not-v2", 0, true, []]) expect(isRefusal(v)).toBe(false);
+  });
+
+  it("never throws, for a proxy whose traps throw or one that is revoked", () => {
+    const throwing = new Proxy(refusal("x402/not-v2"), {
+      getOwnPropertyDescriptor: () => {
+        throw new Error("trap");
+      },
+    });
+    const { proxy, revoke } = Proxy.revocable(refusal("x402/not-v2"), {});
+    expect(isRefusal(proxy)).toBe(true);
+    revoke();
+    expect(isRefusal(throwing)).toBe(false);
+    expect(isRefusal(proxy)).toBe(false);
   });
 });
 

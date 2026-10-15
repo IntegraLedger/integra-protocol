@@ -3,22 +3,37 @@ import { READS_TO_REPEAT } from "./internal/reads-to-repeat.js";
 /** A refusal returned as a value. `code` is `<entry point>/<reason>`. */
 export type Refusal = { refused: true; code: string };
 
-/** Every refusal this package makes. Membership, not shape, is what makes a value a refusal. */
-const made = new WeakSet<object>();
+/**
+ * The mark every refusal carries: a non-enumerable own property keyed by this registered symbol, holding `true`.
+ * `Symbol.for` gives every copy of the package in a process the same symbol, so a refusal one installed copy makes is a
+ * refusal to every other. JSON carries no symbol, and a spread or a `structuredClone` copies no non-enumerable
+ * property, so none of them makes a refusal. The mark is not a member: `JSON.stringify`, `Object.keys` and
+ * `canonicalJson` do not read it.
+ */
+const MARK = Symbol.for("@integraledger/lcp/refusal");
 
 /** A refusal with `code`, recognised by `isRefusal`. */
 export function refusal<C extends string>(code: C): { refused: true; code: C } {
   const r = { refused: true as const, code };
-  made.add(r);
+  Object.defineProperty(r, MARK, { value: true });
   return r;
 }
 
 /**
- * True only for a value `refusal` made. A caller's value shaped `{ refused: true, … }` is not a refusal, so no input is
- * ever passed on as one.
+ * True only for a refusal a copy of this package made: a value whose own property keyed by the registered symbol
+ * `Symbol.for("@integraledger/lcp/refusal")` holds `true`, the mark `refusal` sets as a non-enumerable property. Every
+ * installed copy of the package recognises the refusals of every other, as when two installs serve one process. A
+ * caller's value shaped `{ refused: true, … }`, a value read from JSON, and a spread or `structuredClone` copy of a
+ * refusal hold no mark, so none of them is a refusal, and no such input is ever passed on as one. `JSON.stringify`
+ * writes a refusal as `{"refused":true,"code":…}`. Never throws.
  */
 export function isRefusal(v: unknown): v is Refusal {
-  return typeof v === "object" && v !== null && made.has(v);
+  if (typeof v !== "object" || v === null) return false;
+  try {
+    return Object.getOwnPropertyDescriptor(v, MARK)?.value === true;
+  } catch {
+    return false;
+  }
 }
 
 /**

@@ -410,8 +410,12 @@ failing link a pairing's `read` refuses as `link-not-https`, where every other f
 
 > **isRefusal**(`v`): `v is Refusal`
 
-True only for a value `refusal` made. A caller's value shaped `{ refused: true, … }` is not a refusal, so no input is
-ever passed on as one.
+True only for a refusal a copy of this package made: a value whose own property keyed by the registered symbol
+`Symbol.for("@integraledger/lcp/refusal")` holds `true`, the mark `refusal` sets as a non-enumerable property. Every
+installed copy of the package recognises the refusals of every other, as when two installs serve one process. A
+caller's value shaped `{ refused: true, … }`, a value read from JSON, and a spread or `structuredClone` copy of a
+refusal hold no mark, so none of them is a refusal, and no such input is ever passed on as one. `JSON.stringify`
+writes a refusal as `{"refused":true,"code":…}`. Never throws.
 
 #### Parameters
 
