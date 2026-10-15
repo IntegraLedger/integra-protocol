@@ -136,7 +136,11 @@ What the wallet signs, and how its signed blob completes the payment.
 
 ##### complete()
 
-> **complete**(`signedBlob`): [`Refusal`](index.md#refusal) \| `P`
+> **complete**(`signedBlob`): `Promise`\<[`Refusal`](index.md#refusal) \| `P`\>
+
+The payment of the wallet's signed blob, hex, read as `bound` reads it: a blob that does not decode, or is
+multi-signed, gets the refusal `bound` gives it, and one whose `NetworkID` a node of the option's network does not
+take, as rippled reads it, is `xrpl/network-mismatch`.
 
 ###### Parameters
 
@@ -146,7 +150,7 @@ What the wallet signs, and how its signed blob completes the payment.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `P`
+`Promise`\<[`Refusal`](index.md#refusal) \| `P`\>
 
 ## Type Aliases
 

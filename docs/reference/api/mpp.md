@@ -315,7 +315,7 @@ The id of each MPP pairing `pairingsOf` can name.
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | An EIP-1559 transaction of the call, or its hash once broadcast. Unbroadcast, `complete` takes the signed transaction, and refuses one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields) or is signed for a chain other than `chainId` with `mpp/credential-malformed`, the code it gives bytes that are not hex or are over 64 KiB. |
+| `request` | `object` | An EIP-1559 transaction of the call, or its hash once broadcast. Unbroadcast, `complete` takes the signed transaction: one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields) is `mpp/credential-malformed`, the code it gives bytes that are not hex or are over 64 KiB, and one signed for a chain other than `chainId` is `evm/chain-mismatch`. |
 | `request.broadcast` | `boolean` | - |
 | `request.call` | `object` | - |
 | `request.call.data` | [`Hex`](evm.md#hex) | - |
@@ -425,7 +425,7 @@ What the signer is handed for each `usdc` profile, and how its answer completes 
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | The transfer to sign for the challenge's chain, `chainId`, at that network's version: 0x00 on chain 1, mainnet, and 0x80 on any other. `complete` takes the signed transaction's bytes, and refuses bytes that are empty or over 16 KiB with `mpp/credential-malformed`, bytes a Stacks node does not decode with `mpp/stacks-tx-malformed`, and a transaction of another chain id or version with `mpp/stacks-network-mismatch`, as `bound` refuses them. |
+| `request` | `object` | The transfer to sign for the challenge's chain, `chainId`, at that network's version: 0x00 on chain 1, mainnet, and 0x80 on any other. `complete` takes the signed transaction's bytes, and refuses a value that is not a `Uint8Array` with `mpp/credential-malformed`; bytes that are empty, over 16,384 bytes or that a Stacks node does not decode with `mpp/stacks-tx-malformed`; and a transaction of another chain id or version with `stacks/chain-mismatch`, as `bound` refuses them. |
 | `request.anchorMode` | `"onChainOnly"` | - |
 | `request.args` | `object` | - |
 | `request.args.amount` | `string` | - |
