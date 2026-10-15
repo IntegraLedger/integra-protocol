@@ -1302,6 +1302,26 @@ describe("mpp/session/xrpl", () => {
     expect(await sessionXrpl.recover({ network: "xrpl:1", transaction: V.XS2.expectHash }, reader(V.XS4.rows[0].landed, V.XS2.blob))).toBe(H);
   });
 
+  // until reads the channel's end from the opening as channel.ref holds it (as bound holds it): an opening whose echoed
+  // challenge bound refuses gives no end, as a payment that is not an opening gives none. An XRPL session request's
+  // recipient is a classic address (the filter's), and a challenge of another method is not the pairing's.
+  it("XS2: until reads the opening as channel.ref holds it", async () => {
+    const withCancel = open(encodeXrpl({ ...(decodeXrpl(V.XS2.blob) as object), CancelAfter: V.XS2.cancelAfter }));
+    expect(sessionXrpl.channel.until(withCancel)).toBe(V.XS2.expectUntil);
+    const request = JSON.parse(Buffer.from(C_X.request, "base64url").toString("utf8"));
+    const cases: [string, MppChallenge, string][] = [
+      ["a recipient that is not a classic address", { ...C_X, request: b64u(canonicalJson({ ...request, recipient: "r1" }) as string) }, "mpp/request-malformed"],
+      ["the method lightning", { ...C_X, method: "lightning" }, "mpp/not-this-pairing"],
+    ];
+    for (const [name, challenge, code] of cases) {
+      const c = { ...withCancel, challenge } as MppCredential;
+      expect(await sessionXrpl.bound(c), name).toEqual(refused(code));
+      expect(await sessionXrpl.channel.ref(c), name).toEqual(refused(code));
+      expect(sessionXrpl.channel.until(c), name).toBeUndefined();
+    }
+    expect(sessionXrpl.channel.until({ ...withCancel, payload: { ...withCancel.payload, action: "topUp" } })).toBeUndefined();
+  });
+
   // XS4's rows are the file's landed shapes and their status; a tec result is a final failure that claimed the fee
   // (xrpl.org, "tec Codes"), and only a validated ledger's result is final (xrpl.org, "Finality of Results").
   it("XS4: recover gives XS2's memo only for the opening status reads settled, and reads its blob only then", async () => {

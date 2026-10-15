@@ -1054,20 +1054,36 @@ export function pushedField(presented: unknown, type: string, field: string): st
  * its `request` decodes.
  */
 export function challengeBound(c: unknown): { h: AtrHash; request: { [k: string]: Json } } | Refusal {
+  const read = echoedRead(c, true);
+  return isRefusal(read) ? read : { h: read.h!, request: read.request };
+}
+
+/**
+ * The checks `challengeBound` makes, in its order. With `bound`, the challenge has an id, the id derives from H and
+ * `opaque` names H. Without it, as `issuedFor` reads an issued challenge, which need not carry H, the id is not read
+ * and an `opaque` that is present must decode as a map of strings.
+ */
+function echoedRead(c: unknown, bound: boolean): { h: AtrHash | undefined; request: { [k: string]: Json } } | Refusal {
   if (!isObject(c) || carriesRefused(c) || !isObject(c.challenge) || !isObject(c.payload)) {
     return refusal("mpp/credential-malformed");
   }
-  if (!isChallengeShape(c.challenge) || typeof c.challenge.id !== "string") return refusal("mpp/credential-malformed");
+  if (!isChallengeShape(c.challenge) || (bound && typeof c.challenge.id !== "string")) return refusal("mpp/credential-malformed");
   if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
   if (!jsonWithin(c, MAX_CREDENTIAL)) return refusal("mpp/credential-malformed");
   if (!hasHashableRealm(c.challenge)) return refusal("mpp/challenge-malformed");
-  const h = challengeIdH(c.challenge);
-  if (typeof h !== "string") return h;
-  if (c.challenge.opaque === undefined) return refusal("mpp/opaque-not-this-hash");
-  const map = decodeStringMap(c.challenge.opaque);
-  if (map === undefined) return refusal("mpp/opaque-malformed");
-  const lc = map["legalContext"] === undefined ? null : fromLcpString(map["legalContext"]);
-  if (lc === null || !hashEquals(lc, h)) return refusal("mpp/opaque-not-this-hash");
+  let h: AtrHash | undefined;
+  if (bound) {
+    const fromId = challengeIdH(c.challenge);
+    if (typeof fromId !== "string") return fromId;
+    if (c.challenge.opaque === undefined) return refusal("mpp/opaque-not-this-hash");
+    const map = decodeStringMap(c.challenge.opaque);
+    if (map === undefined) return refusal("mpp/opaque-malformed");
+    const lc = map["legalContext"] === undefined ? null : fromLcpString(map["legalContext"]);
+    if (lc === null || !hashEquals(lc, fromId)) return refusal("mpp/opaque-not-this-hash");
+    h = fromId;
+  } else if (c.challenge.opaque !== undefined && decodeStringMap(c.challenge.opaque) === undefined) {
+    return refusal("mpp/opaque-malformed");
+  }
   const request = decodeObject(c.challenge.request);
   if (request === undefined) return refusal("mpp/request-malformed");
   return { h, request };
@@ -1095,8 +1111,8 @@ export interface Echoed {
  * name. A challenge they refuse gives their refusal, and one that does not offer `pairing` (another intent, method,
  * credential type, mode or `usdc` profile, or no `expires` where `pairing` needs it) is `mpp/not-this-pairing`, as
  * `advertise` and `build` answer for the same challenge. Each pairing's `build` takes the chosen challenge through this
- * one step, and its `bound` and `reference` the echoed one (`echoedFor`), so none of them takes a challenge
- * `pairingsOf` would not name for that pairing.
+ * one step, its `bound` and `reference` the echoed one (`echoedFor`), and a session's `closeRef` the issued one
+ * (`issuedFor`), so none of them takes a challenge `pairingsOf` would not name for that pairing.
  */
 export function checkedFor(c: unknown, pairing: MppPairingId): Checked | Refusal {
   const checked = checkChallenge(c, true, true);
@@ -1112,16 +1128,44 @@ export function echoedFor(
   c: unknown,
   pairing: MppPairingId,
 ): { h: AtrHash; checked: Echoed; payload: { [k: string]: Json } } | Refusal {
-  const b = challengeBound(c);
-  if (isRefusal(b)) return b;
-  const credential = c as MppCredential;
-  const [, intent, method] = pairing.split("/");
-  if (credential.challenge.intent !== intent || credential.challenge.method !== method) return refusal("mpp/not-this-pairing");
-  const held = checkedFor(credential.challenge, pairing);
+  const held = heldFor(c, pairing, true);
   if (isRefusal(held)) return held;
-  const echoed = echoedOf(credential.challenge as MppChallenge & { id: string }, b.request);
+  const credential = c as MppCredential;
+  const echoed = echoedOf(credential.challenge as MppChallenge & { id: string }, held.request);
   if (isRefusal(echoed)) return echoed;
-  return { h: b.h, checked: echoed, payload: credential.payload };
+  return { h: held.h!, checked: echoed, payload: credential.payload };
+}
+
+/**
+ * An issued challenge held for `pairing` as `echoedFor` holds an echoed one, with the code `bound` gives each fault:
+ * the challenge's shape, and its size as the least credential echoing it, `{ challenge, payload: {} }`, has it
+ * (`mpp/credential-malformed`); its realm; an `opaque` that is present decoding as a map of strings; its request; its
+ * intent and method, which must be `pairing`'s (`mpp/not-this-pairing`); and `pairing`'s filter (`checkedFor`). Its id
+ * and the LCP members of its `opaque`, which carry H, are not read: an issued challenge need not carry H. Each session
+ * pairing's `closeRef` holds its challenge through this one step.
+ */
+export function issuedFor(challenge: unknown, pairing: MppPairingId): Checked | Refusal {
+  const held = heldFor({ challenge, payload: {} }, pairing, false);
+  return isRefusal(held) ? held : held.checked;
+}
+
+/**
+ * `echoedRead`'s checks, then the challenge's intent and method, which must be `pairing`'s, and the challenge held to
+ * `pairing`'s filter (`checkedFor`), whose refusal it gives.
+ */
+function heldFor(
+  c: unknown,
+  pairing: MppPairingId,
+  bound: boolean,
+): { h: AtrHash | undefined; request: { [k: string]: Json }; checked: Checked } | Refusal {
+  const read = echoedRead(c, bound);
+  if (isRefusal(read)) return read;
+  const challenge = (c as MppCredential).challenge;
+  const [, intent, method] = pairing.split("/");
+  if (challenge.intent !== intent || challenge.method !== method) return refusal("mpp/not-this-pairing");
+  const checked = checkedFor(challenge, pairing);
+  if (isRefusal(checked)) return checked;
+  return { h: read.h, request: read.request, checked };
 }
 
 /**

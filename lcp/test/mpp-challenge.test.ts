@@ -764,6 +764,52 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     }
     throw new Error(`no padding gives ${size} bytes`);
   };
+  /**
+   * A signed transaction's bytes as the size bound reads them: `size` bytes of 0x11. On the evm transaction pairing
+   * `bound` reads no byte of the transaction, only the size of the credential that carries it, so it answers this wire
+   * as it answers a signed transaction of the same length.
+   */
+  const sizedWireOf = (size: number) => `0x${"11".repeat(size)}` as `0x${string}`;
+  /** The credential the evm transaction and tempo memo builds' complete would give for `wire`, on chCalls and chT. */
+  const transactionCredential = (wire: `0x${string}`): MppCredential => ({
+    challenge: chCalls,
+    source: `did:pkh:eip155:${R_E.methodDetails.chainId}:${from}`,
+    payload: { type: "transaction", signature: wire },
+  });
+  const memoCredential = (wire: `0x${string}`): MppCredential => ({
+    challenge: chT,
+    source: `did:pkh:eip155:${R_T.methodDetails.chainId}:${from}`,
+    payload: { type: "transaction", signature: wire },
+  });
+  let largest: Promise<{ transaction: number; memo: number }> | undefined;
+  /**
+   * The largest signed transaction, in bytes, whose credential `bound` does not refuse for its size: on the evm
+   * transaction pairing, whose bound then gives mpp/no-signed-place, and on the tempo memo pairing, whose bound then
+   * gives H. Bisection over 1,024 to 65,536 bytes, with bound the judge; computed once.
+   */
+  const largestTaken = () =>
+    (largest ??= (async () => {
+      const search = async (taken: (size: number) => Promise<boolean>) => {
+        let lo = 1024;
+        let hi = 65_536;
+        if (!(await taken(lo)) || (await taken(hi))) throw new Error("the bound is not between 1,024 and 65,536 bytes");
+        while (hi - lo > 1) {
+          const mid = Math.floor((lo + hi) / 2);
+          if (await taken(mid)) lo = mid;
+          else hi = mid;
+        }
+        return lo;
+      };
+      const judged = async (answer: unknown, ok: unknown) => {
+        if (JSON.stringify(answer) === JSON.stringify(ok)) return true;
+        if (JSON.stringify(answer) === JSON.stringify(refused("mpp/credential-malformed"))) return false;
+        throw new Error(`bound gave ${JSON.stringify(answer)}`);
+      };
+      return {
+        transaction: await search(async (n) => judged(await evmTransaction.bound(transactionCredential(sizedWireOf(n))), refused("mpp/no-signed-place"))),
+        memo: await search(async (n) => judged(await tempoMemo.bound(memoCredential(tempoWireOf(n))), H)),
+      };
+    })());
   const ZERO = "0x0000000000000000000000000000000000000000" as const;
   /** A TIP-20 channel reserve descriptor of well-formed values: MV7's payer, C_T's recipient and currency, and H. */
   const descriptor = {
@@ -797,8 +843,9 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     for (const bytes of [1, 8192]) expect(auth.complete(`0x${"11".repeat(bytes)}`)).not.toHaveProperty("refused");
     expect((await built(evmHash.build({ challenge: chCalls, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
     expect((await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
-    expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(await evmWireOf(65_536))).not.toHaveProperty("refused");
-    expect((await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H))).complete(tempoWireOf(65_536))).not.toHaveProperty("refused");
+    const { transaction, memo } = await largestTaken();
+    expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(await evmWireOf(transaction))).not.toHaveProperty("refused");
+    expect((await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H))).complete(tempoWireOf(memo))).not.toHaveProperty("refused");
     expect(await evmAuthorization.bound(await credential())).toBe(H);
     expect(parseChallenges(Array.from({ length: 32 }, (_, k) => payment(k)))).toHaveLength(32);
     const agreed = [placed(C_E, V.fixed.agreementUrl), (place([C_E, C_T], H, link, C_T, V.fixed.agreementUrl) as MppChallenge[])[1]!];
@@ -868,21 +915,25 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       await evmPermit2.build({ challenge: chE, from, now: 0 }, H),
       await tempoMemo.build({ challenge: chT, from, now: 0, clientId: 7 as unknown as string }, H),
     ],
-    "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction over 64 KiB":
+    "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction whose credential is over the credential size bound, 64 KiB":
       async () => {
         const auth = await built(evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, H));
         const hash = await built(evmHash.build({ challenge: chCalls, from, now: 0 }, H));
         const push = await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H));
         const transaction = await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H));
         const memo = await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H));
-        const over = `0x${"11".repeat(65_537)}` as const;
+        const largest = await largestTaken();
         return [
           auth.complete("0x"),
           auth.complete(`0x${"11".repeat(8193)}`),
           hash.complete(`0x${"11".repeat(31)}`),
           push.complete(`0x${"11".repeat(33)}`),
-          transaction.complete(over),
-          memo.complete(over),
+          transaction.complete(await evmWireOf(largest.transaction + 1)),
+          transaction.complete(await evmWireOf(48_000)),
+          transaction.complete(await evmWireOf(65_537)),
+          memo.complete(tempoWireOf(largest.memo + 1)),
+          memo.complete(tempoWireOf(48_000)),
+          memo.complete(`0x${"11".repeat(65_537)}`),
         ];
       },
     "a credential over 64 KiB, deeper than 16 levels, or without challenge and payload objects": async () => {

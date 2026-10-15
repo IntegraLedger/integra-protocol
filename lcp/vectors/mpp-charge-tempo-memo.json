@@ -333,12 +333,22 @@
   ]
  },
  "agreedRefusals": {
-  "about": "Refusal codes the specification leaves to the implementation. draft-tempo-charge-00 (tempoxyz/mpp-specs 08e7dd87) has the payer sign a Tempo Transaction for the challenge's methodDetails.chainId, 42431 where the challenge names none (line 166), whose chain ID binding prevents cross-chain replay (lines 717-720), and names no code. A row is MV7's wire T with its chain id, its first field, the row's transactionChainId, presented as a transaction credential against C_T placed at position 0, as MV7's is: bound and reference refuse it with the row's code, and so does the complete of build's answer for C_T placed at position 0, given that wire.",
+  "about": "Refusal codes the specification leaves to the implementation. draft-tempo-charge-00 (tempoxyz/mpp-specs 08e7dd87) has the payer sign a Tempo Transaction for the challenge's methodDetails.chainId, 42431 where the challenge names none (line 166), whose chain ID binding prevents cross-chain replay (lines 717-720), and names no code. A row with transactionChainId is MV7's wire T with its chain id, its first field, the row's; a row with padding is MV7's wire T with a second call after its transferWithMemo, to C_T's currency with value 0, whose input is padding zero bytes; and a row with calldata is MV7's wire T with the row's calldata as its call's input. Each is presented as a transaction credential against C_T placed at position 0, as MV7's is, its source the did:pkh of fixed.payer on chain 42431, as complete writes it for a build from fixed.payer: bound and reference refuse it with the row's code, and so does the complete of build's answer for C_T placed at position 0, given that wire, which gives the code bound gives the credential it would give. With padding that credential is over the credential size bound, 64 KiB.",
   "rows": [
    {
     "case": "the wire T signed for chain 4217, the row's, where C_T's methodDetails.chainId is 42431",
     "transactionChainId": 4217,
     "expect": "tempo/tx-malformed"
+   },
+   {
+    "case": "MV7's wire T with a second call after its transferWithMemo, to C_T's currency, whose input is the row's padding zero bytes: the credential complete would give for it is over the credential size bound, 64 KiB",
+    "padding": 40000,
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "MV7's wire T whose transferWithMemo carries the attribution memo of C_T placed at position 1, MV7.expectMemoPosition1, in place of MV7.expectMemo: the row's calldata, against C_T placed at position 0",
+    "calldata": "0x95777d59000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000f4240ef1ed712017b4364449d1dc19a8a7b00000000000000000000494da423201d8a",
+    "expect": "tempo/memo-not-bound"
    }
   ]
  }

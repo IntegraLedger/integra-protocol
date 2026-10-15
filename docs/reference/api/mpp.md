@@ -360,7 +360,7 @@ The id of each MPP pairing `pairingsOf` can name.
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction, and refuses one that does not decode, an empty one among them, or that is signed for a chain other than `chainId` with `tempo/tx-malformed`, as `bound` refuses it. |
+| `request` | `object` | push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction and returns no credential `bound` refuses: it gives the code `bound` gives the credential it would give, so it refuses a transaction that does not decode, an empty one among them, or that is signed for a chain other than `chainId` (`tempo/tx-malformed`), one without exactly one `transferWithMemo` to the currency carrying this challenge's attribution memo (`tempo/memo-not-bound`, `tempo/ambiguous`), and one whose credential is over the credential size bound (`mpp/credential-malformed`). |
 | `request.broadcast` | `boolean` | - |
 | `request.call` | `object` | - |
 | `request.call.data` | [`Hex`](evm.md#hex) | - |
@@ -378,7 +378,7 @@ The id of each MPP pairing `pairingsOf` can name.
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction, and refuses one that does not decode, an empty one among them, or that is signed for a chain other than `chainId` with `tempo/tx-malformed`, as `bound` refuses it. |
+| `request` | `object` | A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed transaction and returns no credential `bound` refuses: it gives the code `bound` gives the credential it would give, so it refuses a transaction that does not decode, an empty one among them, or that is signed for a chain other than `chainId` (`tempo/tx-malformed`), one without exactly one `transferWithMemo` to the currency carrying this challenge's attribution memo (`tempo/memo-not-bound`, `tempo/ambiguous`), and one whose credential is over the credential size bound (`mpp/credential-malformed`). |
 | `request.broadcast` | `boolean` | - |
 | `request.calls` | readonly `object`[] | - |
 | `request.chainId` | `number` | - |
@@ -394,7 +394,7 @@ The id of each MPP pairing `pairingsOf` can name.
 
 | Name | Type | Description |
 | ------ | ------ | ------ |
-| `request` | `object` | An EIP-1559 transaction of the call, or its hash once broadcast. Unbroadcast, `complete` takes the signed transaction: one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields) is `mpp/credential-malformed`, the code it gives bytes that are not hex or are over 64 KiB, and one signed for a chain other than `chainId` is `evm/chain-mismatch`. |
+| `request` | `object` | An EIP-1559 transaction of the call, or its hash once broadcast. Unbroadcast, `complete` takes the signed transaction: one that is not 1 to 65,536 bytes of hex, or whose credential is over the credential size bound, is `mpp/credential-malformed`, the code `bound` gives that credential before its verdict, `mpp/no-signed-place`; then one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields) is `mpp/credential-malformed`, and one signed for a chain other than `chainId` is `evm/chain-mismatch`. |
 | `request.broadcast` | `boolean` | - |
 | `request.call` | `object` | - |
 | `request.call.data` | [`Hex`](evm.md#hex) | - |
@@ -465,12 +465,16 @@ EIP-3009's `ReceiveWithAuthorization`: the same fields as `TransferWithAuthoriza
 
 > **voucher**(`funded`): [`Refusal`](index.md#refusal) \| [`VoucherTypedData`](#vouchertypeddata)
 
-`funded`: the funding signature, transaction hash or signed `0x76` transaction. A `tempo-call` funding's signed
-transaction that does not decode, an empty one among them, that is signed for a chain other than
+`funded`: the funding signature, transaction hash or signed `0x76` transaction. A `tempo-call` funding's `complete`
+returns no credential `bound` refuses: it gives the code `bound` gives the credential it would give for the signed
+transaction, and `voucher` refuses the same transactions, with the shortest voucher signature `complete` takes, one
+byte. So both refuse a transaction that does not decode, an empty one among them, is signed for a chain other than
 `funding.chainId`, whose signature gives no sender (a keychain signature of type `0x03` among them), or whose
 `aa_authorization_list` holds an entry that is not a list of four items ending in a signature or one signed with
-a keychain signature of type `0x03`, is refused `tempo/tx-malformed` here and by `complete`, as `bound` refuses
-it.
+a keychain signature of type `0x03` (`tempo/tx-malformed`); one without the `open` call `funding.call` describes,
+to its escrow with H as its salt; one whose sender is not the build's `from`, or whose `open` call names another
+payee, operator, token or authorizedSigner, which the credential's descriptor or channel id names; and one whose
+credential is over the credential size bound (`mpp/credential-malformed`).
 
 ###### Parameters
 

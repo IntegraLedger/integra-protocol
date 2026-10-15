@@ -150,9 +150,12 @@ export type MppUnsigned =
     }
   | {
       /**
-       * push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the signed
-       * transaction, and refuses one that does not decode, an empty one among them, or that is signed for a chain other
-       * than `chainId` with `tempo/tx-malformed`, as `bound` refuses it.
+       * push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the
+       * signed transaction and returns no credential `bound` refuses: it gives the code `bound` gives the credential it
+       * would give, so it refuses a transaction that does not decode, an empty one among them, or that is signed for a
+       * chain other than `chainId` (`tempo/tx-malformed`), one without exactly one `transferWithMemo` to the currency
+       * carrying this challenge's attribution memo (`tempo/memo-not-bound`, `tempo/ambiguous`), and one whose
+       * credential is over the credential size bound (`mpp/credential-malformed`).
        */
       request: {
         kind: "tempo-call";
@@ -165,10 +168,13 @@ export type MppUnsigned =
     }
   | {
       /**
-       * A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one
-       * per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes
-       * the signed transaction, and refuses one that does not decode, an empty one among them, or that is signed for a
-       * chain other than `chainId` with `tempo/tx-malformed`, as `bound` refuses it.
+       * A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then
+       * one per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete`
+       * takes the signed transaction and returns no credential `bound` refuses: it gives the code `bound` gives the
+       * credential it would give, so it refuses a transaction that does not decode, an empty one among them, or that is
+       * signed for a chain other than `chainId` (`tempo/tx-malformed`), one without exactly one `transferWithMemo` to
+       * the currency carrying this challenge's attribution memo (`tempo/memo-not-bound`, `tempo/ambiguous`), and one
+       * whose credential is over the credential size bound (`mpp/credential-malformed`).
        */
       request: {
         kind: "tempo-calls";
@@ -182,9 +188,10 @@ export type MppUnsigned =
   | {
       /**
        * An EIP-1559 transaction of the call, or its hash once broadcast. Unbroadcast, `complete` takes the signed
-       * transaction: one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve fields) is
-       * `mpp/credential-malformed`, the code it gives bytes that are not hex or are over 64 KiB, and one signed for a
-       * chain other than `chainId` is `evm/chain-mismatch`.
+       * transaction: one that is not 1 to 65,536 bytes of hex, or whose credential is over the credential size bound,
+       * is `mpp/credential-malformed`, the code `bound` gives that credential before its verdict,
+       * `mpp/no-signed-place`; then one that is not an EIP-1559 transaction (`0x02` and the RLP list of its twelve
+       * fields) is `mpp/credential-malformed`, and one signed for a chain other than `chainId` is `evm/chain-mismatch`.
        */
       request: { kind: "evm-call"; chainId: number; call: { to: Hex; data: Hex }; broadcast: boolean };
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
@@ -672,10 +679,12 @@ function eip1559ChainId(wire: Uint8Array): bigint | undefined {
 
 /**
  * The call's request for the buyer's signer, on the challenge's chain. On `hash`, `complete` takes the transaction hash;
- * on `transaction`, the signed transaction, as draft-evm-charge-00's transaction verification reads it before it
- * broadcasts (L696-697 and L873-879 at tempoxyz/mpp-specs 08e7dd87): an EIP-1559 transaction, else
- * `mpp/credential-malformed`, whose chain id is the challenge's `methodDetails.chainId`, else `evm/chain-mismatch`.
- * `bound` reads nothing of it (`mpp/no-signed-place`).
+ * on `transaction`, the signed transaction, 1 to 65,536 bytes of hex, else `mpp/credential-malformed`. It holds the
+ * credential with `bound`'s hold of the echoed challenge (`echoedFor`), which `bound` makes before its verdict: a
+ * credential over the credential size bound is `mpp/credential-malformed`, as `bound` gives it. It then reads the
+ * transaction as draft-evm-charge-00's transaction verification reads it before it broadcasts (L696-697 and L873-879
+ * at tempoxyz/mpp-specs 08e7dd87): an EIP-1559 transaction, else `mpp/credential-malformed`, whose chain id is the
+ * challenge's `methodDetails.chainId`, else `evm/chain-mismatch`. `bound` reads nothing of it (`mpp/no-signed-place`).
  */
 function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
@@ -695,10 +704,13 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
           return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
         }
         if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
+        const credential: MppCredential = { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
+        const held = echoedFor(credential, pairing);
+        if (isRefusal(held)) return held;
         const txChain = eip1559ChainId(bytesOf(signedTxOrHash)!);
         if (txChain === undefined) return refusal("mpp/credential-malformed");
         if (txChain !== BigInt(chainId)) return refusal("evm/chain-mismatch");
-        return { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
+        return credential;
       },
     };
   };
@@ -758,9 +770,13 @@ function transferCalldata(to: Hex, amount: bigint): Hex {
 
 /**
  * The Tempo charge's calls for the buyer's signer. On push, `complete` takes the transaction hash; on memo, the signed
- * transaction, read as `bound` reads it: one that is not hex bytes, or is over 64 KiB, is `mpp/credential-malformed`;
- * one that does not decode, an empty one among them, gives `decodeTempoTx`'s refusal, `tempo/tx-malformed`; and one
- * signed for a chain other than the request's `chainId` is `tempo/tx-malformed`.
+ * transaction, and it returns the credential only once `bound`'s read of it (`signedMemoCall`) takes it, and otherwise
+ * gives that read's refusal, so it returns no credential `bound` refuses: a transaction that is not hex bytes, or whose
+ * credential is over the credential size bound, 64 KiB, is `mpp/credential-malformed`; one that does not decode, an
+ * empty one among them, gives `decodeTempoTx`'s refusal, `tempo/tx-malformed`; one signed for a chain other than the
+ * request's `chainId` is `tempo/tx-malformed`; and one without exactly one `transferWithMemo` to the currency carrying
+ * this challenge's attribution memo is `tempo/memo-not-bound` or `tempo/ambiguous`. Nothing else in the transaction is
+ * compared with what `build` made, its sender and the splits' calls among it: `bound` does not read them.
  */
 function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
@@ -792,11 +808,9 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
         if (normalHash(signedTxOrHash) === null) return refusal("mpp/credential-malformed");
         return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
       }
-      if (!isHexBytes(signedTxOrHash, 0, MAX_WIRE)) return refusal("mpp/credential-malformed");
-      const tx = decodeTempoTx(bytesOf(signedTxOrHash)!);
-      if (isRefusal(tx)) return tx;
-      if (tx.chainId !== BigInt(chainId)) return refusal("tempo/tx-malformed");
-      return { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
+      const credential: MppCredential = { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
+      const m = signedMemoCall(credential);
+      return isRefusal(m) ? m : credential;
     };
     return splits === undefined
       ? { request: { kind: "tempo-call", chainId, call: calls[0]!, validBefore, broadcast }, complete }

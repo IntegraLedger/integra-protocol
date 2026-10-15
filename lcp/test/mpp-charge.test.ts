@@ -613,14 +613,19 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
   });
 });
 
-/** The vector's wire T: `0x76` ‖ rlp([...]) with `calldata` as the one call, and a 65-byte 0x11 signature. */
-function wireT(calldata: string, chainId = 42431): Uint8Array {
+/**
+ * The vector's wire T: `0x76` ‖ rlp([...]) with `calldata` as its call, then a second call to PATHUSD with value 0 and
+ * `padding` zero bytes as its input where `padding` is given, and a 65-byte 0x11 signature.
+ */
+function wireT(calldata: string, chainId = 42431, padding?: number): Uint8Array {
+  const calls: unknown[] = [[PATHUSD, num(0), calldata as ViemHex]];
+  if (padding !== undefined) calls.push([PATHUSD, num(0), `0x${"00".repeat(padding)}`]);
   const body = toRlp([
     num(chainId),
     num(1),
     num(2),
     num(100000),
-    [[PATHUSD, num(0), calldata as ViemHex]],
+    calls as never,
     [],
     num(0),
     num(0),
@@ -753,26 +758,37 @@ describe("mpp-charge-tempo-memo.json", () => {
 
   // Tempo's charge draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-charge-00.md :717-720): a Tempo Transaction's chain
   // ID binds it to one chain, and the charge pays on methodDetails.chainId, 42431 where the challenge names none
-  // (:166). The chain id is the transaction's first field, read here with viem's fromRlp. build's complete refuses the
-  // row's transaction with the row's code, as bound and reference refuse the credential that carries it.
-  it("agreedRefusals: a memo transfer signed for another chain than the challenge's", async () => {
-    const rows = rowsOf(M.agreedRefusals.rows as { case: string; transactionChainId: number; expect: string }[], "mpp-charge-tempo-memo.json agreedRefusals.rows", {
-      exact: 1,
-    });
-    const presented = (c: MppChallenge, chainId: number): MppCredential => {
-      const wire = wireT(M.MV7.expectCalldata, chainId);
-      expect(fromRlp(toHex(wire.subarray(1)))[0]).toBe(num(chainId));
-      return { challenge: c, source: "", payload: { type: "transaction", signature: toHex(wire) } } as MppCredential;
+  // (:166). The chain id is the transaction's first field, read here with viem's fromRlp. build's complete returns no
+  // credential bound refuses: it refuses the row's transaction with the row's code, as bound and reference refuse the
+  // credential complete would give for it, which carries it with the source complete writes. A padding row's credential
+  // is over the credential size bound; a calldata row's call carries the memo of another challenge
+  // (draft-tempo-charge-00 binds the memo to the challenge id). The same transaction without the row's change is
+  // completed, and gives H.
+  it("agreedRefusals: complete refuses a memo transfer with the code bound gives the credential it would give", async () => {
+    type Row = { case: string; transactionChainId?: number; padding?: number; calldata?: string; expect: string };
+    const rows = rowsOf(M.agreedRefusals.rows as Row[], "mpp-charge-tempo-memo.json agreedRefusals.rows", { exact: 3 });
+    const source = `did:pkh:eip155:42431:${M.fixed.payer}`;
+    const wireOf = (row: Row) => wireT(row.calldata ?? M.MV7.expectCalldata, row.transactionChainId ?? 42431, row.padding);
+    const presented = (c: MppChallenge, row: Row): MppCredential => {
+      const wire = wireOf(row);
+      expect(fromRlp(toHex(wire.subarray(1)))[0]).toBe(num(row.transactionChainId ?? 42431));
+      return { challenge: c, source, payload: { type: "transaction", signature: toHex(wire) } } as MppCredential;
     };
-    const u = await tempoMemo.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
+    const u = await tempoMemo.build({ challenge: ch, from: M.fixed.payer, now: A.fixed.now }, H);
     if ("refused" in u) throw new Error(u.code);
-    expect(await tempoMemo.bound(u.complete(toHex(wireT(M.MV7.expectCalldata))))).toBe(H);
+    const own = u.complete(toHex(wireT(M.MV7.expectCalldata)));
+    expect(own).toEqual(presented(ch, { case: "MV7's wire T", expect: "" }));
+    expect(await tempoMemo.bound(own)).toBe(H);
     for (const row of rows) {
       const refused = { refused: true, code: row.expect };
-      expect(u.complete(toHex(wireT(M.MV7.expectCalldata, row.transactionChainId))), row.case).toEqual(refused);
-      expect(await tempoMemo.bound(presented(ch, row.transactionChainId)), row.case).toEqual(refused);
-      expect(await tempoMemo.reference(presented(ch, row.transactionChainId)), row.case).toEqual(refused);
+      expect([row.transactionChainId, row.padding, row.calldata].filter((m) => m !== undefined), row.case).toHaveLength(1);
+      expect(u.complete(toHex(wireOf(row))), row.case).toEqual(refused);
+      expect(await tempoMemo.bound(presented(ch, row)), row.case).toEqual(refused);
+      expect(await tempoMemo.reference(presented(ch, row)), row.case).toEqual(refused);
     }
+    expect(wireOf({ case: "", calldata: M.MV7.expectCalldata.slice(0, -64) + M.MV7.expectMemoPosition1.slice(2), expect: "" })).toEqual(
+      wireOf(rows.find((r) => r.calldata !== undefined)!),
+    );
     // viem's tempo Transaction.deserialize reads neither "0x76", the type byte with no RLP list after it, nor "0x", no
     // bytes at all, as a Tempo transaction: complete refuses each with tempo/tx-malformed, the code bound gives the
     // credential that carries it.
@@ -787,8 +803,8 @@ describe("mpp-charge-tempo-memo.json", () => {
     delete bare.methodDetails.chainId;
     const onDefault = placedOf(challenge("tempo", "charge", JSON.stringify(bare)));
     expect(onDefault.id).toBe(ch.id);
-    expect(await tempoMemo.bound(presented(onDefault, 42431))).toBe(H);
-    expect(await tempoMemo.bound(presented(onDefault, 4217))).toEqual({ refused: true, code: "tempo/tx-malformed" });
+    expect(await tempoMemo.bound(presented(onDefault, { case: "chain 42431", transactionChainId: 42431, expect: "" }))).toBe(H);
+    expect(await tempoMemo.bound(presented(onDefault, { case: "chain 4217", transactionChainId: 4217, expect: "" }))).toEqual({ refused: true, code: "tempo/tx-malformed" });
   });
 
   it("decodeTempoTx refuses what is not a 0x76 transaction", async () => {

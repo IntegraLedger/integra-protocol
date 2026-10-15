@@ -390,6 +390,32 @@ describe("mpp-session-tempo.json", () => {
     authorizedSigner: ZERO,
     expiringNonceHash: nonceHash,
   });
+  const NINE = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
+  const SEVEN = ["address", "address", "address", "bytes32", "address", "address", "uint256"].map((type) => ({ type }));
+  const lower = (a: string) => a.toLowerCase() as `0x${string}`;
+  /**
+   * The credential build's complete would give for the signed transaction `t` under a build for `payer`, written here
+   * from `own`, the credential complete gives for an opening it takes on the same protocol: `t` in its place, `source`
+   * naming `payer`, and its channel id as the draft computes it, encoded with viem: on v1 the escrow's computeChannelId
+   * (:299-312) over `payer`, fixed.recipient, fixed.pathUSD, H, `own`'s authorizedSigner, fixed.escrowV1 and chain
+   * 42431; on v2 the keccak256 (:339-352) over `own`'s descriptor with `payer` as its payer and, as its
+   * expiringNonceHash, keccak256 of the bytes `t`'s sender signed and `payer`.
+   */
+  const completedFor = (own: MppCredential, t: { wire: Uint8Array; signing: ViemHex }, payer: `0x${string}` = f.payer): MppCredential => {
+    const payload: { [k: string]: Json } = { ...own.payload, transaction: toHex(t.wire) };
+    const built = own.payload["descriptor"] as ReturnType<typeof descriptor> | undefined;
+    if (built === undefined) {
+      const signer = lower(String(own.payload["authorizedSigner"]));
+      payload["channelId"] = keccak256(encodeAbiParameters(SEVEN, [lower(payer), lower(f.recipient), lower(f.pathUSD), H, signer, lower(f.escrowV1), 42431n]));
+    } else {
+      const d = { ...built, payer, expiringNonceHash: keccak256(concat([t.signing, payer])) };
+      payload["descriptor"] = d;
+      payload["channelId"] = keccak256(
+        encodeAbiParameters(NINE, [lower(d.payer), lower(d.payee), d.operator, lower(d.token), d.salt, d.authorizedSigner, d.expiringNonceHash, lower(f.escrowV2), 42431n]),
+      );
+    }
+    return { ...own, source: `did:pkh:eip155:42431:${payer}`, payload };
+  };
 
   it("the constants are the keccak of their signatures", () => {
     const c = T.constants;
@@ -527,7 +553,7 @@ describe("mpp-session-tempo.json", () => {
     if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
     expect(u.funding.call.data.slice(0, 10)).toBe(OPEN_V1_SELECTOR);
     expect(toBytes(u.funding.call.data).length).toBe(164);
-    const voucher = u.voucher(toHex(await openWire(u.funding.call.data)));
+    const voucher = u.voucher(toHex(await openWire(u.funding.call.data, sig65, f.escrowV1)));
     expect(voucher).toMatchObject({ domain: { name: "Tempo Stream Channel" }, message: { channelId: T.TS5.expectChannelId } });
     affix(hashTypedData(forViem(voucher)), T.TS5.expectVoucher);
     expect(hashTypedData(forViem(voucher))).toBe(T.TS5.expectVoucher.whole);
@@ -731,6 +757,8 @@ describe("mpp-session-tempo.json", () => {
       transactionChainId?: number;
       faults?: string[];
       senderSignature?: string;
+      from?: Address;
+      padding?: number;
       payer?: Address;
       payee?: Address;
       token?: Address;
@@ -741,12 +769,24 @@ describe("mpp-session-tempo.json", () => {
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 5,
       keep: [
-        "the v2 descriptor rows, which carry no sessionProtocol, transactionChainId, faults or senderSignature",
-        (r) => r.sessionProtocol === undefined && r.transactionChainId === undefined && r.faults === undefined && r.senderSignature === undefined,
+        "the v2 descriptor rows, which carry no sessionProtocol, transactionChainId, faults, senderSignature, from or padding",
+        (r) =>
+          r.sessionProtocol === undefined &&
+          r.transactionChainId === undefined &&
+          r.faults === undefined &&
+          r.senderSignature === undefined &&
+          r.from === undefined &&
+          r.padding === undefined,
       ],
       leave: [
-        'the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs, and the senderSignature rows, which "agreedRefusals: an opening whose transaction carries a 0x03 keychain signature" runs',
-        (r) => r.sessionProtocol === "v1" || r.transactionChainId !== undefined || r.faults !== undefined || r.senderSignature !== undefined,
+        'the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs, the senderSignature rows, which "agreedRefusals: an opening whose transaction carries a 0x03 keychain signature" runs, and the from and padding rows, which "agreedRefusals: build\'s voucher and complete refuse a transaction with the code bound gives the credential complete would give" runs',
+        (r) =>
+          r.sessionProtocol === "v1" ||
+          r.transactionChainId !== undefined ||
+          r.faults !== undefined ||
+          r.senderSignature !== undefined ||
+          r.from !== undefined ||
+          r.padding !== undefined,
       ],
     });
     const Tx = TempoTransaction.z_TxEnvelopeTempo;
@@ -780,21 +820,23 @@ describe("mpp-session-tempo.json", () => {
 
   // The payer is the address Tempo recovers from the open transaction's signature (draft-tempo-session-00 :1181-1182).
   // Tempo's signature forms (tempoxyz/tempo 9bb63953, crates/primitives/src/transaction/tt_signature.rs): secp256k1's
-  // 65 bytes, P256 (0x01), WebAuthn (0x02), and keychain, an account and an inner signature: 0x03, whose inner signature
-  // signs the hash, and 0x04, whose inner signature signs keccak256(0x04 ‖ the hash ‖ the account). Tempo refuses 0x03
-  // once T1C is active (tempoxyz/tempo 7d4fd03, crates/revm/src/handler.rs, validate_version), as it is on chains 4217
-  // and 42431, so the forms that give a sender are the other four, and 0x03 is among the forms refused below. Each
-  // signature here is written with ox's SignatureEnvelope.serialize, P256's and WebAuthn's signed with noble's p256, and
-  // its sender is ox's extractAddress with root true. An opening built for that sender gives H; one built for another
-  // payer is refused.
+  // 65 bytes, P256 (0x01), WebAuthn (0x02), and keychain, an account and an inner signature: 0x03, whose inner
+  // signature signs the hash, and 0x04, whose inner signature signs keccak256(0x04 ‖ the hash ‖ the account). Tempo
+  // refuses 0x03 once T1C is active (tempoxyz/tempo 7d4fd03, crates/revm/src/handler.rs, validate_version), as it is on
+  // chains 4217 and 42431, so the forms that give a sender are the other four, and 0x03 is among the forms refused
+  // below. Each signature here is written with ox's SignatureEnvelope.serialize, P256's and WebAuthn's signed with
+  // noble's p256, and its sender is ox's extractAddress with root true. An opening built for that sender gives H.
+  // build's voucher and complete for another payer refuse the transaction with tempo/descriptor-mismatch, the code
+  // bound gives the credential complete would give for it, whose descriptor names that payer (completedFor).
   it("v2: the descriptor's payer is the open transaction's sender, in each Tempo signature form", async () => {
     const Sig = TempoTransaction.z_SignatureEnvelope;
     const ch = placed(V2);
     const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
     if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
     const data = u.funding.call.data;
-    const openedBy = async (from: `0x${string}`, wire: Uint8Array) =>
-      unsignedOf(await sessionTempo.build({ challenge: ch, from, now: f.now, deposit }, H)).complete(toHex(wire), `0x${"66".repeat(65)}`) as MppCredential;
+    const voucherSignature = `0x${"66".repeat(65)}` as const;
+    const buildFor = async (from: `0x${string}`) => unsignedOf(await sessionTempo.build({ challenge: ch, from, now: f.now, deposit }, H));
+    const openedBy = async (from: `0x${string}`, wire: Uint8Array) => (await buildFor(from)).complete(toHex(wire), voucherSignature) as MppCredential;
     const p256Key = new Uint8Array(32).fill(7);
     const point = p256.getPublicKey(p256Key, false);
     const publicKey = { prefix: 4, x: BigInt(toHex(point.subarray(1, 33))), y: BigInt(toHex(point.subarray(33))) };
@@ -815,17 +857,23 @@ describe("mpp-session-tempo.json", () => {
       ["keychain v2", async (hash) => ({ type: "keychain", version: "v2", userAddress: OTHER, inner: await secp(keccak256(concat(["0x04", hash, OTHER]))) })],
     ];
     const senders: string[] = [];
+    const mismatch = { refused: true, code: "tempo/descriptor-mismatch" };
     for (const [name, form] of forms) {
       let sender = "" as `0x${string}`;
-      const wire = await openWire(data, async (hash) => {
+      const t = await signedWire([[f.escrowV2, "0x", data]], async (hash) => {
         const envelope = await form(hash);
         sender = Sig.extractAddress({ payload: hash, signature: envelope as never, root: true });
-        return Sig.serialize(envelope as never);
+        return Sig.serialize(envelope as never) as ViemHex;
       });
       senders.push(sender.toLowerCase());
-      expect(await sessionTempo.bound(await openedBy(sender, wire)), name).toBe(H);
+      const bySender = await openedBy(sender, t.wire);
+      expect(await sessionTempo.bound(bySender), name).toBe(H);
+      expect(completedFor(bySender, t, sender), name).toEqual(bySender);
       const another = sender.toLowerCase() === f.payer.toLowerCase() ? OTHER : f.payer;
-      expect(await sessionTempo.bound(await openedBy(another, wire)), name).toEqual({ refused: true, code: "tempo/descriptor-mismatch" });
+      const forAnother = await buildFor(another);
+      expect(forAnother.voucher(toHex(t.wire)), name).toEqual(mismatch);
+      expect(forAnother.complete(toHex(t.wire), voucherSignature), name).toEqual(mismatch);
+      expect(await sessionTempo.bound(completedFor(bySender, t, another)), name).toEqual(mismatch);
     }
     const p256Address = `0x${keccak256(point.subarray(1)).slice(26)}`;
     expect(senders).toEqual([f.payer, p256Address, p256Address, OTHER].map((a) => a.toLowerCase()));
@@ -864,6 +912,8 @@ describe("mpp-session-tempo.json", () => {
       transactionChainId?: number;
       faults?: string[];
       senderSignature?: string;
+      from?: `0x${string}`;
+      padding?: number;
       payer: `0x${string}`;
       channelId: `0x${string}`;
       expect: string;
@@ -872,11 +922,23 @@ describe("mpp-session-tempo.json", () => {
       exact: 1,
       keep: [
         "the v1 channelId rows",
-        (r) => r.sessionProtocol === "v1" && r.transactionChainId === undefined && r.faults === undefined && r.senderSignature === undefined,
+        (r) =>
+          r.sessionProtocol === "v1" &&
+          r.transactionChainId === undefined &&
+          r.faults === undefined &&
+          r.senderSignature === undefined &&
+          r.from === undefined &&
+          r.padding === undefined,
       ],
       leave: [
-        'the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs, and the senderSignature rows, which "agreedRefusals: an opening whose transaction carries a 0x03 keychain signature" runs',
-        (r) => r.sessionProtocol === undefined || r.transactionChainId !== undefined || r.faults !== undefined || r.senderSignature !== undefined,
+        'the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs, the senderSignature rows, which "agreedRefusals: an opening whose transaction carries a 0x03 keychain signature" runs, and the from and padding rows, which "agreedRefusals: build\'s voucher and complete refuse a transaction with the code bound gives the credential complete would give" runs',
+        (r) =>
+          r.sessionProtocol === undefined ||
+          r.transactionChainId !== undefined ||
+          r.faults !== undefined ||
+          r.senderSignature !== undefined ||
+          r.from !== undefined ||
+          r.padding !== undefined,
       ],
     });
     const seven = ["address", "address", "address", "bytes32", "address", "address", "uint256"].map((type) => ({ type }));
@@ -903,8 +965,9 @@ describe("mpp-session-tempo.json", () => {
   // (draft-tempo-session-00 :299-312) gives over its sender and the payee, token, salt and authorizedSigner of its open
   // call, open(payee, token, deposit, salt, authorizedSigner) (:429-435), each call encoded here with viem. build's
   // channelId is over the buyer's address and the challenge's recipient and currency, so a transaction whose call names
-  // another party, or that another key signs, opens another channel. The second key's address, 0x3C44…93BC, is the
-  // third of Hardhat's default development accounts.
+  // another party, or that another key signs, opens another channel: build's voucher and complete refuse it with
+  // mpp/channel-not-bound, the code bound and reference give the credential complete would give for it (completedFor).
+  // The second key's address, 0x3C44…93BC, is the third of Hardhat's default development accounts.
   it("v1: the payload's channelId is the channel its open transaction opens", async () => {
     const OTHER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as const;
     const otherKey = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" as const;
@@ -917,22 +980,31 @@ describe("mpp-session-tempo.json", () => {
     const args: readonly unknown[] = [f.recipient.toLowerCase(), f.pathUSD, deposit, H, ZERO];
     const call = (a: readonly unknown[]) => encodeFunctionData({ abi: v1Open, functionName: "open", args: a as never });
     expect(call(args)).toBe(T.TS5.expectOpenCalldata);
-    const wire = (a: readonly unknown[], signer = sig65) => openWire(call(a), signer, f.escrowV1);
+    const signedCall = (a: readonly unknown[], signer = sig65) => signedWire([[f.escrowV1, "0x", call(a)]], signer);
+    const wire = async (a: readonly unknown[], signer = sig65) => (await signedCall(a, signer)).wire;
     const ch = placed(V1);
-    const openedBy = async (from: `0x${string}`, signed: Uint8Array) =>
-      unsignedOf(await sessionTempo.build({ challenge: ch, from, now: f.now, deposit }, H)).complete(toHex(signed), `0x${"66".repeat(65)}`) as MppCredential;
-    expect(await sessionTempo.bound(await openedBy(f.payer, await wire(args)))).toBe(H);
-    expect(await sessionTempo.bound(await openedBy(OTHER, await wire(args, byOther)))).toBe(H);
+    const voucherSignature = `0x${"66".repeat(65)}` as const;
+    const buildFor = async (from: `0x${string}`) => unsignedOf(await sessionTempo.build({ challenge: ch, from, now: f.now, deposit }, H));
+    const openedBy = async (from: `0x${string}`, signed: Uint8Array) => (await buildFor(from)).complete(toHex(signed), voucherSignature) as MppCredential;
+    const own = await openedBy(f.payer, await wire(args));
+    expect(await sessionTempo.bound(own)).toBe(H);
+    const byOtherOpened = await openedBy(OTHER, await wire(args, byOther));
+    expect(await sessionTempo.bound(byOtherOpened)).toBe(H);
+    expect(completedFor(own, await signedCall(args, byOther), OTHER)).toEqual(byOtherOpened);
     const mismatch = { refused: true, code: "mpp/channel-not-bound" };
-    const cases: [string, Promise<MppCredential>][] = [
-      ["the call's payee another", wire([OTHER, ...args.slice(1)]).then((w) => openedBy(f.payer, w))],
-      ["the call's token another", wire([args[0], OTHER, ...args.slice(2)]).then((w) => openedBy(f.payer, w))],
-      ["the call's authorizedSigner another", wire([...args.slice(0, 4), OTHER]).then((w) => openedBy(f.payer, w))],
-      ["another key signs", wire(args, byOther).then((w) => openedBy(f.payer, w))],
-      ["the credential names another payer", wire(args).then((w) => openedBy(OTHER, w))],
+    const cases: [string, `0x${string}`, ReturnType<typeof signedCall>][] = [
+      ["the call's payee another", f.payer, signedCall([OTHER, ...args.slice(1)])],
+      ["the call's token another", f.payer, signedCall([args[0], OTHER, ...args.slice(2)])],
+      ["the call's authorizedSigner another", f.payer, signedCall([...args.slice(0, 4), OTHER])],
+      ["another key signs", f.payer, signedCall(args, byOther)],
+      ["the build names another payer", OTHER, signedCall(args)],
     ];
-    for (const [name, made] of cases) {
-      const cred = await made;
+    for (const [name, from, signed] of cases) {
+      const t = await signed;
+      const u = await buildFor(from);
+      expect(u.voucher(toHex(t.wire)), name).toEqual(mismatch);
+      expect(u.complete(toHex(t.wire), voucherSignature), name).toEqual(mismatch);
+      const cred = completedFor(own, t, from);
       expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
       expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
     }
@@ -945,36 +1017,42 @@ describe("mpp-session-tempo.json", () => {
     const noSender = toHex(await wire(args, v29));
     const byPayer = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
     expect(byPayer.voucher(noSender)).toEqual(malformedTx);
-    expect(byPayer.complete(noSender, `0x${"66".repeat(65)}`)).toEqual(malformedTx);
-    const signedByPayer = await openedBy(f.payer, await wire(args));
-    expect(await sessionTempo.bound({ ...signedByPayer, payload: { ...signedByPayer.payload, transaction: noSender } })).toEqual(malformedTx);
+    expect(byPayer.complete(noSender, voucherSignature)).toEqual(malformedTx);
+    expect(await sessionTempo.bound({ ...own, payload: { ...own.payload, transaction: noSender } })).toEqual(malformedTx);
     for (const word of [0, 1, 4]) {
       const data = call(args);
       const at = 10 + 64 * word;
-      const dirty = `${data.slice(0, at)}01${data.slice(at + 2)}` as ViemHex;
-      const cred = await openedBy(f.payer, await openWire(dirty, sig65, f.escrowV1));
-      expect(await sessionTempo.bound(cred), `word ${word}`).toEqual(malformedTx);
+      const t = await signedWire([[f.escrowV1, "0x", `${data.slice(0, at)}01${data.slice(at + 2)}`]]);
+      expect(byPayer.voucher(toHex(t.wire)), `word ${word}`).toEqual(malformedTx);
+      expect(byPayer.complete(toHex(t.wire), voucherSignature), `word ${word}`).toEqual(malformedTx);
+      expect(await sessionTempo.bound(completedFor(own, t)), `word ${word}`).toEqual(malformedTx);
     }
   });
 
   // The descriptor matches the signed open transaction (draft-tempo-session-00 :869-871 and :1180-1183): its payee,
   // operator, token and authorizedSigner are words 0, 1, 2 and 5 of open(payee, operator, token, deposit, salt,
-  // authorizedSigner) (Tempo's ITIP20ChannelReserve, tempoxyz/tempo 9bb63953), each call encoded here with viem 2.57.4's
-  // tempo Abis.tip20ChannelReserve. build's descriptor names the challenge's recipient, operator and currency and the
-  // buyer's authorizedSigner, so a transaction whose call names another party opens a channel other than the
-  // descriptor's.
+  // authorizedSigner) (Tempo's ITIP20ChannelReserve, tempoxyz/tempo 9bb63953), each call encoded here with viem
+  // 2.57.4's tempo Abis.tip20ChannelReserve. build's descriptor names the challenge's recipient, operator and currency
+  // and the buyer's authorizedSigner, so a transaction whose call names another party opens a channel other than the
+  // descriptor's: build's voucher and complete refuse it with tempo/descriptor-mismatch, the code bound, reference and
+  // buildWithin give the credential complete would give for it (completedFor).
   it("v2: the descriptor's payee, operator, token and authorizedSigner are its open call's", async () => {
     const OTHER = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as const;
     const args: readonly unknown[] = [f.recipient.toLowerCase(), ZERO, f.pathUSD, deposit, H, ZERO];
     const call = (a: readonly unknown[]) => encodeFunctionData({ abi: TempoAbis.tip20ChannelReserve, functionName: "open", args: a as never });
     expect(call(args)).toBe(T.TS1.expectCalldata);
     const u = unsignedOf(await sessionTempo.build({ challenge: placed(V2), from: f.payer, now: f.now, deposit }, H));
-    const opened = async (a: readonly unknown[]) => u.complete(toHex(await openWire(call(a))), `0x${"66".repeat(65)}`) as MppCredential;
-    expect(await sessionTempo.bound(await opened(args))).toBe(H);
+    const voucherSignature = `0x${"66".repeat(65)}` as const;
+    const signedCall = (a: readonly unknown[]) => signedWire([[f.escrowV2, "0x", call(a)]]);
+    const own = u.complete(toHex((await signedCall(args)).wire), voucherSignature) as MppCredential;
+    expect(await sessionTempo.bound(own)).toBe(H);
     const mismatch = { refused: true, code: "tempo/descriptor-mismatch" };
     for (const [name, i] of [["payee", 0], ["operator", 1], ["token", 2], ["authorizedSigner", 5]] as const) {
       const other = args.map((x, j) => (j === i ? OTHER : x));
-      const cred = await opened(other);
+      const t = await signedCall(other);
+      expect(u.voucher(toHex(t.wire)), name).toEqual(mismatch);
+      expect(u.complete(toHex(t.wire), voucherSignature), name).toEqual(mismatch);
+      const cred = completedFor(own, t);
       expect((cred.payload["descriptor"] as Record<string, string>)[name]!.toLowerCase(), name).toBe(String(args[i]).toLowerCase());
       expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
       expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
@@ -982,11 +1060,14 @@ describe("mpp-session-tempo.json", () => {
       expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), name).toEqual(mismatch);
     }
     // One of those words whose first 12 bytes are not zero, which ABI decoding does not take as an address.
+    const txMalformed = { refused: true, code: "tempo/tx-malformed" };
     for (const word of [0, 1, 2, 5]) {
       const data = call(args);
       const at = 10 + 64 * word;
-      const dirty = u.complete(toHex(await openWire(`${data.slice(0, at)}01${data.slice(at + 2)}` as ViemHex)), `0x${"66".repeat(65)}`) as MppCredential;
-      expect(await sessionTempo.bound(dirty), `word ${word}`).toEqual({ refused: true, code: "tempo/tx-malformed" });
+      const t = await signedWire([[f.escrowV2, "0x", `${data.slice(0, at)}01${data.slice(at + 2)}`]]);
+      expect(u.voucher(toHex(t.wire)), `word ${word}`).toEqual(txMalformed);
+      expect(u.complete(toHex(t.wire), voucherSignature), `word ${word}`).toEqual(txMalformed);
+      expect(await sessionTempo.bound(completedFor(own, t)), `word ${word}`).toEqual(txMalformed);
     }
   });
 
@@ -1002,7 +1083,7 @@ describe("mpp-session-tempo.json", () => {
       exact: 2,
       keep: ["the transactionChainId rows", (r) => r.transactionChainId !== undefined],
       leave: [
-        "the descriptor and channelId rows, which the two tests above run, and the faults and senderSignature rows, which the two tests below run",
+        "the descriptor and channelId rows, which the two tests above run, and the faults, senderSignature, from and padding rows, which the three tests below run",
         (r) => r.transactionChainId === undefined,
       ],
     });
@@ -1060,14 +1141,17 @@ describe("mpp-session-tempo.json", () => {
 
   // Tempo's session draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-session-00.md :1179-1188) orders the open
   // verification: "Decode the signed transaction from `transaction`, verify it calls `open()` on the expected escrow
-  // contract with correct parameters. Recover the `payer` address from the transaction, infer `authorizedSigner` from the
-  // calldata, and compute `channelId` deterministically", then "For v2, servers MUST also verify the payload
+  // contract with correct parameters. Recover the `payer` address from the transaction, infer `authorizedSigner` from
+  // the calldata, and compute `channelId` deterministically", then "For v2, servers MUST also verify the payload
   // `descriptor`, the computed `channelId`, the descriptor `expiringNonceHash`". Each opening here is build's, its
   // transaction laid out as openWire lays one out, with each fault the row names applied; a v2 descriptor's
-  // expiringNonceHash is keccak256 of the bytes the sender signed and the payer, and its channel id the draft's keccak256
-  // (:339-352), both computed with viem. A payload channelId that is not a hash is read where the draft compares the
-  // channel id it computes, after the payer is recovered. Each fault alone is refused with its own code, and the two
-  // together with the code of the one the draft checks first, the row's.
+  // expiringNonceHash is keccak256 of the bytes the sender signed and the payer, and its channel id the draft's
+  // keccak256 (:339-352), both computed with viem. A payload channelId that is not a hash is read where the draft
+  // compares the channel id it computes, after the payer is recovered. Each fault alone is refused with its own code,
+  // and the two together with the code of the one the draft checks first, the row's. build's voucher and complete give
+  // the code bound gives the credential complete would give for a transaction: given the row's transaction, the row's
+  // code, its transaction's fault being the first (a channelId or channelIdNotHash fault is the payload's, which
+  // complete writes).
   it("agreedRefusals: an opening with two faults is refused for the one the draft checks first", async () => {
     type Fault = "chain" | "noOpen" | "twoOpens" | "length" | "salt" | "word" | "sender" | "channelId" | "channelIdNotHash";
     type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; faults?: Fault[]; expect: string };
@@ -1075,7 +1159,7 @@ describe("mpp-session-tempo.json", () => {
       exact: 26,
       keep: ["the faults rows", (r) => r.faults !== undefined],
       leave: [
-        "the one-fault rows: the descriptor, channelId and transactionChainId rows, which the three tests above run, and the senderSignature rows, which the test below runs",
+        "the one-fault rows: the descriptor, channelId and transactionChainId rows, which the three tests above run, and the senderSignature, from and padding rows, which the two tests below run",
         (r) => r.faults === undefined,
       ],
     });
@@ -1124,19 +1208,32 @@ describe("mpp-session-tempo.json", () => {
       if (!v1) expect(keccak256(concat([(await signedWire([[f.escrowV2, "0x", T.TS1.expectCalldata]])).signing, f.payer]))).toBe(T.TS2.expectNonceHash);
       expect(await sessionTempo.bound(none), v1 ? "v1" : "v2").toBe(H);
     }
+    const inPayload = (fault: Fault) => fault === "channelId" || fault === "channelIdNotHash";
+    const voucherSignature = `0x${"66".repeat(65)}` as const;
     for (const row of rows) {
       const v1 = row.sessionProtocol === "v1";
       const faults = row.faults!;
       expect(faults, row.case).toHaveLength(2);
+      const u = unsignedOf(await sessionTempo.build({ challenge: placed(v1 ? V1 : V2), from: f.payer, now: f.now, deposit }, H));
       for (const fault of faults) {
-        expect(await sessionTempo.bound(await opening(v1, [fault])), `${row.case}: ${fault} alone`).toEqual({ refused: true, code: ALONE[fault](v1) });
+        const alone = await opening(v1, [fault]);
+        const code = { refused: true, code: ALONE[fault](v1) };
+        expect(await sessionTempo.bound(alone), `${row.case}: ${fault} alone`).toEqual(code);
+        if (inPayload(fault)) continue;
+        const wire = alone.payload["transaction"] as `0x${string}`;
+        expect(u.voucher(wire), `${row.case}: ${fault} alone`).toEqual(code);
+        expect(u.complete(wire, voucherSignature), `${row.case}: ${fault} alone`).toEqual(code);
       }
       expect(ALONE[faults[0]!](v1), row.case).toBe(row.expect);
       expect(ALONE[faults[1]!](v1), row.case).not.toBe(row.expect);
+      expect(inPayload(faults[0]!), row.case).toBe(false);
       const both = await opening(v1, faults);
       const refused = { refused: true, code: row.expect };
       expect(await sessionTempo.bound(both), row.case).toEqual(refused);
       expect(await sessionTempo.reference(both), row.case).toEqual(refused);
+      const wire = both.payload["transaction"] as `0x${string}`;
+      expect(u.voucher(wire), row.case).toEqual(refused);
+      expect(u.complete(wire, voucherSignature), row.case).toEqual(refused);
     }
   });
 
@@ -1170,7 +1267,10 @@ describe("mpp-session-tempo.json", () => {
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 4,
       keep: ["the senderSignature rows", (r) => r.senderSignature !== undefined],
-      leave: ["the descriptor, channelId, transactionChainId and faults rows, which the tests above run", (r) => r.senderSignature === undefined],
+      leave: [
+        "the descriptor, channelId, transactionChainId and faults rows, which the tests above run, and the from and padding rows, which the test below runs",
+        (r) => r.senderSignature === undefined,
+      ],
     });
     const Sig = TempoTransaction.z_SignatureEnvelope;
     const Tx = TempoTransaction.z_TxEnvelopeTempo;
@@ -1267,6 +1367,90 @@ describe("mpp-session-tempo.json", () => {
       expect(u.voucher(toHex(t.wire)), name).toEqual(txMalformed);
       expect(u.complete(toHex(t.wire), voucherSignature), name).toEqual(txMalformed);
       expect(await sessionTempo.bound(carrying(t)), name).toEqual(txMalformed);
+    }
+  });
+
+  // build's complete returns no credential bound refuses: it gives the code bound gives the credential it would give
+  // for a transaction, and voucher refuses the same transactions. A row with from is build's opening from that address,
+  // its transaction signed with fixed.payerKey, so its sender, fixed.payer, is not the payer the credential names: on
+  // v2 the descriptor's (draft-tempo-session-00 :1180-1183), on v1 the payer of its channelId (:299-312). A row with
+  // padding is build's opening with a second call, to fixed.recipient, whose input is that many zero bytes, and its
+  // credential is over the credential size bound. Each row's credential is the one complete would give (completedFor);
+  // the same transaction without the row's change is completed, and gives H.
+  it("agreedRefusals: build's voucher and complete refuse a transaction with the code bound gives the credential complete would give", async () => {
+    type Row = { case: string; sessionProtocol?: string; from?: `0x${string}`; padding?: number; expect: string };
+    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
+      exact: 4,
+      keep: ["the from and padding rows", (r) => r.from !== undefined || r.padding !== undefined],
+      leave: [
+        "the descriptor, channelId, transactionChainId, faults and senderSignature rows, which the tests above run",
+        (r) => r.from === undefined && r.padding === undefined,
+      ],
+    });
+    const voucherSignature = `0x${"66".repeat(65)}` as const;
+    for (const row of rows) {
+      const v1 = row.sessionProtocol === "v1";
+      const ch = placed(v1 ? V1 : V2);
+      const byPayer = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+      if (byPayer.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+      const open = [v1 ? f.escrowV1 : f.escrowV2, "0x", byPayer.funding.call.data] as const;
+      const own = byPayer.complete(toHex((await signedWire([open])).wire), voucherSignature) as MppCredential;
+      expect(await sessionTempo.bound(own), row.case).toBe(H);
+      const from = row.from ?? f.payer;
+      const u = unsignedOf(await sessionTempo.build({ challenge: ch, from, now: f.now, deposit }, H));
+      if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+      expect(u.funding.call.data, row.case).toBe(byPayer.funding.call.data);
+      const t = await signedWire(row.padding === undefined ? [open] : [open, [f.recipient, "0x", `0x${"00".repeat(row.padding)}`]]);
+      const refused = { refused: true, code: row.expect };
+      expect(u.voucher(toHex(t.wire)), row.case).toEqual(refused);
+      expect(u.complete(toHex(t.wire), voucherSignature), row.case).toEqual(refused);
+      const cred = completedFor(own, t, from);
+      expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
+      expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
+      if (row.from !== undefined) expect(await sessionTempo.bound(byPayer.complete(toHex(t.wire), voucherSignature) as MppCredential), row.case).toBe(H);
+    }
+  });
+
+  // complete and bound agree at the credential size bound, whatever the transaction's size: the largest padding (a
+  // second call's input, as in the padding rows) whose credential bound takes, found by bisection with bound the judge,
+  // is completed, and one byte more is refused with bound's code. voucher refuses as complete does with the shortest
+  // voucher signature complete takes, one byte, which bound does not read.
+  it("complete and bound agree at the credential size bound, voucher as complete with a one-byte signature", async () => {
+    const malformed = { refused: true, code: "mpp/credential-malformed" };
+    for (const v1 of [false, true]) {
+      const label = v1 ? "v1" : "v2";
+      const u = unsignedOf(await sessionTempo.build({ challenge: placed(v1 ? V1 : V2), from: f.payer, now: f.now, deposit }, H));
+      if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+      const open = [v1 ? f.escrowV1 : f.escrowV2, "0x", u.funding.call.data] as const;
+      const padded = (n: number) => signedWire([open, [f.recipient, "0x", `0x${"00".repeat(n)}`]]);
+      const own = u.complete(toHex((await padded(0)).wire), `0x${"66".repeat(65)}`) as MppCredential;
+      const largest = async (signature: `0x${string}`) => {
+        const taken = async (n: number) => {
+          const c = completedFor(own, await padded(n));
+          const answer = await sessionTempo.bound({ ...c, payload: { ...c.payload, signature } });
+          if (answer !== H) expect(answer, `${label}: ${n}`).toEqual(malformed);
+          return answer === H;
+        };
+        let lo = 0;
+        let hi = 40_000;
+        expect(await taken(lo), label).toBe(true);
+        expect(await taken(hi), label).toBe(false);
+        while (hi - lo > 1) {
+          const mid = Math.floor((lo + hi) / 2);
+          if (await taken(mid)) lo = mid;
+          else hi = mid;
+        }
+        return lo;
+      };
+      for (const signature of [`0x${"66".repeat(65)}`, `0x${"66".repeat(8192)}`] as const) {
+        const n = await largest(signature);
+        const at = u.complete(toHex((await padded(n)).wire), signature);
+        expect(await sessionTempo.bound(at as MppCredential), `${label}: ${n}`).toBe(H);
+        expect(u.complete(toHex((await padded(n + 1)).wire), signature), `${label}: ${n + 1}`).toEqual(malformed);
+      }
+      const m = await largest("0x00");
+      expect(u.voucher(toHex((await padded(m)).wire)), `${label}: voucher ${m}`).not.toHaveProperty("refused");
+      expect(u.voucher(toHex((await padded(m + 1)).wire)), `${label}: voucher ${m + 1}`).toEqual(malformed);
     }
   });
 

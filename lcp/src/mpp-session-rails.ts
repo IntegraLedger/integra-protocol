@@ -70,7 +70,6 @@ import {
   type XrplTxJson,
 } from "./internal/xrpl.js";
 import {
-  checkedFor,
   chosenFor,
   credentialOf,
   decodeObject,
@@ -79,6 +78,7 @@ import {
   FETCHED,
   fetchedOf,
   isObject,
+  issuedFor,
   place,
   read,
   tie,
@@ -487,9 +487,13 @@ async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Pr
     : refusal("hedera/not-final");
 }
 
-/** The read keys of a close, from the issued challenge and the channel: a reported transaction, or the log search. */
+/**
+ * The read keys of a close, from the issued challenge and the channel: a reported transaction, or the log search. The
+ * issued challenge is held as `bound` holds an echoed one (`issuedFor`), with its code for each fault: the challenge's
+ * shape and size, its intent and method, which must be the pairing's, and the pairing's filter.
+ */
 function hederaCloseRef(chosen: MppChallenge, channel: string): Omit<HederaCloseRef, "transaction"> | Refusal {
-  const checked = checkedFor(chosen, HEDERA);
+  const checked = issuedFor(chosen, HEDERA);
   if (isRefusal(checked)) return checked;
   const network = hederaSessionNetworkOf(checked.details);
   if (isRefusal(network)) return network;
@@ -831,8 +835,13 @@ async function solanaStatus(ref: (SvmRef & { transaction: string }) | SvmCloseRe
   return isObject(ref) && "phase" in ref ? svmCloseStatus(ref, reader) : svmStatus(ref, reader);
 }
 
+/**
+ * The read keys of a close, from the issued challenge and the channel: the network, the channel program and the
+ * channel. The issued challenge is held as `bound` holds an echoed one (`issuedFor`), with its code for each fault: the
+ * challenge's shape and size, its intent and method, which must be the pairing's, and the pairing's filter.
+ */
 function solanaCloseRef(chosen: MppChallenge, channel: string): Omit<SvmCloseRef, "transaction"> | Refusal {
-  const checked = checkedFor(chosen, SOLANA);
+  const checked = issuedFor(chosen, SOLANA);
   if (isRefusal(checked)) return checked;
   const network = solanaNetworkOf(checked.details, true);
   if (network === null) return refusal("svm/network-undeclared");
@@ -1030,10 +1039,17 @@ async function xrplRef(presented: MppCredential): Promise<{ network: string; cha
   return isRefusal(id) ? id : { network, channel: id };
 }
 
-/** `CancelAfter` in Unix seconds when the opening's blob sets one. */
+/**
+ * `CancelAfter` in Unix seconds when the opening's blob sets one, read from the opening as `channel.ref` reads it: none
+ * for a payment that is not an opening, and none for an opening whose echoed challenge `bound` refuses, held as `bound`
+ * holds it (`echoedFor`): the credential's shape, H from the echoed challenge's id, the challenge's intent and method,
+ * which must be the pairing's, and the pairing's filter.
+ */
 function xrplUntil(presented: MppCredential): number | undefined {
-  if (!isObject(presented) || !isObject(presented.payload) || presented.payload["action"] !== "open") return undefined;
-  const blob = presented.payload["transaction"];
+  if (actionKind(presented, ["voucher"]) !== "open") return undefined;
+  const e = echoedFor(presented, XRPL);
+  if (isRefusal(e)) return undefined;
+  const blob = e.payload["transaction"];
   if (typeof blob !== "string") return undefined;
   const c = cancelAfterOf(blob);
   return c === undefined ? undefined : c + RIPPLE_EPOCH;
@@ -1083,8 +1099,13 @@ async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, r
   return xrplLcpMemo(decoded.tx);
 }
 
+/**
+ * The read keys of a close, from the issued challenge and the channel: the network and the channel, in upper case. The
+ * issued challenge is held as `bound` holds an echoed one (`issuedFor`), with its code for each fault: the challenge's
+ * shape and size, its intent and method, which must be the pairing's, and the pairing's filter.
+ */
 function xrplCloseRef(chosen: MppChallenge, channel: string): Omit<XrplCloseRef, "transaction"> | Refusal {
-  const checked = checkedFor(chosen, XRPL);
+  const checked = issuedFor(chosen, XRPL);
   if (isRefusal(checked)) return checked;
   const network = xrplNetworkOf(checked.details);
   if (isRefusal(network)) return network;

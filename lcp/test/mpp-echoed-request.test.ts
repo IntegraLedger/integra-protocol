@@ -447,3 +447,127 @@ describe("channel.ref holds an opening's echoed challenge to the pairing's filte
     expect(await pairing.channel.ref(c)).toEqual(refused(code));
   });
 });
+
+// channel.ref keys only a payment of the channel: one channel.kind refuses is refused with its code, an action the
+// pairing's draft does not define among them. draft-tempo-session-00 and the EVM session draft define open, topUp,
+// voucher and close (tempoxyz/mpp-specs 08e7dd87), and draft-tempo-subscription-00's one credential is the
+// keyAuthorization; the Hedera, Solana, XRP Ledger and Lightning sessions' channel.ref refuse such a payment so.
+describe("channel.ref refuses a payment channel.kind refuses, with its code", () => {
+  type Channel = { kind: (c: MppCredential) => unknown; ref: (c: MppCredential) => Promise<unknown> };
+  const withPayload = (change: { [k: string]: Json }) => (c: MppCredential) => ({ ...c, payload: { ...c.payload, ...change } }) as MppCredential;
+  const RAILS = "mpp-session-hedera-solana-xrpl.json";
+  const CASES = rowsOf<[string, { channel: Channel }, string, number, (c: MppCredential) => MppCredential]>(
+    [
+      ["session/evm, an opening whose action is use", sessionEvm, "mpp-session-evm.json", 1, withPayload({ action: "use" })],
+      ["session/evm, an opening whose action is bearer", sessionEvm, "mpp-session-evm.json", 1, withPayload({ action: "bearer" })],
+      ["session/tempo, an opening whose action is use", sessionTempo, "mpp-session-tempo.json", 1, withPayload({ action: "use" })],
+      ["session/tempo, an opening whose action is bearer", sessionTempo, "mpp-session-tempo.json", 1, withPayload({ action: "bearer" })],
+      ["subscription/tempo, a key authorization whose type is transaction", subscriptionTempo, "mpp-subscription-tempo.json", 1, withPayload({ type: "transaction" })],
+      ["session/hedera, an opening whose action is use", sessionHedera, RAILS, 1, withPayload({ action: "use" })],
+      ["session/solana, an opening whose action is bearer", sessionSolana, RAILS, 3, withPayload({ action: "bearer" })],
+      ["session/xrpl, an opening whose action is topUp", sessionXrpl, RAILS, 5, withPayload({ action: "topUp" })],
+      ["session/lightning, an opening whose action is use", sessionLightning, "mpp-session-lightning.json", 1, withPayload({ action: "use" })],
+    ],
+    "the payments each session pairing's channel.kind refuses",
+    { exact: 9 },
+  );
+  it.each(CASES)("%s", async (_, pairing, file, row, change) => {
+    const own = presented(file, row);
+    expect(await pairing.channel.kind(own)).toBe("open");
+    expect(await pairing.channel.ref(own)).not.toHaveProperty("refused");
+    const c = change(own);
+    expect(await pairing.channel.kind(c)).toEqual(refused("mpp/session-action"));
+    expect(await pairing.channel.ref(c)).toEqual(refused("mpp/session-action"));
+  });
+});
+
+// channel.until reads the channel's end from its opening, so it reads the opening as channel.ref holds it: a payment
+// channel.kind refuses, or an opening whose echoed challenge bound refuses, gives no end. The Tempo subscription's end
+// is the request's subscriptionExpires, which its key authorization takes as a uint64 expiry, from 1970
+// (draft-tempo-subscription-00); an opaque whose legalContext names another hash is not this challenge's.
+describe("channel.until reads the opening as channel.ref holds it", () => {
+  const FILE = "mpp-subscription-tempo.json";
+  const otherContext: Edit = (_r, c) => {
+    const opaque = JSON.parse(Buffer.from(String(c["opaque"]), "base64url").toString("utf8"));
+    opaque.legalContext = `lcp:sha256:0x${"22".repeat(32)}`;
+    c["opaque"] = Buffer.from(JSON.stringify(opaque), "utf8").toString("base64url");
+  };
+  const CASES = rowsOf<[string, (c: MppCredential) => MppCredential, string]>(
+    [
+      ["subscriptionExpires in 1969", () => presented(FILE, 1, (r) => (r["subscriptionExpires"] = "1969-12-31T23:59:59Z")), "mpp/request-malformed"],
+      ["an opaque whose legalContext names another hash", () => presented(FILE, 1, otherContext), "mpp/opaque-not-this-hash"],
+      ["a key authorization whose type is transaction", (c) => ({ ...c, payload: { ...c.payload, type: "transaction" } }) as MppCredential, "mpp/session-action"],
+    ],
+    "the subscription payments channel.ref refuses",
+    { exact: 3 },
+  );
+  it.each(CASES)("subscription/tempo, %s: no end", async (_, change, code) => {
+    const own = presented(FILE, 1);
+    const expires = Date.parse(JSON.parse(Buffer.from(own.challenge.request, "base64url").toString("utf8")).subscriptionExpires) / 1000;
+    expect(subscriptionTempo.channel.until(own)).toBe(expires);
+    const c = change(own);
+    expect(await subscriptionTempo.channel.ref(c)).toEqual(refused(code));
+    expect(subscriptionTempo.channel.until(c)).toBeUndefined();
+  });
+});
+
+// closeRef reads the close's keys from the challenge the seller issued, and holds it as bound holds the echoed one, so
+// one fault in the challenge gives one code from bound, channel.ref and closeRef. closeRef reads no id and no
+// legalContext, which carry H, so it takes the challenge as issued, before place, and as placed. A credential carries
+// its challenge as a required object (draft-httpauth-payment-01 at 08e7dd87, lines 610-624), within the credential size
+// bound; a challenge of another method is not the pairing's; and the request and the opaque are base64url JSON, the
+// opaque a map of strings, read before the method, as bound reads them.
+describe("closeRef holds the issued challenge as bound holds the echoed one", () => {
+  type Pairing = { bound: (c: unknown) => Promise<unknown>; channel: { ref: (c: MppCredential) => Promise<unknown> }; closeRef: (...a: never[]) => unknown };
+  const RAILS = "mpp-session-hedera-solana-xrpl.json";
+  const payer = load("mpp-subscription-tempo.json").fixed.payer as string;
+  /** The pairing's file, its opening's buyer row, and the channel its close names. */
+  const PAIRINGS: [string, Pairing, string, number, (c: MppCredential) => string][] = [
+    ["session/evm", sessionEvm as never, "mpp-session-evm.json", 1, (c) => String(c.payload["channelId"])],
+    ["session/tempo", sessionTempo as never, "mpp-session-tempo.json", 1, (c) => String(c.payload["channelId"])],
+    ["subscription/tempo", subscriptionTempo as never, "mpp-subscription-tempo.json", 1, () => load("mpp-subscription-tempo.json").SUB2.expectRefChannel],
+    ["session/hedera", sessionHedera as never, RAILS, 1, (c) => String(c.payload["channelId"])],
+    ["session/solana", sessionSolana as never, RAILS, 3, (c) => String(c.payload["channelId"])],
+    ["session/xrpl", sessionXrpl as never, RAILS, 5, () => load(RAILS).XS2.expectChannel],
+  ];
+  type Fault = (c: { [k: string]: unknown }) => unknown;
+  const set = (change: { [k: string]: unknown }): Fault => (c) => ({ ...c, ...change });
+  const FAULTS = rowsOf<[string, Fault, string, boolean]>(
+    [
+      ["no challenge", () => undefined, "mpp/credential-malformed", true],
+      ["an empty challenge", () => ({}), "mpp/credential-malformed", true],
+      ["a challenge whose request is not a string", set({ request: 7 }), "mpp/credential-malformed", true],
+      ["a description that takes the least credential over 64 KiB", set({ description: "d".repeat(65_536) }), "mpp/credential-malformed", true],
+      ["an opaque that is not base64url JSON", set({ opaque: "not base64url!" }), "mpp/opaque-malformed", true],
+      ["a request that is not base64url JSON", set({ request: "not base64url!" }), "mpp/request-malformed", true],
+      ["an opaque that is not base64url JSON, and the method nosuch", set({ opaque: "not base64url!", method: "nosuch" }), "mpp/opaque-malformed", false],
+      ["a request that is not base64url JSON, and the method nosuch", set({ request: "not base64url!", method: "nosuch" }), "mpp/request-malformed", false],
+      ["the method lightning", set({ method: "lightning" }), "mpp/not-this-pairing", false],
+      ["the method stellar", set({ method: "stellar" }), "mpp/not-this-pairing", false],
+    ],
+    "the faults in an issued challenge that closeRef reads before the pairing's filter",
+    { exact: 10 },
+  );
+  // A Tempo subscription challenge's id is the bare base64url of H, and every other challenge's carries its position
+  // (profile mpp/charge rule 2), so bound refuses a subscription's challenge of another method at its id, which
+  // closeRef does not read: the last column leaves the subscription out of those faults.
+  for (const [name, pairing, file, row, channelOf] of PAIRINGS) {
+    for (const [fault, change, code, subscriptionToo] of FAULTS) {
+      if (name === "subscription/tempo" && !subscriptionToo) continue;
+      it(`${name}, ${fault}: closeRef gives bound's code`, async () => {
+        const own = presented(file, row);
+        const channel = channelOf(own);
+        const close = (c: unknown) => pairing.closeRef(...([c, channel, payer] as never[]));
+        expect(close(own.challenge)).not.toHaveProperty("refused");
+        expect(close(offerOf(own))).toEqual(close(own.challenge));
+        const placed = change(own.challenge as unknown as { [k: string]: unknown });
+        const c = { ...own, challenge: placed } as MppCredential;
+        expect(await pairing.bound(c)).toEqual(refused(code));
+        expect(await pairing.channel.ref(c)).toEqual(refused(code));
+        expect(close(placed)).toEqual(refused(code));
+        const issued = placed === undefined ? undefined : change(offerOf(own) as { [k: string]: unknown });
+        expect(close(issued)).toEqual(refused(code));
+      });
+    }
+  }
+});
