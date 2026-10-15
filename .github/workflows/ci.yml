@@ -175,8 +175,9 @@ jobs:
             });
             // These patterns read YAML's plain block style, so every workflow is written in it: outside a block scalar
             // (`run: |`), each line is blank, a comment, or one plain key and its value, and no value is a flow mapping
-            // other than {}, a flow sequence of anything but plain words, an anchor, an alias, a tag or a quoted scalar
-            // that does not close on its own line. The jobs' steps are read only on the lines outside a block scalar.
+            // other than {}, a flow sequence of anything but plain words, an anchor, an alias, a tag, a quoted scalar
+            // that does not close on its own line, or a block scalar whose header holds more than its indicators and a
+            // comment. The jobs' steps are read only on the lines outside a block scalar.
             let scalar = -1;
             const held = new Set();
             lines.forEach((l, i) => {
@@ -190,7 +191,8 @@ jobs:
               const key = /^( *)(- )?[A-Za-z0-9_-]+:(?: +(.*))?$/.exec(l);
               const value = (key?.[3] ?? "").replace(/(^| +)#.*$/, "");
               const unclosed = /^['"]/.test(key?.[3] ?? "") && !/^('([^']|'')*'|"([^"\\]|\\.)*")( +#.*)?$/.test(key[3]);
-              if (key === null || unclosed || /^[&*!]/.test(value) || (value.startsWith("{") && value !== "{}") || (value.startsWith("[") && !/^\[[^\][{}:#"']*\]$/.test(value))) {
+              const header = /^[|>]/.test(value) && !/^[|>][-+1-9]*$/.test(value);
+              if (key === null || unclosed || header || /^[&*!]/.test(value) || (value.startsWith("{") && value !== "{}") || (value.startsWith("[") && !/^\[[^\][{}:#"']*\]$/.test(value))) {
                 bad.push(`${at(i)}: not one plain key and value: ${l.trim()}`);
               } else if (/^[|>][-+1-9]*$/.test(value)) scalar = key[1].length + (key[2] ? 2 : 0);
             });
