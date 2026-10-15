@@ -172,7 +172,7 @@ The settlement read keys of these pairings.
 | `opened.chainId` | `number` | - | - |
 | `opened.channel` | `` `0x${string}` `` | - | - |
 | `opened.h` | `` `0x${string}` `` | - | - |
-| `opened.version` | `"v2"` \| `"v1"` | - | - |
+| `opened.version` | `"v1"` \| `"v2"` | - | - |
 | <a id="property-opens"></a> `opens?` | `object` | The opening of an EVM session of type `hash` or `permit2`: the escrow's open call whose salt is `h`, and whose payer, payee, token and authorized signer, with `h`, the escrow and `chainId`, give `channel`. | - |
 | `opens.chainId` | `number` | - | - |
 | `opens.channel` | `` `0x${string}` `` | - | - |

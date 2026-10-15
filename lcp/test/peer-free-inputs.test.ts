@@ -1,17 +1,21 @@
 // With each rail's optional peer installed: the functions peer-free-inputs.ts names answer its inputs with the codes it
 // gives, `recover` after the reads it states, and `recover` answers the vector files' recover rows with the vectors'
 // values. Each rail's peer-missing test gives the same inputs the same codes without the peer.
+import { readFileSync } from "node:fs";
+import { StrKey } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
-import { avmCarrier } from "../src/avm.js";
+import { avmCarrier, exactAvm } from "../src/avm.js";
+import { isAccount, isContract } from "../src/internal/stellar.js";
 import { chargeStellar, issuedDigest, sessionXrpl, type MppChallenge } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
-import { decodeStellarTx, transferEventOf, transferEventTopics } from "../src/stellar.js";
+import { decodeStellarTx, muxedFor, transferEventOf, transferEventTopics } from "../src/stellar.js";
 import { decodeSuiTx, exactSui } from "../src/sui.js";
 import { exactTvm, tvmCarrier } from "../src/tvm.js";
 import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import {
   avmCarrierRows,
+  avmComparedChoices,
   nearBuildChoices,
   nearCarrierInputs,
   nearChoice,
@@ -20,6 +24,8 @@ import {
   stellarEnvelopeInputs,
   stellarEventInputs,
   stellarOccupied,
+  stellarStrkeyAnswers,
+  stellarStrkeyRows,
   stellarUnplacedRows,
   suiDecodeInputs,
   suiRecoverDecodes,
@@ -34,6 +40,8 @@ import {
 import { rowsOf } from "./rows.js";
 
 const refused = (code: string) => ({ refused: true, code });
+/** x402-exact-algorand.json's H. */
+const AVM_H = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8")).fixed.H as `0x${string}`;
 
 const RAILS = [
   { id: exactTvm.id, recover: exactTvm.recover, reads: tvmRecoverReads(), count: 9, decodes: tvmRecoverDecodes() },
@@ -80,10 +88,30 @@ describe("the Stellar pairings' reads of a muxed address with @stellar/stellar-s
     }
   });
 
-  it("mpp/charge/stellar's advertise of a challenge whose recipient is already muxed", () => {
+  it("mpp/charge/stellar's advertise of a challenge whose recipient is a muxed address", () => {
     const { challenge, h, link, expect: code } = stellarOccupied();
     const c = challenge as MppChallenge;
     expect(chargeStellar.advertise([c], h, link, c)).toEqual(refused(code));
+  });
+});
+
+// The rows are held to the SDK's StrKey too: an account or a contract is one exactly when the SDK takes it as one.
+describe("the Stellar strkeys with @stellar/stellar-sdk", () => {
+  it("isAccount, isContract, muxedFor, and x402's read, advertise and build of an option holding each", async () => {
+    const f = { isAccount, isContract, muxedFor, read: exactStellar.read, advertise: exactStellar.advertise, build: exactStellar.build };
+    for (const row of rowsOf(stellarStrkeyRows(), "peer-free-inputs.ts", { exact: 20 })) {
+      const { s, member: _member, ...expected } = row;
+      expect([row.case, StrKey.isValidEd25519PublicKey(s as string), StrKey.isValidContract(s as string)]).toEqual([row.case, row.isAccount, row.isContract]);
+      expect(await stellarStrkeyAnswers(row, f as never)).toEqual(expected);
+    }
+  });
+});
+
+describe("x402/exact/algorand's build with algosdk", () => {
+  it("each choice it refuses after the document and the option, which needs no algosdk", async () => {
+    for (const row of rowsOf(avmComparedChoices(), "peer-free-inputs.ts", { exact: 4 })) {
+      expect([row.case, await exactAvm.build(row.choice as never, AVM_H)]).toEqual([row.case, refused(row.expect)]);
+    }
   });
 });
 
@@ -117,6 +145,13 @@ describe("the decoders and carriers with each rail's optional peer", () => {
       expect([row.case, decodeStellarTx(row.xdr as never, row.network as never)]).toEqual([row.case, refused(row.expect)]);
     }
     expect(transferEventTopics(7 as never)).toEqual(refused("stellar/option-malformed"));
+    for (const row of rowsOf(stellarStrkeyRows(), "peer-free-inputs.ts", {
+      exact: 16,
+      keep: ["each strkey that is neither an account nor a contract", (r) => !r.isAccount && !r.isContract],
+      leave: ["each account or contract", (r) => r.isAccount || r.isContract],
+    })) {
+      expect([row.case, transferEventTopics(row.s as never)]).toEqual([row.case, refused("stellar/option-malformed")]);
+    }
     for (const row of rowsOf(stellarEventInputs(), "peer-free-inputs.ts", { exact: 5 })) {
       expect([row.case, transferEventOf(row.topic as never, row.value as never)]).toEqual([row.case, refused("stellar/event-malformed")]);
     }

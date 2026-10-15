@@ -1,10 +1,12 @@
 /**
  * The `x402/exact/stellar` pairing: the ATR hash advertised in the challenge's `extensions.legalContext`, and its first
  * 8 bytes carried as the muxed id of the option's `payTo`, which the payer signs as the Soroban `transfer`'s `to`.
+ * Strkeys are read and written without @stellar/stellar-sdk, so the option filter, `unplaced`, `advertise` and `read`
+ * need no peer. The SDK reads and writes the transaction's XDR: without it `build`, `bound` and `reference` refuse
+ * `stellar/peer-missing` only after every check that needs no peer.
  */
 import type { AtrHash } from "./core.js";
 import {
-  hasPeer,
   isAccount,
   isContract,
   isMuxed,
@@ -61,28 +63,21 @@ interface StellarChoice {
 }
 
 /**
- * True for an option of this pairing as far as it is read without @stellar/stellar-sdk: `exact` on a Stellar network,
- * with fees sponsored.
+ * True for an option of this pairing: `exact` on a Stellar network, with fees sponsored, a contract `asset` and a `G…`
+ * or `M…` `payTo`.
  */
-function isStellarExact(option: PaymentRequirements): boolean {
-  if (!isObject(option) || option.scheme !== "exact" || !isStellarNetwork(option.network)) return false;
-  return isObject(option.extra) && option.extra["areFeesSponsored"] === true;
-}
-
-/** True for an option this pairing can pay: `isStellarExact`, with a contract `asset` and a `G…` or `M…` `payTo`. */
 function isThis(option: PaymentRequirements): boolean {
-  return isStellarExact(option) && isContract(option.asset) && (isAccount(option.payTo) || isMuxed(option.payTo));
+  if (!isObject(option) || option.scheme !== "exact" || !isStellarNetwork(option.network)) return false;
+  if (!isObject(option.extra) || option.extra["areFeesSponsored"] !== true) return false;
+  return isContract(option.asset) && (isAccount(option.payTo) || isMuxed(option.payTo));
 }
-
-const served = filterOf(isThis, payable);
 
 /**
  * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
- * pairing that `build` can pay (`payable`), else `x402/option-malformed`. Without @stellar/stellar-sdk the asset and
- * `payTo` strkeys cannot be read, so an option `isStellarExact` takes is `stellar/peer-missing`, and any other option
- * gets the answer it gets with the SDK: it is not this pairing's.
+ * pairing that `build` can pay (`payable`), else `x402/option-malformed`. The strkeys are read without
+ * @stellar/stellar-sdk, so every answer is the same with the SDK and without it.
  */
-const filter: OptionFilter = (o) => (isStellarExact(o) && !hasPeer() ? refusal("stellar/peer-missing") : served(o));
+const filter: OptionFilter = filterOf(isThis, payable);
 
 /**
  * True when the amount is a positive i128 in decimal (`isAmount`) and the timeout a positive safe integer of at most
@@ -113,9 +108,9 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 /**
  * The challenge's `extensions.legalContext` set, and the chosen option's `payTo` set to `muxedFor(payTo, h)`. A
- * challenge, or an option in its `accepts`, that carries a `refused` member is `x402/option-malformed`. Without
- * @stellar/stellar-sdk a Stellar offer cannot be read or placed: the filter refuses it `stellar/peer-missing`, after the
- * document's version and `accepts` and the offer's place in them are checked.
+ * challenge, or an option in its `accepts`, that carries a `refused` member is `x402/option-malformed`, and an offer
+ * whose `payTo` is muxed `stellar/carrier-occupied`. Nothing here needs @stellar/stellar-sdk: every answer is
+ * the same with it and without it.
  */
 function advertise(
   doc: PaymentRequired,
@@ -133,9 +128,8 @@ function advertise(
 }
 
 /**
- * The buyer's reading of the challenge: its hash, its link and the options this pairing can pay. Without
- * @stellar/stellar-sdk the filter refuses each Stellar option `stellar/peer-missing`, so a challenge holding one is
- * `stellar/peer-missing` (`readFor`), and a challenge holding none gets the answer it gets with the SDK.
+ * The buyer's reading of the challenge: its hash, its link and the options this pairing can pay. It needs no
+ * @stellar/stellar-sdk: every answer is the same with it and without it.
  */
 function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(filter)(doc);
@@ -147,8 +141,10 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the option's `asset`, its amount the option's `amount` exactly, and its `from` the choice's `payer`.
  * Nothing reaches the signer unless every one holds. H is checked first, then the current ledger, the choice member
- * whose form needs neither the document nor the SDK (`stellar/tx-malformed`), then the document and the option, so
- * without @stellar/stellar-sdk the filter refuses a Stellar option `stellar/peer-missing` only after those.
+ * whose form needs neither the document nor the SDK (`stellar/tx-malformed`), then the document and the option, then
+ * the `payTo` carrier, then the simulated transaction's form (`signingInput`). None of those needs
+ * @stellar/stellar-sdk, which reads the simulated transaction after them: without it the choice is
+ * `stellar/peer-missing` only then.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
@@ -159,7 +155,6 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
   const { accepted } = c;
   const m = unmux(accepted.payTo);
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   const expiration = c.currentLedger + Math.ceil(accepted.maxTimeoutSeconds / 5);
   const s = signingFor(c.simulatedXdr, accepted.network as "stellar:pubnet", expiration, false);
   if (isRefusal(s)) return s;

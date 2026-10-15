@@ -15,11 +15,14 @@
 //   member the caller passes whose form needs neither the document nor the peer, before the document and the option.
 // - x402 XRPL's `bound` and `reference`: an option whose `invoiceId` is not an LCP string, read before the blob.
 // - `mpp/session/xrpl`'s `buildWithin`: an H, cumulative amount or action it refuses, before it decodes the opening.
-// - `muxedFor`: a base that is not a string, and an H that is not a 32-byte hash.
-// - The Stellar pairings' `unplaced`, `issuedDigest` and MPP `advertise`, which read a muxed address without the SDK.
+// - x402 Algorand's `build`: a choice compared with its option (the genesis hash against the option's network, an
+//   option the filter refuses), which needs no algosdk, as the option's and the payer's addresses do not.
+// - `muxedFor`: every base and H, as it reads and writes a strkey without the SDK.
+// - The Stellar pairings' `unplaced`, `issuedDigest` and MPP `advertise`, which read a muxed address without the SDK,
+//   and the strkeys the x402 option filter, `advertise`, `read` and `build` read (`stellarStrkeyRows`).
 import { readFileSync } from "node:fs";
 import { blake2b } from "@noble/hashes/blake2.js";
-import { base58 } from "@scure/base";
+import { base32, base58 } from "@scure/base";
 
 const vector = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
 const TVM = vector("x402-exact-tvm.json");
@@ -528,6 +531,8 @@ export function choiceMembers(): { id: string; members: Record<string, unknown>;
       members: { payer: AVM.fixed.payer, params: avmParams },
       bad: [
         { case: "a payer of one character", member: "payer", value: "A", expect: "avm/option-malformed" },
+        { case: "a payer whose checksum does not match", member: "payer", value: badChecksum(AVM.fixed.payer), expect: "avm/option-malformed" },
+        { case: "a payer in lowercase", member: "payer", value: AVM.fixed.payer.toLowerCase(), expect: "avm/option-malformed" },
         { case: "no suggested parameters", member: "params", value: null, expect: "avm/option-malformed" },
         { case: "a first valid round below 0", member: "params", value: { ...avmParams, firstValid: -1n }, expect: "avm/option-malformed" },
         { case: "a genesis id holding a lone surrogate", member: "params", value: { ...avmParams, genesisId: "\uD800" }, expect: "avm/option-malformed" },
@@ -686,8 +691,142 @@ export function stellarDigestRows(): { case: string; challenge: unknown; expect:
   ];
 }
 
-/** A challenge MPP Stellar's `advertise` refuses before it needs the SDK: one whose recipient is already muxed. */
+/** A challenge MPP Stellar's `advertise` refuses: one whose recipient is a muxed address. It needs no SDK. */
 export function stellarOccupied(): { challenge: unknown; h: `0x${string}`; link: string; expect: string } {
   const challenge = withRecipient(CHARGE.challenge, recipientOf(CHARGE.place.expect));
   return { challenge, h: CHARGE.fixed.H, link: CHARGE.fixed.link, expect: CHARGE.occupied.expect };
+}
+
+/**
+ * Choices of x402 Algorand's own document that `build` refuses after the document and the option, with the code given:
+ * a genesis hash of another network, and each option of x402-exact-algorand.json's `options`, which the filter refuses.
+ * None needs algosdk.
+ */
+export function avmComparedChoices(): { case: string; choice: unknown; expect: string }[] {
+  const params = choiceMembers().find((m) => m.id === "x402/exact/algorand")!.members;
+  const choiceOf = (o: unknown) => ({ required: { x402Version: 2, resource: AVM.fixed.resource, accepts: [o] }, accepted: o, ...params });
+  return [
+    {
+      case: "a genesis hash of another network",
+      choice: { ...choiceOf(AVM.fixed.O), params: { ...(params["params"] as object), genesisHash: b64(zeros(32)) } },
+      expect: "avm/network-mismatch",
+    },
+    ...(AVM.options as { case: string; option: unknown; expect: string }[]).map((r) => ({ case: `an option with ${r.case}`, choice: choiceOf(r.option), expect: r.expect })),
+  ];
+}
+
+/** A strkey of `version` and `payload`, its checksum's low byte XORed with `flip`: SEP-23's base32 and CRC16-XModem. */
+function strkey(version: number, payload: Uint8Array, flip = 0): string {
+  const body = Uint8Array.from([version, ...payload]);
+  let crc = 0;
+  for (const b of body) {
+    for (let bit = 7; bit >= 0; bit--) {
+      const top = ((crc >> 15) & 1) ^ ((b >> bit) & 1);
+      crc = (crc << 1) & 0xffff;
+      if (top) crc ^= 0x1021;
+    }
+  }
+  crc ^= flip;
+  return base32.encode(Uint8Array.from([...body, crc & 0xff, crc >> 8])).replace(/=+$/, "");
+}
+
+/**
+ * Strkeys in the places the Stellar pairings read one, and each answer, which needs no SDK: `isAccount`, `isContract`,
+ * `muxedFor` of the strkey and H, and x402's `read`, `advertise` and `build` of the fixed option with its `payTo` (or,
+ * for `asset`, its asset) replaced by the strkey. `read` is "served" or a code, `advertise` the placed `payTo` or a
+ * code, and `build` the code of a choice of V2's simulated transaction under that option, or null for the one row whose
+ * choice reaches the transaction, which only the SDK reads. A strkey that is not an account or a muxed account in
+ * `payTo`, or not a contract in `asset`, makes the option another pairing's.
+ */
+export function stellarStrkeyRows(): {
+  case: string;
+  s: unknown;
+  member: "payTo" | "asset";
+  isAccount: boolean;
+  isContract: boolean;
+  muxedFor: string;
+  read: string;
+  advertise: string;
+  build: string | null;
+}[] {
+  const { seller, asset } = STELLAR.fixed;
+  const key = base32.decode(seller).subarray(1, 33);
+  const M = STELLAR.V1.M;
+  const notThis = { muxedFor: "stellar/option-malformed", read: "x402/no-payable-option", advertise: "x402/option-not-this-pairing", build: "x402/option-not-this-pairing" };
+  const neither = { isAccount: false, isContract: false, ...notThis };
+  const payTo = "payTo" as const;
+  const inAsset = "asset" as const;
+  return [
+    { case: "the seller's account", s: seller, member: payTo, isAccount: true, isContract: false, muxedFor: M, read: "served", advertise: M, build: "stellar/carrier-mismatch" },
+    { case: "the seller's account muxed with H", s: M, member: payTo, isAccount: false, isContract: false, muxedFor: "stellar/option-malformed", read: "served", advertise: "stellar/carrier-occupied", build: null },
+    {
+      case: "the seller's account muxed with the id 0",
+      s: strkey(12 << 3, Uint8Array.from([...key, ...zeros(8)])),
+      member: payTo,
+      isAccount: false,
+      isContract: false,
+      muxedFor: "stellar/option-malformed",
+      read: "served",
+      advertise: "stellar/carrier-occupied",
+      build: "stellar/carrier-mismatch",
+    },
+    { case: "the asset's contract", s: asset, member: inAsset, isAccount: false, isContract: true, muxedFor: "stellar/option-malformed", read: "served", advertise: M, build: "stellar/carrier-mismatch" },
+    { case: "a contract as payTo", s: asset, member: payTo, isAccount: false, isContract: true, ...notThis },
+    { case: "an account as asset", s: seller, member: inAsset, isAccount: true, isContract: false, ...notThis, muxedFor: M },
+    { case: "an account whose checksum does not match", s: strkey(6 << 3, key, 1), member: payTo, ...neither },
+    { case: "an account whose checksum's high byte does not match", s: strkey(6 << 3, key, 0x100), member: payTo, ...neither },
+    { case: "a signed payload's version byte at an account's length", s: strkey(15 << 3, key), member: payTo, ...neither },
+    { case: "an account one character short", s: seller.slice(0, -1), member: payTo, ...neither },
+    { case: "an account one character more", s: `${seller}A`, member: payTo, ...neither },
+    { case: "an account followed by padding", s: `${seller}====`, member: payTo, ...neither },
+    { case: "a padding character in place of an account's last", s: `${seller.slice(0, -1)}=`, member: payTo, ...neither },
+    { case: "an account in lowercase", s: seller.toLowerCase(), member: payTo, ...neither },
+    { case: "a muxed account whose checksum does not match", s: strkey(12 << 3, Uint8Array.from([...key, ...zeros(8)]), 1), member: payTo, ...neither },
+    { case: "an empty text", s: "", member: payTo, ...neither },
+    { case: "a contract whose checksum does not match", s: strkey(2 << 3, key, 1), member: inAsset, ...neither },
+    { case: "a contract one character short", s: asset.slice(0, -1), member: inAsset, ...neither },
+    { case: "a contract followed by padding", s: `${asset}====`, member: inAsset, ...neither },
+    { case: "a contract in lowercase", s: asset.toLowerCase(), member: inAsset, ...neither },
+  ];
+}
+
+type StrkeyRow = ReturnType<typeof stellarStrkeyRows>[number];
+type Answer = unknown;
+
+/**
+ * The answers a `stellarStrkeyRows` row states, given by the functions passed: each test file passes the ones it
+ * imports, with the SDK or without it. A refusal is its code; `read` is "served" when it offers the option alone, and
+ * `advertise` the placed `payTo` when the placed option is the offer with only its `payTo` changed.
+ */
+export async function stellarStrkeyAnswers(
+  row: StrkeyRow,
+  f: {
+    isAccount: (s: unknown) => boolean;
+    isContract: (s: unknown) => boolean;
+    muxedFor: (base: never, h: never) => Answer;
+    read: (doc: never) => Answer;
+    advertise: (doc: never, h: never, link: string, offer: never) => Answer;
+    build: (choice: never, h: never) => Promise<Answer>;
+  },
+): Promise<Omit<StrkeyRow, "s" | "member">> {
+  const { H, resource, link, option, payer } = STELLAR.fixed;
+  const o = { ...option, [row.member]: row.s };
+  const required = { x402Version: 2, resource, accepts: [o] };
+  const code = (r: Answer) => (typeof r === "object" && r !== null && "refused" in r ? (r as unknown as { code: string }).code : r);
+  const read = f.read({ ...required, extensions: STELLAR.V3.extensions } as never) as Answer;
+  const offered = (r: Answer) => (r as { h: string; offer: { options: unknown[] } });
+  const served = typeof code(read) === "string" ? code(read) : offered(read).h === H && JSON.stringify(offered(read).offer.options) === JSON.stringify([o]) ? "served" : read;
+  const placed = f.advertise(required as never, H as never, link, o as never) as Answer;
+  const placedOption = typeof code(placed) === "string" ? null : (placed as { accepts: Record<string, unknown>[] }).accepts[0]!;
+  const advertise = placedOption === null ? code(placed) : JSON.stringify({ ...placedOption, payTo: o.payTo }) === JSON.stringify(o) ? placedOption["payTo"] : placed;
+  const choice = { required, accepted: o, simulatedXdr: STELLAR.V2.simulatedXdr, currentLedger: STELLAR.V2.currentLedger, payer };
+  return {
+    case: row.case,
+    isAccount: f.isAccount(row.s),
+    isContract: f.isContract(row.s),
+    muxedFor: code(f.muxedFor(row.s as never, H as never)) as string,
+    read: served as string,
+    advertise: advertise as string,
+    build: row.build === null ? null : (code(await f.build(choice as never, H as never)) as string),
+  };
 }

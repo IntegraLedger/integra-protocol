@@ -1,14 +1,15 @@
 /**
  * Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR
  * hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes.
- * `algosdk` is an optional peer: this module loads it when present. Without it the pairing serves no option: the
- * option filter, which `build` applies too, refuses an Algorand option `avm/peer-missing` where it would check the
- * option's addresses. `avmCarrier` reads a payment entry without it.
+ * `algosdk` is an optional peer: this module loads it when present, and `build` writes the transactions with it. The
+ * addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`,
+ * `reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs
+ * none.
  */
 import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import { readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
+import { isAlgorandAddress, readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
 import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -109,19 +110,14 @@ function uint64Of(s: unknown): bigint | undefined {
   return v < UINT64_LIMIT ? v : undefined;
 }
 
-function isAddress(s: unknown): s is string {
-  return typeof s === "string" && s.length === 58 && sdk !== null && sdk.isValidAddress(s);
-}
-
 /**
  * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra` (its fee payer, no transfer
  * method, and no flow other than `"authorization"`), the amount a positive decimal (`isAmount`) below 2^64 and
  * `maxTimeoutSeconds` a positive safe integer, which `build` writes into the asset transfer and its last valid round.
  * `pairingOf`, `advertise`, `read` and `build` apply it, and `bound` and `reference` hold the option a presented payment
- * echoes to it. An `exact` option on an `algorand:` network is this pairing's, which needs no algosdk; any other option
- * is not. The `payTo` and the fee payer are addresses that only algosdk checks, so they are checked last: without
- * algosdk, an option of this pairing that passes every other check is `avm/peer-missing`, and one that fails another
- * check gets the code it gets with algosdk.
+ * echoes to it. An `exact` option on an `algorand:` network is this pairing's; any other option is not. The `payTo` and
+ * the fee payer are read as addresses' text (`isAlgorandAddress`: 58 characters of the base32 alphabet and the
+ * checksum). Nothing here needs algosdk, so every answer is the same with it and without it.
  */
 function check(o: PaymentRequirements): true | Refusal | undefined {
   if (!isObject(o) || typeof o.network !== "string" || !o.network.startsWith("algorand:")) return undefined;
@@ -140,9 +136,10 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   ) {
     return refusal("avm/option-malformed");
   }
-  if (sdk === null) return refusal("avm/peer-missing");
   const feePayer = extra?.["feePayer"];
-  if (!isAddress(o.payTo) || (feePayer !== undefined && !isAddress(feePayer))) return refusal("avm/option-malformed");
+  if (!isAlgorandAddress(o.payTo) || (feePayer !== undefined && !isAlgorandAddress(feePayer))) {
+    return refusal("avm/option-malformed");
+  }
   return true;
 }
 
@@ -211,9 +208,8 @@ function advertise(
 }
 
 /**
- * The buyer's reading of the challenge over the option filter (`readFor`). Without algosdk the filter refuses
- * `avm/peer-missing` each Algorand option whose addresses it would check, so a challenge holding one is
- * `avm/peer-missing`, and any other challenge gets the answer it gets with algosdk.
+ * The buyer's reading of the challenge over the option filter (`readFor`). It needs no algosdk: every answer is the
+ * same with it and without it.
  */
 function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(check)(doc);
@@ -231,12 +227,11 @@ function urlSafe(s: string): string {
  * `avm/option-malformed`. The payment entry is read as `avmCarrier` reads it, with a 64-byte signature in place, as
  * `complete` writes it, so `build` writes no payment `bound` refuses: an entry `avmCarrier` would refuse, one whose
  * base64 is longer than 8,192 characters included, is `avm/option-malformed`. H is checked first, then the form of
- * the choice's payer and suggested parameters, which needs no algosdk: a payer that is not a string of 58 characters,
- * or a parameter outside its type, is `avm/option-malformed`, and a genesis hash that is not the base64 of 32 bytes
- * `avm/network-mismatch`. Then the choice's document and the option's place in it are checked, and without algosdk the
- * filter refuses the chosen option `avm/peer-missing`, so a choice that fails an earlier check, or whose option is
- * another pairing's, gets the answer it gets with algosdk. The payer's checksum, which algosdk checks, and the genesis
- * hash against the option's network come after.
+ * the choice's payer and suggested parameters: a payer that is not an address's text (`isAlgorandAddress`: 58
+ * characters of the base32 alphabet and the checksum), or a parameter outside its type, is `avm/option-malformed`,
+ * and a genesis hash that is not the base64 of 32 bytes `avm/network-mismatch`. Then the choice's document and the
+ * option's place in it are checked, then the genesis hash against the option's network. None of those needs algosdk,
+ * which writes the transactions after them: without it the choice is `avm/peer-missing` only then.
  */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; payer: string; params: AvmParams },
@@ -247,8 +242,7 @@ async function build(
   if (!isObject(c)) return refusal("avm/option-malformed");
   const pr = c.params;
   if (
-    typeof c.payer !== "string" ||
-    c.payer.length !== 58 ||
+    !isAlgorandAddress(c.payer) ||
     !isObject(pr) ||
     typeof pr.firstValid !== "bigint" ||
     typeof pr.minFee !== "bigint" ||
@@ -265,10 +259,9 @@ async function build(
   if (gh === null || gh.length !== 32) return refusal("avm/network-mismatch");
   const ok = chosen(c.required, c.accepted, check);
   if (ok !== true) return ok;
-  if (sdk === null) return refusal("avm/peer-missing");
-  if (!isAddress(c.payer)) return refusal("avm/option-malformed");
   const { required, accepted } = c;
   if (urlSafe(pr.genesisHash).slice(0, 32) !== NETWORK.exec(accepted.network)![1]) return refusal("avm/network-mismatch");
+  if (sdk === null) return refusal("avm/peer-missing");
 
   const firstValid = pr.firstValid;
   const lastValid = firstValid + (BigInt(accepted.maxTimeoutSeconds) < MAX_TXN_LIFE ? BigInt(accepted.maxTimeoutSeconds) : MAX_TXN_LIFE);

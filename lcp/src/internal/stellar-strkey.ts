@@ -1,12 +1,14 @@
 /**
  * Stellar strkeys read and written without @stellar/stellar-sdk, as SEP-23 defines them: RFC 4648 base32, without
- * padding, of a version byte, the payload, and the CRC16-XModem of those two, little-endian. A muxed account (`M…`,
- * version byte `12 << 3`) is a 32-byte Ed25519 key and an 8-byte id, big-endian; an account (`G…`, version byte
- * `6 << 3`) is the key alone. No entry point exports any name here.
+ * padding, of a version byte, the payload, and the CRC16-XModem of those two, little-endian. An account (`G…`, version
+ * byte `6 << 3`) is a 32-byte Ed25519 key, a contract (`C…`, version byte `2 << 3`) a 32-byte contract id, and a muxed
+ * account (`M…`, version byte `12 << 3`) a 32-byte Ed25519 key and an 8-byte id, big-endian. Each strkey has one
+ * length: 56 characters for an account or a contract, 69 for a muxed account. No entry point exports any name here.
  */
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const ACCOUNT = 6 << 3;
+const CONTRACT = 2 << 3;
 const MUXED = 12 << 3;
 
 /** CRC16-XModem: polynomial 0x1021, initial value 0, no reflection. */
@@ -20,9 +22,9 @@ function crc16(bytes: Uint8Array): number {
 }
 
 /**
- * The payload of a strkey of `version` whose payload is `size` bytes, or null: a value that is not a string, a length
- * other than that payload's, a character outside the base32 alphabet (padding included), a bit set past the last
- * byte, another version byte, or a checksum that does not match.
+ * A copy of the payload of a strkey of `version` whose payload is `size` bytes, or null: a value that is not a string,
+ * a length other than that payload's, a character outside the base32 alphabet (padding included), a bit set past the
+ * last byte, another version byte, or a checksum that does not match.
  */
 function decode(s: unknown, version: number, size: number): Uint8Array | null {
   const n = size + 3;
@@ -45,7 +47,7 @@ function decode(s: unknown, version: number, size: number): Uint8Array | null {
   if (acc !== 0 || out[0] !== version) return null;
   const crc = crc16(out.subarray(0, n - 2));
   if (out[n - 2] !== (crc & 0xff) || out[n - 1] !== crc >> 8) return null;
-  return out.subarray(1, n - 2);
+  return out.slice(1, n - 2);
 }
 
 /** The strkey of `version` and `payload`. */
@@ -69,6 +71,36 @@ function encode(version: number, payload: Uint8Array): string {
     acc &= (1 << bits) - 1;
   }
   return bits > 0 ? out + ALPHABET[(acc << (5 - bits)) & 31] : out;
+}
+
+/** The 32-byte key of a `G…` strkey, or null for any other value, a malformed `G…` strkey included. */
+export function accountKey(s: unknown): Uint8Array | null {
+  return decode(s, ACCOUNT, 32);
+}
+
+/** The 32-byte id of a `C…` strkey, or null for any other value, a malformed `C…` strkey included. */
+export function contractId(s: unknown): Uint8Array | null {
+  return decode(s, CONTRACT, 32);
+}
+
+/** True for a well-formed `G…` strkey. */
+export function isAccount(s: unknown): s is string {
+  return accountKey(s) !== null;
+}
+
+/** True for a well-formed `C…` strkey. */
+export function isContract(s: unknown): s is string {
+  return contractId(s) !== null;
+}
+
+/** The `M…` strkey of a `G…` strkey and an id below 2^64, or null when `base` is not a well-formed `G…` strkey. */
+export function muxedOf(base: unknown, id: bigint): string | null {
+  const key = accountKey(base);
+  if (key === null) return null;
+  const raw = new Uint8Array(40);
+  raw.set(key, 0);
+  new DataView(raw.buffer).setBigUint64(32, id, false);
+  return encode(MUXED, raw);
 }
 
 /**

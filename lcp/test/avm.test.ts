@@ -7,13 +7,16 @@ import { base32 } from "@scure/base";
 import {
   decodeAddress,
   decodeSignedTransaction,
+  encodeAddress,
   encodeMsgpack,
+  isValidAddress,
   LogicSig,
   msgpackRawDecodeAsMap,
   SignedTransaction,
 } from "algosdk";
 import { pairingOf, type AtrHash } from "../src/index.js";
 import { avmCarrier, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
+import { isAlgorandAddress } from "../src/internal/avm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 import { wellFormedUtf8 } from "./utf8-syntax.js";
@@ -548,5 +551,36 @@ describe("x402-exact-algorand.json", () => {
       refused: true,
       code: "avm/network-mismatch",
     });
+  });
+
+  // isAlgorandAddress reads an address's text without algosdk, as algosdk's isValidAddress reads it (hi-base32's
+  // decode, which drops the last 2 bits of the 290, then the checksum): over generated keys, the zero key and the
+  // all-ones key, and malformed text. A last character that differs only in those 2 bits reads as the same address.
+  it("isAlgorandAddress is algosdk's isValidAddress, over generated keys and malformed text", () => {
+    const keys = Array.from({ length: 256 }, (_, i) => sha512_256(new TextEncoder().encode(`key ${i}`)));
+    keys.push(new Uint8Array(32), new Uint8Array(32).fill(0xff));
+    const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    for (const key of rowsOf(keys, "the keys", { exact: 258 })) {
+      const a = encodeAddress(key);
+      const lastBits = a.slice(0, -1) + ALPHABET[ALPHABET.indexOf(a.at(-1)!) ^ 3];
+      for (const s of [a, lastBits]) expect([s, isAlgorandAddress(s), isValidAddress(s)]).toEqual([s, true, true]);
+    }
+    const a = encodeAddress(keys[7]!);
+    const rows = [
+      { case: "a checksum that does not match", s: a.slice(0, 10) + (a[10] === "A" ? "B" : "A") + a.slice(11) },
+      { case: "lowercase", s: a.toLowerCase() },
+      { case: "a character outside the alphabet", s: `1${a.slice(1)}` },
+      { case: "padding in place of the last character", s: `${a.slice(0, -1)}=` },
+      { case: "padding in place of the first character", s: `=${a.slice(1)}` },
+      { case: "one character short", s: a.slice(0, -1) },
+      { case: "one character more", s: `${a}A` },
+      { case: "the base32 of the key alone", s: base32.encode(keys[7]!).replace(/=+$/, "") },
+      { case: "an empty text", s: "" },
+      { case: "a number", s: 7 },
+      { case: "null", s: null },
+    ];
+    for (const row of rowsOf(rows, "the malformed addresses", { exact: 11 })) {
+      expect([row.case, isAlgorandAddress(row.s), isValidAddress(row.s as string)]).toEqual([row.case, false, false]);
+    }
   });
 });

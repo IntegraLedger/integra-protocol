@@ -3,9 +3,10 @@
  * bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. XDR, strkeys and
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
  * needs it refuses `stellar/peer-missing`, after the checks that need no peer (an envelope's network, size, base64 and
- * union tags, an event's form), which give the codes they give with it, except the reads: `stellarStatus` is pending
- * `unreadable` and `stellarLocate` `complete: false`, with nothing read. `unmux` and `isMuxed` read a muxed account
- * without it (`stellar-strkey.ts`). The public names are re-exported by `../stellar.ts`.
+ * union tags, an event's form, a strkey), which give the codes they give with it, except the reads: `stellarStatus` is
+ * pending `unreadable` and `stellarLocate` `complete: false`, with nothing read, after the ref's form is checked.
+ * Strkeys (`G…`, `C…` and `M…`) are read and written without it (`stellar-strkey.ts`), so `isAccount`, `isContract`,
+ * `isMuxed`, `unmux` and `muxedFor` need no peer. The public names are re-exported by `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
 import type {
@@ -26,9 +27,9 @@ import type { Hex } from "../evm.js";
 import { fromBase64, toBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
-import { unmux } from "./stellar-strkey.js";
+import { accountKey, contractId, isAccount, isContract, muxedOf, unmux } from "./stellar-strkey.js";
 
-export { unmux };
+export { isAccount, isContract, unmux };
 
 const peer: typeof StellarBase | undefined = await import("@stellar/stellar-sdk/base").then(
   (m) => m,
@@ -193,32 +194,15 @@ export function muxedId(h: AtrHash): bigint {
 }
 
 /**
- * The `M…` strkey of a `G…` account and `muxedId(h)`. A `base` that is not a `G…` strkey is `stellar/option-malformed`,
- * the code of a recipient that cannot take a muxed id, and an `h` that is not a 32-byte hash is
- * `x402/payload-malformed`, as the other rails' carrier writers answer one. Without @stellar/stellar-sdk the strkeys
- * cannot be read: `stellar/peer-missing`, after a `base` that is not a string and the hash are checked, which need no
- * peer.
+ * The `M…` strkey of a `G…` account and `muxedId(h)`. A `base` that is not a string is `stellar/option-malformed`, then
+ * an `h` that is not a 32-byte hash `x402/payload-malformed`, as the other rails' carrier writers answer one, then a
+ * `base` that is not a `G…` strkey `stellar/option-malformed`, the code of a recipient that cannot take a muxed id. The
+ * strkeys are read and written without @stellar/stellar-sdk, so every answer is the same with it and without it.
  */
 export function muxedFor(base: string, h: AtrHash): string | Refusal {
   if (typeof base !== "string") return refusal("stellar/option-malformed");
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
-  const S = need();
-  if (S === null) return refusal("stellar/peer-missing");
-  if (!S.StrKey.isValidEd25519PublicKey(base)) return refusal("stellar/option-malformed");
-  const raw = new Uint8Array(40);
-  raw.set(S.StrKey.decodeEd25519PublicKey(base), 0);
-  new DataView(raw.buffer).setBigUint64(32, muxedId(h), false);
-  return S.StrKey.encodeMed25519PublicKey(raw);
-}
-
-export function isAccount(s: unknown): s is string {
-  const S = need();
-  return S !== null && typeof s === "string" && S.StrKey.isValidEd25519PublicKey(s);
-}
-
-export function isContract(s: unknown): s is string {
-  const S = need();
-  return S !== null && typeof s === "string" && S.StrKey.isValidContract(s);
+  return muxedOf(base, muxedId(h)) ?? refusal("stellar/option-malformed");
 }
 
 export function isMuxed(s: unknown): s is string {
@@ -230,7 +214,7 @@ function need(): typeof StellarBase | null {
 }
 
 /** True when @stellar/stellar-sdk loaded with this module. */
-export function hasPeer(): boolean {
+function hasPeer(): boolean {
   return peer !== undefined;
 }
 
@@ -694,18 +678,17 @@ const MAX_EVENT_XDR = 1024;
 /**
  * The `getEvents` topic filter for SEP-41 `transfer` events to `toBase`, as base64 XDR segments: the symbol
  * `transfer`, any `from`, `toBase` as an address, and any trailing topics (the Stellar Asset Contract adds its asset).
- * A `toBase` that is not an account or contract strkey is `stellar/option-malformed`; one that is not a string is
- * refused before the SDK is needed, which reads a strkey.
+ * A `toBase` that is not an account or contract strkey is `stellar/option-malformed`, which needs no SDK: the SDK is
+ * needed after it, to write the XDR.
  */
 export function transferEventTopics(toBase: string): readonly string[] | Refusal {
-  if (typeof toBase !== "string") return refusal("stellar/option-malformed");
+  const key = accountKey(toBase);
+  const id = key === null ? contractId(toBase) : null;
+  if (key === null && id === null) return refusal("stellar/option-malformed");
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
   const x = S.xdr;
-  let to: ScAddressWire;
-  if (S.StrKey.isValidEd25519PublicKey(toBase)) to = { type: 0, accountId: { type: 0, ed25519: S.StrKey.decodeEd25519PublicKey(toBase) } };
-  else if (S.StrKey.isValidContract(toBase)) to = { type: 1, contractId: S.StrKey.decodeContract(toBase) };
-  else return refusal("stellar/option-malformed");
+  const to: ScAddressWire = key !== null ? { type: 0, accountId: { type: 0, ed25519: key } } : { type: 1, contractId: id! };
   return [
     x.ScVal.fromXdrObject({ type: 15, sym: new x.XdrString("transfer") }).toXdr("base64"),
     "*",
@@ -847,11 +830,12 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
  * `transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
  * an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
  * strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
- * `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. One call when the named transaction settles or
- * a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
- * without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
- * `expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
- * there is no expiration ledger to pass.
+ * `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The ref's form needs no SDK; without
+ * @stellar/stellar-sdk a ref in its form is pending `unreadable` too, with nothing read, as the transaction cannot be
+ * decoded. One call when the named transaction settles or a read fails, two before the expiration ledger has passed,
+ * and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
+ * the transaction's source account, with no `expiration` either) is settled when the named transaction succeeded as
+ * that transfer, and is otherwise pending: there is no expiration ledger to pass.
  */
 export async function stellarStatus(
   ref: StellarRef & { transaction: string },
@@ -863,7 +847,8 @@ export async function stellarStatus(
     reader.network !== ref.network ||
     typeof ref.transaction !== "string" ||
     !TX_HASH.test(ref.transaction) ||
-    !refWellFormed(ref)
+    !refWellFormed(ref) ||
+    !hasPeer()
   ) {
     return { state: "pending", why: "unreadable" };
   }
@@ -895,7 +880,8 @@ export async function stellarStatus(
  * incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
  * has no entry to search for: `complete` is false. A ref or reader that is not an object, a reader for another network,
  * or a ref with a field the search uses in another form than `stellarStatus` reads (an `authDigest`, `expiration`,
- * `asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read.
+ * `asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read, as is any ref without
+ * @stellar/stellar-sdk, which decodes each candidate's transaction.
  */
 export async function stellarLocate(
   ref: StellarRef,
@@ -903,7 +889,7 @@ export async function stellarLocate(
 ): Promise<{ found?: string; complete: boolean }> {
   if (!isObject(ref) || !isObject(reader)) return { complete: false };
   if (reader.network !== ref.network || typeof ref.authDigest !== "string" || ref.expiration === undefined) return { complete: false };
-  if (!refWellFormed(ref)) return { complete: false };
+  if (!refWellFormed(ref) || !hasPeer()) return { complete: false };
   const l = await locate(ref, ref.expiration, reader, ref.expiration);
   return l.found !== undefined ? { found: l.found.hash, complete: true } : { complete: l.complete };
 }

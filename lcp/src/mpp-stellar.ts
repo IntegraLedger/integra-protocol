@@ -1,10 +1,12 @@
 /**
  * `mpp/charge/stellar`: the request's `recipient` placed as the seller's muxed address whose 8-byte id is the ATR
  * hash's first 8 bytes, which the payer signs as the Soroban `transfer`'s `to`. The full hash rides in the challenge.
+ * Strkeys are read and written without @stellar/stellar-sdk, so `unplaced` and `advertise` need no peer. The SDK reads
+ * and writes the transaction's XDR: without it `build`, `bound` and `reference` refuse `stellar/peer-missing` only
+ * after every check that needs no peer.
  */
 import type { AtrHash, Json } from "./core.js";
 import {
-  hasPeer,
   MAX_XDR,
   isAccount,
   muxedFor,
@@ -225,9 +227,9 @@ async function fetchPresented(
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
  * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
- * Without @stellar/stellar-sdk the transaction cannot be read: `stellar/peer-missing`, after the choice, its challenge,
- * H, the current ledger, the clock, the expiration ledger, the simulated transaction's form (`signingInput`) and the
- * recipient's muxed id are checked, which need no peer.
+ * Without @stellar/stellar-sdk the transaction cannot be read (`signingFor`): `stellar/peer-missing`, after the choice,
+ * its challenge, H, the current ledger, the clock, the expiration ledger, the simulated transaction's form
+ * (`signingInput`) and the recipient's muxed id are checked, which need no peer.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
@@ -245,7 +247,6 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   const recipient = checked.request["recipient"];
   const m = unmux(recipient);
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
-  if (!hasPeer()) return refusal("stellar/peer-missing");
   const s = signingFor(choice.simulatedXdr, network, expiration, checked.details["feePayer"] === true);
   if (isRefusal(s)) return s;
   if (s.payment.to !== recipient) return refusal("stellar/carrier-mismatch");
@@ -281,8 +282,9 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 
 /**
  * The placement: MPP's `place`, then `recipient` set to the seller's muxed address carrying H's first 8 bytes. An
- * issued recipient that is already a muxed address is `stellar/carrier-occupied`, which needs no peer. Without
- * @stellar/stellar-sdk any other recipient cannot be placed: `stellar/peer-missing`.
+ * issued recipient that is a muxed address is `stellar/carrier-occupied`, and one that is not an account
+ * `stellar/option-malformed`. The recipient is read and written without @stellar/stellar-sdk, so every answer is the
+ * same with it and without it.
  */
 function advertise(
   doc: readonly MppChallenge[],
@@ -298,7 +300,6 @@ function advertise(
     offer,
     (issued) => {
       if (unmux(issued) !== null) return refusal("stellar/carrier-occupied");
-      if (!hasPeer()) return refusal("stellar/peer-missing");
       return isAccount(issued) ? muxedFor(issued, h) : refusal("stellar/option-malformed");
     },
     agreementUrl,

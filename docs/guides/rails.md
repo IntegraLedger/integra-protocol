@@ -144,8 +144,10 @@ peer dependency. Install the one for each rail you use:
 Without its peer, a rail's function that returns refusals gives `<rail>/peer-missing` for an input it needs the peer
 to answer, and a `status` that needs the peer is pending `unreadable`, with nothing read. An x402 pairing refuses a
 missing peer only through an option of its own: its `read`, `advertise`, `build`, `bound` and `reference` give a
-document, choice, offer or payment holding none the answer they give with the peer. Every other rail needs nothing more
-than the package.
+document, choice, offer or payment holding none the answer they give with the peer. Stellar and Algorand read their
+addresses without the peer (Stellar's strkeys, Algorand's address text), so their option filters, `read` and
+`advertise` need none, nor do Algorand's `bound` and `reference`: those rails' other functions need the peer only to
+read or write the transaction, and check everything else first. Every other rail needs nothing more than the package.
 
 ## Reading settlement
 

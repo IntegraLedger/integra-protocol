@@ -1,17 +1,17 @@
-// algosdk is an optional peer. With it absent, the avm entry point and the package root still import, and each function
-// that needs algosdk refuses `avm/peer-missing`, the code the package states for a rail without its peer
-// (`<rail>/peer-missing`, docs/guides/rails.md "Peer dependencies", with the entry point's namespace `avm`), never a
-// malformed-input code. avmCarrier needs no algosdk, and gives every input the answer it gives with it. read,
-// advertise, build, bound and reference need algosdk only for an Algorand option: the option filter refuses each one
-// whose addresses it would check `avm/peer-missing`, and a document, offer, choice or payment with no such option gets
-// the answer it gets with algosdk, as does a malformed H, which build checks first, and a malformed payer or suggested
-// parameter, which it checks next. The documents, options and payments are the vector file's own, which the pairing
-// reads, builds and binds with algosdk (avm.test.ts).
+// algosdk is an optional peer, with which x402/exact/algorand's build writes the transactions. With it absent, the avm
+// entry point and the package root still import, and build refuses `avm/peer-missing`, the code the package states for
+// a rail without its peer (`<rail>/peer-missing`, docs/guides/rails.md "Peer dependencies", with the entry point's
+// namespace `avm`), never a malformed-input code, only for a choice that passes every check that needs no algosdk: H,
+// the payer (its checksum included) and the suggested parameters, the document and the option, and the genesis hash
+// against the option's network. Addresses and payment entries are read without algosdk, so the option filter,
+// pairingOf, read, advertise, bound, reference and avmCarrier give every input the answer they give with it. The
+// documents, options and payments are the vector file's own, which the pairing reads, builds and binds with algosdk
+// (avm.test.ts).
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { buildChoices } from "./build-choices.js";
-import { avmCarrierRows, BAD_H, hFirstChoices, memberFirstChoices, membersOf } from "./peer-free-inputs.js";
+import { avmCarrierRows, avmComparedChoices, BAD_H, hFirstChoices, memberFirstChoices, membersOf } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8"));
@@ -55,9 +55,12 @@ describe("without algosdk", () => {
     avm = await import("../src/avm.js");
   }, IMPORT_MS);
 
-  it("the root imports with the pairing in BINDINGS, and names no Algorand option", { timeout: IMPORT_MS }, () => {
+  it("the root imports with the pairing in BINDINGS, and names the Algorand option as it does with algosdk", { timeout: IMPORT_MS }, () => {
     expect(root.BINDINGS.map((b) => b.id)).toContain("x402/exact/algorand");
-    expect(root.pairingOf(O)).toBeUndefined();
+    expect(root.pairingOf(O)).toBe("x402/exact/algorand");
+    for (const row of rowsOf(V.options as { option: PaymentRequirements }[], "x402-exact-algorand.json options", { exact: 3 })) {
+      expect(root.pairingOf(row.option)).toBeUndefined();
+    }
   });
 
   // peer-free-inputs.test.ts gives the same rows the same answers with algosdk.
@@ -76,9 +79,10 @@ describe("without algosdk", () => {
     }
   });
 
-  // The filter refuses the chosen option after the choice's own checks, so no choice gets the answer it gets with
-  // algosdk (avm.test.ts, build-choices.test.ts) except one of an Algorand option.
-  it("build refuses avm/peer-missing for a well-formed choice, and answers any other choice as it does with algosdk", async () => {
+  // build writes the transactions with algosdk after every other check, so only a choice it would build is refused for
+  // want of it (avm.test.ts builds this one), and every other choice gets the answer it gets with algosdk
+  // (build-choices.test.ts, peer-free-inputs.test.ts).
+  it("build refuses avm/peer-missing for a choice it builds with algosdk, and answers any other choice as it does with algosdk", async () => {
     const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [O] };
     const choice = { required, accepted: O, payer: V.fixed.payer, params: PARAMS };
     expect(await avm.exactAvm.build(choice, V.fixed.H)).toEqual(REFUSED);
@@ -86,38 +90,46 @@ describe("without algosdk", () => {
     for (const row of rowsOf(buildChoices(O, V.fixed.resource, membersOf("x402/exact/algorand")), "build-choices.ts", { exact: 2 })) {
       expect(await avm.exactAvm.build(row.choice as never, V.fixed.H)).toEqual({ refused: true, code: row.expect });
     }
-  });
-
-  // The payer's length and the suggested parameters' form are checked after H and before the document, which needs no
-  // algosdk, so a malformed one gets the code it gets with algosdk whatever the option, the pairing's own included.
-  it("build answers a malformed payer or suggested parameter as it does with algosdk, whatever the option", async () => {
-    for (const row of rowsOf(memberFirstChoices(avm.exactAvm.id, O), "peer-free-inputs.ts", { exact: 15 })) {
+    for (const row of rowsOf(avmComparedChoices(), "peer-free-inputs.ts", { exact: 4 })) {
       expect([row.case, await avm.exactAvm.build(row.choice as never, V.fixed.H)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });
 
-  // A fault of the document itself is read before any option, so it gets the code it gets with algosdk.
-  it("read refuses avm/peer-missing for a document holding only an Algorand option, after the document's own checks", () => {
+  // The payer, its checksum included, and the suggested parameters' form are checked after H and before the document,
+  // which needs no algosdk, so a malformed one gets the code it gets with algosdk whatever the option, the pairing's own
+  // included.
+  it("build answers a malformed payer or suggested parameter as it does with algosdk, whatever the option", async () => {
+    for (const row of rowsOf(memberFirstChoices(avm.exactAvm.id, O), "peer-free-inputs.ts", { exact: 21 })) {
+      expect([row.case, await avm.exactAvm.build(row.choice as never, V.fixed.H)]).toEqual([row.case, { refused: true, code: row.expect }]);
+    }
+  });
+
+  // A fault of the document itself is read before any option, as with algosdk.
+  it("read serves the Algorand option of a document as it does with algosdk, after the document's own checks", () => {
     const doc = b2();
-    expect(avm.exactAvm.read(doc)).toEqual(REFUSED);
+    const r = avm.exactAvm.read(doc);
+    expect("refused" in r ? r : [r.h, r.link, r.offer.options]).toEqual([V.fixed.H, V.fixed.link, [O]]);
     const { extensions: _extensions, ...without } = doc;
     expect(avm.exactAvm.read(without as never)).toEqual({ refused: true, code: "x402/no-legal-context" });
     expect(avm.exactAvm.read({ ...doc, x402Version: 1 } as never)).toEqual({ refused: true, code: "x402/not-v2" });
   });
 
-  // O beside another pairing's option: only O is refused for want of algosdk, and the other pairing's read serves its
-  // own option from the same document. bound and reference read a payment's version before its option.
-  it("the Algorand option of a document is refused avm/peer-missing, and the other pairing reads its own", async () => {
+  // O beside another pairing's option: each pairing's read serves its own option from the same document. bound and
+  // reference read V2's payment, which the buyer row presents, as they do with algosdk (avm.test.ts), and a payment's
+  // version before its option.
+  it("read, advertise, bound and reference answer the Algorand option as they do with algosdk, beside another pairing's", async () => {
     const { exactEip3009 } = await import("../src/x402.js");
     const both = { ...b2(), accepts: [O, EVM.fixed.O] };
-    expect(avm.exactAvm.read(both)).toEqual(REFUSED);
+    const r = avm.exactAvm.read(both);
+    expect("refused" in r ? r : r.offer.options).toEqual([O]);
     const evm = exactEip3009.read(both);
     expect("refused" in evm ? evm : evm.offer.options).toEqual([EVM.fixed.O]);
     const issued = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [O, EVM.fixed.O] };
-    expect(avm.exactAvm.advertise(issued, V.fixed.H, V.fixed.link, O)).toEqual(REFUSED);
+    const placed = avm.exactAvm.advertise(issued, V.fixed.H, V.fixed.link, O);
+    expect("refused" in placed ? placed : placed.accepts).toEqual([O, EVM.fixed.O]);
     expect(avm.exactAvm.advertise(issued, V.fixed.H, V.fixed.link, EVM.fixed.O)).toEqual(NOT_THIS);
-    expect(await avm.exactAvm.bound(PRESENTED)).toEqual(REFUSED);
-    expect(await avm.exactAvm.reference(PRESENTED)).toEqual(REFUSED);
+    expect(await avm.exactAvm.bound(PRESENTED)).toBe(V.V3.expectBound);
+    expect(await avm.exactAvm.reference(PRESENTED)).toEqual(V.V3.expectReference);
     expect(await avm.exactAvm.bound({ ...PRESENTED, accepted: EVM.fixed.O })).toEqual(NOT_THIS);
     expect(await avm.exactAvm.reference({ ...PRESENTED, accepted: EVM.fixed.O })).toEqual(NOT_THIS);
     const notV2 = { refused: true, code: "x402/not-v2" };
@@ -130,27 +142,16 @@ describe("without algosdk", () => {
     expect(avm.exactAvm.read({ ...b2(), accepts: [EVM.fixed.O] })).toEqual(NONE);
   });
 
-  // The filter checks the payTo and the fee payer, which only algosdk reads, after every other check, so an Algorand
-  // option with another fault gets the code it gets with algosdk (avm.test.ts runs the same rows with it).
-  it("an Algorand option's fault that needs no algosdk gets the code it gets with algosdk", async () => {
+  // The filter reads the payTo and the fee payer as addresses' text, so each option's fault, a payTo whose checksum
+  // does not match included, gets the code it gets with algosdk (avm.test.ts runs the same rows with it).
+  it("an Algorand option's fault gets the code it gets with algosdk", async () => {
     const doc = b2();
     const required = (o: PaymentRequirements) => ({ x402Version: 2 as const, resource: V.fixed.resource, accepts: [o] });
     type Row = { option: PaymentRequirements; expect: string };
-    for (const row of rowsOf(V.options as Row[], "x402-exact-algorand.json options", {
-      exact: 2,
-      keep: ["the options with O's payTo, whose fault needs no algosdk", (r) => r.option.payTo === O.payTo],
-      leave: ["the option whose payTo has a bad checksum, which only algosdk reads", (r) => r.option.payTo !== O.payTo],
-    })) {
+    for (const row of rowsOf(V.options as Row[], "x402-exact-algorand.json options", { exact: 3 })) {
       expect(avm.exactAvm.advertise(required(row.option), V.fixed.H, V.fixed.link, row.option)).toEqual({ refused: true, code: row.expect });
       expect(await avm.exactAvm.bound({ ...PRESENTED, accepted: row.option })).toEqual({ refused: true, code: row.expect });
       expect(avm.exactAvm.read({ ...doc, accepts: [row.option] })).toEqual(NONE);
-    }
-    for (const row of rowsOf(V.options as Row[], "x402-exact-algorand.json options", {
-      exact: 1,
-      keep: ["the option whose payTo has a bad checksum, which only algosdk reads", (r) => r.option.payTo !== O.payTo],
-      leave: ["the options with O's payTo", (r) => r.option.payTo === O.payTo],
-    })) {
-      expect(avm.exactAvm.advertise(required(row.option), V.fixed.H, V.fixed.link, row.option)).toEqual(REFUSED);
     }
     for (const row of rowsOf(V.V3.presentedOptions as { accepted: PaymentRequirements; expect: string }[], "x402-exact-algorand.json V3.presentedOptions", { exact: 5 })) {
       expect(await avm.exactAvm.bound({ ...PRESENTED, accepted: row.accepted })).toEqual({ refused: true, code: row.expect });

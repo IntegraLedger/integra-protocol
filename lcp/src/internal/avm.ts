@@ -1,7 +1,8 @@
 /**
- * The x402 payment an Algorand payer presents, and the reader of one payment entry. `../avm.ts` returns the payment
- * from `complete` and reads each entry with `readEntry`; the root names the payment among the payments `Presented`
- * covers. No entry point exports any name here.
+ * The x402 payment an Algorand payer presents, the reader of one payment entry, and the reader of an address's text.
+ * `../avm.ts` returns the payment from `complete`, reads each entry with `readEntry` and each address with
+ * `isAlgorandAddress`; the root names the payment among the payments `Presented` covers. No entry point exports any
+ * name here.
  *
  * On the x402 path an entry has two readers. The x402 reference facilitator (`@x402/avm`) decodes it with
  * algokit-utils' `decodeSignedTransaction`, then submits the entry's own bytes, which algod decodes with go-codec and
@@ -620,26 +621,44 @@ function facBytes(name: string, node: Node | undefined, members: [string, number
 }
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 /**
- * AddressCodec: 32 raw bytes, or 58 bytes read as an address's text (hi-base32's decode, which takes the 290 bits of 58
- * characters as 36 bytes, then the checksum); written back unless all zero.
+ * The public key of an Algorand address's 58 characters, given as their character codes, or null: hi-base32's decode,
+ * which takes the 290 bits of 58 characters as 36 bytes, the last 2 bits dropped, then the checksum, the last 4 bytes
+ * of the key's SHA-512/256. A character outside the base32 alphabet, padding included, or a checksum that does not
+ * match is null. algosdk's `isValidAddress` reads an address's text the same way.
+ */
+function addressKey(codes: ArrayLike<number>): Uint8Array | null {
+  if (codes.length !== 58) return null;
+  let acc = 0n;
+  for (let i = 0; i < codes.length; i++) {
+    const d = ALPHABET.indexOf(String.fromCharCode(codes[i]!));
+    if (d < 0) return null;
+    acc = (acc << 5n) | BigInt(d);
+  }
+  acc >>= 2n;
+  const decoded = Uint8Array.from({ length: 36 }, (_, j) => Number((acc >> BigInt(8 * (35 - j))) & 0xffn));
+  const pk = decoded.slice(0, 32);
+  return sha512_256(pk).subarray(28).every((x, j) => x === decoded[32 + j]) ? pk : null;
+}
+
+/**
+ * True for an Algorand address's text: 58 characters of the base32 alphabet whose last 4 bytes are the checksum of the
+ * first 32 (`addressKey`). It needs no algosdk.
+ */
+export function isAlgorandAddress(s: unknown): s is string {
+  if (typeof s !== "string" || s.length !== 58) return false;
+  return addressKey(Array.from({ length: 58 }, (_, i) => s.charCodeAt(i))) !== null;
+}
+
+/**
+ * AddressCodec: 32 raw bytes, or 58 bytes read as an address's text (`addressKey`); written back unless all zero.
  */
 function facAddress(name: string, node: Node | undefined, members: [string, number[]][]): boolean {
   if (absent(node)) return true;
   const b = rawBytes(node);
   let pk: Uint8Array;
   if (b.length === 32) pk = b;
-  else if (b.length === 58) {
-    let acc = 0n;
-    for (const c of b) {
-      const d = ALPHABET.indexOf(String.fromCharCode(c));
-      if (d < 0) return refuse();
-      acc = (acc << 5n) | BigInt(d);
-    }
-    acc >>= 2n;
-    const decoded = Uint8Array.from({ length: 36 }, (_, j) => Number((acc >> BigInt(8 * (35 - j))) & 0xffn));
-    pk = decoded.subarray(0, 32);
-    if (!sha512_256(pk).subarray(28).every((x, j) => x === decoded[32 + j])) return refuse();
-  } else return refuse();
+  else if (b.length === 58) pk = addressKey(b) ?? refuse();
+  else return refuse();
   if (pk.every((x) => x === 0)) return true;
   members.push([name, binOf(pk)]);
   return false;

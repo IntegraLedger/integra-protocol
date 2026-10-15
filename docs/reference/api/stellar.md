@@ -228,11 +228,10 @@ account.
 
 > **muxedFor**(`base`, `h`): `string` \| [`Refusal`](index.md#refusal)
 
-The `M…` strkey of a `G…` account and `muxedId(h)`. A `base` that is not a `G…` strkey is `stellar/option-malformed`,
-the code of a recipient that cannot take a muxed id, and an `h` that is not a 32-byte hash is
-`x402/payload-malformed`, as the other rails' carrier writers answer one. Without @stellar/stellar-sdk the strkeys
-cannot be read: `stellar/peer-missing`, after a `base` that is not a string and the hash are checked, which need no
-peer.
+The `M…` strkey of a `G…` account and `muxedId(h)`. A `base` that is not a string is `stellar/option-malformed`, then
+an `h` that is not a 32-byte hash `x402/payload-malformed`, as the other rails' carrier writers answer one, then a
+`base` that is not a `G…` strkey `stellar/option-malformed`, the code of a recipient that cannot take a muxed id. The
+strkeys are read and written without @stellar/stellar-sdk, so every answer is the same with it and without it.
 
 #### Parameters
 
@@ -278,7 +277,8 @@ candidate was read: a listed candidate whose transaction is not found, or cannot
 incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
 has no entry to search for: `complete` is false. A ref or reader that is not an object, a reader for another network,
 or a ref with a field the search uses in another form than `stellarStatus` reads (an `authDigest`, `expiration`,
-`asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read.
+`asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read, as is any ref without
+@stellar/stellar-sdk, which decodes each candidate's transaction.
 
 #### Parameters
 
@@ -310,11 +310,12 @@ read uses, or holds one in another form than `reference` writes, is pending `unr
 `transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
 an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
 strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
-`expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. One call when the named transaction settles or
-a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref
-without `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no
-`expiration` either) is settled when the named transaction succeeded as that transfer, and is otherwise pending:
-there is no expiration ledger to pass.
+`expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The ref's form needs no SDK; without
+@stellar/stellar-sdk a ref in its form is pending `unreadable` too, with nothing read, as the transaction cannot be
+decoded. One call when the named transaction settles or a read fails, two before the expiration ledger has passed,
+and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
+the transaction's source account, with no `expiration` either) is settled when the named transaction succeeded as
+that transfer, and is otherwise pending: there is no expiration ledger to pass.
 
 #### Parameters
 
@@ -358,8 +359,8 @@ needed, which reads the XDR.
 
 The `getEvents` topic filter for SEP-41 `transfer` events to `toBase`, as base64 XDR segments: the symbol
 `transfer`, any `from`, `toBase` as an address, and any trailing topics (the Stellar Asset Contract adds its asset).
-A `toBase` that is not an account or contract strkey is `stellar/option-malformed`; one that is not a string is
-refused before the SDK is needed, which reads a strkey.
+A `toBase` that is not an account or contract strkey is `stellar/option-malformed`, which needs no SDK: the SDK is
+needed after it, to write the XDR.
 
 #### Parameters
 
