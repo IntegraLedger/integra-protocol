@@ -24,7 +24,8 @@ export {
   toRawBytes,
 } from "./internal/core.js";
 export type { AtrHash, CoreRefusal, Json } from "./internal/core.js";
-export { domainToAscii, parseHost } from "./internal/url-host.js";
+export { domainToAscii, parseHost, readUrl } from "./internal/url-host.js";
+export type { UrlAuthority } from "./internal/url-host.js";
 export { base64Bytes, base64UrlBytes, fromBase64, fromBase64Url, toBase64, toBase64Url } from "./rail-bytes.js";
 export { isRefusal, readToRepeat } from "./refusal.js";
 export type { Refusal } from "./refusal.js";

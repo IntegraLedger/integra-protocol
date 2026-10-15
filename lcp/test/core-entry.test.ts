@@ -1,11 +1,12 @@
 // The `./core` entry point holds the core functions the package root exports, and nothing else: the ATR's assembly and
 // its hash, hash comparison, the hash's string, structured and raw forms, the https-link rule, the URL Standard's host
-// and domain parsers, the RFC 8785 form of a JSON value and its digest, JSON reading capped at 64 levels, the base64
-// and base64url readers and writers, `isRefusal` and `readToRepeat`. Each is the root's own function object, one
-// function reached by two paths, so a refusal made through one path is a refusal to the other path's `isRefusal`, and
-// both paths' `readToRepeat` answer alike. The codes are the ones docs/reference/refusals.md lists, and its marks say
-// which is a read to repeat. The base64 texts are RFC 4648 §10's, the canonical form's (§3.5), and the URL-safe
-// alphabet's (§5), and the base64url texts RFC 4648 §10's without padding, as RFC 7515 §2 writes them.
+// and domain parsers and its reading of a URL's scheme and authority, the RFC 8785 form of a JSON value and its digest,
+// JSON reading capped at 64 levels, the base64 and base64url readers and writers, `isRefusal` and `readToRepeat`. Each
+// is the root's own function object, one function reached by two paths, so a refusal made through one path is a refusal
+// to the other path's `isRefusal`, and both paths' `readToRepeat` answer alike. The codes are the ones
+// docs/reference/refusals.md lists, and its marks say which is a read to repeat. The base64 texts are RFC 4648 §10's,
+// the canonical form's (§3.5), and the URL-safe alphabet's (§5), and the base64url texts RFC 4648 §10's without
+// padding, as RFC 7515 §2 writes them.
 import { describe, expect, expectTypeOf, it } from "vitest";
 import * as core from "../src/core.js";
 import * as root from "../src/index.js";
@@ -34,6 +35,7 @@ const CORE = rowsOf(
     "parseHost",
     "parseJson",
     "readToRepeat",
+    "readUrl",
     "toBase64",
     "toBase64Url",
     "toLcpString",
@@ -41,7 +43,7 @@ const CORE = rowsOf(
     "toRawBytes",
   ] as const,
   "the core functions the package root exports",
-  { exact: 25 },
+  { exact: 26 },
 );
 
 const ID = "6f1c2b0e-8d4a-4c3b-9e2f-1a7d5c9b3e40";
@@ -62,6 +64,7 @@ describe("the ./core entry point", () => {
     expectTypeOf<core.CoreRefusal>().toEqualTypeOf<root.CoreRefusal>();
     expectTypeOf<core.Json>().toEqualTypeOf<root.Json>();
     expectTypeOf<core.Refusal>().toEqualTypeOf<root.Refusal>();
+    expectTypeOf<core.UrlAuthority>().toEqualTypeOf<root.UrlAuthority>();
   });
 
   it("a refusal made through either path is a refusal to both paths' isRefusal", async () => {

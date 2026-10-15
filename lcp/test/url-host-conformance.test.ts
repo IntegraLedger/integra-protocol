@@ -14,8 +14,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { domainToAscii, parseHost } from "../src/core.js";
-import { nfc, punycodeDecode, punycodeEncode, readUrl } from "../src/internal/url-host.js";
+import { domainToAscii, parseHost, readUrl } from "../src/core.js";
+import { nfc, punycodeDecode, punycodeEncode } from "../src/internal/url-host.js";
 import { rfc3492Decode, rfc3492Encode } from "./rfc3492.js";
 import { rowsOf } from "./rows.js";
 

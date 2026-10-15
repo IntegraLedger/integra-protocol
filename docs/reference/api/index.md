@@ -135,6 +135,23 @@ A refusal returned as a value. `code` is `<entry point>/<reason>`.
 
 ***
 
+### UrlAuthority
+
+> **UrlAuthority** = `object`
+
+What the basic URL parser gives for an absolute URL's scheme and authority.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-credentials"></a> `credentials` | `boolean` | Whether the URL has a username or a password that is not empty. |
+| <a id="property-host"></a> `host` | `string` \| `null` | The serialized host, or null for a URL with no authority. |
+| <a id="property-port"></a> `port` | `number` \| `null` | The port, or null where the URL names none or names its scheme's default port, as the URL record holds it. |
+| <a id="property-scheme"></a> `scheme` | `string` | The scheme, lowercased. |
+
+***
+
 ### X402Binding
 
 > **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactLnbtc`](lightning.md#exactlnbtc) \| *typeof* [`exactLnbtcNamed`](lightning.md#exactlnbtcnamed) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactStellar`](x402-exact-stellar.md#exactstellar) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm)
@@ -623,6 +640,26 @@ it), a missing peer dependency, and malformed input. A string the package does n
 #### Returns
 
 `boolean`
+
+***
+
+### readUrl()
+
+> **readUrl**(`input`): [`UrlAuthority`](#urlauthority) \| `null`
+
+The scheme and authority of a string that the URL Standard's basic URL parser (§4.4) reads, with no base, as an
+absolute URL, or null where it returns failure. Only the scheme and the authority can fail: the parser's path, query
+and fragment states accept every input, so they are not read.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `input` | `string` |
+
+#### Returns
+
+[`UrlAuthority`](#urlauthority) \| `null`
 
 ***
 

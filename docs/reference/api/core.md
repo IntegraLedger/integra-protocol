@@ -145,6 +145,12 @@ Re-exports [readToRepeat](index.md#readtorepeat)
 
 ***
 
+### readUrl
+
+Re-exports [readUrl](index.md#readurl)
+
+***
+
 ### Refusal
 
 Re-exports [Refusal](index.md#refusal)
@@ -178,3 +184,9 @@ Re-exports [toLegalContext](index.md#tolegalcontext)
 ### toRawBytes
 
 Re-exports [toRawBytes](index.md#torawbytes)
+
+***
+
+### UrlAuthority
+
+Re-exports [UrlAuthority](index.md#urlauthority)

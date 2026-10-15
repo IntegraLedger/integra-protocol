@@ -55,9 +55,9 @@ The core: assembling an ATR and hashing its exact bytes, comparing hashes, the h
 import { assemble, base64Bytes, base64UrlBytes, … } from "@integraledger/lcp";
 ```
 
-**Values (27):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `digestJson`, `domainToAscii`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+**Values (28):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `digestJson`, `domainToAscii`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
-**Types (12):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `Presented`, `Refusal`, `X402Binding`.
+**Types (13):** `AtrHash`, `Authorizer`, `Binding`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `Presented`, `Refusal`, `UrlAuthority`, `X402Binding`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -205,9 +205,9 @@ The core alone: assembling an ATR and hashing its exact bytes, comparing hashes,
 import { assemble, base64Bytes, base64UrlBytes, … } from "@integraledger/lcp/core";
 ```
 
-**Values (25):** `assemble`, `base64Bytes`, `base64UrlBytes`, `canonicalJson`, `digestJson`, `domainToAscii`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `parseHost`, `parseJson`, `readToRepeat`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+**Values (26):** `assemble`, `base64Bytes`, `base64UrlBytes`, `canonicalJson`, `digestJson`, `domainToAscii`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
-**Types (4):** `AtrHash`, `CoreRefusal`, `Json`, `Refusal`.
+**Types (5):** `AtrHash`, `CoreRefusal`, `Json`, `Refusal`, `UrlAuthority`.
 
 ## `@integraledger/lcp/discovery`
 
