@@ -147,6 +147,20 @@ export type MppUnsigned =
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
     }
   | {
+      /**
+       * A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one
+       * per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash.
+       */
+      request: {
+        kind: "tempo-calls";
+        chainId: number;
+        calls: readonly { to: Hex; data: Hex }[];
+        validBefore: number;
+        broadcast: boolean;
+      };
+      complete(signedTxOrHash: Hex): MppCredential | Refusal;
+    }
+  | {
       /** An EIP-1559 transaction of the call, or its hash once broadcast. */
       request: { kind: "evm-call"; chainId: number; call: { to: Hex; data: Hex }; broadcast: boolean };
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
@@ -606,13 +620,7 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
     const o = offerFor(choice, h, pairing);
     if (isRefusal(o)) return o;
     const chainId = chainOf(o);
-    const data = hexOf(
-      concat([
-        bytesOf(TRANSFER_SELECTOR)!,
-        addressWord(str(o.request["recipient"]) as Hex),
-        uintWord(BigInt(str(o.request["amount"]))),
-      ]),
-    );
+    const data = transferCalldata(str(o.request["recipient"]) as Hex, BigInt(str(o.request["amount"])));
     const challenge = { ...choice.challenge };
     const source = did(chainId, choice.from);
     const broadcast = pairing === HASH;
@@ -668,7 +676,36 @@ async function networkReference(presented: unknown): Promise<(EvmRef & { asset: 
   };
 }
 
+/** `transfer(to, amount)` calldata: the selector, then the two 32-byte words. */
+function transferCalldata(to: Hex, amount: bigint): Hex {
+  return hexOf(concat([bytesOf(TRANSFER_SELECTOR)!, addressWord(to), uintWord(amount)]));
+}
+
 // ── mpp/charge/tempo/memo and mpp/charge/tempo/push.
+
+const MAX_TEMPO_SPLITS = 10;
+const BYTES32_HEX = /^0x[0-9a-fA-F]{64}$/;
+
+/**
+ * A Tempo charge's `methodDetails.splits`, as draft-tempo-charge-00's Split Payments section gives them: absent, or 1 to
+ * 10 entries, each an address `recipient`, a decimal `amount` above zero and, when present, a `bytes32` hex `memo`;
+ * otherwise `mpp/splits-malformed`.
+ */
+function tempoSplits(details: { [k: string]: Json }): { to: Hex; amount: bigint; memo?: Hex }[] | undefined | Refusal {
+  const splits = details["splits"];
+  if (splits === undefined) return undefined;
+  if (!Array.isArray(splits) || splits.length < 1 || splits.length > MAX_TEMPO_SPLITS) return refusal("mpp/splits-malformed");
+  const out: { to: Hex; amount: bigint; memo?: Hex }[] = [];
+  for (const s of splits) {
+    if (!isObject(s) || !isAddress(s["recipient"])) return refusal("mpp/splits-malformed");
+    const amount = uint256Of(s["amount"]);
+    if (amount === undefined || amount === 0n) return refusal("mpp/splits-malformed");
+    const memo = s["memo"];
+    if (memo !== undefined && (typeof memo !== "string" || !BYTES32_HEX.test(memo))) return refusal("mpp/splits-malformed");
+    out.push(memo === undefined ? { to: s["recipient"] as Hex, amount } : { to: s["recipient"] as Hex, amount, memo: memo as Hex });
+  }
+  return out;
+}
 
 function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
   return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
@@ -679,29 +716,35 @@ function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
     const clientId: unknown = choice.clientId;
     if (clientId !== undefined && (typeof clientId !== "string" || !clientId.isWellFormed())) return refusal("mpp/input-malformed");
     const chainId = chainOf(o);
+    const splits = tempoSplits(o.details);
+    if (isRefusal(splits)) return splits;
+    const amount = BigInt(str(o.request["amount"]));
+    const primary = amount - (splits ?? []).reduce((sum, s) => sum + s.amount, 0n);
+    if (primary <= 0n) return refusal("mpp/input-malformed");
     const memo = attributionMemo(choice.challenge.realm, choice.challenge.id, clientId);
-    const data = memoCalldata(str(o.request["recipient"]) as Hex, BigInt(str(o.request["amount"])), memo);
+    const data = memoCalldata(str(o.request["recipient"]) as Hex, primary, memo);
     if (typeof data !== "string") return data;
+    const currency = str(o.request["currency"]) as Hex;
+    const calls = [{ to: currency, data }];
+    for (const s of splits ?? []) {
+      const split = s.memo === undefined ? transferCalldata(s.to, s.amount) : memoCalldata(s.to, s.amount, s.memo);
+      if (typeof split !== "string") return split;
+      calls.push({ to: currency, data: split });
+    }
     const challenge = { ...choice.challenge };
     const source = did(chainId, choice.from);
     const broadcast = pairing === PUSH;
-    return {
-      request: {
-        kind: "tempo-call",
-        chainId,
-        call: { to: str(o.request["currency"]) as Hex, data },
-        validBefore,
-        broadcast,
-      },
-      complete(signedTxOrHash: Hex): MppCredential | Refusal {
-        if (broadcast) {
-          if (normalHash(signedTxOrHash) === null) return refusal("mpp/credential-malformed");
-          return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
-        }
-        if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
-        return { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
-      },
+    const complete = (signedTxOrHash: Hex): MppCredential | Refusal => {
+      if (broadcast) {
+        if (normalHash(signedTxOrHash) === null) return refusal("mpp/credential-malformed");
+        return { challenge, source, payload: { type: "hash", hash: signedTxOrHash } };
+      }
+      if (!isHexBytes(signedTxOrHash, 1, MAX_WIRE)) return refusal("mpp/credential-malformed");
+      return { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
     };
+    return splits === undefined
+      ? { request: { kind: "tempo-call", chainId, call: calls[0]!, validBefore, broadcast }, complete }
+      : { request: { kind: "tempo-calls", chainId, calls, validBefore, broadcast }, complete };
   };
 }
 

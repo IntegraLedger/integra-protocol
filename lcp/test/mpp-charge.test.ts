@@ -569,10 +569,10 @@ function wireT(calldata: string): Uint8Array {
 }
 
 describe("mpp-charge-tempo-memo.json", () => {
-  // The splits rows are the buyer gate's (the Tempo pairings here read no splits): each replaces only
-  // methodDetails.splits of the splits request, whose primary amount is amount minus the splits' sum (draft-tempo-charge-00
-  // L233). The last row's splits is present and null: present, so not the absent case, and not a list of entries.
-  it("splits: the request leaves the primary its remainder, and each refusal row gives a present splits", () => {
+  // Each splits row replaces only methodDetails.splits of the splits request, whose primary amount is amount minus the
+  // splits' sum (draft-tempo-charge-00 L233), and the Tempo charge build refuses it with the row's code. The last row's
+  // splits is present and null: present, so not the absent case, and not a list of entries.
+  it("splits: the request leaves the primary its remainder, and build refuses each refusal row with its code", async () => {
     const r = JSON.parse(M.splits.request);
     const sum = (r.methodDetails.splits as { amount: string }[]).reduce((t, x) => t + BigInt(x.amount), 0n);
     expect((BigInt(r.amount) - sum).toString()).toBe(M.splits.expectPrimaryAmount);
@@ -580,6 +580,8 @@ describe("mpp-charge-tempo-memo.json", () => {
     for (const row of rows) {
       expect("splits" in row, row.case).toBe(true);
       expect(row.expect, row.case).toMatch(/^mpp\/(splits|input)-malformed$/);
+      const c = placedOf(challenge("tempo", "charge", JSON.stringify({ ...r, methodDetails: { ...r.methodDetails, splits: row.splits } })));
+      expect(await tempoMemo.build({ challenge: c, from: A.fixed.payer, now: A.fixed.now }, H), row.case).toEqual({ refused: true, code: row.expect });
     }
     expect(rows.at(-1)).toEqual({ case: "splits present and null", splits: null, expect: "mpp/splits-malformed" });
   });
@@ -785,12 +787,11 @@ describe("mpp-charge-tempo-push.json", () => {
   });
 });
 
-// splits.expectCalls: the calls the buyer gate builds for the splits request, in array order (draft-tempo-charge-00
-// L273): the primary recipient's transfer of amount minus the splits' sum (L233), carrying the challenge's attribution
-// memo, then one call per split, transferWithMemo where the split carries a memo (L313-315) and transfer where it does
-// not, each to the request's currency. They pin memoCalldata: it writes the transferWithMemo calls; no export of the
-// package writes a split's plain transfer call.
-describe("mpp-charge-tempo-memo.json splits.expectCalls: memoCalldata's transferWithMemo calls", () => {
+// splits.expectCalls: the calls the Tempo charge build writes for the splits request, in array order
+// (draft-tempo-charge-00 L273): the primary recipient's transfer of amount minus the splits' sum (L233), carrying the
+// challenge's attribution memo, then one call per split, transferWithMemo where the split carries a memo (L313-315) and
+// transfer where it does not, each to the request's currency. memoCalldata writes the transferWithMemo calls too.
+describe("mpp-charge-tempo-memo.json splits.expectCalls: build's calls, and memoCalldata's transferWithMemo calls", () => {
   type Call = { to: string; data: string };
   const r = JSON.parse(M.splits.request);
   const splits = r.methodDetails.splits as { amount: string; recipient: ViemHex; memo?: ViemHex }[];
@@ -832,9 +833,21 @@ describe("mpp-charge-tempo-memo.json splits.expectCalls: memoCalldata's transfer
     expect(encoded).toEqual(calls);
   });
 
+  it("build on the splits request answers tempo-calls whose calls are expectCalls, byte for byte; push the same, broadcast", async () => {
+    const c = challenge("tempo", "charge", M.splits.request);
+    const u = await tempoMemo.build({ challenge: placedOf(c), from: A.fixed.payer, now: A.fixed.now }, H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(u.request).toEqual({ kind: "tempo-calls", chainId: 42431, calls, validBefore: 1790000060, broadcast: false });
+    expect(JSON.stringify(u.request.kind === "tempo-calls" ? u.request.calls : null)).toBe(JSON.stringify(calls));
+    const pushed = { ...r, methodDetails: { ...r.methodDetails, supportedModes: ["push"] } };
+    const p = await tempoPush.build({ challenge: placedOf(challenge("tempo", "charge", JSON.stringify(pushed))), from: A.fixed.payer, now: A.fixed.now }, H);
+    if ("refused" in p) throw new Error(p.code);
+    expect(p.request).toEqual({ kind: "tempo-calls", chainId: 42431, calls, validBefore: 1790000060, broadcast: true });
+  });
+
   const withMemo = rowsOf(calls, "mpp-charge-tempo-memo.json splits.expectCalls", {
     keep: ["the transferWithMemo calls", (c) => c.data.startsWith(TRANSFER_WITH_MEMO_SELECTOR)],
-    leave: ["the transfer call of the split without a memo, which no export of the package builds", (c) => c.data.startsWith(transferSelector)],
+    leave: ["the transfer call of the split without a memo, which build writes and memoCalldata does not", (c) => c.data.startsWith(transferSelector)],
   });
   for (const call of withMemo) {
     const i = calls.indexOf(call);
