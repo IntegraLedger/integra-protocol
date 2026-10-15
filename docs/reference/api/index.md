@@ -170,7 +170,7 @@ Every pairing this package implements.
 
 ### assemble()
 
-> **assemble**(`id`, `binding`, `content`, `limits?`): `Promise`\<[`CoreRefusal`](#corerefusal) \| \{ `atrHash`: `` `0x${string}` ``; `bytes`: `Uint8Array`; \}\>
+> **assemble**(`id`, `binding`, `content`, `limits?`): `Promise`\<[`CoreRefusal`](#corerefusal) \| \{ `atrHash`: `` `0x${string}` ``; `bytes`: `Uint8Array`\<`ArrayBuffer`\>; \}\>
 
 Writes the ATR's bytes and hashes them. The same inputs always give the same bytes. Every problem with the inputs
 is returned as a refusal, from the first check that fails, in this order:
@@ -206,13 +206,13 @@ behind an accessor included.
 
 #### Returns
 
-`Promise`\<[`CoreRefusal`](#corerefusal) \| \{ `atrHash`: `` `0x${string}` ``; `bytes`: `Uint8Array`; \}\>
+`Promise`\<[`CoreRefusal`](#corerefusal) \| \{ `atrHash`: `` `0x${string}` ``; `bytes`: `Uint8Array`\<`ArrayBuffer`\>; \}\>
 
 ***
 
 ### base64Bytes()
 
-> **base64Bytes**(`s`, `maxBytes`): `Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+> **base64Bytes**(`s`, `maxBytes`): `Uint8Array`\<`ArrayBuffer`\> \| `"too-large"` \| `"malformed"`
 
 The bytes of `s` as `fromBase64` reads them, or "too-large" when they would be more than `maxBytes`, or "malformed".
 The size is read from the text's length before anything is decoded, so a text past the bound is never decoded.
@@ -226,13 +226,13 @@ The size is read from the text's length before anything is decoded, so a text pa
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+`Uint8Array`\<`ArrayBuffer`\> \| `"too-large"` \| `"malformed"`
 
 ***
 
 ### base64UrlBytes()
 
-> **base64UrlBytes**(`s`, `maxBytes`): `Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+> **base64UrlBytes**(`s`, `maxBytes`): `Uint8Array`\<`ArrayBuffer`\> \| `"too-large"` \| `"malformed"`
 
 The bytes of `s` as `fromBase64Url` reads them, or "too-large" when they would be more than `maxBytes`, or
 "malformed". The size is read from the text's length before anything is decoded, so a text past the bound is never
@@ -247,7 +247,7 @@ decoded.
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| `"too-large"` \| `"malformed"`
+`Uint8Array`\<`ArrayBuffer`\> \| `"too-large"` \| `"malformed"`
 
 ***
 
@@ -318,7 +318,7 @@ A domain of length n takes O(n log n) time. The Standard sets no bound on the le
 
 ### fromBase64()
 
-> **fromBase64**(`s`): `Uint8Array`\<`ArrayBufferLike`\> \| `null`
+> **fromBase64**(`s`): `Uint8Array`\<`ArrayBuffer`\> \| `null`
 
 The bytes of `s` when it is padded standard base64 (RFC 4648 §4) in its canonical form (RFC 4648 §3.5), or null: the
 standard alphabet, `=` padding to a multiple of four characters, and zero bits past the last whole byte in the last
@@ -333,13 +333,13 @@ that form. Every rail's standard base64 is read by this one function, in one pas
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| `null`
+`Uint8Array`\<`ArrayBuffer`\> \| `null`
 
 ***
 
 ### fromBase64Url()
 
-> **fromBase64Url**(`s`): `Uint8Array`\<`ArrayBufferLike`\> \| `null`
+> **fromBase64Url**(`s`): `Uint8Array`\<`ArrayBuffer`\> \| `null`
 
 The bytes of `s` when it is base64url without padding (RFC 4648 §5), the base64url of RFC 7515 §2, in its canonical
 form (RFC 4648 §3.5), or null: the URL-safe alphabet alone, no `=` padding, a length that is not one more than a
@@ -354,7 +354,7 @@ a JWS or SD-JWT segment's and an MPP challenge's included, is read by this one f
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| `null`
+`Uint8Array`\<`ArrayBuffer`\> \| `null`
 
 ***
 
@@ -751,7 +751,7 @@ Throws TypeError when `h` is not a 32-byte hash or `url` is not an `https://` UR
 
 ### toRawBytes()
 
-> **toRawBytes**(`h`): `Uint8Array`
+> **toRawBytes**(`h`): `Uint8Array`\<`ArrayBuffer`\>
 
 The raw 32 bytes of a hash. Throws TypeError when `h` is not a 32-byte hash.
 
@@ -763,7 +763,7 @@ The raw 32 bytes of a hash. Throws TypeError when `h` is not a 32-byte hash.
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>
 
 ## References
 

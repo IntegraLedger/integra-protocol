@@ -23,7 +23,7 @@ What the payer signs, and how its signature completes the payment.
 | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` |
 | `request.kind` | `"solana-message"` |
-| `request.message` | `Uint8Array` |
+| `request.message` | `Uint8Array`\<`ArrayBuffer`\> |
 
 #### Methods
 

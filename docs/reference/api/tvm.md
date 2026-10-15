@@ -157,7 +157,7 @@ The read keys a payment's settlement is read by.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` | The 32-byte representation hash of the W5 request the wallet key signs. |
-| `request.hash` | `Uint8Array` | - |
+| `request.hash` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.kind` | `"ton-w5"` | - |
 
 #### Methods

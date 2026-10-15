@@ -48,7 +48,7 @@ LCP §2.4–§2.5; members in the order of their tables.
 
 ### emit()
 
-> **emit**(`document`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **emit**(`document`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 The document's bytes: its checked members in table order, `atrHash` in lowercase, and no other member.
 
@@ -60,7 +60,7 @@ The document's bytes: its checked members in table order, `atrHash` in lowercase
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 ***
 

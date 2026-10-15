@@ -106,7 +106,7 @@ is added when the facilitator names it.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` | SHA-256 of the NEP-461-prefixed delegate action: what the key signs. |
-| `request.hash` | `Uint8Array` | - |
+| `request.hash` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.kind` | `"near-delegate"` | - |
 
 #### Methods
@@ -168,7 +168,7 @@ The NEP-461 prefix for a delegate action: (1 << 30) + 366.
 
 ### ftTransferArgs()
 
-> **ftTransferArgs**(`payTo`, `amount`, `h`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **ftTransferArgs**(`payTo`, `amount`, `h`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 `ft_transfer`'s arguments: `receiver_id`, `amount` and `memo`, in that order, as `JSON.stringify` writes them. A value
 that is not a 32-byte hash is `x402/payload-malformed`.
@@ -183,7 +183,7 @@ that is not a 32-byte hash is `x402/payload-malformed`.
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 ***
 

@@ -79,16 +79,24 @@ transactions (the available range's inclusive lower bound), or null when the end
 
 ### SuiTx
 
-A decoded `TransactionData`: the bytes as received, their digest, the unused `Pure` inputs, and the epoch bound.
+A decoded `TransactionData`: the bytes as received, their digest, the unused `Pure` inputs, and the epoch bound. `B`
+is what its bytes are backed by: `decodeSuiTx` gives `SuiTx<ArrayBuffer>`, each byte field in its own fresh
+`ArrayBuffer`, and `suiCarrier` takes any backing.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `B` *extends* `ArrayBufferLike` | `ArrayBufferLike` |
 
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-bytes"></a> `bytes` | `Uint8Array` | - |
+| <a id="property-bytes"></a> `bytes` | `Uint8Array`\<`B`\> | - |
 | <a id="property-digest-1"></a> `digest` | `string` | Base58 of Blake2b-256 over `"TransactionData::"` followed by the bytes. |
 | <a id="property-untilepoch-1"></a> `untilEpoch` | `bigint` \| `null` | - |
-| <a id="property-unusedpure"></a> `unusedPure` | readonly `Uint8Array`\<`ArrayBufferLike`\>[] | - |
+| <a id="property-unusedpure"></a> `unusedPure` | readonly `Uint8Array`\<`B`\>[] | - |
 
 ***
 
@@ -104,7 +112,7 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 | `request.accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
 | `request.expiration` | `"epoch-bounded"` |
 | `request.kind` | `"sui-transaction"` |
-| `request.pureInput` | `Uint8Array` |
+| `request.pureInput` | `Uint8Array`\<`ArrayBuffer`\> |
 
 #### Methods
 
@@ -144,7 +152,7 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ### decodeSuiTx()
 
-> **decodeSuiTx**(`base64`): [`Refusal`](index.md#refusal) \| [`SuiTx`](#suitx)
+> **decodeSuiTx**(`base64`): [`Refusal`](index.md#refusal) \| [`SuiTx`](#suitx)\<`ArrayBuffer`\>
 
 Decodes a base64 `TransactionData` V1 with a programmable kind. A programmable transaction with a type (a call's
 type argument, a vector's element type, a funds withdrawal's type) that has a node at depth 16, Sui's type depth
@@ -160,7 +168,7 @@ kind is `sui/not-programmable`, answered from its kind's tag before its body is 
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| [`SuiTx`](#suitx)
+[`Refusal`](index.md#refusal) \| [`SuiTx`](#suitx)\<`ArrayBuffer`\>
 
 ***
 

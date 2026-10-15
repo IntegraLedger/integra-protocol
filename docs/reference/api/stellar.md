@@ -130,7 +130,7 @@ What the payer signs (the signer signs SHA-256 of `preimage`), and how the signa
 | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` |
 | `request.kind` | `"stellar-auth"` |
-| `request.preimage` | `Uint8Array` |
+| `request.preimage` | `Uint8Array`\<`ArrayBuffer`\> |
 
 #### Methods
 

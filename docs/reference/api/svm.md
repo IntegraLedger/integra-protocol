@@ -29,11 +29,11 @@ description: "The exports of @integraledger/lcp/svm."
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-channel"></a> `channel` | `string` |
-| <a id="property-data"></a> `data` | `Uint8Array` |
-| <a id="property-kind"></a> `kind` | `"open"` \| `"top_up"` \| `"request_close"` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-channel"></a> `channel` | `string` | - |
+| <a id="property-data"></a> `data` | `Uint8Array`\<`ArrayBuffer`\> | A copy of the instruction's data. |
+| <a id="property-kind"></a> `kind` | `"open"` \| `"top_up"` \| `"request_close"` | - |
 
 ***
 
@@ -221,15 +221,24 @@ adds.
 
 ### SvmTx
 
+A decoded wire transaction. `B` is what its bytes are backed by: `decodeSvmTx` gives `SvmTx<ArrayBuffer>`, each byte
+field in its own fresh `ArrayBuffer`, and a function that reads one takes any backing.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `B` *extends* `ArrayBufferLike` | `ArrayBufferLike` |
+
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-blockhash-1"></a> `blockhash` | `Uint8Array` | - |
-| <a id="property-instructions"></a> `instructions` | readonly `SvmInstruction`[] | - |
-| <a id="property-keys"></a> `keys` | readonly `Uint8Array`\<`ArrayBufferLike`\>[] | The static account keys, in order. |
-| <a id="property-message"></a> `message` | `Uint8Array` | Exactly the bytes every signer signed. |
-| <a id="property-signatures"></a> `signatures` | readonly `Uint8Array`\<`ArrayBufferLike`\>[] | - |
+| <a id="property-blockhash-1"></a> `blockhash` | `Uint8Array`\<`B`\> | - |
+| <a id="property-instructions"></a> `instructions` | readonly `SvmInstruction`\<`B`\>[] | - |
+| <a id="property-keys"></a> `keys` | readonly `Uint8Array`\<`B`\>[] | The static account keys, in order. |
+| <a id="property-message"></a> `message` | `Uint8Array`\<`B`\> | Exactly the bytes every signer signed. |
+| <a id="property-signatures"></a> `signatures` | readonly `Uint8Array`\<`B`\>[] | - |
 
 ## Type Aliases
 
@@ -374,7 +383,7 @@ The SPL Token-2022 program id.
 
 ### buildChannelMessage()
 
-> **buildChannelMessage**(`i`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)\>
+> **buildChannelMessage**(`i`): `Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
 The v0 message for a channel instruction: `SetComputeUnitLimit`, `SetComputeUnitPrice`, the payment-channels
 instruction with its accounts in the program's order, then one v3 Memo instruction when `memo` is given. The fee
@@ -389,13 +398,13 @@ surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
 
 #### Returns
 
-`Promise`\<`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)\>
+`Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
 ***
 
 ### buildSvmMessage()
 
-> **buildSvmMessage**(`i`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)\>
+> **buildSvmMessage**(`i`): `Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
 The versioned (v0) message bytes for a token payment: `SetComputeUnitLimit`, `SetComputeUnitPrice`,
 `TransferChecked` from the payer's associated token account to the payee's, then one v3 Memo instruction whose data
@@ -410,7 +419,7 @@ has no UTF-8 form) is `svm/input-malformed`, with nothing built.
 
 #### Returns
 
-`Promise`\<`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)\>
+`Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
 ***
 
@@ -459,7 +468,7 @@ The channel PDA: seeds "channel", payer, payee, mint, signer, u64le(salt), u64le
 
 ### channelVoucherMessage()
 
-> **channelVoucherMessage**(`channelId`, `cumulative`, `expiresAt`): `Uint8Array`
+> **channelVoucherMessage**(`channelId`, `cumulative`, `expiresAt`): `Uint8Array`\<`ArrayBuffer`\>
 
 The 50 bytes a channel voucher signs: `56 01` ‖ channelId ‖ cumulative u64 LE ‖ expiresAt i64 LE. Throws TypeError
 when the channel id is not a base58 key or a number is out of range.
@@ -474,17 +483,18 @@ when the channel id is not a base58 key or a number is out of range.
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>
 
 ***
 
 ### decodeSvmTx()
 
-> **decodeSvmTx**(`wire`): [`Refusal`](index.md#refusal) \| [`SvmTx`](#svmtx)
+> **decodeSvmTx**(`wire`): [`Refusal`](index.md#refusal) \| [`SvmTx`](#svmtx)\<`ArrayBuffer`\>
 
 Decodes a legacy or v0 wire transaction of at most 1,232 bytes; a longer one is `svm/tx-too-large`. Bytes that are not
 one well-formed transaction are `svm/tx-malformed`, as is a v0 message with an address table lookup that names no
-index, which the runtime refuses ("each lookup table must be used to load at least one account").
+index, which the runtime refuses ("each lookup table must be used to load at least one account"). Each byte field is
+a copy, so none shares memory with `wire`.
 
 #### Parameters
 
@@ -494,7 +504,7 @@ index, which the runtime refuses ("each lookup table must be used to load at lea
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| [`SvmTx`](#svmtx)
+[`Refusal`](index.md#refusal) \| [`SvmTx`](#svmtx)\<`ArrayBuffer`\>
 
 ***
 
@@ -539,7 +549,7 @@ account address, a program id and a recent blockhash all take this form.
 
 ### openInstructionData()
 
-> **openInstructionData**(`a`): `Uint8Array`
+> **openInstructionData**(`a`): `Uint8Array`\<`ArrayBuffer`\>
 
 The `open` instruction's data: `01` ‖ salt u64 ‖ deposit u64 ‖ gracePeriod u32 ‖ openSlot u64 ‖ one recipient
 (`01000000` ‖ recipient ‖ bps 10 000 as u16), little-endian. 67 bytes. Throws TypeError on a value out of range.
@@ -557,7 +567,7 @@ The `open` instruction's data: `01` ‖ salt u64 ‖ deposit u64 ‖ gracePeriod
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>
 
 ***
 
@@ -585,7 +595,7 @@ account, and this function reads no table. `mpp/session/solana`'s `fetchPresente
 
 ### sessionProof()
 
-> **sessionProof**(`p`): `Uint8Array`
+> **sessionProof**(`p`): `Uint8Array`\<`ArrayBuffer`\>
 
 The UTF-8 of the core's `canonicalJson` of `{channelId, domain: "mpp-session-auth-v1", payer, sessionChallengeId}`.
 Throws TypeError when `p` is not an object, or when its `channelId`, `payer` or `challengeId` is not a well-formed
@@ -602,7 +612,7 @@ string (one holding a lone surrogate has no UTF-8 form): it never returns a mess
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>
 
 ***
 
@@ -627,7 +637,7 @@ TypeError when `h` is not a 32-byte hash.
 
 ### solanaVoucher()
 
-> **solanaVoucher**(`channelId`, `cumulative`, `expiresAt?`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **solanaVoucher**(`channelId`, `cumulative`, `expiresAt?`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 The 50 bytes a voucher signs: `56 01` ‖ channel id ‖ cumulative u64 LE ‖ expiresAt i64 LE (0 when absent). A
 malformed channel id or an out-of-range number is `svm/input-malformed`.
@@ -642,7 +652,7 @@ malformed channel id or an out-of-range number is `svm/input-malformed`.
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 ***
 

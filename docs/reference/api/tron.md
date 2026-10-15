@@ -21,20 +21,28 @@ description: "The exports of @integraledger/lcp/tron."
 
 ### TronRaw
 
-The `Transaction.raw` fields this profile uses.
+The `Transaction.raw` fields this profile uses. `B` is what its bytes are backed by: `decodeTronTx` gives
+`TronRaw<ArrayBuffer>`, each byte field in its own fresh `ArrayBuffer`, and `encodeTronRaw` and `tronCarrier` take
+any backing.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `B` *extends* `ArrayBufferLike` | `ArrayBufferLike` |
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-calldata"></a> `callData` | `Uint8Array` |
-| <a id="property-contractaddress"></a> `contractAddress` | `Uint8Array` |
-| <a id="property-data"></a> `data` | `Uint8Array` |
+| <a id="property-calldata"></a> `callData` | `Uint8Array`\<`B`\> |
+| <a id="property-contractaddress"></a> `contractAddress` | `Uint8Array`\<`B`\> |
+| <a id="property-data"></a> `data` | `Uint8Array`\<`B`\> |
 | <a id="property-expiration"></a> `expiration` | `bigint` |
 | <a id="property-feelimit"></a> `feeLimit` | `bigint` |
-| <a id="property-owner"></a> `owner` | `Uint8Array` |
-| <a id="property-refblockbytes"></a> `refBlockBytes` | `Uint8Array` |
-| <a id="property-refblockhash"></a> `refBlockHash` | `Uint8Array` |
+| <a id="property-owner"></a> `owner` | `Uint8Array`\<`B`\> |
+| <a id="property-refblockbytes"></a> `refBlockBytes` | `Uint8Array`\<`B`\> |
+| <a id="property-refblockhash"></a> `refBlockHash` | `Uint8Array`\<`B`\> |
 | <a id="property-timestamp"></a> `timestamp` | `bigint` |
 
 ***
@@ -125,7 +133,7 @@ decimal milliseconds.
 | ------ | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` | The 32-byte transaction id the payer signs. |
 | `request.kind` | `"tron-txid"` | - |
-| `request.txid` | `Uint8Array` | - |
+| `request.txid` | `Uint8Array`\<`ArrayBuffer`\> | - |
 
 #### Methods
 
@@ -203,7 +211,7 @@ keccak256("Transfer(address,address,uint256)")
 
 ### decodeTronTx()
 
-> **decodeTronTx**(`hex`): [`Refusal`](index.md#refusal) \| \{ `raw`: [`TronRaw`](#tronraw); `rawBytes`: `Uint8Array`; `signatures`: `Uint8Array`\<`ArrayBufferLike`\>[]; \}
+> **decodeTronTx**(`hex`): [`Refusal`](index.md#refusal) \| \{ `raw`: [`TronRaw`](#tronraw)\<`ArrayBuffer`\>; `rawBytes`: `Uint8Array`\<`ArrayBuffer`\>; `signatures`: `Uint8Array`\<`ArrayBuffer`\>[]; \}
 
 Decodes a signed `Transaction` from lowercase hex: `raw_data` with exactly one `TriggerSmartContract` and only the
 fields TronRaw names, and 1 to 5 signatures of 65 bytes. The raw bytes must be exactly what `encodeTronRaw` writes
@@ -217,13 +225,13 @@ for the fields read.
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| \{ `raw`: [`TronRaw`](#tronraw); `rawBytes`: `Uint8Array`; `signatures`: `Uint8Array`\<`ArrayBufferLike`\>[]; \}
+[`Refusal`](index.md#refusal) \| \{ `raw`: [`TronRaw`](#tronraw)\<`ArrayBuffer`\>; `rawBytes`: `Uint8Array`\<`ArrayBuffer`\>; `signatures`: `Uint8Array`\<`ArrayBuffer`\>[]; \}
 
 ***
 
 ### encodeTronRaw()
 
-> **encodeTronRaw**(`r`): `Uint8Array`
+> **encodeTronRaw**(`r`): `Uint8Array`\<`ArrayBuffer`\>
 
 `Transaction.raw` as java-tron serialises it: fields in ascending order, default values omitted. Throws TypeError
 when `r` is not an object, a bytes field is not a `Uint8Array`, or `expiration`, `timestamp` or `feeLimit` is not a
@@ -237,13 +245,13 @@ bigint from 0 below 2^63, the values `decodeTronTx` reads back.
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>
 
 ***
 
 ### tronAddress()
 
-> **tronAddress**(`address`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)\>
+> **tronAddress**(`address`): `Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
 Decodes a base58check address to its 21 bytes, which begin 0x41. The checksum is SHA-256 twice.
 
@@ -255,7 +263,7 @@ Decodes a base58check address to its 21 bytes, which begin 0x41. The checksum is
 
 #### Returns
 
-`Promise`\<`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)\>
+`Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
 ***
 

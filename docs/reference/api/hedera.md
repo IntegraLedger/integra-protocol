@@ -27,7 +27,7 @@ description: "The exports of @integraledger/lcp/hedera."
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-bodybytes"></a> `bodyBytes` | `Uint8Array` | - |
+| <a id="property-bodybytes"></a> `bodyBytes` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | <a id="property-id"></a> `id` | [`HederaTxId`](#hederatxid) | - |
 | <a id="property-memo"></a> `memo` | `string` | - |
 | <a id="property-validduration"></a> `validDuration` | `number` | `transactionValidDuration`, in seconds. |
@@ -116,7 +116,7 @@ The body the payer signs, and how its signature completes the wire transaction.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` | `broadcast: true` when the payer's signer signs and broadcasts the body itself (a push). |
-| `request.bodyBytes` | `Uint8Array` | - |
+| `request.bodyBytes` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.broadcast?` | `true` | - |
 | `request.kind` | `"hedera-body"` | - |
 
@@ -269,7 +269,7 @@ read.
 > **decodeHederaTx**(`wire`): [`Refusal`](index.md#refusal) \| \{ `bodies`: readonly [`HederaBody`](#hederabody)[]; \}
 
 Reads a wire `Transaction`, or the SDK's `TransactionList` of them (a top-level field 1): each body's transaction
-id, valid duration, memo and exact bytes. Every body of a list must share id and memo.
+id, valid duration, memo and exact bytes, the bytes a copy of `wire`'s. Every body of a list must share id and memo.
 
 #### Parameters
 

@@ -145,7 +145,7 @@ An EIP-712 request for the buyer's signer; numbers in `message` are decimal stri
 
 ### SigningRequest
 
-> **SigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`Eip712Request`](#eip712request) \| [`ReceiveTypedData`](mpp.md#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `kind`: `"solana-message"`; `message`: `Uint8Array`; \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`; `signer`: `string`; \}
+> **SigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`Eip712Request`](#eip712request) \| [`ReceiveTypedData`](mpp.md#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `kind`: `"solana-message"`; `message`: `Uint8Array`\<`ArrayBuffer`\>; \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`\<`ArrayBuffer`\>; `signer`: `string`; \}
 
 A request to the buyer's signer.
 

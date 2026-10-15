@@ -9,6 +9,15 @@ description: "The exports of @integraledger/lcp/lightning."
 
 ### Bolt11
 
+A decoded BOLT11 invoice. `B` is what its bytes are backed by: `decodeBolt11` gives `Bolt11<ArrayBuffer>`, each byte
+field in its own fresh `ArrayBuffer`, and a function that reads one takes any backing.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `B` *extends* `ArrayBufferLike` | `ArrayBufferLike` |
+
 #### Properties
 
 | Property | Type | Description |
@@ -16,10 +25,10 @@ description: "The exports of @integraledger/lcp/lightning."
 | <a id="property-amountmsat"></a> `amountMsat` | `bigint` \| `null` | - |
 | <a id="property-currency"></a> `currency` | `"bc"` \| `"tb"` \| `"tbs"` \| `"bcrt"` | - |
 | <a id="property-description"></a> `description` | `string` \| `null` | The `d` field as strict UTF-8, a leading byte-order mark kept as a character; null when the invoice has none. |
-| <a id="property-descriptionhash"></a> `descriptionHash` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |
+| <a id="property-descriptionhash"></a> `descriptionHash` | `Uint8Array`\<`B`\> \| `null` | - |
 | <a id="property-expiry"></a> `expiry` | `number` | - |
-| <a id="property-metadata"></a> `metadata` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |
-| <a id="property-paymenthash"></a> `paymentHash` | `Uint8Array` | - |
+| <a id="property-metadata"></a> `metadata` | `Uint8Array`\<`B`\> \| `null` | - |
+| <a id="property-paymenthash"></a> `paymentHash` | `Uint8Array`\<`B`\> | - |
 | <a id="property-tags"></a> `tags` | readonly `number`[] | Every tagged field's type, in invoice order. |
 | <a id="property-timestamp"></a> `timestamp` | `number` | - |
 
@@ -180,7 +189,7 @@ Only that slot is read; inside it, a repeated member name reads as `JSON.parse` 
 
 ### decodeBolt11()
 
-> **decodeBolt11**(`invoice`): `Promise`\<[`Refusal`](index.md#refusal) \| [`Bolt11`](#bolt11)\>
+> **decodeBolt11**(`invoice`): `Promise`\<[`Refusal`](index.md#refusal) \| [`Bolt11`](#bolt11)\<`ArrayBuffer`\>\>
 
 Decodes a BOLT11 invoice of up to 8,192 characters, past Bech32's 90-character limit, which BOLT 11 lets an invoice
 exceed. The signature is not verified.
@@ -193,7 +202,7 @@ exceed. The signature is not verified.
 
 #### Returns
 
-`Promise`\<[`Refusal`](index.md#refusal) \| [`Bolt11`](#bolt11)\>
+`Promise`\<[`Refusal`](index.md#refusal) \| [`Bolt11`](#bolt11)\<`ArrayBuffer`\>\>
 
 ***
 

@@ -102,7 +102,7 @@ The call the payer's signer wraps in an extrinsic, and how that extrinsic comple
 | Property | Type |
 | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` |
-| `request.call` | `Uint8Array` |
+| `request.call` | `Uint8Array`\<`ArrayBuffer`\> |
 | `request.kind` | `"substrate-call"` |
 | `request.network` | [`PolkadotNetwork`](#polkadotnetwork) |
 
@@ -126,14 +126,23 @@ The call the payer's signer wraps in an extrinsic, and how that extrinsic comple
 
 ### ProfileCall
 
+The profile's call. `B` is what its bytes are backed by: `decodeProfileCall` gives `ProfileCall<ArrayBuffer>`, each
+byte field in its own fresh `ArrayBuffer`, and `encodeProfileCall` takes any backing.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `B` *extends* `ArrayBufferLike` | `ArrayBufferLike` |
+
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
 | <a id="property-amount"></a> `amount` | `bigint` |
 | <a id="property-assetid-1"></a> `assetId` | `number` |
-| <a id="property-dest"></a> `dest` | `Uint8Array` |
-| <a id="property-remark"></a> `remark` | `Uint8Array` |
+| <a id="property-dest"></a> `dest` | `Uint8Array`\<`B`\> |
+| <a id="property-remark"></a> `remark` | `Uint8Array`\<`B`\> |
 
 ## Type Aliases
 
@@ -177,9 +186,9 @@ The profile's `assetTransferMethod`.
 
 ### decodeProfileCall()
 
-> **decodeProfileCall**(`call`): [`Refusal`](index.md#refusal) \| [`ProfileCall`](#profilecall)
+> **decodeProfileCall**(`call`): [`Refusal`](index.md#refusal) \| [`ProfileCall`](#profilecall)\<`ArrayBuffer`\>
 
-The profile's call, exactly, with canonical compacts and no trailing byte.
+The profile's call, exactly, with canonical compacts and no trailing byte. Its bytes are copies of `call`'s.
 
 #### Parameters
 
@@ -189,13 +198,13 @@ The profile's call, exactly, with canonical compacts and no trailing byte.
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| [`ProfileCall`](#profilecall)
+[`Refusal`](index.md#refusal) \| [`ProfileCall`](#profilecall)\<`ArrayBuffer`\>
 
 ***
 
 ### encodeProfileCall()
 
-> **encodeProfileCall**(`c`): `Uint8Array`
+> **encodeProfileCall**(`c`): `Uint8Array`\<`ArrayBuffer`\>
 
 `batch_all([transfer_keep_alive(assetId, Id(dest), amount), remark_with_event(remark)])`, the inverse of
 `decodeProfileCall`. Throws TypeError on a call that `decodeProfileCall` never gives: `assetId` must be an integer
@@ -209,7 +218,7 @@ from 0 to 2^32 − 1, `dest` 32 bytes, `amount` a bigint from 0 to 2^128 − 1, 
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>
 
 ***
 
@@ -318,10 +327,10 @@ is not an integer from 0 below 2^32, is pending `unreadable`, with nothing read.
 
 ### splitSigned()
 
-> **splitSigned**(`xt`): [`Refusal`](index.md#refusal) \| \{ `end`: `number`; `signer`: `Uint8Array`; \}
+> **splitSigned**(`xt`): [`Refusal`](index.md#refusal) \| \{ `end`: `number`; `signer`: `Uint8Array`\<`ArrayBuffer`\>; \}
 
 The preamble of a signed v4 extrinsic: the length prefix, `0x84`, `MultiAddress::Id` and a `MultiSignature`. Gives
-the signer and the index after the signature; the extension bytes that follow are not decoded.
+the signer, a copy, and the index after the signature; the extension bytes that follow are not decoded.
 
 #### Parameters
 
@@ -331,13 +340,13 @@ the signer and the index after the signature; the extension bytes that follow ar
 
 #### Returns
 
-[`Refusal`](index.md#refusal) \| \{ `end`: `number`; `signer`: `Uint8Array`; \}
+[`Refusal`](index.md#refusal) \| \{ `end`: `number`; `signer`: `Uint8Array`\<`ArrayBuffer`\>; \}
 
 ***
 
 ### ss58Decode()
 
-> **ss58Decode**(`address`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **ss58Decode**(`address`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 A simple-format SS58 address: one prefix byte 0–63, a 32-byte account, and a two-byte checksum.
 
@@ -349,4 +358,4 @@ A simple-format SS58 address: one prefix byte 0–63, a 32-byte account, and a t
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)

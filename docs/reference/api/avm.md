@@ -90,7 +90,7 @@ The bytes the payer signs, and how the signature completes the payment.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` | "TX" ‖ msgpack(txn) |
-| `request.bytes` | `Uint8Array` | - |
+| `request.bytes` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.kind` | `"algorand-txn"` | - |
 
 #### Methods

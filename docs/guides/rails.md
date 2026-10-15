@@ -22,6 +22,14 @@ transaction, a NEAR signed delegate action, a TON message), a TON option's forwa
 arguments, Stellar event topics and values). A text whose last character before the padding has a bit set past the last
 byte spells the same bytes in another form, and each reader answers it as it answers any other malformed text.
 
+Each byte array the package returns is a `Uint8Array<ArrayBuffer>` that shares no memory with any input: the bytes
+`assemble` writes, `toRawBytes` and the base64 readers, each rail's decoded fields, and the bytes each `build` hands the
+payer's signer. It passes as a `BlobPart` or a `BufferSource` (to `Blob`, `Response`, `crypto.subtle` or `TextDecoder`)
+as it is. The one exception is the TON cell `lcpComment` gives: it is `@ton/core`'s own `Cell`, whose `hash()` answers a
+Node `Buffer`. Each function that reads bytes takes any `Uint8Array`, a Node `Buffer` included. A decoded type that a
+function also reads (`Bolt11`, `ProfileCall`, `SuiTx`, `SvmTx`, `TronRaw`) takes its bytes' backing as a type
+parameter: `ArrayBuffer` where the package decoded it, any backing where a function reads it.
+
 ## The forms H takes on a rail
 
 A rail field holds H in one of these forms:

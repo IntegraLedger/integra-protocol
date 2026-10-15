@@ -286,7 +286,7 @@ or a sequence that is not a UInt32, is `mpp/input-malformed`.
 
 ### xrplClaim()
 
-> **xrplClaim**(`channelId`, `drops`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **xrplClaim**(`channelId`, `drops`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as u64 big-endian. A channel id that is not
 64 hex digits, or drops that are not a `bigint` UInt64, is `mpp/input-malformed`.
@@ -300,7 +300,7 @@ The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as 
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 ***
 

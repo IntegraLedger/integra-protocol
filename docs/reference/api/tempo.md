@@ -42,7 +42,7 @@ description: "The exports of @integraledger/lcp/tempo."
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-input"></a> `input` | `Uint8Array` |
+| <a id="property-input"></a> `input` | `Uint8Array`\<`ArrayBuffer`\> |
 | <a id="property-to"></a> `to` | `` `0x${string}` `` \| `null` |
 | <a id="property-value"></a> `value` | `bigint` |
 
@@ -221,7 +221,7 @@ meanings (absent: no limit or no call restriction; empty: no spending or no call
 > **decodeTempoTx**(`wire`): [`Refusal`](index.md#refusal) \| \{ `calls`: [`TempoCall`](#tempocall)[]; `chainId`: `bigint`; `validBefore`: `bigint` \| `null`; \}
 
 The chain id, the calls and `valid_before` of a signed `0x76` transaction. Each call is `rlp([to, value, input])`,
-with an empty `to` read as null. `valid_before` written empty is null.
+with an empty `to` read as null and `input` a copy of `wire`'s bytes. `valid_before` written empty is null.
 
 #### Parameters
 
@@ -237,7 +237,7 @@ with an empty `to` read as null. `valid_before` written empty is null.
 
 ### encodeKeyAuthorization()
 
-> **encodeKeyAuthorization**(`a`, `signature?`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **encodeKeyAuthorization**(`a`, `signature?`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 rlp([chain_id, key_type, key_id, expiry, limits, allowed_calls, witness]); with a signature,
 rlp([that list, signature]). At most 16 limits and 16 scopes, 16 selector rules each and 16 recipients each. Every
@@ -253,7 +253,7 @@ item is written, the empty ones included: an `expiry` of 0 as `0x80`, which Temp
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 ***
 

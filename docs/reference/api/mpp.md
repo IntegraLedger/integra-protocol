@@ -522,7 +522,7 @@ What the signer is handed for each `usdc` profile, and how its answer completes 
 
 ### WithinSigningRequest
 
-> **WithinSigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`VoucherTypedData`](#vouchertypeddata) \| `HederaVoucherTypedData`; \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`; `signer`: `string`; \} \| \{ `bytes`: `Uint8Array`; `channelId`: `string`; `drops`: `bigint`; `kind`: `"xrpl-claim"`; \}
+> **WithinSigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`VoucherTypedData`](#vouchertypeddata) \| `HederaVoucherTypedData`; \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`\<`ArrayBuffer`\>; `signer`: `string`; \} \| \{ `bytes`: `Uint8Array`\<`ArrayBuffer`\>; `channelId`: `string`; `drops`: `bigint`; `kind`: `"xrpl-claim"`; \}
 
 A request to the buyer's signer for an in-channel payment.
 

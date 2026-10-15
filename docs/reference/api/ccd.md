@@ -79,7 +79,7 @@ The read keys `reference` returns.
 | `request.asset` | `string` |
 | `request.expiresBy` | `number` |
 | `request.kind` | `"ccd-transfer"` |
-| `request.memo` | `Uint8Array` |
+| `request.memo` | `Uint8Array`\<`ArrayBuffer`\> |
 | `request.network` | `` `ccd:${string}` `` |
 | `request.sponsor` | `string` |
 | `request.toAddress` | `string` |
@@ -133,7 +133,7 @@ CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash.
 
 ### accountBytes()
 
-> **accountBytes**(`address`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **accountBytes**(`address`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 The 32 bytes of a base58check account address whose version byte is 1: its last four bytes are the first four of
 the double SHA-256 of the 33 before them.
@@ -146,7 +146,7 @@ the double SHA-256 of the 33 before them.
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 ***
 
@@ -172,7 +172,7 @@ SHA-256 over the 32 + 32 bytes of the two accounts and the amount as a 32-byte b
 
 ### ccdMemo()
 
-> **ccdMemo**(`h`): `Uint8Array`
+> **ccdMemo**(`h`): `Uint8Array`\<`ArrayBuffer`\>
 
 The CBOR text string of `toLcpString(h)`: `78 4d` and the 77 ASCII bytes. Throws TypeError when `h` is not a 32-byte
 hash.
@@ -185,7 +185,7 @@ hash.
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>
 
 ***
 
@@ -261,7 +261,7 @@ read a memo through this one function.
 
 ### pltMemo()
 
-> **pltMemo**(`h`): `Uint8Array`
+> **pltMemo**(`h`): `Uint8Array`\<`ArrayBuffer`\>
 
 CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 bytes. Throws as `ccdMemo` does.
 
@@ -273,4 +273,4 @@ CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 
 
 #### Returns
 
-`Uint8Array`
+`Uint8Array`\<`ArrayBuffer`\>

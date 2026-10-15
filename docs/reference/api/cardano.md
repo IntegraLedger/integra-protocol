@@ -121,7 +121,7 @@ failed.
 | ------ | ------ |
 | <a id="property-request"></a> `request` | `object` |
 | `request.accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| `request.auxiliaryData` | `Uint8Array` |
+| `request.auxiliaryData` | `Uint8Array`\<`ArrayBuffer`\> |
 | `request.kind` | `"cardano-transaction"` |
 
 #### Methods
@@ -170,7 +170,7 @@ CIP-20 line 1 of the carrier; line 2 is the hash's 64 lowercase hex digits.
 
 ### auxiliaryData()
 
-> **auxiliaryData**(`h`): `Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+> **auxiliaryData**(`h`): `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 The exact auxiliary data the payer attaches: `#6.259({0: {674: {"msg": [LCP_MARKER, <64 hex>]}}})`. A value that is
 not a 32-byte hash is `x402/payload-malformed`.
@@ -183,7 +183,7 @@ not a 32-byte hash is `x402/payload-malformed`.
 
 #### Returns
 
-`Uint8Array`\<`ArrayBufferLike`\> \| [`Refusal`](index.md#refusal)
+`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
 
 ***
 
