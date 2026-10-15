@@ -479,6 +479,12 @@ const DNS_LABEL = "[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?";
 /** An IP literal in brackets, or a DNS name of RFC 1123 labels (which includes dotted IPv4), then an optional port. */
 const HOST_PORT = new RegExp(`^(?:\\[[0-9A-Fa-f:.]+\\]|${DNS_LABEL}(?:\\.${DNS_LABEL})*\\.?)(?::([0-9]{0,5}))?$`);
 const MAX_DNS_NAME = 253;
+/**
+ * The longest authority the rule accepts: a DNS name of 253 characters and its final dot, then `:` and five digits (an
+ * IP literal in brackets is at most 47 characters). A longer one is refused before the authority is matched, so the
+ * match runs on at most this many characters.
+ */
+const MAX_AUTHORITY = MAX_DNS_NAME + 1 + 6;
 
 /**
  * The one https-link rule. The raw string holds no whitespace, control character or backslash; it parses as an
@@ -488,7 +494,7 @@ const MAX_DNS_NAME = 253;
 export function isHttpsLink(s: unknown): s is string {
   if (typeof s !== "string" || !s.isWellFormed() || LINK_FORBIDDEN.test(s)) return false;
   const authority = HTTPS_AUTHORITY.exec(s)?.[1];
-  if (authority === undefined || authority.includes("@")) return false;
+  if (authority === undefined || authority.length > MAX_AUTHORITY || authority.includes("@")) return false;
   const hp = HOST_PORT.exec(authority);
   if (hp === null) return false;
   const host = hp[1] === undefined ? authority : authority.slice(0, authority.length - hp[1].length - 1);

@@ -61,6 +61,31 @@ describe("an https link over 2048 characters", () => {
   });
 });
 
+describe("a link whose authority is longer than any the rule accepts", () => {
+  // RFC 1035 §2.3.4 bounds a domain name to 255 octets, 253 characters in text; RFC 1123 §2.1 bounds a label to 63.
+  const n253 = `${"a".repeat(63)}.${"b".repeat(63)}.${"c".repeat(63)}.${"d".repeat(61)}`;
+  const n254 = `${n253}d`;
+  it("answers at the longest name, with its final dot and a port, and at the longest IPv6 literal", () => {
+    expect(n253.length).toBe(253);
+    const links = [
+      `https://${n253}/`,
+      `https://${n253}./`,
+      `https://${n253}.:65535/`,
+      `https://${n254}/`,
+      `https://${n254}.:1/`,
+    ];
+    expect(links.map((l) => isHttpsLink(l))).toEqual([true, true, true, false, false]);
+    expect(isHttpsLink("https://[ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255]:65535/")).toBe(true);
+  });
+  it("is refused as a value, however long, at the core rule and at a placement", () => {
+    // Ten million characters of short labels, the last one "-", which no DNS label ends with. The test has no time
+    // bound (0): the rule reads the link in one pass, and how long that takes depends only on the machine.
+    const long = `https://${"ab-c.".repeat(2_000_000)}-/p`;
+    expect(isHttpsLink(long)).toBe(false);
+    expect(placeA2a(A2A.A2.task, A2A.fixed.H, long)).toEqual(refused("a2a/link-not-https"));
+  }, 0);
+});
+
 describe("a link that is not a string", () => {
   it("is link-not-https at each placement, as the link or as the agreement URL (core links rows, placedAs)", () => {
     const doc: PaymentRequired = { x402Version: 2, resource: X.resource, accepts: [X.O] };
