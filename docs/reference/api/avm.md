@@ -166,8 +166,8 @@ repeated struct whose earlier occurrences set a member the last one does not, wh
 facilitator does not read, a repeated list whose elements algod decodes into those an earlier list left, and a
 fixed-length byte member of another length. A byte member written as a msgpack string is read as its
 bytes, whatever they are; a string member (`type`, `gen`) is refused when its bytes are not UTF-8, which the
-facilitator reads as other text. Each answer is a function of the entry's bytes alone. Without algosdk,
-`avm/peer-missing`.
+facilitator reads as other text. Each answer is a function of the entry's bytes alone. Both readers are the package's
+own (`readEntry`), so nothing here needs algosdk: every answer is the same without it.
 
 #### Parameters
 

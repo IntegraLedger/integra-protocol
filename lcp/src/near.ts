@@ -183,7 +183,9 @@ export function ftTransferArgs(payTo: string, amount: string, h: AtrHash): Uint8
  * a string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. The amount is not compared
  * with the option's. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`,
  * where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
- * `AccountId`).
+ * `AccountId`). borsh reads the bytes from the sender on, the action count and variant included. Without it, a value
+ * that is not a string, is too long or is not base64 gets the code it gets with borsh, as those checks need no peer,
+ * and any other value is `near/peer-missing`.
  */
 export function nearCarrier(signedDelegateAction: string): {
   h: AtrHash;
@@ -209,11 +211,11 @@ function carrierOf(signedDelegateAction: string): {
   asset: string;
   args: Uint8Array;
 } | Refusal {
-  if (borsh === undefined) return refusal("near/peer-missing");
   if (typeof signedDelegateAction !== "string") return refusal("near/sda-malformed");
   if (signedDelegateAction.length > MAX_SDA_BASE64) return refusal("near/sda-too-large");
   const bytes = signedDelegateAction === "" ? null : fromBase64(signedDelegateAction);
   if (bytes === null) return refusal("near/sda-malformed");
+  if (borsh === undefined) return refusal("near/peer-missing");
   const d = decodeSignedDelegate(borsh, bytes);
   if (d === "malformed") return refusal("near/sda-malformed");
   if (d === "action-count") return refusal("near/actions");
@@ -477,15 +479,18 @@ function read(doc: PaymentRequired): X402Read | Refusal {
   return readFor(check)(doc);
 }
 
-/** The delegate action for the chosen option: one `ft_transfer` whose memo is the hash's LCP string. */
+/**
+ * The delegate action for the chosen option: one `ft_transfer` whose memo is the hash's LCP string. H is checked first,
+ * then the choice; borsh writes the delegate action, so without it the choice is `near/peer-missing` once every check
+ * that needs no peer has passed.
+ */
 async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, payer, publicKey, accessKeyNonce, finalHeight } = c;
   const ok = chosen(required, accepted, check);
   if (ok !== true) return ok;
-  if (borsh === undefined) return refusal("near/peer-missing");
-  const nh = normalHash(h);
-  if (nh === null) return refusal("x402/payload-malformed");
   if (!isNearAccountId(payer)) return refusal("x402/option-malformed");
   const key = nearKeyOf(publicKey);
   if (key === null) return refusal("x402/option-malformed");
@@ -500,6 +505,7 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   }
   const args = ftTransferArgs(accepted.payTo, accepted.amount, nh);
   if (isRefusal(args)) return args;
+  if (borsh === undefined) return refusal("near/peer-missing");
   const delegateAction: FunctionCallDelegate = {
     senderId: payer,
     receiverId: accepted.asset,

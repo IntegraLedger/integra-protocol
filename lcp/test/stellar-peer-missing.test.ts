@@ -2,13 +2,22 @@
 // the root pairingOf names no Stellar option, and each function whose type carries a refusal and needs the peer refuses
 // `stellar/peer-missing` (the vectors' refusal), never throwing. x402/exact/stellar's read, advertise, build, bound and
 // reference need the peer only for a Stellar option: the option filter refuses each one `stellar/peer-missing`, and a
-// document, offer, choice or payment with no Stellar option gets the answer it gets with the peer. mpp/charge/stellar's
-// build and muxedFor check what needs no peer first, and give it the code they give with the peer.
+// document, offer, choice or payment with no Stellar option gets the answer it gets with the peer, as does a malformed
+// H, which build checks first. mpp/charge/stellar's build, muxedFor and the stellar entry point's decoders check what
+// needs no peer first, and give it the code they give with the peer.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequirements } from "../src/x402.js";
 import { buildChoices } from "./build-choices.js";
-import { muxedForArgs, stellarChargeChoice, stellarChargeChoices } from "./peer-free-inputs.js";
+import {
+  BAD_H,
+  hFirstChoices,
+  muxedForArgs,
+  stellarChargeChoice,
+  stellarChargeChoices,
+  stellarEnvelopeInputs,
+  stellarEventInputs,
+} from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
@@ -179,11 +188,12 @@ describe("without @stellar/stellar-sdk", () => {
     expect(await chargeStellar.build(choice, h)).toEqual({ refused: true, code: CODE });
   });
 
-  // build checks the choice, its challenge, H, the current ledger and the clock before it reads the recipient: each
-  // fault gets the code it gets with the peer (peer-free-inputs.test.ts).
+  // build checks the choice, its challenge, H, the current ledger, the clock, the expiration ledger and the simulated
+  // transaction's form before it reads the recipient: each fault gets the code it gets with the peer
+  // (peer-free-inputs.test.ts).
   it("mpp/charge/stellar's build answers a choice it refuses before the recipient as it does with the peer", { timeout: IMPORT_MS }, async () => {
     const { chargeStellar } = await import("../src/mpp.js");
-    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 5 })) {
+    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 9 })) {
       expect([row.case, await chargeStellar.build(row.choice as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });
@@ -214,6 +224,26 @@ describe("without @stellar/stellar-sdk", () => {
     const { muxedFor } = await import("../src/stellar.js");
     for (const row of rowsOf(muxedForArgs(), "peer-free-inputs.ts", { exact: 4 })) {
       expect([row.case, muxedFor(row.base as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
+    }
+  });
+
+  // Each input's network, size, base64, union tags or form is refused before the SDK is needed, with the code it gets
+  // with the SDK (peer-free-inputs.test.ts).
+  it("the stellar entry point's decoders answer an input they refuse before the SDK as they do with the peer", { timeout: IMPORT_MS }, async () => {
+    const st = await import("../src/stellar.js");
+    for (const row of rowsOf(stellarEnvelopeInputs(), "peer-free-inputs.ts", { exact: 11 })) {
+      expect([row.case, st.decodeStellarTx(row.xdr as never, row.network as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
+    }
+    expect(st.transferEventTopics(7 as never)).toEqual({ refused: true, code: "stellar/option-malformed" });
+    for (const row of rowsOf(stellarEventInputs(), "peer-free-inputs.ts", { exact: 5 })) {
+      expect([row.case, st.transferEventOf(row.topic as never, row.value as never)]).toEqual([row.case, { refused: true, code: "stellar/event-malformed" }]);
+    }
+  });
+
+  it("x402/exact/stellar's build answers a malformed H as it does with the peer, whatever the choice", { timeout: IMPORT_MS }, async () => {
+    const { exactStellar } = await import("../src/x402-exact-stellar.js");
+    for (const row of rowsOf(hFirstChoices(exactStellar.id, V.fixed.option), "peer-free-inputs.ts", { exact: 4 })) {
+      expect([row.case, await exactStellar.build(row.choice as never, BAD_H as never)]).toEqual([row.case, { refused: true, code: "x402/payload-malformed" }]);
     }
   });
 });

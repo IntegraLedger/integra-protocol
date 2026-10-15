@@ -202,7 +202,8 @@ export function legalContextOf(extensions: unknown): { h: AtrHash; link: string 
 
 /**
  * The checks `build` makes on the buyer's choice before anything pairing-specific: the document is x402 v2 with at
- * most 32 options, the chosen option is one it offers, and the filter serves it.
+ * most 32 options, the chosen option is one it offers, and the filter serves it. Every x402 `build` that reads H checks
+ * it before these: H is the caller's own argument, so a malformed H gets one code whatever the choice holds.
  */
 export function chosen(required: unknown, accepted: unknown, filter: OptionFilter): true | Refusal {
   if (!isObject(required) || required["x402Version"] !== 2) return refusal("x402/not-v2");

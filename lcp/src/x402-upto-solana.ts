@@ -157,11 +157,11 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * payload carries `openSlot` as a JSON number, so an `openSlot` above 2^53 − 1 is `svm/input-malformed`.
  */
 async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmPaymentPayload> | Refusal> {
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const extra = accepted.extra!;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");

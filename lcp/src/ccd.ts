@@ -283,13 +283,13 @@ const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filter);
 
 /** What the buyer's wallet assembles and signs: one transfer to `payTo` whose memo carries the hash. */
 async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
+  if (normalHash(h) === null) return refusal("ccd/memo-not-lcp");
   if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filter);
   if (wrong !== true) return wrong;
   const { required, accepted, now } = c;
   const sponsor = accepted.extra!["feePayer"] as string;
   if (!Number.isSafeInteger(now) || now < 0) return refusal("ccd/option-malformed");
-  if (normalHash(h) === null) return refusal("ccd/memo-not-lcp");
   const memo = accepted.asset === "CCD" ? ccdMemo(h) : pltMemo(h);
   return {
     request: {

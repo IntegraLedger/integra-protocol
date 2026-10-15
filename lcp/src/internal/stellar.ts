@@ -2,8 +2,10 @@
  * Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8
  * bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. XDR, strkeys and
  * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
- * needs it refuses `stellar/peer-missing`, except the reads: `stellarStatus` is pending `unreadable` and
- * `stellarLocate` `complete: false`, with nothing read. The public names are re-exported by `../stellar.ts`.
+ * needs it refuses `stellar/peer-missing`, after the checks that need no peer (an envelope's network, size, base64 and
+ * union tags, an event's form), which give the codes they give with it, except the reads: `stellarStatus` is pending
+ * `unreadable` and `stellarLocate` `complete: false`, with nothing read. The public names are re-exported by
+ * `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
 import type {
@@ -410,9 +412,7 @@ type Operation = {
  * the one entry it reads, and the entry `readSourceTransfer` reads is the operation's call, byte for byte, with no
  * sub-invocations.
  */
-function operationOf(S: typeof StellarBase, xdrB64: string): Operation | Refusal {
-  const bytes = fromBase64(xdrB64);
-  if (bytes === null) return refusal("stellar/tx-malformed");
+function operationOf(S: typeof StellarBase, bytes: Uint8Array): Operation | Refusal {
   let wire: TransactionEnvelopeWire;
   try {
     wire = readXdr(S.xdr.TransactionEnvelope, bytes);
@@ -466,8 +466,8 @@ function isAddressEntryOf(S: typeof StellarBase, e: SorobanAuthorizationEntryWir
  * is walked, and each is decoded whatever its depth, so an unused entry nested deeper does not make the transaction
  * unreadable.
  */
-function parse(S: typeof StellarBase, xdrB64: string, network: StellarNetwork, landed: boolean): Parsed | Refusal {
-  const o = operationOf(S, xdrB64);
+function parse(S: typeof StellarBase, bytes: Uint8Array, network: StellarNetwork, landed: boolean): Parsed | Refusal {
+  const o = operationOf(S, bytes);
   if (isRefusal(o)) return o;
   const { wire, op, operation } = o;
   try {
@@ -515,22 +515,64 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 /**
+ * The envelope's bytes, after the checks every envelope reader makes before it needs @stellar/stellar-sdk, which give
+ * the codes the SDK's reading gives: a network that is not a Stellar network is `stellar/network-malformed`; text that
+ * is empty, or not base64, is `stellar/tx-malformed`, and text longer than `MAX_XDR` characters `stellar/tx-too-large`;
+ * and the XDR's union tags read at fixed places must be a v1 envelope's (2), or a fee bump's (5) whose fee source is an
+ * account (0) or a muxed account (0x100) and whose inner envelope is a v1 envelope, else `stellar/tx-malformed`, as the
+ * SDK reads no other envelope as a v1 transaction.
+ */
+function envelopeOf(xdrB64: unknown, network: unknown): Uint8Array | Refusal {
+  if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
+  if (typeof xdrB64 !== "string" || xdrB64.length === 0) return refusal("stellar/tx-malformed");
+  if (xdrB64.length > MAX_XDR) return refusal("stellar/tx-too-large");
+  const bytes = fromBase64(xdrB64);
+  if (bytes === null) return refusal("stellar/tx-malformed");
+  const tag = (at: number): number | null =>
+    at + 4 > bytes.length ? null : new DataView(bytes.buffer, bytes.byteOffset + at, 4).getUint32(0, false);
+  const envelope = tag(0);
+  if (envelope === 2) return bytes;
+  if (envelope !== 5) return refusal("stellar/tx-malformed");
+  // FeeBumpTransactionEnvelope: the fee source (a MuxedAccount), the fee (an int64), then the inner envelope's tag.
+  const feeSource = tag(4);
+  const feeSourceBytes = feeSource === 0 ? 32 : feeSource === 0x100 ? 40 : null;
+  if (feeSourceBytes === null) return refusal("stellar/tx-malformed");
+  return tag(8 + feeSourceBytes + 8) === 2 ? bytes : refusal("stellar/tx-malformed");
+}
+
+/**
+ * `signingFor`'s checks that need no @stellar/stellar-sdk: `envelopeOf`'s, then a fee bump, which is not a simulated
+ * transaction, and an expiration that is not a ledger sequence (an integer from 0 to 2^32 − 1), each
+ * `stellar/tx-malformed`. A `build` that reads its recipient with the SDK makes them first, so they give one code with
+ * the SDK and without it.
+ */
+export function signingInput(simulatedXdr: string, network: StellarNetwork, expiration: number): Uint8Array | Refusal {
+  const bytes = envelopeOf(simulatedXdr, network);
+  if (isRefusal(bytes)) return bytes;
+  if (bytes[3] !== 2) return refusal("stellar/tx-malformed");
+  if (!Number.isInteger(expiration) || expiration < 0 || expiration > 0xffffffff) {
+    return refusal("stellar/tx-malformed");
+  }
+  return bytes;
+}
+
+/**
  * The payment the payer's entry signs, and whether the operation invokes exactly that: the input checks of
  * `decodeStellarTx`, without refusing an operation that differs from the signed invocation. With `landed` (a
  * transaction the ledger recorded), the entry is the first entry of `from` that carries the operation's `transfer`;
- * without it (before anything lands), `from` must have exactly one entry.
+ * without it (before anything lands), `from` must have exactly one entry. `envelopeOf`'s checks come first, without the
+ * SDK.
  */
 export function readSignedTransfer(
   xdrB64: string,
   network: StellarNetwork,
   landed: boolean,
 ): { payment: StellarPayment; agrees: boolean } | Refusal {
+  const bytes = envelopeOf(xdrB64, network);
+  if (isRefusal(bytes)) return bytes;
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
-  if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
-  if (typeof xdrB64 !== "string" || xdrB64.length === 0) return refusal("stellar/tx-malformed");
-  if (xdrB64.length > MAX_XDR) return refusal("stellar/tx-too-large");
-  const p = parse(S, xdrB64, network, landed);
+  const p = parse(S, bytes, network, landed);
   return isRefusal(p) ? p : { payment: p.payment, agrees: p.agrees };
 }
 
@@ -545,12 +587,11 @@ export type SourcePayment = Omit<StellarPayment, "auth"> & { auth: null };
  * transaction, cover it whole, `to` included. Anything else is `stellar/no-address-auth`.
  */
 export function readSourceTransfer(xdrB64: string, network: StellarNetwork): SourcePayment | Refusal {
+  const bytes = envelopeOf(xdrB64, network);
+  if (isRefusal(bytes)) return bytes;
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
-  if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
-  if (typeof xdrB64 !== "string" || xdrB64.length === 0) return refusal("stellar/tx-malformed");
-  if (xdrB64.length > MAX_XDR) return refusal("stellar/tx-too-large");
-  const o = operationOf(S, xdrB64);
+  const o = operationOf(S, bytes);
   if (isRefusal(o)) return o;
   const { v1, op, operation } = o;
   try {
@@ -604,16 +645,15 @@ export function signingFor(
   expiration: number,
   zeroSource: boolean,
 ): { payment: StellarPayment; agrees: boolean; unsigned: StellarUnsigned; written(signature: Uint8Array): string | Refusal } | Refusal {
+  const bytes = signingInput(simulatedXdr, network, expiration);
+  if (isRefusal(bytes)) return bytes;
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
-  if (!isStellarNetwork(network)) return refusal("stellar/network-malformed");
-  if (typeof simulatedXdr !== "string" || simulatedXdr.length === 0) return refusal("stellar/tx-malformed");
-  if (simulatedXdr.length > MAX_XDR) return refusal("stellar/tx-too-large");
-  const parsed = parse(S, simulatedXdr, network, false);
+  const parsed = parse(S, bytes, network, false);
   if (isRefusal(parsed)) return parsed;
   const { payment, wire, entry, cred } = parsed;
-  if (!Number.isInteger(expiration) || expiration < 0 || expiration > 0xffffffff) return refusal("stellar/tx-malformed");
   if (!S.StrKey.isValidEd25519PublicKey(payment.from)) return refusal("stellar/no-address-auth");
+  // `signingInput` refused a fee bump; this narrows the envelope's type.
   if (wire.type !== 2) return refusal("stellar/tx-malformed");
   if (zeroSource) wire.v1.tx.sourceAccount = { type: 0, ed25519: new Uint8Array(32) };
   cred.c.signatureExpirationLedger = expiration;
@@ -662,8 +702,11 @@ const MAX_EVENT_XDR = 1024;
 /**
  * The `getEvents` topic filter for SEP-41 `transfer` events to `toBase`, as base64 XDR segments: the symbol
  * `transfer`, any `from`, `toBase` as an address, and any trailing topics (the Stellar Asset Contract adds its asset).
+ * A `toBase` that is not an account or contract strkey is `stellar/option-malformed`; one that is not a string is
+ * refused before the SDK is needed, which reads a strkey.
  */
 export function transferEventTopics(toBase: string): readonly string[] | Refusal {
+  if (typeof toBase !== "string") return refusal("stellar/option-malformed");
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
   const x = S.xdr;
@@ -682,30 +725,33 @@ export function transferEventTopics(toBase: string): readonly string[] | Refusal
 /**
  * A `transfer` event's recipient (the non-muxed `to` topic) and its `to_muxed_id`: the u64 in the event's data map, or
  * null when the data carries none, or carries the string or bytes form. The first topic and the data map's key are the
- * symbols `transfer` and `to_muxed_id`, byte for byte.
+ * symbols `transfer` and `to_muxed_id`, byte for byte. Every refusal is `stellar/event-malformed`. The topics' and the
+ * value's form (3 or 4 topics, each one and the value base64 of at most 1,024 characters) is checked before the SDK is
+ * needed, which reads the XDR.
  */
 export function transferEventOf(topic: readonly string[], value: string): { toBase: string; toMuxedId: bigint | null } | Refusal {
-  const S = need();
-  if (S === null) return refusal("stellar/peer-missing");
   if (!Array.isArray(topic) || topic.length < 3 || topic.length > 4 || typeof value !== "string" || value.length > MAX_EVENT_XDR) {
     return refusal("stellar/event-malformed");
   }
+  const topicBytes: Uint8Array[] = [];
+  for (const b of topic) {
+    const bytes = typeof b === "string" && b.length <= MAX_EVENT_XDR ? fromBase64(b) : null;
+    if (bytes === null) return refusal("stellar/event-malformed");
+    topicBytes.push(bytes);
+  }
+  const valueBytes = fromBase64(value);
+  if (valueBytes === null) return refusal("stellar/event-malformed");
+  const S = need();
+  if (S === null) return refusal("stellar/peer-missing");
   try {
     const x = S.xdr;
-    const t = topic.map((b) => {
-      if (typeof b !== "string" || b.length > MAX_EVENT_XDR) throw new TypeError("topic");
-      const bytes = fromBase64(b);
-      if (bytes === null) throw new TypeError("topic");
-      return x.ScVal.fromXdr(bytes).toXdrObject();
-    });
+    const t = topicBytes.map((bytes) => x.ScVal.fromXdr(bytes).toXdrObject());
     if (!scValsWithinCaps(t)) return refusal("stellar/event-malformed");
     const name = t[0]!;
     if (name.type !== 15 || !equalBytes(name.sym.bytes, TRANSFER)) return refusal("stellar/event-malformed");
     const to = t[2]!;
     const who = to.type === 18 ? addressOf(S, to.address) : null;
     if (who === null) return refusal("stellar/event-malformed");
-    const valueBytes = fromBase64(value);
-    if (valueBytes === null) return refusal("stellar/event-malformed");
     const data = x.ScVal.fromXdr(valueBytes).toXdrObject();
     if (!scValsWithinCaps(data)) return refusal("stellar/event-malformed");
     let toMuxedId: bigint | null = null;

@@ -12,6 +12,7 @@ import {
   readSignedTransfer,
   readSourceTransfer,
   signingFor,
+  signingInput,
   stellarStatus,
   unmux,
   type StellarNetwork,
@@ -225,7 +226,8 @@ async function fetchPresented(
  * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
  * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
  * Without @stellar/stellar-sdk the recipient and the transaction cannot be read: `stellar/peer-missing`, after the
- * choice, its challenge, H, the current ledger and the clock are checked, which need no peer.
+ * choice, its challenge, H, the current ledger, the clock, the expiration ledger and the simulated transaction's form
+ * (`signingInput`) are checked, which need no peer.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
@@ -236,17 +238,15 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   }
   const expires = expiresOf(checked);
   if (isRefusal(expires)) return expires;
+  const network = checked.details["network"] as StellarNetwork;
+  const expiration = choice.currentLedger + Math.max(0, Math.ceil((expires - choice.now) / 5));
+  const input = signingInput(choice.simulatedXdr, network, expiration);
+  if (isRefusal(input)) return input;
   if (!hasPeer()) return refusal("stellar/peer-missing");
   const recipient = checked.request["recipient"];
   const m = unmux(recipient);
   if (m === null || m.id !== muxedId(h)) return refusal("stellar/carrier-mismatch");
-  const expiration = choice.currentLedger + Math.max(0, Math.ceil((expires - choice.now) / 5));
-  const s = signingFor(
-    choice.simulatedXdr,
-    checked.details["network"] as StellarNetwork,
-    expiration,
-    checked.details["feePayer"] === true,
-  );
+  const s = signingFor(choice.simulatedXdr, network, expiration, checked.details["feePayer"] === true);
   if (isRefusal(s)) return s;
   if (s.payment.to !== recipient) return refusal("stellar/carrier-mismatch");
   if (!s.agrees) return refusal("stellar/not-one-transfer");

@@ -1,14 +1,16 @@
 // algosdk is an optional peer. With it absent, the avm entry point and the package root still import, and each function
 // that needs algosdk refuses `avm/peer-missing`, the code the package states for a rail without its peer
 // (`<rail>/peer-missing`, docs/guides/rails.md "Peer dependencies", with the entry point's namespace `avm`), never a
-// malformed-input code. avmCarrier refuses it for any input. read, advertise, build, bound and reference need algosdk
-// only for an Algorand option: the option filter refuses each one whose addresses it would check `avm/peer-missing`,
-// and a document, offer, choice or payment with no such option gets the answer it gets with algosdk. The documents, options and
-// payments are the vector file's own, which the pairing reads, builds and binds with algosdk (avm.test.ts).
+// malformed-input code. avmCarrier needs no algosdk, and gives every input the answer it gives with it. read,
+// advertise, build, bound and reference need algosdk only for an Algorand option: the option filter refuses each one
+// whose addresses it would check `avm/peer-missing`, and a document, offer, choice or payment with no such option gets
+// the answer it gets with algosdk, as does a malformed H, which build checks first. The documents, options and payments are
+// the vector file's own, which the pairing reads, builds and binds with algosdk (avm.test.ts).
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { buildChoices } from "./build-choices.js";
+import { avmCarrierRows, BAD_H, hFirstChoices } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8"));
@@ -57,8 +59,20 @@ describe("without algosdk", () => {
     expect(root.pairingOf(O)).toBeUndefined();
   });
 
-  it("avmCarrier refuses avm/peer-missing for a well-formed payment", () => {
-    expect(avm.avmCarrier(PRESENTED.payload)).toEqual(REFUSED);
+  // peer-free-inputs.test.ts gives the same rows the same answers with algosdk.
+  it("avmCarrier reads V2's payment and refuses each V3.refusals row as it does with algosdk", () => {
+    for (const row of rowsOf(avmCarrierRows(), "peer-free-inputs.ts", { min: 2 })) {
+      expect([row.case, avm.avmCarrier(row.presented as never)]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  it("build answers a malformed H as it does with algosdk, whatever the choice", async () => {
+    for (const row of rowsOf(hFirstChoices(avm.exactAvm.id, O), "peer-free-inputs.ts", { exact: 4 })) {
+      expect([row.case, await avm.exactAvm.build(row.choice as never, BAD_H as never)]).toEqual([
+        row.case,
+        { refused: true, code: "x402/payload-malformed" },
+      ]);
+    }
   });
 
   // The filter refuses the chosen option after the choice's own checks, so no choice gets the answer it gets with

@@ -281,6 +281,7 @@ const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filter);
 
 /** The CEP-3009 authorization the payer signs for the chosen option, with the hash as its nonce. */
 async function build(c: CasperChoice, h: AtrHash): Promise<CasperUnsigned | Refusal> {
+  if (normalHash(h) === null) return refusal("casper/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filter);
   if (wrong !== true) return wrong;

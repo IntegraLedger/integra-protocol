@@ -264,14 +264,16 @@ function bocOf(c: Cell): string {
  * The one root of a base64 BoC of at most 8 KiB, at most 512 cells and depth 32, or the refusal. The bytes are read
  * as TON deserializes a bag of cells (`deserialized`): bytes TON refuses are `tvm/boc-malformed`. An exotic cell TON
  * accepts is refused only where a read parses it: every parse here refuses one without throwing, and a cell no read
- * parses, such as a state init's library code or a Jetton transfer's custom payload, is left as it is.
+ * parses, such as a state init's library code or a Jetton transfer's custom payload, is left as it is. The base64, the
+ * size bound and the bag's layout (its header, root index and each cell's span) are read without @ton/core; the CRC32C
+ * and the cells are @ton/core's, so without it bytes whose base64, size and layout pass are `tvm/peer-missing`.
  */
 function rootOf(boc: unknown): Cell | Refusal {
-  if (peer === undefined) return refusal("tvm/peer-missing");
   const bytes = boc === "" ? null : fromBase64(boc);
   if (bytes === null) return refusal("tvm/boc-malformed");
   if (bytes.length > MAX_BOC_BYTES) return refusal("tvm/boc-too-large");
   const root = deserialized(bytes);
+  if (root === "peer-missing") return refusal("tvm/peer-missing");
   if (root === null) return refusal("tvm/boc-malformed");
   if (root.depth() > MAX_DEPTH) return refusal("tvm/boc-too-large");
   if (cellCount(root) > MAX_CELLS) return refusal("tvm/boc-too-large");
@@ -295,8 +297,11 @@ function rootOf(boc: unknown): Cell | Refusal {
  *   depth of at most 1,024 at every level; the level mask its first byte gives equal to the one computed; and where it
  *   stores hashes and depths, each one equal to the computed one;
  * - the root's level 0.
+ *
+ * The layout (the header, the root index and each cell's span) is read first, without @ton/core; then, without it,
+ * "peer-missing". With it every refusal here is null, so reading the layout before the CRC32C changes no answer.
  */
-function deserialized(b: Uint8Array): Cell | null {
+function deserialized(b: Uint8Array): Cell | null | "peer-missing" {
   const at = (o: number, n: number): number => {
     let v = 0;
     for (let i = 0; i < n; i++) v = v * 256 + b[o + i]!;
@@ -325,7 +330,6 @@ function deserialized(b: Uint8Array): Cell | null {
   const indexAt = rootsAt + (generic ? refSize : 0);
   const dataAt = indexAt + (indexed ? cells * offSize : 0);
   if (dataAt + dataSize + (crc ? 4 : 0) > b.length) return null;
-  if (crc && !peer!.crc32c(Buffer.from(b.subarray(0, b.length - 4))).equals(Buffer.from(b.subarray(b.length - 4)))) return null;
   const rootIdx = generic ? at(rootsAt, refSize) : 0;
   if (rootIdx >= cells) return null;
   const data = b.subarray(dataAt, dataAt + dataSize);
@@ -352,6 +356,10 @@ function deserialized(b: Uint8Array): Cell | null {
       start += size;
     }
     if (start !== dataSize) return null;
+  }
+  if (peer === undefined) return "peer-missing";
+  if (crc && !peer.crc32c(Buffer.from(b.subarray(0, b.length - 4))).equals(Buffer.from(b.subarray(b.length - 4)))) {
+    return null;
   }
   const built: Cell[] = new Array<Cell>(cells);
   const named = new Uint8Array(cells);
@@ -709,7 +717,9 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
  * `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The
  * settlement message's source names the account that relays it, which the BoC cannot show: one naming another account
  * is read, and TON sends it when that account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an
- * `addr_var` of 256 bits names its `addr_std`.
+ * `addr_var` of 256 bits names its `addr_std`. The network, the base64, the 8 KiB bound and the bag-of-cells layout
+ * need no peer: without @ton/core they give the codes they give with it, and a BoC that passes them is
+ * `tvm/peer-missing`.
  */
 export function tvmCarrier(settlementBoc: string, network: TvmNetwork): {
   h: AtrHash;
@@ -924,9 +934,10 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
  * Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A
  * transaction with no inbound message body, or whose body is not a Jetton `transfer`, is `tvm/not-jetton-transfer`. A
  * body that is not a bag of cells with one root is an answer out of the reader's documented form, `tvm/unreadable`. A
- * ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body cannot be
- * read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader and the read are
- * checked, which need no peer. One call.
+ * ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body's cells
+ * cannot be read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader, the read
+ * and the body's size and bag-of-cells layout are checked, which need no peer, so an empty body is `tvm/unreadable` and
+ * one over 8 KiB `tvm/boc-too-large` either way. One call.
  */
 export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tvm/wrong-reader");
@@ -1065,13 +1076,13 @@ function carries(option: PaymentRequirements, payload: Cell): boolean {
 
 /** The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. */
 async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, wallet, walletId, seqno, jettonWallet, attachNanotons, now, stateInit } = c;
   const ok = chosen(required, accepted, check);
   if (ok !== true) return ok;
   if (peer === undefined) return refusal("tvm/peer-missing");
-  const nh = normalHash(h);
-  if (nh === null) return refusal("x402/payload-malformed");
   const carrier = comment(nh);
   if (isRefusal(carrier)) return carrier;
   if (!carries(accepted, carrier)) return refusal("tvm/carrier-mismatch");

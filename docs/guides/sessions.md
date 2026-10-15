@@ -136,6 +136,11 @@ whose `voucherSigner` is `operator` over a `client` opening is `mpp/session-acti
 within challenge names with the opening's on the EVM session, a Tempo v1 session or the Hedera, Solana and XRP Ledger
 sessions, and neither does `buildWithin`.
 
+`buildWithin` checks its input in this order: the within challenge and the request members its readers read, H
+(`mpp/id-not-ours` for one that is not a valid ATR hash), the cumulative amount, the action, and only then the opening
+and its binding to H. The XRP Ledger session decodes its opening with `ripple-binary-codec`, so each check before the
+opening gives the same code with the codec and without it.
+
 `mpp/subscription/stripe`'s `channel.ref` takes the payment's receipt as a second argument: the Stripe subscription
 it names is the channel.
 

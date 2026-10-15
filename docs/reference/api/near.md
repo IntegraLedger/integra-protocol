@@ -215,7 +215,9 @@ zeros allowed (Rust's `u128::from_str`). Any other key is ignored, however often
 a string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. The amount is not compared
 with the option's. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`,
 where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
-`AccountId`).
+`AccountId`). borsh reads the bytes from the sender on, the action count and variant included. Without it, a value
+that is not a string, is too long or is not base64 gets the code it gets with borsh, as those checks need no peer,
+and any other value is `near/peer-missing`.
 
 #### Parameters
 

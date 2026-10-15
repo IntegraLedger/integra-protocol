@@ -283,6 +283,7 @@ function lnbtcAdvertiseBeforeCarrier(
 }
 
 async function lnbtcBuild(c: { required: PaymentRequired; accepted: PaymentRequirements }, h: AtrHash): Promise<LnUnsigned | Refusal> {
+  if (normalHash(h) === null) return refusal("ln/no-metadata");
   if (!isObject(c)) return refusal("x402/not-v2");
   const wrong = chosen(c.required, c.accepted, filterOf(isLnOption));
   if (wrong !== true) return wrong;

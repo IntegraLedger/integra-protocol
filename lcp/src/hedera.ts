@@ -650,6 +650,8 @@ async function build(
   },
   h: AtrHash,
 ): Promise<HederaUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("hedera/option-malformed");
   const ok = chosen(c.required, c.accepted, checkExact);
   if (ok !== true) return ok;
@@ -671,8 +673,6 @@ async function build(
   ) {
     return refusal("hedera/option-malformed");
   }
-  const nh = normalHash(h);
-  if (nh === null) return refusal("x402/payload-malformed");
   const a = c.accepted;
   const bodyBytes = writeBody({
     feePayer: (a.extra as Record<string, string>)["feePayer"]!,
@@ -835,13 +835,13 @@ async function buildExecutor(
     }
   | Refusal
 > {
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("hedera/option-malformed");
   const ok = chosen(c.required, c.accepted, checkExecutor);
   if (ok !== true) return ok;
   if (!Number.isSafeInteger(c.now) || c.now < 0) return refusal("hedera/option-malformed");
   const validBefore = c.now + c.accepted.maxTimeoutSeconds;
   if (!Number.isSafeInteger(validBefore)) return refusal("hedera/option-malformed");
-  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const { required, accepted } = c;
   const executors = executorsOf(accepted)!;
   return {

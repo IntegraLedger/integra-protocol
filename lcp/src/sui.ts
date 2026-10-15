@@ -3,7 +3,8 @@
  * that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash
  * stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed
  * bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is; without it every
- * function that needs it refuses `sui/peer-missing`, and `status` reads as pending `unreadable`. A digest is base58,
+ * function that needs it refuses `sui/peer-missing`, after the checks that need no peer, and `status` reads as pending
+ * `unreadable`. A digest is base58,
  * read and written with the package's own dependency @scure/base, so it is checked without the peer.
  */
 import { blake2b } from "@noble/hashes/blake2.js";
@@ -125,17 +126,22 @@ const STRUCT_TYPE = /^([^:]+)::([^:]+)::([^<]+)(<(.+)>)?/;
  * type argument, a vector's element type, a funds withdrawal's type) that has a node at depth 16, Sui's type depth
  * limit, is `sui/tx-malformed`, the code of bytes that do not decode: @mysten/sui decodes a type by recursion, and the
  * bound gives the same answer whether this host's stack would hold the type or not. A V1 `TransactionData` of another
- * kind is `sui/not-programmable`, answered from its kind's tag before its body is decoded.
+ * kind is `sui/not-programmable`, answered from its kind's tag before its body is decoded. The base64, the size bound
+ * and the two tags are read without @mysten/sui: without it, bytes they refuse get the code they get with it, and any
+ * other bytes are `sui/peer-missing`.
  */
 export function decodeSuiTx(base64: string): SuiTx<ArrayBuffer> | Refusal {
-  if (peer === undefined) return refusal("sui/peer-missing");
-  const { bcs } = peer;
   const bytes = base64Bytes(base64, MAX_TX_BYTES);
   if (bytes === "too-large") return refusal("sui/tx-too-large");
   if (bytes === "malformed") return refusal("sui/tx-malformed");
   // TransactionData opens with two BCS enum tags: its version, V1 (0), and its kind, ProgrammableTransaction (0), one
-  // byte each. Another kind is answered from its tag before its body is decoded: the bound below reads no type of it.
-  if (bytes.length > 1 && bytes[0] === 0 && bytes[1] !== 0) return refusal("sui/not-programmable");
+  // byte each. Both are read here, without the peer. V1 is the only version @mysten/sui reads: bytes that do not open
+  // with its tag and a kind's do not decode. Another kind is answered from its tag before its body is decoded: the
+  // bound below reads no type of it.
+  if (bytes.length < 2 || bytes[0] !== 0) return refusal("sui/tx-malformed");
+  if (bytes[1] !== 0) return refusal("sui/not-programmable");
+  if (peer === undefined) return refusal("sui/peer-missing");
+  const { bcs } = peer;
 
   let data: ReturnType<typeof SuiBcs.TransactionData.parse>;
   let epoch: bigint | null = null;
@@ -302,12 +308,12 @@ async function build(
   choice: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
 ): Promise<SuiUnsigned | Refusal> {
+  const expected = normalHash(h);
+  if (expected === null) return refusal("x402/payload-malformed");
   const ok = chosen(choice?.required, choice?.accepted, suiFilter);
   if (ok !== true) return ok;
   if (peer === undefined) return refusal("sui/peer-missing");
   const accepted = choice.accepted;
-  const expected = normalHash(h);
-  if (expected === null) return refusal("x402/payload-malformed");
   const { required } = choice;
   return {
     request: { kind: "sui-transaction", accepted, pureInput: toRawBytes(expected), expiration: "epoch-bounded" },

@@ -3,7 +3,7 @@
  * hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes.
  * `algosdk` is an optional peer: this module loads it when present. Without it the pairing serves no option: the
  * option filter, which `build` applies too, refuses an Algorand option `avm/peer-missing` where it would check the
- * option's addresses, and `avmCarrier` refuses `avm/peer-missing`.
+ * option's addresses. `avmCarrier` reads a payment entry without it.
  */
 import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
@@ -162,11 +162,10 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
  * facilitator does not read, a repeated list whose elements algod decodes into those an earlier list left, and a
  * fixed-length byte member of another length. A byte member written as a msgpack string is read as its
  * bytes, whatever they are; a string member (`type`, `gen`) is refused when its bytes are not UTF-8, which the
- * facilitator reads as other text. Each answer is a function of the entry's bytes alone. Without algosdk,
- * `avm/peer-missing`.
+ * facilitator reads as other text. Each answer is a function of the entry's bytes alone. Both readers are the package's
+ * own (`readEntry`), so nothing here needs algosdk: every answer is the same without it.
  */
 export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
-  if (sdk === null) return refusal("avm/peer-missing");
   if (!isObject(p) || !Array.isArray(p.paymentGroup)) return refusal("avm/txn-malformed");
   const group = p.paymentGroup;
   if (group.length < 1 || group.length > MAX_GROUP) return refusal("avm/group-too-large");
@@ -231,20 +230,21 @@ function urlSafe(s: string): string {
  * transaction's `gen`, a msgpack string, so one holding a lone surrogate, which UTF-8 cannot encode, is
  * `avm/option-malformed`. The payment entry is read as `avmCarrier` reads it, with a 64-byte signature in place, as
  * `complete` writes it, so `build` writes no payment `bound` refuses: an entry `avmCarrier` would refuse, one whose
- * base64 is longer than 8,192 characters included, is `avm/option-malformed`. Without algosdk the filter refuses the
- * chosen option `avm/peer-missing` after the choice's document and the option's place in it are checked, so a choice
- * that fails those checks, or whose option is another pairing's, gets the answer it gets with algosdk.
+ * base64 is longer than 8,192 characters included, is `avm/option-malformed`. H is checked first. Without algosdk the
+ * filter refuses the chosen option `avm/peer-missing` after H, the choice's document and the option's place in it are
+ * checked, so a choice that fails those checks, or whose option is another pairing's, gets the answer it gets with
+ * algosdk.
  */
 async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; payer: string; params: AvmParams },
   h: AtrHash,
 ): Promise<AvmUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("avm/option-malformed");
   const ok = chosen(c.required, c.accepted, check);
   if (ok !== true) return ok;
   if (sdk === null) return refusal("avm/peer-missing");
-  const nh = normalHash(h);
-  if (nh === null) return refusal("x402/payload-malformed");
   const pr = c.params;
   if (
     !isAddress(c.payer) ||

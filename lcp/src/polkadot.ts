@@ -347,11 +347,11 @@ async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
 ): Promise<PolkadotUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("polkadot/option-malformed");
   const ok = chosen(c.required, c.accepted, check);
   if (ok !== true) return ok;
-  const nh = normalHash(h);
-  if (nh === null) return refusal("x402/payload-malformed");
   const { required, accepted } = c;
   const call = encodeProfileCall({
     assetId: Number(accepted.asset),

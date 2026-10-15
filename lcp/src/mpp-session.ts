@@ -223,20 +223,22 @@ export interface SessionWithinUnsigned {
 export type WithinChallenge = MppChallenge & { id: string };
 
 /**
- * The checks `buildWithin` makes on its input before any channel value is read, in the input's member order. First the
- * within challenge, read as the pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that
- * carries it, with their code for each fault: the snapshot `challengeSnapshot` takes of it, its own members only, which
- * is the challenge the credential carries; a value that is not an object, a snapshot that is not challenge-shaped or
- * has no string id, and one whose least credential, `{ challenge, payload: {} }`, is over the credential size bound,
+ * The checks `buildWithin` makes on its input before any channel value is read, in this order. First the within
+ * challenge, read as the pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that carries
+ * it, with their code for each fault: the snapshot `challengeSnapshot` takes of it, its own members only, which is the
+ * challenge the credential carries; a value that is not an object, a snapshot that is not challenge-shaped or has no
+ * string id, and one whose least credential, `{ challenge, payload: {} }`, is over the credential size bound,
  * `mpp/credential-malformed`; another intent or method, `mpp/not-this-pairing`; then `read`, the readers' read of its
  * request, with their codes. The seller issues the within challenge with its own id and the channel named, so it is
- * not held to the pairing's filter, which refuses a challenge naming a channel, and its id is not read. Then the
- * opening, by `opened`, bound to `h`; the cumulative amount below `limit`; and the action, `voucher` or `close`.
- * `notBuilt` lists the actions the pairing's draft defines within a channel that `buildWithin` does not build: each is
- * `mpp/within-action-not-built`, and an action neither built nor listed is `mpp/session-action`, as the pairing's
- * `channel.kind` answers an action its draft does not define. Each `buildWithin` then compares the within challenge's
- * channel parameters with the opening's where a reader refuses a payment whose challenge names others, with that
- * reader's code.
+ * not held to the pairing's filter, which refuses a challenge naming a channel, and its id is not read. Then `h`, a
+ * valid ATR hash (else `mpp/id-not-ours`); the cumulative amount below `limit`; the action, `voucher` or `close`; and
+ * last the opening, by `opened`, bound to `h`. Every check before the opening reads only the input and `h`, so a rail
+ * whose opening needs an optional peer (the XRPL session's blob codec) gives each the same code with the peer and
+ * without it. `notBuilt` lists the actions the pairing's draft defines within a channel that `buildWithin` does not
+ * build: each is `mpp/within-action-not-built`, and an action neither built nor listed is `mpp/session-action`, as the
+ * pairing's `channel.kind` answers an action its draft does not define. Each `buildWithin` then compares the within
+ * challenge's channel parameters with the opening's where a reader refuses a payment whose challenge names others,
+ * with that reader's code.
  */
 export async function withinChecks<O, R>(
   w: SessionWithin,
@@ -256,14 +258,15 @@ export async function withinChecks<O, R>(
   if (`${c.intent}/${c.method}` !== intentAndMethod) return refusal("mpp/not-this-pairing");
   const within = read(challenge);
   if (isRefusal(within)) return within;
-  const o = await opened(w.opening);
-  if (isRefusal(o)) return o;
-  if (typeof h !== "string" || normalHash(h) === null || !hashEquals(o.h, h)) return refusal("mpp/id-not-ours");
+  if (typeof h !== "string" || normalHash(h) === null) return refusal("mpp/id-not-ours");
   if (typeof w.cumulativeAmount !== "bigint" || w.cumulativeAmount < 0n || w.cumulativeAmount >= limit) {
     return refusal("mpp/input-malformed");
   }
   if (notBuilt.includes(w.action as string)) return refusal("mpp/within-action-not-built");
   if (w.action !== "voucher" && w.action !== "close") return refusal("mpp/session-action");
+  const o = await opened(w.opening);
+  if (isRefusal(o)) return o;
+  if (!hashEquals(o.h, h)) return refusal("mpp/id-not-ours");
   return { opening: o, within, challenge };
 }
 

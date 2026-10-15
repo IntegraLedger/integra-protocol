@@ -262,7 +262,9 @@ or `tvm:-3` (testnet), and any other is `tvm/network-malformed`. The settlement 
 `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The
 settlement message's source names the account that relays it, which the BoC cannot show: one naming another account
 is read, and TON sends it when that account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an
-`addr_var` of 256 bits names its `addr_std`.
+`addr_var` of 256 bits names its `addr_std`. The network, the base64, the 8 KiB bound and the bag-of-cells layout
+need no peer: without @ton/core they give the codes they give with it, and a BoC that passes them is
+`tvm/peer-missing`.
 
 #### Parameters
 
@@ -284,9 +286,10 @@ is read, and TON sends it when that account relays it. `wallet` and `jettonWalle
 Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A
 transaction with no inbound message body, or whose body is not a Jetton `transfer`, is `tvm/not-jetton-transfer`. A
 body that is not a bag of cells with one root is an answer out of the reader's documented form, `tvm/unreadable`. A
-ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body cannot be
-read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader and the read are
-checked, which need no peer. One call.
+ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body's cells
+cannot be read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader, the read
+and the body's size and bag-of-cells layout are checked, which need no peer, so an empty body is `tvm/unreadable` and
+one over 8 KiB `tvm/boc-too-large` either way. One call.
 
 #### Parameters
 

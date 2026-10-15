@@ -171,11 +171,11 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * network's id where it is above 1024. `complete` reads the signed blob's `NetworkID` as `bound` does.
  */
 async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymentPayload> | Refusal> {
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (accepted.extra!["invoiceId"] !== toLcpString(h)) return refusal("xrpl/carrier-mismatch");
   const u32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
   const ticket = accepted.extra!["assetTransferMethod"] === "ticketSequence";
@@ -217,9 +217,10 @@ async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymen
 
 /**
  * The option, the hash and the decoded blob of a payment, or the refusal that names what is wrong. The blob is decoded
- * once per payload object, so `bound` and `reference` on one payment share one decode. Its `NetworkID` is read first, as
- * rippled 3.4.1 reads it (`networkIdHeld`): none on a network whose id is at most 1024, the network's own id above that,
- * else `xrpl/network-mismatch`.
+ * once per payload object, so `bound` and `reference` on one payment share one decode. The option's `invoiceId` is read
+ * before the blob, which needs `ripple-binary-codec`, so one that is not an LCP string is `xrpl/carrier-not-lcp` with
+ * the codec and without it. Of the blob, its `NetworkID` is read first, as rippled 3.4.1 reads it (`networkIdHeld`):
+ * none on a network whose id is at most 1024, the network's own id above that, else `xrpl/network-mismatch`.
  */
 async function presentedOf(presented: unknown) {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
@@ -227,13 +228,13 @@ async function presentedOf(presented: unknown) {
   if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
+  const h = fromLcpString(accepted.extra?.["invoiceId"] as string);
+  if (h === null) return refusal("xrpl/carrier-not-lcp");
   const blob = await decodePresented(payload, payload["signedTxBlob"]);
   if (isRefusal(blob)) return blob;
   if (!networkIdHeld(blob.tx, accepted.network as XrplNetwork)) return refusal("xrpl/network-mismatch");
   if (blob.tx.TransactionType !== "Payment") return refusal("xrpl/not-payment");
   if (typeof blob.tx.InvoiceID !== "string") return refusal("xrpl/no-invoice-id");
-  const h = fromLcpString(accepted.extra?.["invoiceId"] as string);
-  if (h === null) return refusal("xrpl/carrier-not-lcp");
   if (!sameInvoice(blob.tx.InvoiceID, await x402InvoiceId(h))) return refusal("xrpl/carrier-mismatch");
   return { accepted, blob, h };
 }

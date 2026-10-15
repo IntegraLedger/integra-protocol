@@ -335,7 +335,9 @@ there is no expiration ledger to pass.
 
 A `transfer` event's recipient (the non-muxed `to` topic) and its `to_muxed_id`: the u64 in the event's data map, or
 null when the data carries none, or carries the string or bytes form. The first topic and the data map's key are the
-symbols `transfer` and `to_muxed_id`, byte for byte.
+symbols `transfer` and `to_muxed_id`, byte for byte. Every refusal is `stellar/event-malformed`. The topics' and the
+value's form (3 or 4 topics, each one and the value base64 of at most 1,024 characters) is checked before the SDK is
+needed, which reads the XDR.
 
 #### Parameters
 
@@ -356,6 +358,8 @@ symbols `transfer` and `to_muxed_id`, byte for byte.
 
 The `getEvents` topic filter for SEP-41 `transfer` events to `toBase`, as base64 XDR segments: the symbol
 `transfer`, any `from`, `toBase` as an address, and any trailing topics (the Stellar Asset Contract adds its asset).
+A `toBase` that is not an account or contract strkey is `stellar/option-malformed`; one that is not a string is
+refused before the SDK is needed, which reads a strkey.
 
 #### Parameters
 

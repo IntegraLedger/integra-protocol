@@ -539,6 +539,8 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 
 /** The unsigned transaction for the chosen option, with the hash's LCP string as its memo. */
 async function build(c: TronChoice, h: AtrHash): Promise<TronUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/option-malformed");
   const { required, accepted, payer, refBlock, now, feeLimit } = c;
   const ok = chosen(required, accepted, check);
@@ -557,8 +559,6 @@ async function build(c: TronChoice, h: AtrHash): Promise<TronUnsigned | Refusal>
   if (typeof now !== "bigint" || now < 1n) return refusal("tron/tx-malformed");
   const expiration = now + BigInt(accepted.maxTimeoutSeconds) * 1000n;
   if (expiration >= INT64_LIMIT) return refusal("tron/tx-malformed");
-  const nh = normalHash(h);
-  if (nh === null) return refusal("x402/payload-malformed");
 
   const number = new Uint8Array(8);
   let n = refBlock.number;

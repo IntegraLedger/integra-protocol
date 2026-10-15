@@ -522,6 +522,8 @@ async function build(
   c: { required: PaymentRequired; accepted: PaymentRequirements; from: Felt; now: number },
   h: AtrHash,
 ): Promise<StarknetUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("starknet/option-malformed");
   const { required, accepted, from, now } = c;
   const ok = chosen(required, accepted, check);
@@ -530,8 +532,6 @@ async function build(
   if (account === undefined) return refusal("starknet/felt-malformed");
   const feePayer = accepted.extra!["feePayer"] as Felt;
   if (account === feltValue(feePayer)) return refusal("starknet/caller-forbidden");
-  const nh = normalHash(h);
-  if (nh === null) return refusal("x402/payload-malformed");
   if (!Number.isSafeInteger(now) || now < 0) return refusal("starknet/option-malformed");
   const nonce = snNonce(nh);
   if (isRefusal(nonce)) return nonce;

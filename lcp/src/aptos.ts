@@ -316,10 +316,10 @@ async function build(
   choice: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
 ): Promise<AptosUnsigned | Refusal> {
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const ok = chosen(choice?.required, choice?.accepted, aptosFilter);
   if (ok !== true) return ok;
   const accepted = choice.accepted;
-  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const { required } = choice;
   return {
     request: { kind: "aptos-transaction", accepted },

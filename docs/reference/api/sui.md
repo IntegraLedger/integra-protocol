@@ -161,7 +161,9 @@ Decodes a base64 `TransactionData` V1 with a programmable kind. A programmable t
 type argument, a vector's element type, a funds withdrawal's type) that has a node at depth 16, Sui's type depth
 limit, is `sui/tx-malformed`, the code of bytes that do not decode: @mysten/sui decodes a type by recursion, and the
 bound gives the same answer whether this host's stack would hold the type or not. A V1 `TransactionData` of another
-kind is `sui/not-programmable`, answered from its kind's tag before its body is decoded.
+kind is `sui/not-programmable`, answered from its kind's tag before its body is decoded. The base64, the size bound
+and the two tags are read without @mysten/sui: without it, bytes they refuse get the code they get with it, and any
+other bytes are `sui/peer-missing`.
 
 #### Parameters
 

@@ -250,11 +250,11 @@ async function build(
   choice: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
 ): Promise<CardanoUnsigned | Refusal> {
+  const expected = normalHash(h);
+  if (expected === null) return refusal("x402/payload-malformed");
   const ok = chosen(choice?.required, choice?.accepted, cardanoFilter);
   if (ok !== true) return ok;
   const accepted = choice.accepted;
-  const expected = normalHash(h);
-  if (expected === null) return refusal("x402/payload-malformed");
   const aux = auxiliaryData(expected);
   if (isRefusal(aux)) return aux;
   const { required } = choice;

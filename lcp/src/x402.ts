@@ -254,13 +254,13 @@ function evmFilter(id: X402PairingId): OptionFilter {
 
 /** The `TransferWithAuthorization` the payer signs for the chosen option, with the hash as its nonce. */
 async function build(choice: X402Choice, h: AtrHash): Promise<Unsigned | Refusal> {
+  const nonce = normalHash(h);
+  if (nonce === null) return refusal("x402/payload-malformed");
   if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
   const wrong = chosen(required, accepted, evmFilter(ID));
   if (wrong !== true) return wrong;
   if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
-  const nonce = normalHash(h);
-  if (nonce === null) return refusal("x402/payload-malformed");
 
   const validBefore = BigInt(now) + BigInt(accepted.maxTimeoutSeconds);
   const typedData = eip3009TypedData({
@@ -606,19 +606,22 @@ function isBreadthPayable(id: X402PairingId) {
         !isRefusal(authCaptureTerms(o))));
 }
 
-/** The checks every breadth `build` makes on the choice, giving the chain id, the `now + maxTimeoutSeconds` bound and H. */
+/**
+ * The checks every breadth `build` makes, H first, then the choice, giving the chain id, the `now + maxTimeoutSeconds`
+ * bound and H.
+ */
 function choiceOf(
   id: X402PairingId,
   choice: X402Choice,
   h: AtrHash,
 ): { chainId: number; deadline: bigint; h: AtrHash } | Refusal {
+  const nonce = normalHash(h);
+  if (nonce === null) return refusal("x402/payload-malformed");
   if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
   const wrong = chosen(required, accepted, evmFilter(id));
   if (wrong !== true) return wrong;
   if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
-  const nonce = normalHash(h);
-  if (nonce === null) return refusal("x402/payload-malformed");
   return { chainId: chainIdOf(accepted.network)!, deadline: BigInt(now) + BigInt(accepted.maxTimeoutSeconds), h: nonce };
 }
 

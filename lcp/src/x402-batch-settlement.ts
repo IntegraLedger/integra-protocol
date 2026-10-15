@@ -524,13 +524,14 @@ function evmPayloadKind(payload: Record<string, unknown>): "open" | "within" | "
  * (`buildWithin`), never by an opening.
  */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
+  const salt = normalHash(h);
+  if (salt === null) return refusal("x402/option-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, FILTER[EVM_ID]);
   if (ok !== true) return ok;
   if (c.accepted.amount === "0") return refusal("x402/option-malformed");
   const { accepted, required } = c;
-  const salt = normalHash(h);
-  if (salt === null || !isAddress(c.from) || !isAddress(c.payerAuthorizer) || !isHash32(c.authSalt)) {
+  if (!isAddress(c.from) || !isAddress(c.payerAuthorizer) || !isHash32(c.authSalt)) {
     return refusal("x402/option-malformed");
   }
   if (typeof c.deposit !== "bigint" || c.deposit <= 0n || c.deposit >= U128_LIMIT) return refusal("x402/option-malformed");
@@ -1112,11 +1113,11 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
  * signer, is `svm/input-malformed`.
  */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
+  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, FILTER[SVM_ID]);
   if (ok !== true) return ok;
   const { accepted, required } = c;
-  if (normalHash(h) === null) return refusal("x402/payload-malformed");
   const extra = accepted.extra!;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
@@ -1354,12 +1355,14 @@ async function cfBuild(
   c: { required: PaymentRequired; accepted: PaymentRequirements },
   h: AtrHash,
 ): Promise<CloudflarePaymentPayload | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/legal-context-conflict");
   if (!isObject(c)) return refusal("x402/not-v2");
   const ok = chosen(c.required, c.accepted, FILTER[CF_ID]);
   if (ok !== true) return ok;
   const lc = legalContextOf(c.required.extensions);
   if (isRefusal(lc)) return lc;
-  if (lc.h !== normalHash(h)) return refusal("x402/legal-context-conflict");
+  if (lc.h !== nh) return refusal("x402/legal-context-conflict");
   return {
     x402Version: 2,
     payload: { amount: c.accepted.amount, asset: c.accepted.asset },
