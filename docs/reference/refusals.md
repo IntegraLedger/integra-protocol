@@ -590,7 +590,7 @@ NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/
 
 | Code | Meaning |
 |---|---|
-| `near/actions` | The NEAR delegate action does not hold exactly one action. |
+| `near/actions` | The NEAR delegate action's count of actions is not one. The count is read before the actions. |
 | `near/args-malformed` | The `ft_transfer` arguments are over the size bound, not UTF-8 JSON, or not an object. |
 | `near/carrier-occupied` | `advertise` for the NEAR Intents charge finds the challenge's `externalId` already holding a value other than H's LCP string. |
 | `near/memo-missing` | The `ft_transfer` arguments carry no string `memo`. |
@@ -598,11 +598,11 @@ NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/
 | `near/network-malformed` | A NEAR option's network starts with `near:` but is not `near:mainnet` or `near:testnet`. |
 | `near/no-relayer` | The NEAR reader lists no relayer to ask for the transaction status. |
 | `near/not-found` | **Read to repeat.** None of the first four relayers the NEAR reader lists knows the transaction. |
-| `near/not-ft-transfer` | The NEAR delegate action's one action is not a function call to `ft_transfer`, or the transaction a recovery reads carries no delegate action or its delegate calls another method. |
+| `near/not-ft-transfer` | The NEAR delegate action's one action is not a function call to `ft_transfer` (its variant index is not `FunctionCall`'s, or the call names another method), or the transaction a recovery reads carries no delegate action or its delegate calls another method. |
 | `near/not-hash-credential` | The NEAR Intents charge credential's payload `type` is not `hash`. |
 | `near/option-malformed` | A NEAR option's `extra` is not an object, or its `asset`, `payTo`, `amount` or `maxTimeoutSeconds` is not a valid account, u128 amount or positive safe integer timeout. |
-| `near/peer-missing` | The optional peer dependencies `near-api-js` and `borsh` cannot be loaded. |
-| `near/sda-malformed` | The NEAR signed delegate action is not non-empty base64 of a canonical Borsh `SignedDelegate`, a string in it is not UTF-8, its signature or a key in it is neither Ed25519 nor secp256k1, or its public key cannot be read. |
+| `near/peer-missing` | The optional peer dependency `borsh` cannot be loaded. |
+| `near/sda-malformed` | The NEAR signed delegate action is not non-empty base64 of a canonical Borsh `SignedDelegate`, a string in it is not UTF-8, or its signature or its key is neither Ed25519 nor secp256k1. The count of actions and the action's variant index are read first: a count other than one is `near/actions`, and a variant other than `FunctionCall` is `near/not-ft-transfer`, whatever bytes follow. |
 | `near/sda-too-large` | The NEAR signed delegate action's base64 text exceeds the size bound. |
 | `near/unreadable` | **Read to repeat.** The NEAR reader threw or returned an outcome that is not well formed, or one whose delegate's arguments are not base64 in its canonical form. |
 | `near/wrong-reader` | The NEAR reader answers for a different network than the reference names, or the reference given to `recover` names no `transaction` string. |

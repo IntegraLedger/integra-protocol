@@ -1,4 +1,4 @@
-// The TON and NEAR SDKs are optional peers. With them absent, the entry points and the package root still
+// TON's SDK and NEAR's borsh are optional peers. With them absent, the entry points and the package root still
 // import, and each function that needs a peer refuses `<rail>/peer-missing` (the vectors' refusal), never
 // throwing; a status that needs one reads as pending `unreadable`, and nothing is read.
 import { readFileSync } from "node:fs";
@@ -11,9 +11,6 @@ const code = (v: { agreedRefusals: { rows: { expect: string }[] } }) =>
 
 vi.mock("@ton/core", () => {
   throw new Error("Cannot find package '@ton/core'");
-});
-vi.mock("near-api-js", () => {
-  throw new Error("Cannot find package 'near-api-js'");
 });
 vi.mock("borsh", () => {
   throw new Error("Cannot find package 'borsh'");
@@ -54,7 +51,7 @@ describe("without the TON and NEAR peers", () => {
     expect(calls).toBe(0);
   });
 
-  it("NEAR: every function that needs the NEAR SDK or borsh refuses near/peer-missing", { timeout: IMPORT_MS }, async () => {
+  it("NEAR: every function that needs borsh refuses near/peer-missing", { timeout: IMPORT_MS }, async () => {
     const { exactNear, nearCarrier } = await import("../src/near.js");
     const refused = { refused: true, code: code(NEAR) };
     const O = NEAR.fixed.O;

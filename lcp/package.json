@@ -199,7 +199,6 @@
     "@ton/core": "^0.63.1",
     "algosdk": "^3.8.0",
     "borsh": "^2.0.0",
-    "near-api-js": "^7.3.1",
     "ripple-binary-codec": "~2.11.0"
   },
   "peerDependenciesMeta": {
@@ -219,9 +218,6 @@
       "optional": true
     },
     "borsh": {
-      "optional": true
-    },
-    "near-api-js": {
       "optional": true
     },
     "ripple-binary-codec": {

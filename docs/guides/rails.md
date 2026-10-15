@@ -129,7 +129,7 @@ peer dependency. Install the one for each rail you use:
 | Stellar | `@stellar/stellar-sdk` |
 | XRP Ledger | `ripple-binary-codec` |
 | Sui | `@mysten/sui` |
-| NEAR | `near-api-js`, `borsh` |
+| NEAR | `borsh` |
 | TON | `@ton/core` and its peer `@ton/crypto` |
 | Algorand | `algosdk` |
 

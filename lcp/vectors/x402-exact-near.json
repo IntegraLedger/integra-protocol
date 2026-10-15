@@ -666,7 +666,7 @@
     "expect": "near/no-relayer"
    },
    {
-    "case": "any near function that needs the SDK when near-api-js or borsh is not installed",
+    "case": "any near function that needs borsh when borsh is not installed",
     "expect": "near/peer-missing"
    },
    {
@@ -688,6 +688,36 @@
     "case": "args that begin with a byte-order mark: V2's delegate action with its ft_transfer arguments EF BB BF and V1's arguments, signed again with fixed.seedHex",
     "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKPAAAA77u/eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAEBltmssTUdEo9Mni8rGfz/Ky3YFrIiZrLBcajjPtVQhHqlbkYMtNQ7ymy5y/RXDrsIj/IBWXkuZQO0/eI7jwQ0=",
     "expect": "near/args-malformed"
+   },
+   {
+    "case": "build with a publicKey that is base58 alone, with no key type",
+    "publicKey": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with a publicKey whose key type is written in capitals",
+    "publicKey": "ED25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "build with a publicKey written ed25519: and the base58 of 64 bytes, secp256k1's size (the secp256k1 vector's key)",
+    "publicKey": "ed25519:Yupq21BV61j6SMaWtDW5wtnq48cnFVcJQk4h3Nh4qNH2GBzqasSkjTTTMuRsjMKVKpYd6ECNHYx7DLoGtK8tgic",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "a signedDelegateAction whose delegate action counts two actions and holds V1's one",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AgAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/actions"
+   },
+   {
+    "case": "a signedDelegateAction whose one action is a Transfer: V1's with its action's variant index 3 and the FunctionCall's bytes left after it",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAMLAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/not-ft-transfer"
+   },
+   {
+    "case": "a signedDelegateAction whose one action has variant index 11, past the eleven action variants near-api-js 7.3.1 reads",
+    "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAsLAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "near/not-ft-transfer"
    }
   ]
  },

@@ -191,10 +191,12 @@ that is not a 32-byte hash is `x402/payload-malformed`.
 > **nearCarrier**(`signedDelegateAction`): [`Refusal`](index.md#refusal) \| \{ `asset`: `string`; `h`: `` `0x${string}` ``; `maxBlockHeight`: `bigint`; `nonce`: `bigint`; `payer`: `string`; `publicKey`: `string`; \}
 
 Reads a base64 `SignedDelegateAction` whose one action is a `FunctionCall` of `ft_transfer` with a JSON object of
-arguments whose `memo` is an LCP string. The bytes must be exactly the borsh encoding of what is read, every string
-in it UTF-8 and every key and the signature Ed25519 or secp256k1, or they are `near/sda-malformed`. The arguments are
-strict UTF-8 JSON text whose leading byte-order mark is kept as a character, so arguments that begin with one are
-`near/args-malformed`.
+arguments whose `memo` is an LCP string. The bytes are read in order: the sender and the receiver, then the count of
+actions, where a count other than one is `near/actions`, then the action's variant index, where any action other
+than a `FunctionCall` is `near/not-ft-transfer`, the bytes after it unread. Otherwise the bytes must be exactly the
+borsh encoding of what is read, every string in it UTF-8 and the key and the signature each Ed25519 or secp256k1, or
+they are `near/sda-malformed`. The arguments are strict UTF-8 JSON text whose leading byte-order mark is kept as a
+character, so arguments that begin with one are `near/args-malformed`.
 
 #### Parameters
 

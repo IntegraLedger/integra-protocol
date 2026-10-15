@@ -190,9 +190,10 @@ describe("x402-exact-near.json", () => {
   // NEAR's key and signature enums give type 0 to Ed25519 and 1 to secp256k1, the two x402's NEAR scheme admits
   // ("Signature type and key type MUST be valid NEAR-supported types (`ed25519` or `secp256k1`)",
   // scheme_exact_near.md at f5dd40ef). near-api-js 7.3.1's schema adds type 2, ML-DSA-65, with a 1952-byte key and a
-  // 3309-byte signature. V2 with the signature, the delegate's key, or the key of a second action written as type 2 is
-  // no delegate this pairing reads.
-  it("V2: a delegate whose signature or a key in it is neither Ed25519 nor secp256k1 is near/sda-malformed", async () => {
+  // 3309-byte signature. V2 with the signature or the delegate's key written as type 2 is no delegate this pairing
+  // reads. A delegate of two actions, the second a DeleteKey (variant 6) under a type-2 key, is refused by its count
+  // of actions, which is read before the actions.
+  it("V2: a delegate whose signature or key is neither Ed25519 nor secp256k1 is near/sda-malformed", async () => {
     const bytes = v2Bytes();
     const delegate = bytes.subarray(0, bytes.length - 65);
     const keyAt = delegate.length - 33;
@@ -214,9 +215,10 @@ describe("x402-exact-near.json", () => {
         zeroSignature,
       ]),
     ];
+    const codes = ["near/sda-malformed", "near/sda-malformed", "near/actions"];
     for (const [i, sda] of cases.map((b) => b.toString("base64")).entries()) {
-      expect([i, nearCarrier(sda)]).toEqual([i, { refused: true, code: "near/sda-malformed" }]);
-      expect([i, await exactNear.bound(payment(sda))]).toEqual([i, { refused: true, code: "near/sda-malformed" }]);
+      expect([i, nearCarrier(sda)]).toEqual([i, { refused: true, code: codes[i] }]);
+      expect([i, await exactNear.bound(payment(sda))]).toEqual([i, { refused: true, code: codes[i] }]);
     }
     const mlDsaPublicKey = `ml-dsa-65:${base58.encode(new Uint8Array(1952).fill(1))}`;
     expect(await exactNear.build({ ...choice(), publicKey: mlDsaPublicKey }, H)).toEqual({ refused: true, code: "x402/option-malformed" });

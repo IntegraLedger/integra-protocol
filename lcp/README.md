@@ -80,7 +80,7 @@ dependencies: install the one for each rail you use, at a version in the range t
 | Stellar | `@stellar/stellar-sdk` | the Stellar pairings on x402 and MPP |
 | XRP Ledger | `ripple-binary-codec` | the XRPL pairings on x402 and MPP |
 | Sui | `@mysten/sui` | `x402/exact/sui` |
-| NEAR | `near-api-js`, `borsh` | `x402/exact/near` |
+| NEAR | `borsh` | `x402/exact/near` |
 | TON | `@ton/core` and its peer `@ton/crypto` | `x402/exact/tvm` |
 | Algorand | `algosdk` | `x402/exact/algorand` |
 
@@ -305,11 +305,10 @@ extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and 
 
 - Node.js `>=26.11.1`.
 - ESM. TypeScript users need `"moduleResolution": "nodenext"` (or `"bundler"`) to resolve the subpath exports.
-- Cloudflare Workers, with or without the `nodejs_compat` flag, except the NEAR and TON entry points, which need it:
-  they use Node's `Buffer`, and `near-api-js` loads Node's `util`. Workers turns the flag on by default from
-  compatibility date 2026-08-04. A bundle needs none of the optional peer dependencies: the package loads each with
-  `import()`, which wrangler's bundler leaves to run time when the peer is not installed, and a rail whose peer is
-  absent answers as it does in Node without it.
+- Cloudflare Workers, with or without the `nodejs_compat` flag, except the TON entry point, which needs it: it uses
+  Node's `Buffer`. Workers turns the flag on by default from compatibility date 2026-08-04. A bundle needs none of the
+  optional peer dependencies: the package loads each with `import()`, which wrangler's bundler leaves to run time when
+  the peer is not installed, and a rail whose peer is absent answers as it does in Node without it.
 - Bundlers: the package declares `"sideEffects": false`, and the root builds `BINDINGS` in a call marked pure, so a
   bundle holds only the modules its imports use. A Worker that imports the core functions from the root bundles the
   core and the root's own module, and no pairing.
