@@ -76,7 +76,8 @@ describe("the root pairingOf, walking BINDINGS", () => {
   });
 
   // Every option x402-batch-settlement.json holds (the fixed EVM and Solana options, ES4's and EC1's accepted options,
-  // and the buyer rows' documents and payments) names its pairing by its network's CAIP-2 namespace.
+  // and the buyer rows' documents and payments) names its pairing by its network's CAIP-2 namespace, but the options of
+  // its boundAccepted rows, which no pairing's read offers.
   it("names the batch-settlement pairing of every option in x402-batch-settlement.json", () => {
     const byNamespace: Record<string, string> = {
       eip155: "x402/batch-settlement/eip155",
@@ -90,11 +91,15 @@ describe("the root pairingOf, walking BINDINGS", () => {
       for (const [k, x] of Object.entries(v)) walk(x, `${path}.${k}`);
     };
     walk(vectors("x402-batch-settlement"), "x402-batch-settlement");
-    for (const [path, o] of rowsOf(options, "x402-batch-settlement.json, every option it holds")) {
+    const offered = rowsOf(options, "x402-batch-settlement.json, every option it holds", {
+      keep: ["the options outside boundAccepted", ([path]) => !path.startsWith("x402-batch-settlement.boundAccepted.")],
+      leave: ["boundAccepted's options, which no read offers", ([path]) => path.startsWith("x402-batch-settlement.boundAccepted.")],
+    });
+    for (const [path, o] of offered) {
       expect(o.scheme, path).toBe("batch-settlement");
       expect(pairingOf(o), path).toBe(byNamespace[o.network.split(":")[0]!]);
     }
-    expect(new Set(options.map(([, o]) => pairingOf(o)))).toEqual(new Set(Object.values(byNamespace)));
+    expect(new Set(offered.map(([, o]) => pairingOf(o)))).toEqual(new Set(Object.values(byNamespace)));
   });
 
   it("names nothing for an option no pairing serves", () => {

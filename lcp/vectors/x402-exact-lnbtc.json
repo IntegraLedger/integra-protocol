@@ -322,5 +322,48 @@
     "note": "presented is this file's L5.payment payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "x402-exact-lnbtc-invoice-named.json's option, whose invoice has no m field: x402/exact/lnbtc/invoice-named's option",
+    "pairing": "x402/exact/lnbtc",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfv9qrsqqtq9yyvpc5fguj7gm2gvdj4keaxjl6uj0uh7cx76m6ej2cefqm0gkyhd8xff6quaxzet88sawvqysheqtgffvp4wrw7h3w0thcsu9uhqqs9hn0k"
+     }
+    },
+    "expect": "ln/no-metadata"
+   },
+   {
+    "case": "the option with no extra",
+    "pairing": "x402/exact/lnbtc",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
  }
 }

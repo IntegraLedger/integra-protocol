@@ -95,22 +95,33 @@ describe("x402-exact-hedera.json", () => {
     expect(txIdMirror(decoded.bodies[0]!.id)).toBe(V.V2.expectReference.transactionId);
   });
 
-  it("V2 presented under an option whose amount or timeout bound does not read: H and V2's reference", async () => {
-    for (const row of rowsOf(V.V2.presentedOptions, "x402-exact-hedera.json V2.presentedOptions")) {
+  // bound and reference hold the presented option to the filter read applies: under an option read offers they give
+  // H and V2's reference; under one it does not offer (a timeout that is not a positive integer, or an amount that is
+  // not a decimal: x402's PaymentRequirements gives `amount` as a string of atomic units and `maxTimeoutSeconds` as a
+  // number of seconds, and build writes the transfers from the amount) they refuse with the row's code, the one
+  // advertise and build give.
+  it("V2 presented under an option read offers gives H and V2's reference, and under one it does not offer is refused", async () => {
+    const doc = exactHedera.advertise(required, H, V.fixed.link, O);
+    if ("refused" in doc) throw new Error(doc.code);
+    for (const row of rowsOf(V.V2.presentedOptions, "x402-exact-hedera.json V2.presentedOptions", { exact: 2 })) {
       const p = presentedOf(V.V2.expectTransactionBase64, row.accepted);
-      expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, row.expectBound]);
-      expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, row.expectReference]);
+      const offered = !("refused" in exactHedera.read({ ...doc, accepts: [row.accepted] }));
+      expect([row.case, offered]).toEqual([row.case, row.expect === undefined]);
+      if (row.expect === undefined) {
+        expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, row.expectBound]);
+        expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, row.expectReference]);
+      } else {
+        expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, { refused: true, code: row.expect }]);
+        expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, { refused: true, code: row.expect }]);
+      }
     }
-    // advertise and build need a positive timeout and a decimal amount: build writes the transfers from the amount.
-    const timeoutZero = V.V2.presentedOptions.find((r: { accepted: PaymentRequirements }) => r.accepted.maxTimeoutSeconds === 0).accepted;
-    for (const accepted of [timeoutZero, { ...O, amount: "x" }]) {
-      const doc = { ...required, accepts: [accepted] };
-      expect(exactHedera.advertise(doc, H, V.fixed.link, accepted)).toEqual({ refused: true, code: "hedera/option-malformed" });
-      await expect(unsigned(accepted)).rejects.toThrow("hedera/option-malformed");
-    }
+    const timeoutZero = V.V2.presentedOptions.find((r: { accepted: PaymentRequirements }) => r.accepted.maxTimeoutSeconds === 0);
     const { maxTimeoutSeconds: _, ...noTimeout } = O;
-    for (const accepted of [noTimeout, { ...O, amount: "x" }]) {
-      expect(await exactHedera.bound(presentedOf(V.V2.expectTransactionBase64, accepted as PaymentRequirements))).toBe(V.V2.expectBound);
+    for (const accepted of [timeoutZero.accepted, noTimeout as PaymentRequirements, { ...O, amount: "x" }]) {
+      const doc = { ...required, accepts: [accepted] };
+      expect(exactHedera.advertise(doc, H, V.fixed.link, accepted)).toEqual({ refused: true, code: timeoutZero.expect });
+      await expect(unsigned(accepted)).rejects.toThrow(timeoutZero.expect);
+      expect(await exactHedera.bound(presentedOf(V.V2.expectTransactionBase64, accepted))).toEqual({ refused: true, code: timeoutZero.expect });
     }
     const { feePayer: __, ...noFeePayer } = O.extra!;
     expect(await exactHedera.bound(presentedOf(V.V2.expectTransactionBase64, { ...O, extra: noFeePayer }))).toEqual({

@@ -55,7 +55,7 @@
   "expectPaymentIndex": 1
  },
  "V3": {
-  "case": "bound and reference of V2's payload, under the fixed option and under options whose amount or timeout no build could use, and the refusals",
+  "case": "bound and reference of V2's payload: under the fixed option, under options whose amount or timeout no build could use, which read does not offer and bound and reference refuse, and the refusals",
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
@@ -64,7 +64,7 @@
   },
   "presentedOptions": [
    {
-    "case": "V2's payment presented under an option with maxTimeoutSeconds 0: bound and reference read the signed transaction, and the option check they apply (scheme, network, asset, payTo, extra) names no timeout",
+    "case": "V2's payment presented under an option with maxTimeoutSeconds 0, which read does not offer: bound and reference hold the echoed option to read's filter and refuse it",
     "accepted": {
      "scheme": "exact",
      "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
@@ -76,12 +76,7 @@
       "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
      }
     },
-    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": {
-     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
-     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
-     "lastValid": "67634796"
-    }
+    "expect": "avm/option-malformed"
    },
    {
     "case": "V2's payment presented under an option with no maxTimeoutSeconds",
@@ -95,12 +90,7 @@
       "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
      }
     },
-    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": {
-     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
-     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
-     "lastValid": "67634796"
-    }
+    "expect": "avm/option-malformed"
    },
    {
     "case": "V2's payment presented under an option whose maxTimeoutSeconds is the string \"60\"",
@@ -115,15 +105,10 @@
       "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
      }
     },
-    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": {
-     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
-     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
-     "lastValid": "67634796"
-    }
+    "expect": "avm/option-malformed"
    },
    {
-    "case": "V2's payment presented under an option with amount \"abc\": bound and reference read no amount",
+    "case": "V2's payment presented under an option with amount \"abc\"",
     "accepted": {
      "scheme": "exact",
      "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
@@ -135,12 +120,7 @@
       "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
      }
     },
-    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": {
-     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
-     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
-     "lastValid": "67634796"
-    }
+    "expect": "avm/option-malformed"
    },
    {
     "case": "V2's payment presented under an option with no amount",
@@ -154,12 +134,7 @@
       "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
      }
     },
-    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": {
-     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
-     "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
-     "lastValid": "67634796"
-    }
+    "expect": "avm/option-malformed"
    }
   ],
   "refusals": [
@@ -817,6 +792,62 @@
     "genesisId": "testnet-v1.0",
     "genesisHash": "wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=",
     "expect": "avm/network-mismatch"
+   }
+  ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with maxTimeoutSeconds 1.5, which is not a positive integer",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "10000",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 1.5,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the option with payTo 7, which is not an Algorand address",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "10000",
+     "asset": "10458941",
+     "payTo": 7,
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the option with scheme upto",
+    "pairing": "x402/exact/algorand",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+     "amount": "10000",
+     "asset": "10458941",
+     "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
    }
   ]
  }

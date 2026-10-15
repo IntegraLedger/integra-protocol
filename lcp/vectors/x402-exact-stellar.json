@@ -967,5 +967,44 @@
     "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with extra.areFeesSponsored false",
+    "pairing": "x402/exact/stellar",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": false
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with scheme upto",
+    "pairing": "x402/exact/stellar",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
  }
 }

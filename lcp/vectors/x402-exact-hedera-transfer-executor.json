@@ -1468,5 +1468,50 @@
     "note": "presented is this file's bound payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/exact/hedera/transfer-executor",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "100000000",
+     "asset": "0.0.0",
+     "payTo": "0.0.4001",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "assetTransferMethod": "transferExecutor",
+      "executors": [
+       "0.0.7000"
+      ]
+     }
+    },
+    "expect": "hedera/option-malformed"
+   },
+   {
+    "case": "the option with amount \"abc\", which is not a decimal amount",
+    "pairing": "x402/exact/hedera/transfer-executor",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "abc",
+     "asset": "0.0.0",
+     "payTo": "0.0.4001",
+     "maxTimeoutSeconds": 120,
+     "extra": {
+      "assetTransferMethod": "transferExecutor",
+      "executors": [
+       "0.0.7000"
+      ]
+     }
+    },
+    "expect": "hedera/option-malformed"
+   }
+  ]
  }
 }

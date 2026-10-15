@@ -1587,5 +1587,44 @@
     "note": "presented is this file's S4 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/exact/starknet",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "starknet:SN_SEPOLIA",
+     "amount": "10000",
+     "asset": "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
+     "payTo": "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "feePayer": "0x05f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81"
+     }
+    },
+    "expect": "starknet/option-malformed"
+   },
+   {
+    "case": "the option with asset 7, which is not a felt",
+    "pairing": "x402/exact/starknet",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "starknet:SN_SEPOLIA",
+     "amount": "10000",
+     "asset": 7,
+     "payTo": "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "feePayer": "0x05f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81"
+     }
+    },
+    "expect": "starknet/felt-malformed"
+   }
+  ]
  }
 }

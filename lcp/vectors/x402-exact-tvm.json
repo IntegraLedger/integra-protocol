@@ -1342,5 +1342,116 @@
     "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with no maxTimeoutSeconds",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds \"60\", which is not a number",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": "60",
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 1.5, which is not a positive integer",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "10000",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 1.5,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with amount \"abc\", which is not a Jetton amount",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "amount": "abc",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   },
+   {
+    "case": "the option with no amount",
+    "pairing": "x402/exact/tvm",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tvm:-239",
+     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true,
+      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
+     }
+    },
+    "expect": "tvm/option-malformed"
+   }
+  ]
  }
 }

@@ -884,5 +884,44 @@
     "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with maxTimeoutSeconds 0, outside 1 to 3600",
+    "pairing": "x402/exact/polkadot/lcp-assets-remark",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+     "amount": "10000",
+     "asset": "1337",
+     "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "assetTransferMethod": "lcp-assets-remark"
+     }
+    },
+    "expect": "polkadot/option-malformed"
+   },
+   {
+    "case": "the option with amount \"abc\", which is not a decimal amount",
+    "pairing": "x402/exact/polkadot/lcp-assets-remark",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+     "amount": "abc",
+     "asset": "1337",
+     "payTo": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-assets-remark"
+     }
+    },
+    "expect": "polkadot/option-malformed"
+   }
+  ]
  }
 }

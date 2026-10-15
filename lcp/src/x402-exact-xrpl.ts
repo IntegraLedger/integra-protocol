@@ -5,6 +5,7 @@
  */
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import {
+  acceptedBy,
   advertiseFor,
   chosen,
   filterOf,
@@ -65,6 +66,9 @@ function isThis(option: PaymentRequirements): boolean {
   return invoiceId === undefined || typeof invoiceId === "string";
 }
 
+/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
+const filter = filterOf(isThis);
+
 /** True when `build` can write the Payment's `Amount`: XRP drops, or an issued amount with `extra.issuer`. */
 function payable(o: PaymentRequirements): boolean {
   if (typeof o.amount !== "string" || typeof o.asset !== "string" || typeof o.payTo !== "string") return false;
@@ -98,13 +102,13 @@ function advertise(
 }
 
 function read(doc: PaymentRequired): X402Read | Refusal {
-  return readFor(filterOf(isThis))(doc);
+  return readFor(filter)(doc);
 }
 
 /** The Payment for the wallet to sign, with `InvoiceID` = SHA-256 of the option's `extra.invoiceId`. */
 async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymentPayload> | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, filterOf(isThis));
+  const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
@@ -151,8 +155,8 @@ async function build(c: XrplChoice, h: AtrHash): Promise<XrplUnsigned<XrplPaymen
  */
 async function presentedOf(presented: unknown) {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"] as PaymentRequirements;
-  if (!isObject(accepted) || !isThis(accepted)) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], filter);
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const blob = await decodePresented(payload, payload["signedTxBlob"]);

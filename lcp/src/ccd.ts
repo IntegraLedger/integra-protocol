@@ -13,7 +13,7 @@ import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
-import { advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -278,13 +278,15 @@ function ccdOption(o: unknown): o is PaymentRequirements {
   );
 }
 
-const advertise = advertiseFor(filterOf(ccdOption));
-const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filterOf(ccdOption));
+/** The pairing's option filter, which `advertise`, `read`, `build` and `bound` apply. */
+const filter = filterOf(ccdOption);
+const advertise = advertiseFor(filter);
+const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filter);
 
 /** What the buyer's wallet assembles and signs: one transfer to `payTo` whose memo carries the hash. */
 async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const wrong = chosen(c.required, c.accepted, filterOf(ccdOption));
+  const wrong = chosen(c.required, c.accepted, filter);
   if (wrong !== true) return wrong;
   const { required, accepted, now } = c;
   const sponsor = accepted.extra!["feePayer"] as string;
@@ -350,7 +352,8 @@ async function reference(presented: unknown): Promise<CcdRef | Refusal> {
 
 async function signed(presented: unknown): Promise<Signed | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  if (!ccdOption(presented["accepted"])) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], filter);
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   const tx = isObject(payload) ? payload["signedTransaction"] : undefined;
   if (!isObject(tx)) return refusal("ccd/transaction-malformed");

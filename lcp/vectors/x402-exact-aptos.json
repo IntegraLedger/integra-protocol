@@ -661,5 +661,86 @@
   "noSignedPayment": {
    "x402/exact/aptos": "The file records the transaction's fields; its signature is made by a key generated at each test run."
   }
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file. This file holds no signed payment (buyer.noSignedPayment), so payment is the one here: the fixed option, the echoed legal context of H, and an empty transaction, which bound reads only as a string.",
+  "payment": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "exact",
+    "network": "aptos:1",
+    "amount": "99900000",
+    "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+    "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+    "maxTimeoutSeconds": 60
+   },
+   "payload": {
+    "transaction": ""
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "rows": [
+   {
+    "case": "the option with amount \"abc\", which is not a decimal amount",
+    "pairing": "x402/exact/aptos",
+    "payment": "/boundAccepted/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "aptos:1",
+     "amount": "abc",
+     "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+     "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option on network cosmos:cosmoshub-4, which is not an aptos network",
+    "pairing": "x402/exact/aptos",
+    "payment": "/boundAccepted/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "cosmos:cosmoshub-4",
+     "amount": "99900000",
+     "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+     "payTo": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
  }
 }

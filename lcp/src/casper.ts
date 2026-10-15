@@ -6,7 +6,7 @@ import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-import { advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -275,13 +275,15 @@ function casperOption(o: unknown): o is PaymentRequirements {
   );
 }
 
-const advertise = advertiseFor(filterOf(casperOption));
-const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filterOf(casperOption));
+/** The pairing's option filter, which `advertise`, `read`, `build` and `bound` apply. */
+const filter = filterOf(casperOption);
+const advertise = advertiseFor(filter);
+const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filter);
 
 /** The CEP-3009 authorization the payer signs for the chosen option, with the hash as its nonce. */
 async function build(c: CasperChoice, h: AtrHash): Promise<CasperUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const wrong = chosen(c.required, c.accepted, filterOf(casperOption));
+  const wrong = chosen(c.required, c.accepted, filter);
   if (wrong !== true) return wrong;
   const { required, accepted, from, now } = c;
   if (!isAddress(from)) return refusal("casper/address-malformed");
@@ -365,7 +367,8 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 function paymentOf(presented: unknown): CasperPaymentPayload | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("casper/payload-malformed");
   if (carriesRefused(presented)) return refusal("casper/payload-malformed");
-  if (!casperOption(presented["accepted"])) return refusal("casper/payload-malformed");
+  const accepted = acceptedBy(presented["accepted"], filter);
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("casper/payload-malformed");
   const a = payload["authorization"];

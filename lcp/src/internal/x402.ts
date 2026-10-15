@@ -1,7 +1,8 @@
 /**
  * The pieces the x402 pairings share: the option filter's type, the seller's placement over a filter (each x402
- * pairing's `advertise`), the legal context's extension key and schema, the bounds on a document's options and on a
- * link, an option's match by RFC 8785 form, and the other types and helpers the pairings' modules are built from.
+ * pairing's `advertise`), the step that holds a presented `accepted` to a filter (each x402 pairing's `bound`), the
+ * legal context's extension key and schema, the bounds on a document's options and on a link, an option's match by
+ * RFC 8785 form, and the other types and helpers the pairings' modules are built from.
  * `../x402.ts` re-exports `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`; no entry point exports the other names.
  */
 import {
@@ -180,20 +181,31 @@ export function chosen(required: unknown, accepted: unknown, filter: OptionFilte
   return f ?? refusal("x402/option-not-this-pairing");
 }
 
-/** A presented payment's `accepted`, served by the filter, its `payload` object and its `extensions`. */
+/**
+ * A presented payment's `accepted`, held to the option filter the pairing's `read` applies. Every x402 pairing's
+ * `bound` takes the presented `accepted` through this one step, passing that filter, so it binds no payment whose
+ * option its own `read` would not offer: an option the filter serves comes back, one it refuses gives the filter's
+ * refusal, and one that is not the pairing's is `x402/option-not-this-pairing`, as `advertise` and `build` answer for
+ * the same option. An `accepted` that is not an object is `x402/payload-malformed`.
+ */
+export function acceptedBy(accepted: unknown, filter: OptionFilter): PaymentRequirements | Refusal {
+  if (!isObject(accepted)) return refusal("x402/payload-malformed");
+  const f = filter(accepted as PaymentRequirements);
+  if (f === undefined) return refusal("x402/option-not-this-pairing");
+  return f === true ? (accepted as PaymentRequirements) : f;
+}
+
+/** A presented payment's `accepted`, held to the filter by `acceptedBy`, its `payload` object and its `extensions`. */
 export function presentedWith(
   presented: unknown,
   filter: OptionFilter,
 ): { accepted: PaymentRequirements; payload: Record<string, unknown>; extensions: unknown } | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"];
-  if (!isObject(accepted)) return refusal("x402/payload-malformed");
-  const f = filter(accepted as PaymentRequirements);
-  if (f === undefined) return refusal("x402/option-not-this-pairing");
-  if (f !== true) return f;
+  const accepted = acceptedBy(presented["accepted"], filter);
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
-  return { accepted: accepted as PaymentRequirements, payload, extensions: presented["extensions"] };
+  return { accepted, payload, extensions: presented["extensions"] };
 }
 
 /** The index of the first of `accepts` that is `offer`, by identity or by equal RFC 8785 form, or -1. */

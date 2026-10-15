@@ -513,12 +513,15 @@ describe("x402-exact-tvm.json", () => {
     });
   });
 
-  // bound and reference read the transfer the payer signed and the echoed option's scheme, network, asset, payTo and
-  // extra, never its amount or timeout. The payment is V2's, so whatever amount or timeout the option echoes, bound
-  // gives the file's H (FIPS 180-2's "abc") and reference V3's keys; pairingOf, read and build, which need both, refuse
-  // such an option.
-  it("V3: bound and reference read no amount or timeout from the echoed option", async () => {
+  // bound and reference hold the echoed option to the filter read applies. An option whose amount is not a Jetton
+  // amount or whose timeout is not a positive integer (x402's PaymentRequirements: `amount` a string of atomic units,
+  // `maxTimeoutSeconds` a number of seconds; build writes both into the request) is one pairingOf, read and build
+  // refuse, so bound and reference refuse V2's payment under it with `tvm/option-malformed`, the code advertise and
+  // build give, while under the placed option they give the file's H (FIPS 180-2's "abc") and V3's keys.
+  it("V3: bound and reference refuse V2's payment under an option read does not offer", async () => {
     const p = await signed();
+    expect(await exactTvm.bound({ ...p, accepted: placed })).toBe(V.V3.expectBound);
+    expect(await exactTvm.reference({ ...p, accepted: placed })).toEqual(V.V3.expectReference);
     const doc = exactTvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
     if ("refused" in doc) throw new Error(doc.code);
     const { maxTimeoutSeconds: _timeout, ...untimed } = placed;
@@ -529,8 +532,8 @@ describe("x402-exact-tvm.json", () => {
       untimed as unknown as PaymentRequirements,
     ];
     for (const accepted of echoed) {
-      expect(await exactTvm.bound({ ...p, accepted })).toBe(V.V3.expectBound);
-      expect(await exactTvm.reference({ ...p, accepted })).toEqual(V.V3.expectReference);
+      expect(await exactTvm.bound({ ...p, accepted })).toEqual({ refused: true, code: "tvm/option-malformed" });
+      expect(await exactTvm.reference({ ...p, accepted })).toEqual({ refused: true, code: "tvm/option-malformed" });
       expect(pairingOf(accepted)).toBeUndefined();
       expect(exactTvm.read({ ...doc, accepts: [accepted] })).toEqual({ refused: true, code: "x402/no-payable-option" });
       const built = await exactTvm.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);

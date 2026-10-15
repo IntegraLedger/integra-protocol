@@ -74,6 +74,7 @@ import {
 } from "./internal/svm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
 import {
+  acceptedBy,
   advertiseFor,
   chosen,
   filterOf,
@@ -84,6 +85,7 @@ import {
   withExtra,
   withOption,
   withoutExtra,
+  type OptionFilter,
   type X402Read,
 } from "./internal/x402.js";
 import { decimalBelow } from "./rail-bytes.js";
@@ -402,10 +404,17 @@ function payable(o: PaymentRequirements): boolean {
 
 const isId = (id: BatchPairingId) => (o: PaymentRequirements): boolean => batchIdOf(o) === id;
 
+/** Each pairing's option filter, which its `read`, `build` and `bound` apply; its `advertise` adds what `build` can pay. */
+const FILTER: Readonly<Record<BatchPairingId, OptionFilter>> = {
+  [EVM_ID]: filterOf(isId(EVM_ID)),
+  [SVM_ID]: filterOf(isId(SVM_ID)),
+  [CF_ID]: filterOf(isId(CF_ID)),
+};
+
 function payloadOf(p: unknown, id: BatchPairingId): { accepted: PaymentRequirements; payload: Record<string, unknown> } | Refusal {
   if (!isObject(p) || p["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = p["accepted"] as PaymentRequirements;
-  if (!isObject(accepted) || batchIdOf(accepted) !== id) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(p["accepted"], FILTER[id]);
+  if (isRefusal(accepted)) return accepted;
   const payload = p["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   return { accepted, payload };
@@ -462,7 +471,7 @@ function evmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal 
  */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, filterOf(isId(EVM_ID)));
+  const ok = chosen(c.required, c.accepted, FILTER[EVM_ID]);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
@@ -555,7 +564,7 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
  */
 async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(w)) return refusal("x402/not-v2");
-  const ok = chosen(w.required, w.accepted, filterOf(isId(EVM_ID)));
+  const ok = chosen(w.required, w.accepted, FILTER[EVM_ID]);
   if (ok !== true) return ok;
   const config = w.channelConfig;
   if (!isDepositConfig(config)) return refusal("x402/payload-malformed");
@@ -803,7 +812,7 @@ export const batchEvm = Object.freeze({
   unplaced,
   tie,
   advertise: evmAdvertise,
-  read: (doc: PaymentRequired): X402Read | Refusal => readFor(filterOf(isId(EVM_ID)))(doc),
+  read: (doc: PaymentRequired): X402Read | Refusal => readFor(FILTER[EVM_ID])(doc),
   build: evmBuild,
   buildWithin: evmBuildWithin,
   bound: evmBound,
@@ -1004,7 +1013,7 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
  */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, filterOf(isId(SVM_ID)));
+  const ok = chosen(c.required, c.accepted, FILTER[SVM_ID]);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted) || BigInt(accepted.amount) >= U64_LIMIT) return refusal("x402/option-malformed");
@@ -1091,7 +1100,7 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
  */
 async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(w)) return refusal("x402/not-v2");
-  const ok = chosen(w.required, w.accepted, filterOf(isId(SVM_ID)));
+  const ok = chosen(w.required, w.accepted, FILTER[SVM_ID]);
   if (ok !== true) return ok;
   const config = w.channelConfig;
   if (!isSvmConfig(config)) return refusal("x402/payload-malformed");
@@ -1217,7 +1226,7 @@ export const batchSvm = Object.freeze({
   unplaced: svmUnplaced,
   tie,
   advertise: svmAdvertise,
-  read: (doc: PaymentRequired): X402Read | Refusal => readFor(filterOf(isId(SVM_ID)))(doc),
+  read: (doc: PaymentRequired): X402Read | Refusal => readFor(FILTER[SVM_ID])(doc),
   build: svmBuild,
   buildWithin: svmBuildWithin,
   bound: svmBound,
@@ -1239,7 +1248,7 @@ async function cfBuild(
   h: AtrHash,
 ): Promise<CloudflarePaymentPayload | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, filterOf(isId(CF_ID)));
+  const ok = chosen(c.required, c.accepted, FILTER[CF_ID]);
   if (ok !== true) return ok;
   const lc = legalContextOf(c.required.extensions);
   if (isRefusal(lc)) return lc;
@@ -1255,8 +1264,8 @@ async function cfBuild(
 /** The echoed `extensions.legalContext` hash. The agent's HTTP message signature is verified by Cloudflare. */
 async function cfBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"] as PaymentRequirements;
-  if (!isObject(accepted) || batchIdOf(accepted) !== CF_ID) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], FILTER[CF_ID]);
+  if (isRefusal(accepted)) return accepted;
   const lc = legalContextOf(presented["extensions"]);
   return isRefusal(lc) ? lc : lc.h;
 }
@@ -1281,8 +1290,8 @@ export const batchCloudflare = Object.freeze({
   claims: true as boolean,
   unplaced,
   tie,
-  advertise: advertiseFor(filterOf(isId(CF_ID))),
-  read: (doc: PaymentRequired): X402Read | Refusal => readFor(filterOf(isId(CF_ID)))(doc),
+  advertise: advertiseFor(FILTER[CF_ID]),
+  read: (doc: PaymentRequired): X402Read | Refusal => readFor(FILTER[CF_ID])(doc),
   build: cfBuild,
   bound: cfBound,
 });

@@ -107,12 +107,13 @@ function isAddress(s: unknown): s is string {
 }
 
 /**
- * The option's scheme, network, asset, `payTo` and `extra` (its fee payer, no transfer method, and no flow other than
- * `"authorization"`): what `bound` and `reference` require of the option a presented payment echoes. They read the
- * signed transaction, not the option's amount or timeout, so neither is checked here. Without algosdk no option is
- * served.
+ * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra` (its fee payer, no transfer
+ * method, and no flow other than `"authorization"`), the amount as a decimal below 2^64 and `maxTimeoutSeconds` a
+ * positive safe integer, which `build` writes into the asset transfer and its last valid round. `pairingOf`,
+ * `advertise`, `read` and `build` apply it, and `bound` and `reference` hold the option a presented payment echoes to
+ * it. Without algosdk no option is served.
  */
-function presentable(o: PaymentRequirements): true | Refusal | undefined {
+function check(o: PaymentRequirements): true | Refusal | undefined {
   if (!isObject(o) || typeof o.network !== "string" || !o.network.startsWith("algorand:")) return undefined;
   if (o.scheme !== "exact" || sdk === null) return undefined;
   const extra = o.extra;
@@ -125,16 +126,6 @@ function presentable(o: PaymentRequirements): true | Refusal | undefined {
   if (uint64Of(o.asset) === undefined || !isAddress(o.payTo) || (feePayer !== undefined && !isAddress(feePayer))) {
     return refusal("avm/option-malformed");
   }
-  return true;
-}
-
-/**
- * `presentable`, then the amount as a decimal below 2^64 and `maxTimeoutSeconds` a positive safe integer, which `build`
- * writes into the asset transfer and its last valid round: what `pairingOf`, `advertise`, `read` and `build` require.
- */
-function check(o: PaymentRequirements): true | Refusal | undefined {
-  const p = presentable(o);
-  if (p !== true) return p;
   if (uint64Of(o.amount) === undefined || !Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds <= 0) {
     return refusal("avm/option-malformed");
   }
@@ -310,8 +301,8 @@ async function build(
 }
 
 /**
- * The hash inside what the payer signed: the payment transaction's note. The echoed option needs a valid scheme,
- * network, asset, `payTo` and `extra`; its amount and timeout are not read. The transaction's amount, receiver,
+ * The hash inside what the payer signed: the payment transaction's note. The echoed option is held to the filter `read`
+ * applies, so a payment under an option `read` would not offer is refused. The transaction's amount, receiver,
  * asset, fee payer and sender are not read, and no signature is verified here.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
@@ -331,7 +322,7 @@ async function reference(presented: unknown): Promise<AvmRef | Refusal> {
 }
 
 function carriedOf(presented: unknown): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
-  const p = presentedWith(presented, presentable);
+  const p = presentedWith(presented, check);
   if (isRefusal(p)) return p;
   return avmCarrier(p.payload as unknown as AvmPresented);
 }

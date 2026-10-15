@@ -508,5 +508,53 @@
     "note": "presented is this file's EU4 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with extra.paymentFlow authorization, which is not escrow",
+    "pairing": "x402/upto/solana",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "10000",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "paymentFlow": "authorization",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with no extra.receiverAuthorizer",
+    "pairing": "x402/upto/solana",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "10000",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "paymentFlow": "escrow",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
  }
 }

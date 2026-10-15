@@ -1517,5 +1517,121 @@
     "note": "presented is this file's ES4 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the Cloudflare option with no extra",
+    "pairing": "x402/batch-settlement/cloudflare",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "cloudflare:402",
+     "amount": "5",
+     "asset": "USD",
+     "payTo": "merchant",
+     "maxTimeoutSeconds": 30
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the Cloudflare option with scheme exact",
+    "pairing": "x402/batch-settlement/cloudflare",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "cloudflare:402",
+     "amount": "5",
+     "asset": "USD",
+     "payTo": "merchant",
+     "maxTimeoutSeconds": 30,
+     "extra": {
+      "version": "1.0.0"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the EVM option with no extra.receiverAuthorizer",
+    "pairing": "x402/batch-settlement/eip155",
+    "payment": "/buyer/rows/3/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "eip155:84532",
+     "amount": "1000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the EVM option with scheme exact",
+    "pairing": "x402/batch-settlement/eip155",
+    "payment": "/buyer/rows/3/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "1000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the Solana option with no extra.feePayer",
+    "pairing": "x402/batch-settlement/solana",
+    "payment": "/buyer/rows/5/input/presented",
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "1000",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the Solana option with scheme exact",
+    "pairing": "x402/batch-settlement/solana",
+    "payment": "/buyer/rows/5/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "1000",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
  }
 }

@@ -684,5 +684,61 @@
     "note": "presented is this file's V3 payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with maxTimeoutSeconds 0, outside 1 to the allowed maximum",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "10000",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
+   },
+   {
+    "case": "the option with amount \"abc\", which is not a decimal uint256",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "abc",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/option-malformed"
+   },
+   {
+    "case": "the option with payTo 7, which is not a base58check address",
+    "pairing": "x402/exact/tron/lcp-trc20-memo",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "tron:728126428",
+     "amount": "10000",
+     "asset": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+     "payTo": 7,
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-trc20-memo"
+     }
+    },
+    "expect": "tron/address-malformed"
+   }
+  ]
  }
 }

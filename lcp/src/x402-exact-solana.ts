@@ -24,6 +24,7 @@ import {
 } from "./internal/svm.js";
 import { isObject, normalHash } from "./fields.js";
 import {
+  acceptedBy,
   advertiseFor,
   chosen,
   filterOf,
@@ -83,6 +84,9 @@ function isThis(option: PaymentRequirements): boolean {
   return memo === undefined || (typeof memo === "string" && utf8Length(memo) <= MAX_MEMO);
 }
 
+/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
+const filter = filterOf(isThis);
+
 /** True when the amount is a u64 in decimal. */
 function payable(o: PaymentRequirements): boolean {
   return typeof o.amount === "string" && DECIMAL.test(o.amount) && BigInt(o.amount) < U64_LIMIT;
@@ -114,13 +118,13 @@ function advertise(
 }
 
 function read(doc: PaymentRequired): X402Read | Refusal {
-  return readFor(filterOf(isThis))(doc);
+  return readFor(filter)(doc);
 }
 
 /** The v0 message the payer signs for the chosen option, whose one memo is the option's `extra.memo`. */
 async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, filterOf(isThis));
+  const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
@@ -156,15 +160,15 @@ async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
 /** The payment's option and decoded transaction, or the refusal that names what is wrong. */
 function presentedTx(presented: unknown) {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"];
-  if (!isObject(accepted) || !isThis(accepted as PaymentRequirements)) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], filter);
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const wire = wireOf(payload["transaction"]);
   if (isRefusal(wire)) return wire;
   const tx = decodeSvmTx(wire);
   if (isRefusal(tx)) return tx;
-  return { accepted: accepted as PaymentRequirements, tx };
+  return { accepted, tx };
 }
 
 /**

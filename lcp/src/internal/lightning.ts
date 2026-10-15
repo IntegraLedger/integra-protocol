@@ -8,6 +8,7 @@ import { isObject } from "../fields.js";
 import type { Bolt11, LnNetwork } from "../lightning.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequirements } from "../x402.js";
+import type { OptionFilter } from "./x402.js";
 
 const MAX_INVOICE = 8192;
 const MAX_FIELDS = 64;
@@ -181,12 +182,20 @@ export function isLnOption(o: unknown): o is PaymentRequirements & { extra: { in
   return isObject(extra) && typeof extra["invoice"] === "string";
 }
 
-/** An option whose invoice decodes with an `m` field, or without one. */
-function withMetadata(want: boolean): (o: unknown) => boolean {
+/**
+ * The option filter of the x402 Lightning pairing whose invoice has an `m` field (`want` true) or none: an `exact`
+ * option on a Lightning network whose invoice decodes, with an `m` field or without one. An invoice that does not
+ * decode gives the decoder's refusal; one without an `m` field is `ln/no-metadata` where the pairing needs one, and one
+ * with an `m` field is `ln/not-this-pairing` where the pairing has none. The pairing's `read` offers the options it
+ * serves, and its `bound` holds a presented payment's option to it.
+ */
+function withMetadata(want: boolean): OptionFilter {
   return (o) => {
-    if (!isLnOption(o)) return false;
+    if (!isLnOption(o)) return undefined;
     const b = decode(o.extra.invoice);
-    return !isRefusal(b) && b.tags.includes(FIELD.m) === want;
+    if (isRefusal(b)) return b;
+    if (b.tags.includes(FIELD.m) === want) return true;
+    return want ? refusal("ln/no-metadata") : refusal("ln/not-this-pairing");
   };
 }
 
@@ -197,8 +206,10 @@ export function isLnOffer(o: unknown): o is PaymentRequirements & { extra: { [k:
   return typeof n === "string" && Object.hasOwn(NETWORKS, n) && isObject(o["extra"]);
 }
 
-export const lnbtcPairs = withMetadata(true);
-export const namedPairs = withMetadata(false);
+/** `x402/exact/lnbtc`'s option filter: its invoice has an `m` field (`ln/no-metadata` otherwise). */
+export const lnbtcFilter = withMetadata(true);
+/** `x402/exact/lnbtc/invoice-named`'s option filter: its invoice has no `m` field (`ln/not-this-pairing` otherwise). */
+export const namedFilter = withMetadata(false);
 
 /**
  * Which of the two x402 Lightning pairings an option belongs to: by whether its invoice has an `m` field. An option
@@ -207,7 +218,7 @@ export const namedPairs = withMetadata(false);
  */
 export function lnbtcPairingOf(option: unknown): "x402/exact/lnbtc" | "x402/exact/lnbtc/invoice-named" | undefined {
   if (isLnOffer(option) && !Object.hasOwn(option.extra, "invoice")) return "x402/exact/lnbtc";
-  if (lnbtcPairs(option)) return "x402/exact/lnbtc";
-  if (namedPairs(option)) return "x402/exact/lnbtc/invoice-named";
+  if (lnbtcFilter(option as PaymentRequirements) === true) return "x402/exact/lnbtc";
+  if (namedFilter(option as PaymentRequirements) === true) return "x402/exact/lnbtc/invoice-named";
   return undefined;
 }

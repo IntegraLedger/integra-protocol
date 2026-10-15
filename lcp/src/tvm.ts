@@ -959,12 +959,13 @@ function rawAddress(s: unknown): Address | null {
 // ── The pairing.
 
 /**
- * The option's scheme, network, asset, `payTo` and `extra`: what `bound` and `reference` require of the option a
- * presented payment echoes. The network is one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3`
- * (testnet), whose configuration the messages are read at; any other `tvm:` network is `tvm/network-malformed`. They
- * read no amount and no timeout, so neither is checked here.
+ * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra`, the amount as a Jetton amount
+ * below 2^120 and `maxTimeoutSeconds` a positive safe integer, which `build` writes into the request. The network is
+ * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
+ * read at; any other `tvm:` network is `tvm/network-malformed`. `pairingOf`, `advertise`, `read` and `build` apply it,
+ * and `bound` and `reference` hold the option a presented payment echoes to it.
  */
-const presentable: OptionFilter = (o) => {
+const check: OptionFilter = (o) => {
   if (!isObject(o) || o.scheme !== "exact") return refusal("x402/option-not-this-pairing");
   if (typeof o.network !== "string" || !o.network.startsWith("tvm:")) return refusal("x402/option-not-this-pairing");
   const extra: unknown = o.extra;
@@ -980,16 +981,6 @@ const presentable: OptionFilter = (o) => {
   if (forwardTon !== undefined && decimalBelow(forwardTon, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   const response = extra["responseDestination"];
   if (response !== undefined && rawAddress(response) === null) return refusal("tvm/option-malformed");
-  return true;
-};
-
-/**
- * `presentable`, then the amount as a Jetton amount below 2^120 and `maxTimeoutSeconds` a positive safe integer, which
- * `build` writes into the request: what `pairingOf`, `advertise`, `read` and `build` require.
- */
-const check: OptionFilter = (o) => {
-  const p = presentable(o);
-  if (p !== true) return p;
   if (decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   if (!Number.isSafeInteger(o.maxTimeoutSeconds) || o.maxTimeoutSeconds < 1) return refusal("tvm/option-malformed");
   return true;
@@ -1257,7 +1248,7 @@ function labelLength(s: Slice, n: number): number | null {
 
 /** The signed request's carrier, read at the option's network's configuration and checked against its forward payload. */
 function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclude<ReturnType<typeof carrierIn>, Refusal> } | Refusal {
-  const p = presentedWith(presented, presentable);
+  const p = presentedWith(presented, check);
   if (isRefusal(p)) return p;
   const boc = p.payload["settlementBoc"];
   if (typeof boc !== "string") return refusal("x402/payload-malformed");
@@ -1269,7 +1260,9 @@ function carried(presented: unknown): { accepted: PaymentRequirements; c: Exclud
 
 /**
  * The hash in the forward payload of the transfer the payer's W5 wallet signed, which must be the option's. The
- * signature is not verified here; the facilitator verifies it, and the W5 contract checks it before any action runs.
+ * presented option is held to the filter `read` applies, so a payment under an option `read` would not offer is
+ * refused. The signature is not verified here; the facilitator verifies it, and the W5 contract checks it before any
+ * action runs.
  * A state init that holds a libraries dictionary, or a fixed prefix longer than 8 bits, is read, since whether TON
  * deploys the wallet from it is chain state.
  */

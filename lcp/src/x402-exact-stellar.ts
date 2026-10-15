@@ -20,6 +20,7 @@ import {
 } from "./internal/stellar.js";
 import { isObject, normalHash } from "./fields.js";
 import {
+  acceptedBy,
   advertiseFor,
   carriesRefusedMember,
   chosen,
@@ -60,6 +61,9 @@ function isThis(option: PaymentRequirements): boolean {
   if (!isContract(option.asset) || !(isAccount(option.payTo) || isMuxed(option.payTo))) return false;
   return isObject(option.extra) && option.extra["areFeesSponsored"] === true;
 }
+
+/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
+const filter = filterOf(isThis);
 
 /** True when the amount is an i128 of 0 or more in decimal and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
@@ -110,7 +114,7 @@ function advertise(
  */
 function read(doc: PaymentRequired): X402Read | Refusal {
   if (!hasPeer()) return refusal("stellar/peer-missing");
-  return readFor(filterOf(isThis))(doc);
+  return readFor(filter)(doc);
 }
 
 /**
@@ -123,7 +127,7 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
   if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, filterOf(isThis));
+  const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
@@ -146,8 +150,8 @@ async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Re
 function presentedOf(presented: unknown) {
   if (!hasPeer()) return refusal("stellar/peer-missing");
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"] as PaymentRequirements;
-  if (!isObject(accepted) || !isThis(accepted)) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], filter);
+  if (isRefusal(accepted)) return accepted;
   const lc = legalContextOf(presented["extensions"]);
   if (isRefusal(lc)) return lc;
   const payload = presented["payload"];

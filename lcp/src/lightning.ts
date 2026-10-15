@@ -7,8 +7,8 @@
 import { canonicalJson, fromLegalContext, fromRawBytes, parseJson, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { b64uEncode } from "./internal/base64url.js";
-import { decode, FIELD, isLnOffer, isLnOption, lnbtcPairs, namedPairs, NETWORKS } from "./internal/lightning.js";
-import { advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
+import { decode, FIELD, isLnOffer, isLnOption, lnbtcFilter, namedFilter, NETWORKS } from "./internal/lightning.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, type X402Read } from "./internal/x402.js";
 import {
   credentialOf,
   checkChallenge,
@@ -187,11 +187,14 @@ function hex(b: Uint8Array): string {
   return s;
 }
 
+/** An `exact` option on a Lightning network with a string `extra.invoice`. */
+type LnOption = PaymentRequirements & { extra: { invoice: string } };
+
 /**
  * The x402 option checks both Lightning pairings make on the invoice and the option. `h` is the ATR hash the
  * invoice's `m` must carry, or null where `m` must be absent.
  */
-function checkOption(o: PaymentRequirements & { extra: { invoice: string } }, h: AtrHash | null): Bolt11 | Refusal {
+function checkOption(o: LnOption, h: AtrHash | null): Bolt11 | Refusal {
   const b = decode(o.extra.invoice);
   if (isRefusal(b)) return b;
   if (h !== null) {
@@ -260,11 +263,9 @@ function completeFor(required: PaymentRequired, accepted: PaymentRequirements): 
  */
 async function x402Reference(presented: unknown, want: boolean): Promise<LnRef | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"];
-  if (!isLnOption(accepted)) return refusal("x402/option-not-this-pairing");
-  const b = decode(accepted.extra.invoice);
-  if (isRefusal(b)) return b;
-  if (b.tags.includes(FIELD.m) !== want) return want ? refusal("ln/no-metadata") : refusal("ln/not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], want ? lnbtcFilter : namedFilter);
+  if (isRefusal(accepted)) return accepted;
+  const b = decode((accepted as LnOption).extra.invoice) as Bolt11;
   const network = optionNetworkRefused(accepted, b);
   if (network !== null) return network;
   return { network: accepted.network, paymentHash: hex(b.paymentHash), settleBy: b.timestamp + b.expiry + SKEW_SECONDS };
@@ -340,10 +341,9 @@ async function lnbtcBuild(c: { required: PaymentRequired; accepted: PaymentRequi
  */
 async function lnbtcBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"];
-  if (!isLnOption(accepted)) return refusal("x402/option-not-this-pairing");
-  const b = decode(accepted.extra.invoice);
-  if (isRefusal(b)) return b;
+  const accepted = acceptedBy(presented["accepted"], lnbtcFilter);
+  if (isRefusal(accepted)) return accepted;
+  const b = decode((accepted as LnOption).extra.invoice) as Bolt11;
   const m = invoiceH(b, "m");
   if (isRefusal(m)) return m;
   return optionNetworkRefused(accepted, b) ?? m;
@@ -372,7 +372,7 @@ export const exactLnbtc = Object.freeze({
   tie,
   advertise: lnbtcAdvertise,
   advertiseBeforeCarrier: lnbtcAdvertiseBeforeCarrier,
-  read: readFor(filterOf(lnbtcPairs)) as (doc: PaymentRequired) => X402Read | Refusal,
+  read: readFor(lnbtcFilter) as (doc: PaymentRequired) => X402Read | Refusal,
   build: lnbtcBuild,
   bound: lnbtcBound,
   reference: (presented: unknown) => x402Reference(presented, true),
@@ -428,9 +428,9 @@ async function namedBuild(
  */
 async function namedBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"];
-  if (!isLnOption(accepted)) return refusal("x402/option-not-this-pairing");
-  const b = checkOption(accepted, null);
+  const accepted = acceptedBy(presented["accepted"], namedFilter);
+  if (isRefusal(accepted)) return accepted;
+  const b = checkOption(accepted as LnOption, null);
   if (isRefusal(b)) return b;
   const extensions = presented["extensions"];
   const lc = isObject(extensions) ? extensions["legalContext"] : undefined;
@@ -460,7 +460,7 @@ export const exactLnbtcNamed = Object.freeze({
   unplaced: namedUnplaced,
   tie,
   advertise: namedAdvertise,
-  read: readFor(filterOf(namedPairs)) as (doc: PaymentRequired) => X402Read | Refusal,
+  read: readFor(namedFilter) as (doc: PaymentRequired) => X402Read | Refusal,
   build: namedBuild,
   bound: namedBound,
   reference: (presented: unknown) => x402Reference(presented, false),

@@ -583,29 +583,20 @@ function isServable(o: PaymentRequirements): boolean {
   return isNamed(o) && amountOf(o.amount) !== undefined && Number.isSafeInteger(o.maxTimeoutSeconds) && o.maxTimeoutSeconds > 0;
 }
 
-/** The `cryptoTransfer` method (or none) with a `feePayer`, and what `has` asks of the rest of the option. */
-function exactOption(o: PaymentRequirements, has: (o: PaymentRequirements) => boolean): true | Refusal | undefined {
+/**
+ * The `cryptoTransfer` method (or none) with a `feePayer`, on a servable option: the option `advertise`, `read` and
+ * `build` serve, and the one `bound` and `reference` hold a presented payment's option to. `build` writes the
+ * transfers from its amount.
+ */
+function checkExact(o: PaymentRequirements): true | Refusal | undefined {
   if (!onHedera(o)) return undefined;
   const method = methodOf(o);
   if (method === "transferExecutor") return undefined;
   if (method !== undefined && method !== "cryptoTransfer") return refusal("hedera/option-malformed");
-  if (!has(o) || !isEntity((o.extra as Record<string, unknown>)?.["feePayer"])) {
+  if (!isServable(o) || !isEntity((o.extra as Record<string, unknown>)?.["feePayer"])) {
     return refusal("hedera/option-malformed");
   }
   return true;
-}
-
-/** The option `advertise`, `read` and `build` serve: `build` writes the transfers from its amount. */
-function checkExact(o: PaymentRequirements): true | Refusal | undefined {
-  return exactOption(o, isServable);
-}
-
-/**
- * The presented option `bound` and `reference` serve: method, network, asset, payee and fee payer. They read the signed
- * body, not the option's amount or timeout, so neither is checked here.
- */
-function checkPresented(o: PaymentRequirements): true | Refusal | undefined {
-  return exactOption(o, isNamed);
 }
 
 function executorsOf(o: PaymentRequirements): readonly string[] | undefined {
@@ -700,9 +691,9 @@ async function build(
   };
 }
 
-/** The signed body of a presented x402 Hedera payment, under the presented option's method, network, asset and payee. */
+/** The signed body of a presented x402 Hedera payment, under an option `read` offers. */
 function signedBody(presented: unknown): { accepted: PaymentRequirements; body: HederaBody } | Refusal {
-  const p = presentedWith(presented, checkPresented);
+  const p = presentedWith(presented, checkExact);
   if (isRefusal(p)) return p;
   const wire = fromBase64(p.payload["transaction"]);
   if (wire === null) return refusal("hedera/tx-malformed");
@@ -712,8 +703,9 @@ function signedBody(presented: unknown): { accepted: PaymentRequirements; body: 
 }
 
 /**
- * The hash inside what the payer signed: the body memo, in LCP string form. Transfers, amounts, the fee payer and the
- * payer are not read, nor the presented option's amount and timeout, and no signature is verified here.
+ * The hash inside what the payer signed: the body memo, in LCP string form. The presented option is held to the filter
+ * `read` applies, so a payment under an option `read` would not offer is refused. Transfers, amounts, the fee payer and
+ * the payer are not read, and no signature is verified here.
  */
 async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   const s = signedBody(presented);

@@ -1519,5 +1519,47 @@
     "note": "presented is this file's V2.expectPayload payment, as the file holds it; no signature was made for this row."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with extra.assetTransferMethod permit2: x402/exact/eip155/permit2's option",
+    "pairing": "x402/exact/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "assetTransferMethod": "permit2"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option on network cosmos:cosmoshub-4, which is not an eip155 network",
+    "pairing": "x402/exact/eip155/eip3009",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "cosmos:cosmoshub-4",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
  }
 }

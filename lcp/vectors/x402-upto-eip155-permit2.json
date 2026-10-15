@@ -328,5 +328,46 @@
     "note": "presented is EV2's payment, built from fixed.payerKey and EV2: its Permit2 EIP-712 digest is EV2.expectDigest, and its signature is the payer key's RFC 6979 signature of that digest."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with no extra.facilitatorAddress",
+    "pairing": "x402/upto/eip155/permit2",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "eip155:84532",
+     "amount": "5000000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/facilitator-missing"
+   },
+   {
+    "case": "the option with scheme exact and no extra.facilitatorAddress: x402/exact/eip155/permit2's option",
+    "pairing": "x402/upto/eip155/permit2",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "5000000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "name": "USDC",
+      "version": "2"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
  }
 }

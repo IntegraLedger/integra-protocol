@@ -26,6 +26,7 @@ import {
 } from "./internal/svm.js";
 import { isObject, normalHash } from "./fields.js";
 import {
+  acceptedBy,
   advertiseFor,
   chosen,
   filterOf,
@@ -98,6 +99,9 @@ function isThis(option: PaymentRequirements): boolean {
   return flow === undefined || flow === "escrow";
 }
 
+/** The pairing's option filter, which `read`, `build` and `bound` apply; `advertise` adds `payable`. */
+const filter = filterOf(isThis);
+
 /** True when the amount is a u64 in decimal and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
   return (
@@ -139,7 +143,7 @@ function advertise(
 }
 
 function read(doc: PaymentRequired): X402Read | Refusal {
-  return readFor(filterOf(isThis))(doc);
+  return readFor(filter)(doc);
 }
 
 /**
@@ -148,7 +152,7 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  */
 async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmPaymentPayload> | Refusal> {
   if (!isObject(c)) return refusal("x402/not-v2");
-  const ok = chosen(c.required, c.accepted, filterOf(isThis));
+  const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
   if (!payable(accepted)) return refusal("x402/option-malformed");
@@ -212,8 +216,8 @@ async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmP
 /** The payment's option and decoded opening, with its memo checked, or the refusal that names what is wrong. */
 function openingOf(presented: unknown) {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"] as PaymentRequirements;
-  if (!isObject(accepted) || !isThis(accepted)) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], filter);
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const wire = wireOf(payload["openTransaction"]);

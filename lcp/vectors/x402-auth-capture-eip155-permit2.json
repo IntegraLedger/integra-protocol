@@ -252,5 +252,50 @@
     "note": "presented is EV4's payment, built from fixed.payerKey, EV3 and EV4: its Permit2 EIP-712 digest is EV4.expectDigest, and its signature is the payer key's RFC 6979 signature of that digest."
    }
   ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with extra.assetTransferMethod eip3009: x402/auth-capture/eip155/eip3009's option",
+    "pairing": "x402/auth-capture/eip155/permit2",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "captureAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "captureDeadline": 1790003600,
+      "refundDeadline": 1790086400,
+      "feeRecipient": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
+      "minFeeBps": 0,
+      "maxFeeBps": 100,
+      "assetTransferMethod": "eip3009"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with no extra: an auth-capture option lacks the escrow members its scheme requires",
+    "pairing": "x402/auth-capture/eip155/permit2",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "auth-capture",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "x402/option-malformed"
+   }
+  ]
  }
 }

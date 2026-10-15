@@ -251,27 +251,28 @@ describe("x402-exact-algorand.json", () => {
     }
   });
 
-  // bound and reference read the signed transaction and the echoed option's scheme, network, asset, payTo and extra,
-  // never its amount or timeout. Each row presents V2's payment under an option whose amount or timeout no build could
-  // use, and gives the file's H (FIPS 180-2's "abc") and V3's reference (computed with py-algorand-sdk from the signed
-  // bytes). pairingOf, advertise, read and build, which need both, refuse each such option. An option that fails the
-  // other checks (the file's option rows) is refused by bound and reference with the row's code.
-  it("V3: bound and reference read no amount or timeout from the echoed option", async () => {
+  // bound and reference hold the echoed option to the filter read applies. Each row presents V2's payment under an
+  // option whose amount or timeout no build could use (x402's PaymentRequirements: `amount` a string of atomic units,
+  // `maxTimeoutSeconds` a number of seconds; build writes both into the transaction): pairingOf, advertise, read and
+  // build refuse each such option, and bound and reference refuse it with the row's code, the one advertise gives. An
+  // option that fails the other checks (the file's option rows) is refused by bound and reference with the row's code.
+  it("V3: bound and reference refuse V2's payment under an option read does not offer", async () => {
     const payment = await completed();
+    expect(await exactAvm.bound(payment)).toBe(V.V3.expectBound);
     const doc = exactAvm.advertise(required(O), H, V.fixed.link, O);
     if ("refused" in doc) throw new Error(doc.code);
     expect(V.V3.presentedOptions).toHaveLength(5);
     for (const row of rowsOf(V.V3.presentedOptions, "x402-exact-algorand.json V3.presentedOptions", { exact: 5 })) {
       const accepted: PaymentRequirements = row.accepted;
       const presented = { ...payment, accepted };
-      expect(await exactAvm.bound(presented)).toBe(row.expectBound);
-      expect(await exactAvm.reference(presented)).toEqual(row.expectReference);
+      expect(await exactAvm.bound(presented)).toEqual({ refused: true, code: row.expect });
+      expect(await exactAvm.reference(presented)).toEqual({ refused: true, code: row.expect });
       expect(pairingOf(accepted)).toBeUndefined();
-      expect(exactAvm.advertise(required(accepted), H, V.fixed.link, accepted)).toEqual({ refused: true, code: "avm/option-malformed" });
+      expect(exactAvm.advertise(required(accepted), H, V.fixed.link, accepted)).toEqual({ refused: true, code: row.expect });
       expect(exactAvm.read({ ...doc, accepts: [accepted] })).toEqual({ refused: true, code: "x402/no-payable-option" });
       expect(await exactAvm.build({ required: required(accepted), accepted, payer: V.fixed.payer, params }, H)).toEqual({
         refused: true,
-        code: "avm/option-malformed",
+        code: row.expect,
       });
     }
     expect(V.options).toHaveLength(3);

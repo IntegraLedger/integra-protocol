@@ -50,7 +50,7 @@
   "expectTxIdText": "0.0.1235@1700000000.000000000",
   "presentedOptions": [
    {
-    "case": "V2's payment presented under an option with maxTimeoutSeconds 0: bound and reference read the signed body, and the filter they apply (scheme, network, asset, payTo, feePayer, transfer method) names no timeout",
+    "case": "V2's payment presented under an option with maxTimeoutSeconds 0, which read does not offer: bound and reference hold the presented option to read's filter and refuse it",
     "accepted": {
      "scheme": "exact",
      "network": "hedera:testnet",
@@ -62,16 +62,10 @@
       "feePayer": "0.0.1235"
      }
     },
-    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "expectReference": {
-     "network": "hedera:testnet",
-     "transactionId": "0.0.1235-1700000000-000000000",
-     "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "validUntil": 1700000120
-    }
+    "expect": "hedera/option-malformed"
    },
    {
-    "case": "V2's payment presented under an option with amount \"0\": bound and reference read no amount",
+    "case": "V2's payment presented under an option with amount \"0\", which read offers: bound gives H and reference V2's keys",
     "accepted": {
      "scheme": "exact",
      "network": "hedera:testnet",
@@ -521,6 +515,94 @@
      }
     ],
     "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   }
+  ]
+ },
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option changed as the row's case names, or another pairing's option: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option (x402/option-not-this-pairing for an option that is not this pairing's). payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with no maxTimeoutSeconds",
+    "pairing": "x402/exact/hedera",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "1000",
+     "asset": "0.0.0",
+     "payTo": "0.0.1234",
+     "extra": {
+      "feePayer": "0.0.1235"
+     }
+    },
+    "expect": "hedera/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds \"60\", which is not a number",
+    "pairing": "x402/exact/hedera",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "1000",
+     "asset": "0.0.0",
+     "payTo": "0.0.1234",
+     "maxTimeoutSeconds": "60",
+     "extra": {
+      "feePayer": "0.0.1235"
+     }
+    },
+    "expect": "hedera/option-malformed"
+   },
+   {
+    "case": "the option with maxTimeoutSeconds 1.5, which is not a positive integer",
+    "pairing": "x402/exact/hedera",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "1000",
+     "asset": "0.0.0",
+     "payTo": "0.0.1234",
+     "maxTimeoutSeconds": 1.5,
+     "extra": {
+      "feePayer": "0.0.1235"
+     }
+    },
+    "expect": "hedera/option-malformed"
+   },
+   {
+    "case": "the option with amount \"abc\", which is not a decimal amount",
+    "pairing": "x402/exact/hedera",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "abc",
+     "asset": "0.0.0",
+     "payTo": "0.0.1234",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "0.0.1235"
+     }
+    },
+    "expect": "hedera/option-malformed"
+   },
+   {
+    "case": "the option with no amount",
+    "pairing": "x402/exact/hedera",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "asset": "0.0.0",
+     "payTo": "0.0.1234",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "0.0.1235"
+     }
+    },
+    "expect": "hedera/option-malformed"
    }
   ]
  }

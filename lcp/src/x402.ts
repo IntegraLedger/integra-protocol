@@ -56,6 +56,7 @@ import { boundStatus } from "./internal/evm-status.js";
 import {
   LEGAL_CONTEXT,
   MAX_OPTIONS,
+  acceptedBy,
   advertiseFor,
   isOffered,
   paymentWith,
@@ -227,19 +228,26 @@ export function tie(
   return ["x402", { accepts, request }];
 }
 
-/** The filter of EVM pairing `id` at advertise: the option names `id`, and `build` can pay it. */
+/** The filter of EVM pairing `id` at advertise: `evmNames`, and `build` can pay the option. */
 function evmServes(id: X402PairingId, payable: (o: PaymentRequirements) => boolean): OptionFilter {
+  const names = evmNames(id);
   return (o) => {
-    const f = optionFilter(o);
-    if (isRefusal(f)) return o.scheme === schemeOf(id) ? f : undefined;
-    if (f !== optionIdOf(id)) return undefined;
+    const f = names(o);
+    if (f !== true) return f;
     return payable(o) ? true : refusal("x402/option-malformed");
   };
 }
 
-/** The filter of EVM pairing `id` at read: the option names `id`. */
+/**
+ * The filter of EVM pairing `id` at read and at bound: the option names `id`. An option of `id`'s scheme that the
+ * option filter refuses gives that refusal; any other option is not this pairing's.
+ */
 function evmNames(id: X402PairingId): OptionFilter {
-  return (o) => (evmPairingOf(o) === optionIdOf(id) ? true : undefined);
+  return (o) => {
+    const f = optionFilter(o);
+    if (isRefusal(f)) return o.scheme === schemeOf(id) ? f : undefined;
+    return f === optionIdOf(id) ? true : undefined;
+  };
 }
 
 /** The `TransferWithAuthorization` the payer signs for the chosen option, with the hash as its nonce. */
@@ -391,9 +399,8 @@ export const exactEip3009 = Object.freeze({
 function paymentOf(presented: unknown): Eip3009Payment | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
   if (carriesRefused(presented)) return refusal("x402/payload-malformed");
-  const accepted = presented["accepted"];
-  if (!isObject(accepted)) return refusal("x402/payload-malformed");
-  if (evmPairingOf(accepted as PaymentRequirements) !== ID) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], evmNames(ID));
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   const a = payload["authorization"];
@@ -607,14 +614,11 @@ function choiceOf(
 }
 
 
-/** A presented payment whose `accepted` names pairing `id`, with its payload as an object. */
+/** A presented payment whose `accepted` its `read` offers (`evmNames`), with its payload as an object. */
 function presentedAs(id: X402PairingId, presented: unknown): { p: PaymentPayload; payload: Record<string, unknown> } | Refusal {
   if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = presented["accepted"];
-  if (!isObject(accepted)) return refusal("x402/payload-malformed");
-  const f = optionFilter(accepted as PaymentRequirements);
-  if (isRefusal(f)) return accepted["scheme"] === schemeOf(id) ? f : refusal("x402/option-not-this-pairing");
-  if (f !== optionIdOf(id)) return refusal("x402/option-not-this-pairing");
+  const accepted = acceptedBy(presented["accepted"], evmNames(id));
+  if (isRefusal(accepted)) return accepted;
   const payload = presented["payload"];
   if (!isObject(payload)) return refusal("x402/payload-malformed");
   return { p: presented as unknown as PaymentPayload, payload };
