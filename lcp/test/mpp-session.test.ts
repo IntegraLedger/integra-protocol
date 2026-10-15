@@ -23,6 +23,7 @@ import {
 import { p256 } from "@noble/curves/nist.js";
 import { privateKeyToAccount, sign } from "viem/accounts";
 import { Abis as TempoAbis, Transaction as TempoTransaction } from "viem/tempo";
+import type { Json } from "../src/index.js";
 import { TRANSFER_TOPIC, transferDigest, type EvmLog, type EvmReader } from "../src/evm.js";
 import { KEY_AUTHORIZED_TOPIC } from "../src/internal/tempo.js";
 import {
@@ -334,19 +335,21 @@ describe("mpp-session-evm.json", () => {
   });
 });
 
-/** The vector's T for a v2 open call `calldata`, signed by the payer over keccak256(0x76 ‖ rlp(fields)). */
-async function openWire(
-  calldata: ViemHex,
+/**
+ * The vector's T for `calls`, each `[to, value, input]`, signed by the payer over keccak256(0x76 ‖ rlp(fields)); `signing`
+ * is 0x76 ‖ rlp(fields), the bytes the sender signs.
+ */
+async function signedWire(
+  calls: readonly (readonly string[])[],
   signer: (hash: ViemHex) => Promise<ViemHex> = sig65,
-  escrow: string = T.fixed.escrowV2,
   chainId = 42431,
-): Promise<Uint8Array> {
+): Promise<{ wire: Uint8Array; signing: ViemHex }> {
   const fields = [
     num(chainId),
     num(1),
     num(2),
     num(200000),
-    [[escrow, "0x", calldata]],
+    calls,
     [],
     toHex((1n << 256n) - 1n),
     "0x",
@@ -356,8 +359,19 @@ async function openWire(
     "0x",
     [],
   ] as const;
-  const signature = await signer(keccak256(concat(["0x76", toRlp(fields as never)])));
-  return toBytes(concat(["0x76", toRlp([...fields, signature] as never)]));
+  const signing = concat(["0x76", toRlp(fields as never)]);
+  const signature = await signer(keccak256(signing));
+  return { wire: toBytes(concat(["0x76", toRlp([...fields, signature] as never)])), signing };
+}
+
+/** The vector's T for a v2 open call `calldata`, signed by the payer over keccak256(0x76 ‖ rlp(fields)). */
+async function openWire(
+  calldata: ViemHex,
+  signer: (hash: ViemHex) => Promise<ViemHex> = sig65,
+  escrow: string = T.fixed.escrowV2,
+  chainId = 42431,
+): Promise<Uint8Array> {
+  return (await signedWire([[escrow, "0x", calldata]], signer, chainId)).wire;
 }
 
 describe("mpp-session-tempo.json", () => {
@@ -713,6 +727,7 @@ describe("mpp-session-tempo.json", () => {
       case: string;
       sessionProtocol?: string;
       transactionChainId?: number;
+      faults?: string[];
       payer?: Address;
       payee?: Address;
       token?: Address;
@@ -722,10 +737,13 @@ describe("mpp-session-tempo.json", () => {
     };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 5,
-      keep: ["the v2 descriptor rows, which carry no sessionProtocol and no transactionChainId", (r) => r.sessionProtocol === undefined && r.transactionChainId === undefined],
+      keep: [
+        "the v2 descriptor rows, which carry no sessionProtocol, transactionChainId or faults",
+        (r) => r.sessionProtocol === undefined && r.transactionChainId === undefined && r.faults === undefined,
+      ],
       leave: [
-        'the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs, and the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs',
-        (r) => r.sessionProtocol === "v1" || r.transactionChainId !== undefined,
+        'the v1 rows, which "agreedRefusals: a v1 opening whose channelId is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, and the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs',
+        (r) => r.sessionProtocol === "v1" || r.transactionChainId !== undefined || r.faults !== undefined,
       ],
     });
     const Tx = TempoTransaction.z_TxEnvelopeTempo;
@@ -827,13 +845,13 @@ describe("mpp-session-tempo.json", () => {
   // computeChannelId (:299-312) does. A row's channelId is that keccak256 over the row's payer, encoded with viem; the
   // transaction's sender is fixed.payer.
   it("agreedRefusals: a v1 opening whose channelId is not its transaction's", async () => {
-    type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; payer: `0x${string}`; channelId: `0x${string}`; expect: string };
+    type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; faults?: string[]; payer: `0x${string}`; channelId: `0x${string}`; expect: string };
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 1,
-      keep: ["the v1 channelId rows", (r) => r.sessionProtocol === "v1" && r.transactionChainId === undefined],
+      keep: ["the v1 channelId rows", (r) => r.sessionProtocol === "v1" && r.transactionChainId === undefined && r.faults === undefined],
       leave: [
-        'the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs, and the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs',
-        (r) => r.sessionProtocol === undefined || r.transactionChainId !== undefined,
+        'the v2 rows, which "agreedRefusals: a v2 opening whose descriptor is not its transaction\'s" runs, the transactionChainId rows, which "agreedRefusals: an opening whose transaction is signed for another chain than the challenge\'s" runs, and the faults rows, which "agreedRefusals: an opening with two faults is refused for the one the draft checks first" runs',
+        (r) => r.sessionProtocol === undefined || r.transactionChainId !== undefined || r.faults !== undefined,
       ],
     });
     const seven = ["address", "address", "address", "bytes32", "address", "address", "uint256"].map((type) => ({ type }));
@@ -952,7 +970,10 @@ describe("mpp-session-tempo.json", () => {
     const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
       exact: 2,
       keep: ["the transactionChainId rows", (r) => r.transactionChainId !== undefined],
-      leave: ["the descriptor and channelId rows, which the two tests above run", (r) => r.transactionChainId === undefined],
+      leave: [
+        "the descriptor and channelId rows, which the two tests above run, and the faults rows, which the test below runs",
+        (r) => r.transactionChainId === undefined,
+      ],
     });
     const voucherSignature = `0x${"66".repeat(65)}` as const;
     const openedOn = async (ch: ReturnType<typeof placed>, escrow: string, chainId: number) => {
@@ -993,6 +1014,82 @@ describe("mpp-session-tempo.json", () => {
     const off = await openedOn(v1Bare, f.escrowV1, 42431);
     expect(off.u.complete(off.wire, voucherSignature)).toEqual({ refused: true, code: "tempo/tx-malformed" });
     expect(await sessionTempo.bound(carrying(onDefault, off.wire))).toEqual({ refused: true, code: "tempo/tx-malformed" });
+  });
+
+  // Tempo's session draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-session-00.md :1179-1188) orders the open
+  // verification: "Decode the signed transaction from `transaction`, verify it calls `open()` on the expected escrow
+  // contract with correct parameters. Recover the `payer` address from the transaction, infer `authorizedSigner` from the
+  // calldata, and compute `channelId` deterministically", then "For v2, servers MUST also verify the payload
+  // `descriptor`, the computed `channelId`, the descriptor `expiringNonceHash`". Each opening here is build's, its
+  // transaction laid out as openWire lays one out, with each fault the row names applied; a v2 descriptor's
+  // expiringNonceHash is keccak256 of the bytes the sender signed and the payer, and its channel id the draft's keccak256
+  // (:339-352), both computed with viem. Each fault alone is refused with its own code, and the two together with the
+  // code of the one the draft checks first, the row's.
+  it("agreedRefusals: an opening with two faults is refused for the one the draft checks first", async () => {
+    type Fault = "chain" | "noOpen" | "twoOpens" | "length" | "salt" | "word" | "sender" | "channelId";
+    type Row = { case: string; sessionProtocol?: string; transactionChainId?: number; faults?: Fault[]; expect: string };
+    const rows = rowsOf(T.agreedRefusals.rows as Row[], "mpp-session-tempo.json agreedRefusals.rows", {
+      exact: 17,
+      keep: ["the faults rows", (r) => r.faults !== undefined],
+      leave: ["the one-fault rows, which the three tests above run", (r) => r.faults === undefined],
+    });
+    const ALONE: Record<Fault, (v1: boolean) => string> = {
+      chain: () => "tempo/tx-malformed",
+      noOpen: () => "tempo/open-not-found",
+      twoOpens: () => "tempo/open-ambiguous",
+      length: () => "tempo/tx-malformed",
+      salt: () => "tempo/salt-not-bound",
+      word: () => "tempo/tx-malformed",
+      sender: () => "tempo/tx-malformed",
+      channelId: (v1) => (v1 ? "mpp/channel-not-bound" : "tempo/descriptor-mismatch"),
+    };
+    const nine = ["address", "address", "address", "address", "bytes32", "address", "bytes32", "address", "uint256"].map((type) => ({ type }));
+    const low = (a: string) => a.toLowerCase() as `0x${string}`;
+    const v29 = async (hash: ViemHex) => `${(await sig65(hash)).slice(0, 130)}1d` as ViemHex;
+    const opening = async (v1: boolean, faults: readonly Fault[]): Promise<MppCredential> => {
+      const has = (x: Fault) => faults.includes(x);
+      const escrow = v1 ? f.escrowV1 : f.escrowV2;
+      const u = unsignedOf(await sessionTempo.build({ challenge: placed(v1 ? V1 : V2), from: f.payer, now: f.now, deposit }, H));
+      if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+      const own = u.complete(toHex(await openWire(u.funding.call.data, sig65, escrow)), `0x${"66".repeat(65)}`) as MppCredential;
+      let data: string = u.funding.call.data;
+      const saltAt = 10 + 64 * (v1 ? 3 : 4);
+      if (has("salt")) data = `${data.slice(0, saltAt)}${f.H2.slice(2)}${data.slice(saltAt + 64)}`;
+      if (has("word")) data = `${data.slice(0, 10)}01${data.slice(12)}`;
+      if (has("length")) data = `${data}00`;
+      const call = [has("noOpen") ? f.recipient : escrow, "0x", data];
+      const { wire, signing } = await signedWire(has("twoOpens") ? [call, call] : [call], has("sender") ? v29 : sig65, has("chain") ? 4217 : 42431);
+      const payload: { [k: string]: Json } = { ...own.payload, transaction: toHex(wire) };
+      if (!v1) {
+        const built = own.payload["descriptor"] as ReturnType<typeof descriptor>;
+        const d = { ...built, expiringNonceHash: keccak256(concat([signing, f.payer])) };
+        payload["descriptor"] = d;
+        payload["channelId"] = keccak256(
+          encodeAbiParameters(nine, [low(d.payer), low(d.payee), d.operator, low(d.token), d.salt, d.authorizedSigner, d.expiringNonceHash, low(f.escrowV2), 42431n]),
+        );
+      }
+      if (has("channelId")) payload["channelId"] = `0x${"22".repeat(32)}`;
+      return { ...own, payload };
+    };
+    for (const v1 of [false, true]) {
+      const none = await opening(v1, []);
+      if (!v1) expect(keccak256(concat([(await signedWire([[f.escrowV2, "0x", T.TS1.expectCalldata]])).signing, f.payer]))).toBe(T.TS2.expectNonceHash);
+      expect(await sessionTempo.bound(none), v1 ? "v1" : "v2").toBe(H);
+    }
+    for (const row of rows) {
+      const v1 = row.sessionProtocol === "v1";
+      const faults = row.faults!;
+      expect(faults, row.case).toHaveLength(2);
+      for (const fault of faults) {
+        expect(await sessionTempo.bound(await opening(v1, [fault])), `${row.case}: ${fault} alone`).toEqual({ refused: true, code: ALONE[fault](v1) });
+      }
+      expect(ALONE[faults[0]!](v1), row.case).toBe(row.expect);
+      expect(ALONE[faults[1]!](v1), row.case).not.toBe(row.expect);
+      const both = await opening(v1, faults);
+      const refused = { refused: true, code: row.expect };
+      expect(await sessionTempo.bound(both), row.case).toEqual(refused);
+      expect(await sessionTempo.reference(both), row.case).toEqual(refused);
+    }
   });
 
   it("the record", () => {
