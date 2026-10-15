@@ -566,8 +566,8 @@
     "expect": "x402/payload-malformed"
    },
    {
-    "case": "complete with a transaction whose reference refuses for a fault other than its chain",
-    "expect": "x402/signed-not-bound"
+    "case": "reference and build's complete with a transaction whose payload is a script, not an entry function call: fixture F's RawTransaction with V2's script payload, built with @aptos-labs/ts-sdk 7.5.0, in x402's reference wire form and in the scheme's BCS form. build's complete gives each transaction reference refuses the code reference gives it, as every row whose fault is in the transaction shows",
+    "expect": "aptos/not-entry-function"
    },
    {
     "case": "status: a ledger whose chain id is not the ref's network, or a bySequence answer for another sender or sequence number",

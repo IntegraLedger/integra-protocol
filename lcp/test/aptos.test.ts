@@ -98,6 +98,15 @@ function payment(transaction: string, extensions?: PaymentRequired["extensions"]
   return { x402Version: 2, accepted, payload: { transaction }, ...(extensions ? { extensions } : {}) };
 }
 
+/** build's unsigned payment for the option O, advertised under H. */
+async function built() {
+  const required = exactAptos.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
+  if ("refused" in required) throw new Error(required.code);
+  const u = await exactAptos.build({ required, accepted: O }, H);
+  if ("refused" in u) throw new Error(u.code);
+  return u;
+}
+
 /** A reference as the issuer stores it: through JSON, which throws on a bigint. The round trip must change nothing. */
 function throughJson<T>(v: T): T {
   const back = JSON.parse(JSON.stringify(v)) as T;
@@ -413,6 +422,47 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
 
 type RefusalRow = { case: string; transaction?: { $repeat: [string, number] } | string; expect: string };
 
+// One fault, one code: for each agreedRefusals row whose fault is in the transaction, build's complete gives the code
+// reference gives, the row's. The transactions are the rows' own, or built as their runners build them: text that is
+// not padded base64, fixture F cut inside its sequence number, a module name led by U+FEFF, a u64 type argument, a
+// payload transaction that is not a string, the $repeat row's text and the text row's, the script payload (row 6) and
+// fixture F on chain 2 (row 10).
+describe("x402-exact-aptos.json agreedRefusals: build's complete gives each transaction row's code, as reference does", () => {
+  const text = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64");
+  /** A $repeat row's text: s repeated n times. */
+  const repeated = (r: RefusalRow) => {
+    const [s, n] = (r.transaction as { $repeat: [string, number] }).$repeat;
+    return s.repeat(n);
+  };
+  const script = () => raw(new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], [])));
+  const inputs: [string, () => unknown[]][] = [
+    ["a transaction that is not padded standard base64", () => ["AAA"]],
+    ["a RawTransaction prefix that ends early", () => [text(raw().bcsToBytes().subarray(0, 40))]],
+    ["a module, function or struct name", () => [referenceWire(raw(transferPayload("\uFEFFprimary_fungible_store")))]],
+    ["a type argument that is not a struct", () => [signedWire(raw(transferPayload("primary_fungible_store", "transfer", parseTypeTag("u64"))))]],
+    ["payload.transaction not a string", () => [7, null]],
+    ["reference and build's complete with a transaction whose payload is a script", () => [referenceWire(script()), signedWire(script())]],
+    ["a transaction of 87384 UTF-16 code units", () => [repeated((V.agreedRefusals.rows as RefusalRow[])[8]!)]],
+    ["a transaction whose last character before the padding", () => [(V.agreedRefusals.rows as RefusalRow[])[9]!.transaction]],
+    ["reference and build's complete with a transaction signed for a chain other", () => [referenceWire(raw(transferPayload(), 2))]],
+  ];
+  const inputOf = (r: RefusalRow) => inputs.find(([head]) => r.case.startsWith(head));
+  const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-aptos.json agreedRefusals.rows", {
+    exact: inputs.length,
+    keep: ["the rows whose fault is in the transaction", (r) => inputOf(r) !== undefined],
+    leave: ["the option's network row and the status row, whose fault is not in the transaction", (r) => inputOf(r) === undefined],
+  });
+  for (const r of rows) {
+    it(`${r.case.slice(0, 80)}: ${r.expect}`, async () => {
+      const u = await built();
+      for (const transaction of inputOf(r)![1]()) {
+        expect([transaction, await exactAptos.reference(payment(transaction as string))]).toEqual([transaction, { refused: true, code: r.expect }]);
+        expect([transaction, u.complete({ transaction } as { transaction: string })]).toEqual([transaction, { refused: true, code: r.expect }]);
+      }
+    });
+  }
+});
+
 // The agreedRefusals row whose transaction is written {"$repeat": [s, n]}: s repeated n times, each s four UTF-16 code
 // units and three code points. Its length is counted in UTF-16 code units, as the about states.
 describe("x402-exact-aptos.json agreedRefusals: a transaction beyond the BMP over the decoded bound", () => {
@@ -488,14 +538,6 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
     expect(b[40]).toBe(2);
     return Uint8Array.from([...b.subarray(0, 40), ...uleb, ...b.subarray(41)]);
   };
-  /** build's unsigned payment for the option O, advertised under H. */
-  const built = async () => {
-    const required = exactAptos.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
-    if ("refused" in required) throw new Error(required.code);
-    const u = await exactAptos.build({ required, accepted: O }, H);
-    if ("refused" in u) throw new Error(u.code);
-    return u;
-  };
   /** What a row's expect states: a refusal code, or, for the status row, the status pending unreadable. */
   const wanted = (code: string) =>
     code === "pending unreadable" ? { state: "pending", why: "unreadable" } : { refused: true, code };
@@ -554,19 +596,17 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
       }
       return out;
     },
-    // Text that is not base64, and a script payload: each reference refuses, for a fault other than the chain.
-    "complete with a transaction whose reference refuses for a fault other than its chain": async () => {
-      const u = await built();
-      const script = new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], []));
-      const out: unknown[] = [];
-      for (const transaction of ["AAA", signedWire(raw(script))]) {
-        const ref = await exactAptos.reference(payment(transaction));
-        expect(ref).toHaveProperty("refused", true);
-        expect(ref).not.toEqual({ refused: true, code: "aptos/chain-mismatch" });
-        out.push(u.complete({ transaction }));
-      }
-      return out;
-    },
+    // V2's script payload in both wire forms: reference and complete give one code.
+    "reference and build's complete with a transaction whose payload is a script, not an entry function call: fixture F's RawTransaction with V2's script payload, built with @aptos-labs/ts-sdk 7.5.0, in x402's reference wire form and in the scheme's BCS form. build's complete gives each transaction reference refuses the code reference gives it, as every row whose fault is in the transaction shows":
+      async () => {
+        const u = await built();
+        const script = raw(new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], [])));
+        const out: unknown[] = [];
+        for (const transaction of [referenceWire(script), signedWire(script)]) {
+          out.push(await exactAptos.reference(payment(transaction)), u.complete({ transaction }));
+        }
+        return out;
+      },
     // Fixture F on chain 2 for aptos:1, in both wire forms: reference and complete refuse it with one code. Fixture F
     // itself, on chain 1, is taken by both.
     "reference and build's complete with a transaction signed for a chain other than the option's network: fixture F's RawTransaction with chain id 2, for aptos:1, built with @aptos-labs/ts-sdk 7.5.0, in x402's reference wire form and in the scheme's BCS form":

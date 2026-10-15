@@ -92,9 +92,9 @@ export type AptosStatus =
 export interface AptosUnsigned {
   request: { kind: "aptos-transaction"; accepted: PaymentRequirements };
   /**
-   * The payment of the signed transaction, once `reference` reads its keys: a transaction signed for a chain other than
-   * the option's network is `aptos/chain-mismatch`, as `reference` refuses it, and any other `reference` refuses is
-   * `x402/signed-not-bound`.
+   * The payment of the signed transaction, once `reference` reads its keys; a transaction `reference` refuses gets the
+   * code `reference` gives it, such as `aptos/chain-mismatch` for a transaction signed for a chain other than the
+   * option's network.
    */
   complete(signed: { transaction: string }): AptosPaymentPayload | Refusal;
 }
@@ -307,8 +307,8 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 }
 
 /**
- * The wallet request: the scheme's own payment, which carries no hash. `complete` gives a transaction for another chain
- * `reference`'s code, `aptos/chain-mismatch`, and any other `reference` refuses `x402/signed-not-bound`.
+ * The wallet request: the scheme's own payment, which carries no hash. `complete` reads the signed transaction as
+ * `reference` reads it, and refuses one with the code `reference` gives it: one fault, one code.
  */
 async function build(
   choice: { required: PaymentRequired; accepted: PaymentRequirements },
@@ -324,8 +324,7 @@ async function build(
     complete(signed: { transaction: string }): AptosPaymentPayload | Refusal {
       const payment = paymentWith(required, accepted, signed);
       const found = instrumentOf(payment);
-      if (!isRefusal(found)) return payment;
-      return found.code === "aptos/chain-mismatch" ? refusal("aptos/chain-mismatch") : refusal("x402/signed-not-bound");
+      return isRefusal(found) ? found : payment;
     },
   };
 }
