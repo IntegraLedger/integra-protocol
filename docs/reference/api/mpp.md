@@ -265,7 +265,7 @@ The id of each MPP pairing `pairingsOf` can name.
 
 ### MppUnsigned
 
-> **MppUnsigned** = \{ `request`: \{ `kind`: `"eip712"`; `typedData`: [`Eip3009TypedData`](evm.md#eip3009typeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"evm-call"`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}
+> **MppUnsigned** = \{ `request`: \{ `kind`: `"eip712"`; `typedData`: [`Eip3009TypedData`](evm.md#eip3009typeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `calls`: readonly `object`[]; `chainId`: `number`; `kind`: `"tempo-calls"`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \} \| \{ `request`: \{ `broadcast`: `boolean`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"evm-call"`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}
 
 #### Union Members
 
@@ -288,6 +288,22 @@ The id of each MPP pairing `pairingsOf` can name.
 | `request.call.to` | [`Hex`](evm.md#hex) | - |
 | `request.chainId` | `number` | - |
 | `request.kind` | `"tempo-call"` | - |
+| `request.validBefore` | `number` | - |
+| `complete()` | (`signedTxOrHash`) => [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) | - |
+
+***
+
+##### Type Literal
+
+\{ `request`: \{ `broadcast`: `boolean`; `calls`: readonly `object`[]; `chainId`: `number`; `kind`: `"tempo-calls"`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}
+
+| Name | Type | Description |
+| ------ | ------ | ------ |
+| `request` | `object` | A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then one per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. |
+| `request.broadcast` | `boolean` | - |
+| `request.calls` | readonly `object`[] | - |
+| `request.chainId` | `number` | - |
+| `request.kind` | `"tempo-calls"` | - |
 | `request.validBefore` | `number` | - |
 | `complete()` | (`signedTxOrHash`) => [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) | - |
 
