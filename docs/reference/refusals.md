@@ -420,7 +420,7 @@ Stellar (`@integraledger/lcp/stellar` and the Stellar pairings).
 | `stellar/no-carrier` | The signed Stellar transfer's recipient is not a muxed address, so it carries no muxed id. |
 | `stellar/not-found` | **Read to repeat.** The Stellar reader found no transaction envelope for the hash. |
 | `stellar/not-one-transfer` | The Stellar envelope does not hold exactly one `invokeHostFunction` operation calling a SEP-41 `transfer(from, to, amount)`, the payer's signed root invocation is not one such transfer with no sub-invocations, or the operation does not invoke exactly what the payer signed. |
-| `stellar/option-malformed` | An MPP Stellar challenge's `network`, `amount`, `currency`, `recipient` or `feePayer` is not of the required form, a recipient cannot take a muxed id, or `transferEventTopics` is given an address that is neither an account nor a contract. |
+| `stellar/option-malformed` | An MPP Stellar challenge's `network`, `amount` (a decimal below 2^127, the `i128` of a SEP-41 `transfer`), `currency`, `recipient` or `feePayer` is not of the required form, a recipient cannot take a muxed id, or `transferEventTopics` is given an address that is neither an account nor a contract. |
 | `stellar/payer-mismatch` | A Stellar `build` finds that the simulated transfer's `from` is not the choice's `payer`. Nothing reaches the signer. |
 | `stellar/peer-missing` | The optional peer dependency `@stellar/stellar-sdk` cannot be loaded. |
 | `stellar/read-first` | An MPP Stellar `hash` credential carries no transaction yet; the seller reads it with `fetchPresented` before `bound`. |

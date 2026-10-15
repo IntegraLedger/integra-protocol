@@ -357,6 +357,21 @@
      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
     },
     "expect": "mpp/expires-required"
+   },
+   {
+    "case": "amount 2^127, which a SEP-41 transfer's i128 amount cannot carry",
+    "pairing": "mpp/charge/stellar",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "stellar",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxNzAxNDExODM0NjA0NjkyMzE3MzE2ODczMDM3MTU4ODQxMDU3MjgiLCJjdXJyZW5jeSI6IkNBREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNU1NUIiwibWV0aG9kRGV0YWlscyI6eyJmZWVQYXllciI6dHJ1ZSwibmV0d29yayI6InN0ZWxsYXI6dGVzdG5ldCJ9LCJyZWNpcGllbnQiOiJNREZKSExBWEFVTUhBNE9XUE9CNFA3WU83MkFRUjJITUlVWUZPWExYRTJEWkdNNjMzSzdIWk9UWUMyN1k2QU9QNUxKUU8ifQ",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "stellar/option-malformed"
    }
   ]
  }

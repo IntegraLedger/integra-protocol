@@ -180,9 +180,13 @@ export function isStellarRecipient(v: unknown): v is string {
   return typeof v === "string" && (STELLAR_ACCOUNT.test(v) || STELLAR_MUXED.test(v));
 }
 
+/** The bound of a SEP-41 `transfer` amount, an `i128`. */
+const I128_LIMIT = 1n << 127n;
+
 /**
- * `charge` on `stellar`: `methodDetails.network` `stellar:pubnet` or `stellar:testnet`, `currency` a contract, and
- * `recipient` an account, or its muxed form once placed.
+ * `charge` on `stellar`: `methodDetails.network` `stellar:pubnet` or `stellar:testnet`, `amount` a decimal below 2^127
+ * (the token contract's SEP-41 `transfer` takes an `i128`, which `build` writes and the payer signs), `currency` a
+ * contract, and `recipient` an account, or its muxed form once placed.
  */
 export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const n = d["network"];
@@ -190,6 +194,7 @@ export function stellarChargePairings(r: Obj, d: Obj): readonly MppPairingId[] |
   const to = r["recipient"];
   if (
     !isDecimal(r["amount"]) ||
+    BigInt(r["amount"] as string) >= I128_LIMIT ||
     typeof r["currency"] !== "string" ||
     !STELLAR_CONTRACT.test(r["currency"]) ||
     !isStellarRecipient(to)

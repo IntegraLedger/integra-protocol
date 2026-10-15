@@ -9,6 +9,7 @@ import { chargeHedera } from "../src/hedera.js";
 import { chargeLightning, decodeBolt11, sessionLightning } from "../src/lightning.js";
 import {
   chargeSolana,
+  chargeStellar,
   chargeUsdcSolana,
   chargeXrpl,
   evmPermit2,
@@ -57,6 +58,10 @@ const BUILD: Record<string, Build> = {
   },
   "mpp/subscription/tempo": (row, challenge) =>
     subscriptionTempo.build({ challenge: challenge as MppChallenge & { id: string }, from: account(row) as never, now: row.input.now! }, row.advertised as never),
+  "mpp/charge/stellar": (row, challenge) => {
+    const i = row.input.inputs as { simulatedXdr: string; currentLedger: number };
+    return chargeStellar.build({ challenge: challenge as MppChallenge & { id: string }, payer: account(row), now: row.input.now!, ...i }, row.advertised as never);
+  },
   "mpp/charge/hedera": (row, challenge) => {
     const i = row.input.inputs as { node: string; validStart: { seconds: string; nanos: number }; maxFee: string };
     const c = { payer: account(row), node: i.node, validStart: { seconds: BigInt(i.validStart.seconds), nanos: i.validStart.nanos }, maxFee: BigInt(i.maxFee) };
@@ -90,6 +95,7 @@ const FILE: Record<string, string> = {
   "mpp/session/xrpl": "mpp-session-hedera-solana-xrpl.json",
   "mpp/subscription/tempo": "mpp-subscription-tempo.json",
   "mpp/charge/hedera": "mpp-charge-hedera.json",
+  "mpp/charge/stellar": "mpp-charge-stellar.json",
 };
 
 const iso = (s: number) => new Date(s * 1000).toISOString().replace(".000Z", "Z");
@@ -135,9 +141,11 @@ const CASES: Case[] = rowsOf<Case>(
     ["subscriptionExpires in 1969", "mpp/subscription/tempo", (c) => withRequest(c, (r) => (r["subscriptionExpires"] = "1969-12-31T23:59:59Z")), "mpp/request-malformed"],
     // MPP Hedera's chain ids: 295 (mainnet) and 296 (testnet).
     ["methodDetails.chainId 1", "mpp/charge/hedera", (c) => withRequest(c, (r) => (details(r)["chainId"] = 1)), "hedera/chain-id-unnamed"],
+    // SEP-41's token interface: `transfer(from, to, amount: i128)`; no i128 is 2^127 or more.
+    ["amount 2^127", "mpp/charge/stellar", (c) => withRequest(c, (r) => (r["amount"] = (1n << 127n).toString())), "stellar/option-malformed"],
   ],
   "the challenges build refuses whatever the buyer's inputs",
-  { exact: 22 },
+  { exact: 23 },
 );
 
 describe("pairingsOf makes each check build makes on the challenge alone", () => {
