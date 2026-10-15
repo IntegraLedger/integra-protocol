@@ -1358,7 +1358,7 @@
   ]
  },
  "SV6": {
-  "about": "Openings whose open instruction names its authorizedSigner (account 4) or its channel (account 5) through an address lookup table, read through fetchPresented, which reads each table account at finalized and writes tables: for each lookup in order, the table's address and its entries at the lookup's writable and read-only indexes. bound, reference and buildWithin then read the open's accounts through them (draft-solana-session-00 L1962-1964 at tempoxyz/mpp-specs 08e7dd87). Each table account is the one the address lookup table program (AddressLookupTab1e1111111111111111111111111) wrote in the LiteSVM bundled with solders 0.26.0, made by the authority of Ed25519 seed 09 as its made says; madeAt is the address the program gave it, and a row's reader serves it, at finalized, at the address the row's accounts name (null: no account; owner or dataBytes: the account with that owner, or its data cut to that many bytes). Its data is the program's: a 56-byte header (u32 1, the u64 deactivation slot, the u64 last-extended slot, the u8 start index, the optional authority and two bytes of padding) and 32 bytes per entry (solana-address-lookup-table-interface 3.0.0, state.rs). Each row's expect is fetchPresented's answer, its tables, from @solana/kit 8.4.0's message decoder and the table's entries, or a refusal; bound, channel and signer are what bound, reference's channel and buildWithin's signer give after it. A challenge is client (SS1.solana with voucherSigner client), C_S (SS1.solana.placed) or operator (SS1.solana with voucherSigner operator and operator agreedRefusals.rows[21].operator; its opening carries authentication naming its id), each placed as SS1.solana is. liteSvm is LiteSVM's answer to the opening sent with those accounts, signatures and blockhash unchecked: InvalidProgramForExecution is an opening whose addresses loaded, the payment-channels program being absent there.",
+  "about": "Openings whose open instruction names its authorizedSigner (account 4) or its channel (account 5) through an address lookup table, read through fetchPresented, which reads each table account at finalized and writes tables: for each lookup in order, the table's address and its entries at the lookup's writable and read-only indexes. bound, reference and buildWithin then read the open's accounts through them (draft-solana-session-00 L1962-1964 at tempoxyz/mpp-specs 08e7dd87). Each table account is the one the address lookup table program (AddressLookupTab1e1111111111111111111111111) wrote in the LiteSVM bundled with solders 0.26.0, made by the authority of Ed25519 seed 09 as its made says; madeAt is the address the program gave it, and a row's reader serves it, at finalized, at the address the row's accounts name (null: no account; owner or dataBytes: the account with that owner, or its data cut to that many bytes). Its data is the program's: a 56-byte header (u32 1, the u64 deactivation slot, the u64 last-extended slot, the u8 start index, the optional authority and two bytes of padding) and 32 bytes per entry (solana-address-lookup-table-interface 3.0.0, state.rs). Each row's expect is fetchPresented's answer, its tables, from @solana/kit 8.4.0's message decoder and the table's entries, or a refusal; bound, channel and signer are what bound, reference's channel and buildWithin's signer give after it. A challenge is client (SS1.solana with voucherSigner client), C_S (SS1.solana.placed) or operator (SS1.solana with voucherSigner operator and operator agreedRefusals.rows[21].operator; its opening carries authentication naming its id), each placed as SS1.solana is. liteSvm is LiteSVM's answer to the opening sent with those accounts, signatures and blockhash unchecked: InvalidProgramForExecution is an opening whose addresses loaded, the payment-channels program being absent there. A row's before, when given, is what bound and reference answer before fetchPresented, svm/read-first otherwise; its read, when given, lists the addresses fetchPresented reads, every address its accounts name otherwise. Before any read, fetchPresented and bound check what needs no account: the one open, its salt, the channelId and authentication, so an opening that fails one gets its code whatever its lookups hold. fetchPresented reads every table before it answers, and a svm/table-unusable in one lookup comes before a read to repeat in another.",
   "tables": {
    "signer": {
     "made": "CreateLookupTable, then ExtendLookupTable with agreedRefusals.rows[21].operator",
@@ -1439,6 +1439,18 @@
    "bothTables": {
     "composed": "@solana/kit 8.4.0 (fixtures/svm-lookup-table.ts tableOpening, \"both\"): agreedRefusals.rows[21]'s opening with its account 4 (read-only) from table 2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj and its channel, account 5 (writable), from table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW; kit orders the lookups by table address, so the read-only lookup comes first",
     "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0ZjJ/UTF9NHyrZieqpfigtStk6v7/YhQ3VxMUDygkxjM6vplosK8pGrqv/Qx+yKZvxPY/6NpBOCVzq7ddGBAOgAIACQ2BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cYX/c8gfc+xM6IiRv2Lz16Z5qZ6EfO+KvPpxXbELfjRntxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AE7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAup1pUDXtrHisrtRdSGcmj8GAQkkHKjE8XDMHKLUju6vnQjJclj04kifG7PRApFI4NgwtaE5na/xCEBI572Nvp+Fmnofuk6ysJCZP30t/WK4niuHIHemOf19dHqOmfY9QVrgMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAwoABQJADQMACgAJAwEAAAAAAAAACQ4BAAUGDg0DAgwECwgHCSEBungWv48Bz+qAlpgAAAAAAIQDAACt1fwUAAAAAAAAAAACGmQuz7EkSaVtDEkdXQM0iEFb129iZ3d9LKLzU8loI3wAAQAytPun+DZ8gJRHKcNlONqpdI83uE42mkftnF0kk6vrKwEAAA=="
+   },
+   "threeNoOpen": {
+    "composed": "@solana/kit 8.4.0 (fixtures/svm-lookup-table.ts tableOpening, \"three\", discriminator 0): agreedRefusals.rows[21]'s opening with its account 4 (read-only) from table 2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj, its channel, account 5, from table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW and its escrow, account 7, from table Fjjrh38juMUN3ahJyMYR1a87EqupVf29R4nwT8kAfKtk, and its payment-channels instruction's first data byte 0, not open's 1, so the message holds no open",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADLfDDq5brLVx2I3KJCuw9nZpnu/NgxJUMTQyjfBvEXx5h+0jUIoszkq8HSYFa8VY1BEArh2jjJIKTypR+Z80YEgAIACQyBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29c7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4DBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKnJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMJAAUCQA0DAAkACQMBAAAAAAAAAAgOAQAEBQ4MAg0LAwoHBgghALp4Fr+PAc/qgJaYAAAAAACEAwAArdX8FAAAAAAAAAAAAxpkLs+xJEmlbQxJHV0DNIhBW9dvYmd3fSyi81PJaCN8AAEAMrT7p/g2fICURynDZTjaqXSPN7hONppH7ZxdJJOr6ysBAADa9ngeB0KuTR7/2YorfFYokuoeT8q1P31IEPMuLVlCYQEAAA=="
+   },
+   "threeWrongSalt": {
+    "composed": "@solana/kit 8.4.0 (fixtures/svm-lookup-table.ts tableOpening, \"three\"): plants.solana's opening, whose salt is sessionSalt(H2), with account 4 agreedRefusals.rows[21].operator (read-only) from table 2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj, its channel, account 5, from table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW and its escrow, account 7, from table Fjjrh38juMUN3ahJyMYR1a87EqupVf29R4nwT8kAfKtk; the channel is 58wwaqTCtqNbnDHV3F4MPwvqhXMxbbnRdfcqEByHeVyx",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACh3+d8xWlkmPefPct3DA81wdKmk8qUxWxB9FmDCSSdVt0NVnmEjiitk/rQrNgZhPFhWzerhmxdm6Z0lXVI6awFgAIACQyBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29c7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4DBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKnJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMJAAUCQA0DAAkACQMBAAAAAAAAAAgOAQAEBQ4MAg0LAwoHBgghAeOwxEKY/BwUgJaYAAAAAACEAwAArdX8FAAAAAAAAAAAAxpkLs+xJEmlbQxJHV0DNIhBW9dvYmd3fSyi81PJaCN8AAEAMrT7p/g2fICURynDZTjaqXSPN7hONppH7ZxdJJOr6ysBAADa9ngeB0KuTR7/2YorfFYokuoeT8q1P31IEPMuLVlCYQEAAA=="
+   },
+   "emptyLookup": {
+    "composed": "@solana/kit 8.4.0's compiled-message decoder and encoder (fixtures/svm-lookup-table.ts emptyLookup): SV2's opening with one address table lookup appended, of So11111111111111111111111111111111111111112, naming no writable and no read-only index, signed again by the payer (Ed25519 seed 01)",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADnkCYRQWcjAFaBSd4y+SrWOOwhQWGSouFe/YjbAciF75bbl4gwvlfjRDL3ptzD7UJfPi/7TIHhS5fYBPGwqEUFgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cv2Q4GeONEFNuI/pcllypAMKvV5K+T2SRxXCSMvu5FavUVfkeC1Z8MvZo26+2QNOZw4AUYhIgasifcg1XZ79Avu3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWuyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusDBgAFAkANAwAGAAkDAQAAAAAAAAANDgEACQoBAwQCCAUHDAsNIQG6eBa/jwHP6oCWmAAAAAAAhAMAAK3V/BQAAAAAAAAAAAEGm4hX/quBhPtof2NGGMA12sQ53BrrO1WYoPAAAAAAAQAA"
    }
   },
   "rows": [
@@ -1583,7 +1595,7 @@
     "liteSvm": "AddressLookupTableNotFound"
    },
    {
-    "case": "the table account owned by the System program (InvalidAccountOwner): svm/table-unusable",
+    "case": "the table account owned by the System program, holding the table's data (InvalidAccountOwner; the address lookup table program cannot create a table over an account that holds data): svm/table-unusable",
     "opening": "agreedRefusals.rows[22]",
     "challenges": [
      "C_S"
@@ -1613,7 +1625,7 @@
     "liteSvm": "InvalidAddressLookupTableData"
    },
    {
-    "case": "a deactivated table, its deactivation slot set (LookupTableAccountNotFound once that slot leaves SlotHashes; nothing makes it active again): svm/table-unusable",
+    "case": "a deactivated table, its deactivation slot set: svm/table-unusable, because the opening may land after the table stops resolving: the runtime loads from it only until that slot leaves SlotHashes, which holds the slots of the last 512 blocks, nothing makes it active again, and a durable nonce keeps an opening valid with no expiry. The table's deactivation slot is 1000, and its liteSvm is LiteSVM's answer at slot 5000, past that cool-down (LookupTableAccountNotFound)",
     "opening": "agreedRefusals.rows[22]",
     "challenges": [
      "C_S"
@@ -1730,6 +1742,95 @@
      }
     ],
     "bound": "svm/read-first"
+   },
+   {
+    "case": "three lookups whose tables hold no account, and no open instruction: svm/open-not-found, from bound and reference without tables and from fetchPresented, which reads no table",
+    "opening": "SV6.openings.threeNoOpen",
+    "challenges": [
+     "client",
+     "C_S",
+     "operator"
+    ],
+    "accounts": {
+     "2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj": null,
+     "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW": null,
+     "Fjjrh38juMUN3ahJyMYR1a87EqupVf29R4nwT8kAfKtk": null
+    },
+    "before": "svm/open-not-found",
+    "read": [],
+    "expect": "svm/open-not-found"
+   },
+   {
+    "case": "three lookups whose tables hold no account, and an open whose salt is another agreement's hash: mpp/carrier-not-challenge, from bound and reference without tables and from fetchPresented, which reads no table",
+    "opening": "SV6.openings.threeWrongSalt",
+    "challenges": [
+     "client",
+     "C_S",
+     "operator"
+    ],
+    "accounts": {
+     "2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj": null,
+     "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW": null,
+     "Fjjrh38juMUN3ahJyMYR1a87EqupVf29R4nwT8kAfKtk": null
+    },
+    "before": "mpp/carrier-not-challenge",
+    "read": [],
+    "expect": "mpp/carrier-not-challenge"
+   },
+   {
+    "case": "two lookups, the first of a table that holds no account (a read to repeat), the second of a deactivated table (svm/table-unusable): fetchPresented reads both, and the refusal no later read changes comes first, svm/table-unusable",
+    "opening": "SV6.openings.bothTables",
+    "challenges": [
+     "operator"
+    ],
+    "accounts": {
+     "2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj": null,
+     "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW": "deactivated"
+    },
+    "expect": "svm/table-unusable"
+   },
+   {
+    "case": "two lookups, the first of a table that holds no account (a read to repeat), the second of a table whose entry repeats a static key, the payer, as the channel (AccountLoadedTwice): fetchPresented reads both, and the repeat among the addresses that resolve comes first, svm/table-unusable",
+    "opening": "SV6.openings.bothTables",
+    "challenges": [
+     "operator"
+    ],
+    "accounts": {
+     "2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj": null,
+     "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW": "payer"
+    },
+    "expect": "svm/table-unusable"
+   },
+   {
+    "case": "an account the System program owns with no data at the table's address (InvalidAddressLookupTableOwner while it stands): svm/not-found, a read to repeat, since the address lookup table program creates a table at an address the System program holds lamports for (solana-program/address-lookup-table ac994f09, program/src/processor.rs L185-211); in LiteSVM, CreateLookupTable and ExtendLookupTable then succeed at that address and the opening's addresses load (InvalidProgramForExecution)",
+    "opening": "agreedRefusals.rows[22]",
+    "challenges": [
+     "C_S"
+    ],
+    "accounts": {
+     "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW": {
+      "table": "channel",
+      "owner": "11111111111111111111111111111111",
+      "dataBytes": 0
+     }
+    },
+    "expect": "svm/not-found",
+    "liteSvm": "InvalidAddressLookupTableOwner"
+   },
+   {
+    "case": "a lookup that names no index (SanitizeFailure: \"each lookup table must be used to load at least one account\", anza-xyz/solana-sdk 648387ee message/src/versions/v0/mod.rs L118-129): svm/tx-malformed, from bound and reference and from fetchPresented, which reads no table",
+    "opening": "SV6.openings.emptyLookup",
+    "challenges": [
+     "client",
+     "C_S"
+    ],
+    "accounts": {
+     "So11111111111111111111111111111111111111112": null
+    },
+    "before": "svm/tx-malformed",
+    "read": [],
+    "expect": "svm/tx-malformed",
+    "liteSvm": "SanitizeFailure"
    }
   ]
  }

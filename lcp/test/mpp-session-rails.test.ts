@@ -48,7 +48,7 @@ import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocat
 import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
-import { TABLE, TABLE_B, tableClose, tableOpening } from "./fixtures/svm-lookup-table.js";
+import { emptyLookup, TABLE, TABLE_B, tableClose, tableOpening } from "./fixtures/svm-lookup-table.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
 import { rowsOf } from "./rows.js";
 
@@ -983,9 +983,13 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
     channel?: string;
     signer?: string;
     given?: unknown[];
+    before?: string;
+    read?: string[];
   };
   const S = V.SV6;
   const R = V.agreedRefusals.rows;
+  /** The channel tableOpening derives for plants.solana's opening, whose salt is sessionSalt(H2), with account 4 rows[21].operator. */
+  const WRONG_SALT_CHANNEL = "58wwaqTCtqNbnDHV3F4MPwvqhXMxbbnRdfcqEByHeVyx";
   const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
   const operator = solanaPlaced((d) => Object.assign(d, { voucherSigner: "operator", operator: R[21].operator }));
   const challenges: Record<string, MppChallenge & { id: string }> = { operator, client, C_S };
@@ -995,6 +999,9 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
     "agreedRefusals.rows[23]": R[23],
     "SV6.openings.channelAtOne": { wireBase64: S.openings.channelAtOne.wireBase64, channel: R[22].channel },
     "SV6.openings.bothTables": { wireBase64: S.openings.bothTables.wireBase64, channel: R[21].channel },
+    "SV6.openings.threeNoOpen": { wireBase64: S.openings.threeNoOpen.wireBase64, channel: R[21].channel },
+    "SV6.openings.threeWrongSalt": { wireBase64: S.openings.threeWrongSalt.wireBase64, channel: WRONG_SALT_CHANNEL },
+    "SV6.openings.emptyLookup": { wireBase64: S.openings.emptyLookup.wireBase64, channel: V.SV2.channel },
   };
   /** The row's opening answering challenge `c`, with authentication naming the challenge's id for operator. */
   const presentedOf = (row: Row, c: string): MppCredential => {
@@ -1003,14 +1010,26 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
     const auth = c === "operator" ? { authentication: { type: "proof", challengeId: challenge.id, payer: V.SV3.payer, signature: "x" } } : {};
     return cred(challenge, { action: "open", channelId: o.channel, transaction: o.wireBase64, ...auth });
   };
-  const rows = rowsOf(S.rows as Row[], "mpp-session-hedera-solana-xrpl.json SV6.rows", { exact: 13 });
+  const rows = rowsOf(S.rows as Row[], "mpp-session-hedera-solana-xrpl.json SV6.rows", { exact: 19 });
 
   it("the openings SV6 adds are @solana/kit's, byte for byte, and each table account holds its entries under the program's header", async () => {
     const seed = new Uint8Array(32).fill(1);
     const atOne = await tableOpening(V.SV5.opening.wireBase64, V.SV3.payer, "channel", seed, [R[21].operator]);
     const both = await tableOpening(V.SV5.opening.wireBase64, R[21].operator, "both", seed);
+    const noOpen = await tableOpening(V.SV5.opening.wireBase64, R[21].operator, "three", seed, [], 0);
+    const wrongSalt = await tableOpening(V.plants.solana.wireBase64, R[21].operator, "three", seed);
     expect([atOne.wireBase64, atOne.channel]).toEqual([S.openings.channelAtOne.wireBase64, R[22].channel]);
     expect([both.wireBase64, both.channel]).toEqual([S.openings.bothTables.wireBase64, R[21].channel]);
+    expect([noOpen.wireBase64, noOpen.channel]).toEqual([S.openings.threeNoOpen.wireBase64, R[21].channel]);
+    expect([wrongSalt.wireBase64, wrongSalt.channel]).toEqual([S.openings.threeWrongSalt.wireBase64, WRONG_SALT_CHANNEL]);
+    expect(emptyLookup(V.SV2.wireBase64, "So11111111111111111111111111111111111111112", seed)).toBe(S.openings.emptyLookup.wireBase64);
+    // Each three-table opening names three lookups, of TABLE, TABLE_B and TABLE_C.
+    for (const o of [S.openings.threeNoOpen, S.openings.threeWrongSalt]) {
+      const w = Buffer.from(o.wireBase64, "base64");
+      const compiled = getCompiledTransactionMessageDecoder().decode(w.subarray(1 + 64 * w[0]!));
+      if (compiled.version !== 0) throw new Error("the opening is a v0 message");
+      expect(compiled.addressTableLookups!.length).toBe(3);
+    }
     expect(S.tables.channel21.madeAt).toBe(TABLE_B);
     for (const [name, t] of Object.entries(S.tables) as [string, { owner: string; entries: string[]; dataBase64: string }][]) {
       const d = Buffer.from(t.dataBase64, "base64");
@@ -1047,8 +1066,8 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
     it(row.case, async () => {
       for (const c of rowsOf(row.challenges, `${row.case}: challenges`)) {
         const presented = presentedOf(row, c);
-        expect(await sessionSolana.bound(presented), c).toEqual(refused("svm/read-first"));
-        expect(await sessionSolana.reference(presented), c).toEqual(refused("svm/read-first"));
+        expect(await sessionSolana.bound(presented), c).toEqual(refused(row.before ?? "svm/read-first"));
+        expect(await sessionSolana.reference(presented), c).toEqual(refused(row.before ?? "svm/read-first"));
         if (row.given !== undefined) {
           for (const tables of rowsOf(row.given, `${row.case}: given`)) {
             expect(await sessionSolana.bound({ ...presented, tables } as MppCredential), JSON.stringify(tables)).toEqual(refused(row.bound!));
@@ -1058,7 +1077,7 @@ describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
         }
         const { reader, calls } = tableReader(row.accounts!);
         const fetched = await sessionSolana.fetchPresented(presented, reader);
-        expect(calls.sort(), c).toEqual(Object.keys(row.accounts!).sort());
+        expect(calls.sort(), c).toEqual((row.read ?? Object.keys(row.accounts!)).sort());
         if (typeof row.expect === "string") {
           expect(fetched, c).toEqual(refused(row.expect));
           continue;

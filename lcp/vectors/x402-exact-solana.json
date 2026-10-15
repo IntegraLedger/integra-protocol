@@ -696,7 +696,7 @@
    }
   },
   "nonceMoved": {
-   "case": "svmNonceMoved on the durable reference with fromSlot 1000: a finalized read of the nonce account at a context slot at least 150 slots past fromSlot (a blockhash's lifetime: Solana's transaction documentation gives a blockhash 150 slots) shows whether the recorded nonce has moved on: svmNonceMoved answers that read's context slot when it shows the nonce moved on, else null",
+   "case": "svmNonceMoved on the durable reference with fromSlot 1000: a finalized read of the nonce account at a context slot at least 150 slots past fromSlot (a blockhash's lifetime: Solana's transaction documentation gives a blockhash 150 slots) shows whether the recorded nonce has moved on: svmNonceMoved answers that read's context slot when it shows the nonce moved on, svm/unreadable when the read is rejected or answers out of its documented shape, and null otherwise",
    "fromSlot": "1000",
    "rows": [
     {
@@ -742,10 +742,16 @@
      "expect": null
     },
     {
-     "case": "the reader fails",
+     "case": "the reader fails: svm/unreadable, a read to repeat",
      "account": "reader-error",
      "slot": "1150",
-     "expect": null
+     "expect": "svm/unreadable"
+    },
+    {
+     "case": "the reader answers out of its documented shape, an account whose data is not bytes: svm/unreadable",
+     "account": "malformed",
+     "slot": "1150",
+     "expect": "svm/unreadable"
     }
    ]
   },
@@ -921,6 +927,46 @@
      "expect": {
       "state": "settled",
       "commitment": "finalized"
+     },
+     "accountReads": 1
+    },
+    {
+     "case": "never found, and the nonce account read fails: pending unreadable",
+     "transactions": [
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      }
+     ],
+     "account": "reader-error",
+     "firstAvailableBlock": "0",
+     "expect": {
+      "state": "pending",
+      "why": "unreadable"
+     },
+     "accountReads": 1
+    },
+    {
+     "case": "never found, the nonce has moved on, and the first-available-block read fails: pending unreadable",
+     "transactions": [
+      {
+       "notFound": true,
+       "slot": "1150"
+      },
+      {
+       "notFound": true,
+       "slot": "1150"
+      }
+     ],
+     "account": "moved",
+     "firstAvailableBlock": "reader-error",
+     "expect": {
+      "state": "pending",
+      "why": "unreadable"
      },
      "accountReads": 1
     }

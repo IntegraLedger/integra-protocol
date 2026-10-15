@@ -97,11 +97,13 @@ export interface SvmLanded {
 
 /**
  * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
- * `@integraledger/lcp/evm`; a rejected `transaction` reads as unreadable, and a rejected `account`,
- * `firstAvailableBlock` or `signatures` call counts as finding nothing. `transaction` answers `notFound` when the node
- * holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`), read from
- * that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it from that
- * node. A lookup naming no slot never reads failed.
+ * `@integraledger/lcp/evm`, and no function in this package reads a rejection as finding nothing. A rejected
+ * `transaction` or `account` call, and a rejected `firstAvailableBlock` call in a status read, is unreadable:
+ * `svm/unreadable`, a read to repeat, or a status read's pending `unreadable`. In `svmLocate`, a rejected
+ * `firstAvailableBlock` or `signatures` call leaves the search `complete` false. `transaction` answers `notFound` when
+ * the node holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`),
+ * read from that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it
+ * from that node. A lookup naming no slot never reads failed.
  */
 export interface SvmReader {
   readonly network: SolanaNetwork;
@@ -323,7 +325,11 @@ class Cursor {
   }
 }
 
-/** Decodes a legacy or v0 wire transaction of at most 1,232 bytes. */
+/**
+ * Decodes a legacy or v0 wire transaction of at most 1,232 bytes; a longer one is `svm/tx-too-large`. Bytes that are not
+ * one well-formed transaction are `svm/tx-malformed`, as is a v0 message with an address table lookup that names no
+ * index, which the runtime refuses ("each lookup table must be used to load at least one account").
+ */
 export function decodeSvmTx(wire: Uint8Array): SvmTx | Refusal {
   const d = decode(wire);
   if (isRefusal(d)) return d;
@@ -387,6 +393,9 @@ function decode(wire: Uint8Array): Decoded | Refusal {
         const table = keyString(c.bytes(32));
         const writable = Array.from(c.bytes(c.compact()));
         const readonly = Array.from(c.bytes(c.compact()));
+        // A v0 message's sanitize refuses a lookup that loads no account, "each lookup table must be used to load at
+        // least one account" (anza-xyz/solana-sdk 648387ee, tag message@v3.0.0, `message/src/versions/v0/mod.rs:118-129`).
+        if (writable.length + readonly.length === 0) return refusal("svm/tx-malformed");
         loads.writable += writable.length;
         loads.readonly += readonly.length;
         lookups.push({ table, writable, readonly });
@@ -728,6 +737,20 @@ const TABLE_META = 56;
 const NOT_DEACTIVATED = 0xffff_ffff_ffff_ffffn;
 
 /**
+ * An account read's answer in its documented shape (`SvmReader.account`): a bigint context slot, and no account, or an
+ * owner string and data bytes. Any other answer is `svm/unreadable`, a read to repeat.
+ */
+function accountRead(read: unknown): { slot: bigint; value: { owner: string; data: Uint8Array } | null } | Refusal {
+  if (!isObject(read) || typeof read["slot"] !== "bigint" || !("value" in read)) return refusal("svm/unreadable");
+  const value = read["value"];
+  if (value === null) return { slot: read["slot"], value: null };
+  if (!isObject(value) || typeof value["owner"] !== "string" || !(value["data"] instanceof Uint8Array)) {
+    return refusal("svm/unreadable");
+  }
+  return { slot: read["slot"], value: { owner: value["owner"], data: value["data"] } };
+}
+
+/**
  * An address lookup table account, read as the runtime reads one when it loads a version-0 message's addresses
  * (anza-xyz/agave f516a892, tag v3.0.14, `accounts-db/src/accounts.rs:105-162`, with `AddressLookupTable` from
  * solana-address-lookup-table-interface 3.0.0, anza-xyz/solana-sdk 3d8dc1f3,
@@ -736,21 +759,23 @@ const NOT_DEACTIVATED = 0xffff_ffff_ffff_ffffn;
  * (`accounts.rs:120-121`; `state.rs:225-252`): a u32 `ProgramState` of 1 (0 is an uninitialized account,
  * `state.rs:121-131`), then a u64 deactivation slot, a u64 last-extended slot, a u8 start index, an `Option` of the
  * 32-byte authority (tag 0 or 1) and u16 padding (`state.rs:42-63`), the header taking 56 bytes (`state.rs:31-32`), and
- * then the entries, 32 bytes each. A table whose deactivation slot is set is deactivating or deactivated: the runtime
- * loads nothing from it once that slot leaves the `SlotHashes` sysvar (`LookupTableAccountNotFound`, `state.rs:85-118`
- * and `:157-180`), and no instruction makes it active again (`instruction.rs:12-67`), so this read, which reads no
- * `SlotHashes`, takes it as deactivated. Each answer of those is `svm/table-unusable`. An answer naming no account is
- * `svm/not-found`, and an answer of neither documented shape is `svm/unreadable`.
+ * then the entries, 32 bytes each. Each of those is `svm/table-unusable`, but for an account the System program owns
+ * with no data: the program creates a table at an address the System program holds lamports for, topping up its rent
+ * and then allocating and assigning it (solana-program/address-lookup-table ac994f09, tag program@v3.0.0,
+ * `program/src/processor.rs:185-211`), so that account is no table yet, `svm/not-found`, as is an answer naming no
+ * account. A table whose deactivation slot is set is `svm/table-unusable` too, because the opening may land after the
+ * table stops resolving: the runtime loads from it only until that slot leaves the `SlotHashes` sysvar, which holds
+ * the slots of the last 512 blocks (`LookupTableAccountNotFound` after that, `state.rs:15-26`, `:85-118` and
+ * `:157-180`), no instruction makes it active again (`instruction.rs:12-67`), and a durable nonce keeps an opening
+ * valid with no expiry. An answer of neither documented shape is `svm/unreadable`.
  */
 function tableOf(read: unknown): { entries: Uint8Array[]; frozen: boolean } | Refusal {
-  if (!isObject(read) || typeof read["slot"] !== "bigint" || !("value" in read)) return refusal("svm/unreadable");
-  const value = read["value"];
-  if (value === null) return refusal("svm/not-found");
-  if (!isObject(value) || typeof value["owner"] !== "string" || !(value["data"] instanceof Uint8Array)) {
-    return refusal("svm/unreadable");
-  }
-  if (value["owner"] !== ADDRESS_LOOKUP_TABLE) return refusal("svm/table-unusable");
-  const data = value["data"];
+  const account = accountRead(read);
+  if (isRefusal(account)) return account;
+  const { value } = account;
+  if (value === null || (value.owner === SYSTEM && value.data.length === 0)) return refusal("svm/not-found");
+  if (value.owner !== ADDRESS_LOOKUP_TABLE) return refusal("svm/table-unusable");
+  const data = value.data;
   if (data.length < TABLE_META || (data.length - TABLE_META) % 32 !== 0) return refusal("svm/table-unusable");
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const authority = data[21];
@@ -768,7 +793,10 @@ function tableOf(read: unknown): { entries: Uint8Array[]; frozen: boolean } | Re
  * `accounts.rs:145-156`): it is `svm/table-unusable` when the table has no authority, since a table without one is
  * frozen and takes no new entry (`instruction.rs:33-50`; the authority signs each change, `state.rs:57`), and
  * `svm/not-found`, a read to repeat, when its authority can still extend it in a block that is not finalized. A
- * rejected read is `svm/unreadable`.
+ * loaded address that repeats one of `staticKeys` or another loaded address is `svm/table-unusable`, as `loadedKeys`
+ * reads it. A rejected read is `svm/unreadable`. Every table is read before the answer: a `svm/table-unusable` in any
+ * lookup, which no later read changes, comes before a read to repeat in another, and otherwise the first read to
+ * repeat, in the lookups' order, is the answer.
  *
  * A read at `finalized` fixes what each index names. The program only appends entries (`ExtendLookupTable`,
  * `instruction.rs:40-50`; no instruction rewrites one, `instruction.rs:12-67`); a table is closed only once deactivated
@@ -777,30 +805,42 @@ function tableOf(read: unknown): { entries: Uint8Array[]; frozen: boolean } | Re
  * the runtime loads at that index in every later block for as long as the table is active, while an entry written in a
  * block that is not finalized can differ on another fork.
  */
-export async function readLookupTables(reader: SvmReader, lookups: readonly SvmLookup[]): Promise<SvmTableLoad[] | Refusal> {
-  const tables = new Map<string, { entries: Uint8Array[]; frozen: boolean }>();
+export async function readLookupTables(
+  reader: SvmReader,
+  staticKeys: readonly Uint8Array[],
+  lookups: readonly SvmLookup[],
+): Promise<SvmTableLoad[] | Refusal> {
+  const tables = new Map<string, { entries: Uint8Array[]; frozen: boolean } | Refusal>();
   for (const { table } of lookups) {
     if (tables.has(table)) continue;
     let read: unknown;
     try {
       read = await reader.account(table);
     } catch {
-      return refusal("svm/unreadable");
+      tables.set(table, refusal("svm/unreadable"));
+      continue;
     }
-    const t = tableOf(read);
+    tables.set(table, tableOf(read));
+  }
+  const answers = lookups.map(({ table, writable, readonly }): SvmTableLoad | Refusal => {
+    const t = tables.get(table)!;
     if (isRefusal(t)) return t;
-    tables.set(table, t);
-  }
-  const loads: SvmTableLoad[] = [];
-  for (const { table, writable, readonly } of lookups) {
-    const { entries, frozen } = tables.get(table)!;
-    if ([...writable, ...readonly].some((i) => i >= entries.length)) {
-      return frozen ? refusal("svm/table-unusable") : refusal("svm/not-found");
+    if ([...writable, ...readonly].some((i) => i >= t.entries.length)) {
+      return t.frozen ? refusal("svm/table-unusable") : refusal("svm/not-found");
     }
-    const at = (i: number) => keyString(entries[i]!);
-    loads.push({ address: table, writable: writable.map(at), readonly: readonly.map(at) });
+    const at = (i: number) => keyString(t.entries[i]!);
+    return { address: table, writable: writable.map(at), readonly: readonly.map(at) };
+  });
+  const loads = answers.filter((a): a is SvmTableLoad => !isRefusal(a));
+  const seen = new Set(staticKeys.map(keyString));
+  let repeated = false;
+  for (const key of [...loads.flatMap((l) => l.writable), ...loads.flatMap((l) => l.readonly)]) {
+    if (seen.has(key)) repeated = true;
+    seen.add(key);
   }
-  return loads;
+  const refused = answers.filter((a): a is Refusal => isRefusal(a));
+  if (repeated || refused.some((r) => r.code === "svm/table-unusable")) return refusal("svm/table-unusable");
+  return refused[0] ?? loads;
 }
 
 /**
@@ -979,6 +1019,7 @@ export async function settledBy<W extends string>(
   if (read === undefined) return { state: "pending", why: "unreadable" };
   if ("notFound" in read && ref.nonce !== undefined) {
     const movedAt = await nonceLapsed(ref, reader);
+    if (isRefusal(movedAt)) return { state: "pending", why: "unreadable" };
     if (movedAt !== null) {
       read = await landedAt(reader, ref.transaction, ["finalized"]);
       if (read === undefined) return { state: "pending", why: "unreadable" };
@@ -1001,11 +1042,13 @@ export async function settledBy<W extends string>(
 
 /**
  * The context slot of the nonce account read when that read shows the durable nonce `ref.nonce` records is spent or
- * gone, else null. The read is at `finalized`, and shows it at a context slot at least 150 slots past `fromSlot` when
- * it finds no account, an account the System program does not own, an account that is not an initialized nonce
- * account, or an initialized current-version nonce account holding another value. A legacy-version nonce account, a
- * read too early, a failed or malformed read, a reference without `nonce`, a ref or reader that is not an object and a
- * reader for another network are null. One call.
+ * gone; null when it does not show that; and `svm/unreadable`, a read to repeat, when the read is rejected or answers
+ * neither documented shape, as every read of `SvmReader.account` takes it. The read is at `finalized`, and shows it at
+ * a context slot at least 150 slots past `fromSlot` when it finds no account, an account the System program does not
+ * own, an account that is not an initialized nonce account, or an initialized current-version nonce account holding
+ * another value. A legacy-version nonce account and a read too early are null. A reference without `nonce` or with a
+ * `fromSlot` that is not a slot, a ref or reader that is not an object, and a reader for another network are null, with
+ * nothing read. One call.
  *
  * The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. A
  * lookup shows a transaction absent only up to the slot its node had reached, so a lookup of the named transaction that
@@ -1013,26 +1056,24 @@ export async function settledBy<W extends string>(
  * reads it. With no transaction named, a `svmLocate` given this slot as `minContextSlot`, and complete with nothing
  * found, shows the message never landed.
  */
-export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<bigint | null> {
+export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<bigint | null | Refusal> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return null;
   const nonce: unknown = ref.nonce;
   if (typeof nonce !== "object" || nonce === null) return null;
   const { account, value } = nonce as SvmNonce;
   if (!isKey(account) || !isKey(value)) return null;
   if (typeof ref.fromSlot !== "string" || !SLOT.test(ref.fromSlot)) return null;
-  let read: Awaited<ReturnType<SvmReader["account"]>>;
+  let answer: unknown;
   try {
-    read = await reader.account(account);
+    answer = await reader.account(account);
   } catch {
-    return null;
+    return refusal("svm/unreadable");
   }
-  if (typeof read !== "object" || read === null || typeof read.slot !== "bigint") return null;
+  const read = accountRead(answer);
+  if (isRefusal(read)) return read;
   if (read.slot < BigInt(ref.fromSlot) + NONCE_SETTLED_SLOTS) return null;
-  const found: unknown = read.value;
-  if (found === null) return read.slot;
-  if (typeof found !== "object") return null;
-  const { owner, data } = found as { owner: unknown; data: unknown };
-  if (typeof owner !== "string" || !(data instanceof Uint8Array)) return null;
+  if (read.value === null) return read.slot;
+  const { owner, data } = read.value;
   if (owner !== SYSTEM || data.length !== NONCE_ACCOUNT_BYTES) return read.slot;
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   const version = view.getUint32(0, true);
@@ -1043,16 +1084,21 @@ export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<big
   return keyString(data.subarray(40, 72)) !== value ? read.slot : null;
 }
 
-/** `svmNonceMoved`'s slot when it names one and the node holds every block from `fromSlot`, else null. */
-async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | null> {
+/**
+ * `svmNonceMoved`'s slot when it names one and the node holds every block from `fromSlot`, else null; `svm/unreadable`
+ * when the nonce account read or the first-available-block read is rejected or answers out of its documented shape.
+ */
+async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | null | Refusal> {
   const movedAt = await svmNonceMoved(ref, reader);
-  if (movedAt === null) return null;
+  if (movedAt === null || isRefusal(movedAt)) return movedAt;
+  let first: unknown;
   try {
-    const first = await reader.firstAvailableBlock();
-    return typeof first === "bigint" && first <= BigInt(ref.fromSlot) ? movedAt : null;
+    first = await reader.firstAvailableBlock();
   } catch {
-    return null;
+    return refusal("svm/unreadable");
   }
+  if (typeof first !== "bigint") return refusal("svm/unreadable");
+  return first <= BigInt(ref.fromSlot) ? movedAt : null;
 }
 
 /**

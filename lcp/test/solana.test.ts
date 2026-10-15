@@ -565,10 +565,12 @@ describe("x402-exact-solana.json durableNonce", () => {
         account: async (address) => {
           expect(address).toBe(D.nonceAccount);
           if (row.account === "reader-error") throw new ReaderError("transport");
+          if (row.account === "malformed") return { slot: BigInt(row.slot), value: { owner: "11111111111111111111111111111111", data: "AA==" } } as never;
           return { slot: BigInt(row.slot), value: accountOf(row.account) };
         },
       };
-      expect(await svmNonceMoved(ref, reader), row.case).toBe(row.expect === null ? null : BigInt(row.expect));
+      const expected = row.expect === null ? null : row.expect.startsWith("svm/") ? refused(row.expect) : BigInt(row.expect);
+      expect(await svmNonceMoved(ref, reader), row.case).toEqual(expected);
     }
     const plain: SvmRef = { ...V.V4.ref, fromSlot: D.nonceMoved.fromSlot };
     delete (plain as { transaction?: string }).transaction;
@@ -601,9 +603,13 @@ describe("x402-exact-solana.json durableNonce", () => {
         },
         signatures: async () => [],
         blockhashValid: async () => ({ valid: false, slot: 0n }),
-        firstAvailableBlock: async () => BigInt(row.firstAvailableBlock),
+        firstAvailableBlock: async () => {
+          if (row.firstAvailableBlock === "reader-error") throw new ReaderError("transport");
+          return BigInt(row.firstAvailableBlock);
+        },
         account: async () => {
           accountReads++;
+          if (row.account === "reader-error") throw new ReaderError("transport");
           return { slot: 1150n, value: accountOf(row.account) };
         },
       };
@@ -699,7 +705,8 @@ describe("x402-exact-solana.json durableNonce", () => {
     it("the caller's sequence: svmNonceMoved's slot, passed to svmLocate, holds a lagging node's empty list incomplete", async () => {
       const at = await svmNonceMoved(ref, nodeAt(movedAt));
       expect(at).toBe(movedAt);
-      expect(await svmLocate(ref, nodeAt(movedAt - 1n), H, undefined, at!)).toEqual({ complete: false });
+      if (typeof at !== "bigint") throw new Error("svmNonceMoved names no slot");
+      expect(await svmLocate(ref, nodeAt(movedAt - 1n), H, undefined, at)).toEqual({ complete: false });
     });
   });
 

@@ -332,9 +332,11 @@ as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose `
 account from a lookup table with `svm/nonce-account-not-static`. On `mpp/session/solana`, an opening whose sysvar
 comes from a table is read, as any opening with lookups is, once `fetchPresented` has read its tables. `svmNonceMoved(ref, reader)` reads the nonce account at
 `finalized` and answers that read's context slot once the account holds another value, or is not a nonce account, at a
-read at least 150 slots past `fromSlot`, and null otherwise. A named transaction then not found, by a lookup whose node
+read at least 150 slots past `fromSlot`; `svm/unreadable`, a read to repeat, when the read is rejected or answers out
+of its documented shape; and null otherwise. A named transaction then not found, by a lookup whose node
 had reached that slot, is failed, with the reason `nonce-moved`; a lookup from a node behind it, or naming no slot,
-leaves it pending. With no transaction named, pass that slot to `svmLocate` as `minContextSlot`: every
+leaves it pending, and a nonce account read or first-available-block read that fails leaves it pending `unreadable`.
+With no transaction named, pass that slot to `svmLocate` as `minContextSlot`: every
 `getSignaturesForAddress` page carries it as the RPC's `minContextSlot`, "the minimum slot that the request can be
 evaluated at", so a node behind the nonce read fails the call and the search is incomplete. A search given that slot
 and complete with nothing found shows the message never landed.

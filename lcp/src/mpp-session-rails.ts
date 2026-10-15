@@ -24,7 +24,8 @@ import {
   type HederaVoucherTypedData,
 } from "./internal/hedera-session.js";
 import {
-  readOpen,
+  openAccounts,
+  openInstruction,
   sessionSalt,
   solanaVoucher,
   svmCloseStatus,
@@ -106,7 +107,11 @@ type Kind = "open" | "within" | "close";
 /** A Hedera session opening with the landed receipt's logs from the escrow. */
 export type HederaLandedCredential = LandedCredential;
 
-/** A Solana session opening with what `fetchPresented` read of its message's address lookup tables. */
+/**
+ * A Solana session opening with what `sessionSolana.fetchPresented` read of its message's address lookup tables. Both
+ * sides keep it as the opening for the life of the channel: a later read gives each table as it stands then, and once
+ * the table's authority deactivates or closes it no `tables` can be read.
+ */
 export interface SolanaTablesCredential extends MppCredential {
   /**
    * For each address table lookup of the opening's message, in order: the table's address, and the table's entries at
@@ -609,11 +614,46 @@ function solanaOpenTx(payload: { [k: string]: Json }): { tx: SvmTx; lookups: rea
 }
 
 /**
- * The opening's checks: the one `open` of the challenge's program, its salt H's first 8 bytes, its channel the payload's;
- * then `authentication`, which draft-solana-session-00's open action requires for an `operator` voucher signer and
- * forbids for `client`, the default: missing for `operator`, or present for `client`, is `mpp/credential-malformed`;
- * present, it names the echoed challenge's id, else `svm/proof-not-challenge`. For `operator`, the draft requires the
- * open's `authorizedSigner` (account 4) to equal the challenged `operator`, else `svm/signer-not-operator`. For
+ * The opening's checks that read no account, in order: the one `open` of the challenge's program (`svm/open-not-found`
+ * when there is none, or more than one, or when its channel, account 5, is past every key the message names), its salt
+ * H's first 8 bytes (`mpp/carrier-not-challenge`), the payload's `channelId` a key (`svm/channel-mismatch`), then
+ * `authentication`, which draft-solana-session-00's open action requires for an `operator` voucher signer and forbids
+ * for `client`, the default: missing for `operator`, or present for `client`, is `mpp/credential-malformed`; present, it
+ * names the echoed challenge's id, else `svm/proof-not-challenge`. A durable nonce account named through an address
+ * lookup table is `svm/nonce-account-not-static` before them. Each comes before any address lookup table is read or
+ * resolved, so an opening that fails one gets its code whatever its lookups hold.
+ */
+function solanaStatic(presented: MppCredential, e: Exclude<ReturnType<typeof opening>, Refusal>) {
+  const program = channelProgram(e.checked);
+  if (isRefusal(program)) return program;
+  const decoded = solanaOpenTx(e.payload);
+  if (isRefusal(decoded)) return decoded;
+  const { tx, lookups } = decoded;
+  const fromTable = staticNonce(tx);
+  if (fromTable !== null) return fromTable;
+  const loaded = lookups.reduce((n, l) => n + l.writable.length + l.readonly.length, 0);
+  const open = openInstruction(tx, program, tx.keys.length + loaded);
+  if (isRefusal(open)) return open;
+  if (open.salt !== sessionSalt(e.h)) return refusal("mpp/carrier-not-challenge");
+  const declared = keyBytes(e.payload["channelId"]);
+  if (declared === null) return refusal("svm/channel-mismatch");
+  const auth = e.payload["authentication"];
+  const operatorMode = e.checked.details["voucherSigner"] === "operator";
+  if (operatorMode !== (auth !== undefined)) return refusal("mpp/credential-malformed");
+  if (auth !== undefined && (!isObject(auth) || auth["challengeId"] !== presented.challenge.id)) {
+    return refusal("svm/proof-not-challenge");
+  }
+  const operator = operatorMode ? keyBytes(e.checked.details["operator"]) : null;
+  if (operatorMode && operator === null) return refusal("svm/signer-not-operator");
+  return { tx, lookups, open, channelId: keyString(declared), operator: operator === null ? null : keyString(operator) };
+}
+
+/**
+ * The opening's checks: first those that read no account (`solanaStatic`): the one `open` of the challenge's program,
+ * its salt H's first 8 bytes, the payload's `channelId` a key, and `authentication`, which draft-solana-session-00's
+ * open action requires for an `operator` voucher signer and forbids for `client`, the default. Then the `open`'s
+ * accounts: its channel the payload's `channelId`, else `svm/channel-mismatch`, and, for `operator`, its
+ * `authorizedSigner` (account 4) the challenged `operator`, as the draft requires, else `svm/signer-not-operator`. For
  * `client`, the client chooses that signer. The draft has the server validate the complete compiled message, resolving
  * any version-0 address-lookup-table entries (Settlement Procedure, Open, step 9), and a table can supply account 4 or
  * account 5. So the accounts are read from the static keys and, for a message with address table lookups, from the
@@ -628,30 +668,15 @@ function solanaOpening(
 ): { h: AtrHash; checked: Echoed; tx: SvmTx; signer: string | undefined; channel: string } | Refusal {
   const e = opening(presented, SOLANA);
   if (isRefusal(e)) return e;
-  const program = channelProgram(e.checked);
-  if (isRefusal(program)) return program;
-  const decoded = solanaOpenTx(e.payload);
-  if (isRefusal(decoded)) return decoded;
-  const { tx, lookups } = decoded;
-  const fromTable = staticNonce(tx);
-  if (fromTable !== null) return fromTable;
+  const s = solanaStatic(presented, e);
+  if (isRefusal(s)) return s;
+  const { tx, lookups } = s;
   const keys = lookups.length === 0 ? tx.keys : loadedKeys(tx, lookups, (presented as Partial<SolanaTablesCredential>).tables);
   if (isRefusal(keys)) return keys;
-  const open = readOpen(tx, program, keys);
+  const open = openAccounts(s.open, keys);
   if (isRefusal(open)) return open;
-  if (open.salt !== sessionSalt(e.h)) return refusal("mpp/carrier-not-challenge");
-  const declared = keyBytes(e.payload["channelId"]);
-  if (declared === null || keyString(declared) !== open.channel) return refusal("svm/channel-mismatch");
-  const auth = e.payload["authentication"];
-  const operatorMode = e.checked.details["voucherSigner"] === "operator";
-  if (operatorMode !== (auth !== undefined)) return refusal("mpp/credential-malformed");
-  if (auth !== undefined && (!isObject(auth) || auth["challengeId"] !== presented.challenge.id)) {
-    return refusal("svm/proof-not-challenge");
-  }
-  if (operatorMode) {
-    const operator = keyBytes(e.checked.details["operator"]);
-    if (operator === null || open.signer !== keyString(operator)) return refusal("svm/signer-not-operator");
-  }
+  if (open.channel !== s.channelId) return refusal("svm/channel-mismatch");
+  if (s.operator !== null && open.signer !== s.operator) return refusal("svm/signer-not-operator");
   return { h: e.h, checked: e.checked, tx, signer: open.signer, channel: open.channel };
 }
 
@@ -661,16 +686,27 @@ function solanaOpening(
  * (draft-solana-session-00, Settlement Procedure, Open, step 9: the server validates the complete compiled message,
  * resolving any version-0 address-lookup-table entries). `bound`, `reference` and `buildWithin` read the open's
  * accounts through them; `build`'s `complete`, which takes the payload alone, refuses such an open with
- * `svm/read-first`. Each table account is read once, at `finalized`, through `reader.account` (`readLookupTables`),
- * which fixes what each index names: an entry that a finalized block holds is never rewritten, while one written in a
- * block that is not finalized can differ on another fork. A table owned by another program, whose data is not an
- * initialized table, that is deactivating or deactivated, or that holds no entry at an index the message names and has
- * no authority to extend it, is `svm/table-unusable`, as is a loaded key that repeats a static key or another loaded
- * key; each is a lookup the runtime refuses. No account at a table's address, or no entry at an index while the table's
- * authority can still extend it, is `svm/not-found`, and a rejected read or an answer of neither documented shape
- * `svm/unreadable`: reads to repeat. A reader that is missing or for another network than the challenge's is
- * `svm/wrong-reader`. A message without lookups gets `tables` empty, with nothing read. One call per distinct table the
- * message names.
+ * `svm/read-first`. Both sides keep the credential this returns, with its `tables`, as the opening for the life of the
+ * channel, and pass it to `bound`, `reference` and `buildWithin`: a later read gives each table as it stands then, and
+ * once the table's authority deactivates or closes it, that read is `svm/table-unusable` or `svm/not-found`, and no
+ * later read gives the channel's accounts.
+ *
+ * Before any read, the opening's checks that read no account run as `bound` runs them (the one `open`, its salt, the
+ * `channelId`, `authentication`), so an opening that fails one gets its code whatever its lookups hold. Each table
+ * account is then read once, at `finalized`, through `reader.account` (`readLookupTables`), which fixes what each index
+ * names: an entry that a finalized block holds is never rewritten, while one written in a block that is not finalized
+ * can differ on another fork. A table owned by another program, whose data is not an initialized table, or that holds
+ * no entry at an index the message names and has no authority to extend it, is `svm/table-unusable`, as is a loaded
+ * key that repeats a static key or another loaded key; each is a lookup the runtime refuses. A table whose deactivation
+ * slot is set is `svm/table-unusable` too, because the opening may land after the table stops resolving: the runtime
+ * loads from it only until that slot leaves the `SlotHashes` sysvar, which holds the slots of the last 512 blocks,
+ * nothing makes it active again, and a durable nonce keeps an opening valid with no expiry. No account at a table's
+ * address, an account the System program owns with no data (a table can still be created there), or no entry at an
+ * index while the table's authority can still extend it, is `svm/not-found`, and a rejected read or an answer of
+ * neither documented shape `svm/unreadable`: reads to repeat. Every table is read before the answer, and a
+ * `svm/table-unusable` in one lookup comes before a read to repeat in another. A reader that is missing or for another
+ * network than the challenge's is `svm/wrong-reader`. A message without lookups gets `tables` empty, with nothing
+ * read. One call per distinct table the message names.
  */
 async function solanaFetchPresented(presented: MppCredential, reader: SvmReader): Promise<SolanaTablesCredential | Refusal> {
   const e = opening(presented, SOLANA);
@@ -679,14 +715,11 @@ async function solanaFetchPresented(presented: MppCredential, reader: SvmReader)
   if (network === null) return refusal("svm/network-undeclared");
   if (isRefusal(network)) return network;
   if (!isObject(reader) || reader.network !== network) return refusal("svm/wrong-reader");
-  const decoded = solanaOpenTx(e.payload);
-  if (isRefusal(decoded)) return decoded;
-  const { tx, lookups } = decoded;
-  if (lookups.length === 0) return { ...presented, tables: [] };
-  const tables = await readLookupTables(reader, lookups);
-  if (isRefusal(tables)) return tables;
-  const keys = loadedKeys(tx, lookups, tables);
-  return isRefusal(keys) ? keys : { ...presented, tables };
+  const s = solanaStatic(presented, e);
+  if (isRefusal(s)) return s;
+  if (s.lookups.length === 0) return { ...presented, tables: [] };
+  const tables = await readLookupTables(reader, s.tx.keys, s.lookups);
+  return isRefusal(tables) ? tables : { ...presented, tables };
 }
 
 async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
@@ -835,7 +868,8 @@ async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<Solan
  * `ed25519-raw` request over `solanaVoucher(channelId, cumulativeAmount)`, for the signer the opening's `open`
  * instruction named (account 4), the key vouchers "MUST verify under" (draft-solana-session-00). The opening is read as
  * `bound` reads it: for a message with address table lookups, through the `tables` that `fetchPresented` writes, else
- * `svm/read-first`. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a
+ * `svm/read-first`, so the opening is the credential `fetchPresented` returned, kept for the life of the channel: a
+ * table read again after its authority deactivates or closes it gives no `tables`. An `operator` channel's vouchers are the operator's, and are not built, nor are a `topUp` or a
  * `use`; an action draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
  */
 async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {

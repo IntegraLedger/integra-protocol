@@ -91,11 +91,13 @@ the message carries in its blockhash field.
 ### SvmReader
 
 Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
-`@integraledger/lcp/evm`; a rejected `transaction` reads as unreadable, and a rejected `account`,
-`firstAvailableBlock` or `signatures` call counts as finding nothing. `transaction` answers `notFound` when the node
-holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`), read from
-that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it from that
-node. A lookup naming no slot never reads failed.
+`@integraledger/lcp/evm`, and no function in this package reads a rejection as finding nothing. A rejected
+`transaction` or `account` call, and a rejected `firstAvailableBlock` call in a status read, is unreadable:
+`svm/unreadable`, a read to repeat, or a status read's pending `unreadable`. In `svmLocate`, a rejected
+`firstAvailableBlock` or `signatures` call leaves the search `complete` false. `transaction` answers `notFound` when
+the node holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`),
+read from that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it
+from that node. A lookup naming no slot never reads failed.
 
 #### Properties
 
@@ -480,7 +482,9 @@ when the channel id is not a base58 key or a number is out of range.
 
 > **decodeSvmTx**(`wire`): [`Refusal`](index.md#refusal) \| [`SvmTx`](#svmtx)
 
-Decodes a legacy or v0 wire transaction of at most 1,232 bytes.
+Decodes a legacy or v0 wire transaction of at most 1,232 bytes; a longer one is `svm/tx-too-large`. Bytes that are not
+one well-formed transaction are `svm/tx-malformed`, as is a v0 message with an address table lookup that names no
+index, which the runtime refuses ("each lookup table must be used to load at least one account").
 
 #### Parameters
 
@@ -741,14 +745,16 @@ reached that slot fails the call and the search is `complete` false. A `minConte
 
 ### svmNonceMoved()
 
-> **svmNonceMoved**(`ref`, `reader`): `Promise`\<`bigint` \| `null`\>
+> **svmNonceMoved**(`ref`, `reader`): `Promise`\<`bigint` \| [`Refusal`](index.md#refusal) \| `null`\>
 
 The context slot of the nonce account read when that read shows the durable nonce `ref.nonce` records is spent or
-gone, else null. The read is at `finalized`, and shows it at a context slot at least 150 slots past `fromSlot` when
-it finds no account, an account the System program does not own, an account that is not an initialized nonce
-account, or an initialized current-version nonce account holding another value. A legacy-version nonce account, a
-read too early, a failed or malformed read, a reference without `nonce`, a ref or reader that is not an object and a
-reader for another network are null. One call.
+gone; null when it does not show that; and `svm/unreadable`, a read to repeat, when the read is rejected or answers
+neither documented shape, as every read of `SvmReader.account` takes it. The read is at `finalized`, and shows it at
+a context slot at least 150 slots past `fromSlot` when it finds no account, an account the System program does not
+own, an account that is not an initialized nonce account, or an initialized current-version nonce account holding
+another value. A legacy-version nonce account and a read too early are null. A reference without `nonce` or with a
+`fromSlot` that is not a slot, a ref or reader that is not an object, and a reader for another network are null, with
+nothing read. One call.
 
 The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. A
 lookup shows a transaction absent only up to the slot its node had reached, so a lookup of the named transaction that
@@ -765,7 +771,7 @@ found, shows the message never landed.
 
 #### Returns
 
-`Promise`\<`bigint` \| `null`\>
+`Promise`\<`bigint` \| [`Refusal`](index.md#refusal) \| `null`\>
 
 ***
 

@@ -247,7 +247,9 @@ it matches each later payment to an open channel by `channel.ref`, and so to tha
 worth, and when to settle, are the seller's to decide under the scheme. The channel members classify a payment and
 name its channel; none of them reads a voucher's amount.
 
-**The buyer** keeps the ATR's bytes it compared at the opening, and the opening itself. On MPP, a session challenge
+**The buyer** keeps the ATR's bytes it compared at the opening, and the opening itself. On `mpp/session/solana`, both
+sides keep, as the opening, the credential `fetchPresented` returned, with its `tables`
+([Reading settlement](#reading-settlement)). On MPP, a session challenge
 that names a `channelId` resumes a channel (`sessionResume` reads it on the MPP sessions on EVM, Tempo, Hedera, Solana
 and the XRP Ledger): the buyer pays it with a voucher only for a channel it opened for an ATR it compared.
 
@@ -284,17 +286,28 @@ name the channel, is the exception: the signature fixes the table and the index,
 `not-a-close` only from the read at `finalized`, and as pending `not-final` from the read at `confirmed`.
 On `mpp/session/solana`, `fetchPresented(credential, reader)` reads each address lookup table the opening's message
 names, once, through the reader's `account` (`getAccountInfo` at `finalized`), and returns the credential with `tables`:
-for each lookup in order, the table's address and its entries at the lookup's writable and read-only indexes. `bound`,
-`reference` and `buildWithin` read the `open`'s accounts from the static keys, then every lookup's writable entries, then
-every lookup's read-only entries, the order the runtime loads them in. The read at `finalized` fixes what each index
-names: the address lookup table program only appends entries, and a closed table's address never holds a table again,
-while an entry written in a block that is not finalized can differ on another fork. A table owned by another program,
-whose data is not an initialized table, whose deactivation slot is set, or that holds no entry at an index the message
-names and has no authority to extend it, is `svm/table-unusable`, as is a loaded address that repeats a static key or
-another loaded address: the runtime refuses each lookup. No account at a table's address, or no entry at an index of a
-table its authority can still extend, is `svm/not-found`, a read to repeat. An opening whose message has no lookups gets
-`tables` empty, with nothing read; `build`'s `complete`, which reads no table, refuses an `open` whose message has
-lookups with `svm/read-first`, and the buyer checks that credential through `fetchPresented` and `bound`.
+for each lookup in order, the table's address and its entries at the lookup's writable and read-only indexes. Before
+any read, it checks what needs no account, as `bound` does: the one `open`, its salt, the `channelId` and
+`authentication`, so an opening that fails one gets its code, such as `svm/open-not-found` or
+`mpp/carrier-not-challenge`, whatever its lookups hold. `bound`, `reference` and `buildWithin` read the `open`'s
+accounts from the static keys, then every lookup's writable entries, then every lookup's read-only entries, the order
+the runtime loads them in. The read at `finalized` fixes what each index names: the address lookup table program only
+appends entries, and a closed table's address never holds a table again, while an entry written in a block that is not
+finalized can differ on another fork. A table owned by another program, whose data is not an initialized table, or
+that holds no entry at an index the message names and has no authority to extend it, is `svm/table-unusable`, as is a
+loaded address that repeats a static key or another loaded address: the runtime refuses each such lookup. A table
+whose deactivation slot is set is `svm/table-unusable` too, because the opening may land after the table stops
+resolving: the runtime loads from it only until that slot leaves the `SlotHashes` sysvar, which holds the slots of the
+last 512 blocks, nothing makes it active again, and a durable nonce keeps an opening valid with no expiry. No account
+at a table's address, an account there that the System program owns with no data (a table can still be created
+there), or no entry at an index of a table its authority can still extend, is `svm/not-found`, a read to repeat.
+`fetchPresented` reads every table before it answers, and a `svm/table-unusable` in one lookup comes before a read to
+repeat in another. An opening whose message has no lookups gets `tables` empty, with nothing read; `build`'s
+`complete`, which reads no table, refuses an `open` whose message has lookups with `svm/read-first`, and the buyer
+checks that credential through `fetchPresented` and `bound`. Both sides keep the credential `fetchPresented` returned,
+with its `tables`, as the opening for the life of the channel, and pass it to `bound`, `reference` and `buildWithin`: a
+later read gives each table as it stands then, and once the table's authority deactivates or closes it, that read is
+`svm/table-unusable` or `svm/not-found`, and no later read gives the channel's accounts.
 On `mpp/session/hedera`, `fetchPresented`, which reads the
 opening's receipt before `bound`, refuses a revert by the same mark: an opening that reverted is `hedera/reverted` only
 once its block is at or below the reader's `finalized` mark, and `hedera/not-final`, a read to repeat, above that mark

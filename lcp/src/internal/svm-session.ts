@@ -12,6 +12,7 @@ import {
   keyString,
   landedAt,
   type SolanaNetwork,
+  type SvmInstruction,
   type SvmReader,
   type SvmTx,
 } from "./svm.js";
@@ -56,20 +57,25 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
  * account, and this function reads no table. `mpp/session/solana`'s `fetchPresented` reads an opening's tables.
  */
 export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: string } | Refusal {
-  const open = readOpen(tx, program);
+  const ix = openInstruction(tx, program);
+  if (isRefusal(ix)) return ix;
+  const open = openAccounts(ix, tx.keys);
   return isRefusal(open) ? open : { salt: open.salt, channel: open.channel };
 }
 
+/** The `open` instruction `openInstruction` selects, and its salt. */
+export interface OpenInstruction {
+  ix: SvmInstruction;
+  salt: bigint;
+}
+
 /**
- * `openOf`'s read, with the instruction's `authorizedSigner` (account 4), each account read from `keys`: the message's
- * static keys, or every key its instructions may index once its address table lookups are resolved (`loadedKeys`). The
- * signer is undefined for an index past `keys`.
+ * The one top-level instruction of `program` whose data starts with `OPEN_DISCRIMINATOR`, with at least 33 bytes of
+ * data and 6 accounts, and its salt, read from the message alone: an invalid program key, no such instruction or more
+ * than one, or a channel (account 5) index past `keyCount`, the number of keys the message's instructions may index
+ * (its static keys, by default, and as many as its address table lookups load), is `svm/open-not-found`.
  */
-export function readOpen(
-  tx: SvmTx,
-  program: string,
-  keys: readonly Uint8Array[] = tx.keys,
-): { salt: bigint; signer: string | undefined; channel: string } | Refusal {
+export function openInstruction(tx: SvmTx, program: string, keyCount: number = tx.keys.length): OpenInstruction | Refusal {
   const programKey = keyBytes(program);
   if (programKey === null) return refusal("svm/open-not-found");
   const opens = tx.instructions.filter(
@@ -81,12 +87,25 @@ export function readOpen(
   );
   if (opens.length !== 1) return refusal("svm/open-not-found");
   const ix = opens[0]!;
-  const channel = keys[ix.accounts[OPEN_CHANNEL_ACCOUNT]!];
-  if (channel === undefined) return refusal("svm/open-not-found");
+  if (ix.accounts[OPEN_CHANNEL_ACCOUNT]! >= keyCount) return refusal("svm/open-not-found");
   let salt = 0n;
   for (let i = 8; i >= 1; i--) salt = (salt << 8n) | BigInt(ix.data[i]!);
-  const signer = keys[ix.accounts[OPEN_SIGNER_ACCOUNT]!];
-  return { salt, signer: signer === undefined ? undefined : keyString(signer), channel: keyString(channel) };
+  return { ix, salt };
+}
+
+/**
+ * The selected `open`'s salt, `authorizedSigner` (account 4) and channel (account 5), each account read from `keys`:
+ * the message's static keys, or every key its instructions may index once its address table lookups are resolved
+ * (`loadedKeys`). The signer is undefined for an index past `keys`; a channel index past them is `svm/open-not-found`.
+ */
+export function openAccounts(
+  open: OpenInstruction,
+  keys: readonly Uint8Array[],
+): { salt: bigint; signer: string | undefined; channel: string } | Refusal {
+  const channel = keys[open.ix.accounts[OPEN_CHANNEL_ACCOUNT]!];
+  if (channel === undefined) return refusal("svm/open-not-found");
+  const signer = keys[open.ix.accounts[OPEN_SIGNER_ACCOUNT]!];
+  return { salt: open.salt, signer: signer === undefined ? undefined : keyString(signer), channel: keyString(channel) };
 }
 
 /**

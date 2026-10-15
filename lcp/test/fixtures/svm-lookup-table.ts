@@ -1,8 +1,8 @@
 // Composes, with @solana/kit, version-0 messages whose channel-program accounts come from an address lookup table:
 // compressTransactionMessageUsingAddressLookupTables moves every non-signer account one table holds past the static
-// keys. The table's address is the one kit's documentation of that function uses; nothing here reads a table. TABLE_B, a
-// second table's address, is one the address lookup table program gave a table in LiteSVM
-// (mpp-session-hedera-solana-xrpl.json SV6.tables.channel21.madeAt).
+// keys. The table's address is the one kit's documentation of that function uses; nothing here reads a table. TABLE_B and
+// TABLE_C, a second and a third table's address, are ones the address lookup table program gave a table in LiteSVM
+// (mpp-session-hedera-solana-xrpl.json SV6.tables.channel21.madeAt and SV6.tables.signer.madeAt).
 import { ed25519 } from "@noble/curves/ed25519.js";
 import {
   AccountRole,
@@ -25,6 +25,7 @@ import {
 
 export const TABLE = "4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW";
 export const TABLE_B = "2n2CjmSLBU2DQVKs1EFfWiaeqqsPKvMc39vN732p21rj";
+export const TABLE_C = "Fjjrh38juMUN3ahJyMYR1a87EqupVf29R4nwT8kAfKtk";
 const PROGRAM = "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX";
 const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
@@ -66,16 +67,18 @@ export function tableClose(payee: string, channel: string, recentBlockhash: stri
  * `open`): the open's account 4 set to `signer`, read-only, and accounts 5 and 7 to the channel and escrow derived for
  * it (the channel over the seeds "channel", payer, payee, mint, signer, salt and openSlot; the escrow the channel's
  * associated token account for the mint), with `tabled` (account 4 or account 5) taken from TABLE, or none, or, for
- * "both", account 4 from TABLE_B and account 5 from TABLE. TABLE holds `before` ahead of its account (none by default),
- * so that account is its entry `before.length`.
+ * "both", account 4 from TABLE_B and account 5 from TABLE, or, for "three", those two and account 7, the escrow, from
+ * TABLE_C. TABLE holds `before` ahead of its account (none by default), so that account is its entry `before.length`.
+ * `discriminator`, when given, replaces the `open`'s first data byte (1).
  * The payer, Ed25519 seed `payerSeed`, signs the message in the second signature slot; the fee payer's slot is zero.
  */
 export async function tableOpening(
   openingBase64: string,
   signer: string,
-  tabled: "signer" | "channel" | "both" | null,
+  tabled: "signer" | "channel" | "both" | "three" | null,
   payerSeed: Uint8Array,
   before: readonly string[] = [],
+  discriminator?: number,
 ): Promise<{ wireBase64: string; channel: string; staticKeys: number }> {
   const opening = Buffer.from(openingBase64, "base64");
   const plain = decompileTransactionMessage(getCompiledTransactionMessageDecoder().decode(opening.subarray(1 + 64 * opening[0]!)));
@@ -93,10 +96,20 @@ export async function tableOpening(
   const accounts = metas.map((a, i) =>
     i === 4 ? { address: address(signer), role: AccountRole.READONLY } : i === 5 ? { ...a, address: channel } : i === 7 ? { ...a, address: escrow } : a,
   );
-  const changed = { ...plain, instructions: [plain.instructions[0]!, plain.instructions[1]!, { ...ix, accounts }] } as typeof plain;
-  const tabledAccount: Address[] = tabled === "signer" ? [address(signer)] : tabled === "channel" || tabled === "both" ? [channel] : [];
+  const opened = discriminator === undefined ? data : Uint8Array.of(discriminator, ...data.subarray(1));
+  const changed = {
+    ...plain,
+    instructions: [plain.instructions[0]!, plain.instructions[1]!, { ...ix, accounts, data: opened }],
+  } as typeof plain;
+  const tabledAccount: Address[] =
+    tabled === "signer" ? [address(signer)] : tabled === "channel" || tabled === "both" || tabled === "three" ? [channel] : [];
   const inTable: Address[] = tabledAccount.length === 0 ? [] : [...before.map((a) => address(a)), ...tabledAccount];
-  const tables = tabled === "both" ? { [address(TABLE)]: inTable, [address(TABLE_B)]: [address(signer)] } : { [address(TABLE)]: inTable };
+  const tables =
+    tabled === "three"
+      ? { [address(TABLE)]: inTable, [address(TABLE_B)]: [address(signer)], [address(TABLE_C)]: [escrow] }
+      : tabled === "both"
+        ? { [address(TABLE)]: inTable, [address(TABLE_B)]: [address(signer)] }
+        : { [address(TABLE)]: inTable };
   const compressed = compressTransactionMessageUsingAddressLookupTables(changed, tables);
   const compiled = compileTransactionMessage(compressed);
   const bytes = new Uint8Array(getCompiledTransactionMessageEncoder().encode(compiled));
@@ -105,4 +118,23 @@ export async function tableOpening(
   wire.set(ed25519.sign(bytes, payerSeed), 65);
   wire.set(bytes, 129);
   return { wireBase64: Buffer.from(wire).toString("base64"), channel, staticKeys: compiled.staticAccounts.length };
+}
+
+/**
+ * `openingBase64` (an opening of two signers, a version-0 message) with one more address table lookup, of `table`,
+ * naming no writable and no read-only index, which the runtime's sanitize refuses: kit's compiled-message decoder and
+ * encoder write it. The payer, Ed25519 seed `payerSeed`, signs the message in the second signature slot; the fee
+ * payer's slot is zero.
+ */
+export function emptyLookup(openingBase64: string, table: string, payerSeed: Uint8Array): string {
+  const opening = Buffer.from(openingBase64, "base64");
+  const compiled = getCompiledTransactionMessageDecoder().decode(opening.subarray(1 + 64 * opening[0]!));
+  if (compiled.version !== 0) throw new Error("the opening is a v0 message");
+  const lookups = [...(compiled.addressTableLookups ?? []), { lookupTableAddress: address(table), writableIndexes: [], readonlyIndexes: [] }];
+  const bytes = new Uint8Array(getCompiledTransactionMessageEncoder().encode({ ...compiled, addressTableLookups: lookups }));
+  const wire = new Uint8Array(1 + 128 + bytes.length);
+  wire[0] = 2;
+  wire.set(ed25519.sign(bytes, payerSeed), 65);
+  wire.set(bytes, 129);
+  return Buffer.from(wire).toString("base64");
 }

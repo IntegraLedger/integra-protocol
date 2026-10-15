@@ -228,3 +228,8 @@ seller changes it. In both, the payment may already have moved, so the seller se
 pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a 402, and
 neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem` gives it 500
 `internal-payment-error`, never a 402.
+
+On `mpp/session/solana`, both sides keep the credential `fetchPresented` returned, with its `tables`, as the opening
+for the life of the channel, and pass it to `bound`, `reference` and `buildWithin`: a later read gives each address
+lookup table as it stands then, and once the table's authority deactivates or closes it, that read is
+`svm/table-unusable` or `svm/not-found`, and no later read gives the channel's accounts.

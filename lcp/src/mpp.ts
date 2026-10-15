@@ -114,7 +114,13 @@ export { chargeNearIntents } from "./mpp-nearintents.js";
 export { chargeSolana } from "./mpp-solana.js";
 export { chargeStellar } from "./mpp-stellar.js";
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
-export { sessionHedera, sessionSolana, sessionXrpl, type RailSessionUnsigned } from "./mpp-session-rails.js";
+export {
+  sessionHedera,
+  sessionSolana,
+  sessionXrpl,
+  type RailSessionUnsigned,
+  type SolanaTablesCredential,
+} from "./mpp-session-rails.js";
 export {
   evmChannelId,
   keySearch,
