@@ -661,7 +661,7 @@ jobs:
       - name: Every page, in both themes at two widths, and the search dialog with each result selected, fail none of axe-core's WCAG 2.0, 2.1 and 2.2 A and AA rules
         working-directory: website
         run: node scripts/check-accessibility.mjs
-      - name: Every page loads under the headers out/_headers gives it with no content policy violation, is never framed, and a data: or blob: source is refused
+      - name: "Every page loads under the headers out/_headers gives it with no content policy violation, is never framed, and a data: or blob: source is refused"
         working-directory: website
         run: node scripts/check-headers.mjs
       - name: Every inline script of every page is hashed in the page's own script policy, which allows nothing else, and every file that is not a page runs no script
