@@ -263,7 +263,7 @@ describe("builds and reads that check what needs no peer first, with the peer", 
 describe("every function of a pairing with an optional peer, up to the step that decodes or writes with it, with the peer", () => {
   it("x402/exact/tvm: pairingOf, read, advertise, bound, reference and build", async () => {
     const f = { pairingOf, ...exactTvm };
-    for (const row of rowsOf(tvmPeerStepRows(), "peer-free-inputs.ts", { exact: 34 })) {
+    for (const row of rowsOf(tvmPeerStepRows(), "peer-free-inputs.ts", { exact: 36 })) {
       expect([row.case, await row.call(f as never)]).toEqual([row.case, row.expect]);
     }
   });

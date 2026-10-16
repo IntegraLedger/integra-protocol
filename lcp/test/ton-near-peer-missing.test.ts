@@ -73,7 +73,7 @@ describe("without the TON and NEAR peers", () => {
   it("TON: pairingOf, read, advertise, bound, reference and build answer as with the peer, up to the step that decodes or writes", { timeout: IMPORT_MS }, async () => {
     const { exactTvm } = await import("../src/tvm.js");
     const f = { pairingOf: root.pairingOf, ...exactTvm };
-    const rows = rowsOf(tvmPeerStepRows(), "peer-free-inputs.ts", { exact: 34 });
+    const rows = rowsOf(tvmPeerStepRows(), "peer-free-inputs.ts", { exact: 36 });
     for (const row of rows) {
       expect([row.case, await row.call(f as never)]).toEqual([row.case, row.without ?? row.expect]);
     }
@@ -176,7 +176,7 @@ describe("without the TON and NEAR peers", () => {
   it("TON and NEAR: build answers a malformed choice member as it does with the peer, whatever the option", { timeout: IMPORT_MS }, async () => {
     const { exactTvm } = await import("../src/tvm.js");
     const { exactNear } = await import("../src/near.js");
-    for (const [pairing, V, count] of [[exactTvm, TVM, 18], [exactNear, NEAR, 12]] as const) {
+    for (const [pairing, V, count] of [[exactTvm, TVM, 21], [exactNear, NEAR, 12]] as const) {
       for (const row of rowsOf(memberFirstChoices(pairing.id, V.fixed.O), "peer-free-inputs.ts", { exact: count })) {
         expect([pairing.id, row.case, await pairing.build(row.choice as never, V.fixed.H)]).toEqual([
           pairing.id,

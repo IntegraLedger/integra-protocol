@@ -554,6 +554,7 @@ export function choiceMembers(): { id: string; members: Record<string, unknown>;
         { case: "a seqno below 0", member: "seqno", value: -1, expect: malformed },
         { case: "a now that is not an integer", member: "now", value: 1.5, expect: malformed },
         { case: "an attached value of 2^120 nanotons", member: "attachNanotons", value: 2n ** 120n, expect: malformed },
+        { case: "a state init that is not base64", member: "stateInit", value: "AA=A", expect: "tvm/boc-malformed" },
       ],
     },
     {
@@ -1401,6 +1402,16 @@ export function tvmPeerStepRows(): PeerStepRow<TvmFns>[] {
       case: "two faults: build of a choice whose state init's one cell names itself and whose attachNanotons is not above forwardTonAmount",
       call: async (f) => tonBuild(f, { stateInit: TON_SELF_REFERENCE }, tonWith({ forwardTonAmount: TVM.fixed.attachNanotons }, TON_PLACED)),
       expect: "tvm/value-too-low",
+    },
+    {
+      case: "two faults: build of a choice of an option whose forwardPayload is empty, with a state init that is not base64",
+      call: async (f) => tonBuild(f, { stateInit: "AA=A" }, tonWith({ forwardPayload: "" }, TON_PLACED)),
+      expect: "tvm/boc-malformed",
+    },
+    {
+      case: "two faults: build of a choice whose wallet's workchain, 1, is not one the network holds, with a state init that is not base64",
+      call: async (f) => tonBuild(f, { wallet: `1:${TON_HEX}`, stateInit: "AA=A" }),
+      expect: "tvm/boc-malformed",
     },
   ];
 }

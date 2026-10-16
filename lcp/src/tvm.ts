@@ -1162,12 +1162,13 @@ function workchainOf(s: string): number {
 /**
  * The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. Every check
  * that needs no peer comes first: H; the form of the choice's wallets, `walletId`, `seqno`, `now` and
- * `attachNanotons`, each `x402/option-malformed`; its document and option (`chosen`, whose filter needs no peer); the
- * option's forward payload's bytes (`bagOf`, else `tvm/carrier-mismatch`); the wallets' workchains and `now` with the
- * option's timeout, each `x402/option-malformed`; a state init given as a BoC, its bytes (`bagOf`); and the attached
- * value against the option's forward amount (`tvm/value-too-low`). Then @ton/core decodes the forward payload, which
- * must be the hash's comment cell, and the state init, and writes the request's cells: without it the choice is
- * `tvm/peer-missing` only there. The state init's fields and hash against the wallet come last.
+ * `attachNanotons`, each `x402/option-malformed`, and of a state init given as a BoC, its bytes (`bagOf`); its document
+ * and option (`chosen`, whose filter needs no peer); the option's forward payload's bytes (`bagOf`, else
+ * `tvm/carrier-mismatch`); the wallets' workchains and `now` with the option's timeout, each `x402/option-malformed`;
+ * and the attached value against the option's forward amount (`tvm/value-too-low`). Then @ton/core decodes the forward
+ * payload, which must be the hash's comment cell, and the state init, and writes the request's cells: without it the
+ * choice is `tvm/peer-missing` only there. A state init given as an object waits for @ton/core, which alone tells its
+ * `Cell`. The state init's fields and hash against the wallet come last.
  */
 async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   const nh = normalHash(h);
@@ -1179,6 +1180,9 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
     return refusal("x402/option-malformed");
   }
   if (typeof attachNanotons !== "bigint" || attachNanotons >= COINS_LIMIT) return refusal("x402/option-malformed");
+  // A state init given as an object may be @ton/core's cell, which only @ton/core tells; any other value is read as a BoC.
+  const initBag = stateInit === undefined || (typeof stateInit === "object" && stateInit !== null) ? undefined : bagOf(stateInit);
+  if (isRefusal(initBag)) return initBag;
   const ok = chosen(required, accepted, check);
   if (ok !== true) return ok;
   const extra = accepted.extra!;
@@ -1190,9 +1194,6 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   }
   const validUntil = now + accepted.maxTimeoutSeconds;
   if (!isUint32(validUntil)) return refusal("x402/option-malformed");
-  // A state init given as an object may be @ton/core's cell, which only @ton/core tells; any other value is read as a BoC.
-  const initBag = stateInit === undefined || (typeof stateInit === "object" && stateInit !== null) ? undefined : bagOf(stateInit);
-  if (isRefusal(initBag)) return initBag;
   const forwardTon = extra["forwardTonAmount"] === undefined ? 0n : BigInt(extra["forwardTonAmount"] as string);
   if (attachNanotons <= forwardTon) return refusal("tvm/value-too-low");
   if (peer === undefined) return refusal("tvm/peer-missing");
