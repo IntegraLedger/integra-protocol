@@ -2,17 +2,18 @@
 // the checks that load its pages in the pinned browser:
 // - `/` is index.html, `/<page>` is <page>.html, and any other address is the file at that path;
 // - an address with no file is answered 404 with 404.html (`not_found_handling = "404-page"`);
-// - each response carries the headers of every rule of out/_headers whose path matches its address, in the file's
-//   order, a header that two rules set taking both values joined by a comma, and a rule's Content-Type replacing the
-//   one the file's extension gives (https://developers.cloudflare.com/workers/static-assets/headers/). A rule that
-//   detaches a header (`! Name`) is refused: the documentation does not say how a detach orders with the rules that set
-//   the header, so this server does not guess.
-// worker.js is not run: it answers only a request that asks for Markdown, and a browser loading a page asks for HTML.
+// - each response carries the headers out/_headers gives its address, as ../headers.mjs reads and matches the rules
+//   (every rule whose path matches applies, and a header that two rules set takes both values joined by a comma), a
+//   rule's Content-Type replacing the one the file's extension gives.
+// worker.js is not run: it answers only a request that asks for Markdown, and a browser loading a page asks for HTML;
+// the responses it returns carry the same headers, by the same rules (scripts/check-worker-headers.mjs).
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, relative, resolve, sep } from "node:path";
+import { headersFor, parseHeaders } from "../headers.mjs";
 
-const TYPES = {
+/** The Content-Type the static assets give a file, by its extension. */
+export const TYPES = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".ico": "image/x-icon",
@@ -26,35 +27,8 @@ const TYPES = {
   ".xml": "application/xml; charset=utf-8",
 };
 
-/** The rules of a `_headers` file, in order: each path pattern, as a regular expression, and its headers. */
-export function parseHeaders(text) {
-  const rules = [];
-  for (const line of text.split("\n")) {
-    if (line.trim() === "" || line.trimStart().startsWith("#")) continue;
-    if (!/^\s/.test(line)) {
-      const pattern = line.trim().replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*");
-      rules.push({ path: line.trim(), match: new RegExp(`^${pattern}$`), headers: [] });
-    } else if (rules.length > 0) {
-      if (line.trimStart().startsWith("!")) throw new Error(`_headers detaches a header, which this server does not serve: ${line.trim()}`);
-      const colon = line.indexOf(":");
-      rules.at(-1).headers.push([line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim()]);
-    }
-  }
-  return rules;
-}
-
-/** The headers the rules give an address: a header named by more than one rule takes their values joined by commas. */
-export function headersFor(rules, address) {
-  const headers = {};
-  for (const rule of rules) {
-    if (!rule.match.test(address)) continue;
-    for (const [name, value] of rule.headers) headers[name] = headers[name] === undefined ? value : `${headers[name]}, ${value}`;
-  }
-  return headers;
-}
-
 /** The file that serves an address, or undefined. */
-function fileFor(outDir, address) {
+export function fileFor(outDir, address) {
   const path = resolve(outDir, `.${decodeURIComponent(address)}`);
   if (path !== outDir && !path.startsWith(outDir + sep)) return undefined;
   const candidates = address === "/" ? [join(outDir, "index.html")] : [path, `${path}.html`, join(path, "index.html")];

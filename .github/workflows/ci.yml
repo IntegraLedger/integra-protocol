@@ -664,6 +664,9 @@ jobs:
       - name: Every inline script of every page is hashed in the page's own script policy, which allows nothing else, and every file that is not a page runs no script
         working-directory: website
         run: node scripts/check-script-policy.mjs
+      - name: Every response worker.js returns carries the headers out/_headers gives the address asked for, and the check made after a deploy finds a header missing
+        working-directory: website
+        run: node scripts/check-worker-headers.mjs
       - name: Two builds of one commit are byte-equal
         working-directory: website
         run: |

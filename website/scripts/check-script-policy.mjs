@@ -20,7 +20,8 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-import { headersFor, pagesOf, parseHeaders } from "./serve-export.mjs";
+import { headersFor, parseHeaders } from "../headers.mjs";
+import { pagesOf } from "./serve-export.mjs";
 
 const OUT = "out";
 /** Cloudflare's limits on a `_headers` file. */
