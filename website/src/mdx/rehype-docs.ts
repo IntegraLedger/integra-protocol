@@ -6,6 +6,9 @@ import { renderMermaid } from "./mermaid";
 interface HastNode {
   type: string;
   tagName?: string;
+  /** A JSX element's name, and its attributes. */
+  name?: string | null;
+  attributes?: { type: string; name?: string; value?: unknown }[];
   value?: string;
   properties?: { className?: unknown } & Record<string, unknown>;
   data?: { meta?: string; estree?: unknown };
@@ -177,10 +180,30 @@ export function hasMetaFlag(meta: unknown, flag: string): boolean {
 }
 
 /**
+ * A heading's text as a name: its text, the alt text of each image in it, and no footnote reference. An image is an
+ * `img` element, or the JSX `img` element fumadocs' image plugin makes of a Markdown image; a footnote reference is the
+ * link remark-gfm marks `data-footnote-ref`, whose text is the note's number.
+ */
+function headingName(node: HastNode): string {
+  if (node.type === "text") return node.value ?? "";
+  if (node.properties?.dataFootnoteRef) return "";
+  if (node.type === "element" && node.tagName === "img") {
+    return typeof node.properties?.alt === "string" ? node.properties.alt : "";
+  }
+  if ((node.type === "mdxJsxTextElement" || node.type === "mdxJsxFlowElement") && node.name === "img") {
+    const alt = node.attributes?.find((a) => a.type === "mdxJsxAttribute" && a.name === "alt")?.value;
+    return typeof alt === "string" ? alt : "";
+  }
+  return (node.children ?? []).map(headingName).join("");
+}
+
+/**
  * Names each table by the heading it sits under, as `data-name`, which the table's region takes as its accessible name
  * (src/components/Table.tsx). Tables that would share a name, such as two under one heading, are told apart by their
- * place among them ("Codes, table 2 of 3"), so each region of a page has a name of its own. A table before any heading
- * is named by the page's title.
+ * place among them ("Codes, table 2 of 3"), so each region of a page has a name of its own. A heading's name is its
+ * text, with each image's alt text and without its footnote references (`headingName`). A table before any heading is
+ * named by the page's title, and a table under a heading with no name is named "Table".
+ * scripts/check-table-names.mjs checks these names through the site's own Markdown pipeline.
  */
 export function rehypeTableNames() {
   return (tree: HastNode, file: { data: object }) => {
@@ -190,7 +213,7 @@ export function rehypeTableNames() {
     const visit = (node: HastNode) => {
       for (const child of node.children ?? []) {
         if (child.type === "element" && /^h[1-6]$/.test(child.tagName ?? "")) {
-          heading = textOf(child).replace(/\s+/g, " ").trim() || heading;
+          heading = headingName(child).replace(/\s+/g, " ").trim() || "Table";
         } else if (child.type === "element" && child.tagName === "table") {
           tables.push({ table: child, name: heading });
         } else {

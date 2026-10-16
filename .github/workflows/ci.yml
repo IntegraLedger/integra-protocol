@@ -652,6 +652,9 @@ jobs:
       - name: The code highlighting gives one result however long tokenizing takes, in the themes' colours, and no other source highlights code
         working-directory: website
         run: node scripts/check-highlighting.mjs
+      - name: Each table is named by the heading it sits under, its images' alt text in and its footnote references out, compiled as the site compiles a page
+        working-directory: website
+        run: node scripts/check-table-names.mjs
       - name: The diagrams are drawn in the pinned browser and font alone, and the site serves that font
         working-directory: website
         run: node scripts/check-diagrams.mjs
