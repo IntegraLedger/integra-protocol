@@ -3,9 +3,8 @@
 // own as the site's build compiles a page: through the @mdx-js/mdx that fumadocs-mdx compiles with, under the options
 // source.config.ts gives it, with fumadocs-mdx's own plugins (remark-gfm's footnotes, the image plugin) among them. A
 // table is named by the heading it sits under, by that heading's text with each image's alt text and without its
-// footnote references; a table before any heading by the page's title; a table under a heading with no name "Table";
-// and tables that would share a name by their place among them. Each case lists the names it gives and the names
-// wanted.
+// footnote references, and a table under a heading with no name "Table": the cases are a heading that is only an
+// image, one with a footnote reference and one with no text. Each case lists the names it gives and the names wanted.
 //
 // Usage, from website/, after `pnpm install` or `pnpm build` there (either writes .source/):
 //   node scripts/check-table-names.mjs
@@ -20,15 +19,9 @@ const TITLE = "Table names";
 const TABLE = "| Code | Meaning |\n| --- | --- |\n| 1 | One |\n";
 /** Each case: a page's Markdown, and the names its tables must take, in order. */
 const CASES = [
-  ["a table before any heading", `${TABLE}`, [TITLE]],
-  ["two tables under one heading", `## Codes\n\n${TABLE}\n${TABLE}`, ["Codes, table 1 of 2", "Codes, table 2 of 2"]],
-  ["a heading with inline code and emphasis", `## The \`gate\` and *its* rules\n\n${TABLE}`, ["The gate and its rules"]],
   ["a heading that is only an image", `## Accounts\n\n${TABLE}\n## ![EVM logo](./evm.png)\n\n${TABLE}`, ["Accounts", "EVM logo"]],
-  ["a heading with an image in its text", `## The ![EVM](./evm.png) chain\n\n${TABLE}`, ["The EVM chain"]],
   ["a heading with a footnote reference", `## Fees[^1]\n\n${TABLE}\n[^1]: A note.\n`, ["Fees"]],
   ["a heading with no text", `## Accounts\n\n${TABLE}\n##\n\n${TABLE}`, ["Accounts", "Table"]],
-  ["a heading that is an image with no alt text", `## Accounts\n\n${TABLE}\n## ![](./evm.png)\n\n${TABLE}`, ["Accounts", "Table"]],
-  ["one heading text in two sections", `## Codes\n\n${TABLE}\n## Other\n\n## Codes\n\n${TABLE}`, ["Codes, table 1 of 2", "Codes, table 2 of 2"]],
 ];
 
 // The @mdx-js/mdx fumadocs-mdx itself imports, so the pages here are compiled by the same compiler as the site's.

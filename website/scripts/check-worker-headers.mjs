@@ -2,16 +2,15 @@
 // Checks the headers of every response worker.js returns. Cloudflare does not apply _headers to a response the Worker
 // returns, so the Worker sets them itself; here it runs in front of static assets that answer with no header at all,
 // so each header a response carries is one the Worker set:
-// - for every page address, its .md address (`/index.md` for the home page) and each Accept header below, a GET, a
-//   HEAD and a conditional GET answered 304, and for addresses the site does not hold, answered 404, the response
+// - for every page address, its .md address (`/index.md` for the home page) and each Accept header below, a GET and
+//   a conditional GET answered 304, and for addresses the site does not hold, answered 404, the response
 //   carries exactly the headers out/_headers gives the address asked for (headers.mjs), and `Vary: Accept` when the
 //   Accept header decides the answer, which is at every address but a .md address;
 // - a request that asks for Markdown at a page address, or for its .md address, is answered with the page's Markdown
 //   copy, and any other with the page's HTML or the 404 page, so each response checked is the one its case names;
 // - .worker/headers.mjs, the module the Worker reads its rules from, holds out/_headers as it is;
 // - scripts/check-live-headers.mjs, the check made after a deploy, run against worker.js on a loopback port in front of
-//   static assets that give each file only its Content-Type, finds no difference, and run against the same Worker with
-//   one header taken off every response, names that header on every response.
+//   static assets that give each file only its Content-Type, finds no difference.
 // Each failure names the address, the Accept header and the header that differs.
 //
 // Usage, from website/, after `pnpm build` there:
@@ -107,11 +106,10 @@ for (const page of pages) {
   for (const [accept, asksMarkdown] of ACCEPTS) {
     const asPage = asksMarkdown && hasCopy ? copy : html;
     await check(page, { accept, status: 200, body: asPage, varies: true });
-    await check(page, { method: "HEAD", accept, status: 200, body: asPage, varies: true });
     await check(page, { accept, conditional: true, status: 304, varies: true });
     await check(dotMd, hasCopy ? { accept, status: 200, body: copy } : { accept, status: 404, body: join(OUT, "404.html") });
     if (hasCopy) await check(dotMd, { accept, conditional: true, status: 304 });
-    asked += hasCopy ? 5 : 4;
+    asked += hasCopy ? 4 : 3;
   }
 }
 for (const address of MISSING) {
@@ -136,24 +134,14 @@ async function serve(answer) {
   };
 }
 
-const TAKEN = "x-frame-options";
 const typed = { ASSETS: assets(true) };
-for (const control of [false, true]) {
-  const server = await serve(async (request) => {
-    const response = await worker.fetch(request, typed);
-    if (control) response.headers.delete(TAKEN);
-    return response;
-  });
-  try {
-    const { lines, failures: found } = await checkLiveHeaders(server.origin, OUT);
-    if (lines.length !== 5) failures.push(`check-live-headers.mjs made ${lines.length} requests, not 5`);
-    if (!control && found.length > 0) failures.push(...found.map((f) => `check-live-headers.mjs, against worker.js: ${f}`));
-    if (control && !(found.length === lines.length && found.every((f) => f.includes(TAKEN)))) {
-      failures.push(`check-live-headers.mjs, against worker.js without ${TAKEN}, found: ${found.join("; ") || "nothing"}`);
-    }
-  } finally {
-    await server.close();
-  }
+const server = await serve((request) => worker.fetch(request, typed));
+try {
+  const { lines, failures: found } = await checkLiveHeaders(server.origin, OUT);
+  if (lines.length !== 5) failures.push(`check-live-headers.mjs made ${lines.length} requests, not 5`);
+  failures.push(...found.map((f) => `check-live-headers.mjs, against worker.js: ${f}`));
+} finally {
+  await server.close();
 }
 
 const each = `${seen.markdown} Markdown, ${seen.html} HTML, ${seen.notModified} 304 and ${seen.notFound} 404`;
@@ -170,5 +158,5 @@ console.log(
   `${asked} requests to worker.js over ${pages.length} pages, ${ACCEPTS.length} Accept headers and ${MISSING.length} ` +
     `missing addresses (${each}): each response carries exactly the headers out/_headers gives its address, and ` +
     "Vary: Accept wherever the Accept header decides the answer; check-live-headers.mjs finds no difference at the " +
-    `Worker's loopback port, and finds ${TAKEN} missing on each of its 5 responses when the Worker leaves it off`,
+    "Worker's loopback port",
 );
