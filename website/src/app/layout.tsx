@@ -32,6 +32,16 @@ export const metadata: Metadata = {
   alternates: {
     types: { "text/plain": [{ url: "/llms.txt", title: "llms.txt" }] },
   },
+  /**
+   * The llms.txt index that describes each page (https://llmstxt.org) is a link among the metadata tags, which every
+   * build writes in one order. React hoists a <link> written in the body into <head> in the order its chunks arrive,
+   * so it could change places with a page's robots meta between two builds. A config `icons` replaces the icon Next.js
+   * reads from app/icon.svg, so that file's address is listed here too.
+   */
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }],
+    other: [{ rel: "describedby", url: "/llms.txt", type: "text/plain" }],
+  },
 };
 
 /**
@@ -51,8 +61,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="flex min-h-screen flex-col">
-        {/* The llms.txt index that describes this page (https://llmstxt.org); React places it in <head>. */}
-        <link rel="describedby" href="/llms.txt" type="text/plain" />
         <a
           href="#main"
           className="sr-only z-50 rounded-md bg-fd-primary px-4 py-2 text-fd-primary-foreground focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
