@@ -341,7 +341,7 @@ describe("without @stellar/stellar-sdk", () => {
     const { chargeStellar } = await import("../src/mpp.js");
     const { exactStellar } = await import("../src/x402-exact-stellar.js");
     const f = { x402Bound: exactStellar.bound, x402Reference: exactStellar.reference, mppBound: chargeStellar.bound, mppReference: chargeStellar.reference };
-    const rows = rowsOf(stellarCarrierRows(), "peer-free-inputs.ts", { exact: 11 });
+    const rows = rowsOf(stellarCarrierRows(), "peer-free-inputs.ts", { exact: 13 });
     for (const row of rows) {
       expect([row.case, await row.call(f as never)]).toEqual([row.case, row.without ?? row.expect]);
     }

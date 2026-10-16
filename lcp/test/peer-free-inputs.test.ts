@@ -295,7 +295,7 @@ describe("every function of a pairing with an optional peer, up to the step that
 
   it("the Stellar pairings' bound and reference: the payTo or recipient carrier, before the transaction", async () => {
     const f = { x402Bound: exactStellar.bound, x402Reference: exactStellar.reference, mppBound: chargeStellar.bound, mppReference: chargeStellar.reference };
-    for (const row of rowsOf(stellarCarrierRows(), "peer-free-inputs.ts", { exact: 11 })) {
+    for (const row of rowsOf(stellarCarrierRows(), "peer-free-inputs.ts", { exact: 13 })) {
       expect([row.case, await row.call(f as never)]).toEqual([row.case, row.expect]);
     }
   });

@@ -1509,10 +1509,14 @@ export function stellarCarrierRows(): PeerStepRow<StellarCarrierFns>[] {
   const plainTo = (STELLAR.V4 as { case: string; envelope: string }[]).find((r) => r.case === "to is the plain seller G")!.envelope;
   const otherH = (STELLAR.V4 as { case: string; extensions: unknown }[]).find((r) => r.case === "the echoed legalContext.value is not H")!.extensions;
   const placed = CHARGE.place.expect as { request: string };
-  const mpp = (recipient?: string) => ({
-    challenge: recipient === undefined ? placed : withRequestMember(placed, "recipient", recipient),
-    payload: { type: "transaction", transaction: CHARGE.V3.envelope },
-  });
+  const mpp = (recipient?: string, transaction: string = CHARGE.V3.envelope, feePayer?: boolean) => {
+    const challenge = recipient === undefined ? placed : withRequestMember(placed, "recipient", recipient);
+    const details = { ...requestOf(placed).methodDetails, feePayer };
+    return {
+      challenge: feePayer === undefined ? challenge : withRequestMember(challenge, "methodDetails", details),
+      payload: { type: "transaction", transaction },
+    };
+  };
   const answer = (r: unknown) => codeOr(r, (x) => x);
   return [
     { case: "x402 bound of V3's payment", call: async (f) => answer(await f.x402Bound(x402(V3.envelope) as never)), expect: V3.expectBound, without: missing },
@@ -1544,6 +1548,16 @@ export function stellarCarrierRows(): PeerStepRow<StellarCarrierFns>[] {
     {
       case: "MPP reference of V3's envelope under a placed challenge whose recipient is the seller's account",
       call: async (f) => answer(await f.mppReference(mpp(issuedRecipient()) as never)),
+      expect: mismatch,
+    },
+    {
+      case: "MPP bound of the plant's envelope to the seller's account, under a placed challenge whose recipient is that account",
+      call: async (f) => answer(await f.mppBound(mpp(issuedRecipient(), CHARGE.plant.envelope) as never)),
+      expect: mismatch,
+    },
+    {
+      case: "MPP reference of the plant's envelope to the seller's account, under a placed challenge whose recipient is that account and whose feePayer is false",
+      call: async (f) => answer(await f.mppReference(mpp(issuedRecipient(), CHARGE.plant.envelope, false) as never)),
       expect: mismatch,
     },
   ];
