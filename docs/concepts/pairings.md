@@ -73,9 +73,10 @@ opening's address lookup tables, and the seller broadcasts the opening; on `mpp/
 applies first, and gives any other payment the refusal `bound` gives that fault. Where a payment has a second fault
 that `bound` finds first, in H or the challenge, the two codes differ. A session's or batch channel's `bound` reads the
 opening alone, so for any other action the reader is `channel.kind`: a payment it refuses for its own content gets its
-refusal, and one it refuses for what the challenge decides is answered. The shape gates are an MPP credential of
-`credentialOf`'s shape, at most 64 KiB as JSON and 16 arrays and objects deep; an x402 v2 payment whose `accepted` is
-an object, and whose `payload` is one too, except on `x402/exact/lnbtc`, `x402/exact/lnbtc/invoice-named` and
+refusal (a batch channel reads the payload alone, under any `accepted` option), and one a session's `channel.kind`
+refuses for what the challenge decides is answered. The shape gates are an MPP credential of `credentialOf`'s shape, at
+most 64 KiB as JSON and 16 arrays and objects deep; an x402 v2 payment whose `accepted` is an object, and whose
+`payload` is one too, except on `x402/exact/lnbtc`, `x402/exact/lnbtc/invoice-named` and
 `x402/batch-settlement/cloudflare`, which read no payload; and an object, for the checkout and card pairings (on
 `acp/checkout/delegated`, one whose `allowance` has ACP's members). Faults `bound` finds in anything else, such as H,
 the challenge, an amount or a signature, do not change the answer, so `broadcaster` does not stand in for `bound`.

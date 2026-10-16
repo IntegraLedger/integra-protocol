@@ -85,7 +85,8 @@ Who broadcasts what a payer presents under a pairing: `"payer"`, which sent the 
 applies first; any other payment gets the refusal `bound` gives that fault. Where a payment has a second fault that
 `bound` finds first, in H or the challenge, the two codes differ. A session's or batch channel's `bound` reads the
 opening alone, so for any other action the reader is `channel.kind`: a payment it refuses for its own content gets
-its refusal, and one it refuses for what the challenge decides is answered.
+its refusal (a batch channel reads the payload alone, under any `accepted` option), and one a session's
+`channel.kind` refuses for what the challenge decides is answered.
 
 ***
 

@@ -967,8 +967,9 @@ function svmTxOf(payload: Record<string, unknown>): SvmTx | undefined | Refusal 
 /**
  * A voucher is within and a refund is the close. A deposit is the opening where its channel instruction is an `open`,
  * and within where it is a `top_up`; a deposit with no transaction that decodes is `x402/payload-malformed`, and one
- * whose channel instruction does not read gets that refusal. Any other type is `x402/channel-kind-unknown`. The payment
- * is held to the pairing's filter first (`payloadOf`), and its payload read by `svmPayloadKind`.
+ * whose channel instruction does not read gets that refusal. Any other type, and a deposit whose channel instruction is
+ * a `request_close`, is `x402/channel-kind-unknown`. The payment is held to the pairing's filter first (`payloadOf`),
+ * and its payload read by `svmPayloadKind`.
  */
 function svmKind(p: BatchPaymentPayload): "open" | "within" | "close" | Refusal {
   const x = payloadOf(p, SVM_ID);
