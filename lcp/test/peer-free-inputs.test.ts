@@ -84,7 +84,7 @@ describe("recover with each rail's optional peer", () => {
 
 describe("mpp/charge/stellar's build with @stellar/stellar-sdk", () => {
   it("each choice and H it refuses before it reads the transaction", async () => {
-    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 11 })) {
+    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 15 })) {
       expect([row.case, await chargeStellar.build(row.choice as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });

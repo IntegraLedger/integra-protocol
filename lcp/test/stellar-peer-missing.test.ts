@@ -223,12 +223,12 @@ describe("without @stellar/stellar-sdk", () => {
     expect(await chargeStellar.build(choice, h)).toEqual({ refused: true, code: CODE });
   });
 
-  // build checks the choice, its challenge, H, the current ledger, the clock, the expiration ledger, the simulated
-  // transaction's form and the recipient's muxed id before it reads the transaction: each fault gets the code it gets
-  // with the peer (peer-free-inputs.test.ts).
+  // build checks the choice, its challenge, H, the current ledger, the clock, the payer's strkey, the expiration ledger,
+  // the simulated transaction's form and the recipient's muxed id before it reads the transaction: each fault gets the
+  // code it gets with the peer (peer-free-inputs.test.ts).
   it("mpp/charge/stellar's build answers a choice it refuses before the transaction as it does with the peer", { timeout: IMPORT_MS }, async () => {
     const { chargeStellar } = await import("../src/mpp.js");
-    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 11 })) {
+    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 15 })) {
       expect([row.case, await chargeStellar.build(row.choice as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });
@@ -280,9 +280,9 @@ describe("without @stellar/stellar-sdk", () => {
     }
   });
 
-  it("x402/exact/stellar's build answers a malformed current ledger as it does with the peer, whatever the option", { timeout: IMPORT_MS }, async () => {
+  it("x402/exact/stellar's build answers a malformed current ledger or payer as it does with the peer, whatever the option", { timeout: IMPORT_MS }, async () => {
     const { exactStellar } = await import("../src/x402-exact-stellar.js");
-    for (const row of rowsOf(memberFirstChoices(exactStellar.id, V.fixed.option), "peer-free-inputs.ts", { exact: 6 })) {
+    for (const row of rowsOf(memberFirstChoices(exactStellar.id, V.fixed.option), "peer-free-inputs.ts", { exact: 15 })) {
       expect([row.case, await exactStellar.build(row.choice as never, V.fixed.H)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });

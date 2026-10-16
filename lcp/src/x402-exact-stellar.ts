@@ -10,6 +10,7 @@ import {
   isAccount,
   isContract,
   isMuxed,
+  isPayer,
   isStellarNetwork,
   muxedFor,
   muxedId,
@@ -52,7 +53,7 @@ const UINT32_MAX = 0xffffffff;
 
 /**
  * The buyer's inputs to `build`: the chosen option, the buyer's simulated transaction, the current ledger, and the
- * payer's account (`G…`), which must be the simulated transfer's `from`.
+ * payer's strkey (`G…`, `C…` or `M…`), which must be the simulated transfer's `from`.
  */
 interface StellarChoice {
   required: PaymentRequired;
@@ -140,16 +141,18 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * `currentLedger + ceil(maxTimeoutSeconds / 5)`. The option's `payTo` must carry `muxedId(h)` and equal the `to` of
  * the invocation the payer's entry signs, and the operation must invoke exactly that. That invocation's token contract
  * must then be the option's `asset`, its amount the option's `amount` exactly, and its `from` the choice's `payer`.
- * Nothing reaches the signer unless every one holds. H is checked first, then the current ledger, the choice member
- * whose form needs neither the document nor the SDK (`stellar/tx-malformed`), then the document and the option, then
- * the `payTo` carrier, then the simulated transaction's form (`signingInput`). None of those needs
- * @stellar/stellar-sdk, which reads the simulated transaction after them: without it the choice is
+ * Nothing reaches the signer unless every one holds. H is checked first, then the choice members whose form needs
+ * neither the document nor the SDK: the current ledger (`stellar/tx-malformed`) and the payer, which must be a `G…`,
+ * `C…` or `M…` strkey (`stellar/payer-mismatch`, as no other value can equal a transfer's `from`). Then the document
+ * and the option, then the `payTo` carrier, then the simulated transaction's form (`signingInput`). None of those
+ * needs @stellar/stellar-sdk, which reads the simulated transaction after them: without it the choice is
  * `stellar/peer-missing` only then.
  */
 async function build(c: StellarChoice, h: AtrHash): Promise<StellarUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   if (!Number.isSafeInteger(c.currentLedger) || c.currentLedger < 0) return refusal("stellar/tx-malformed");
+  if (!isPayer(c.payer)) return refusal("stellar/payer-mismatch");
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted } = c;

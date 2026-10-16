@@ -231,9 +231,9 @@ export function stellarChargeChoice() {
 
 /**
  * A choice and H `mpp/charge/stellar`'s `build` refuses with the code given, before it reads the transaction: the
- * expiration ledger and the simulated transaction's form (`signingInput`) among them, and the recipient, whose strkey
- * the pairing's filter reads whole and whose muxed id `build` reads after the simulated transaction's form. The fee
- * bump wraps V2's simulated envelope whole.
+ * payer's strkey, the expiration ledger and the simulated transaction's form (`signingInput`) among them, and the
+ * recipient, whose strkey the pairing's filter reads whole and whose muxed id `build` reads after the simulated
+ * transaction's form. The fee bump wraps V2's simulated envelope whole.
  */
 export function stellarChargeChoices(): { case: string; choice: unknown; h: unknown; expect: string }[] {
   const { choice, h } = stellarChargeChoice();
@@ -251,6 +251,15 @@ export function stellarChargeChoices(): { case: string; choice: unknown; h: unkn
     { case: "a simulated fee bump", choice: { ...choice, simulatedXdr: feeBump }, h, expect: "stellar/tx-malformed" },
     { case: "a recipient that is not a muxed address", choice: { ...choice, challenge: withRecipient(choice.challenge, issuedRecipient()) }, h, expect: "stellar/carrier-mismatch" },
     { case: "a recipient whose M strkey's checksum does not match", choice: { ...choice, challenge: withRecipient(choice.challenge, badChecksum(recipientOf(choice.challenge))) }, h, expect: "stellar/option-malformed" },
+    { case: "a payer of null", choice: { ...choice, payer: null }, h, expect: "stellar/payer-mismatch" },
+    { case: "a payer that is not a strkey", choice: { ...choice, payer: "x" }, h, expect: "stellar/payer-mismatch" },
+    { case: "a payer whose G strkey's checksum does not match", choice: { ...choice, payer: badChecksum(choice.payer) }, h, expect: "stellar/payer-mismatch" },
+    {
+      case: "two faults: a payer that is not a strkey, and a simulated transaction that is not base64",
+      choice: { ...choice, payer: "x", simulatedXdr: "AA=A" },
+      h,
+      expect: "stellar/payer-mismatch",
+    },
   ];
 }
 
@@ -562,10 +571,13 @@ export function choiceMembers(): { id: string; members: Record<string, unknown>;
     },
     {
       id: "x402/exact/stellar",
-      members: { currentLedger: STELLAR.V2.currentLedger },
+      members: { currentLedger: STELLAR.V2.currentLedger, payer: STELLAR.fixed.payer },
       bad: [
         { case: "a current ledger below 0", member: "currentLedger", value: -1, expect: "stellar/tx-malformed" },
         { case: "a current ledger that is not an integer", member: "currentLedger", value: 1.5, expect: "stellar/tx-malformed" },
+        { case: "a payer of null", member: "payer", value: null, expect: "stellar/payer-mismatch" },
+        { case: "a payer that is not a strkey", member: "payer", value: "x", expect: "stellar/payer-mismatch" },
+        { case: "a payer whose G strkey's checksum does not match", member: "payer", value: badChecksum(STELLAR.fixed.payer), expect: "stellar/payer-mismatch" },
       ],
     },
     {

@@ -210,6 +210,14 @@ export function isMuxed(s: unknown): s is string {
   return unmux(s) !== null;
 }
 
+/**
+ * True for a strkey that a Soroban `transfer`'s `from` can be: a well-formed `G…`, `C…` or `M…` strkey. It needs no
+ * peer, so a `build` refuses any other payer before it reads the simulated transaction.
+ */
+export function isPayer(s: unknown): s is string {
+  return isAccount(s) || isContract(s) || isMuxed(s);
+}
+
 function need(): typeof StellarBase | null {
   return peer ?? null;
 }

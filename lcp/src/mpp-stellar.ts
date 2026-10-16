@@ -10,6 +10,7 @@ import type { AtrHash, Json } from "./core.js";
 import {
   MAX_XDR,
   isAccount,
+  isPayer,
   muxedFor,
   muxedId,
   readSignedTransfer,
@@ -55,7 +56,7 @@ const HASH = /^[0-9a-fA-F]{64}$/;
 
 /**
  * The buyer's inputs to `build`: the chosen challenge, the buyer's simulated transaction, its ledger and clock readings,
- * and the payer's account (`G…`), which must be the simulated transfer's `from`.
+ * and the payer's strkey (`G…`, `C…` or `M…`), which must be the simulated transfer's `from`.
  */
 export interface StellarChargeChoice {
   challenge: MppChallenge & { id: string };
@@ -234,9 +235,11 @@ async function fetchPresented(
  * must then be the request's `currency`, its amount the request's `amount` exactly, and its `from` the choice's
  * `payer`. Nothing reaches the signer unless every one holds. With `feePayer` true the source is the all-zeros account.
  * The chosen challenge is held to the pairing's filter, so a `recipient` or `currency` whose strkey's checksum does not
- * match is `stellar/option-malformed`. Without @stellar/stellar-sdk the transaction cannot be read (`signingFor`):
- * `stellar/peer-missing`, after the choice, its challenge, H, the current ledger, the clock, the expiration ledger, the
- * simulated transaction's form (`signingInput`) and the recipient's muxed id are checked, which need no peer.
+ * match is `stellar/option-malformed`, and a payer that is not a `G…`, `C…` or `M…` strkey `stellar/payer-mismatch`,
+ * as no other value can equal a transfer's `from`. Without @stellar/stellar-sdk the transaction cannot be read
+ * (`signingFor`): `stellar/peer-missing`, after the choice, its challenge, H, the current ledger, the clock, the payer's
+ * strkey, the expiration ledger, the simulated transaction's form (`signingInput`) and the recipient's muxed id are
+ * checked, which need no peer.
  */
 async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarChargeUnsigned | Refusal> {
   if (!isObject(choice)) return refusal("stellar/tx-malformed");
@@ -245,6 +248,7 @@ async function build(choice: StellarChargeChoice, h: AtrHash): Promise<StellarCh
   if (!Number.isSafeInteger(choice.currentLedger) || choice.currentLedger < 0 || !Number.isSafeInteger(choice.now)) {
     return refusal("stellar/tx-malformed");
   }
+  if (!isPayer(choice.payer)) return refusal("stellar/payer-mismatch");
   const expires = expiresOf(checked);
   if (isRefusal(expires)) return expires;
   const network = checked.details["network"] as StellarNetwork;
