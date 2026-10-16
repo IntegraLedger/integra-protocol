@@ -10,7 +10,8 @@
 // - those options are the only way the site highlights code. No source under website/ imports a module that
 //   highlights (Shiki, fumadocs-core's highlighter and rehype-code, the MDX presets of fumadocs-core and fumadocs-mdx
 //   that run rehype-code with their caller's options, fumadocs-ui's code blocks that call that highlighter, the
-//   Twoslash transformer) except source.config.ts, which gives rehype-code these options, and this check. The imports are read as TypeScript's parser reads them, so a comment or a string is not an import.
+//   Twoslash transformer) except source.config.ts, which gives rehype-code these options, this check, and
+//   scripts/check-table-names.mjs, which compiles its pages under the options .source/ holds, these among them. The imports are read as TypeScript's parser reads them, so a comment or a string is not an import.
 //
 // Usage, from website/, after `pnpm build` there (the TypeScript block is checked against ../lcp/dist):
 //   node scripts/check-highlighting.mjs
@@ -33,10 +34,14 @@ const HIGHLIGHTERS = [
   /^fumadocs-twoslash(\/|$)/,
 ];
 
-/** The sources that may import them: the configuration that gives rehype-code its options, and this check. */
+/**
+ * The sources that may import them: the configuration that gives rehype-code its options, this check, and the check
+ * that compiles pages as the site does, with fumadocs-mdx's preset over the configuration's options.
+ */
 const ALLOWED = new Map([
   ["source.config.ts", new Set(["fumadocs-core/mdx-plugins", "fumadocs-mdx/config", "fumadocs-twoslash"])],
   ["scripts/check-highlighting.mjs", new Set(["fumadocs-core/mdx-plugins"])],
+  ["scripts/check-table-names.mjs", new Set(["fumadocs-mdx/config"])],
 ]);
 
 /** The JavaScript and TypeScript sources under website/, outside dependencies, build output and dot-folders. */
