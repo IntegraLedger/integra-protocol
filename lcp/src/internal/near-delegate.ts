@@ -2,8 +2,8 @@
  * NEP-366's `DelegateAction` and `SignedDelegate` in borsh, as nearcore defines them (`DelegateAction` and
  * `SignedDelegateAction`), for the one shape `../near.ts` reads and writes: a delegate action holding one
  * `FunctionCall` action, under an Ed25519 or secp256k1 key, with a signature of either type, and the NEAR account id
- * rule its sender and receiver are read by. The schemas are written for the borsh package. `../near.ts` re-exports
- * `NEP461_DELEGATE`; no entry point exports the other names.
+ * rule its sender and receiver are read by. The schemas are written for the borsh package, and no entry point exports
+ * a name from here: the declarations name borsh's types, and borsh is an optional peer.
  *
  * In borsh a `Vec<Action>` is its u32 length and each action, and an `Action` is its u8 variant index and its value;
  * `FunctionCall` is variant 2. The schemas write the one-action vector as two fields, the length 1 and the variant
@@ -13,9 +13,7 @@ import type * as Borsh from "borsh";
 import type { Schema } from "borsh";
 import { base58 } from "@scure/base";
 import { sameBytes } from "../rail-bytes.js";
-
-/** The NEP-461 prefix for a delegate action: (1 << 30) + 366. */
-export const NEP461_DELEGATE = 1073742190;
+import { NEP461_DELEGATE } from "./near.js";
 
 /** A public key: 0 Ed25519 with its 32 bytes, 1 secp256k1 with its 64 bytes (x then y). */
 export interface NearKey {

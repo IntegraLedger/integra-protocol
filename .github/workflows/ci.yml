@@ -566,6 +566,8 @@ jobs:
           echo "$RUNNER_TEMP/pnpm" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @integraledger/lcp run build
+      - name: The declarations every entry point reaches import only lcp's dependencies, so a TypeScript user without the optional peers typechecks any entry point
+        run: node scripts/check-declaration-imports.mjs
       - name: The samples in every README.md and in docs/ not marked no-check are fenced ts, compile, run and print what the page shows
         run: node scripts/docs-samples.mjs
       - name: The generated reference pages and the README's pairing list match the package

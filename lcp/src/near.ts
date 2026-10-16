@@ -43,7 +43,7 @@ export type { Broadcaster } from "./internal/broadcaster.js";
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
 const borsh: typeof Borsh | undefined = await import("borsh").catch(() => undefined);
 
-export { NEP461_DELEGATE } from "./internal/near-delegate.js";
+export { NEP461_DELEGATE } from "./internal/near.js";
 
 /** x402's NEAR network identifiers. */
 export type NearNetwork = "near:mainnet" | "near:testnet";
