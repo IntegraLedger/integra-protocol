@@ -132,7 +132,9 @@ CI runs the commands in the block above and the rest of `.github/workflows/ci.ym
 dispatched by hand, and from the publish workflow before it packs. Its other steps check:
 
 - **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in one
-  step, byte for byte the same in every job, before its first other step that runs. Every download in a workflow is
+  step, byte for byte the same in every job, before its first other step that runs. The `floor` job then fetches the
+  Node.js `.node-version-floor` names, in one step of its own checked against one SHA-256 that adds nothing to `PATH`,
+  and runs lcp's tests on it; that version's major is the one `lcp/package.json`'s `engines.node` allows. Every download in a workflow is
   `curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/<file>" https://<address>`, which retries a failed transfer
   five times whatever the error, and writes one file. No workflow uses `setup-node`, `continue-on-error`, `if:`,
   `container:`, `shell:` or a `PATH:` key, or writes `$GITHUB_ENV`, and only the Node.js and pnpm fetches write

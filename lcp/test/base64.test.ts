@@ -1,6 +1,8 @@
 // The rails' standard base64 reader takes padded base64 (RFC 4648 §4) in its canonical form only (RFC 4648 §3.5): a
 // last character before the padding with a bit set past the last byte spells the same bytes in another form. Expected
-// values come from ECMA-262's Uint8Array.fromBase64 with lastChunkHandling "strict" and from @scure/base's base64; each
+// values come from ECMA-262's Uint8Array.fromBase64 with lastChunkHandling "strict", as vectors/base64-platform.json
+// records it (Node 24 has no such reader; on a Node that has it, the answers are also held to it live), and from
+// @scure/base's base64; each
 // reader's code is the one it gives a text that is not padded standard base64 ("AAA"), and, where the vector file has a
 // row for that text, the row's.
 import { createHash } from "node:crypto";
@@ -36,13 +38,34 @@ const lowered = (s: string) => respelled(s, false);
 const refused = (code: string) => ({ refused: true, code });
 const unreadable = { state: "pending", why: "unreadable" };
 const NOT_BASE64 = "AAA";
-const fromBase64Strict = (Uint8Array as unknown as { fromBase64(s: string, o: object): Uint8Array }).fromBase64;
-const ecma = (s: string): Uint8Array | null => {
-  try {
-    return fromBase64Strict(s, { lastChunkHandling: "strict" });
-  } catch {
-    return null;
-  }
+const fromBase64Strict = (Uint8Array as unknown as { fromBase64?(s: string, o: object): Uint8Array }).fromBase64;
+/** ECMA-262's strict reader, live, where this Node has it; null where it does not (Node 24). */
+const live =
+  fromBase64Strict === undefined
+    ? null
+    : (s: string): Uint8Array | null => {
+        try {
+          return fromBase64Strict(s, { lastChunkHandling: "strict" });
+        } catch {
+          return null;
+        }
+      };
+const PLATFORM = load("base64-platform.json") as Record<string, { texts: number; read: Record<string, string> }>;
+/** ECMA-262's strict reader as base64-platform.json records it over the set `name`, and as it answers live where it can. */
+const ecmaOf = (name: string, texts: string[]) => {
+  const set = PLATFORM[name]!;
+  expect(texts.length).toBe(set.texts);
+  const made = new Set(texts);
+  expect(Object.keys(set.read).filter((s) => !made.has(s))).toEqual([]);
+  return (s: string): Uint8Array | null => {
+    const h = set.read[s];
+    const want = h === undefined ? null : Uint8Array.from(Buffer.from(h, "hex"));
+    if (live !== null) {
+      const now = live(s);
+      expect(now === null ? null : Buffer.from(now).toString("hex"), `the built-in reader on ${JSON.stringify(s)}`).toBe(h ?? null);
+    }
+    return want;
+  };
 };
 const scure = (s: string): Uint8Array | null => {
   try {
@@ -70,6 +93,7 @@ describe("standard base64 in its canonical form", () => {
       for (const t of texts.filter((x) => x.length === n - 1)) for (const c of chars) texts.push(t + c);
     }
     expect(texts.length).toBe(1 + 8 + 64 + 512 + 4096 + 32768);
+    const ecma = ecmaOf("base64Short", texts);
     // Each text's three answers are compared with ECMA-262's, and every text where one differs is listed. The test has no
     // time bound (0): it reads a fixed list and returns, so how long it takes depends only on the machine.
     const same = (a: Uint8Array | null, b: Uint8Array | null) =>
@@ -87,6 +111,8 @@ describe("standard base64 in its canonical form", () => {
   it("fromBase64 and base64Bytes refuse a character outside ASCII, whatever its low seven bits", () => {
     // U+00C1, U+00E1, U+00B0, U+00AB, U+00AF and U+0141 have the low seven bits of "A", "a", "0", "+", "/" and "A";
     // U+D800 is a lone surrogate. None is in the alphabet (RFC 4648 §4), and ECMA-262's strict reader refuses each.
+    const texts = ["\u00c1", "\u00e1", "\u00b0", "\u00ab", "\u00af", "\u0141", "\ud800"].flatMap((c) => [`${c}QQ=`, `Q${c}Q=`, `QQ${c}=`, `Zm9v${c}mFy`]);
+    const ecma = ecmaOf("base64NonAscii", texts);
     for (const c of ["\u00c1", "\u00e1", "\u00b0", "\u00ab", "\u00af", "\u0141", "\ud800"]) {
       for (const s of [`${c}QQ=`, `Q${c}Q=`, `QQ${c}=`, `Zm9v${c}mFy`]) {
         expect([fromBase64(s), base64Bytes(s, 8), ecma(s)], s).toEqual([null, "malformed", null]);

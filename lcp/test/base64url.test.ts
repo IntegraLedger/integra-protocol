@@ -1,27 +1,49 @@
 // base64url without padding: `fromBase64Url`, `base64UrlBytes` and `toBase64Url`. Expected values: RFC 4648 §10's test
 // vectors (written without padding, as RFC 7515 §2 does), RFC 7515 Appendix C's example, Node's Buffer "base64url"
-// encoder, and ECMA-262's Uint8Array.fromBase64 with alphabet "base64url" and lastChunkHandling "strict" (Node 26.10.0),
-// which reads only the canonical form of padded text.
+// encoder, and ECMA-262's Uint8Array.fromBase64 with alphabet "base64url" and lastChunkHandling "strict", which reads only
+// the canonical form of padded text, as vectors/base64-platform.json records it (Node 24 has no such reader; on a Node
+// that has it, the answers are also held to it live).
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { base64UrlBytes, fromBase64Url, toBase64Url } from "../src/rail-bytes.js";
 
 const ascii = (s: string) => new TextEncoder().encode(s);
 const fromBase64 = (Uint8Array as unknown as {
-  fromBase64(s: string, o: { alphabet: string; lastChunkHandling: string }): Uint8Array;
-}).fromBase64.bind(Uint8Array);
+  fromBase64?(s: string, o: { alphabet: string; lastChunkHandling: string }): Uint8Array;
+}).fromBase64?.bind(Uint8Array);
+const PLATFORM = JSON.parse(readFileSync(new URL("../vectors/base64-platform.json", import.meta.url), "utf8")) as Record<
+  string,
+  { texts: number; read: Record<string, string> }
+>;
 
 /**
  * The platform's strict reading of unpadded text, padded with "=". Text holding "=" or whitespace is not unpadded
  * base64url (RFC 7515 §2: "with all trailing '=' characters omitted ... and without the inclusion of any line breaks,
  * whitespace, or other additional characters"); fromBase64 would skip the whitespace.
  */
-function platform(s: string): Uint8Array | null {
+function live(s: string): Uint8Array | null {
   if (/[=\s]/.test(s)) return null;
   try {
-    return fromBase64(s + "=".repeat((4 - (s.length % 4)) % 4), { alphabet: "base64url", lastChunkHandling: "strict" });
+    return fromBase64!(s + "=".repeat((4 - (s.length % 4)) % 4), { alphabet: "base64url", lastChunkHandling: "strict" });
   } catch {
     return null;
   }
+}
+
+/** The platform's strict reading as base64-platform.json records it over the set `name`, and as it answers live where it can. */
+function platformOf(name: string, texts: string[]): (s: string) => Uint8Array | null {
+  const set = PLATFORM[name]!;
+  expect(texts.length).toBe(set.texts);
+  const made = new Set(texts);
+  expect(Object.keys(set.read).filter((s) => !made.has(s))).toEqual([]);
+  return (s) => {
+    const h = set.read[s];
+    if (fromBase64 !== undefined) {
+      const now = live(s);
+      expect(now === null ? null : Buffer.from(now).toString("hex"), `the built-in reader on ${JSON.stringify(s)}`).toBe(h ?? null);
+    }
+    return h === undefined ? null : Uint8Array.from(Buffer.from(h, "hex"));
+  };
 }
 
 describe("base64url without padding", () => {
@@ -66,6 +88,7 @@ describe("base64url without padding", () => {
     for (const a of "AQgw_Z.=") for (const b of chars) for (const c of chars) texts.push(a + b + c, `Zm9v${a}${b}${c}`);
     const same = (a: Uint8Array | null, b: Uint8Array | null) =>
       a === null || b === null ? a === b : Buffer.from(a).equals(Buffer.from(b));
+    const platform = platformOf("base64urlStrict", texts);
     let read = 0;
     const differ: string[] = [];
     for (const s of texts) {
@@ -91,7 +114,9 @@ describe("base64url without padding", () => {
     // U+00C1, U+00E1, U+00B0, U+00AD, U+00DF and U+0141 have the low seven bits of "A", "a", "0", "-", "_" and "A";
     // U+D800 is a lone surrogate. None is in the URL-safe alphabet (RFC 4648 §5), and the platform's strict reader
     // refuses each.
-    for (const c of ["\u00c1", "\u00e1", "\u00b0", "\u00ad", "\u00df", "\u0141", "\ud800"]) {
+    const chars = ["\u00c1", "\u00e1", "\u00b0", "\u00ad", "\u00df", "\u0141", "\ud800"];
+    const platform = platformOf("base64urlNonAscii", chars.flatMap((c) => [`${c}Q`, `Q${c}`, `Zm9v${c}g`]));
+    for (const c of chars) {
       for (const s of [`${c}Q`, `Q${c}`, `Zm9v${c}g`]) {
         expect([fromBase64Url(s), base64UrlBytes(s, 8), platform(s)], s).toEqual([null, "malformed", null]);
       }
