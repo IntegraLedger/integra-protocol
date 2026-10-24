@@ -56,9 +56,12 @@ describe("mpp-challenge.json", () => {
     expect(challengeId(H, 32)).toEqual({ refused: true, code: "mpp/challenge-malformed" });
   });
 
-  it("MV2: challengeHash, and viem's keccak256(encodePacked(string, string)) agrees", () => {
+  it("MV2: challengeHash, and viem's keccak256 of the JSON array [id, realm] agrees; the bare concatenation does not", () => {
     expect(challengeHash(V.MV1.expectId, realm)).toBe(V.MV2.expect);
-    expect(keccak256(encodePacked(["string", "string"], [V.MV1.expectId, realm]))).toBe(V.MV2.expect);
+    expect(keccak256(toBytes(`["${V.MV1.expectId}","${realm}"]`))).toBe(V.MV2.expect);
+    expect(keccak256(encodePacked(["string", "string"], [V.MV1.expectId, realm]))).not.toBe(V.MV2.expect);
+    // Framed, two pairs that concatenate to one string give two hashes.
+    expect(challengeHash("ab", "c")).not.toBe(challengeHash("a", "bc"));
   });
 
   it("MV3: place writes the id and opaque, leaves request unchanged, and read gives H and the link", () => {

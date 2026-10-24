@@ -53,7 +53,7 @@
  },
  "plant": {
   "case": "a usdc/evm credential whose nonce is the evm method's challengeHash for the same id and realm (mpp-challenge.json's MV2), the base evm method's derivation",
-  "nonce": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477",
+  "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
   "expect": {
    "refused": true,
    "code": "mpp/nonce-not-usdc-derivation"

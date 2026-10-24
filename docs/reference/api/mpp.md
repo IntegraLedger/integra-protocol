@@ -905,9 +905,10 @@ H from an id `challengeId` wrote, or from the bare base64url of H; anything else
 
 > **challengeHash**(`id`, `realm`): `` `0x${string}` ``
 
-keccak256(UTF-8(id) ‖ UTF-8(realm)), lowercase: Solidity's `abi.encodePacked(string, string)`. A string that is not
-well-formed is written as `TextEncoder` writes it, with U+FFFD for each lone surrogate; the pairings refuse such an id
-or realm before they call it.
+keccak256(UTF-8(JSON.stringify([id, realm]))), lowercase: the id and realm framed as a JSON array of two strings, as
+`mppx` computes MPP's EVM challenge hash from 0.13.1, so that no two pairs give one preimage. A string that is not
+well-formed is written as `JSON.stringify` writes it, with each lone surrogate escaped as `\uXXXX`; the pairings
+refuse such an id or realm before they call it.
 
 #### Parameters
 

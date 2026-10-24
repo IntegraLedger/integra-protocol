@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/evm/authorization. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
+ "about": "Vectors for mpp/charge/evm/authorization. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4, mppx 0.15.0 (the challenge hash) and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
  "fixed": {
   "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
   "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -12,13 +12,13 @@
  },
  "MV5": {
   "case": "build({challenge: MV3's placed C_E, from: payer, now, tokenDomain}, H), EIP-712, sign, complete, bound, reference",
-  "expectDigest": "0x2b63fda688eb7b074b998631373fae001470043a1f01db426991aeacdd769a5a",
+  "expectDigest": "0x2d301c86ab3ef8b3ef3d7296fbe09bbb768108bdc1134b50c941f6c50bedad0c",
   "expectDomainSeparator": {
    "prefix": "0x71f17a3b",
    "suffix": "9818"
   },
-  "expectSignature": "0xf021c1e68d06204c53c24bec4c9d8a888ad4656f33506750273c0bdc038ad40b08cdf69c8c8c9b35f9a3f0210f9401ef851e044af1b306cda53b9f62ba0243c51b",
-  "expectNonce": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477",
+  "expectSignature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c",
+  "expectNonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
   "expectValidBefore": "1790000060",
   "expectSource": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "expectBoundOtherRealm": {
@@ -98,8 +98,8 @@
        "value": "10000",
        "validAfter": "0",
        "validBefore": "1790000060",
-       "nonce": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477",
-       "signature": "0xf021c1e68d06204c53c24bec4c9d8a888ad4656f33506750273c0bdc038ad40b08cdf69c8c8c9b35f9a3f0210f9401ef851e044af1b306cda53b9f62ba0243c51b"
+       "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+       "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
       }
      },
      "check": [
@@ -119,7 +119,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's MV5 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from draft-evm-charge-00's Authorization Payload and source rule (L385-395, L600-680 at tempoxyz/mpp-specs 08e7dd87): from, to and value from fixed and the request, validAfter 0, validBefore the challenge's expires, nonce keccak256 of the challenge's id and realm with eth-utils 6.0.0, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of MV5.expectDigest. MV5's complete gives it whole."
+    "note": "presented is this file's MV5 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from draft-evm-charge-00's Authorization Payload and source rule (L385-395, L600-680 at tempoxyz/mpp-specs 08e7dd87): from, to and value from fixed and the request, validAfter 0, validBefore the challenge's expires, nonce mppx 0.15.0's challengeHash of the challenge (keccak256 of the UTF-8 of JSON.stringify([id, realm])), and the signature viem 2.57.4's RFC 6979 signature with fixed.payerKey of MV5.expectDigest. mppx 0.15.0's EVM client, signing this challenge with fixed.payerKey, gives the same nonce, validBefore and signature. MV5's complete gives it whole."
    }
   ]
  },

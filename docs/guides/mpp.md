@@ -131,9 +131,11 @@ Where only 7 or 8 bytes of what the payer signs depend on H (the nonce of the at
 Stellar muxed id, and the Solana session's 8-byte channel salt), the payment binds H only through those bytes: whoever
 assembles the ATR can construct a second ATR that shares them. Those pairings state this in their `pattern.proves`.
 
-`challengeHash` is keccak256 of the challenge id's UTF-8 bytes followed by the realm's, as MPP's EVM charge method
-specifies. The `mppx` SDK from 0.13.1 hashes `JSON.stringify([id, realm])` instead, so an
-`mpp/charge/evm/authorization` credential and an `mppx` server of those versions derive different nonces.
+`challengeHash` is keccak256 of the UTF-8 of `JSON.stringify([id, realm])`: the id and realm framed as a JSON array of
+two strings, as the `mppx` SDK computes it from 0.13.1, so that no two pairs share a preimage (`"ab"` and `"c"`, `"a"`
+and `"bc"`). MPP's EVM charge draft (draft-evm-charge-00) still writes `abi.encodePacked(id, realm)`, the bare
+concatenation; a credential signed over that form is `mpp/nonce-not-challenge-hash`, or
+`mpp/witness-not-challenge-hash` for `permit2`.
 
 The challenge's `id` and `realm`, and the client id a Tempo or Hedera payer may add to the attribution memo, are hashed
 as UTF-8. A string holding a lone surrogate has no UTF-8 form, so a challenge whose `realm` is not a well-formed string

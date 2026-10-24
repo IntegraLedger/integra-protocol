@@ -6,6 +6,7 @@
 // mpp/challenge-malformed for a challenge, the builders' input codes), or, for a writer, throws TypeError. The same
 // string with U+FFFD, which is well-formed, is the control: it is read and built as before.
 import { readFileSync } from "node:fs";
+import { keccak256, toBytes } from "viem";
 import { describe, expect, it } from "vitest";
 import { chargeHedera } from "../src/hedera.js";
 import {
@@ -71,7 +72,10 @@ describe("MPP: a challenge's realm and id, and the payer's client id", () => {
     if ("refused" in u) throw new Error(u.code);
     const cred = u.complete(`0x${"11".repeat(65)}`) as MppCredential;
     expect(cred.payload["nonce"]).toBe(challengeHash(ok.id, realm + FFFD));
-    expect(challengeHash(ok.id, realm + LONE)).toBe(challengeHash(ok.id, realm + FFFD));
+    // JSON.stringify writes a lone surrogate as the six characters \ud800 (ECMA-262, QuoteJSONString), so the raw
+    // hash of such a realm is over that escape, not over U+FFFD; the build and bound refuse the realm before it.
+    expect(challengeHash(ok.id, realm + LONE)).toBe(keccak256(toBytes(`["${ok.id}","${realm}\\ud800"]`)));
+    expect(challengeHash(ok.id, realm + LONE)).not.toBe(challengeHash(ok.id, realm + FFFD));
     expect(await evmAuthorization.bound(cred)).toBe(H);
     expect(await evmAuthorization.bound({ ...cred, challenge: { ...cred.challenge, realm: realm + LONE } })).toEqual(
       refused("mpp/challenge-malformed"),

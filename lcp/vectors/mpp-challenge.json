@@ -1,5 +1,5 @@
 {
- "about": "Vectors for MPP's challenge pieces in the mpp entry point of @integraledger/lcp, shared by every MPP pairing. H is SHA-256(\"abc\") from FIPS 180-2. C_E and C_T are fixed challenges; their request values are JSON, base64url without padding. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and GNU coreutils 9.4. MV9's field values are MPP's own example (draft-httpauth-payment-01 at 08e7dd87, lines 1427-1430).",
+ "about": "Vectors for MPP's challenge pieces in the mpp entry point of @integraledger/lcp, shared by every MPP pairing. H is SHA-256(\"abc\") from FIPS 180-2. C_E and C_T are fixed challenges; their request values are JSON, base64url without padding. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4, mppx 0.15.0 (the challenge hash) and GNU coreutils 9.4. MV9's field values are MPP's own example (draft-httpauth-payment-01 at 08e7dd87, lines 1427-1430).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "realm": "api.seller.example",
@@ -20,8 +20,8 @@
   "expectNotOurs": { "refused": true, "code": "mpp/id-not-ours" }
  },
  "MV2": {
-  "case": "challengeHash(MV1, realm)",
-  "expect": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477"
+  "case": "challengeHash(MV1, realm): mppx 0.15.0's challengeHash({ id, realm }), which viem 2.57.4's keccak256 of the UTF-8 of JSON.stringify([id, realm]) matches",
+  "expect": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3"
  },
  "MV3": {
   "case": "place([C_E], H, link, C_E) and place([C_T], H, link, C_T); read of each",

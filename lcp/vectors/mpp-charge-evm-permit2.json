@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/evm/permit2, single and batch. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
+ "about": "Vectors for mpp/charge/evm/permit2, single and batch. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4, mppx 0.15.0 (the challenge hash) and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
  "fixed": {
   "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
   "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -10,7 +10,7 @@
  },
  "MV6": {
   "case": "build (single) for MV3's placed C_E with spender S, EIP-712, sign, bound",
-  "expectDigest": "0x503125d82632b2d128f6efcca61d13b0c80bbbdc79ee4a2ea826e95610a501d0",
+  "expectDigest": "0xab64305b51f3ba225cbaf66926d9bc2f55c23fc06987842968664405225a1b05",
   "expectDomainSeparator": {
    "prefix": "0x010f27a9",
    "suffix": "592c"
@@ -21,10 +21,10 @@
    "suffix": "8c37"
   },
   "expectLiteralDigest": {
-   "prefix": "0x8ef37a8a",
-   "suffix": "fa25"
+   "prefix": "0x81d4ec64",
+   "suffix": "a0f5"
   },
-  "expectSignature": "0xd7869587988d7615afe8bbcb88ab66fc3882ec3f8b8014052b99c56ccdefb4772113d37911ef65d83991ac17fd344e5238ca6cc0f3d7651f3e7af256174c3b761c"
+  "expectSignature": "0x369efc4c05bb8487e1359c83b1bb387b3d9228ffe3718db6682ae91411c397bc5236b5a49237d4804ec032fba7944a4b8d9d816d0a234d5f2f5639628ea1d61d1c"
  },
  "MV6b": {
   "case": "the batch form: C_E with one split, so primary = 9500. expectTransferDetails is written by hand from draft-evm-charge-00's Transfer Details (L435-447 at tempoxyz/mpp-specs 08e7dd87): the primary recipient's amount less the split, then the split; complete's transferDetails are held to it",
@@ -35,9 +35,9 @@
    "refused": true,
    "code": "mpp/credential-types"
   },
-  "expectDigest": "0x5c947b47482a9fcd28925b6c11044c26582b34e39ff3e962845946aa86bd114a",
+  "expectDigest": "0x22282dac3861c3a91ffa92aa2e07b42c5109b3cc6c487b0a4f5a17b9d3f4fbb9",
   "expectTypeHash": "0x96a90010da2e116bc8940fa6c7f977bf0f57a0f2fbe4f8fd151f614767639503",
-  "expectSignature": "0x43201525901f8b80110dde257363ccfa7f71df7a184ce0a2690b0d81bf806acb034c66f9fc9a8a5d9b7300b7caa127f7ba7dfdcbecc0268288ad9d965a8b485b1c",
+  "expectSignature": "0x53b169d2270a83beeef0603486ca2f24dc993cbf9271be79082d529c15b8fe29439995d73b2219f74575a4d31a94d148c1d438b9069aa7d7c68f1b358ff4b8b21c",
   "expectTransferDetails": [
    {
     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
@@ -59,7 +59,7 @@
  },
  "plant": {
   "case": "MV6b's batch credential with witness.challengeHash = keccak of the id ….1 and the realm: the same ATR's H, another challenge",
-  "challengeHashOfPosition1": "0x8459836e989f685ed57d519f9af1c81703e5d1fd29597e736ba3ebcd7cce9c57",
+  "challengeHashOfPosition1": "0x80cbb3a054f47e425f1e5b73a47c263a3a7ea4c76057d9be96367bdd561816b7",
   "expect": {
    "refused": true,
    "code": "mpp/witness-not-challenge-hash"
@@ -134,7 +134,7 @@
           "amount": "10000"
          }
         ],
-        "nonce": "36481962888124223048003848319198225522890142851501557528268796339554120316023",
+        "nonce": "74565268286760952016057173924960209568840870640217553391684128653952202977987",
         "deadline": "1790000060"
        },
        "transferDetails": [
@@ -144,10 +144,10 @@
         }
        ],
        "witness": {
-        "challengeHash": "0x50a80f2b567a762b9850fe620936a9f55edac04f5ecdb7e29a4692e16f9f3477",
+        "challengeHash": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
         "externalId": ""
        },
-       "signature": "0xd7869587988d7615afe8bbcb88ab66fc3882ec3f8b8014052b99c56ccdefb4772113d37911ef65d83991ac17fd344e5238ca6cc0f3d7651f3e7af256174c3b761c"
+       "signature": "0x369efc4c05bb8487e1359c83b1bb387b3d9228ffe3718db6682ae91411c397bc5236b5a49237d4804ec032fba7944a4b8d9d816d0a234d5f2f5639628ea1d61d1c"
       }
      },
      "check": [
@@ -167,7 +167,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's MV6 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from draft-evm-charge-00's Permit2 Payload (L397-494 at tempoxyz/mpp-specs 08e7dd87): permitted and transferDetails from the request, the permit nonce the challengeHash (keccak256 of the challenge's id and realm, eth-utils 6.0.0) as a uint256, deadline the challenge's expires, witness {challengeHash, externalId \"\" when the request names none}, and the signature eth-keys 0.8.0's RFC 6979 signature with fixed.payerKey of MV6.expectDigest. MV6's complete gives it whole."
+    "note": "presented is this file's MV6 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from draft-evm-charge-00's Permit2 Payload (L397-494 at tempoxyz/mpp-specs 08e7dd87): permitted and transferDetails from the request, the permit nonce the challengeHash (mppx 0.15.0's challengeHash of the challenge, keccak256 of the UTF-8 of JSON.stringify([id, realm])) as a uint256, deadline the challenge's expires, witness {challengeHash, externalId \"\" when the request names none}, and the signature viem 2.57.4's RFC 6979 signature with fixed.payerKey of MV6.expectDigest. MV6's complete gives it whole."
    }
   ]
  },
