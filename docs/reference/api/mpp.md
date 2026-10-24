@@ -883,65 +883,6 @@ its `request` decodes.
 
 ***
 
-### challengeH()
-
-> **challengeH**(`id`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-H from an id `challengeId` wrote, or from the bare base64url of H; anything else is `mpp/id-not-ours`.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `id` | `string` |
-
-#### Returns
-
-[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
-
-***
-
-### challengeHash()
-
-> **challengeHash**(`id`, `realm`): `` `0x${string}` ``
-
-keccak256(UTF-8(JSON.stringify([id, realm]))), lowercase: the id and realm framed as a JSON array of two strings, as
-`mppx` computes MPP's EVM challenge hash from 0.13.1, so that no two pairs give one preimage. A string that is not
-well-formed is written as `JSON.stringify` writes it, with each lone surrogate escaped as `\uXXXX`; the pairings
-refuse such an id or realm before they call it.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `id` | `string` |
-| `realm` | `string` |
-
-#### Returns
-
-`` `0x${string}` ``
-
-***
-
-### challengeId()
-
-> **challengeId**(`h`, `index`): `string` \| [`Refusal`](index.md#refusal)
-
-base64url, without padding, of H's 32 bytes, then `.` and the challenge's position (0 to 31).
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `h` | `` `0x${string}` `` |
-| `index` | `number` |
-
-#### Returns
-
-`string` \| [`Refusal`](index.md#refusal)
-
-***
-
 ### checkAttribution()
 
 > **checkAttribution**(`memo`, `realm`, `challengeId`): `true` \| [`Refusal`](index.md#refusal)
@@ -1383,6 +1324,24 @@ RFC 8785 form of their own parse, else `mpp/request-not-jcs`; they are hashed as
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### challengeH
+
+Re-exports [challengeH](index.md#challengeh)
+
+***
+
+### challengeHash
+
+Re-exports [challengeHash](index.md#challengehash)
+
+***
+
+### challengeId
+
+Re-exports [challengeId](index.md#challengeid)
 
 ***
 

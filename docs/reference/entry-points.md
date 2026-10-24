@@ -55,7 +55,7 @@ The core: assembling an ATR and hashing its exact bytes, comparing hashes, the h
 import { assemble, base64Bytes, base64UrlBytes, … } from "@integraledger/lcp";
 ```
 
-**Values (29):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+**Values (32):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `challengeH`, `challengeHash`, `challengeId`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
 
 **Types (14):** `AtrHash`, `Authorizer`, `Binding`, `Broadcaster`, `CarrierAfterH`, `CoreRefusal`, `Json`, `LcpPattern`, `MppBinding`, `PairingId`, `Presented`, `Refusal`, `UrlAuthority`, `X402Binding`.
 
