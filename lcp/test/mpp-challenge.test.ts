@@ -311,8 +311,8 @@ describe("problem", () => {
 
   it("answers a code the package does not return with 500 internal-payment-error, whatever its namespace", () => {
     const foreign = [
-      "claim/read-unavailable",
-      "door/unavailable",
+      "server/read-unavailable",
+      "server/unavailable",
       "x402/anything",
       "MPP/CREDENTIAL-MALFORMED",
       "mpp/id-not-ours/",

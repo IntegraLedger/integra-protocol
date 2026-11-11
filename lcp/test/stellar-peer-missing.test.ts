@@ -185,7 +185,7 @@ describe("without @stellar/stellar-sdk", () => {
   it("x402/exact/stellar's and mpp/charge/stellar's advertise refuse a refused member as they do with the peer", { timeout: IMPORT_MS }, async () => {
     const { exactStellar } = await import("../src/x402-exact-stellar.js");
     const { chargeStellar } = await import("../src/mpp.js");
-    const member = { refused: true, code: "claim/store-unavailable" };
+    const member = { refused: true, code: "server/store-unavailable" };
     const required = { x402Version: 2 as const, resource: V.fixed.resource, accepts: [V.fixed.option], ...member };
     expect(exactStellar.advertise(required, V.fixed.H, V.fixed.link, V.fixed.option)).toEqual({
       refused: true,

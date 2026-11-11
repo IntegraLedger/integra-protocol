@@ -38,8 +38,8 @@ const presentedOf: Map<string, { presented: unknown; fetched?: unknown }> = new 
 const held = (id: string): unknown => heldOf(structuredClone(presentedOf.get(id)!));
 
 /** A caller's value in the shape of a refusal, with a code the package never returns from these calls. */
-const shaped = () => ({ refused: true, code: "claim/store-unavailable", extra: "<b>x</b>" });
-const withRefused = (p: unknown) => ({ ...(p as object), refused: true, code: "claim/store-unavailable" });
+const shaped = () => ({ refused: true, code: "server/store-unavailable", extra: "<b>x</b>" });
+const withRefused = (p: unknown) => ({ ...(p as object), refused: true, code: "server/store-unavailable" });
 const codeOf = (v: unknown): string | undefined => (isRefusal(v) ? v.code : undefined);
 
 describe("isRefusal", () => {
@@ -142,7 +142,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
       for (const f of calls as ((p: unknown) => unknown)[]) {
         const out = await f(shaped());
         expect(isRefusal(out)).toBe(true);
-        expect(codeOf(out)).not.toBe("claim/store-unavailable");
+        expect(codeOf(out)).not.toBe("server/store-unavailable");
       }
     });
   }
