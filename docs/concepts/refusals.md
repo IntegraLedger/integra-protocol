@@ -125,7 +125,7 @@ false, whatever its reason.
 ```ts
 import { readToRepeat } from "@integraledger/lcp";
 
-const codes = ["xrpl/not-validated", "tempo/not-final", "evm/unreadable", "evm/reverted", "evm/wrong-reader", "tempo/read-first", "claim/unreadable"];
+const codes = ["xrpl/not-validated", "tempo/not-final", "evm/unreadable", "evm/reverted", "evm/wrong-reader", "tempo/read-first", "server/unreadable"];
 for (const code of codes) console.log(code, readToRepeat(code));
 ```
 
@@ -136,7 +136,7 @@ evm/unreadable true
 evm/reverted false
 evm/wrong-reader false
 tempo/read-first false
-claim/unreadable false
+server/unreadable false
 ```
 
 ## Next
