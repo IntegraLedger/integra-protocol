@@ -55,9 +55,9 @@ The core: assembling an ATR and hashing its exact bytes, comparing hashes, the h
 import { assemble, base64Bytes, base64UrlBytes, … } from "@integraledger/lcp";
 ```
 
-**Values (39):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `challengeH`, `challengeHash`, `challengeId`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `MAX_CHALLENGE_DEPTH`, `MAX_CHALLENGES`, `MAX_CREDENTIAL_BYTES`, `MAX_JSON_DEPTH`, `MAX_LINK_LENGTH`, `MAX_OPTIONS`, `MAX_SIGNATURE_BYTES`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toRawBytes`.
+**Values (46):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `challengeH`, `challengeHash`, `challengeId`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromLegalContextHeader`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `LEGAL_CONTEXT_HEADER`, `LEGAL_CONTEXT_SERVES`, `MAX_CHALLENGE_DEPTH`, `MAX_CHALLENGES`, `MAX_CREDENTIAL_BYTES`, `MAX_HEADER_BYTES`, `MAX_JSON_DEPTH`, `MAX_LINK_LENGTH`, `MAX_OPTIONS`, `MAX_SIGNATURE_BYTES`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `RETURN_VALUE_BYTES`, `servesOf`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toLegalContextHeader`, `toRawBytes`.
 
-**Types (22):** `AgreementData`, `AtrHash`, `Authorizer`, `Binding`, `Broadcaster`, `Carrier`, `CarrierAfterH`, `Codec`, `CoreRefusal`, `Coverage`, `Entry`, `Json`, `LcpPattern`, `Life`, `MppBinding`, `PairingData`, `PairingId`, `Presented`, `ReadData`, `Refusal`, `UrlAuthority`, `X402Binding`.
+**Types (23):** `AgreementData`, `AtrHash`, `Authorizer`, `Binding`, `Broadcaster`, `Carrier`, `CarrierAfterH`, `Codec`, `CoreRefusal`, `Coverage`, `Entry`, `Json`, `LcpPattern`, `LegalContextReturn`, `Life`, `MppBinding`, `PairingData`, `PairingId`, `Presented`, `ReadData`, `Refusal`, `UrlAuthority`, `X402Binding`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -271,9 +271,9 @@ import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lc
 
 **Pairings:** `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/stripe`, `mpp/subscription/tempo`.
 
-**Values (45):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeNearIntents`, `chargeSolana`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `FETCHED`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionResume`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `subscriptionStripe`, `subscriptionTempo`, `tie`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
+**Values (46):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeNearIntents`, `chargeSolana`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `FETCHED`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionResume`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `subscriptionStripe`, `subscriptionTempo`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
 
-**Types (24):** `Broadcaster`, `GatewayPreimage`, `GatewaySaltInput`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `XrplChargeChoice`, `XrplChargeUnsigned`.
+**Types (26):** `Broadcaster`, `GatewayPreimage`, `GatewaySaltInput`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `TokenDomain`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `X402Mapped`, `XrplChargeChoice`, `XrplChargeUnsigned`.
 
 ## `@integraledger/lcp/near`
 
@@ -426,14 +426,14 @@ import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, … } from "@integraled
 x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and ERC-7710 (with its salt level), `upto` over Permit2, and `auth-capture` over EIP-3009 and Permit2. The ATR hash is advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds it.
 
 ```ts no-check
-import { authCaptureEip3009, authCapturePermit2, exactEip3009, … } from "@integraledger/lcp/x402";
+import { authCaptureEip3009, authCapturePermit2, decodePaymentRequired, … } from "@integraledger/lcp/x402";
 ```
 
 **Pairings:** `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`, `x402/upto/eip155/permit2`.
 
-**Values (13):** `authCaptureEip3009`, `authCapturePermit2`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `pairingOfPayment`, `requestCommitment`, `tie`, `uptoPermit2`.
+**Values (21):** `authCaptureEip3009`, `authCapturePermit2`, `decodePaymentRequired`, `decodePaymentResponse`, `decodePaymentSignature`, `encodeHeader`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `pairingOfPayment`, `PAYMENT_REQUIRED`, `PAYMENT_RESPONSE`, `PAYMENT_SIGNATURE`, `requestCommitment`, `tie`, `toolCallCommitment`, `uptoPermit2`.
 
-**Types (13):** `Broadcaster`, `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
+**Types (16):** `Broadcaster`, `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `SettlementResponse`, `ToolCall`, `ToolCallCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
 
 ## `@integraledger/lcp/x402-batch-settlement`
 

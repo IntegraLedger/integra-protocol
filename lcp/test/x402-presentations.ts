@@ -9,10 +9,16 @@ import { railOptions } from "./option-filter-rows.js";
 import { rowsOf } from "./rows.js";
 
 const dir = new URL("../vectors/", import.meta.url);
+/** The vector files of x402's transport, not of a pairing, which their own tests hold: the headers and the request. */
+const TRANSPORT = ["x402-headers.json", "x402-request-commitment.json"];
 export const FILES = rowsOf(
   readdirSync(dir).filter((n) => n.startsWith("x402-") || n === "buyer.json"),
   "vectors/, the x402 vector files and buyer.json",
-  { min: 20 },
+  {
+    min: 20,
+    keep: ["the x402 pairings' files and buyer.json", (n) => !TRANSPORT.includes(n)],
+    leave: ["the files of x402's transport, which their own tests hold", (n) => TRANSPORT.includes(n)],
+  },
 );
 export const vector = (name: string): unknown => JSON.parse(readFileSync(new URL(name, dir), "utf8"));
 

@@ -17,10 +17,18 @@ import { heldOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const DIR = new URL("../vectors/", import.meta.url);
+const OF_THE_CHECKS = ["mpp-server-checks.json", "mpp-x402-mapping.json"];
 const FILES = rowsOf(
   readdirSync(DIR).filter((n) => n.startsWith("mpp-")),
   "the MPP vector files",
-  { exact: 23 },
+  {
+    exact: 23,
+    keep: ["the files of the MPP pairings", (n) => !OF_THE_CHECKS.includes(n)],
+    leave: [
+      "mpp-server-checks.json and mpp-x402-mapping.json, whose credentials are changed for the check or the mapping each row names",
+      (n) => OF_THE_CHECKS.includes(n),
+    ],
+  },
 );
 const vector = (f: string) => JSON.parse(readFileSync(new URL(f, DIR), "utf8"));
 

@@ -58,7 +58,7 @@ const withMemo = (on?: { transactionVersion: number; chainId: number }) =>
 
 function challenge(): MppChallenge & { id: string } {
   const c: MppChallenge = { realm: F.realm, method: "usdc", intent: "charge", request: b64u(JSON.stringify(F.request)), expires: F.expires };
-  const doc = chargeUsdcStacks.advertise([c], F.H, F.link, c);
+  const doc = chargeUsdcStacks.advertise([c], F.H, F.link, c, 0);
   if (!Array.isArray(doc)) throw new Error(JSON.stringify(doc));
   return doc[0] as MppChallenge & { id: string };
 }
@@ -713,7 +713,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
   it("a challenge on mainnet, chain id 1, reads a transaction of version 0x00 on chain 1 and refuses M4", async () => {
     const request = { ...F.request, methodDetails: { ...F.request.methodDetails, stacks: { ...F.request.methodDetails.stacks, network: "mainnet", chainId: "1" } } };
     const c: MppChallenge = { realm: F.realm, method: "usdc", intent: "charge", request: b64u(JSON.stringify(request)), expires: F.expires };
-    const doc = chargeUsdcStacks.advertise([c], F.H, F.link, c);
+    const doc = chargeUsdcStacks.advertise([c], F.H, F.link, c, 0);
     if (!Array.isArray(doc)) throw new Error(JSON.stringify(doc));
     const onMainnet = (wire: Uint8Array): MppCredential => ({ ...credential(wire), challenge: doc[0] as MppChallenge & { id: string } });
     const mainnet = await withMemo({ transactionVersion: 0x00, chainId: 1 });

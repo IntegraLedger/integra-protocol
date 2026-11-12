@@ -42,7 +42,7 @@ function reader(tx: EvmTransaction | null | "error", receipt: Receipt = R.receip
 
 /** The hash opening of a channel for `h` and `from`: the challenge placed with `h`, then `build`, completed with ES9's hash. */
 async function opening(h: Hex, from: Hex = f.payer): Promise<MppCredential> {
-  const ch = (place([challenge("evm", "session", f.request)], h, link, challenge("evm", "session", f.request)) as (MppChallenge & { id: string })[])[0]!;
+  const ch = (place([challenge("evm", "session", f.request)], h, link, challenge("evm", "session", f.request), 0) as (MppChallenge & { id: string })[])[0]!;
   const u = await sessionEvm.build({ challenge: ch, from, now: f.now, deposit: BigInt(f.deposit), credentialType: "hash" }, h);
   if ("refused" in u) throw new Error(u.code);
   const c = u.complete(R.hash, SIGNATURE);
@@ -52,7 +52,7 @@ async function opening(h: Hex, from: Hex = f.payer): Promise<MppCredential> {
 
 /** The authorization or Permit2 opening of the channel for H, signed off by fixed bytes; no check reads a signature. */
 async function signedOpening(credentialType: "authorization" | "permit2"): Promise<MppCredential> {
-  const ch = (place([challenge("evm", "session", f.request)], H, link, challenge("evm", "session", f.request)) as (MppChallenge & { id: string })[])[0]!;
+  const ch = (place([challenge("evm", "session", f.request)], H, link, challenge("evm", "session", f.request), 0) as (MppChallenge & { id: string })[])[0]!;
   const u = await sessionEvm.build(
     { challenge: ch, from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType, tokenDomain: f.tokenDomain },
     H,

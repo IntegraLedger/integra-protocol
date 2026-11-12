@@ -15,8 +15,8 @@ it pays. Import the MPP pieces from `@integraledger/lcp/mpp`.
 
 On every MPP pairing, H rides in the challenge itself, in two places:
 
-- **The challenge `id`** is the base64url (no padding) of H's 32 bytes, then `.` and the challenge's position in the
-  402 response. A Tempo `subscription` challenge's id is the bare base64url of H, so a 402 that carries H holds one
+- **The challenge `id`** is the base64url (no padding) of H's 32 bytes, then `.` and the challenge's position, 0 to
+  31, which the seller gives each challenge of the sale, its charge and agreement challenges together. A Tempo `subscription` challenge's id is the bare base64url of H, so a 402 that carries H holds one
   Tempo `subscription` challenge at most: `place` refuses a Tempo `subscription` challenge in a 402 that holds another
   (`mpp/witness-taken`). The `mppx` SDK's `tempo.subscription()` offers one subscription challenge per currency, by
   default two on Tempo's mainnet and testnet; a seller placing H there names one `currency`. `challengeId(h, index)`
@@ -36,16 +36,21 @@ whose `id` or `opaque` is in such a form, as it passes over one that carries no 
 
 `issuedDigest(challenge)` is the digest of what the seller issued: SHA-256 over the RFC 8785 form of the bound
 members, with `request` decoded and its `CARRIER` member left out, and `opaque` without the LCP members. The seller
-compares the echoed challenge's digest with the one it recorded at issue. A `stellar` charge's `recipient` is read as
-issued: the digest keeps its base `G…` account and leaves out a muxed id, so an echoed challenge whose `recipient`
-names another account gives another digest.
+compares the echoed challenge's digest with the one it recorded at issue. On a pairing whose quote or invoice the
+seller writes after H (`mpp/charge/nearintents`, `mpp/charge/lightning` and `mpp/session/lightning`), `issuedDigest`
+and `tie` read the challenge as the pairing's `unplaced` gives it, without the members written after H, so the
+challenge sent once they are written has the digest of the one the ATR binds. A credential whose echoed `opaque` is the
+object of its members, as `mppx` releases before 0.6.4 write it, is read by those members, as the base64url form is.
 
 ## Placing and reading
 
-`place(doc, h, link, option)` is the seller's placement over a list of challenges: the challenge whose bound members
-equal `option` gets the id derived from H and an `opaque` holding the seller's own map plus the LCP members. `place`,
-and so each pairing's `advertise`, refuses a list holding a challenge that carries a `refused` member as
-`mpp/challenge-malformed`.
+`place(doc, h, link, option, position, agreementUrl?)` is the seller's placement over a list of challenges: the
+challenge whose bound members equal `option` gets the id derived from H at `position` and an `opaque` holding the
+seller's own map plus the LCP members. The seller gives each challenge of a sale its own position, 0 to 31, its charge
+challenges and its agreement challenges together, since an agreement challenge is sent in a response of its own; a
+Tempo `subscription` challenge takes `null`. A position that another challenge of the list already carries is
+`mpp/position-taken`. `place`, and so each pairing's `advertise`, which takes the same arguments, refuses a list holding
+a challenge that carries a `refused` member as `mpp/challenge-malformed`.
 `read(doc)` is the buyer's reading: the challenges whose `opaque` carries an LCP hash and an `https` link and whose id
 derives from that hash. `pairingsOf(challenge)` names the pairings a challenge offers, and `pairingsOfPlaced(challenge)`
 those a placed challenge offers, with the Lightning invoice the seller's node writes after `place` required.
@@ -84,7 +89,7 @@ const issued: MppChallenge = {
 console.log(pairingsOf(issued));
 
 const h = await hash(new TextEncoder().encode("abc"));
-const placed = place([issued], h, "https://atr.seller.example/b3195b1f-4115-46b2-95a3-c9d61d7bfb01", issued);
+const placed = place([issued], h, "https://atr.seller.example/b3195b1f-4115-46b2-95a3-c9d61d7bfb01", issued, 0);
 if (isRefusal(placed)) throw new Error(placed.code);
 const id = placed[0]!.id!;
 console.log(id, challengeH(id) === h);
@@ -213,6 +218,30 @@ reader's `finalized` mark. Above that mark, where the block can be replaced, or 
 answers pending with the same reason ([Reading settlement](./rails.md#reading-settlement)).
 
 The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states where each charge carries H.
+
+## The server's order
+
+A resource server makes two checks a stock MPP server does not make, and makes them before anything can move money
+(`mpp-charge.md`, rule 10):
+
+1. **The challenge belongs to this agreement.** `challengeBound(credential)` gives H where the echoed challenge's id and
+   `opaque` name it, and `issuedDigest` of the echoed challenge equals the digest the server recorded for H: from the
+   ATR's binding slot (`tie`), or, for an agreement challenge, which no slot holds, the digest it recorded for its
+   agreement option.
+2. **The payment carries H.** The pairing's `bound`, which checks how the credential carries H, or its link, and never
+   what the payment pays. For a credential whose payer already broadcast the payment, `fetchPresented` reads the landed
+   transaction first, and `bound` refuses `<rail>/read-first` until then. Where the payer signs nothing that carries H
+   (`card`, `stripe`, an EVM `transaction` or `hash`), `bound` refuses `mpp/no-signed-place`, and the second check is
+   the pairing's `link` and the server's own record that the agreement for this H is recorded.
+
+Then validation that moves nothing, where the method's library separates it; then the server's own record that this H's
+agreement or payment is now taken, once for each H and act; and only then any call that can move money. The vectors are
+`mpp-server-checks.json`.
+
+`toX402(credential, token)` maps an `evm` `authorization` credential or a `usdc` EVM credential to x402's `exact`
+EIP-3009 `PaymentPayload` and `PaymentRequirements`, so a resource server that already runs an x402 facilitator settles
+it there as step 4 (`mpp-charge.md`, rule 12). `token` is the token's EIP-712 `{name, version}`, which no MPP challenge
+carries. Any other credential is `mpp/no-x402-twin`.
 
 ## Answering the buyer
 

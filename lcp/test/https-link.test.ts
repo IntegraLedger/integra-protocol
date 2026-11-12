@@ -92,7 +92,7 @@ describe("a link that is not a string", () => {
     for (const v of [42, null, {}] as never[]) {
       expect(exactEip3009.advertise(doc, H, v, X.O)).toEqual(refused("x402/link-not-https"));
       expect(exactEip3009.advertise(doc, H, X.link, X.O, v)).toEqual(refused("x402/link-not-https"));
-      expect(place([C_E], H, v, C_E)).toEqual(refused("mpp/link-not-https"));
+      expect(place([C_E], H, v, C_E, 0)).toEqual(refused("mpp/link-not-https"));
       expect(visaTap.advertise({}, H, v, C.offer)).toEqual(refused("card/link-not-https"));
       expect(placeA2a(A2A.A2.task, A2A.fixed.H, v)).toEqual(refused("a2a/link-not-https"));
     }
@@ -123,7 +123,7 @@ describe("every entry point's link check is the core rule", () => {
         r.refusedAs === "link-not-https",
       );
 
-      const m = place([C_E], H, r.link, C_E);
+      const m = place([C_E], H, r.link, C_E, 0);
       if (r.accept) expect(Array.isArray(m)).toBe(true);
       else expect(m).toEqual(refused(`mpp/${r.placedAs}`));
 

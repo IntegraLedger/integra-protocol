@@ -50,7 +50,7 @@ const issued = (requestJson: string): MppChallenge => ({
   expires: F.expires,
 });
 function placedWith(b: { advertise: (...a: never[]) => unknown }, c: MppChallenge): MppChallenge & { id: string } {
-  const doc = (b.advertise as (d: unknown, h: string, l: string, o: unknown) => unknown)([c], F.H, F.link, c);
+  const doc = (b.advertise as (d: unknown, h: string, l: string, o: unknown, p: number) => unknown)([c], F.H, F.link, c, 0);
   if (!Array.isArray(doc)) throw new Error(JSON.stringify(doc));
   return doc[0] as MppChallenge & { id: string };
 }
@@ -133,7 +133,7 @@ describe("mpp/charge/usdc/evm (M3)", () => {
     const notJcs = { ...cred.challenge, request: b64u(EVM.M3.notJcsRequestJson) };
     expect(fromB64u(notJcs.request)).toBe(EVM.M3.notJcsRequestJson);
     expect(pairingsOf(issued(EVM.M3.notJcsRequestJson))).toEqual(EVM.M3.expectNotJcs);
-    expect(chargeUsdcEvm.advertise([issued(EVM.M3.notJcsRequestJson)], F.H, F.link, issued(EVM.M3.notJcsRequestJson))).toEqual(EVM.M3.expectNotJcs);
+    expect(chargeUsdcEvm.advertise([issued(EVM.M3.notJcsRequestJson)], F.H, F.link, issued(EVM.M3.notJcsRequestJson), 0)).toEqual(EVM.M3.expectNotJcs);
     expect(await chargeUsdcEvm.bound({ ...cred, challenge: notJcs })).toEqual(EVM.M3.expectNotJcs);
   });
 
@@ -254,7 +254,7 @@ describe("mpp/charge/usdc/solana", () => {
       if (row.dropNetwork) md.solana = Object.fromEntries(Object.entries(md.solana).filter(([k]) => k !== "network"));
       const r = { ...S.request, methodDetails: md, ...(row.externalId !== undefined ? { externalId: row.externalId } : {}) };
       const o = issued(JSON.stringify(r));
-      expect(chargeUsdcSolana.advertise([o], F.H, F.link, o)).toEqual(row.expect);
+      expect(chargeUsdcSolana.advertise([o], F.H, F.link, o, 0)).toEqual(row.expect);
     },
   );
 

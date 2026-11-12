@@ -43,7 +43,7 @@ describe("SS1: the opening challenges", () => {
     for (const m of ["xrpl"] as const) {
       const row = V.SS1[m];
       expect(pairingsOf(row.challenge)).toEqual([`mpp/session/${m}`]);
-      expect(pairings[m].advertise([row.challenge], H, V.fixed.link, row.challenge)).toEqual([row.placed]);
+      expect(pairings[m].advertise([row.challenge], H, V.fixed.link, row.challenge, 0)).toEqual([row.placed]);
       expect(await issuedDigest(row.challenge)).toBe(row.expectIssuedDigest);
       expect(await issuedDigest(row.placed)).toBe(row.expectIssuedDigest);
     }
@@ -491,7 +491,7 @@ describe("mpp/session/xrpl", () => {
     });
     const placedWith = (request: Json) => {
       const c: MppChallenge = { ...V.SS1.xrpl.challenge, request: b64u(canonicalJson(request) as string) };
-      return (sessionXrpl.advertise([c], H, V.fixed.link, c) as (MppChallenge & { id: string })[])[0]!;
+      return (sessionXrpl.advertise([c], H, V.fixed.link, c, 0) as (MppChallenge & { id: string })[])[0]!;
     };
     const amountRows = rowsOf<any>(V.SS1refusals, "mpp-session-hedera-solana-xrpl.json SS1refusals", {
       keep: ["the xrpl rows whose request is malformed", (r: { method: string; expect: string }) => r.method === "xrpl" && r.expect === "mpp/request-malformed"],

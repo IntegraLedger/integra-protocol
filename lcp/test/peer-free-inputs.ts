@@ -18,8 +18,7 @@
 // - x402 Algorand's `build`: a choice compared with its option (the genesis hash against the option's network, an
 //   option the filter refuses), which needs no algosdk, as the option's and the payer's addresses do not.
 // - `muxedFor`: every base and H, as it reads and writes a strkey without the SDK.
-// - `issuedDigest`, which reads a muxed address without the SDK, and the strkeys `isAccount`, `isContract` and
-//   `muxedFor` read (`stellarStrkeyRows`).
+// - The strkeys `isAccount`, `isContract` and `muxedFor` read (`stellarStrkeyRows`).
 // - `stellarLocate`'s search, which decodes only a candidate's transaction that succeeded (`stellarLocateRows`).
 // - Each `status` of a rail with an optional peer that reads with it (`suiStatusRows`, `tvmStatusRows`,
 //   `stellarStatusRows`): the same answer after the same reads, except a read that reaches a step that decodes with
@@ -35,7 +34,6 @@ const vector = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${n
 const TVM = vector("x402-exact-tvm.json");
 const SUI = vector("x402-exact-sui.json");
 const STELLAR = vector("x402-exact-stellar.json");
-const CHARGE = vector("mpp-charge-stellar.json");
 const NEAR = vector("x402-exact-near.json");
 const AVM = vector("x402-exact-algorand.json");
 const XRPL = vector("x402-exact-xrpl.json");
@@ -620,20 +618,6 @@ export function memberFirstChoices(id: string, own?: unknown): { case: string; c
       expect: b.expect,
     })),
   );
-}
-
-/**
- * Challenges whose `issuedDigest` the vectors give, muxed recipients among them: the issued challenge, the placed one,
- * and the placed one echoed with the payer's muxed account. The digest is the same with the SDK and without it.
- */
-export function stellarDigestRows(): { case: string; challenge: unknown; expect: string }[] {
-  const D = CHARGE.issuedDigest;
-  const placed = CHARGE.place.expect;
-  return [
-    { case: "the issued challenge", challenge: CHARGE.challenge, expect: D.expectIssued },
-    { case: "the placed challenge, whose recipient is the seller's muxed account", challenge: placed, expect: D.expectIssued },
-    { case: "the placed challenge echoed with the payer's muxed account", challenge: { ...placed, request: D.echoedRequest }, expect: D.expectEchoed },
-  ];
 }
 
 /**
@@ -1255,7 +1239,7 @@ export function solanaChargeBlockhashRows(): PeerStepRow<SolanaChargeFns>[] {
   const placed = (f: SolanaChargeFns, request: Record<string, unknown>) => {
     const { recentBlockhash: _given, ...methodDetails } = request["methodDetails"] as Record<string, unknown>;
     const issued = { ...SOL_CHARGE.challenge, request: Buffer.from(JSON.stringify({ ...request, methodDetails }), "utf8").toString("base64url") };
-    const doc = f.advertise([issued] as never, H as never, link as never, issued as never) as unknown[];
+    const doc = f.advertise([issued] as never, H as never, link as never, issued as never, 0 as never) as unknown[];
     return doc[0];
   };
   const build = async (f: SolanaChargeFns, request: Record<string, unknown>, recentBlockhash: unknown) =>

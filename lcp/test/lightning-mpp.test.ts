@@ -41,7 +41,7 @@ const challengeOf = (v: { challenge: object; request: Json }, requestSet = {}, c
 describe("mpp/charge/lightning", () => {
   const offer = challengeOf(C.L3);
   const placed = () => {
-    const doc = chargeLightning.advertise([offer], H, C.fixed.link, offer);
+    const doc = chargeLightning.advertise([offer], H, C.fixed.link, offer, 0);
     if (!Array.isArray(doc)) throw new Error((doc as { code: string }).code);
     return doc[0]! as MppChallenge & { id: string };
   };
@@ -84,7 +84,7 @@ describe("mpp/charge/lightning", () => {
     for (const row of rowsOf(C.L3.refusals, "mpp-charge-lightning.json L3.refusals")) {
       it(row.case, () => {
         const bad = challengeOf(C.L3, row.requestSet ?? {}, row.challengeSet ?? {});
-        expect(chargeLightning.advertise([bad], H, C.fixed.link, bad)).toEqual(row.expect);
+        expect(chargeLightning.advertise([bad], H, C.fixed.link, bad, 0)).toEqual(row.expect);
       });
     }
   });
@@ -116,7 +116,7 @@ describe("mpp/charge/lightning", () => {
     for (const [name, change, code] of rows) {
       it(name, async () => {
         const bad = challengeOf(C.L3, change);
-        expect(chargeLightning.advertise([bad], H, C.fixed.link, bad)).toEqual({ refused: true, code });
+        expect(chargeLightning.advertise([bad], H, C.fixed.link, bad, 0)).toEqual({ refused: true, code });
         const credential: MppCredential = { challenge: { ...placed(), request: encode(set(C.L3.request, change)) }, payload: { preimage: C.fixed.preimage } };
         expect(await chargeLightning.bound(credential)).toEqual({ refused: true, code });
         expect(await chargeLightning.reference(credential)).toEqual({ refused: true, code });
@@ -140,7 +140,7 @@ describe("mpp/charge/lightning", () => {
 describe("mpp/session/lightning", () => {
   const offer = challengeOf(S.S1);
   const placed = () => {
-    const doc = sessionLightning.advertise([offer], H, S.fixed.link, offer);
+    const doc = sessionLightning.advertise([offer], H, S.fixed.link, offer, 0);
     if (!Array.isArray(doc)) throw new Error((doc as { code: string }).code);
     return doc[0]! as MppChallenge & { id: string };
   };
@@ -190,7 +190,7 @@ describe("mpp/session/lightning", () => {
 
 describe("mpp/session/lightning's channel members (draft-lightning-session-00's actions)", () => {
   const offer = challengeOf(S.S1);
-  const placed = () => (sessionLightning.advertise([offer], H, S.fixed.link, offer) as (MppChallenge & { id: string })[])[0]!;
+  const placed = () => (sessionLightning.advertise([offer], H, S.fixed.link, offer, 0) as (MppChallenge & { id: string })[])[0]!;
   const ph: string = S.fixed.paymentHash;
   it("kind: open, bearer and topUp within, close, anything else refused", () => {
     const k = (payload: object) => sessionLightning.channel.kind({ challenge: placed(), payload });
@@ -245,7 +245,7 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
   const deposit: string = S.S1.request.depositInvoice;
   const opened = (invoice: string, details?: object) => {
     const offer = challengeOf(S.S1, { depositInvoice: invoice, ...(details !== undefined ? { methodDetails: details } : {}) });
-    const doc = sessionLightning.advertise([offer], H, S.fixed.link, offer);
+    const doc = sessionLightning.advertise([offer], H, S.fixed.link, offer, 0);
     if (!Array.isArray(doc)) throw new Error((doc as { code: string }).code);
     return { challenge: doc[0]!, payload: { action: "open", preimage: S.fixed.preimage, returnInvoice: S.fixed.returnInvoice } };
   };
@@ -309,7 +309,7 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
     for (const [name, invoice, details] of rows) {
       it(name, async () => {
         const offer = challengeOf(S.S1, { depositInvoice: invoice, methodDetails: details });
-        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual({ refused: true, code: "ln/currency-network" });
+        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer, 0)).toEqual({ refused: true, code: "ln/currency-network" });
         const challenge = chosen(offer);
         expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual({ refused: true, code: "ln/currency-network" });
         const echo = echoing(set(S.S1.request, { depositInvoice: invoice, methodDetails: details }));
@@ -332,7 +332,7 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
       it(name, async () => {
         const request = set(S.S1.request, change);
         const offer = challengeOf(S.S1, change);
-        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual({ refused: true, code });
+        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer, 0)).toEqual({ refused: true, code });
         expect(await sessionLightning.bound(echoing(request))).toEqual({ refused: true, code });
         expect(await sessionLightning.reference(echoing(request))).toEqual({ refused: true, code });
       });
@@ -348,7 +348,7 @@ describe("mpp/session/lightning's read keys name the challenge's network", () =>
     for (const row of rowsOf(S.S1.refusals, "mpp-session-lightning.json S1.refusals")) {
       it(row.case, async () => {
         const offer = challengeOf(S.S1, row.requestSet ?? {}, row.challengeSet ?? {});
-        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual(row.expect);
+        expect(sessionLightning.advertise([offer], H, S.fixed.link, offer, 0)).toEqual(row.expect);
         const challenge = chosen(offer);
         expect(await sessionLightning.build({ challenge, returnInvoice: S.fixed.returnInvoice }, H)).toEqual(row.expect);
         if (row.expect.code === "ln/currency-network" && row.challengeSet === undefined) {
@@ -376,7 +376,7 @@ describe("the Lightning MPP pairings read no amount or currency", () => {
     it(`mpp/charge/lightning: ${name}`, async () => {
       const offer = challengeOf(C.L3, change);
       expect(pairingsOf(offer)).toEqual(["mpp/charge/lightning"]);
-      const doc = chargeLightning.advertise([offer], H, C.fixed.link, offer) as (MppChallenge & { id: string })[];
+      const doc = chargeLightning.advertise([offer], H, C.fixed.link, offer, 0) as (MppChallenge & { id: string })[];
       expect(doc[0]!.id).toBe(C.L3.expectId);
       const u = (await chargeLightning.build({ challenge: doc[0]! }, H)) as LnMppUnsigned;
       expect(await chargeLightning.bound(u.complete(C.fixed.preimage))).toBe(C.L3.expectBound);
@@ -384,7 +384,7 @@ describe("the Lightning MPP pairings read no amount or currency", () => {
     it(`mpp/session/lightning: ${name}`, async () => {
       const offer = challengeOf(S.S1, change);
       expect(pairingsOf(offer)).toEqual(["mpp/session/lightning"]);
-      const doc = sessionLightning.advertise([offer], H, S.fixed.link, offer) as (MppChallenge & { id: string })[];
+      const doc = sessionLightning.advertise([offer], H, S.fixed.link, offer, 0) as (MppChallenge & { id: string })[];
       expect(doc[0]!.id).toBe(S.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented.challenge.id);
       const u = (await sessionLightning.build({ challenge: doc[0]!, returnInvoice: S.fixed.returnInvoice }, H)) as LnMppUnsigned;
       expect(await sessionLightning.bound(u.complete(S.fixed.preimage))).toBe(S.S1.expectBound);

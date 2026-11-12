@@ -53,6 +53,7 @@ function advertiseAs(pairing: ConfirmOnly) {
     h: AtrHash,
     link: string,
     offer: MppChallenge,
+    position: number | null,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     if (!isObject(offer) || offer.intent !== pairing.split("/")[1] || offer.method !== pairing.split("/")[2]) {
@@ -73,6 +74,7 @@ function advertiseAs(pairing: ConfirmOnly) {
       h,
       link,
       offer,
+      position,
       (issued: Json | undefined) => (issued === undefined || issued === value ? value : refusal("mpp/carrier-occupied")),
       agreementUrl,
     );

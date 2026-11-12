@@ -34,11 +34,11 @@ describe("mpp/charge/lightning before its invoice", () => {
   const offer = challengeOf(C.L3, { "methodDetails.invoice": undefined });
 
   it("advertise refuses the challenge without its invoice", () => {
-    expect(chargeLightning.advertise([offer], H, C.fixed.link, offer)).toEqual({ refused: true, code: "ln/invoice-malformed" });
+    expect(chargeLightning.advertise([offer], H, C.fixed.link, offer, 0)).toEqual({ refused: true, code: "ln/invoice-malformed" });
   });
 
   it("advertiseBeforeCarrier places it with L3's id and the legal context", () => {
-    const placed = chargeLightning.advertiseBeforeCarrier([offer], H, C.fixed.link, offer) as MppChallenge[];
+    const placed = chargeLightning.advertiseBeforeCarrier([offer], H, C.fixed.link, offer, 0) as MppChallenge[];
     expect(placed[0]!.id).toBe(C.L3.expectId);
     expect(placed[0]!.request).toBe(offer.request);
     expect(opaqueOf(placed[0]!)).toMatchObject({ legalContextUrl: C.fixed.link });
@@ -50,7 +50,7 @@ describe("mpp/charge/lightning before its invoice", () => {
     ["a network MPP Lightning does not name", { "methodDetails.network": "litecoin" }, "ln/currency-network"],
   ])("still refuses %s", (_, requestSet, code) => {
     const bad = challengeOf(C.L3, { "methodDetails.invoice": undefined, ...requestSet });
-    expect(chargeLightning.advertiseBeforeCarrier([bad], H, C.fixed.link, bad)).toEqual({ refused: true, code });
+    expect(chargeLightning.advertiseBeforeCarrier([bad], H, C.fixed.link, bad, 0)).toEqual({ refused: true, code });
   });
 });
 
@@ -58,23 +58,23 @@ describe("mpp/session/lightning before its deposit invoice", () => {
   const offer = challengeOf(S.S1, { depositInvoice: undefined });
 
   it("advertise refuses the challenge without its deposit invoice", () => {
-    expect(sessionLightning.advertise([offer], H, S.fixed.link, offer)).toEqual({ refused: true, code: "ln/invoice-malformed" });
+    expect(sessionLightning.advertise([offer], H, S.fixed.link, offer, 0)).toEqual({ refused: true, code: "ln/invoice-malformed" });
   });
 
   it("advertiseBeforeCarrier places it; its request is S1's unplaced request", () => {
-    const placed = sessionLightning.advertiseBeforeCarrier([offer], H, S.fixed.link, offer) as MppChallenge[];
+    const placed = sessionLightning.advertiseBeforeCarrier([offer], H, S.fixed.link, offer, 0) as MppChallenge[];
     expect(JSON.parse(Buffer.from(placed[0]!.request, "base64url").toString("utf8"))).toEqual(S.S1.expectUnplacedRequest);
     expect(opaqueOf(placed[0]!)).toMatchObject({ legalContextUrl: S.fixed.link });
   });
 
   it("still refuses a challenge with no payment hash", () => {
     const bad = challengeOf(S.S1, { depositInvoice: undefined, paymentHash: undefined });
-    expect(sessionLightning.advertiseBeforeCarrier([bad], H, S.fixed.link, bad)).toEqual({ refused: true, code: "ln/payment-hash-required" });
+    expect(sessionLightning.advertiseBeforeCarrier([bad], H, S.fixed.link, bad, 0)).toEqual({ refused: true, code: "ln/payment-hash-required" });
   });
 
   it("still refuses a network MPP Lightning does not name", () => {
     const bad = challengeOf(S.S1, { depositInvoice: undefined, methodDetails: { network: "litecoin" } });
-    expect(sessionLightning.advertiseBeforeCarrier([bad], H, S.fixed.link, bad)).toEqual({ refused: true, code: "ln/currency-network" });
+    expect(sessionLightning.advertiseBeforeCarrier([bad], H, S.fixed.link, bad, 0)).toEqual({ refused: true, code: "ln/currency-network" });
   });
 });
 

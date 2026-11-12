@@ -30,6 +30,15 @@ export type { UrlAuthority } from "./core.js";
 export { isRefusal, readToRepeat } from "./refusal.js";
 export type { Refusal } from "./refusal.js";
 export { challengeH, challengeHash, challengeId, FETCHED } from "./mpp-challenge.js";
+export {
+  fromLegalContextHeader,
+  LEGAL_CONTEXT_HEADER,
+  LEGAL_CONTEXT_SERVES,
+  RETURN_VALUE_BYTES,
+  servesOf,
+  toLegalContextHeader,
+} from "./legal-context-return.js";
+export type { LegalContextReturn } from "./legal-context-return.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 export type { LcpPattern } from "./x402.js";
 export type {
@@ -46,6 +55,7 @@ export {
   MAX_CHALLENGE_DEPTH,
   MAX_CHALLENGES,
   MAX_CREDENTIAL_BYTES,
+  MAX_HEADER_BYTES,
   MAX_JSON_DEPTH,
   MAX_LINK_LENGTH,
   MAX_OPTIONS,
@@ -129,10 +139,10 @@ interface PushMode {
 }
 /**
  * The optional member of a pairing whose carrier the seller writes after H: `advertise`'s checks and placement, without
- * the checks on that carrier.
+ * the checks on that carrier. It takes the arguments its pairing's `advertise` takes.
  */
 export interface CarrierAfterH {
-  advertiseBeforeCarrier?(doc: never, h: AtrHash, link: string, offer: never, agreementUrl?: string): unknown;
+  advertiseBeforeCarrier?(doc: never, h: AtrHash, link: string, offer: never, ...rest: never[]): unknown;
 }
 /**
  * The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account

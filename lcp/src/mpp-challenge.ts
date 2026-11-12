@@ -23,7 +23,6 @@ import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
 import { broadcasterOf, type Broadcaster } from "./internal/broadcaster.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import { decode as decodeInvoice, FIELD } from "./internal/lightning.js";
-import { unmux as stellarUnmux } from "./internal/stellar-strkey.js";
 import {
   cardChargePairings,
   stripeChargePairings,
@@ -684,12 +683,16 @@ const PAIRING_CHECKS: { readonly [intentAndMethod: string]: PairingCheck } = Obj
 
 // ── The binding slot and the digest of what was issued.
 
-/** The binding slot: the distinct challenges among `options`, each with exactly MPP's bound members, as issued. */
+/**
+ * The binding slot: the distinct challenges among `options`, each with exactly MPP's bound members, as issued. A
+ * challenge of a pairing whose quote or invoice the seller writes after H is bound as `unplacedChallenge` gives it.
+ */
 export function tie(options: readonly MppChallenge[]): ["mpp", { challenges: MppChallenge[] }] {
   const seen = new Set<string>();
   const challenges: MppChallenge[] = [];
-  for (const o of Array.isArray(options) ? options : []) {
-    if (!isObject(o)) continue;
+  for (const given of Array.isArray(options) ? options : []) {
+    if (!isObject(given)) continue;
+    const o: object = isChallengeShape(given) ? unplacedChallenge(given) : given;
     const rebuilt: { [k: string]: string } = {};
     for (const k of BOUND) {
       const v = (o as { [k: string]: unknown })[k];
@@ -706,20 +709,22 @@ export function tie(options: readonly MppChallenge[]): ["mpp", { challenges: Mpp
 /**
  * the core's `digestJson` over the bound members, with `request` decoded and its carrier removed (`asIssued`), and
  * `opaque` decoded without the LCP members (omitted when that leaves it empty). A value that does not decode is its
- * string. A Stellar charge's muxed `recipient` is read without @stellar/stellar-sdk, so a challenge has one digest
- * with the SDK and without it.
+ * string. An `opaque` that is the object of its members, as a credential may echo it (`opaqueMembers`), is read by
+ * those members. A challenge of a pairing whose quote or invoice the seller writes after H is read as `unplacedChallenge`
+ * gives it, so that the digest covers the members fixed at issue alone.
  */
-export async function issuedDigest(c: MppChallenge): Promise<Hex | Refusal> {
-  if (!isChallengeShape(c)) return refusal("mpp/challenge-malformed");
+export async function issuedDigest(given: MppChallenge): Promise<Hex | Refusal> {
+  if (!isEchoedShape(given)) return refusal("mpp/challenge-malformed");
+  const c = unplacedChallenge(asWire(given));
   const out: { [k: string]: Json } = { realm: c.realm, method: c.method, intent: c.intent };
   const request = decodeObject(c.request);
-  out["request"] = request === undefined ? c.request : asIssued(c, request, stellarUnmux);
+  out["request"] = request === undefined ? c.request : asIssued(c, request);
   if (c.expires !== undefined) out["expires"] = c.expires;
   if (c.digest !== undefined) out["digest"] = c.digest;
   if (c.header !== undefined) out["header"] = c.header;
   if (c.opaque !== undefined) {
-    const map = decodeStringMap(c.opaque);
-    if (map === undefined) out["opaque"] = c.opaque;
+    const map = opaqueMembers(c.opaque);
+    if (map === undefined) out["opaque"] = c.opaque as Json;
     else {
       const seller = sellerMap(map);
       if (Object.keys(seller).length > 0) out["opaque"] = seller;
@@ -728,19 +733,43 @@ export async function issuedDigest(c: MppChallenge): Promise<Hex | Refusal> {
   return digestJson(out);
 }
 
+// ── What the seller writes after H.
+
+/**
+ * The intents and methods whose seller writes the quote or the invoice into the challenge after H, so that the ATR's
+ * binding slot holds the challenge without it: NEAR Intents' charge, and Lightning's charge and session.
+ */
+const WRITTEN_AFTER_H: ReadonlySet<string> = new Set(["charge/nearintents", "charge/lightning", "session/lightning"]);
+
+/**
+ * A challenge as its pairing's `unplaced` gives it, where the pairing's quote or invoice is written after H: its
+ * request without the members written after H, re-encoded as base64url of the core's `canonicalJson`. Any other
+ * challenge, and a value that is not a challenge, comes back as it is. `tie` and `issuedDigest` read every challenge
+ * through it, and the `unplaced` member of those pairings is this function.
+ */
+export function unplacedChallenge(c: MppChallenge): MppChallenge {
+  if (!isChallengeShape(c) || !WRITTEN_AFTER_H.has(`${c.intent}/${c.method}`)) return c;
+  return withoutCarrier(c);
+}
+
 // ── The seller's placement and the buyer's reading.
 
 /**
- * A copy of `doc` in which the challenge whose bound members equal `option` carries the id derived from H and an
- * `opaque` holding the seller's map plus `legalContext`, `legalContextUrl` and, when given, `legalContextAgreementUrl`.
- * A Tempo subscription challenge's id is the bare base64url of H. A `doc` holding a challenge that carries a `refused`
- * member is `mpp/challenge-malformed`, as one holding a challenge without the required members is.
+ * A copy of `doc` in which the challenge whose bound members equal `option` carries the id derived from H at
+ * `position` and an `opaque` holding the seller's map plus `legalContext`, `legalContextUrl` and, when given,
+ * `legalContextAgreementUrl`. The caller gives each challenge of a sale its own position, 0 to 31, the charge and
+ * agreement challenges of the sale together; a Tempo subscription challenge takes `null`, its id being the bare
+ * base64url of H. A position out of that range, a number for a Tempo subscription challenge or `null` for any other is
+ * `mpp/challenge-malformed`, and a position whose id another challenge of `doc` already carries is
+ * `mpp/position-taken`. A `doc` holding a challenge that carries a `refused` member is `mpp/challenge-malformed`, as one
+ * holding a challenge without the required members is.
  */
 export function place(
   doc: readonly MppChallenge[],
   h: AtrHash,
   link: string,
   option: MppChallenge,
+  position: number | null,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (
@@ -764,6 +793,7 @@ export function place(
   if (i === -1) return refusal("mpp/not-this-pairing");
   const target = doc[i]!;
   const subscription = option.intent === "subscription" && option.method === "tempo";
+  if (subscription ? position !== null : !isPosition(position)) return refusal("mpp/challenge-malformed");
   if (subscription && doc.some((c, j) => j !== i && c.intent === "subscription" && c.method === "tempo")) {
     return refusal("mpp/witness-taken");
   }
@@ -781,7 +811,8 @@ export function place(
   if (typeof text !== "string") return refusal("mpp/opaque-malformed");
   const bytes = new TextEncoder().encode(text);
   if (bytes.length > MAX_DECODED) return refusal("mpp/opaque-malformed");
-  const id = subscription ? toBase64Url(toRawBytes(hash)) : `${toBase64Url(toRawBytes(hash))}.${i}`;
+  const id = subscription ? toBase64Url(toRawBytes(hash)) : `${toBase64Url(toRawBytes(hash))}.${position}`;
+  if (doc.some((c, j) => j !== i && c.id === id)) return refusal("mpp/position-taken");
   const out = doc.map((c) => ({ ...c }));
   out[i] = { ...target, id, opaque: toBase64Url(bytes) };
   return out;
@@ -797,10 +828,11 @@ export function placeCarrier(
   h: AtrHash,
   link: string,
   option: MppChallenge,
+  position: number | null,
   carrier: (issued: Json | undefined) => string | Refusal,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
-  const placed = place(doc, h, link, option, agreementUrl);
+  const placed = place(doc, h, link, option, position, agreementUrl);
   if (isRefusal(placed)) return placed;
   const i = doc.findIndex((c) => sameBound(c, option));
   const request = decodeObject(placed[i]!.request);
@@ -833,14 +865,14 @@ export function carrierOf(c: MppChallenge, request: { [k: string]: Json }): read
 }
 
 /**
- * The challenge with its carrier removed from `request` (`asIssued`, with `unmux` for a Stellar charge), re-encoded as
- * base64url of the core's `canonicalJson`. A challenge whose request holds no carrier is returned unchanged.
+ * The challenge with its carrier removed from `request` (`asIssued`), re-encoded as base64url of the core's
+ * `canonicalJson`. A challenge whose request holds no carrier is returned unchanged.
  */
-export function withoutCarrier(c: MppChallenge, unmux?: typeof stellarUnmux): MppChallenge {
+export function withoutCarrier(c: MppChallenge): MppChallenge {
   if (!isChallengeShape(c)) return c;
   const request = decodeObject(c.request);
   if (request === undefined) return c;
-  const issued = asIssued(c, request, unmux);
+  const issued = asIssued(c, request);
   if (issued === request) return c;
   const text = canonicalJson(issued);
   if (typeof text !== "string") return c;
@@ -849,28 +881,12 @@ export function withoutCarrier(c: MppChallenge, unmux?: typeof stellarUnmux): Mp
 
 /**
  * A decoded request as the seller issued it: the carrier member `carrierOf` names removed, with a `metadata` object that
- * removal empties removed too. A Stellar charge's muxed `recipient` is replaced by its base `G…` account through
- * `unmux`, so only the muxed id leaves; a `recipient` that is not a muxed address, or any `recipient` when `unmux` is
- * not given, stays as it is. The request itself is returned when it holds no carrier.
+ * removal empties removed too. The request itself is returned when it holds no carrier.
  */
-function asIssued(
-  c: MppChallenge,
-  request: { [k: string]: Json },
-  unmux: typeof stellarUnmux | undefined,
-): { [k: string]: Json } {
-  if (isStellarCharge(c)) {
-    if (memberAt(request, ["recipient"]) === undefined) return request;
-    const m = unmux?.(request["recipient"]) ?? null;
-    return m === null ? request : { ...request, recipient: m.base };
-  }
+function asIssued(c: MppChallenge, request: { [k: string]: Json }): { [k: string]: Json } {
   const path = carrierOf(c, request);
   if (path === null || memberAt(request, path) === undefined) return request;
   return without(request, path);
-}
-
-/** A Stellar charge, whose carrier is the muxed id of `recipient`. */
-function isStellarCharge(c: MppChallenge): boolean {
-  return c.intent === "charge" && c.method === "stellar";
 }
 
 /** The value at `path` in a decoded request, or undefined. */
@@ -965,12 +981,15 @@ export function fetchedOf(c: object): unknown {
   return Object.hasOwn(c, FETCHED) ? (c as { [FETCHED]?: unknown })[FETCHED] : undefined;
 }
 
-/** A credential's shape: an echoed challenge with an id, an optional string `source`, and a payload object. */
+/**
+ * A credential's shape: an echoed challenge with an id, its `opaque` a string or the object `opaqueMembers` reads, an
+ * optional string `source`, and a payload object.
+ */
 export function credentialOf(c: unknown): MppCredential | Refusal {
   if (!isObject(c) || carriesRefused(c) || !isObject(c.challenge) || !isObject(c.payload)) {
     return refusal("mpp/credential-malformed");
   }
-  if (!isChallengeShape(c.challenge) || typeof c.challenge.id !== "string") return refusal("mpp/credential-malformed");
+  if (!isEchoedShape(c.challenge) || typeof c.challenge.id !== "string") return refusal("mpp/credential-malformed");
   if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
   return c as unknown as MppCredential;
 }
@@ -999,7 +1018,7 @@ function shapeGate(c: unknown, bound: boolean): MppCredential | Refusal {
   if (!isObject(c) || carriesRefused(c) || !isObject(c.challenge) || !isObject(c.payload)) {
     return refusal("mpp/credential-malformed");
   }
-  if (!isChallengeShape(c.challenge) || (bound && typeof c.challenge.id !== "string")) return refusal("mpp/credential-malformed");
+  if (!isEchoedShape(c.challenge) || (bound && typeof c.challenge.id !== "string")) return refusal("mpp/credential-malformed");
   if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
   return jsonWithin(c, MAX_CREDENTIAL_BYTES) ? (c as unknown as MppCredential) : refusal("mpp/credential-malformed");
 }
@@ -1080,12 +1099,12 @@ function echoedRead(c: unknown, bound: boolean): { h: AtrHash | undefined; reque
     const fromId = challengeIdH(credential.challenge);
     if (typeof fromId !== "string") return fromId;
     if (credential.challenge.opaque === undefined) return refusal("mpp/opaque-not-this-hash");
-    const map = decodeStringMap(credential.challenge.opaque);
+    const map = opaqueMembers(credential.challenge.opaque);
     if (map === undefined) return refusal("mpp/opaque-malformed");
     const lc = map["legalContext"] === undefined ? null : fromLcpString(map["legalContext"]);
     if (lc === null || !hashEquals(lc, fromId)) return refusal("mpp/opaque-not-this-hash");
     h = fromId;
-  } else if (credential.challenge.opaque !== undefined && decodeStringMap(credential.challenge.opaque) === undefined) {
+  } else if (credential.challenge.opaque !== undefined && opaqueMembers(credential.challenge.opaque) === undefined) {
     return refusal("mpp/opaque-malformed");
   }
   const request = decodeObject(credential.challenge.request);
@@ -1160,7 +1179,7 @@ export function echoedFor(
   const held = heldFor(c, pairing, true);
   if (isRefusal(held)) return held;
   const credential = c as MppCredential;
-  const echoed = echoedOf(credential.challenge as MppChallenge & { id: string }, held.request);
+  const echoed = echoedOf(asWire(credential.challenge) as MppChallenge & { id: string }, held.request);
   if (isRefusal(echoed)) return echoed;
   return { h: held.h!, checked: echoed, payload: credential.payload };
 }
@@ -1189,7 +1208,7 @@ function heldFor(
 ): { h: AtrHash | undefined; request: { [k: string]: Json }; checked: Checked } | Refusal {
   const read = echoedRead(c, bound);
   if (isRefusal(read)) return read;
-  const challenge = (c as MppCredential).challenge;
+  const challenge = asWire((c as MppCredential).challenge);
   const [, intent, method] = pairing.split("/");
   if (challenge.intent !== intent || challenge.method !== method) return refusal("mpp/not-this-pairing");
   const checked = checkedFor(challenge, pairing);
@@ -1404,6 +1423,43 @@ export function decodeObject(s: string): { [k: string]: Json } | undefined {
   return v as { [k: string]: Json };
 }
 
+/**
+ * The members of a challenge's `opaque`: the flat string-to-string map its base64url decodes to, or, where a credential
+ * echoes `opaque` as that map itself, as `mppx` releases before 0.6.4 write it (0.6.3's `Credential.serialize` spreads
+ * the challenge with `opaque` decoded; 0.6.5's `Credential.deserialize` reads both), the object's own members, each a
+ * string, at most 8 KiB as RFC 8785 text, as a decoded one is. Undefined for any other value.
+ */
+export function opaqueMembers(v: unknown): { [k: string]: string } | undefined {
+  if (typeof v === "string") return decodeStringMap(v);
+  if (!isObject(v) || !Object.values(v).every((x) => typeof x === "string")) return undefined;
+  const text = canonicalJson(v);
+  if (typeof text !== "string" || new TextEncoder().encode(text).length > MAX_DECODED) return undefined;
+  return { ...(v as { [k: string]: string }) };
+}
+
+/**
+ * A challenge as a credential may echo it: `isChallengeShape`'s members, with `opaque` a string or an object, the form
+ * `opaqueMembers` reads.
+ */
+function isEchoedShape(c: unknown): c is MppChallenge {
+  if (!isObject(c)) return false;
+  const opaque = c["opaque"];
+  if (opaque === undefined || typeof opaque === "string") return isChallengeShape(c);
+  return isObject(opaque) && isChallengeShape({ ...c, opaque: undefined });
+}
+
+/**
+ * The challenge with an `opaque` that is the object of its members written as base64url of its RFC 8785 form, the form
+ * a challenge carries on the wire; any other challenge comes back as it is. A credential's echoed challenge is read in
+ * this form, so a check that reads `opaque` reads it by its members either way.
+ */
+function asWire(c: MppChallenge): MppChallenge {
+  if (!isObject(c) || !isObject((c as { opaque?: unknown }).opaque)) return c;
+  const members = opaqueMembers((c as { opaque?: unknown }).opaque);
+  const text = members === undefined ? undefined : canonicalJson(members);
+  return typeof text === "string" ? { ...c, opaque: toBase64Url(new TextEncoder().encode(text)) } : c;
+}
+
 /** A decoded `opaque`: a flat string-to-string map. */
 export function decodeStringMap(s: string): { [k: string]: string } | undefined {
   const o = decodeObject(s);
@@ -1491,6 +1547,11 @@ function jsonWithin(v: unknown, max: number): boolean {
     return budget >= 0;
   };
   return walk(v, 0);
+}
+
+/** An id's position: an integer from 0 to 31. */
+function isPosition(p: unknown): p is number {
+  return Number.isSafeInteger(p) && (p as number) >= 0 && (p as number) < MAX_CHALLENGES;
 }
 
 function isLink(s: unknown): s is string {

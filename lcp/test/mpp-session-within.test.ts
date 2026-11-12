@@ -40,7 +40,7 @@ const R = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-
 const H2 = E.fixed.H2 as `0x${string}`;
 const payer = privateKeyToAccount(E.fixed.payerKey);
 const refused = (code: string) => ({ refused: true, code });
-const placed = (c: MppChallenge, h = H) => (place([c], h, link, c) as MppChallenge[])[0] as MppChallenge & { id: string };
+const placed = (c: MppChallenge, h = H) => (place([c], h, link, c, 0) as MppChallenge[])[0] as MppChallenge & { id: string };
 const affix = (v: string, e: { prefix: string; suffix: string }) => {
   expect(v.startsWith(e.prefix), `${v} starts ${e.prefix}`).toBe(true);
   expect(v.endsWith(e.suffix), `${v} ends ${e.suffix}`).toBe(true);

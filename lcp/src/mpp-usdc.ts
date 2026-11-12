@@ -175,12 +175,13 @@ function advertiseAs(pairing: UsdcDirect) {
     h: AtrHash,
     link: string,
     offer: MppChallenge,
+    position: number | null,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const pairings = pairingsOf(offer);
     if (isRefusal(pairings)) return pairings;
     if (!pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-    return place(doc, h, link, offer, agreementUrl);
+    return place(doc, h, link, offer, position, agreementUrl);
   };
 }
 

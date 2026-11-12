@@ -4,7 +4,7 @@
  * advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds
  * it.
  */
-import { digestJson, fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, digestJson, fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   DELEGATION_MANAGER,
@@ -76,6 +76,16 @@ export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type { Eip3009TypedData } from "./evm.js";
 export { LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA } from "./internal/x402.js";
+export {
+  PAYMENT_REQUIRED,
+  PAYMENT_RESPONSE,
+  PAYMENT_SIGNATURE,
+  decodePaymentRequired,
+  decodePaymentResponse,
+  decodePaymentSignature,
+  encodeHeader,
+  type SettlementResponse,
+} from "./x402-headers.js";
 
 export type PaymentRequirements = {
   scheme: string;
@@ -141,6 +151,15 @@ export interface HttpRequest {
 
 export type RequestCommitment = { method: string; path: string; query: string; bodyDigest: AtrHash };
 
+/** An MCP `tools/call` request's tool call, as received: its `params.name` and `params.arguments`. */
+export interface ToolCall {
+  name: string;
+  arguments?: { [k: string]: Json };
+}
+
+/** The commitment to an MCP tool call: the tool's name, and SHA-256 over the RFC 8785 form of its arguments. */
+export type ToolCallCommitment = { tool: string; argumentsDigest: Hex };
+
 export type LcpPattern = {
   pattern:
     | "native-field"
@@ -197,6 +216,28 @@ export async function requestCommitment(r: HttpRequest): Promise<RequestCommitme
 }
 
 /**
+ * The commitment to the MCP tool call a challenge answers (x402-request-commitment.md): the tool's `name` as received,
+ * and SHA-256 over the RFC 8785 form of its `arguments`, absent read as `{}`. Nothing else of the request is read:
+ * `params._meta`, where the payment rides, and the JSON-RPC envelope are not committed. A call that is not an object, a
+ * name that is not a well-formed string of 1 to 8192 characters, or arguments that are not a JSON object, is
+ * `x402/tool-call-malformed`; arguments over 1 MiB in that form are `x402/request-too-large`.
+ */
+export async function toolCallCommitment(call: ToolCall): Promise<ToolCallCommitment | Refusal> {
+  if (!isObject(call) || carriesRefused(call)) return refusal("x402/tool-call-malformed");
+  const name: unknown = call.name;
+  if (typeof name !== "string" || name.length === 0 || name.length > MAX_TARGET || !name.isWellFormed()) {
+    return refusal("x402/tool-call-malformed");
+  }
+  const args: unknown = call.arguments ?? {};
+  if (!isObject(args)) return refusal("x402/tool-call-malformed");
+  const text = canonicalJson(args);
+  if (typeof text !== "string") return refusal("x402/tool-call-malformed");
+  const bytes = new TextEncoder().encode(text);
+  if (bytes.length > MAX_BODY) return refusal("x402/request-too-large");
+  return { tool: name, argumentsDigest: await hash(bytes) };
+}
+
+/**
  * SHA-256 over the RFC 8785 form of an issued option or request commitment. Takes any value and refuses one that is not
  * JSON as `core/content-not-json`, as `digestJson` does.
  */
@@ -224,11 +265,14 @@ function eip3009Of(option: PaymentRequirements): typeof ID | undefined {
   return ID;
 }
 
-/** The binding slot: every option the challenge offers, exactly as issued, and the request they answer. */
+/**
+ * The binding slot: every option the challenge offers, exactly as issued, and the request they answer, an HTTP request
+ * (`requestCommitment`) or an MCP tool call (`toolCallCommitment`).
+ */
 export function tie(
   accepts: readonly PaymentRequirements[],
-  request: RequestCommitment,
-): ["x402", { accepts: readonly PaymentRequirements[]; request: RequestCommitment }] {
+  request: RequestCommitment | ToolCallCommitment,
+): ["x402", { accepts: readonly PaymentRequirements[]; request: RequestCommitment | ToolCallCommitment }] {
   return ["x402", { accepts, request }];
 }
 

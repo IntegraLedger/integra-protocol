@@ -257,6 +257,7 @@ function advertise(
   h: AtrHash,
   link: string,
   offer: MppChallenge,
+  position: number | null,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
@@ -266,6 +267,7 @@ function advertise(
     h,
     link,
     offer,
+    position,
     (issued) => (issued === undefined || sameInvoice(issued, invoice) ? invoice : refusal("xrpl/carrier-occupied")),
     agreementUrl,
   );

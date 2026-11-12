@@ -43,7 +43,8 @@ const SR = load("mpp-session-hedera-solana-xrpl.json");
 const UE = load("mpp-charge-usdc-evm.json");
 const UG = load("mpp-charge-usdc-gateway.json");
 const US = load("mpp-charge-usdc-stacks.json");
-const placed = (c: MppChallenge) => (place([c], H, link, c) as MppChallenge[])[0] as MppChallenge & { id: string };
+const placed = (c: MppChallenge) =>
+  (place([c], H, link, c, c.intent === "subscription" && c.method === "tempo" ? null : 0) as MppChallenge[])[0] as MppChallenge & { id: string };
 const roundTrip = (v: unknown) => JSON.parse(JSON.stringify(v));
 const payer = privateKeyToAccount(A.fixed.payerKey);
 const sig65 = async (hash: `0x${string}`) => {
@@ -154,7 +155,7 @@ describe("mpp-challenge.json agreedRefusals, the rows the pairings apply", () =>
 
     const chE = placed(C_E);
     const calls = challenge("evm", "charge", load("mpp-charge-evm-transaction.json").fixed.R_ENoTypes);
-    const second = (place([C_E, calls], H, link + "?other", calls) as MppChallenge[])[1]!;
+    const second = (place([C_E, calls], H, link + "?other", calls, 0) as MppChallenge[])[1]!;
     const { read } = await import("../src/mpp.js");
     expect(read([chE, second])).toEqual({ refused: true, code: "mpp/legal-context-conflict" });
 
@@ -195,17 +196,17 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
     JSON.stringify({ ...JSON.parse(V.fixed.R_E), methodDetails: { ...JSON.parse(V.fixed.R_E).methodDetails, credentialTypes: ["permit2", "transaction"] } }),
   );
   const agreement = V.fixed.agreementUrl as string;
-  type Advertise = (d: readonly MppChallenge[], h: string, l: string, o: MppChallenge, a?: string) => MppChallenge[] | { refused: true };
+  type Advertise = (d: readonly MppChallenge[], h: string, l: string, o: MppChallenge, p: number | null, a?: string) => MppChallenge[] | { refused: true };
   const advertiseOf = (b: { advertise: unknown }) => b.advertise as Advertise;
   const sha256 = (s: string) => "0x" + createHash("sha256").update(s).digest("hex");
 
   it("two pairings of one challenge place equal lists, in either order", () => {
     expect(pairingsOf(mixed)).toEqual(["mpp/charge/evm/permit2", "mpp/charge/evm/transaction"]);
-    const byPermit2 = advertiseOf(evmPermit2)([mixed], H, link, mixed, agreement);
-    const byTransaction = advertiseOf(evmTransaction)([mixed], H, link, mixed, agreement) as MppChallenge[];
+    const byPermit2 = advertiseOf(evmPermit2)([mixed], H, link, mixed, 0, agreement);
+    const byTransaction = advertiseOf(evmTransaction)([mixed], H, link, mixed, 0, agreement) as MppChallenge[];
     expect(byPermit2).toEqual(byTransaction);
-    expect(advertiseOf(evmPermit2)(byTransaction, H, link, mixed, agreement)).toEqual(byTransaction);
-    expect(advertiseOf(evmTransaction)(byPermit2 as MppChallenge[], H, link, mixed, agreement)).toEqual(byTransaction);
+    expect(advertiseOf(evmPermit2)(byTransaction, H, link, mixed, 0, agreement)).toEqual(byTransaction);
+    expect(advertiseOf(evmTransaction)(byPermit2 as MppChallenge[], H, link, mixed, 0, agreement)).toEqual(byTransaction);
   });
 
   it("each pairing's opaque carries the agreement URL: MV14's opaque, whatever the request", () => {
@@ -226,7 +227,7 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
       for (const option of issued) {
         const offered = pairingsOf(option);
         if (!Array.isArray(offered) || !offered.includes(b.id as never)) continue;
-        const out = advertiseOf(b)([option], H, link, option, agreement);
+        const out = advertiseOf(b)([option], H, link, option, b.id === "mpp/subscription/tempo" ? null : 0, agreement);
         if (!Array.isArray(out)) throw new Error(`${b.id}: ${JSON.stringify(out)}`);
         expect(out[0]!.opaque!.length).toBe(V.MV14.expectOpaqueLength);
         expect(sha256(out[0]!.opaque!)).toBe(V.MV14.expectOpaqueSha256);

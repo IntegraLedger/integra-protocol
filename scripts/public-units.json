@@ -101,7 +101,7 @@
     {
       "unit": "The resource bounds",
       "exports": {
-        ".": ["MAX_CHALLENGES", "MAX_CHALLENGE_DEPTH", "MAX_CREDENTIAL_BYTES", "MAX_JSON_DEPTH", "MAX_LINK_LENGTH", "MAX_OPTIONS", "MAX_SIGNATURE_BYTES"],
+        ".": ["MAX_CHALLENGES", "MAX_CHALLENGE_DEPTH", "MAX_CREDENTIAL_BYTES", "MAX_HEADER_BYTES", "MAX_JSON_DEPTH", "MAX_LINK_LENGTH", "MAX_OPTIONS", "MAX_SIGNATURE_BYTES"],
         "./card": ["MAX_CHECKOUT_ID", "MAX_CHECKOUT_JWT", "MAX_TAP_COMPONENTS", "MAX_TAP_FIELD", "MAX_TAP_HASH_LINE", "MAX_TAP_MEMBERS", "MAX_VI_DISCLOSURES", "MAX_VI_LAYER"]
       },
       "use": "Any server sizes its own limits from the largest input the package's decoders accept, a card agent's signed headers and Verifiable Intent layers among them.",
@@ -166,10 +166,18 @@
     {
       "unit": "x402 documents and the request commitment",
       "exports": {
-        "./x402": ["HttpRequest", "LEGAL_CONTEXT", "LEGAL_CONTEXT_SCHEMA", "PaymentPayload", "PaymentRequired", "PaymentRequirements", "RequestCommitment", "requestCommitment", "Unsigned", "X402Choice", "X402Offer", "X402Unsigned", "issuedDigest", "tie"]
+        "./x402": ["HttpRequest", "LEGAL_CONTEXT", "LEGAL_CONTEXT_SCHEMA", "PaymentPayload", "PaymentRequired", "PaymentRequirements", "RequestCommitment", "requestCommitment", "ToolCall", "ToolCallCommitment", "toolCallCommitment", "Unsigned", "X402Choice", "X402Offer", "X402Unsigned", "issuedDigest", "tie"]
       },
-      "use": "Any x402 server and client reads and writes the v2 documents and the legalContext extension, and anyone reproducing H computes the request commitment the ATR's binding slot holds.",
-      "fixedBy": "The x402 v2 specification; docs/guides/x402.md."
+      "use": "Any x402 server and client reads and writes the v2 documents and the legalContext extension, and anyone reproducing H computes the request commitment the ATR's binding slot holds, of an HTTP request or an MCP tool call.",
+      "fixedBy": "The x402 v2 specification; x402-request-commitment.md; docs/guides/x402.md."
+    },
+    {
+      "unit": "x402's HTTP headers",
+      "exports": {
+        "./x402": ["PAYMENT_REQUIRED", "PAYMENT_RESPONSE", "PAYMENT_SIGNATURE", "SettlementResponse", "decodePaymentRequired", "decodePaymentResponse", "decodePaymentSignature", "encodeHeader"]
+      },
+      "use": "Every x402 server and client writes and reads PAYMENT-REQUIRED, PAYMENT-SIGNATURE and PAYMENT-RESPONSE as the specification and its stock clients do, every extension carried as it is.",
+      "fixedBy": "The x402 specification's HTTP transport; x402-headers.json."
     },
     {
       "unit": "x402 on eip155 chains",
@@ -218,6 +226,22 @@
       },
       "use": "Any MPP server and client reads challenges as the stock clients read them, places H in a challenge and checks that a challenge is bound to it, names the request member a pairing writes H into, and answers a refusal in MPP's problem types.",
       "fixedBy": "The MPP specification; mpp-charge.md; mpp-challenge.json."
+    },
+    {
+      "unit": "The return after an agreement",
+      "exports": {
+        ".": ["LEGAL_CONTEXT_HEADER", "LEGAL_CONTEXT_SERVES", "LegalContextReturn", "RETURN_VALUE_BYTES", "fromLegalContextHeader", "servesOf", "toLegalContextHeader"]
+      },
+      "use": "Any buyer's agent that has made an agreement returns to the resource server with H, and the sale's return value where it has one, in the Legal-Context header, and any resource server reads it; any buyer reads which charge options an agreement option serves.",
+      "fixedBy": "legal-context-return.md; RFC 9651; legal-context-return.json."
+    },
+    {
+      "unit": "The MPP-to-x402 mapping",
+      "exports": {
+        "./mpp": ["toX402", "TokenDomain", "X402Mapped"]
+      },
+      "use": "Any MPP resource server that already runs an x402 facilitator settles an evm authorization or usdc EVM credential through it, as x402's exact EIP-3009 payment and requirements.",
+      "fixedBy": "mpp-charge.md, rule 12; x402's exact scheme on EVM; mpp-x402-mapping.json."
     },
     {
       "unit": "MPP charges",

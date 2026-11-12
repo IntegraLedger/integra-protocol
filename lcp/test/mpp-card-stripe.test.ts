@@ -25,9 +25,9 @@ const issued = (method: string, intent: string, request: unknown): MppChallenge 
   expires: F.expires,
 });
 const requestOf = (c: MppChallenge) => JSON.parse(fromB64u(c.request));
-type Advertises = { advertise(d: MppChallenge[], h: string, l: string, o: MppChallenge, a?: string): unknown };
+type Advertises = { advertise(d: MppChallenge[], h: string, l: string, o: MppChallenge, p: number | null, a?: string): unknown };
 const placed = (b: Advertises, c: MppChallenge, agreementUrl?: string): MppChallenge => {
-  const doc = b.advertise([c], F.H, F.link, c, agreementUrl);
+  const doc = b.advertise([c], F.H, F.link, c, 0, agreementUrl);
   if (!Array.isArray(doc)) throw new Error(JSON.stringify(doc));
   return doc[0]!;
 };
@@ -90,7 +90,7 @@ describe("mpp/charge/card (M1)", () => {
 
   it.each(rowsOf(CARD.refusals.rows as { case: string; externalId: string; expect: unknown }[], "mpp-charge-card.json refusals.rows"))("$case", (row) => {
     const occupied = issued("card", "charge", { ...CARD.M1.request, externalId: row.externalId });
-    expect(chargeCard.advertise([occupied], F.H, F.link, occupied)).toEqual(row.expect);
+    expect(chargeCard.advertise([occupied], F.H, F.link, occupied, 0)).toEqual(row.expect);
   });
 
   it("the agreement URL rides in opaque", () => {
@@ -141,7 +141,7 @@ describe("mpp/charge/stripe (M2)", () => {
         row.metadata ?? Object.fromEntries(Array.from({ length: row.metadataKeys! }, (_, i) => [`k${i}`, "v"]));
       const r = { ...STRIPE.M2.request, methodDetails: { ...STRIPE.M2.request.methodDetails, metadata } };
       const o = issued("stripe", "charge", r);
-      expect(chargeStripe.advertise([o], F.H, F.link, o)).toEqual(row.expect);
+      expect(chargeStripe.advertise([o], F.H, F.link, o, 0)).toEqual(row.expect);
     },
   );
 
@@ -171,7 +171,7 @@ describe("mpp/subscription/stripe", () => {
 
   it("a charge offer is not this pairing's", () => {
     const charge = issued("stripe", "charge", STRIPE.M2.request);
-    expect(subscriptionStripe.advertise([charge], F.H, F.link, charge)).toEqual({
+    expect(subscriptionStripe.advertise([charge], F.H, F.link, charge, 0)).toEqual({
       refused: true,
       code: "mpp/not-this-pairing",
     });

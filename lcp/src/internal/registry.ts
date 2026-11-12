@@ -97,7 +97,8 @@ export interface PairingData {
  */
 export interface Codec<Presented, Ref, Reader> {
   readonly read: (doc: never) => unknown;
-  readonly advertise: (doc: never, h: AtrHash, link: string, offer: never, agreementUrl?: string) => unknown;
+  /** On MPP, the arguments after `offer` are the challenge's position and the agreement URL; elsewhere, the agreement URL. */
+  readonly advertise: (doc: never, h: AtrHash, link: string, offer: never, ...rest: never[]) => unknown;
   readonly bound: (presented: Presented, ...rest: never[]) => Promise<AtrHash | Refusal> | AtrHash | Refusal;
   readonly broadcaster: (presented: Presented) => Promise<Broadcaster | Refusal>;
   /**

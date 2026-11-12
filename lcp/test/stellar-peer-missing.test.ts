@@ -2,14 +2,13 @@
 // it absent, the stellar entry point and the package root still import, and each function whose type carries a refusal
 // and needs the XDR refuses `stellar/peer-missing` (the vectors' refusal), never throwing, after every check that needs
 // none, each of which gives the code it gives with the peer. Strkeys (`G…`, `C…` and `M…`) are read and written
-// without the SDK, so isAccount, isContract, issuedDigest and muxedFor give every input the answer they give with it;
+// without the SDK, so isAccount, isContract and muxedFor give every input the answer they give with it;
 // stellarStatus and stellarLocate read as they do with the SDK, pending unreadable or incomplete only where they must
 // decode a transaction.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   muxedForArgs,
-  stellarDigestRows,
   stellarEnvelopeInputs,
   stellarEventInputs,
   stellarLocateRows,
@@ -33,13 +32,6 @@ describe("without @stellar/stellar-sdk", () => {
   beforeAll(async () => {
     await import("../src/index.js");
   }, IMPORT_MS);
-
-  it("issuedDigest of the vectors' challenges is the vectors' digest, muxed recipients included", { timeout: IMPORT_MS }, async () => {
-    const { issuedDigest } = await import("../src/mpp.js");
-    for (const row of rowsOf(stellarDigestRows(), "peer-free-inputs.ts", { exact: 3 })) {
-      expect([row.case, await issuedDigest(row.challenge as never)]).toEqual([row.case, row.expect]);
-    }
-  });
 
   // The decoders and transferEventTopics read or write XDR, after the strkey; muxedFor writes a strkey alone.
   it("the stellar entry point's decoders refuse peer-missing, and muxedFor answers as it does with the peer", { timeout: IMPORT_MS }, async () => {

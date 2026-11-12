@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { pairingOf } from "../src/index.js";
 import { avmCarrier, exactAvm } from "../src/avm.js";
 import { isAccount, isContract } from "../src/internal/stellar.js";
-import { chargeSolana, issuedDigest, sessionXrpl, type MppChallenge } from "../src/mpp.js";
+import { chargeSolana, sessionXrpl } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
 import { decodeStellarTx, muxedFor, stellarLocate, stellarStatus, transferEventOf, transferEventTopics } from "../src/stellar.js";
 import { decodeSuiTx, exactSui, suiStatus } from "../src/sui.js";
@@ -22,7 +22,6 @@ import {
   nearCarrierInputs,
   nearChoice,
   solanaChargeBlockhashRows,
-  stellarDigestRows,
   stellarEnvelopeInputs,
   stellarEventInputs,
   stellarLocateRows,
@@ -73,14 +72,6 @@ describe("recover with each rail's optional peer", () => {
       }
     });
   }
-});
-
-describe("the reads of a muxed address with @stellar/stellar-sdk", () => {
-  it("issuedDigest of the vectors' challenges", async () => {
-    for (const row of rowsOf(stellarDigestRows(), "peer-free-inputs.ts", { exact: 3 })) {
-      expect([row.case, await issuedDigest(row.challenge as MppChallenge)]).toEqual([row.case, row.expect]);
-    }
-  });
 });
 
 // The rows are held to the SDK's StrKey too: an account or a contract is one exactly when the SDK takes it as one.

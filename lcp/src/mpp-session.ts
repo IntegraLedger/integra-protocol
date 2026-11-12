@@ -449,9 +449,10 @@ function advertise(
   h: AtrHash,
   link: string,
   offer: MppChallenge,
+  position: number | null,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
-  return place(doc, h, link, offer, agreementUrl);
+  return place(doc, h, link, offer, position, agreementUrl);
 }
 
 /**

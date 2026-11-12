@@ -110,6 +110,7 @@ export {
   type UsdcUnsigned,
 } from "./mpp-usdc.js";
 export { chargeNearIntents } from "./mpp-nearintents.js";
+export { toX402, type TokenDomain, type X402Mapped } from "./mpp-x402.js";
 export { chargeSolana } from "./mpp-solana.js";
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
 export {
@@ -145,28 +146,6 @@ export type MppUnsigned =
   | {
       request: { kind: "eip712"; typedData: Eip3009TypedData | Permit2TypedData };
       complete(signature: Hex): MppCredential | Refusal;
-    }
-  | {
-      /** One Tempo call. No charge pairing's `build` in this package answers this kind. */
-      request: {
-        kind: "tempo-call";
-        chainId: number;
-        call: { to: Hex; data: Hex };
-        validBefore: number;
-        broadcast: boolean;
-      };
-      complete(signedTxOrHash: Hex): MppCredential | Refusal;
-    }
-  | {
-      /** The calls of one Tempo transaction. No charge pairing's `build` in this package answers this kind. */
-      request: {
-        kind: "tempo-calls";
-        chainId: number;
-        calls: readonly { to: Hex; data: Hex }[];
-        validBefore: number;
-        broadcast: boolean;
-      };
-      complete(signedTxOrHash: Hex): MppCredential | Refusal;
     }
   | {
       /**
@@ -294,12 +273,13 @@ function advertiseAs(pairing: ChargeId) {
     h: AtrHash,
     link: string,
     offer: MppChallenge,
+    position: number | null,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const pairings = pairingsOf(offer);
     if (isRefusal(pairings)) return pairings;
     if (!pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-    return place(doc, h, link, offer, agreementUrl);
+    return place(doc, h, link, offer, position, agreementUrl);
   };
 }
 

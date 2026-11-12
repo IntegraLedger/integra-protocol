@@ -13,7 +13,7 @@ import {
   placeCarrier,
   read,
   tie,
-  withoutCarrier,
+  unplacedChallenge,
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
@@ -47,6 +47,7 @@ function advertise(
   h: AtrHash,
   link: string,
   offer: MppChallenge,
+  position: number | null,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
@@ -56,18 +57,20 @@ function advertise(
     h,
     link,
     offer,
+    position,
     (issued) => (issued === undefined || issued === value ? value : refusal("near/carrier-occupied")),
     agreementUrl,
   );
 }
 
 /**
- * The challenge as issued: its request without `externalId`, where H rides. A challenge that carries a `refused` member
- * is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ * The challenge as issued, as `unplacedChallenge` gives it: its request without `externalId`, where H rides. A
+ * challenge that carries a `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as
+ * it is.
  */
 function unplaced(option: MppChallenge): MppChallenge | Refusal {
   if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
-  return withoutCarrier(option);
+  return unplacedChallenge(option);
 }
 
 const pattern: LcpPattern = deepFreeze({

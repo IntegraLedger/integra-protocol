@@ -64,7 +64,7 @@ const affix = (v: string, e: { prefix: string; suffix: string }) => {
   expect(v.startsWith(e.prefix)).toBe(true);
   expect(v.endsWith(e.suffix)).toBe(true);
 };
-const placedOf = (c: MppChallenge) => (place([c], H, link, c) as MppChallenge[])[0] as MppChallenge & { id: string };
+const placedOf = (c: MppChallenge) => (place([c], H, link, c, 0) as MppChallenge[])[0] as MppChallenge & { id: string };
 const eip712 = (u: MppUnsigned | { refused: true; code: string }) => {
   if ("refused" in u || u.request.kind !== "eip712") throw new Error("not an eip712 request");
   return u as Extract<MppUnsigned, { request: { kind: "eip712" } }>;
@@ -364,7 +364,7 @@ describe("mpp-charge-evm-permit2.json", () => {
     r.methodDetails.splits = [{ amount: "10000", recipient: "0x8Ba1f109551bD432803012645Ac136ddd64DBA72" }];
     // `place` refuses this request (pairingsOf), so the challenge carrying it is R_E6b's placed challenge with the
     // request replaced: its id and opaque carry H, and the filter reads the splits.
-    expect(place([challenge("evm", "charge", JSON.stringify(r))], H, link, challenge("evm", "charge", JSON.stringify(r)))).toEqual({
+    expect(place([challenge("evm", "charge", JSON.stringify(r))], H, link, challenge("evm", "charge", JSON.stringify(r)), 0)).toEqual({
       refused: true,
       code: "mpp/input-malformed",
     });

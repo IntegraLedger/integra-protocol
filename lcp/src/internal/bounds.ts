@@ -28,6 +28,9 @@ export const MAX_CHALLENGES = 32;
 /** The largest MPP credential lcp decodes, in bytes. The MPP draft sets no size. */
 export const MAX_CREDENTIAL_BYTES = 65_536;
 
+/** The largest JSON lcp decodes from an x402 header, `PAYMENT-REQUIRED` and the others, in bytes. x402 sets no size. */
+export const MAX_HEADER_BYTES = 65_536;
+
 /**
  * The deepest nesting of arrays and objects in any JSON lcp writes or reads, an ATR's among it. RFC 8259 permits any
  * depth; a parser's recursion is bounded by it.

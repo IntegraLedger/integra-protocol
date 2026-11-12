@@ -2,7 +2,7 @@
  * BOLT11 invoices, the x402 Lightning payment's types, and the Lightning pairings on MPP. On MPP the seller's node writes
  * the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
  */
-import { canonicalJson, hashEquals, type AtrHash, type Json } from "./core.js";
+import { hashEquals, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { decode, fieldHash } from "./internal/lightning.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
@@ -20,10 +20,10 @@ import {
   read as mppRead,
   sessionBroadcaster,
   tie as mppTie,
+  unplacedChallenge,
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { toBase64Url } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern, PaymentRequired, PaymentRequirements } from "./x402.js";
 import { LIGHTNING } from "./internal/data/lightning.js";
@@ -151,27 +151,12 @@ function lnChallengeChecks(pairing: LnMppPairingId, c: MppChallenge, h: AtrHash,
 }
 
 /**
- * The challenge without its invoice, `request` re-encoded as base64url of its JCS form. A challenge that carries a
- * `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
+ * The challenge without its invoice, as `unplacedChallenge` gives it. A challenge that carries a `refused` member is
+ * `mpp/challenge-malformed`; a value that is not an object comes back as it is.
  */
-function lnUnplaced(pairing: LnMppPairingId): (c: MppChallenge) => MppChallenge | Refusal {
-  return (c) => {
-    if (isObject(c) && carriesRefused(c)) return refusal("mpp/challenge-malformed");
-    const request = isObject(c) && typeof c.request === "string" ? decodeObject(c.request) : undefined;
-    if (request === undefined) return c;
-    let rest: { [k: string]: Json };
-    if (pairing === LN_SESSION) {
-      const { depositInvoice: _, ...r } = request;
-      rest = r;
-    } else {
-      const d = request["methodDetails"];
-      if (!isObject(d)) return c;
-      const { invoice: _, ...details } = d as { [k: string]: Json };
-      rest = { ...request, methodDetails: details };
-    }
-    const text = canonicalJson(rest);
-    return typeof text === "string" ? { ...c, request: toBase64Url(new TextEncoder().encode(text)) } : c;
-  };
+function lnUnplaced(c: MppChallenge): MppChallenge | Refusal {
+  if (isObject(c) && carriesRefused(c)) return refusal("mpp/challenge-malformed");
+  return unplacedChallenge(c);
 }
 
 function lnAdvertise(pairing: LnMppPairingId) {
@@ -180,11 +165,12 @@ function lnAdvertise(pairing: LnMppPairingId) {
     h: AtrHash,
     link: string,
     offer: MppChallenge,
+    position: number | null,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const b = lnChallengeChecks(pairing, offer, h, false);
     if (isRefusal(b)) return b;
-    return place(doc, h, link, offer, agreementUrl);
+    return place(doc, h, link, offer, position, agreementUrl);
   };
 }
 
@@ -199,12 +185,13 @@ function lnAdvertiseBeforeCarrier(pairing: LnMppPairingId) {
     h: AtrHash,
     link: string,
     offer: MppChallenge,
+    position: number | null,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const checked = checkChallenge(offer, false);
     if (isRefusal(checked)) return checked;
     if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-    return place(doc, h, link, offer, agreementUrl);
+    return place(doc, h, link, offer, position, agreementUrl);
   };
 }
 
@@ -299,7 +286,7 @@ function lnMppBinding<P extends LnMppPairingId>(id: P) {
       forwardIndexable: false,
     } satisfies LcpPattern) as LcpPattern,
     claims: true as boolean,
-    unplaced: lnUnplaced(id),
+    unplaced: lnUnplaced,
     tie: mppTie,
     read: mppRead,
     advertise: lnAdvertise(id),

@@ -81,9 +81,9 @@ describe("mpp-charge-solana.json", () => {
 
   it("pairingsOf, and advertise places id, opaque and externalId", () => {
     expect(pairingsOf(V.challenge)).toEqual(["mpp/charge/solana"]);
-    expect(chargeSolana.advertise([V.challenge], H, V.fixed.link, V.challenge)).toEqual([V.place.expect]);
+    expect(chargeSolana.advertise([V.challenge], H, V.fixed.link, V.challenge, 0)).toEqual([V.place.expect]);
     const occupied = withRequest(V.challenge, V.occupied.request);
-    expect(chargeSolana.advertise([occupied], H, V.fixed.link, occupied)).toEqual(refused(V.occupied.expect));
+    expect(chargeSolana.advertise([occupied], H, V.fixed.link, occupied, 0)).toEqual(refused(V.occupied.expect));
     const r = chargeSolana.read([placed]);
     if ("refused" in r) throw new Error(r.code);
     expect(r.h).toBe(H);
@@ -161,7 +161,7 @@ describe("mpp-charge-solana.json", () => {
   // format, with no Solana library (sol's case), and build's message is held to it byte for byte.
   it("sol: build on a native SOL request gives the System transfer message written by hand from the message format, byte for byte", async () => {
     const challenge = withRequest(V.challenge, V.sol.request);
-    const solPlaced = chargeSolana.advertise([challenge], H, V.fixed.link, challenge);
+    const solPlaced = chargeSolana.advertise([challenge], H, V.fixed.link, challenge, 0);
     if (!Array.isArray(solPlaced)) throw new Error(solPlaced.code);
     const u = await chargeSolana.build(
       {
@@ -334,9 +334,9 @@ describe("mpp-charge-xrpl.json", () => {
 
   it("pairingsOf, and advertise places id, opaque and methodDetails.invoiceId", () => {
     expect(pairingsOf(V.challenge)).toEqual(["mpp/charge/xrpl"]);
-    expect(chargeXrpl.advertise([V.challenge], H, V.fixed.link, V.challenge)).toEqual([V.place.expect]);
+    expect(chargeXrpl.advertise([V.challenge], H, V.fixed.link, V.challenge, 0)).toEqual([V.place.expect]);
     const occupied = withRequest(V.challenge, V.occupied.request);
-    expect(chargeXrpl.advertise([occupied], H, V.fixed.link, occupied)).toEqual(refused(V.occupied.expect));
+    expect(chargeXrpl.advertise([occupied], H, V.fixed.link, occupied, 0)).toEqual(refused(V.occupied.expect));
     const noNetwork = withRequest(V.challenge, { ...V.fixed.request, methodDetails: {} });
     expect(pairingsOf(noNetwork)).toEqual(refused(V.refusals[2].expect));
   });
@@ -381,7 +381,7 @@ describe("mpp-charge-xrpl.json", () => {
   it("build.issued and build.mpt: an issued currency's SendMax and tags, and an MPT's amount, as written by hand", async () => {
     for (const row of [V.build.issued, V.build.mpt]) {
       const challenge = withRequest(V.challenge, row.request);
-      const rowPlaced = chargeXrpl.advertise([challenge], H, V.fixed.link, challenge);
+      const rowPlaced = chargeXrpl.advertise([challenge], H, V.fixed.link, challenge, 0);
       if (!Array.isArray(rowPlaced)) throw new Error(rowPlaced.code);
       const u = await chargeXrpl.build(
         {
@@ -514,9 +514,9 @@ describe("mpp-charge-nearintents.json", () => {
 
   it("pairingsOf, and advertise places id, opaque and externalId", () => {
     expect(pairingsOf(V.challenge)).toEqual(["mpp/charge/nearintents"]);
-    expect(chargeNearIntents.advertise([V.challenge], H, V.fixed.link, V.challenge)).toEqual([V.place.expect]);
+    expect(chargeNearIntents.advertise([V.challenge], H, V.fixed.link, V.challenge, 0)).toEqual([V.place.expect]);
     const occupied = withRequest(V.challenge, V.occupied.request);
-    expect(chargeNearIntents.advertise([occupied], H, V.fixed.link, occupied)).toEqual(refused(V.occupied.expect));
+    expect(chargeNearIntents.advertise([occupied], H, V.fixed.link, occupied, 0)).toEqual(refused(V.occupied.expect));
     expect(chargeNearIntents.claims).toBe(false);
     expect(chargeNearIntents.data.coverage).toBe("none");
   });
@@ -782,7 +782,7 @@ describe("mpp-charge-xrpl.json agreedRefusals: every row runs", () => {
     // The challenge placed under H2, its invoiceId then set to H's: V3's signed InvoiceID is that invoiceId, and the
     // challenge's id and opaque name H2.
     "a signed InvoiceID that is the request's invoiceId but not the echoed challenge's hash": async () => {
-      const underH2 = chargeXrpl.advertise([V.challenge], V.fixed.H2, V.fixed.link, V.challenge);
+      const underH2 = chargeXrpl.advertise([V.challenge], V.fixed.H2, V.fixed.link, V.challenge, 0);
       if (!Array.isArray(underH2)) throw new Error(underH2.code);
       const c = editedRequest(underH2[0]!, (_, d) => (d["invoiceId"] = V.fixed.invoiceId));
       const cr = credential(c as never, { type: "transaction", blob: V.V3.blob });

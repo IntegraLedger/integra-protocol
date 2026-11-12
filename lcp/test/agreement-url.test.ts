@@ -75,7 +75,8 @@ type Doc = unknown;
 interface Case {
   id: string;
   binding: { advertise: (...a: never[]) => unknown; read: (doc: never) => unknown };
-  args: [Doc, AtrHash, string, Doc];
+  /** The document, H, the link and the offer; on MPP, then the challenge's position. */
+  args: [Doc, AtrHash, string, Doc, ...unknown[]];
   /** The advertised document without an agreement URL. */
   before: Json;
   /** The advertised document with agreement URL `a`. */
@@ -148,7 +149,7 @@ function mppCase(id: string, binding: Case["binding"], h: AtrHash, link: string,
   return {
     id,
     binding,
-    args: [[challenge], h, link, challenge],
+    args: [[challenge], h, link, challenge, 0],
     before: [placed],
     after: (a) => [{ ...(placed as object), opaque: opaqueOf(h, link, a) }],
     readable: (d) => d,

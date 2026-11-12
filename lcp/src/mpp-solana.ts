@@ -430,6 +430,7 @@ function advertise(
   h: AtrHash,
   link: string,
   offer: MppChallenge,
+  position: number | null,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
@@ -439,6 +440,7 @@ function advertise(
     h,
     link,
     offer,
+    position,
     (issued) => (issued === undefined || issued === memo ? memo : spec.occupied()),
     agreementUrl,
   );
@@ -470,8 +472,8 @@ function pullPairing<Id extends typeof ID | "mpp/charge/usdc/solana">(spec: Sola
     claims: true as boolean,
     unplaced,
     tie,
-    advertise: (doc: readonly MppChallenge[], h: AtrHash, link: string, offer: MppChallenge, agreementUrl?: string) =>
-      advertise(spec, doc, h, link, offer, agreementUrl),
+    advertise: (doc: readonly MppChallenge[], h: AtrHash, link: string, offer: MppChallenge, position: number | null, agreementUrl?: string) =>
+      advertise(spec, doc, h, link, offer, position, agreementUrl),
     read,
     build: (choice: SolanaChargeChoice, h: AtrHash) => build(spec, choice, h),
     bound: (input: unknown) => bound(spec, input),

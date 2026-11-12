@@ -198,8 +198,8 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 }
 
 /** MPP's `place`: the id derived from H and `opaque`; `request` is left unchanged. */
-function advertise(doc: readonly MppChallenge[], h: AtrHash, link: string, offer: MppChallenge, agreementUrl?: string) {
-  return place(doc, h, link, offer, agreementUrl);
+function advertise(doc: readonly MppChallenge[], h: AtrHash, link: string, offer: MppChallenge, position: number | null, agreementUrl?: string) {
+  return place(doc, h, link, offer, position, agreementUrl);
 }
 
 async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refusal> {

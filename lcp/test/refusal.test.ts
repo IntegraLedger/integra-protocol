@@ -502,6 +502,12 @@ describe("every placement function refuses a seller document carrying a refused 
     ),
   );
   type Place = (doc: unknown, h: unknown, link: unknown, offer: unknown, agreementUrl?: string) => unknown;
+  type MppPlace = (doc: unknown, h: unknown, link: unknown, offer: unknown, position: number | null, agreementUrl?: string) => unknown;
+  // An MPP placement at the challenge's position: 0, or none for a Tempo subscription, whose id is H alone.
+  const atPosition =
+    (id: string, f: MppPlace): Place =>
+    (doc, h, link, offer, agreementUrl) =>
+      f(doc, h, link, offer, id === "mpp/subscription/tempo" ? null : 0, agreementUrl);
   const refused = (code: string) => ({ refused: true, code });
 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
@@ -618,12 +624,12 @@ describe("every placement function refuses a seller document carrying a refused 
   });
   const lightning = new Set(["mpp/charge/lightning", "mpp/session/lightning"]);
   const mppCalls = [
-    ...mpp.map((b) => [b.id, "advertise", b.advertise as Place, !lightning.has(b.id)] as const),
+    ...mpp.map((b) => [b.id, "advertise", atPosition(b.id, b.advertise as MppPlace), !lightning.has(b.id)] as const),
     ...rowsOf(mpp, "the MPP pairings", {
       keep: ["the MPP pairings with advertiseBeforeCarrier", (b) => typeof b.advertiseBeforeCarrier === "function"],
       leave: ["the MPP pairings with none, which place with advertise and place", (b) => b.advertiseBeforeCarrier === undefined],
-    }).map((b) => [b.id, "advertiseBeforeCarrier", b.advertiseBeforeCarrier as Place, true] as const),
-    ...mpp.map((b) => [b.id, "place", place as Place, true] as const),
+    }).map((b) => [b.id, "advertiseBeforeCarrier", atPosition(b.id, b.advertiseBeforeCarrier as MppPlace), true] as const),
+    ...mpp.map((b) => [b.id, "place", atPosition(b.id, place as MppPlace), true] as const),
   ];
   for (const [id, member, placeIn, unplace] of mppCalls) {
     it(`${id}: ${member} refuses a challenge list in which a challenge carries a refused member as mpp/challenge-malformed`, () => {

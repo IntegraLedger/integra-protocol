@@ -84,7 +84,8 @@ const affix = (v: string, e: { prefix: string; suffix: string }) => {
   expect(v.startsWith(e.prefix), `${v} starts ${e.prefix}`).toBe(true);
   expect(v.endsWith(e.suffix), `${v} ends ${e.suffix}`).toBe(true);
 };
-const placed = (c: MppChallenge, h = H) => (place([c], h, link, c) as MppChallenge[])[0] as MppChallenge & { id: string };
+const placed = (c: MppChallenge, h = H) =>
+  (place([c], h, link, c, c.intent === "subscription" && c.method === "tempo" ? null : 0) as MppChallenge[])[0] as MppChallenge & { id: string };
 const unsignedOf = (u: unknown) => {
   if (typeof u === "object" && u !== null && "refused" in u) throw new Error(JSON.stringify(u));
   return u as SessionUnsigned;
@@ -1828,7 +1829,7 @@ describe("mpp-subscription-tempo.json", () => {
       refused: true,
       code: "tempo/no-witness",
     });
-    expect(place([SUB, { ...SUB, realm: "other" }], H, link, SUB)).toEqual({ refused: true, code: "mpp/witness-taken" });
+    expect(place([SUB, { ...SUB, realm: "other" }], H, link, SUB, null)).toEqual({ refused: true, code: "mpp/witness-taken" });
     const noChain = JSON.parse(f.request);
     delete noChain.methodDetails.chainId;
     expect(pairingsOf(challenge("tempo", "subscription", JSON.stringify(noChain)))).toEqual({ refused: true, code: "mpp/chain-id-required" });

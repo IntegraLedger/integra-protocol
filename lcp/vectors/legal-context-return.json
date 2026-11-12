@@ -1,0 +1,462 @@
+{
+ "about": "Vectors for the return after an agreement (legal-context-return.md): the Legal-Context header, an RFC 9651 Item whose token is H's LCP string and whose one parameter is rv, the sale's 32-byte return value as a byte sequence; and the member by which an agreement option names the charge options it serves. H is mpp-challenge.json's; the return value is the bytes 0x00 to 0x1f; the x402 option and the MPP challenge are mpp-challenge.json's C_E and the x402 specification's example option. Expected values were written from the profile with Python 3.12.3's base64 and json, the MPP opaque as base64url without padding of RFC 8785's form.",
+ "write": [
+  {
+   "case": "H alone",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  {
+   "case": "H and the return value 0x00..0x1f",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "returnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+   "expect": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:"
+  },
+  {
+   "case": "H in upper case is written in lower case",
+   "h": "0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+   "expect": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  }
+ ],
+ "writeRefusals": [
+  {
+   "case": "an H of 31 bytes",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "a return value of 31 bytes",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "returnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  }
+ ],
+ "read": [
+  {
+   "case": "H alone",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  },
+  {
+   "case": "H and rv",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReturnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  {
+   "case": "spaces before and after the item and after the ;, which RFC 9651 admits",
+   "value": "  lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad; rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:  ",
+   "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReturnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  }
+ ],
+ "readRefusals": [
+  {
+   "case": "H's hex in upper case",
+   "value": "lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "no 0x",
+   "value": "lcp:sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "H as an RFC 9651 string, quoted",
+   "value": "\"lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "a parameter other than rv",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;x=1",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv and another parameter",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:;x=1",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv of 31 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHg==:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv without its padding",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHg:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv in base64url",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_s=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv as a token",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=abc",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "a space before the ;",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad ;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "a tab before the item",
+   "value": "\tlcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "two items, a list",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad, lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "an empty value",
+   "value": "",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "a value that is not a string",
+   "value": 7,
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  }
+ ],
+ "serves": [
+  {
+   "case": "an x402 agreement option naming x402/0 and mpp/1 in extra.legalContextServes",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2",
+     "legalContextServes": [
+      "x402/0",
+      "mpp/1"
+     ]
+    }
+   },
+   "expect": [
+    "x402/0",
+    "mpp/1"
+   ]
+  },
+  {
+   "case": "an MPP agreement challenge naming them in opaque, joined by one space",
+   "option": {
+    "realm": "api.seller.example",
+    "method": "evm",
+    "intent": "charge",
+    "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+    "expires": "2026-09-21T14:14:20Z",
+    "opaque": "eyJsZWdhbENvbnRleHRTZXJ2ZXMiOiJ4NDAyLzAgbXBwLzEiLCJzZWxsZXIiOiJzIn0"
+   },
+   "expect": [
+    "x402/0",
+    "mpp/1"
+   ]
+  },
+  {
+   "case": "x402/31, the last index a slot holds",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": [
+      "x402/31"
+     ]
+    }
+   },
+   "expect": [
+    "x402/31"
+   ]
+  },
+  {
+   "case": "an x402 option with no such member",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2"
+    }
+   },
+   "expect": null
+  },
+  {
+   "case": "an MPP challenge with no opaque",
+   "option": {
+    "realm": "api.seller.example",
+    "method": "evm",
+    "intent": "charge",
+    "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+    "expires": "2026-09-21T14:14:20Z"
+   },
+   "expect": null
+  }
+ ],
+ "servesRefusals": [
+  {
+   "case": "a slot other than x402 and mpp",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": [
+      "evm/0"
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "an index with a leading zero",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": [
+      "x402/01"
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "index 32",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": [
+      "x402/32"
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "a name given twice",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": [
+      "x402/0",
+      "x402/0"
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "an empty list",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": []
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "a string in place of the x402 list",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": "x402/0"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "MPP names joined by two spaces",
+   "option": {
+    "realm": "api.seller.example",
+    "method": "evm",
+    "intent": "charge",
+    "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+    "expires": "2026-09-21T14:14:20Z",
+    "opaque": "eyJsZWdhbENvbnRleHRTZXJ2ZXMiOiJ4NDAyLzAgIG1wcC8xIn0"
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "an MPP opaque that is not base64url of a map of strings",
+   "option": {
+    "realm": "api.seller.example",
+    "method": "evm",
+    "intent": "charge",
+    "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+    "expires": "2026-09-21T14:14:20Z",
+    "opaque": "e30="
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "33 names",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "legalContextServes": [
+      "x402/0",
+      "x402/1",
+      "x402/2",
+      "x402/3",
+      "x402/4",
+      "x402/5",
+      "x402/6",
+      "x402/7",
+      "x402/8",
+      "x402/9",
+      "x402/10",
+      "x402/11",
+      "x402/12",
+      "x402/13",
+      "x402/14",
+      "x402/15",
+      "x402/16",
+      "x402/17",
+      "x402/18",
+      "x402/19",
+      "x402/20",
+      "x402/21",
+      "x402/22",
+      "x402/23",
+      "x402/24",
+      "x402/25",
+      "x402/26",
+      "x402/27",
+      "x402/28",
+      "x402/29",
+      "x402/30",
+      "x402/31",
+      "mpp/0"
+     ]
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  }
+ ]
+}

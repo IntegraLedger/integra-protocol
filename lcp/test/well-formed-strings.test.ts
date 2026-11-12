@@ -33,7 +33,7 @@ const issued = (r: string, method = "evm", request = V.fixed.R_E): MppChallenge 
   request: b64u(request),
   expires: V.fixed.expires,
 });
-const placed = (c: MppChallenge) => (place([c], H, link, c) as MppChallenge[])[0] as MppChallenge & { id: string };
+const placed = (c: MppChallenge) => (place([c], H, link, c, 0) as MppChallenge[])[0] as MppChallenge & { id: string };
 
 it("the strings: one is not well-formed, and TextEncoder writes it as the other", () => {
   expect((realm + LONE).isWellFormed()).toBe(false);
@@ -49,7 +49,7 @@ describe("MPP: a challenge's realm and id, and the payer's client id", () => {
     // An issued id is never hashed: place writes H's id in its place.
     expect(pairingsOf({ ...issued(realm), id: `x${LONE}` })).toEqual(pairingsOf(issued(realm)));
     expect(placed({ ...issued(realm), id: `x${LONE}` }).id).toBe(placed(issued(realm)).id);
-    expect(place([issued(realm + LONE)], H, link, issued(realm + LONE))).toEqual(refused("mpp/challenge-malformed"));
+    expect(place([issued(realm + LONE)], H, link, issued(realm + LONE), 0)).toEqual(refused("mpp/challenge-malformed"));
     expect(pairingsOf(issued(realm + FFFD))).toEqual(pairingsOf(issued(realm)));
   });
 

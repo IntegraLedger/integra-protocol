@@ -53,6 +53,7 @@ export const READS_TO_REPEAT: readonly string[] = [
 
 /** Every other code the package returns, by namespace. */
 export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = {
+  return: ["header-malformed", "serves-malformed"],
   a2a: [
     "legal-context-conflict", "legal-context-malformed", "link-not-https", "no-legal-context", "no-signed-place",
     "too-large",
@@ -136,7 +137,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "receipt-malformed", "receipt-missing", "request-malformed", "request-not-jcs", "salt-not-this-hash",
     "salt-not-usdc-derivation", "session-action", "session-protocol", "source-required", "splits-malformed",
     "stacks-memo-not-h", "stacks-tx-malformed", "usdc-profile", "within-action-not-built", "witness-not-challenge-hash",
-    "witness-taken",
+    "witness-taken", "position-taken", "no-x402-twin",
   ],
   near: [
     "actions", "args-malformed", "carrier-occupied", "memo-missing", "memo-not-lcp", "network-malformed", "no-relayer",
@@ -188,7 +189,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   x402: [
     "channel-id-mismatch", "channel-kind-unknown", "delegation-empty", "deposit-authorization", "escrow-not-canonical",
-    "facilitator-missing", "flow-missing", "flow-not-carried", "legal-context-conflict", "legal-context-malformed",
+    "facilitator-missing", "flow-missing", "flow-not-carried", "header-malformed", "tool-call-malformed", "legal-context-conflict", "legal-context-malformed",
     "link-not-https", "manager-not-reference", "no-legal-context", "no-payable-option", "nonce-malformed",
     "nonce-not-payment", "not-an-opening", "not-bound-within", "not-v2", "option-malformed", "option-not-in-document",
     "option-not-this-pairing", "payload-malformed", "permission-context-malformed", "request-target-invalid",
