@@ -8,9 +8,9 @@ An AI agent that buys from another agent reads terms, negotiates and pays. LCP b
 record: where the payment carries the record's hash, it shows which exact record the buyer approved. The seller
 assembles the agreement's record, the **Agentic Transaction Record (ATR)**, and advertises its SHA-256 hash, **H**, in
 the payment challenge. The buyer fetches the record, checks that it hashes to H, and, on most pairings, signs a payment
-that carries H in the field its protocol or rail provides. On some (`data.carrier.signed` null) the buyer's signature
-does not cover H, and where the pairing's `claims` is false, nothing in the payment is bound to H; the agreement payment
-is the proof. Anyone holding the record can then match it to the payment, and on most rails to the settlement on chain.
+that carries H in the field its protocol or rail provides. Where the pairing's `data.coverage` is `none`, no public act
+the payer signs carries H, whatever the buyer signs, and the agreement payment, made first, is the proof. Anyone holding
+the record can then match it to the payment, and on most rails to the settlement on chain.
 
 This repository holds [`@integraledger/lcp`](./lcp), which implements that binding for x402, MPP, ACP, UCP, AP2, ACK,
 Visa TAP, Mastercard Verifiable Intent and A2A, across EVM chains, Solana, the XRP Ledger, Hedera, Algorand, Aptos,

@@ -1,7 +1,7 @@
 /** The data of the XRPL pairings on x402 and MPP. */
 import { freeze } from "./freeze.js";
 
-const ENDPOINT =
+const NOTE =
   "a rippled or Clio server answering `tx`, `account_tx`, `account_info`, `ledger_entry` and `server_info`, holding the " +
   "ledgers from the issue to the latest ledger it serves";
 
@@ -19,7 +19,8 @@ export const XRPL = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["rippled"],
+      note: NOTE,
       search:
         "Found by the buyer's `Account` with the signed `Sequence` or `TicketSequence`, in `account_tx` from the issue " +
         "ledger to the signed `LastLedgerSequence`. Before every `failed` but `before-position`, the search for H over the " +
@@ -55,7 +56,8 @@ export const XRPL = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "either",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["rippled"],
+      note: NOTE,
       search:
         "Found by the buyer's `Account` with the signed `Sequence` or `TicketSequence`, in `account_tx` from the issue " +
         "ledger to the signed `LastLedgerSequence`; a pushed payment is read through the codec's read of the presented " +
@@ -82,7 +84,8 @@ export const XRPL = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["rippled"],
+      note: NOTE,
       search:
         "Found by the create's `Account` and its `Sequence` or ticket in `account_tx`; before every `failed` but " +
         "`before-position`, the payer's `account_tx` read whole to the latest ledger the server serves.",

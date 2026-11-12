@@ -227,7 +227,7 @@ describe("mpp-session-evm.json", () => {
     const cred = u.complete(hash, await voucherSig(u, hash)) as MppCredential;
     expect([(u.funding as { broadcast?: boolean }).broadcast, await sessionEvm.broadcaster(cred)]).toEqual([true, "payer"]);
     expect(await sessionEvm.bound(cred)).toBe(H);
-    // The payer broadcast the opening before the claim; the reference names the transaction the credential presents,
+    // The payer broadcast the opening before presenting it; the reference names the transaction the credential presents,
     // so the opening is read without the seller's report.
     const ref = (await sessionEvm.reference(cred)) as SessionRef;
     expect(ref.transferLog).toEqual({ address: f.usdc, topic0: TRANSFER_TOPIC, identity: "from,to", digest: E.ES7.expectFromTo });
@@ -485,7 +485,7 @@ describe("mpp-session-tempo.json", () => {
     expect(cred.payload["descriptor"]).toEqual(d);
     expect(await sessionTempo.bound(cred)).toBe(H);
     expect(sessionTempo.channel.kind(cred)).toBe("open");
-    // The seller broadcasts the opening after the claim, so the reference carries the escrow's ChannelOpened filter
+    // The resource server broadcasts the opening once it is presented, so the reference carries the escrow's ChannelOpened filter
     // naming the channel in topic 1, and the opening is found without the seller's report.
     const ref = (await sessionTempo.reference(cred)) as SessionRef;
     expect(JSON.parse(JSON.stringify(ref))).toEqual({

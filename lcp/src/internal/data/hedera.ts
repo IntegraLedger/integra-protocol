@@ -9,7 +9,8 @@ export const HEDERA = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "the mirror node's REST interface",
+      endpoint: ["mirror-rest"],
+      note: "the mirror node's REST interface",
       search:
         "Found by the transaction id fixed in what the buyer signs (`GET /api/v1/transactions/{id}`). Before every `failed` " +
         "but `before-position`, the search for H over the debited account's transactions after the position, paged to the " +
@@ -63,7 +64,7 @@ export const HEDERA = /* @__PURE__ */ freeze({
       "payer's executor contract moved the funds under an authorization the seller did not read, and the " +
       "facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, " +
       "and nothing the payer signed carries it. The seller read the merged consensus record of the named " +
-      "transaction, and found that its one debited account, by at least one unit, is the payer recorded at " +
-      "claim. This does not show that amount, recipient, token or timing match the ATR's content.",
+      "transaction, and found that its one debited account, by at least one unit, is the payer recorded when " +
+      "the payment was presented. This does not show that amount, recipient, token or timing match the ATR's content.",
   },
 });

@@ -38,8 +38,8 @@ sequenceDiagram
 4. **Build and sign.** The pairing's `build(choice, h)` returns what the signer signs, with H in its place. Pass the H
    you compared, never a value read again from the document.
 5. **Finish.** `complete(signature)` gives the payment. Before sending it, check that `bound(payment)` equals the H you
-   compared. Where the pairing's `claims` is false, nothing the buyer signed is bound to H, whatever `bound` returns,
-   and the agreement payment is the proof.
+   compared. Where the pairing's `data.coverage` is `none`, no public act the payer signs carries H, whatever `bound`
+   returns, and the agreement payment is the proof.
 6. **Keep the bytes.** The buyer's copy of the ATR is its record of what it agreed to.
 
 ## One changed byte

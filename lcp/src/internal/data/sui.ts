@@ -9,7 +9,7 @@ export const SUI = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "graphql",
+      endpoint: ["graphql"],
       search:
         "Found by the digest. Every `failed` but `before-position` waits for the search for H in the sender's transactions, " +
         "from the issue position to the last checkpoint the endpoint states it holds.",

@@ -44,7 +44,7 @@ describe("the root pairingOf, walking BINDINGS", () => {
     it(`names ${id} for ${file}'s ${path}`, () => expect(pairingOf(at(vectors(file), path))).toBe(id));
   }
 
-  it("covers every x402 pairing in BINDINGS; the ERC-7710 salt level is named at claim, from the payment", () => {
+  it("covers every x402 pairing in BINDINGS; the ERC-7710 salt level is named from the presented payment", () => {
     const named = new Set(ROWS.map(([, , id]) => id));
     const x402 = BINDINGS.map((b) => b.id).filter((id) => id.startsWith("x402/"));
     expect(x402.filter((id) => !named.has(id))).toEqual(["x402/exact/eip155/erc7710-salt"]);

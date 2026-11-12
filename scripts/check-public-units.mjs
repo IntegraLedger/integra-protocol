@@ -12,21 +12,26 @@
 // It fails when an export belongs to no unit or to more than one; when a unit names an entry point the package does
 // not have, or an export the package does not export and `pending` does not list; when `pending` lists an export the
 // package now exports, or one no unit names; when a unit's name, use or `fixedBy` is empty or not a string; and when
-// scripts/check-public-package.mjs finds a held item in the file.
+// scripts/check-public-package.mjs finds a held item in the file. That scan takes the key check-public-package.mjs
+// takes, from PUBLIC_CHECK_KEY or --key-file.
 //
 // Usage, from the repository root after lcp is built:
 //   node scripts/check-public-units.mjs
-//   node scripts/check-public-units.mjs --table <path>   check another file of the same form in its place
-// It exits 0 when the file holds every export in one unit, and 1 naming each problem otherwise.
+//   node scripts/check-public-units.mjs --table <path>      check another file of the same form in its place
+//   node scripts/check-public-units.mjs --key-file <path>   read the scan's key, in hex, from this file
+// It exits 0 when the file holds every export in one unit and the scan finds no held item, 1 naming each problem
+// otherwise, and 2 when it finds no other problem but the scan did not run: no key, or a key that is refused.
 import { existsSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { scan } from "./check-public-package.mjs";
+import { keyOf, scanner } from "./check-public-package.mjs";
 
 const root = join(import.meta.dirname, "..");
 const lcp = join(root, "lcp");
 const at = process.argv.indexOf("--table");
 const TABLE = at === -1 ? join(root, "scripts", "public-units.json") : resolve(process.argv[at + 1] ?? "");
+const keyAt = process.argv.indexOf("--key-file");
+const KEY_FILE = keyAt === -1 ? undefined : resolve(process.argv[keyAt + 1] ?? "");
 const FILE = TABLE.startsWith(`${root}/`) ? relative(root, TABLE) : TABLE;
 
 /** The type names a declaration file exports, following `export type { … } from` and `export { type … }`. */
@@ -86,7 +91,15 @@ const source = readFileSync(TABLE, "utf8");
 const table = JSON.parse(source);
 const exported = await packageExports();
 
-for (const { line, item } of scan(source)) problems.push(`${FILE}:${line}: check-public-package finds item ${item}`);
+let notRun;
+try {
+  const { key, reason } = keyOf(KEY_FILE, process.env);
+  if (key === undefined) throw new Error(reason);
+  const scan = scanner(key);
+  for (const { line, item } of scan(source)) problems.push(`${FILE}:${line}: check-public-package finds item ${item}`);
+} catch (e) {
+  notRun = e.message;
+}
 
 const pending = new Map();
 (table.pending ?? []).forEach((p, i) => {
@@ -136,11 +149,13 @@ for (const [e, names] of exported) {
   }
 }
 
+if (notRun !== undefined) console.error(`check-public-units: the scan for held items did not run: ${notRun}`);
 if (problems.length > 0) {
   for (const p of problems) console.error(p);
   console.error(`check-public-units: ${problems.length} problems`);
   process.exit(1);
 }
+if (notRun !== undefined) process.exit(2);
 console.log(
   `check-public-units: ${exported.size} entry points, ${count} exports, ${units.length} units` +
     (pending.size > 0 ? ` (${pending.size} exports pending)` : "") +

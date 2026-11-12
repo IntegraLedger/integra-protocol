@@ -12,7 +12,7 @@ const credential = (payload: Record<string, unknown>) => ({ challenge, payload }
 const byId = (id: string): Binding => BINDINGS.find((b) => b.id === id)!;
 
 // Push mode is any pairing whose entry point exports fetchPresented or landedTx; the EVM session's `hash` opening is
-// one, broadcast by the payer before the claim. Each names the transaction it pushed.
+// one, broadcast by the payer before presenting it. Each names the transaction it pushed.
 const PUSHED_HASH = `0x${"55".repeat(32)}`;
 const ROWS: readonly [id: string, payload: Record<string, unknown>, landed: string][] = [
   ["mpp/session/evm", { action: "open", type: "hash", hash: PUSHED_HASH, salt: SESSION_EVM.fixed.H }, PUSHED_HASH],

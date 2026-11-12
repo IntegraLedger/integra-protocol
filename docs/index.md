@@ -37,9 +37,9 @@ sequenceDiagram
 2. **The seller advertises its hash.** H goes into the payment challenge, beside an `https` link to the seller's copy.
 3. **The buyer compares before it signs.** It fetches the bytes, hashes them, and signs nothing unless they hash to H.
 4. **The payment carries H.** On most pairings the buyer signs a payment with H in the field its protocol or rail
-   provides: a nonce, a memo, a salt, an invoice field. On some (`data.carrier.signed` null) the buyer's signature does
-   not cover H, and where the pairing's `claims` is false, nothing in the payment is bound to H; the agreement payment
-   is the proof. Each pairing's `data` and `claims` say which.
+   provides: a nonce, a memo, a salt, an invoice field. Where the pairing's `data.coverage` is `none`, no public act the
+   payer signs carries H, whatever the buyer signs, and the agreement payment, made first, is the proof. Each pairing's
+   `data.coverage` says which.
 5. **Anyone holding the record can match it.** The seller reads H back from the payment where the pairing's `claims` is
    true, and on most rails from the settlement on chain.
 

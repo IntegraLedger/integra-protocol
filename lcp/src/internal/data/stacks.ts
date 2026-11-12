@@ -9,7 +9,7 @@ export const STACKS = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "stacks-api-rest",
+      endpoint: ["stacks-api-rest"],
       search:
         "Keyed by the origin and its nonce, read from the issue position. Every lapse also needs the search for H over the " +
         "origin's nonces from the position to the latest head.",

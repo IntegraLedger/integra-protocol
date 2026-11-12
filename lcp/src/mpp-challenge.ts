@@ -168,8 +168,6 @@ export interface MppChoice {
   tokenDomain?: { name: string; version: string };
   /** permit2 only: the seller server's submitting address. */
   spender?: Hex;
-  /** The payer's label in an attribution memo, a well-formed string. No pairing's `build` in this package reads it. */
-  clientId?: string;
 }
 
 const PROBLEM_BASE = "https://paymentauth.org/problems/";

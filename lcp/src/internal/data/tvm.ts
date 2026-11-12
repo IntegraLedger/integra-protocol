@@ -12,7 +12,8 @@ export const TVM = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "toncenter-v3, with `runGetMethod`",
+      endpoint: ["toncenter-v3"],
+      note: "with its `runGetMethod`",
       search:
         "The signed request's body hash on the payer's W5 wallet, and the wallet's own transactions from its latest to the " +
         "position, for a run at the signed sequence number and, as the search for H, a run at another number carrying H.",

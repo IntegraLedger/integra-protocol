@@ -13,7 +13,9 @@ export const STARKNET = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "json-rpc (a node that serves `starknet_traceTransaction`); a declared archival fallback for the event search",
+      endpoint: ["json-rpc"],
+      fallback: "json-rpc",
+      note: "a node that serves `starknet_traceTransaction`; the archival fallback for the event search",
       search:
         "Keyed by the payer's account and the nonce (`is_valid_outside_execution_nonce` read as state), then " +
         "`starknet_getEvents` on the asset for a `Transfer` from the payer, from the issue position to the block at which " +

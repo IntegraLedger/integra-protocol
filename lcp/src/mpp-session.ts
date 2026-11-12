@@ -166,7 +166,7 @@ export type SessionUnsigned = {
 
 /** The settlement read keys of these pairings. */
 export interface SessionRef extends EvmRef {
-  /** The transaction the credential presents, where the payer broadcast the opening before the claim. */
+  /** The transaction the credential presents, where the payer broadcast the opening before presenting it. */
   transaction?: Hex;
   opened?: { address: Hex; version: "v1" | "v2"; channel: Hex; h: AtrHash; chainId: number };
   /**
@@ -1035,7 +1035,7 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
   return { funding: { kind: "eip712", typedData }, voucher: voucherFor(complete), complete };
 }
 
-/** The transaction a `hash` opening presents, which the payer broadcast before the claim; undefined for any other. */
+/** The transaction a `hash` opening presents, which the payer broadcast before presenting it; undefined for any other. */
 function evmLandedTx(presented: unknown): string | undefined {
   const c = credentialOf(presented);
   if (isRefusal(c)) return undefined;

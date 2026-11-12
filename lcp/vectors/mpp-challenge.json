@@ -93,7 +93,7 @@
    { "case": "an EVM session challenge whose chainId is absent or not a positive integer", "expect": "mpp/chain-id-required" },
    { "case": "a subscription challenge whose subscriptionExpires, periodUnit or periodCount is malformed", "expect": "mpp/request-malformed" },
    { "case": "challengeId or place with an H that is not 0x and 64 hex digits, or a position outside 0-31", "expect": "mpp/challenge-malformed" },
-   { "case": "build with a malformed from, a missing tokenDomain or spender, or a clientId that is not a string", "expect": "mpp/input-malformed" },
+   { "case": "build with a malformed from, or a missing tokenDomain or spender", "expect": "mpp/input-malformed" },
    { "case": "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction whose credential is over the credential size bound, 64 KiB", "expect": "mpp/credential-malformed" },
    { "case": "a credential over 64 KiB, deeper than 16 levels, or without challenge and payload objects", "expect": "mpp/credential-malformed" },
    { "case": "bound with a payload type other than the pairing's", "expect": "mpp/credential-type" },

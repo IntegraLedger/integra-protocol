@@ -9,7 +9,7 @@ export const TRON = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "fullnode-http",
+      endpoint: ["fullnode-http"],
       search:
         "A transaction's `data` equal to H's 77-byte LCP string, over ranges of at most 100 blocks, each answer within the " +
         "reader's byte bound.",
@@ -24,7 +24,7 @@ export const TRON = /* @__PURE__ */ freeze({
     payer: "the transaction's owner, which lcp's reference names, with its permission",
     confirmed: "no",
     agreement: {
-      floor: "rule",
+      floor: "1",
       fee: "the buyer; the seller has no option",
       succeeded:
         "the receipt's result is `SUCCESS`, `raw_data.data` is H, and the owner is the payer lcp's reference names; the " +

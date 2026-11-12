@@ -11,7 +11,9 @@ export const NEAR = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "json-rpc; a declared archival json-rpc fallback for history below the node's floor",
+      endpoint: ["json-rpc"],
+      fallback: "json-rpc",
+      note: "the archival fallback for history below the node's floor",
       search:
         "Keyed by the payer's access key (account and public key), from the position recorded at issue to the delegate's " +
         "`max_block_height`. The lapse's search for H covers every access key of the payer's account from the issue " +

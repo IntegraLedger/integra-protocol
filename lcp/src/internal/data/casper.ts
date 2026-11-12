@@ -13,7 +13,8 @@ export const CASPER = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "json-rpc (a node or its sidecar whose `available_block_range.low` is at or below the position the caller gives)",
+      endpoint: ["json-rpc"],
+      note: "a node or its sidecar whose `available_block_range.low` is at or below the position the caller gives",
       search:
         "Keyed by `(from, n)` in the token's `used_nonces`, `n` the signed nonce, read with `state_get_dictionary_item` at " +
         "past state roots; each token package keeps its own, so this read is no search for H.",

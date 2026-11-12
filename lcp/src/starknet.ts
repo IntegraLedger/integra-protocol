@@ -6,7 +6,7 @@
  */
 import { fromLegalContext, hash, hashEquals, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
-import { isObject, jsonBytes, normalHash } from "./fields.js";
+import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
 import type { StarknetPayment } from "./internal/starknet.js";
 import {
   advertiseFor,
@@ -25,6 +25,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   LEGAL_CONTEXT,
   tie,
+  type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
@@ -646,6 +647,14 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   return option;
 }
 
+/** The binding record: it names no binding pattern. */
+const pattern: LcpPattern = deepFreeze({
+  profile: ID,
+  onChain: true,
+  zeroPartyRecoverable: false,
+  forwardIndexable: false,
+});
+
 /**
  * `x402/exact/starknet`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator executes the
  * outside execution the payer signed and names its transaction; `status` reads the executed call's trace.
@@ -653,6 +662,7 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 export const exactStarknet = Object.freeze({
   id: ID,
   data: STARKNET[ID],
+  pattern,
   claims: true as boolean,
   unplaced,
   tie,

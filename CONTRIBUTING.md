@@ -41,6 +41,7 @@ pnpm --filter @integraledger/lcp exec vitest run test/vectors.test.ts test/core.
 node scripts/idna/idna-data.mjs --check
 node scripts/docs-samples.mjs
 node scripts/docs-reference.mjs --check
+node --test scripts/
 node scripts/check-public-package.mjs
 node scripts/check-public-units.mjs
 ```
@@ -69,14 +70,22 @@ node scripts/check-public-units.mjs
   that the page marks as a read to repeat exactly the codes `readToRepeat` answers true for. After a change to the
   registry, the exports, the vectors or the refusal codes, run `node scripts/docs-reference.mjs` and commit what it
   writes.
+- `node --test scripts/` runs the tests of the scripts. Those of `check-public-package.mjs` make a list of dummy items
+  under a key of their own, and check that the scan finds each form of an item it is to match, on its line, and no
+  text it is not to match.
 - `check-public-package.mjs` reads every file git lists, its content and its path, and fails on any item of a list of
-  names, phrases and refusal-code namespaces that have no place in this repository. It holds the list as SHA-256
-  digests and compares the digest of every sequence of one to three words, so a hyphen, a space or a capital between
-  words matches alike; it prints each finding as the file, the line and the item's position in the list, never the
-  text. `--file <path>` also reads a file git does not list.
+  names, phrases and refusal-code namespaces that have no place in this repository. It holds the list as HMAC-SHA-256
+  digests under a 32-byte key that this repository does not hold, and compares the digest of every sequence of one to
+  three words, so a hyphen, a space, an underscore or a capital between words matches alike, as do a plural in `s` or
+  `es`, a possessive, the words run together, percent-encoded text and text with zero-width characters. It prints each
+  finding as the file, the line and the item's number, never the text. `--file <path>` also reads a file git does not
+  list. It takes the key in hex from the environment variable `PUBLIC_CHECK_KEY` or from the file `--key-file <path>`
+  names. **With no key it does not pass:** it prints that it did not run and exits 2, as it does when the key is not
+  the one the list was made with. A maintainer who holds the key runs it.
 - `check-public-units.mjs` checks `scripts/public-units.json` against the built package: every export of every entry
   point is in exactly one unit, each unit names exports the package has, states what it does for anyone using the
-  protocol and names the specification or profile that fixes it, and the file passes `check-public-package.mjs`.
+  protocol and names the specification or profile that fixes it, and the file passes `check-public-package.mjs`, with
+  the same key, so with no key it exits 2 when it finds no other problem.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm run browser && pnpm build` inside that
   folder, on Linux x64. `pnpm run browser` fetches, retrying a failed download five times, the browser build the
   Mermaid diagrams are drawn in, Chrome Headless Shell, which `website/scripts/browser.mjs` pins by version and by the
@@ -138,9 +147,9 @@ node scripts/check-public-units.mjs
   first=$(mktemp -d) && pnpm build && mv out "$first/out" && rm -rf .next && pnpm build && diff -r --brief "$first/out" out
   ```
 
-CI runs the commands in the block above, other than `check-public-package.mjs` and `check-public-units.mjs`, and the
-rest of `.github/workflows/ci.yml` on every push to `main`, when dispatched by hand, and from the publish workflow
-before it packs. Its other steps check:
+CI runs the commands in the block above, other than `node --test scripts/`, `check-public-package.mjs` and
+`check-public-units.mjs`, and the rest of `.github/workflows/ci.yml` on every push to `main`, when dispatched by hand,
+and from the publish workflow before it packs. Its other steps check:
 
 - **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in one
   step, byte for byte the same in every job, before its first other step that runs. The `floor` job then fetches the
@@ -195,7 +204,7 @@ No workflow runs on `pull_request`, and no check is required before a merge, so 
 ## The rules the code follows
 
 - **One owner per rule.** Assembly, hashing and hash comparison live in the core (`lcp/src/internal/core.ts`), which the
-  package root and `@integraledger/lcp/core` export. Each pairing's binding lives in that pairing's module. Reuse them;
+  package root and `@integraledger/lcp/core` export. Each pairing's binding lives in its own module. Reuse them;
   never write a second version.
 - **Hash the bytes delivered.** Never parse, re-serialise or canonicalise an ATR before hashing it.
 - **Failures are values.** Return a refusal rather than throwing on a caller's input, with its `<namespace>/<reason>`

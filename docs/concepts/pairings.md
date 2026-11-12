@@ -21,7 +21,7 @@ nothing of that pairing. The types differ per surface; the roles do not.
 | Member | Side | What it does |
 |---|---|---|
 | `id` | both | The pairing's id. |
-| `pattern` | both | The [binding record](./binding.md#what-each-binding-proves): the binding pattern and where the binding is seen. `x402/exact/starknet` has none. |
+| `pattern` | both | The [binding record](./binding.md#what-each-binding-proves): the binding pattern and where the binding is seen. `x402/exact/starknet`'s names no binding pattern. |
 | `data` | both | The pairing's [data](./binding.md#what-each-binding-proves), plain values typed `PairingData`: its coverage, where H rides, who writes it, what a read needs and what a payment through this pairing proves (`data.proves`). |
 | `claims` | seller | `true` when what the buyer presents carries a value bound to H that `bound` reads; `false` when it does not, and a seller has nothing in the payment itself to match. |
 | `unplaced(option)` | seller | The option as the seller issued it, before the pairing's carrier was placed in it. |

@@ -10,7 +10,8 @@ export const APTOS = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "fullnode-rest, with a declared archive fallback",
+      endpoint: ["fullnode-rest"],
+      fallback: "fullnode-rest",
       search:
         "No search: found by the sender and its signed sequence number (`GET /v1/accounts/{sender}/transactions?start=n&limit=1`); " +
         "where that returns nothing, the account's own sequence number with the ledger time of that answer.",
@@ -33,9 +34,9 @@ export const APTOS = /* @__PURE__ */ freeze({
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The ATR was assembled before the challenge went out, and the " +
       "challenge advertised its hash and link. The payer's signed Aptos transaction does not carry the hash. " +
-      "The seller tied the hash to this payment when it claimed it for this request, and identified the " +
-      "settlement as the payer's committed transaction by sender, sequence number and a digest of its " +
-      "transfer. This does not show that the buyer's approval carried the hash, or that amount, payee, asset " +
+      "The resource server tied the hash to this payment when it recorded the hash for this request, and " +
+      "identified the settlement as the payer's committed transaction by sender, sequence number and a digest " +
+      "of its transfer. This does not show that the buyer's approval carried the hash, or that amount, payee, asset " +
       "or timing match the ATR's content.",
   },
 });

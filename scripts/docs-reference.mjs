@@ -114,7 +114,7 @@ function pairingsPage() {
     `\`BINDINGS\` holds ${rows.length} pairings on ${surfaces.length} surfaces (${surfaces.map(code).join(", ")}). ` +
     "Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the " +
     "payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and " +
-    "`confirmed`, and these members of its `pattern` record, where it has one: the binding pattern, whether the " +
+    "`confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the " +
     "binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP " +
     "profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, " +
     "`forwardIndexable` included.\n\n";
@@ -129,7 +129,8 @@ function pairingsPage() {
         return `${code(k)} from ${code(subpath(e))}`;
       });
       const profile = p.profile === undefined ? "" : profileLink(p.profile);
-      const pattern = b.pattern === undefined ? ["", "", ""] : [code(p.pattern), yes(p.onChain), yes(p.zeroPartyRecoverable)];
+      const name = p.pattern === undefined ? "" : code(p.pattern);
+      const pattern = b.pattern === undefined ? ["", "", ""] : [name, yes(p.onChain), yes(p.zeroPartyRecoverable)];
       s += `| ${code(b.id)} | ${where.join("<br>")} | ${code(b.data.coverage)} | ${b.data.confirmed} | ${pattern.join(" | ")} | ${profile} |\n`;
     }
     s += "\n";
@@ -167,10 +168,12 @@ function entryPointsPage() {
     s += `## ${code(subpath(e))}\n\n`;
     s += `${moduleSummary(e) || indexSummary(e)}\n\n`;
     s += "```ts no-check\n";
-    s += `import { ${values.slice(0, 3).join(", ")}${values.length > 3 ? ", …" : ""} } from "${subpath(e)}";\n`;
+    const shown = values.length > 0 ? values : types;
+    const kind = values.length > 0 ? "import" : "import type";
+    s += `${kind} { ${shown.slice(0, 3).join(", ")}${shown.length > 3 ? ", …" : ""} } from "${subpath(e)}";\n`;
     s += "```\n\n";
     if (pairings.length > 0) s += `**Pairings:** ${pairings.map(code).join(", ")}.\n\n`;
-    s += `**Values (${values.length}):** ${values.map(code).join(", ")}.\n\n`;
+    if (values.length > 0) s += `**Values (${values.length}):** ${values.map(code).join(", ")}.\n\n`;
     if (types.length > 0) s += `**Types (${types.length}):** ${types.map(code).join(", ")}.\n\n`;
   }
   return s;

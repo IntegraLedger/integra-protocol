@@ -1,7 +1,7 @@
 /** The data of the Solana pairings on x402 and MPP. */
 import { freeze } from "./freeze.js";
 
-const ENDPOINT = "a Solana JSON-RPC node whose `getFirstAvailableBlock` is at or below the issue slot";
+const NOTE = "a Solana node whose `getFirstAvailableBlock` is at or below the issue slot";
 
 const SEARCH =
   "Memo-carrying signatures of the buyer's own account, never of the fee payer: 10 pages of 1,000 from the issue slot, " +
@@ -35,7 +35,8 @@ export const SOLANA = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["json-rpc"],
+      note: NOTE,
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)"],
@@ -65,7 +66,8 @@ export const SOLANA = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["json-rpc"],
+      note: NOTE,
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)", "the payment-channels program (devnet only)"],
@@ -94,7 +96,8 @@ export const SOLANA = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["json-rpc"],
+      note: NOTE,
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)", "the payment-channels program (devnet only)"],
@@ -118,7 +121,8 @@ export const SOLANA = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "either",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["json-rpc"],
+      note: NOTE,
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)"],
@@ -150,7 +154,8 @@ export const SOLANA = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: ENDPOINT,
+      endpoint: ["json-rpc"],
+      note: NOTE,
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)"],

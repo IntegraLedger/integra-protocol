@@ -9,7 +9,7 @@ export const CCD = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "grpc-v2",
+      endpoint: ["grpc-v2"],
       search:
         "Keyed by the sender's account and its signed sequence number, from the position recorded at issue to the finalized " +
         "height at which that number was read passed; the search for H, keyed by the sender's account and H in a transfer's " +

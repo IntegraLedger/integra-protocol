@@ -17,7 +17,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The user's Verifiable Intent L2 mandate lists a checkout mandate " +
@@ -35,7 +35,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The buyer's agent signed a Verifiable Intent L3b checkout mandate " +
@@ -144,7 +144,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The buyer's closed AP2 Checkout Mandate carries checkout_hash, " +
@@ -164,7 +164,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The checkout carried this ATR's hash and link as its " +
@@ -185,7 +185,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The checkout session this payment completed has this ATR's hash " +
@@ -204,7 +204,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The checkout session this payment completed has this ATR's hash " +
@@ -220,7 +220,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The checkout response carried this ATR's hash and link as its " +
@@ -235,7 +235,7 @@ export const CARD = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payer",
     agreementOn: "any",
-    confirmed: "yes",
+    confirmed: "no",
     proves:
       "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. This ATR's hash is the id of the seller's ACK Payment Request " +

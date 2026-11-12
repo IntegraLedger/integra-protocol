@@ -46,6 +46,7 @@ export type {
   Carrier,
   Codec,
   Coverage,
+  EndpointKind,
   Entry,
   Life,
   PairingData,

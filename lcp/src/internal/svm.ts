@@ -65,7 +65,10 @@ const MAX_LOCATE_PAGES = 10;
 const LOCATE_PAGE = 1000;
 const MAX_CANDIDATES = 50;
 const SLOT = /^(0|[1-9][0-9]{0,19})$/;
-/** Slots between the claim and a nonce account read that can show the recorded nonce has moved on. */
+/**
+ * Slots between the first read after the payment was presented and a nonce account read that can show the recorded
+ * nonce has moved on.
+ */
 const NONCE_SETTLED_SLOTS = 150n;
 /** The System program's nonce account: version u32, state u32, authority, durable nonce, lamports per signature. */
 const NONCE_ACCOUNT_BYTES = 80;

@@ -703,7 +703,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       challengeId(H, -1),
       place(Array.from({ length: 33 }, () => C_E), H, link, C_E, 0),
     ],
-    "build with a malformed from, a missing tokenDomain or spender, or a clientId that is not a string": async () => [
+    "build with a malformed from, or a missing tokenDomain or spender": async () => [
       await evmAuthorization.build({ challenge: chE, from: from.slice(0, -1) as `0x${string}`, now: 0, tokenDomain }, H),
       await evmAuthorization.build({ challenge: chE, from, now: 0 }, H),
       await evmPermit2.build({ challenge: chE, from, now: 0 }, H),

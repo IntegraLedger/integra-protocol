@@ -22,7 +22,7 @@ const FILES = rowsOf(
   readdirSync(DIR).filter((n) => n.startsWith("mpp-")),
   "the MPP vector files",
   {
-    exact: 23,
+    exact: 22,
     keep: ["the files of the MPP pairings", (n) => !OF_THE_CHECKS.includes(n)],
     leave: [
       "mpp-server-checks.json and mpp-x402-mapping.json, whose credentials are changed for the check or the mapping each row names",
@@ -243,7 +243,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("each credential is bound by one pairing, each pairing that binds binds one, and each change is presented to it", () => {
     expect(PRESENTED.map((p) => p.pairing.id).sort()).toEqual([...BINDING].sort());
-    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 2749 });
+    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 2738 });
   });
 
   it("pairingsOfPlaced names the pairing exactly where pairingsOf names it, with the Lightning invoice written", () => {
@@ -261,7 +261,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge pairingsOfPlaced does not name, bound and reference refuse with the code pairingsOf gives", () => {
     const refused = rowsOf(answers, "every answer", {
-      exact: 1229,
+      exact: 1228,
       keep: ["the challenges pairingsOfPlaced does not name for the pairing", (a) => !a.named],
       leave: ["the challenges it names", (a) => a.named],
     });
@@ -277,7 +277,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge it names, bound gives H again or a refusal naming what it compares, and reference reads", () => {
     const named = rowsOf(answers, "every answer", {
-      exact: 1520,
+      exact: 1510,
       keep: ["the challenges pairingsOfPlaced names for the pairing", (a) => a.named],
       leave: ["the challenges it does not name", (a) => !a.named],
     });
@@ -299,7 +299,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([1322, 198]);
+    expect([bindings, named.length - bindings]).toEqual([1314, 196]);
     const listed = Object.entries(COMPARES).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);

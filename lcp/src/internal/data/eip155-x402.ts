@@ -1,9 +1,9 @@
 /** The data of the x402 pairings on EVM chains, and of Cloudflare's batch settlement. */
 import { freeze } from "./freeze.js";
 
-const PERMIT2_ENDPOINT =
-  "JSON-RPC: receipt, logs, a transaction (the hit's input), `eth_call` (`nonceBitmap`), a block by mark with its " +
-  "timestamp; an archive JSON-RPC endpoint for Permit2 state the node no longer holds";
+const PERMIT2_NOTE =
+  "receipt, logs, a transaction (the hit's input), `eth_call` (`nonceBitmap`), a block by mark with its timestamp; the " +
+  "archival fallback for Permit2 state the node no longer holds";
 
 const NO_SEARCH_FOR_H = "This is no search for H, and none is defined: every answer that would be `failed` is `pending`, `search-incomplete`.";
 
@@ -20,7 +20,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC: receipt, logs, `eth_call` (`authorizationState(from, H)` on the asset), a block by mark with its timestamp",
+      endpoint: ["json-rpc"],
+      note: "receipt, logs, `eth_call` (`authorizationState(from, H)` on the asset), a block by mark with its timestamp",
       search:
         "The logs of every contract with topics `[AuthorizationUsed, payer, H]`, from the block after the position recorded " +
         "at issue to a `finalized` block past `validBefore`, and before any `failed` to the latest head; a hit on another " +
@@ -60,7 +61,9 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: PERMIT2_ENDPOINT,
+      endpoint: ["json-rpc"],
+      fallback: "json-rpc",
+      note: PERMIT2_NOTE,
       search:
         "Every contract's `Transfer` from the payer from the block after the position recorded at issue, each hit counted " +
         "only where its transaction's input carries H in the proxy call whose owner is the payer, the bit set at the hit's " +
@@ -98,7 +101,9 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: PERMIT2_ENDPOINT,
+      endpoint: ["json-rpc"],
+      fallback: "json-rpc",
+      note: PERMIT2_NOTE,
       search:
         "As `x402/exact/eip155/permit2`, through the `upto` proxy: every contract's `Transfer` from the payer, each hit " +
         "counted only where its transaction's input carries H in the proxy call whose owner is the payer and the bit is set " +
@@ -129,12 +134,12 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC: receipt, logs, `eth_call`, a block by mark with its timestamp",
+      endpoint: ["json-rpc"],
+      note: "receipt, logs, `eth_call`, a block by mark with its timestamp",
       search:
         "The escrow's payment hash with payer zero, as the token's authorization nonce, found by " +
         "`[AuthorizationUsed, null, nonce]` on the asset. " +
         NO_SEARCH_FOR_H,
-      history: "none stated",
       contracts: ["the escrow (v1.1 or v1.0 deployment)", "the deployment's EIP-3009 collector", "the asset"],
       lapse: ESCROW_LAPSE,
     },
@@ -162,12 +167,12 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC: receipt, logs, `eth_call`, a block by mark with its timestamp",
+      endpoint: ["json-rpc"],
+      note: "receipt, logs, `eth_call`, a block by mark with its timestamp",
       search:
         "The escrow's payment hash with payer zero, as the Permit2 nonce, found by the escrow's event by payment id " +
         "(`PaymentAuthorized`, or `PaymentCharged` for the `authorization` flow). " +
         NO_SEARCH_FOR_H,
-      history: "none stated",
       contracts: ["the escrow (v1.1 or v1.0 deployment)", "the deployment's Permit2 collector", "Permit2"],
       lapse: ESCROW_LAPSE,
     },
@@ -197,12 +202,12 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC: receipt, logs, `eth_call`, a block by mark with its timestamp",
+      endpoint: ["json-rpc"],
+      note: "receipt, logs, `eth_call`, a block by mark with its timestamp",
       search:
         "The deposit authorization's nonce on the token or Permit2, found by `[AuthorizationUsed, null, keccak256(channelId, " +
         "salt)]` on the token, or `Deposited` by channel id. " +
         NO_SEARCH_FOR_H,
-      history: "none stated",
       contracts: ["the channel contract", "the token or Permit2 (the deposit collector)"],
       lapse:
         "the deposit's `validBefore` or `deadline`: the value unconsumed at a final block past it; no `failed` is answered " +
@@ -223,6 +228,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
   "x402/batch-settlement/cloudflare": {
     coverage: "none",
     carrier: { signed: null },
+    link: "none",
     source: "none: Cloudflare writes its own 402, so the seller's H never reaches the buyer",
     nonce: "unshown",
     broadcasts: "payee",
@@ -241,11 +247,11 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "reusable",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC: receipt, logs, a block by mark",
+      endpoint: ["json-rpc"],
+      note: "receipt, logs, a block by mark",
       search:
         "The manager's `RedeemedDelegation` by root delegator (topic 1), each hit tested for a leaf whose delegate is the " +
         "redeemer and whose salt is H, searched to the end of the payment's hold; lcp declares no search.",
-      history: "none stated",
       contracts: ["the reference delegation manager"],
       lapse: "none: a delegation signs no bound, so it is searched to the end of the payment's hold and is never `failed`",
     },
@@ -269,12 +275,12 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "reusable",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC: receipt, a transaction, a block by mark",
+      endpoint: ["json-rpc"],
+      note: "receipt, a transaction, a block by mark",
       search:
         "No search: the transaction the seller names, read for a `Transfer` from the payment's `delegator` to the option's " +
         "`payTo`, whatever its amount, after the position recorded when the agreement settled, and never the agreement's " +
         "own transaction.",
-      history: "none stated",
       contracts: [],
       lapse: "none: never `failed` for lapse",
     },

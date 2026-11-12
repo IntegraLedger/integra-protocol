@@ -7,33 +7,33 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 58 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record, where it has one: the binding pattern, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 58 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `ack/payment-request` | `paymentRequest` from `@integraledger/lcp/ack` | `none` | yes | `native-field` | no | no | [`ack/payment-request`](../../lcp/profiles/ack-payment-request.md) |
+| `ack/payment-request` | `paymentRequest` from `@integraledger/lcp/ack` | `none` | no | `native-field` | no | no | [`ack/payment-request`](../../lcp/profiles/ack-payment-request.md) |
 
 ## `acp`
 
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `acp/checkout/delegated` | `delegated` from `@integraledger/lcp/acp` | `none` | yes | `native-field` | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
-| `acp/checkout/undelegated` | `undelegated` from `@integraledger/lcp/acp` | `none` | yes | `http-advisory` | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
+| `acp/checkout/delegated` | `delegated` from `@integraledger/lcp/acp` | `none` | no | `native-field` | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
+| `acp/checkout/undelegated` | `undelegated` from `@integraledger/lcp/acp` | `none` | no | `http-advisory` | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
 
 ## `ap2`
 
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `ap2/checkout-mandate` | `checkoutMandate` from `@integraledger/lcp/ap2` | `none` | yes | `opaque-challenge` | no | no | [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) |
+| `ap2/checkout-mandate` | `checkoutMandate` from `@integraledger/lcp/ap2` | `none` | no | `opaque-challenge` | no | no | [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) |
 
 ## `card`
 
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `card/mastercard-vi/autonomous` | `viAutonomous` from `@integraledger/lcp/card` | `none` | yes | `id-reuse` | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
-| `card/mastercard-vi/immediate` | `viImmediate` from `@integraledger/lcp/card` | `none` | yes | `id-reuse` | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
+| `card/mastercard-vi/autonomous` | `viAutonomous` from `@integraledger/lcp/card` | `none` | no | `id-reuse` | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
+| `card/mastercard-vi/immediate` | `viImmediate` from `@integraledger/lcp/card` | `none` | no | `id-reuse` | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
 | `card/seller-reference` | `sellerReference` from `@integraledger/lcp/card` | `none` | no | `http-advisory` | no | no |  |
 | `card/visa-tap` | `visaTap` from `@integraledger/lcp/card` | `none` | no | `protocol-extension` | no | no | [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) |
 
@@ -68,8 +68,8 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 |---|---|---|---|---|---|---|---|
 | `ucp/booking/ap2-mandate` | `bookingAp2Mandate` from `@integraledger/lcp/ucp` | `none` | no | `opaque-challenge` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
 | `ucp/booking/unsigned` | `bookingUnsigned` from `@integraledger/lcp/ucp` | `none` | no | `http-advisory` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
-| `ucp/checkout/ap2-mandate` | `ap2Mandate` from `@integraledger/lcp/ucp` | `none` | yes | `opaque-challenge` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
-| `ucp/checkout/unsigned` | `unsigned` from `@integraledger/lcp/ucp` | `none` | yes | `http-advisory` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
+| `ucp/checkout/ap2-mandate` | `ap2Mandate` from `@integraledger/lcp/ucp` | `none` | no | `opaque-challenge` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
+| `ucp/checkout/unsigned` | `unsigned` from `@integraledger/lcp/ucp` | `none` | no | `http-advisory` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
 
 ## `x402`
 
@@ -94,7 +94,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `full` | no | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
 | `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | no | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
 | `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes |  |
-| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | yes |  |  |  |  |
+| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | yes |  | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
 | `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | no | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
 | `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | no | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
 | `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | no | `native-field` | yes | yes |  |
@@ -260,7 +260,7 @@ The payer's account authorized an Algorand asset transfer whose note is this ATR
 
 ### `x402/exact/aptos`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled before the challenge went out, and the challenge advertised its hash and link. The payer's signed Aptos transaction does not carry the hash. The seller tied the hash to this payment when it claimed it for this request, and identified the settlement as the payer's committed transaction by sender, sequence number and a digest of its transfer. This does not show that the buyer's approval carried the hash, or that amount, payee, asset or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled before the challenge went out, and the challenge advertised its hash and link. The payer's signed Aptos transaction does not carry the hash. The resource server tied the hash to this payment when it recorded the hash for this request, and identified the settlement as the payer's committed transaction by sender, sequence number and a digest of its transfer. This does not show that the buyer's approval carried the hash, or that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/cardano`
 
@@ -296,7 +296,7 @@ The payer signed a Hedera transaction body whose memo carries this ATR's hash in
 
 ### `x402/exact/hedera/transfer-executor`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The seller read the merged consensus record of the named transaction, and found that its one debited account, by at least one unit, is the payer recorded at claim. This does not show that amount, recipient, token or timing match the ATR's content.
+Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The seller read the merged consensus record of the named transaction, and found that its one debited account, by at least one unit, is the payer recorded when the payment was presented. This does not show that amount, recipient, token or timing match the ATR's content.
 
 ### `x402/exact/near`
 

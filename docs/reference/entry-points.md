@@ -57,7 +57,7 @@ import { assemble, base64Bytes, base64UrlBytes, … } from "@integraledger/lcp";
 
 **Values (46):** `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `challengeH`, `challengeHash`, `challengeId`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromLegalContextHeader`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `LEGAL_CONTEXT_HEADER`, `LEGAL_CONTEXT_SERVES`, `MAX_CHALLENGE_DEPTH`, `MAX_CHALLENGES`, `MAX_CREDENTIAL_BYTES`, `MAX_HEADER_BYTES`, `MAX_JSON_DEPTH`, `MAX_LINK_LENGTH`, `MAX_OPTIONS`, `MAX_SIGNATURE_BYTES`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `RETURN_VALUE_BYTES`, `servesOf`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toLegalContextHeader`, `toRawBytes`.
 
-**Types (23):** `AgreementData`, `AtrHash`, `Authorizer`, `Binding`, `Broadcaster`, `Carrier`, `CarrierAfterH`, `Codec`, `CoreRefusal`, `Coverage`, `Entry`, `Json`, `LcpPattern`, `LegalContextReturn`, `Life`, `MppBinding`, `PairingData`, `PairingId`, `Presented`, `ReadData`, `Refusal`, `UrlAuthority`, `X402Binding`.
+**Types (24):** `AgreementData`, `AtrHash`, `Authorizer`, `Binding`, `Broadcaster`, `Carrier`, `CarrierAfterH`, `Codec`, `CoreRefusal`, `Coverage`, `EndpointKind`, `Entry`, `Json`, `LcpPattern`, `LegalContextReturn`, `Life`, `MppBinding`, `PairingData`, `PairingId`, `Presented`, `ReadData`, `Refusal`, `UrlAuthority`, `X402Binding`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -468,10 +468,8 @@ import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 The `x402-exact-stellar` entry point: the `Broadcaster` type, which every pairing's `broadcaster` answers.
 
 ```ts no-check
-import {  } from "@integraledger/lcp/x402-exact-stellar";
+import type { Broadcaster } from "@integraledger/lcp/x402-exact-stellar";
 ```
-
-**Values (0):** .
 
 **Types (1):** `Broadcaster`.
 

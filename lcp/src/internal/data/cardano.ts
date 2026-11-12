@@ -12,7 +12,8 @@ export const CARDANO = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "indexer-rest (Blockfrost or Koios, holding the chain from genesis)",
+      endpoint: ["indexer-rest"],
+      note: "Blockfrost or Koios, holding the chain from genesis",
       search:
         "Keyed by the transaction id (the Blake2b-256 of the signed body). Before every `failed` but `before-position`, the " +
         "search for H over the transactions of the payment credential that holds the input `payload.nonce` names, from the " +

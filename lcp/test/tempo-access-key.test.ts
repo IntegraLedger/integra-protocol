@@ -37,7 +37,7 @@ const reader = (r: Receipt, finalized = BigInt(F.finalized)) =>
   readerFor(NETWORK, { status: r.status, blockNumber: r.blockNumber, logs: r.logs } as never, finalized, finalized);
 /** `printf da8a13b652f86744b76547882fbae3cb7a5bdd37 | xxd -r -p | sha256sum` */
 const TO_RECIPIENT = "0x08c0f673575156523bbb6d18cced9f717abb843c54a256dc04cfbf0fe4db1a74" as Hex;
-/** The key's read keys as the subscription `reference` records them at claim, for the recorded activation. */
+/** The key's read keys as the subscription `reference` records them when the activation is presented. */
 const recorded: SessionRef = {
   network: NETWORK,
   accessKey: { keyId: F.revertedActivation.keyId, token: F.token, to: TO_RECIPIENT },

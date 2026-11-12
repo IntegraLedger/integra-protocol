@@ -8,7 +8,8 @@ description: How the ATR hash rides in a payment, the binding patterns, and what
 **Binding** is how H rides in a pairing's payment: the field its specification defines. The seller places H where the
 protocol or rail provides a place, and, where the pairing's `data.carrier.signed` names a field, the buyer approves a
 payment that carries H, or carries a value from which anyone holding the ATR can confirm exactly that H. Where its
-`claims` is false, nothing in the payment is bound to H, and the agreement payment is the proof.
+`data.coverage` is `none`, no public act the payer signs carries H, whatever the buyer approves, and the agreement
+payment is the proof.
 
 Binding is what this package checks about a payment, beside the form its rail or scheme requires and the bounds within
 which it reads its input. It never judges amount, payee, asset, timing or payer, and never reads the parties' content
@@ -32,8 +33,8 @@ The [pairings reference](../reference/pairings.md) gives every pairing with the 
 
 ## The patterns
 
-Every pairing but `x402/exact/starknet` declares one binding pattern in its `pattern.pattern`. The five this package's
-pairings use:
+Every pairing has a binding record, `pattern`, and every one but `x402/exact/starknet` names its binding pattern in
+`pattern.pattern`. The five this package's pairings use:
 
 | Pattern | What it means in this package's pairings |
 |---|---|
@@ -56,7 +57,7 @@ Each pairing's `pattern` record names its binding pattern and where the binding 
 
 | Field | Meaning |
 |---|---|
-| `pattern` | The binding pattern above. |
+| `pattern` | The binding pattern above, where one of them names the binding. |
 | `onChain` | The binding is visible on a public ledger after settlement (`LCP §8.3`): the settlement carries H or a value derived from it. |
 | `zeroPartyRecoverable` | H can be read back from the settled transaction alone, without either party (the pairing's `recover`). |
 | `forwardIndexable` | A search by H finds the settlement. |

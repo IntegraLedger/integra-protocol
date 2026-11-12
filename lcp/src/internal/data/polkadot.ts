@@ -13,8 +13,9 @@ export const POLKADOT = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint:
-        "rest-api (polkadot-rest-api), with a declared json-rpc side endpoint for the genesis hash, the head and the " +
+      endpoint: ["rest-api", "json-rpc"],
+      note:
+        "`rest-api` is polkadot-rest-api; the `json-rpc` side endpoint serves the genesis hash, the head and the " +
         "validation of a presented extrinsic",
       search:
         "By the signer and its signed account nonce, decoding each extrinsic from the issue position to the signed era's " +

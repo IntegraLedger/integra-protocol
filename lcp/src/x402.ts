@@ -160,8 +160,13 @@ export interface ToolCall {
 /** The commitment to an MCP tool call: the tool's name, and SHA-256 over the RFC 8785 form of its arguments. */
 export type ToolCallCommitment = { tool: string; argumentsDigest: Hex };
 
+/**
+ * A pairing's binding record: its binding pattern, absent where none of these names it; the profile that defines the
+ * binding, where one does; whether the binding is visible on a public ledger; whether the hash can be recovered from
+ * the chain alone; and whether the chain indexes it.
+ */
 export type LcpPattern = {
-  pattern:
+  pattern?:
     | "native-field"
     | "overlay-contract"
     | "sidecar-attestation"

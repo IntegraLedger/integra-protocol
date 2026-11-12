@@ -264,7 +264,7 @@ configuration, and `buildWithin` refuses a configuration whose salt is not H (`x
 
 ## What each side keeps
 
-**The seller** refuses an opening whose H it did not issue for that request, or has already seen claimed. After that,
+**The seller** refuses an opening whose H it did not issue for that request, or has already seen used. After that,
 it matches each later payment to an open channel by `channel.ref`, and so to that channel's ATR. What a voucher is
 worth, and when to settle, are the seller's to decide under the scheme. The channel members classify a payment and
 name its channel; none of them reads a voucher's amount.
@@ -344,7 +344,7 @@ as the program's authorized signer, which `open` refuses off the Ed25519 curve: 
 such as a program-derived address, is refused `x402/payload-malformed`, and `build` refuses one with
 `svm/input-malformed`.
 
-An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before the claim; one of type
+An `mpp/session/evm` opening of type `hash` names a transaction the payer broadcast before presenting it; one of type
 `permit2` is sent by the seller's server, which names its transaction to `status`. Both references carry `opens`: the
 escrow, the channel, H and the chain; a reference whose `opens` is not of that form reads as pending, with the reason
 `unreadable`, and nothing is read. Otherwise `status` reads the transaction itself, through the reader's

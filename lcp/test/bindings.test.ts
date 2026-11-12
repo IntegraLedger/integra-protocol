@@ -84,15 +84,11 @@ describe("the record's members", () => {
   it("the field table lists five members", () => {
     expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
-  it("every pairing's record carries only those members", () => {
-    const withRecord = rowsOf(BINDINGS, "BINDINGS, the implemented pairings", {
-      exact: 57,
-      keep: ["the pairings with a pattern record", (b) => "pattern" in b],
-      leave: ["x402/exact/starknet, whose entry has no pattern record", (b) => !("pattern" in b)],
-    });
-    for (const b of withRecord)
-      if ("pattern" in b)
-        for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
+  it("every pairing's record carries only those members, and every one but x402/exact/starknet's names its pattern", () => {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 58 })) {
+      for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
+      expect(b.pattern.pattern === undefined, b.id).toBe(b.id === "x402/exact/starknet");
+    }
   });
 });
 

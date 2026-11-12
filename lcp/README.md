@@ -12,8 +12,8 @@ hash of the agreement's record is bound into the payment, so that where the paym
 that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `data.proves` says so.
 The seller assembles the record and advertises its hash; the buyer fetches the record, compares it with the hash, and,
 on most pairings, signs a payment that carries the hash; the seller reads the hash back from the payment, and on most
-rails from the settlement. On some pairings (`data.carrier.signed` null) the buyer's signature does not cover the hash,
-and where the pairing's `claims` is false, nothing in the payment is bound to it; the agreement payment is the proof.
+rails from the settlement. On a pairing whose `data.coverage` is `none`, no public act the payer signs carries the
+hash, whatever the buyer signs, and the agreement payment, made first, is the proof.
 
 The package is deterministic and small at its core. It holds no key, signs nothing, calls no network on its own, and
 carries no business or legal logic. What the agreement says is the parties' business; this package hashes the record,
@@ -235,8 +235,8 @@ The [entry point reference](https://github.com/IntegraLedger/integra-protocol/bl
 lists every export of every entry point, and the
 [API reference](https://github.com/IntegraLedger/integra-protocol/tree/main/docs/reference/api) gives each signature.
 
-Every pairing has these members, except that `mpp/charge/nearintents` has no `build` and `x402/exact/starknet` no
-`pattern`: `id`, `pattern` (its binding record), `data` (its data, typed `PairingData`, with `data.proves`, what a
+Every pairing has these members, except that `mpp/charge/nearintents` has no `build`: `id`, `pattern` (its binding
+record, which on `x402/exact/starknet` names no binding pattern), `data` (its data, typed `PairingData`, with `data.proves`, what a
 payment through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the
 option as the seller issued it), `tie` (the ATR's binding slot), `advertise` and `read` (H into and out of the
 challenge), `build` (what the buyer signs, with H in its place), `bound` (H back out of the payment), and `broadcaster`

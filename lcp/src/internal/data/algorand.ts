@@ -11,7 +11,7 @@ export const ALGORAND = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "indexer-rest",
+      endpoint: ["indexer-rest"],
       search:
         "Found by the transaction id. At a lapse or a consumed id, the search for H over the payer's (`snd`) transactions " +
         "from one past the issue position to the Indexer's latest round, each note compared with H, bounded and resumed at " +

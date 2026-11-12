@@ -19,7 +19,7 @@ import type { AtrHash, Json } from "../src/core.js";
 import type { EvmReader, EvmRef, Hex } from "../src/evm.js";
 import { exactHedera, exactHederaExecutor, type ExecutorRef, type HederaReader, type HederaRef } from "../src/hedera.js";
 import * as root from "../src/index.js";
-import { BINDINGS, type Coverage, type Entry, type PairingData, type PairingId } from "../src/index.js";
+import { BINDINGS, type Coverage, type EndpointKind, type Entry, type PairingData, type PairingId } from "../src/index.js";
 import type { AptosPaymentPayload } from "../src/internal/aptos.js";
 import type { AvmPaymentPayload } from "../src/internal/avm.js";
 import type { CardanoPaymentPayload } from "../src/internal/cardano.js";
@@ -182,6 +182,19 @@ const NONCE: { readonly [v in PairingData["nonce"]]: true } = { "single-use": tr
 const BROADCASTS: { readonly [v in PairingData["broadcasts"]]: true } = { payee: true, payer: true, either: true };
 const CONFIRMED: { readonly [v in PairingData["confirmed"]]: true } = { yes: true, no: true };
 const LINK: { readonly [v in NonNullable<PairingData["link"]>]: true } = { h: true, pointer: true, none: true };
+const ENDPOINT: { readonly [v in EndpointKind]: true } = {
+  "fullnode-http": true,
+  "fullnode-rest": true,
+  graphql: true,
+  "grpc-v2": true,
+  "indexer-rest": true,
+  "json-rpc": true,
+  "mirror-rest": true,
+  "rest-api": true,
+  rippled: true,
+  "stacks-api-rest": true,
+  "toncenter-v3": true,
+};
 
 describe("the registry's type test", () => {
   it("every entry's coverage, carrier, nonce, broadcasts, confirmed and proves is one of its member's values", () => {
@@ -202,14 +215,25 @@ describe("the registry's type test", () => {
     }
   });
 
-  it("the data's own rules: link and agreementOn at coverage none only, agreement at full and single-use only", () => {
+  it("the data's own rules: a link at coverage none always, agreementOn at none only, agreement at full and single-use only", () => {
     for (const d of ENTRIES.map((b) => ({ id: b.id, ...b.data }))) {
-      if (d.link !== undefined) {
-        expect(d.coverage, d.id).toBe("none");
-        expect(Object.hasOwn(LINK, d.link), d.id).toBe(true);
-      }
+      if (d.coverage === "none") expect(Object.hasOwn(LINK, d.link), d.id).toBe(true);
+      else expect(d.link, d.id).toBeUndefined();
       if (d.agreementOn !== undefined) expect(d.coverage, d.id).toBe("none");
       if (d.agreement !== undefined) expect([d.id, d.coverage, d.nonce]).toEqual([d.id, "full", "single-use"]);
+    }
+  });
+
+  it("a read names one or more endpoint kinds, each once, and its fallback, where it has one, is a kind too", () => {
+    const reads = rowsOf(
+      ENTRIES.flatMap((b) => (b.data.read === undefined ? [] : [[b.id, b.data.read] as const])),
+      "the entries with a read",
+    );
+    for (const [id, read] of reads) {
+      expect(read.endpoint.length > 0 && new Set(read.endpoint).size === read.endpoint.length, id).toBe(true);
+      for (const kind of read.endpoint) expect(Object.hasOwn(ENDPOINT, kind), id).toBe(true);
+      if (read.fallback !== undefined) expect(Object.hasOwn(ENDPOINT, read.fallback), id).toBe(true);
+      if (read.note !== undefined) expect(read.note !== "", id).toBe(true);
     }
   });
 

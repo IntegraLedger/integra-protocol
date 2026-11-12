@@ -22,9 +22,8 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
       search: AUTHORIZATION_SEARCH,
-      history: "none stated",
       contracts: ["the asset (`currency`, the EIP-3009 token)"],
       lapse:
         "`validBefore` (the challenge's `expires`): `authorizationState` false at a `finalized` block whose timestamp is at " +
@@ -56,7 +55,8 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
+      fallback: "json-rpc",
       search:
         "Every contract's `Transfer` from the payer, each hit counted only where its transaction carries the nonce in the " +
         "Permit2 call whose owner is the payer, the bit set at its block and unset before; a cancellation by Permit2's " +
@@ -89,9 +89,8 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "either",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
       search: NAMED_TRANSACTION,
-      history: "none stated",
       contracts: [],
       lapse:
         "none: a relayed transaction that never lands signs no bound, and the payer's account nonce is no evidence of a " +
@@ -118,9 +117,8 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "either",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
       search: NAMED_TRANSACTION,
-      history: "none stated",
       contracts: [],
       lapse: "none: never `failed` by lapse; while the named transaction is not found, `pending`, `not-found`",
     },
@@ -148,13 +146,12 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "either",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
       search:
         "`ChannelOpened` by the channel id, and for an `authorization` opening `[AuthorizationUsed, null, nonce]`, to the " +
         "signed `validBefore` or `deadline`. Neither is a search for H, since both digests also cover payee and token, so " +
         NO_SEARCH_FOR_H +
         ".",
-      history: "none stated",
       contracts: ["the session's escrow", "the token (an `authorization` opening) or Permit2 (a `permit2` opening)"],
       lapse: "the `authorization`'s `validBefore` or the `permit2`'s `deadline`; no `failed` is answered while no search for H is defined",
     },
@@ -185,13 +182,12 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
       search:
         "The escrow's `ChannelOpened` by the channel id computed over H, under each protocol version's topic. It is narrowed " +
         "to one payee and token, so it is no search for H, and " +
         NO_SEARCH_FOR_H +
         ".",
-      history: "none stated",
       contracts: ["the session's escrow"],
       lapse: "the opening's signed `validBefore`; no `failed` is answered while no search for H is defined",
     },
@@ -215,13 +211,11 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
       search:
         "The account keychain's `KeyAuthorizationWitness` whose witness topic is H and whose account topic is the payer's " +
         "account, whose root key signed the key authorization; lcp's search leaves the account open.",
-      history: "none stated",
       contracts: ["the account keychain"],
-      lapse: "none stated",
     },
     destination:
       "the one account the payer's key authorization lets the key pay, read from the key authorization the landed " +
@@ -248,9 +242,8 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     nonce: "single-use",
     broadcasts: "payee",
     read: {
-      endpoint: "JSON-RPC",
+      endpoint: ["json-rpc"],
       search: AUTHORIZATION_SEARCH,
-      history: "none stated",
       contracts: ["the asset (`currency`, the EIP-3009 token)"],
       lapse:
         "`validBefore`: `authorizationState` false at a `finalized` block at or past it, and at the latest block, with the " +
