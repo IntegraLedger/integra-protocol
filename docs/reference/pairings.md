@@ -7,113 +7,104 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 67 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, and these members of its `pattern` record: the binding pattern, whether the buyer's signature covers the ATR hash, whether the binding is visible on a public ledger, whether the settlement is a public proof, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `canonical` and `forwardIndexable` included.
+`BINDINGS` holds 58 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record, where it has one: the binding pattern, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
-| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `ack/payment-request` | `paymentRequest` from `@integraledger/lcp/ack` | `native-field` | no | no | no | no | [`ack/payment-request`](../../lcp/profiles/ack-payment-request.md) |
+| `ack/payment-request` | `paymentRequest` from `@integraledger/lcp/ack` | `none` | yes | `native-field` | no | no | [`ack/payment-request`](../../lcp/profiles/ack-payment-request.md) |
 
 ## `acp`
 
-| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `acp/checkout/delegated` | `delegated` from `@integraledger/lcp/acp` | `native-field` | no | no | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
-| `acp/checkout/undelegated` | `undelegated` from `@integraledger/lcp/acp` | `http-advisory` | no | no | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
+| `acp/checkout/delegated` | `delegated` from `@integraledger/lcp/acp` | `none` | yes | `native-field` | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
+| `acp/checkout/undelegated` | `undelegated` from `@integraledger/lcp/acp` | `none` | yes | `http-advisory` | no | no | [`acp/checkout/session-id`](../../lcp/profiles/acp-checkout-session-id.md) |
 
 ## `ap2`
 
-| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `ap2/checkout-mandate` | `checkoutMandate` from `@integraledger/lcp/ap2` | `opaque-challenge` | yes | no | no | no | [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) |
+| `ap2/checkout-mandate` | `checkoutMandate` from `@integraledger/lcp/ap2` | `none` | yes | `opaque-challenge` | no | no | [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) |
 
 ## `card`
 
-| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `card/mastercard-vi/autonomous` | `viAutonomous` from `@integraledger/lcp/card` | `id-reuse` | yes | no | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
-| `card/mastercard-vi/immediate` | `viImmediate` from `@integraledger/lcp/card` | `id-reuse` | yes | no | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
-| `card/seller-reference` | `sellerReference` from `@integraledger/lcp/card` | `http-advisory` | no | no | no | no |  |
-| `card/visa-tap` | `visaTap` from `@integraledger/lcp/card` | `protocol-extension` | yes | no | no | no | [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) |
+| `card/mastercard-vi/autonomous` | `viAutonomous` from `@integraledger/lcp/card` | `none` | yes | `id-reuse` | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
+| `card/mastercard-vi/immediate` | `viImmediate` from `@integraledger/lcp/card` | `none` | yes | `id-reuse` | no | no | [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) |
+| `card/seller-reference` | `sellerReference` from `@integraledger/lcp/card` | `none` | no | `http-advisory` | no | no |  |
+| `card/visa-tap` | `visaTap` from `@integraledger/lcp/card` | `none` | no | `protocol-extension` | no | no | [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) |
 
 ## `mpp`
 
-| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `mpp/charge/card` | `chargeCard` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/charge/evm/authorization` | `evmAuthorization` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
-| `mpp/charge/evm/hash` | `evmHash` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/charge/evm/permit2` | `evmPermit2` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
-| `mpp/charge/evm/transaction` | `evmTransaction` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/charge/hedera` | `chargeHedera` from `@integraledger/lcp/hedera`<br>`chargeHedera` from `@integraledger/lcp/mpp` | `id-reuse` | no | yes | yes | no |  |
-| `mpp/charge/lightning` | `chargeLightning` from `@integraledger/lcp/lightning` | `native-field` | no | no | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
-| `mpp/charge/nearintents` | `chargeNearIntents` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
-| `mpp/charge/stellar` | `chargeStellar` from `@integraledger/lcp/mpp` | `truncated-field` | no | yes | yes | no |  |
-| `mpp/charge/stripe` | `chargeStripe` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/charge/tempo/memo` | `tempoMemo` from `@integraledger/lcp/mpp` | `id-reuse` | no | yes | yes | no |  |
-| `mpp/charge/tempo/push` | `tempoPush` from `@integraledger/lcp/mpp` | `id-reuse` | no | yes | yes | no |  |
-| `mpp/charge/usdc/evm` | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
-| `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `id-reuse` | yes | yes | yes | no |  |
-| `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
-| `mpp/charge/usdc/stacks` | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
-| `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes |  |
-| `mpp/session/evm` | `sessionEvm` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
-| `mpp/session/hedera` | `sessionHedera` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
-| `mpp/session/lightning` | `sessionLightning` from `@integraledger/lcp/lightning` | `native-field` | no | no | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
-| `mpp/session/solana` | `sessionSolana` from `@integraledger/lcp/mpp` | `truncated-field` | no | yes | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
-| `mpp/session/tempo` | `sessionTempo` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
-| `mpp/session/xrpl` | `sessionXrpl` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
-| `mpp/subscription/stripe` | `subscriptionStripe` from `@integraledger/lcp/mpp` | `opaque-challenge` | no | no | no | no |  |
-| `mpp/subscription/tempo` | `subscriptionTempo` from `@integraledger/lcp/mpp` | `native-field` | yes | yes | yes | yes |  |
+| `mpp/charge/card` | `chargeCard` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/evm/authorization` | `evmAuthorization` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
+| `mpp/charge/evm/hash` | `evmHash` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/evm/permit2` | `evmPermit2` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
+| `mpp/charge/evm/transaction` | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/lightning` | `chargeLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| `mpp/charge/nearintents` | `chargeNearIntents` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
+| `mpp/charge/stripe` | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/usdc/evm` | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
+| `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no |  |
+| `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
+| `mpp/charge/usdc/stacks` | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
+| `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
+| `mpp/session/evm` | `sessionEvm` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
+| `mpp/session/lightning` | `sessionLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| `mpp/session/tempo` | `sessionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
+| `mpp/session/xrpl` | `sessionXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
+| `mpp/subscription/stripe` | `subscriptionStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/subscription/tempo` | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
 
 ## `ucp`
 
-| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `ucp/booking/ap2-mandate` | `bookingAp2Mandate` from `@integraledger/lcp/ucp` | `opaque-challenge` | yes | no | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
-| `ucp/booking/unsigned` | `bookingUnsigned` from `@integraledger/lcp/ucp` | `http-advisory` | no | no | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
-| `ucp/checkout/ap2-mandate` | `ap2Mandate` from `@integraledger/lcp/ucp` | `opaque-challenge` | yes | no | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
-| `ucp/checkout/unsigned` | `unsigned` from `@integraledger/lcp/ucp` | `http-advisory` | no | no | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
+| `ucp/booking/ap2-mandate` | `bookingAp2Mandate` from `@integraledger/lcp/ucp` | `none` | no | `opaque-challenge` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
+| `ucp/booking/unsigned` | `bookingUnsigned` from `@integraledger/lcp/ucp` | `none` | no | `http-advisory` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
+| `ucp/checkout/ap2-mandate` | `ap2Mandate` from `@integraledger/lcp/ucp` | `none` | yes | `opaque-challenge` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
+| `ucp/checkout/unsigned` | `unsigned` from `@integraledger/lcp/ucp` | `none` | yes | `http-advisory` | no | no | [`ucp/checkout/legal-context`](../../lcp/profiles/ucp-checkout-legal-context.md) |
 
 ## `x402`
 
-| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `x402/auth-capture/eip155/eip3009` | `authCaptureEip3009` from `@integraledger/lcp/x402` | `id-reuse` | yes | yes | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
-| `x402/auth-capture/eip155/permit2` | `authCapturePermit2` from `@integraledger/lcp/x402` | `id-reuse` | yes | yes | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
-| `x402/batch-settlement/cloudflare` | `batchCloudflare` from `@integraledger/lcp/x402-batch-settlement` | `protocol-extension` | yes | no | no | no |  |
-| `x402/batch-settlement/eip155` | `batchEvm` from `@integraledger/lcp/x402-batch-settlement` | `native-field` | yes | yes | yes | yes | [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-settlement-eip155.md) |
-| `x402/batch-settlement/solana` | `batchSvm` from `@integraledger/lcp/x402-batch-settlement` | `native-field` | yes | yes | yes | yes |  |
-| `x402/exact/algorand` | `exactAvm` from `@integraledger/lcp/avm` | `native-field` | yes | yes | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
-| `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `http-advisory` | no | no | no | no |  |
-| `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `native-field` | yes | yes | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
-| `x402/exact/casper` | `exactCasper` from `@integraledger/lcp/casper` | `native-field` | yes | yes | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
-| `x402/exact/ccd` | `exactCcd` from `@integraledger/lcp/ccd` | `native-field` | yes | yes | yes | yes | [`x402/exact/ccd`](../../lcp/profiles/x402-exact-ccd.md) |
-| `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
-| `x402/exact/eip155/erc7710` | `exactErc7710` from `@integraledger/lcp/x402` | `http-advisory` | no | no | no | no |  |
-| `x402/exact/eip155/erc7710-salt` | `exactErc7710Salt` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/exact/eip155/erc7710-salt`](../../lcp/profiles/x402-exact-eip155-erc7710-salt.md) |
-| `x402/exact/eip155/permit2` | `exactPermit2` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
-| `x402/exact/hedera` | `exactHedera` from `@integraledger/lcp/hedera` | `native-field` | yes | yes | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
-| `x402/exact/hedera/transfer-executor` | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `http-advisory` | no | no | no | no |  |
-| `x402/exact/lnbtc` | `exactLnbtc` from `@integraledger/lcp/lightning` | `native-field` | no | no | no | no | [`x402/exact/lnbtc`](../../lcp/profiles/x402-exact-lnbtc.md) |
-| `x402/exact/lnbtc/invoice-named` | `exactLnbtcNamed` from `@integraledger/lcp/lightning` | `http-advisory` | no | no | no | no |  |
-| `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `native-field` | yes | yes | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
-| `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `native-field` | yes | yes | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
-| `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `native-field` | yes | yes | yes | yes |  |
-| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `truncated-field` | yes | yes | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
-| `x402/exact/stellar` | `exactStellar` from `@integraledger/lcp/x402-exact-stellar` | `truncated-field` | no | yes | yes | no |  |
-| `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `native-field` | yes | yes | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
-| `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `native-field` | yes | yes | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
-| `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `native-field` | yes | yes | yes | yes |  |
-| `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `id-reuse` | yes | yes | yes | no |  |
-| `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `native-field` | yes | yes | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
-| `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `native-field` | yes | yes | yes | yes |  |
+| `x402/auth-capture/eip155/eip3009` | `authCaptureEip3009` from `@integraledger/lcp/x402` | `full` | no | `id-reuse` | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
+| `x402/auth-capture/eip155/permit2` | `authCapturePermit2` from `@integraledger/lcp/x402` | `full` | no | `id-reuse` | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
+| `x402/batch-settlement/cloudflare` | `batchCloudflare` from `@integraledger/lcp/x402-batch-settlement` | `none` | no | `protocol-extension` | no | no |  |
+| `x402/batch-settlement/eip155` | `batchEvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-settlement-eip155.md) |
+| `x402/batch-settlement/solana` | `batchSvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes |  |
+| `x402/exact/algorand` | `exactAvm` from `@integraledger/lcp/avm` | `full` | no | `native-field` | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
+| `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | yes | `http-advisory` | no | no |  |
+| `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
+| `x402/exact/casper` | `exactCasper` from `@integraledger/lcp/casper` | `full` | yes | `native-field` | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
+| `x402/exact/ccd` | `exactCcd` from `@integraledger/lcp/ccd` | `full` | no | `native-field` | yes | yes | [`x402/exact/ccd`](../../lcp/profiles/x402-exact-ccd.md) |
+| `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
+| `x402/exact/eip155/erc7710` | `exactErc7710` from `@integraledger/lcp/x402` | `none` | no | `http-advisory` | no | no |  |
+| `x402/exact/eip155/erc7710-salt` | `exactErc7710Salt` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/erc7710-salt`](../../lcp/profiles/x402-exact-eip155-erc7710-salt.md) |
+| `x402/exact/eip155/permit2` | `exactPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
+| `x402/exact/hedera` | `exactHedera` from `@integraledger/lcp/hedera` | `full` | no | `native-field` | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
+| `x402/exact/hedera/transfer-executor` | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `none` | no | `http-advisory` | no | no |  |
+| `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `full` | no | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
+| `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | no | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
+| `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes |  |
+| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | yes |  |  |  |  |
+| `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | no | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
+| `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | no | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
+| `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | no | `native-field` | yes | yes |  |
+| `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | no | `id-reuse` | yes | no |  |
+| `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
+| `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `full` | no | `native-field` | yes | yes |  |
 
 ## What each binding proves
 
-Each pairing's `pattern.proves` states what a payment through it shows, and what it does not. The text is the package's own, quoted as it is. Where it names `<network>` and `<transaction>`, the record fills them in.
+Each pairing's `data.proves` states what a payment through it shows, and what it does not. The text is the package's own, quoted as it is. Where it names `<network>` and `<transaction>`, the record fills them in.
 
 ### `ack/payment-request`
 
@@ -167,10 +158,6 @@ The payer signed a Permit2 transfer, single or batch, whose witness carries kecc
 
 Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction (`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, and the settlement transaction it reported succeeded and moved the token. This does not show that amount, payee, asset or timing match the ATR's content.
 
-### `mpp/charge/hedera`
-
-The ATR was assembled and delivered before approval, and its hash is in the MPP challenge this payment answered, protected by the server's binding of the challenge, not by the payer's signature. The payer signed a memo whose 7-byte nonce is keccak256 of that challenge's id. It ties the payment to the challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. This does not show that amount, recipient, token or timing match the ATR's content.
-
 ### `mpp/charge/lightning`
 
 Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content.
@@ -183,21 +170,9 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 The payer signed a Solana transaction whose one LCP-form Memo instruction carries this ATR's hash in LCP string form, and the transaction executed without error, carrying a token or SOL transfer. The memo is in the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing match the ATR's content.
 
-### `mpp/charge/stellar`
-
-The ATR was assembled and delivered before approval, and its hash is in the payment challenge, which the payer did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of this ATR's hash, and the transaction succeeded. The id binds this hash only through its first 8 bytes: whoever assembles the ATR can construct a second ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the ATR's content.
-
 ### `mpp/charge/stripe`
 
 Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its id and its opaque reference, bound to the challenge by the seller's own server, and the buyer's credential echoed that challenge. The seller also placed the hash in the method's reference field (externalId for card; the PaymentIntent's metadata for Stripe). Nothing the buyer or its card or Stripe token signed carries the hash, and nothing the buyer signed was checked. Settlement is the seller's report. This record does not show that the buyer's approval carried the hash.
-
-### `mpp/charge/tempo/memo`
-
-The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction whose transferWithMemo call carries the attribution memo MPP's SDKs write, whose 7-byte nonce is keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's TransferWithMemo event. It ties the payment to the challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. This does not show that amount, payee, asset or timing match the ATR's content.
-
-### `mpp/charge/tempo/push`
-
-The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the challenge's position, protected by the server's binding of the challenge. The payer signed and broadcast a Tempo transaction whose transferWithMemo call carries the attribution memo MPP's SDKs write, whose 7-byte nonce is keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic of the token's TransferWithMemo event, read after the money had moved. It ties the payment to the challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the same 7 bytes. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `mpp/charge/usdc/evm`
 
@@ -223,17 +198,9 @@ The payer signed, with a single key, an XRPL Payment whose InvoiceID is this ATR
 
 The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's deposit to the escrow. Where the payer sent the open call, or a relayer sent the escrow's Permit2 opening, the seller read that call: it is to the escrow, its salt is this ATR's hash, and its payer, payee, token and authorized signer give this channel id, so the payer is the account that signed the call or, on Permit2, the transfer. This does not show that amount, payee, asset or timing match the ATR's content. Each voucher in this channel signs a commitment to this ATR's hash.
 
-### `mpp/session/hedera`
-
-The payer signed a Hedera EVM transaction that opened an MPP session channel on the escrow contract named in the challenge, with this ATR's hash as the channel's salt, and it reached consensus. The escrow's ChannelOpened event carries the salt, and the channel id is keccak256 over an encoding that includes it. The hash is also in the MPP challenge the opening answered. Each voucher signs that channel id, which commits to this ATR's hash. This does not show that amount, deposit, recipient, token or timing match the ATR's content.
-
 ### `mpp/session/lightning`
 
 Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content. The close is the seller's report.
-
-### `mpp/session/solana`
-
-The ATR was assembled and delivered before approval, and its hash is in the MPP challenge the opening answered, protected by the server's binding of the challenge. The payer signed a Solana transaction that opened a session channel on the channel program named in the challenge, with the first 8 bytes of this ATR's hash as the channel's salt, and it executed without error. The salt binds only this hash's first 8 bytes: whoever assembles the ATR can construct a second ATR whose hash shares them. This does not show that amount, deposit, recipient, mint or timing match the ATR's content.
 
 ### `mpp/session/tempo`
 
@@ -331,14 +298,6 @@ The payer signed a Hedera transaction body whose memo carries this ATR's hash in
 
 Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The seller read the merged consensus record of the named transaction, and found that its one debited account, by at least one unit, is the payer recorded at claim. This does not show that amount, recipient, token or timing match the ATR's content.
 
-### `x402/exact/lnbtc`
-
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice has this ATR's hash as its payment metadata and x402's request hash as its description hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content.
-
-### `x402/exact/lnbtc/invoice-named`
-
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's signed BOLT11 invoice, whose description hash is x402's request hash. The invoice does not carry this ATR's hash, and the payer signed nothing that does. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content.
-
 ### `x402/exact/near`
 
 The payer signed a NEP-366 delegate action whose one ft_transfer carries this ATR's hash in its memo, in LCP string form. The runtime verified that signature and executed the transfer on the token contract, and the memo is on chain in the delegated call's arguments. This does not show that amount, receiver, token or timing match the ATR's content.
@@ -354,10 +313,6 @@ The payer signed a Solana transaction whose one Memo instruction carries this AT
 ### `x402/exact/starknet`
 
 The payer signed, as SNIP-12 typed data, a SNIP-9 outside execution whose nonce is the low 250 bits of this ATR's hash. The payer's account contract verified that signature when it executed the transfer call, and the nonce is in the settlement transaction's calldata. A holder of the ATR can confirm the hash from the nonce; the chain alone does not reveal all of it, and no event indexes it. This does not show that amount, payee, asset or timing match the ATR's content.
-
-### `x402/exact/stellar`
-
-The ATR was assembled and delivered before approval, and its hash is in the payment challenge, which the payer did not sign. The payer signed a transfer to the seller's muxed address whose 8-byte id is the first 8 bytes of this ATR's hash, and the transaction succeeded. The id binds this hash only through its first 8 bytes: whoever assembles the ATR can construct a second ATR whose hash begins with the same 8 bytes. This does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/exact/sui`
 

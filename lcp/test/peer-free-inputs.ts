@@ -10,8 +10,7 @@
 // - The decoders and carriers: `tvmCarrier`, `decodeSuiTx`, `nearCarrier`, `decodeStellarTx`, `transferEventTopics`
 //   and `transferEventOf` on input whose network, size, base64, CRC32C or union tags they refuse; `avmCarrier` on every
 //   input, as it needs no peer.
-// - `mpp/charge/stellar`'s `build`: a choice, challenge, H, current ledger, clock, expiration ledger or simulated
-//   transaction form it refuses. `x402/exact/near`'s `build`: a payer, key, nonce or height it refuses.
+// - `x402/exact/near`'s `build`: a payer, key, nonce or height it refuses.
 // - Every x402 `build`: a malformed H, which each checks first, before the choice and its document; then each choice
 //   member the caller passes whose form needs neither the document nor the peer, before the document and the option.
 // - x402 XRPL's `bound` and `reference`: an option whose `invoiceId` is not an LCP string, read before the blob.
@@ -19,18 +18,15 @@
 // - x402 Algorand's `build`: a choice compared with its option (the genesis hash against the option's network, an
 //   option the filter refuses), which needs no algosdk, as the option's and the payer's addresses do not.
 // - `muxedFor`: every base and H, as it reads and writes a strkey without the SDK.
-// - The Stellar pairings' `unplaced`, `issuedDigest` and MPP `advertise`, which read a muxed address without the SDK,
-//   and the strkeys the x402 option filter, `advertise`, `read` and `build` read (`stellarStrkeyRows`).
-// - `mpp/charge/stellar`'s `pairingsOf`, filter, `advertise`, `build` and `bound` of a `recipient` or `currency` strkey,
-//   read whole (`stellarChargeStrkeyRows`).
+// - `issuedDigest`, which reads a muxed address without the SDK, and the strkeys `isAccount`, `isContract` and
+//   `muxedFor` read (`stellarStrkeyRows`).
 // - `stellarLocate`'s search, which decodes only a candidate's transaction that succeeded (`stellarLocateRows`).
 // - Each `status` of a rail with an optional peer that reads with it (`suiStatusRows`, `tvmStatusRows`,
 //   `stellarStatusRows`): the same answer after the same reads, except a read that reaches a step that decodes with
 //   the peer (`without`).
-// - Each x402 TON function, `x402/exact/sui`'s `build` and its `complete`, `mpp/charge/solana`'s `build`, and the
-//   Stellar pairings' `bound` and `reference` (`tvmPeerStepRows`, `suiPeerStepRows`, `solanaChargeBlockhashRows`,
-//   `stellarCarrierRows`): the same answer, except a call that reaches the step that decodes or writes with the peer
-//   (`without`).
+// - Each x402 TON function, `x402/exact/sui`'s `build` and its `complete`, and `mpp/charge/solana`'s `build`
+//   (`tvmPeerStepRows`, `suiPeerStepRows`, `solanaChargeBlockhashRows`): the same answer, except a call that reaches the
+//   step that decodes or writes with the peer (`without`).
 import { readFileSync } from "node:fs";
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base32, base58 } from "@scure/base";
@@ -216,61 +212,6 @@ export function suiRecoverDecodes(): RecoverDecode[] {
   }));
 }
 
-/**
- * The vectors' placed challenge with x402-exact-stellar.json's V2 simulated transaction and ledger, at a clock 60
- * seconds before the challenge expires: with the SDK, `mpp/charge/stellar` builds it, its entry expiring at V3's ledger
- * 1000 (mpp-charges.test.ts).
- */
-export function stellarChargeChoice() {
-  const now = Date.parse(CHARGE.fixed.expires) / 1000 - 60;
-  return {
-    choice: { challenge: CHARGE.place.expect, simulatedXdr: STELLAR.V2.simulatedXdr, currentLedger: STELLAR.V2.currentLedger, now, payer: STELLAR.fixed.payer },
-    h: CHARGE.fixed.H as `0x${string}`,
-  };
-}
-
-/**
- * A choice and H `mpp/charge/stellar`'s `build` refuses with the code given, before it reads the transaction: the
- * payer's strkey, the expiration ledger and the simulated transaction's form (`signingInput`) among them, and the
- * recipient, whose strkey the pairing's filter reads whole and whose muxed id `build` reads after the simulated
- * transaction's form. The fee bump wraps V2's simulated envelope whole.
- */
-export function stellarChargeChoices(): { case: string; choice: unknown; h: unknown; expect: string }[] {
-  const { choice, h } = stellarChargeChoice();
-  const v1 = bytes(choice.simulatedXdr);
-  const feeBump = b64([...u32(5), ...u32(0), ...zeros(32 + 8), ...v1, ...u32(0), ...u32(0)]);
-  return [
-    { case: "a choice that is not an object", choice: null, h, expect: "stellar/tx-malformed" },
-    { case: "a challenge that is not one", choice: { ...choice, challenge: {} }, h, expect: "mpp/credential-malformed" },
-    { case: "an H the challenge does not carry", choice, h: CHARGE.fixed.H2, expect: "mpp/id-not-ours" },
-    { case: "a current ledger below 0", choice: { ...choice, currentLedger: -1 }, h, expect: "stellar/tx-malformed" },
-    { case: "a clock that is not an integer", choice: { ...choice, now: choice.now + 0.5 }, h, expect: "stellar/tx-malformed" },
-    { case: "a current ledger whose entry would expire past 2^32 - 1", choice: { ...choice, currentLedger: 2 ** 32 }, h, expect: "stellar/tx-malformed" },
-    { case: "a simulated transaction that is not base64", choice: { ...choice, simulatedXdr: "AA=A" }, h, expect: "stellar/tx-malformed" },
-    { case: "a simulated transaction over 8,192 characters", choice: { ...choice, simulatedXdr: "A".repeat(8196) }, h, expect: "stellar/tx-too-large" },
-    { case: "a simulated fee bump", choice: { ...choice, simulatedXdr: feeBump }, h, expect: "stellar/tx-malformed" },
-    { case: "a recipient that is not a muxed address", choice: { ...choice, challenge: withRecipient(choice.challenge, issuedRecipient()) }, h, expect: "stellar/carrier-mismatch" },
-    { case: "a recipient whose M strkey's checksum does not match", choice: { ...choice, challenge: withRecipient(choice.challenge, badChecksum(recipientOf(choice.challenge))) }, h, expect: "stellar/option-malformed" },
-    { case: "a payer of null", choice: { ...choice, payer: null }, h, expect: "stellar/payer-mismatch" },
-    { case: "a payer that is not a strkey", choice: { ...choice, payer: "x" }, h, expect: "stellar/payer-mismatch" },
-    { case: "a payer whose G strkey's checksum does not match", choice: { ...choice, payer: badChecksum(choice.payer) }, h, expect: "stellar/payer-mismatch" },
-    {
-      case: "two faults: a payer that is not a strkey, and a simulated transaction that is not base64",
-      choice: { ...choice, payer: "x", simulatedXdr: "AA=A" },
-      h,
-      expect: "stellar/payer-mismatch",
-    },
-  ];
-}
-
-const requestOf = (c: { request: string }) => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
-const recipientOf = (c: { request: string }): string => requestOf(c).recipient;
-/** The issued challenge's `recipient`: the base `G…` account the vectors' placement muxes. */
-const issuedRecipient = (): string => recipientOf(CHARGE.challenge);
-/** The challenge with its request's `recipient` replaced, the request re-encoded as base64url of its JSON. */
-function withRecipient<C extends { request: string }>(c: C, recipient: string): C {
-  return { ...c, request: Buffer.from(JSON.stringify({ ...requestOf(c), recipient }), "utf8").toString("base64url") };
-}
 /** A strkey with one character in its payload changed, so that its checksum does not match. */
 const badChecksum = (s: string) => s.slice(0, 10) + (s[10] === "A" ? "B" : "A") + s.slice(11);
 
@@ -388,7 +329,6 @@ export function hCodeOf(id: string): string {
     "x402/batch-settlement/cloudflare": "x402/legal-context-conflict",
     "x402/exact/ccd": "ccd/memo-not-lcp",
     "x402/exact/casper": "casper/payload-malformed",
-    "x402/exact/lnbtc": "ln/no-metadata",
   };
   return own[id] ?? "x402/payload-malformed";
 }
@@ -571,17 +511,6 @@ export function choiceMembers(): { id: string; members: Record<string, unknown>;
       ],
     },
     {
-      id: "x402/exact/stellar",
-      members: { currentLedger: STELLAR.V2.currentLedger, payer: STELLAR.fixed.payer },
-      bad: [
-        { case: "a current ledger below 0", member: "currentLedger", value: -1, expect: "stellar/tx-malformed" },
-        { case: "a current ledger that is not an integer", member: "currentLedger", value: 1.5, expect: "stellar/tx-malformed" },
-        { case: "a payer of null", member: "payer", value: null, expect: "stellar/payer-mismatch" },
-        { case: "a payer that is not a strkey", member: "payer", value: "x", expect: "stellar/payer-mismatch" },
-        { case: "a payer whose G strkey's checksum does not match", member: "payer", value: badChecksum(STELLAR.fixed.payer), expect: "stellar/payer-mismatch" },
-      ],
-    },
-    {
       id: "x402/exact/starknet",
       members: { from: "0x1", now: 1_790_000_000 },
       bad: [
@@ -694,24 +623,6 @@ export function memberFirstChoices(id: string, own?: unknown): { case: string; c
 }
 
 /**
- * Options and challenges the Stellar pairings' `unplaced` answers, and the answer: it reads a muxed `payTo` or
- * `recipient` without the SDK, so each answer is the same with it and without it.
- */
-export function stellarUnplacedRows(): { case: string; pairing: "x402/exact/stellar" | "mpp/charge/stellar"; option: unknown; expect: unknown }[] {
-  const placed = CHARGE.place.expect;
-  const muxedPayTo = STELLAR.V3.accepted;
-  return [
-    { case: "an option whose payTo is muxed", pairing: "x402/exact/stellar", option: muxedPayTo, expect: { ...muxedPayTo, payTo: STELLAR.fixed.seller } },
-    { case: "an option whose payTo is an account", pairing: "x402/exact/stellar", option: STELLAR.fixed.option, expect: STELLAR.fixed.option },
-    { case: "an option whose payTo's checksum does not match", pairing: "x402/exact/stellar", option: { ...muxedPayTo, payTo: badChecksum(muxedPayTo.payTo) }, expect: { ...muxedPayTo, payTo: badChecksum(muxedPayTo.payTo) } },
-    { case: "an option that carries a refused member", pairing: "x402/exact/stellar", option: { ...muxedPayTo, refused: true }, expect: { refused: true, code: "x402/option-malformed" } },
-    { case: "a placed challenge", pairing: "mpp/charge/stellar", option: placed, expect: { ...placed, request: CHARGE.challenge.request } },
-    { case: "an issued challenge", pairing: "mpp/charge/stellar", option: CHARGE.challenge, expect: CHARGE.challenge },
-    { case: "a challenge that carries a refused member", pairing: "mpp/charge/stellar", option: { ...placed, refused: true }, expect: { refused: true, code: "mpp/challenge-malformed" } },
-  ];
-}
-
-/**
  * Challenges whose `issuedDigest` the vectors give, muxed recipients among them: the issued challenge, the placed one,
  * and the placed one echoed with the payer's muxed account. The digest is the same with the SDK and without it.
  */
@@ -723,12 +634,6 @@ export function stellarDigestRows(): { case: string; challenge: unknown; expect:
     { case: "the placed challenge, whose recipient is the seller's muxed account", challenge: placed, expect: D.expectIssued },
     { case: "the placed challenge echoed with the payer's muxed account", challenge: { ...placed, request: D.echoedRequest }, expect: D.expectEchoed },
   ];
-}
-
-/** A challenge MPP Stellar's `advertise` refuses: one whose recipient is a muxed address. It needs no SDK. */
-export function stellarOccupied(): { challenge: unknown; h: `0x${string}`; link: string; expect: string } {
-  const challenge = withRecipient(CHARGE.challenge, recipientOf(CHARGE.place.expect));
-  return { challenge, h: CHARGE.fixed.H, link: CHARGE.fixed.link, expect: CHARGE.occupied.expect };
 }
 
 /**
@@ -765,12 +670,8 @@ function strkey(version: number, payload: Uint8Array, flip = 0): string {
 }
 
 /**
- * Strkeys in the places the Stellar pairings read one, and each answer, which needs no SDK: `isAccount`, `isContract`,
- * `muxedFor` of the strkey and H, and x402's `read`, `advertise` and `build` of the fixed option with its `payTo` (or,
- * for `asset`, its asset) replaced by the strkey. `read` is "served" or a code, `advertise` the placed `payTo` or a
- * code, and `build` the code of a choice of V2's simulated transaction under that option, or null for the one row whose
- * choice reaches the transaction, which only the SDK reads. A strkey that is not an account or a muxed account in
- * `payTo`, or not a contract in `asset`, makes the option another pairing's.
+ * Strkeys in the places an x402 Stellar option holds one, its `payTo` and its `asset`, and each answer, which needs no
+ * SDK: `isAccount`, `isContract`, and `muxedFor` of the strkey and H.
  */
 export function stellarStrkeyRows(): {
   case: string;
@@ -779,20 +680,17 @@ export function stellarStrkeyRows(): {
   isAccount: boolean;
   isContract: boolean;
   muxedFor: string;
-  read: string;
-  advertise: string;
-  build: string | null;
 }[] {
   const { seller, asset } = STELLAR.fixed;
   const key = base32.decode(seller).subarray(1, 33);
   const M = STELLAR.V1.M;
-  const notThis = { muxedFor: "stellar/option-malformed", read: "x402/no-payable-option", advertise: "x402/option-not-this-pairing", build: "x402/option-not-this-pairing" };
+  const notThis = { muxedFor: "stellar/option-malformed" };
   const neither = { isAccount: false, isContract: false, ...notThis };
   const payTo = "payTo" as const;
   const inAsset = "asset" as const;
   return [
-    { case: "the seller's account", s: seller, member: payTo, isAccount: true, isContract: false, muxedFor: M, read: "served", advertise: M, build: "stellar/carrier-mismatch" },
-    { case: "the seller's account muxed with H", s: M, member: payTo, isAccount: false, isContract: false, muxedFor: "stellar/option-malformed", read: "served", advertise: "stellar/carrier-occupied", build: null },
+    { case: "the seller's account", s: seller, member: payTo, isAccount: true, isContract: false, muxedFor: M },
+    { case: "the seller's account muxed with H", s: M, member: payTo, isAccount: false, isContract: false, muxedFor: "stellar/option-malformed" },
     {
       case: "the seller's account muxed with the id 0",
       s: strkey(12 << 3, Uint8Array.from([...key, ...zeros(8)])),
@@ -800,11 +698,8 @@ export function stellarStrkeyRows(): {
       isAccount: false,
       isContract: false,
       muxedFor: "stellar/option-malformed",
-      read: "served",
-      advertise: "stellar/carrier-occupied",
-      build: "stellar/carrier-mismatch",
     },
-    { case: "the asset's contract", s: asset, member: inAsset, isAccount: false, isContract: true, muxedFor: "stellar/option-malformed", read: "served", advertise: M, build: "stellar/carrier-mismatch" },
+    { case: "the asset's contract", s: asset, member: inAsset, isAccount: false, isContract: true, muxedFor: "stellar/option-malformed" },
     { case: "a contract as payTo", s: asset, member: payTo, isAccount: false, isContract: true, ...notThis },
     { case: "an account as asset", s: seller, member: inAsset, isAccount: true, isContract: false, ...notThis, muxedFor: M },
     { case: "an account whose checksum does not match", s: strkey(6 << 3, key, 1), member: payTo, ...neither },
@@ -829,8 +724,7 @@ type Answer = unknown;
 
 /**
  * The answers a `stellarStrkeyRows` row states, given by the functions passed: each test file passes the ones it
- * imports, with the SDK or without it. A refusal is its code; `read` is "served" when it offers the option alone, and
- * `advertise` the placed `payTo` when the placed option is the offer with only its `payTo` changed.
+ * imports, with the SDK or without it. A refusal is its code.
  */
 export async function stellarStrkeyAnswers(
   row: StrkeyRow,
@@ -838,116 +732,15 @@ export async function stellarStrkeyAnswers(
     isAccount: (s: unknown) => boolean;
     isContract: (s: unknown) => boolean;
     muxedFor: (base: never, h: never) => Answer;
-    read: (doc: never) => Answer;
-    advertise: (doc: never, h: never, link: string, offer: never) => Answer;
-    build: (choice: never, h: never) => Promise<Answer>;
   },
 ): Promise<Omit<StrkeyRow, "s" | "member">> {
-  const { H, resource, link, option, payer } = STELLAR.fixed;
-  const o = { ...option, [row.member]: row.s };
-  const required = { x402Version: 2, resource, accepts: [o] };
+  const { H } = STELLAR.fixed;
   const code = (r: Answer) => (typeof r === "object" && r !== null && "refused" in r ? (r as unknown as { code: string }).code : r);
-  const read = f.read({ ...required, extensions: STELLAR.V3.extensions } as never) as Answer;
-  const offered = (r: Answer) => (r as { h: string; offer: { options: unknown[] } });
-  const served = typeof code(read) === "string" ? code(read) : offered(read).h === H && JSON.stringify(offered(read).offer.options) === JSON.stringify([o]) ? "served" : read;
-  const placed = f.advertise(required as never, H as never, link, o as never) as Answer;
-  const placedOption = typeof code(placed) === "string" ? null : (placed as { accepts: Record<string, unknown>[] }).accepts[0]!;
-  const advertise = placedOption === null ? code(placed) : JSON.stringify({ ...placedOption, payTo: o.payTo }) === JSON.stringify(o) ? placedOption["payTo"] : placed;
-  const choice = { required, accepted: o, simulatedXdr: STELLAR.V2.simulatedXdr, currentLedger: STELLAR.V2.currentLedger, payer };
   return {
     case: row.case,
     isAccount: f.isAccount(row.s),
     isContract: f.isContract(row.s),
     muxedFor: code(f.muxedFor(row.s as never, H as never)) as string,
-    read: served as string,
-    advertise: advertise as string,
-    build: row.build === null ? null : (code(await f.build(choice as never, H as never)) as string),
-  };
-}
-
-/** The challenge with its request's `member` replaced, the request re-encoded as base64url of its JSON. */
-function withRequestMember<C extends { request: string }>(c: C, member: string, value: unknown): C {
-  return { ...c, request: Buffer.from(JSON.stringify({ ...requestOf(c), [member]: value }), "utf8").toString("base64url") };
-}
-
-/**
- * Strkeys in the two places `mpp/charge/stellar` reads one, the request's `recipient` and `currency`, and each answer,
- * which needs no SDK: `pairingsOf` of the issued challenge holding the strkey (the pairings, or a code), the filter
- * (`pairingsOfPlaced`) of the placed challenge holding it, `advertise` of the issued challenge (the placed `recipient`,
- * or a code), and `build` and `bound` under the placed challenge holding it, with x402-exact-stellar.json's V2 simulated
- * transaction and V3's envelope: a code, or null where the call reaches the transaction, which only the SDK reads
- * (without it, `stellar/peer-missing`). A strkey whose checksum does not match is refused as one of another form is.
- */
-export function stellarChargeStrkeyRows(): {
-  case: string;
-  member: "recipient" | "currency";
-  s: string;
-  pairingsOf: readonly string[] | string;
-  filter: readonly string[];
-  advertise: string;
-  build: string | null;
-  bound: string | null;
-}[] {
-  const { recipient, currency } = CHARGE.fixed.request as { recipient: string; currency: string };
-  const muxed: string = CHARGE.fixed.muxed;
-  const key = base32.decode(recipient).subarray(1, 33);
-  const id = base32.decode(currency).subarray(1, 33);
-  const muxedRaw = base32.decode(`${muxed}===`).subarray(1, 41);
-  const offered = { pairingsOf: ["mpp/charge/stellar"], filter: ["mpp/charge/stellar"] };
-  const refused = { pairingsOf: "stellar/option-malformed", filter: [], advertise: "stellar/option-malformed", build: "stellar/option-malformed", bound: "stellar/option-malformed" };
-  const to = "recipient" as const;
-  const asset = "currency" as const;
-  return [
-    { case: "the seller's account", member: to, s: recipient, ...offered, advertise: muxed, build: "stellar/carrier-mismatch", bound: "stellar/carrier-mismatch" },
-    { case: "the seller's account muxed with H", member: to, s: muxed, ...offered, advertise: "stellar/carrier-occupied", build: null, bound: null },
-    { case: "the asset's contract", member: asset, s: currency, ...offered, advertise: muxed, build: null, bound: null },
-    { case: "an account whose checksum does not match", member: to, s: strkey(6 << 3, key, 1), ...refused },
-    { case: "an account whose checksum's high byte does not match", member: to, s: strkey(6 << 3, key, 0x100), ...refused },
-    { case: "the seller's account with a payload character changed", member: to, s: badChecksum(recipient), ...refused },
-    { case: "a muxed account whose checksum does not match", member: to, s: strkey(12 << 3, muxedRaw, 1), ...refused },
-    { case: "a muxed account whose checksum's high byte does not match", member: to, s: strkey(12 << 3, muxedRaw, 0x100), ...refused },
-    { case: "the seller's muxed account with a payload character changed", member: to, s: badChecksum(muxed), ...refused },
-    { case: "a contract as recipient", member: to, s: currency, ...refused },
-    { case: "a contract whose checksum does not match", member: asset, s: strkey(2 << 3, id, 1), ...refused },
-    { case: "a contract whose checksum's high byte does not match", member: asset, s: strkey(2 << 3, id, 0x100), ...refused },
-    { case: "the asset's contract with a payload character changed", member: asset, s: badChecksum(currency), ...refused },
-    { case: "an account as currency", member: asset, s: recipient, ...refused },
-  ];
-}
-
-type ChargeStrkeyRow = ReturnType<typeof stellarChargeStrkeyRows>[number];
-
-/**
- * The answers a `stellarChargeStrkeyRows` row states, given by the functions passed: each test file passes the ones it
- * imports, with the SDK or without it. A refusal is its code. `build` and `bound` are called for a row that states
- * null only when `reached` is given, and then answer it (without the SDK, `stellar/peer-missing`).
- */
-export async function stellarChargeStrkeyAnswers(
-  row: ChargeStrkeyRow,
-  f: {
-    pairingsOf: (c: never) => Answer;
-    pairingsOfPlaced: (c: never) => Answer;
-    advertise: (doc: never, h: never, link: string, offer: never) => Answer;
-    build: (choice: never, h: never) => Promise<Answer>;
-    bound: (credential: never) => Promise<Answer>;
-  },
-  reached: string | null,
-): Promise<Omit<ChargeStrkeyRow, "s" | "member">> {
-  const { H, link } = CHARGE.fixed;
-  const code = (r: Answer) => (typeof r === "object" && r !== null && "refused" in r ? (r as unknown as { code: string }).code : r);
-  const issued = withRequestMember(CHARGE.challenge, row.member, row.s);
-  const placed = withRequestMember(CHARGE.place.expect, row.member, row.s);
-  const advertised = f.advertise([issued] as never, H as never, link, issued as never);
-  const { choice } = stellarChargeChoice();
-  const call = async (stated: string | null, answer: () => Promise<Answer>) =>
-    stated === null && reached === null ? null : (code(await answer()) as string);
-  return {
-    case: row.case,
-    pairingsOf: code(f.pairingsOf(issued as never)) as readonly string[] | string,
-    filter: f.pairingsOfPlaced(placed as never) as readonly string[],
-    advertise: (Array.isArray(advertised) ? recipientOf(advertised[0]) : code(advertised)) as string,
-    build: await call(row.build, () => f.build({ ...choice, challenge: placed } as never, H as never)),
-    bound: await call(row.bound, () => f.bound({ challenge: placed, payload: { type: "transaction", transaction: CHARGE.V3.envelope } } as never)),
   };
 }
 
@@ -1476,89 +1269,5 @@ export function solanaChargeBlockhashRows(): PeerStepRow<SolanaChargeFns>[] {
     { case: "a native SOL request, with a blockhash that is not base58", call: (f) => build(f, sol, "0OIl"), expect: "svm/input-malformed" },
     { case: "a native SOL request, with a blockhash of 31 bytes", call: (f) => build(f, sol, short), expect: "svm/input-malformed" },
     { case: "a token request, with a blockhash that is not base58", call: (f) => build(f, token, "0OIl"), expect: "svm/input-malformed" },
-  ];
-}
-
-export interface StellarCarrierFns {
-  x402Bound: Fn;
-  x402Reference: Fn;
-  mppBound: Fn;
-  mppReference: Fn;
-}
-
-/**
- * The Stellar pairings' `bound` and `reference` of payments under an option or challenge whose `payTo` or `recipient`
- * does or does not carry the echoed H's muxed id, which `unmux` reads without the SDK before the transaction is read:
- * `stellar/carrier-mismatch` with the SDK and without it. A payment whose option or challenge carries it reaches the
- * transaction: H and the read keys with the SDK, and `stellar/peer-missing` without it. Rows that state two faults give
- * the carrier's code, with the SDK too.
- */
-export function stellarCarrierRows(): PeerStepRow<StellarCarrierFns>[] {
-  const missing = "stellar/peer-missing";
-  const mismatch = "stellar/carrier-mismatch";
-  const { seller } = STELLAR.fixed;
-  const key = base32.decode(seller).subarray(1, 33);
-  const idZero = strkey(12 << 3, Uint8Array.from([...key, ...zeros(8)]));
-  const V3 = STELLAR.V3;
-  const x402 = (transaction: unknown, payTo: unknown = V3.accepted.payTo, extensions: unknown = V3.extensions) => ({
-    x402Version: 2,
-    accepted: { ...V3.accepted, payTo },
-    payload: { transaction },
-    extensions,
-  });
-  const plainTo = (STELLAR.V4 as { case: string; envelope: string }[]).find((r) => r.case === "to is the plain seller G")!.envelope;
-  const otherH = (STELLAR.V4 as { case: string; extensions: unknown }[]).find((r) => r.case === "the echoed legalContext.value is not H")!.extensions;
-  const placed = CHARGE.place.expect as { request: string };
-  const mpp = (recipient?: string, transaction: string = CHARGE.V3.envelope, feePayer?: boolean) => {
-    const challenge = recipient === undefined ? placed : withRequestMember(placed, "recipient", recipient);
-    const details = { ...requestOf(placed).methodDetails, feePayer };
-    return {
-      challenge: feePayer === undefined ? challenge : withRequestMember(challenge, "methodDetails", details),
-      payload: { type: "transaction", transaction },
-    };
-  };
-  const answer = (r: unknown) => codeOr(r, (x) => x);
-  return [
-    { case: "x402 bound of V3's payment", call: async (f) => answer(await f.x402Bound(x402(V3.envelope) as never)), expect: V3.expectBound, without: missing },
-    { case: "x402 reference of V3's payment", call: async (f) => answer(await f.x402Reference(x402(V3.envelope) as never)), expect: V3.expectReference, without: missing },
-    { case: "x402 bound of V3's payment under an option whose payTo is the seller's account", call: async (f) => answer(await f.x402Bound(x402(V3.envelope, seller) as never)), expect: mismatch },
-    { case: "x402 reference of V3's payment under an option whose payTo is the seller's account", call: async (f) => answer(await f.x402Reference(x402(V3.envelope, seller) as never)), expect: mismatch },
-    {
-      case: "x402 bound of V4's envelope to the seller's account, under an option whose payTo is that account",
-      call: async (f) => answer(await f.x402Bound(x402(plainTo, seller) as never)),
-      expect: mismatch,
-    },
-    {
-      case: "x402 bound of V3's payment under an option whose payTo is the seller's account muxed with the id 0",
-      call: async (f) => answer(await f.x402Bound(x402(V3.envelope, idZero) as never)),
-      expect: mismatch,
-    },
-    { case: "x402 bound of V3's payment whose echoed legal context holds another hash", call: async (f) => answer(await f.x402Bound(x402(V3.envelope, V3.accepted.payTo, otherH) as never)), expect: mismatch },
-    {
-      case: "two faults: x402 bound of an envelope that is not base64, under an option whose payTo is the seller's account",
-      call: async (f) => answer(await f.x402Bound(x402("AA=A", seller) as never)),
-      expect: mismatch,
-    },
-    { case: "MPP bound of V3's envelope under the placed challenge", call: async (f) => answer(await f.mppBound(mpp() as never)), expect: CHARGE.fixed.H, without: missing },
-    {
-      case: "MPP bound of V3's envelope under a placed challenge whose recipient is the seller's account muxed with the id 0",
-      call: async (f) => answer(await f.mppBound(mpp(strkey(12 << 3, Uint8Array.from([...base32.decode(issuedRecipient()).subarray(1, 33), ...zeros(8)]))) as never)),
-      expect: mismatch,
-    },
-    {
-      case: "MPP reference of V3's envelope under a placed challenge whose recipient is the seller's account",
-      call: async (f) => answer(await f.mppReference(mpp(issuedRecipient()) as never)),
-      expect: mismatch,
-    },
-    {
-      case: "MPP bound of the plant's envelope to the seller's account, under a placed challenge whose recipient is that account",
-      call: async (f) => answer(await f.mppBound(mpp(issuedRecipient(), CHARGE.plant.envelope) as never)),
-      expect: mismatch,
-    },
-    {
-      case: "MPP reference of the plant's envelope to the seller's account, under a placed challenge whose recipient is that account and whose feePayer is false",
-      call: async (f) => answer(await f.mppReference(mpp(issuedRecipient(), CHARGE.plant.envelope, false) as never)),
-      expect: mismatch,
-    },
   ];
 }

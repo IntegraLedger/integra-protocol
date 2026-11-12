@@ -517,14 +517,13 @@ describe("advertise, read, build and complete", () => {
   it("the pattern states what the record proves", () => {
     expect(exactSui.pattern).toMatchObject({
       pattern: "native-field",
-      canonical: false,
       profile: "x402/exact/sui",
-      buyerSigns: true,
       onChain: true,
       zeroPartyRecoverable: true,
       forwardIndexable: false,
-      publicProof: true,
     });
+    expect(exactSui.data.carrier.signed).not.toBeNull();
+    expect(exactSui.data.coverage).toBe("full");
     expect(exactSui.claims).toBe(true);
     expect(exactSui.unplaced(O)).toBe(O);
   });

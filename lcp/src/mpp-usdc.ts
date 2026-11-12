@@ -14,6 +14,7 @@ import {
   eip3009TypedData,
   transferDigest,
   type Eip3009TypedData,
+  type EvmReader,
   type EvmRef,
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
@@ -21,7 +22,7 @@ import { c32Address } from "./internal/c32.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { memoArgument } from "./internal/stacks.js";
 import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
-import { keyString } from "./internal/svm.js";
+import { keyString, type SvmReader, type SvmRef } from "./internal/svm.js";
 import {
   byType,
   chosenFor,
@@ -47,8 +48,12 @@ import {
 import { isJcsRequest, stacksNetworkOf } from "./mpp-method-checks.js";
 import { solanaChargePairing } from "./mpp-solana.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import { stacksRecover, stacksStatus, stacksTxid, type StacksRef } from "./stacks.js";
+import { stacksRecover, stacksStatus, stacksTxid, type StacksReader, type StacksRef } from "./stacks.js";
 import type { LcpPattern } from "./x402.js";
+import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
+import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
+import { STACKS as STACKS_DATA } from "./internal/data/stacks.js";
+import type { Entry } from "./internal/registry.js";
 
 const EVM = "mpp/charge/usdc/evm" as const;
 const SOLANA = "mpp/charge/usdc/solana" as const;
@@ -57,7 +62,6 @@ const GATEWAY = "mpp/charge/usdc/gateway" as const;
 type UsdcDirect = typeof EVM | typeof STACKS | typeof GATEWAY;
 
 const MAX_REQUEST = 8192;
-const MAX_SIGNATURE = 8192;
 /**
  * The size bound of a `usdc` Stacks transaction, which `bound`, `reference` and `build`'s `complete` share: 1 to 16,384
  * bytes, else `mpp/stacks-tx-malformed`.
@@ -71,7 +75,6 @@ const UINT = /^[0-9]{1,78}$/;
 const BYTES32 = /^0x[0-9a-fA-F]{64}$/;
 const C32_PRINCIPAL = /^S[0-9A-HJKMNP-TV-Z]{38,40}$/;
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
-const LIMIT = "This does not show that amount, payee, asset or timing match the ATR's content.";
 
 // ── The derivations.
 
@@ -232,7 +235,7 @@ async function evmBuild(choice: MppChoice, h: AtrHash) {
   return {
     request: { kind: "eip712" as const, typedData },
     complete(signature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(signature, 1, MAX_SIGNATURE_BYTES)) return refusal("mpp/credential-malformed");
       return measured({
         challenge,
         source: `did:pkh:eip155:${chainId}:${from}`,
@@ -316,23 +319,14 @@ async function evmAuthorizer(input: unknown): Promise<Hex | Refusal> {
  */
 export const chargeUsdcEvm = Object.freeze({
   id: EVM,
+  data: EIP155_TEMPO_MPP[EVM],
   pattern: pattern({
     pattern: "id-reuse",
-    canonical: true,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: true,
-    proves:
-      "The payer signed an EIP-3009 authorization whose nonce is keccak256 of the JCS of this challenge's id, realm " +
-      "and request hash, and the id is this ATR's hash in base64url with the challenge's position. The token contract " +
-      "verified the signature when it executed the transfer, and the nonce is on chain in its AuthorizationUsed event. " +
-      "A holder of the ATR, the realm and the request can confirm the hash; the chain alone does not reveal it. " +
-      LIMIT,
   }),
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise: advertiseAs(EVM),
@@ -343,7 +337,7 @@ export const chargeUsdcEvm = Object.freeze({
   reference: evmReference,
   authorizer: evmAuthorizer,
   status: boundStatus([AUTHORIZATION_USED_TOPIC]),
-});
+}) satisfies Entry<typeof EVM, MppCredential, EvmRef & { transaction: Hex }, EvmReader>;
 
 // ── mpp/charge/usdc/solana.
 
@@ -357,7 +351,7 @@ export const chargeUsdcSolana = solanaChargePairing({
   details: (c: Checked | Echoed) => profileOf(c),
   networkRequired: true,
   occupied: () => refusal("mpp/carrier-occupied"),
-});
+}) satisfies Entry<typeof SOLANA, MppCredential, SvmRef & { transaction: string }, SvmReader>;
 
 // ── mpp/charge/usdc/stacks.
 
@@ -537,23 +531,15 @@ async function stacksReference(input: unknown): Promise<StacksRef | Refusal> {
  */
 export const chargeUsdcStacks = Object.freeze({
   id: STACKS,
+  data: STACKS_DATA[STACKS],
   pattern: pattern({
     pattern: "native-field",
-    canonical: false,
     profile: "mpp/charge/usdc/stacks",
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: false,
-    publicProof: true,
-    proves:
-      "The payer signed a Stacks transaction calling a contract's `transfer` with this ATR's hash as its fourth (memo) " +
-      "argument. The chain verified the signature, the transaction executed with status success, and the memo is in " +
-      "the mined transaction on chain. This does not show that the contract is a SIP-010 token, or that amount, payee, " +
-      "asset or timing match the ATR's content.",
   }),
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise: advertiseAs(STACKS),
@@ -564,7 +550,7 @@ export const chargeUsdcStacks = Object.freeze({
   reference: stacksReference,
   status: stacksStatus,
   recover: stacksRecover,
-});
+}) satisfies Entry<typeof STACKS, MppCredential, StacksRef & { transaction: Hex; h: AtrHash }, StacksReader>;
 
 // ── mpp/charge/usdc/gateway.
 
@@ -677,7 +663,7 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
       burnIntent: Json;
       signature: Hex;
     }): MppCredential | Refusal {
-      if (!isObject(c) || !isObject(c.burnIntent) || !isHexBytes(c.signature, 1, MAX_SIGNATURE)) {
+      if (!isObject(c) || !isObject(c.burnIntent) || !isHexBytes(c.signature, 1, MAX_SIGNATURE_BYTES)) {
         return refusal("mpp/credential-malformed");
       }
       for (const k of ["source", "sourceNetwork", "destinationNetwork", "maxFee"] as const) {
@@ -705,24 +691,14 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
  */
 export const chargeUsdcGateway = Object.freeze({
   id: GATEWAY,
+  data: EIP155_TEMPO_MPP[GATEWAY],
   pattern: pattern({
     pattern: "id-reuse",
-    canonical: true,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: true,
-    proves:
-      "The payer signed a Circle Gateway burn intent whose TransferSpec salt is keccak256 of the JCS of this " +
-      "challenge's id and parameters, and the id is this ATR's hash in base64url with the challenge's position. " +
-      "The signature is not verified here. The salt travels inside the TransferSpec that the destination mint " +
-      "carries, and the Gateway Minter emits that TransferSpec's keccak256 hash; this record reads no chain, and " +
-      "settlement is the seller's report. " +
-      LIMIT,
   }),
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise: advertiseAs(GATEWAY),
@@ -730,4 +706,4 @@ export const chargeUsdcGateway = Object.freeze({
   build: gatewayBuild,
   bound: gatewayBound,
   broadcaster: mppBroadcaster(byType({ transfer: "payee" })),
-});
+}) satisfies Entry<typeof GATEWAY, MppCredential, never, never>;

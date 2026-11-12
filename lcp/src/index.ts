@@ -32,6 +32,25 @@ export type { Refusal } from "./refusal.js";
 export { challengeH, challengeHash, challengeId, FETCHED } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 export type { LcpPattern } from "./x402.js";
+export type {
+  AgreementData,
+  Carrier,
+  Codec,
+  Coverage,
+  Entry,
+  Life,
+  PairingData,
+  ReadData,
+} from "./internal/registry.js";
+export {
+  MAX_CHALLENGE_DEPTH,
+  MAX_CHALLENGES,
+  MAX_CREDENTIAL_BYTES,
+  MAX_JSON_DEPTH,
+  MAX_LINK_LENGTH,
+  MAX_OPTIONS,
+  MAX_SIGNATURE_BYTES,
+} from "./internal/bounds.js";
 
 import { paymentRequest } from "./ack.js";
 import { delegated, type Presented as AcpPresented, undelegated } from "./acp.js";
@@ -49,7 +68,6 @@ import type { CardanoPaymentPayload } from "./internal/cardano.js";
 import type { CasperPaymentPayload } from "./internal/casper.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
 import type { ExecutorPaymentPayload, HederaPaymentPayload } from "./internal/hedera.js";
-import { lnbtcPairingOf } from "./internal/lightning.js";
 import type { NearPayment } from "./internal/near.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
 import type { StarknetPayment } from "./internal/starknet.js";
@@ -60,7 +78,7 @@ import type { TronPayment } from "./internal/tron.js";
 import type { TvmPayment } from "./internal/tvm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
 import type { XrplPaymentPayload } from "./internal/xrpl.js";
-import { exactLnbtc, exactLnbtcNamed, type LnPaymentPayload } from "./lightning.js";
+import type { LnPaymentPayload } from "./lightning.js";
 import { MPP_BINDINGS, type MppCredential } from "./mpp.js";
 import { exactNear } from "./near.js";
 import { exactPolkadotRemark } from "./polkadot.js";
@@ -72,7 +90,6 @@ import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "./ucp.
 import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA, type PaymentPayload, type PaymentRequired, type PaymentRequirements, uptoPermit2 } from "./x402.js";
 import { batchCloudflare, batchEvm, batchSvm } from "./x402-batch-settlement.js";
 import { exactSvm } from "./x402-exact-solana.js";
-import { exactStellar } from "./x402-exact-stellar.js";
 import { exactXrpl } from "./x402-exact-xrpl.js";
 import { uptoSvm } from "./x402-upto-solana.js";
 
@@ -94,13 +111,10 @@ export type X402Binding =
   | typeof exactPermit2
   | typeof exactHedera
   | typeof exactHederaExecutor
-  | typeof exactLnbtc
-  | typeof exactLnbtcNamed
   | typeof exactNear
   | typeof exactPolkadotRemark
   | typeof exactSvm
   | typeof exactStarknet
-  | typeof exactStellar
   | typeof exactSui
   | typeof exactTronMemo
   | typeof exactTvm
@@ -226,13 +240,10 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   exactPermit2,
   exactHedera,
   exactHederaExecutor,
-  exactLnbtc,
-  exactLnbtcNamed,
   exactNear,
   exactPolkadotRemark,
   exactSvm,
   exactStarknet,
-  exactStellar,
   exactSui,
   exactTronMemo,
   exactTvm,
@@ -242,27 +253,60 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
 ]))();
 
 /**
- * The x402 pairing that serves an option: for an `exact` option on a Lightning network, `x402/exact/lnbtc` when its
- * invoice has an `m` field, and `x402/exact/lnbtc/invoice-named` when it has none, each when that pairing's option
- * filter serves it; else the first x402 pairing in `BINDINGS` whose `read` offers it, on a document holding that option
- * alone. Undefined when none does. Each pairing's `read` applies the one filter its `advertise`, `build`, `bound` and
- * `reference` apply, so the pairing named takes the option at every step.
+ * The x402 pairings, in their order in `BINDINGS`, each typed by a `read` that takes the document `pairingOf` builds.
+ * Built in a call marked pure, as `BINDINGS` is.
+ */
+const X402_BINDINGS: readonly { readonly id: PairingOn<"x402">; read(doc: PaymentRequired): unknown }[] =
+  /* @__PURE__ */ (() =>
+    Object.freeze([
+      exactEip3009,
+      authCaptureEip3009,
+      authCapturePermit2,
+      batchCloudflare,
+      batchEvm,
+      batchSvm,
+      exactAvm,
+      exactAptos,
+      exactCardano,
+      exactCasper,
+      exactCcd,
+      exactErc7710,
+      exactErc7710Salt,
+      exactPermit2,
+      exactHedera,
+      exactHederaExecutor,
+      exactNear,
+      exactPolkadotRemark,
+      exactSvm,
+      exactStarknet,
+      exactSui,
+      exactTronMemo,
+      exactTvm,
+      exactXrpl,
+      uptoPermit2,
+      uptoSvm,
+    ]))();
+
+/**
+ * The x402 pairing that serves an option: the first x402 pairing in `BINDINGS` whose `read` offers it, on a document
+ * holding that option alone. Undefined when none does. Each pairing's `read` applies the one filter its `advertise`,
+ * `build`, `bound` and `reference` apply, so the pairing named takes the option at every step.
  *
  * No two x402 pairings' `read` offers one option, except the two ERC-7710 levels, which share the `erc7710` option: this
- * names `x402/exact/eip155/erc7710`, and `pairingOfPayment` names the level from a payment. No `read` offers the
- * Lightning offer the seller sends before its node writes the invoice; this names `x402/exact/lnbtc` for it when its
- * `extra.requestHash` and its own fields pass the checks that pairing's `advertiseBeforeCarrier` makes. A Worker
- * that serves one pairing need not import this function, which loads every pairing: the pairing's own `read`, on a
- * document holding the option, or its `bound`, on a presented payment, answers for that pairing alone.
+ * names `x402/exact/eip155/erc7710`, and `pairingOfPayment` names the level from a payment. A Worker that serves one
+ * pairing need not import this function, which loads every pairing: the pairing's own `read`, on a document holding
+ * the option, or its `bound`, on a presented payment, answers for that pairing alone.
  */
 export function pairingOf(option: PaymentRequirements): PairingOn<"x402"> | undefined {
-  const ln = lnbtcPairingOf(option);
-  if (ln !== undefined) return ln;
   const info = toLegalContext(`0x${"00".repeat(32)}`, "https://pairing.invalid/").legalContext;
-  const doc = { x402Version: 2, resource: { url: "https://pairing.invalid/" }, accepts: [option], extensions: { [LEGAL_CONTEXT]: { info, schema: LEGAL_CONTEXT_SCHEMA } } };
-  for (const b of BINDINGS) {
-    if (!b.id.startsWith("x402/")) continue;
-    if (!isRefusal((b as X402Binding).read(doc as PaymentRequired))) return b.id as PairingOn<"x402">;
+  const doc: PaymentRequired = {
+    x402Version: 2,
+    resource: { url: "https://pairing.invalid/" },
+    accepts: [option],
+    extensions: { [LEGAL_CONTEXT]: { info, schema: LEGAL_CONTEXT_SCHEMA } },
+  };
+  for (const b of X402_BINDINGS) {
+    if (!isRefusal(b.read(doc))) return b.id;
   }
   return undefined;
 }

@@ -335,16 +335,16 @@ describe("the record", () => {
   it("states what it proves", () => {
     expect(exactEip3009.pattern).toEqual({
       pattern: "native-field",
-      canonical: false,
       profile: "x402/exact/eip155/eip3009",
-      buyerSigns: true,
       onChain: true,
       zeroPartyRecoverable: true,
       forwardIndexable: true,
-      publicProof: true,
-      proves:
-        "The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash. The token contract verified that signature when it executed the transfer, and the hash is on chain as the nonce topic of its AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset or timing match the ATR's content.",
     });
+    expect(exactEip3009.data.carrier.signed).not.toBeNull();
+    expect(exactEip3009.data.coverage).toBe("full");
+    expect(exactEip3009.data.proves).toBe(
+        "The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash. The token contract verified that signature when it executed the transfer, and the hash is on chain as the nonce topic of its AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset or timing match the ATR's content.",
+    );
     expect(exactEip3009.claims).toBe(true);
   });
   it("ships the published profile", () => {

@@ -38,6 +38,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { NEAR } from "./internal/data/near.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
@@ -600,18 +602,10 @@ function isPublicKey(s: unknown): boolean {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: "x402/exact/near/memo",
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a NEP-366 delegate action whose one ft_transfer carries this ATR's hash in its memo, in LCP " +
-    "string form. The runtime verified that signature and executed the transfer on the token contract, and the memo " +
-    "is on chain in the delegated call's arguments. This does not show that amount, receiver, token or timing match " +
-    "the ATR's content.",
 });
 
 /**
@@ -620,9 +614,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactNear = Object.freeze({
   id: ID,
+  data: NEAR[ID],
   pattern,
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise,
@@ -633,6 +627,6 @@ export const exactNear = Object.freeze({
   reference,
   status: nearStatus,
   recover: nearRecover,
-});
+}) satisfies Entry<typeof ID, NearPayment, NearRef & { transaction: string }, NearReader>;
 
 

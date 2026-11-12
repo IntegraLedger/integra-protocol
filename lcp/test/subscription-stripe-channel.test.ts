@@ -74,10 +74,10 @@ describe("mpp/subscription/stripe's channel members", () => {
   // The record reads no renewal invoice: the seller reports the activation, and its proves says nothing of later
   // billing periods.
   it("proves ends with the subscription's sentence, which the charge's proves does not carry, and speaks of no renewal", () => {
-    expect(subscriptionStripe.pattern.proves.endsWith(` ${SUBSCRIPTION_SENTENCE}`)).toBe(true);
-    expect(chargeStripe.pattern.proves.includes(SUBSCRIPTION_SENTENCE)).toBe(false);
-    expect(subscriptionStripe.pattern.proves).not.toMatch(/later billing|renewal|paid under this ATR/i);
-    expect(load("mpp-subscription-stripe.json").pattern.proves).toBe(subscriptionStripe.pattern.proves);
+    expect(subscriptionStripe.data.proves.endsWith(` ${SUBSCRIPTION_SENTENCE}`)).toBe(true);
+    expect(chargeStripe.data.proves.includes(SUBSCRIPTION_SENTENCE)).toBe(false);
+    expect(subscriptionStripe.data.proves).not.toMatch(/later billing|renewal|paid under this ATR/i);
+    expect(load("mpp-subscription-stripe.json").pattern.proves).toBe(subscriptionStripe.data.proves);
   });
 });
 
@@ -85,7 +85,7 @@ describe("mpp/subscription/stripe's channel members", () => {
 // shows and ends with the close, the seller's report; it never says that later requests were paid under this ATR.
 describe("mpp/session/lightning's proves", () => {
   it("ends with the session's sentence, and speaks of no later request", () => {
-    expect(sessionLightning.pattern.proves.endsWith(` ${SESSION_SENTENCE}`)).toBe(true);
-    expect(sessionLightning.pattern.proves).not.toMatch(/later requests|paid under this ATR|did not meter|bearer/i);
+    expect(sessionLightning.data.proves.endsWith(` ${SESSION_SENTENCE}`)).toBe(true);
+    expect(sessionLightning.data.proves).not.toMatch(/later requests|paid under this ATR|did not meter|bearer/i);
   });
 });

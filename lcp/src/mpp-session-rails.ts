@@ -1,55 +1,12 @@
 /**
- * MPP's `session` intent on Hedera, Solana and XRPL. One ATR covers a whole channel; its hash is bound where the
- * channel opens, in what the payer signs: the Hedera escrow's `salt` (H in full), the Solana channel's `salt` (H's first
- * 8 bytes), and the XRPL `PaymentChannelCreate`'s one LCP memo (H in full). Later requests in the channel are the
- * seller's and are never claimed.
+ * MPP's `session` intent on XRPL. One ATR covers a whole channel; its hash is bound where the channel opens, in what the
+ * payer signs: the `PaymentChannelCreate`'s one LCP memo (H in full). Later requests in the channel are the seller's
+ * and are never claimed.
  */
-import { base58 } from "@scure/base";
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
-import { addressOfWord, bytesOf, hexOf, sameBytes, wordAt, type Hex } from "./evm-abi.js";
-import { evmStatus, type EvmBreadthStatus, type EvmLog, type EvmReader, type EvmReceipt, type EvmRef } from "./evm.js";
-import type { Broadcaster } from "./internal/broadcaster.js";
-import { failedAt, finalAt, isLog, isReceipt, settledAt } from "./internal/evm.js";
-import { isAddress, normalHash } from "./fields.js";
-import {
-  CHANNEL_CLOSED_TOPIC,
-  CHANNEL_OPENED_TOPIC,
-  ZERO_ADDRESS,
-  approveCalldata,
-  hederaChannelId,
-  hederaVoucher,
-  openCalldata,
-  type HederaCloseRef,
-  type HederaEvmReader,
-  type HederaSessionRef,
-  type HederaVoucherTypedData,
-} from "./internal/hedera-session.js";
-import {
-  openAccounts,
-  openInstruction,
-  sessionSalt,
-  solanaVoucher,
-  svmCloseStatus,
-  type SvmCloseRef,
-  type SvmCloseStatus,
-} from "./internal/svm-session.js";
-import {
-  decodeWithLookups,
-  keyBytes,
-  keyString,
-  loadedKeys,
-  readLookupTables,
-  staticNonce,
-  svmReference,
-  svmStatus,
-  wireOf,
-  type SolanaNetwork,
-  type SvmLookup,
-  type SvmReader,
-  type SvmRef,
-  type SvmStatus,
-  type SvmTx,
-} from "./internal/svm.js";
+import type { Hex } from "./evm-abi.js";
+import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
+import type { SolanaNetwork } from "./internal/svm.js";
 import {
   cancelAfterOf,
   RIPPLE_EPOCH,
@@ -77,7 +34,6 @@ import {
   deepFreeze,
   echoedFor,
   FETCHED,
-  fetchedOf,
   isObject,
   issuedFor,
   measured,
@@ -87,39 +43,29 @@ import {
   read,
   sessionBroadcaster,
   tie,
-  type Checked,
   type Echoed,
   type MppChallenge,
   type MppCredential,
 } from "./mpp-challenge.js";
-import { hederaSessionNetworkOf, solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
-import type { LandedCredential } from "./mpp.js";
+import { xrplNetworkOf } from "./mpp-rail-checks.js";
 import { withinChecks, type SessionWithin, type SessionWithinUnsigned, type WithinChallenge } from "./mpp-session.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
+import { XRPL as XRPL_DATA } from "./internal/data/xrpl.js";
+import type { Entry } from "./internal/registry.js";
 
-const HEDERA = "mpp/session/hedera" as const;
-const SOLANA = "mpp/session/solana" as const;
 const XRPL = "mpp/session/xrpl" as const;
-const MAX_LANDED_LOGS = 64;
 const MAX_MEMOS = 8;
 const HASH256 = /^[0-9A-Fa-f]{64}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
 const U64 = 1n << 64n;
-const U128 = 1n << 128n;
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 type Kind = "open" | "within" | "close";
 
-/** A Hedera session opening with the landed receipt's logs from the escrow, under `FETCHED`. */
-export type HederaLandedCredential = LandedCredential;
-
 /**
- * A Solana session opening with what `sessionSolana.fetchPresented` read of its message's address lookup tables, under
- * `FETCHED`. Only that member is read: a string-keyed `tables` is not, and `JSON.stringify` and `structuredClone` drop
- * the member. Both sides keep this object, or a spread or `Object.assign` copy of it, as the opening for the life of
- * the channel: a later read gives each table as it stands then, and once the table's authority deactivates or closes
- * it no tables can be read.
+ * A Solana channel opening with its message's address lookup tables under `FETCHED`. No pairing in this package writes
+ * or reads it.
  */
 export interface SolanaTablesCredential extends MppCredential {
   [FETCHED]: {
@@ -147,7 +93,10 @@ export interface RailSessionChoice {
   };
 }
 
-/** A Hedera session opening for the payer's signer: two calls broadcast in order, and the zero voucher to sign. */
+/**
+ * A Hedera escrow channel opening for the payer's signer: two calls broadcast in order, and the zero voucher to sign.
+ * No pairing's `build` in this package answers this kind.
+ */
 export interface HederaSessionUnsigned {
   request: {
     kind: "hedera-session-open";
@@ -164,10 +113,8 @@ export interface HederaSessionUnsigned {
 }
 
 /**
- * The values a Solana channel client composes the `open` from; `complete` takes the composed open payload, which carries
- * `authentication` when the challenge's `voucherSigner` is `operator` and none otherwise, and checks it as `bound` does,
- * in `bound`'s order: an open that is not an object, or whose credential is over the credential size bound, is
- * `mpp/credential-malformed`, and then one whose `action` is not `open` is `mpp/session-action`.
+ * The values a Solana channel client composes the `open` from, and a `complete` that takes the composed open payload.
+ * No pairing's `build` in this package answers this kind.
  */
 export interface SolanaSessionUnsigned {
   request: {
@@ -204,7 +151,7 @@ function actionKind(presented: MppCredential, within: readonly string[]): Kind |
   return refusal("mpp/session-action");
 }
 
-function opening(presented: MppCredential, pairing: typeof HEDERA | typeof SOLANA | typeof XRPL) {
+function opening(presented: MppCredential, pairing: typeof XRPL) {
   const e = echoedFor(presented, pairing);
   if (isRefusal(e)) return e;
   if (e.payload["action"] !== "open") return refusal("mpp/session-action");
@@ -215,7 +162,7 @@ function opening(presented: MppCredential, pairing: typeof HEDERA | typeof SOLAN
  * The `methodDetails` of a within or close payment's echoed challenge, read from its request without the opening's
  * checks: the seller issues those challenges itself, with its own id and the channel named.
  */
-function echoedDetails(presented: MppCredential, method: "hedera" | "solana" | "xrpl"): { [k: string]: Json } | Refusal {
+function echoedDetails(presented: MppCredential, method: "xrpl"): { [k: string]: Json } | Refusal {
   const c = credentialOf(presented);
   if (isRefusal(c)) return c;
   if (c.challenge.intent !== "session" || c.challenge.method !== method) return refusal("mpp/not-this-pairing");
@@ -229,20 +176,15 @@ function echoedDetails(presented: MppCredential, method: "hedera" | "solana" | "
 /**
  * A within challenge as the pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that
  * carries it, with their codes: its `methodDetails` (`echoedDetails`), then the network they name, as `channel.ref`
- * reads it (`svm/network-undeclared` for a Solana challenge naming `localnet`).
+ * reads it.
  */
 function withinDetails(
   challenge: WithinChallenge,
-  method: "hedera" | "solana" | "xrpl",
+  method: "xrpl",
 ): { details: { [k: string]: Json }; network: string } | Refusal {
   const details = echoedDetails({ challenge, payload: {} }, method);
   if (isRefusal(details)) return details;
-  const network =
-    method === "hedera"
-      ? hederaSessionNetworkOf(details)
-      : method === "solana"
-        ? (solanaNetworkOf(details, true) ?? refusal("svm/network-undeclared"))
-        : xrplNetworkOf(details);
+  const network = xrplNetworkOf(details);
   return isRefusal(network) ? network : { details, network };
 }
 
@@ -264,744 +206,11 @@ async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refu
   return refusal("mpp/not-bound-within");
 }
 
-// ── mpp/session/hedera.
+// ── mpp/session/xrpl.
 
-/** `methodDetails.escrowContract`, lowercase, else `mpp/request-malformed`. */
-function hederaEscrow(checked: Checked | Echoed): Hex | Refusal {
-  const escrow = checked.details["escrowContract"];
-  return isAddress(escrow) ? (escrow.toLowerCase() as Hex) : refusal("mpp/request-malformed");
-}
-
-/** `methodDetails.channelProgram` of a Solana session challenge, else `svm/input-malformed`. */
-function channelProgram(checked: Checked | Echoed): string | Refusal {
-  const program = checked.details["channelProgram"];
-  return typeof program === "string" && keyBytes(program) !== null ? program : refusal("svm/input-malformed");
-}
-
-function hederaChain(network: string): 295 | 296 {
-  return network === "hedera:mainnet" ? 295 : 296;
-}
-
-/**
- * The opening's receipt, read by `payload.txHash`, with its logs from the escrow written under `FETCHED`. Every other
- * member of the credential is copied unchanged and not read; a `FETCHED` member it carries is replaced by this read. A
- * reader that is missing or for another network than the challenge's is `hedera/wrong-reader`. No receipt is
- * `hedera/not-found`, and a failed read, or a reader answer that is not a receipt (a `status` of 0 or 1, a bigint
- * `blockNumber` and a list of logs) or holds a log that is not an object with a string `address`, an array of string
- * `topics` and a string `data`, is `hedera/unreadable`: reads to repeat, not a refusal of the payment. A revert whose
- * block is at or below the reader's `finalized` mark is `hedera/reverted`: nothing moved. A revert above that mark, or
- * where the mark cannot be read, is `hedera/not-final`, a read to repeat: the block can be replaced by one in which the
- * transaction succeeds. A receipt that succeeded whose logs kept do not hold exactly one `ChannelOpened` from the
- * escrow naming `payload.channelId`, the log `bound` reads, is read at the same mark: above it, or where it cannot be
- * read, it is `hedera/not-final`, since a block that replaces it can hold other logs; at or below it the credential is
- * returned with the read, and `bound` gives the verdict. The mark is read only for a revert or such a receipt, and not
- * for a `channelId` that is not a 32-byte hash, which `bound` refuses whatever the chain holds. At most two calls.
- */
-async function hederaFetchPresented(presented: MppCredential, reader: HederaEvmReader): Promise<HederaLandedCredential | Refusal> {
-  const e = opening(presented, HEDERA);
-  if (isRefusal(e)) return e;
-  const network = hederaSessionNetworkOf(e.checked.details);
-  if (isRefusal(network)) return network;
-  const escrow = hederaEscrow(e.checked);
-  if (isRefusal(escrow)) return escrow;
-  if (!isObject(reader) || reader.network !== network) return refusal("hedera/wrong-reader");
-  const tx = normalHash(e.payload["txHash"]);
-  if (tx === null) return refusal("mpp/credential-malformed");
-  let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
-  try {
-    receipt = await reader.receipt(tx as Hex);
-  } catch {
-    return refusal("hedera/unreadable");
-  }
-  if (receipt === null) return refusal("hedera/not-found");
-  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("hedera/unreadable");
-  if (receipt.status === 0) {
-    const read = await failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
-    return read.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
-  }
-  const logs = receipt.logs.filter((l) => sameBytes(l.address.toLowerCase(), escrow)).slice(0, MAX_LANDED_LOGS);
-  const channel = normalHash(e.payload["channelId"]);
-  const opened = channel === null || channelOpened(logs, escrow, channel).length === 1;
-  if (!opened && !(await finalAt(receipt.blockNumber, reader as EvmReader))) return refusal("hedera/not-final");
-  return { ...presented, [FETCHED]: { transaction: tx as Hex, blockNumber: receipt.blockNumber, logs } };
-}
-
-/**
- * The `ChannelOpened` logs from `escrow` among `logs` with four topics and four words of data that name `channel`, or
- * name any channel where `channel` is null. `escrow` and `channel` are lowercase.
- */
-function channelOpened(logs: readonly unknown[], escrow: Hex, channel: string | null): EvmLog[] {
-  return logs.filter(
-    (l): l is EvmLog =>
-      isLog(l) &&
-      l.address.toLowerCase() === escrow &&
-      l.topics.length === 4 &&
-      l.topics[0]!.toLowerCase() === CHANNEL_OPENED_TOPIC &&
-      (channel === null || l.topics[1]!.toLowerCase() === channel) &&
-      bytesOf(l.data)?.length === 128,
-  );
-}
-
-/**
- * H from the echoed challenge, once exactly one landed `ChannelOpened` from the escrow names `payload.channelId`, its
- * salt is H, and the channel id recomputed from the event (payer, payee, token, signer, salt, escrow, chain) is that id.
- * The logs are those `fetchPresented` wrote under `FETCHED`: an opening without them is `hedera/read-first`, whatever
- * string-keyed members it carries.
- */
-async function hederaBound(input: unknown): Promise<AtrHash | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const e = opening(presented, HEDERA);
-  if (isRefusal(e)) return e;
-  const landed = fetchedOf(presented);
-  if (!isObject(landed) || !Array.isArray(landed["logs"])) return refusal("hedera/read-first");
-  const channel = normalHash(e.payload["channelId"]);
-  if (channel === null) return refusal("mpp/credential-malformed");
-  const escrow = hederaEscrow(e.checked);
-  if (isRefusal(escrow)) return escrow;
-  const opened = channelOpened(landed["logs"], escrow, channel);
-  if (opened.length !== 1) return refusal("hedera/channel-log-not-found");
-  const log = opened[0]!;
-  const data = bytesOf(log.data)!;
-  const salt = hexOf(wordAt(data, 2)!);
-  if (!hashEquals(salt as AtrHash, e.h)) return refusal("mpp/carrier-not-challenge");
-  const network = hederaSessionNetworkOf(e.checked.details);
-  if (isRefusal(network)) return network;
-  const payerWord = bytesOf(log.topics[2]);
-  const payeeWord = bytesOf(log.topics[3]);
-  const payer = payerWord === undefined ? undefined : addressOfWord(payerWord);
-  const payee = payeeWord === undefined ? undefined : addressOfWord(payeeWord);
-  const token = addressOfWord(wordAt(data, 0)!);
-  const signer = addressOfWord(wordAt(data, 1)!);
-  if (payer === undefined || payee === undefined || token === undefined || signer === undefined) {
-    return refusal("hedera/channel-log-not-found");
-  }
-  const recomputed = hederaChannelId({ payer, payee, token, salt, authorizedSigner: signer, escrow, chainId: hederaChain(network) });
-  if (recomputed !== channel) return refusal("hedera/channel-id-mismatch");
-  return e.h;
-}
-
-/**
- * The opening's read keys: the reported open transaction and its `ChannelOpened` log from the escrow naming the
- * channel. Where the opening names no channel (`payload.channelId` absent), as a transaction and its challenge reported
- * without the credential do not, they are the transaction and the escrow alone, the challenge's
- * `methodDetails.escrowContract`, lowercase: `recover` and `status` read the escrow's one `ChannelOpened` log there. A
- * `txHash`, or a `channelId` that is present, that is not a 32-byte hash is `mpp/credential-malformed`.
- */
-async function hederaReference(input: unknown): Promise<HederaSessionRef | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const e = opening(presented, HEDERA);
-  if (isRefusal(e)) return e;
-  const network = hederaSessionNetworkOf(e.checked.details);
-  if (isRefusal(network)) return network;
-  const escrow = hederaEscrow(e.checked);
-  if (isRefusal(escrow)) return escrow;
-  const tx = normalHash(e.payload["txHash"]);
-  if (tx === null) return refusal("mpp/credential-malformed");
-  if (e.payload["channelId"] === undefined) return { network, transaction: tx as Hex, escrow };
-  const channel = normalHash(e.payload["channelId"]);
-  if (channel === null) return refusal("mpp/credential-malformed");
-  return {
-    network,
-    transaction: tx as Hex,
-    bindingLog: { address: escrow, topic0: CHANNEL_OPENED_TOPIC, index: 1, value: channel as Hex },
-  };
-}
-
-/**
- * The escrow and the channel an opening ref names, lowercase: its binding log's address and value, or its escrow and no
- * channel. Null for a ref that names neither or both, a binding log that is not an object with an address `address` and
- * a 32-byte `value`, or an escrow that is not an address.
- */
-function openingKeys(ref: HederaSessionRef): { escrow: Hex; channel: string | null } | null {
-  const b: unknown = ref.bindingLog;
-  const escrow: unknown = ref.escrow;
-  if (b !== undefined && escrow === undefined) {
-    if (!isObject(b) || !isAddress(b["address"])) return null;
-    const channel = normalHash(b["value"]);
-    return channel === null ? null : { escrow: (b["address"] as string).toLowerCase() as Hex, channel };
-  }
-  if (escrow === undefined || b !== undefined || !isAddress(escrow)) return null;
-  return { escrow: escrow.toLowerCase() as Hex, channel: null };
-}
-
-/**
- * The opening's receipt, read by `transaction`, and its `ChannelOpened` logs from the escrow naming the channel, or
- * naming any channel where `keys` names none (`channelOpened`): `recover` and `status` read an opening alike. A failed
- * read, or a reader answer that is not a receipt or holds a log that is not an object with a string `address`, an
- * array of string `topics` and a string `data`, is `"unreadable"`; no receipt is `"not-found"`. One call.
- */
-async function openingRead(
-  transaction: Hex,
-  keys: { escrow: Hex; channel: string | null },
-  reader: HederaEvmReader,
-): Promise<{ receipt: EvmReceipt; opened: EvmLog[] } | "not-found" | "unreadable"> {
-  let receipt: Awaited<ReturnType<EvmReader["receipt"]>>;
-  try {
-    receipt = await reader.receipt(transaction);
-  } catch {
-    return "unreadable";
-  }
-  if (receipt === null) return "not-found";
-  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return "unreadable";
-  return { receipt, opened: channelOpened(receipt.logs, keys.escrow, keys.channel) };
-}
-
-/**
- * The opening, read like any EVM payment through the relay by its `ChannelOpened` log naming the channel; or a reported
- * close, whose `ChannelClosed` names the channel. An opening ref that names the escrow alone is read as `recover` reads
- * it: the receipt's one `ChannelOpened` log from the escrow with four topics and four 32-byte words of data settles the
- * opening, at the highest finality mark its block reached. None, or more than one, is failed `binding-log-not-found`,
- * and a revert failed `reverted`, each where the receipt's block is at or below the reader's `finalized` mark, and
- * pending above it or where that mark cannot be read. No receipt is pending `not-found`, and a failed read or a reader
- * answer that is not a receipt pending `unreadable`. A ref that names neither a binding log nor an escrow, or both, an
- * escrow that is not an address, a `transaction` that is not a 32-byte hash, or a reader for another network than the
- * ref's, is pending `unreadable`, with nothing read.
- */
-async function hederaStatus(ref: HederaSessionRef | HederaCloseRef, reader: HederaEvmReader): Promise<EvmBreadthStatus> {
-  if (isObject(ref) && "phase" in ref) {
-    const close: EvmRef & { transaction: Hex } = {
-      network: ref.network,
-      transaction: ref.transaction,
-      bindingLog: { address: ref.escrow, topic0: CHANNEL_CLOSED_TOPIC, index: 1, value: ref.channel },
-    };
-    return evmStatus(close, reader as EvmReader);
-  }
-  if (!isObject(ref) || (ref.bindingLog !== undefined && ref.escrow === undefined)) {
-    return evmStatus(ref as EvmRef & { transaction: Hex }, reader as EvmReader);
-  }
-  const keys = openingKeys(ref);
-  if (keys === null || normalHash(ref.transaction) === null || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
-  }
-  const read = await openingRead(ref.transaction, keys, reader);
-  if (typeof read === "string") return { state: "pending", why: read };
-  const { receipt, opened } = read;
-  if (receipt.status === 0) return failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
-  if (opened.length !== 1) return failedAt(receipt.blockNumber, "binding-log-not-found", reader as EvmReader);
-  return settledAt(receipt.blockNumber, reader as EvmReader);
-}
-
-/**
- * Zero-party: the salt (data word 2) of the opening's `ChannelOpened` log, from what a transaction and its challenge
- * identify. The ref names the log by its binding log's address and value (the escrow and the channel, as `reference`
- * writes them from an opening that names the channel), or by `escrow` alone, the challenge's
- * `methodDetails.escrowContract`, where the channel is not known. The log read is the one log in the receipt from that
- * address with four topics, `topics[0]` `CHANNEL_OPENED_TOPIC` and, where the binding log names a channel, `topics[1]`
- * that value (hex in either case), and four 32-byte words of data. A ref or reader that is not an object, or a reader
- * for another network than the ref's, is `hedera/wrong-reader`, as on the Hedera charge, and so is a ref whose
- * `transaction` is not a 32-byte hash, that names neither a `bindingLog` nor an `escrow`, or both, whose `bindingLog` is
- * not an object with an address `address` and a 32-byte `value`, or whose `escrow` is not an address; nothing is read
- * for any of them. A failed read, or a reader answer that is not a receipt or holds a log that is not an object with a
- * string `address`, an array of string `topics` and a string `data`, is `hedera/unreadable`. No receipt is
- * `hedera/not-found`. A reverted one is `hedera/reverted`, whether or not it holds the opening's log, and a receipt that
- * holds no such log, or more than one, is `hedera/channel-log-not-found`. Both are given only where the receipt's block
- * is at or below the reader's `finalized` mark: above it, or where that mark cannot be read, each is `hedera/not-final`,
- * a read to repeat, as the EVM and Tempo recovers answer, since a block above the mark can be replaced by one in which
- * the transaction succeeds or holds other logs. The mark is read only for those. At most two calls.
- */
-async function hederaRecover(ref: HederaSessionRef, reader: HederaEvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
-  const keys = openingKeys(ref);
-  if (normalHash(ref.transaction) === null || keys === null) return refusal("hedera/wrong-reader");
-  const read = await openingRead(ref.transaction, keys, reader);
-  if (read === "not-found") return refusal("hedera/not-found");
-  if (read === "unreadable") return refusal("hedera/unreadable");
-  const { receipt, opened } = read;
-  if (receipt.status === 0) {
-    const reverted = await failedAt(receipt.blockNumber, "reverted", reader as EvmReader);
-    return reverted.state === "failed" ? refusal("hedera/reverted") : refusal("hedera/not-final");
-  }
-  if (opened.length === 1) return hexOf(wordAt(bytesOf(opened[0]!.data)!, 2)!) as AtrHash;
-  return (await finalAt(receipt.blockNumber, reader as EvmReader))
-    ? refusal("hedera/channel-log-not-found")
-    : refusal("hedera/not-final");
-}
-
-/**
- * The read keys of a close, from the issued challenge and the channel: a reported transaction, or the log search. The
- * issued challenge is held as `bound` holds an echoed one (`issuedFor`), with its code for each fault: the challenge's
- * shape and size, its intent and method, which must be the pairing's, and the pairing's filter.
- */
-function hederaCloseRef(chosen: MppChallenge, channel: string): Omit<HederaCloseRef, "transaction"> | Refusal {
-  const checked = issuedFor(chosen, HEDERA);
-  if (isRefusal(checked)) return checked;
-  const network = hederaSessionNetworkOf(checked.details);
-  if (isRefusal(network)) return network;
-  const c = normalHash(channel);
-  if (c === null) return refusal("mpp/credential-malformed");
-  const escrow = hederaEscrow(checked);
-  if (isRefusal(escrow)) return escrow;
-  return {
-    phase: "close",
-    network,
-    escrow,
-    channel: c as Hex,
-    search: { address: escrow, topics: [CHANNEL_CLOSED_TOPIC, c as Hex] },
-  };
-}
-
-/**
- * The two calls the payer's signer broadcasts in order, `approve` then the escrow's `open` with H as the salt and a
- * zero authorized signer, and the zero voucher on the resulting channel.
- */
-async function hederaBuild(choice: RailSessionChoice, h: AtrHash): Promise<HederaSessionUnsigned | Refusal> {
-  if (!isObject(choice)) return refusal("mpp/input-malformed");
-  const checked = chosenFor(choice.challenge, h, HEDERA);
-  if (isRefusal(checked)) return checked;
-  if (!isAddress(choice.from) || typeof choice.deposit !== "bigint" || choice.deposit <= 0n || choice.deposit >= 1n << 128n) {
-    return refusal("mpp/input-malformed");
-  }
-  const network = hederaSessionNetworkOf(checked.details);
-  if (isRefusal(network)) return network;
-  const chainId = hederaChain(network);
-  const escrow = hederaEscrow(checked);
-  if (isRefusal(escrow)) return escrow;
-  const currency = (checked.request["currency"] as string).toLowerCase() as Hex;
-  const recipient = (checked.request["recipient"] as string).toLowerCase() as Hex;
-  const channelId = hederaChannelId({
-    payer: choice.from.toLowerCase() as Hex,
-    payee: recipient,
-    token: currency,
-    salt: h as Hex,
-    authorizedSigner: ZERO_ADDRESS,
-    escrow,
-    chainId,
-  });
-  const challenge = checked.challenge;
-  return {
-    request: {
-      kind: "hedera-session-open",
-      chainId,
-      calls: [
-        { to: currency, data: approveCalldata(escrow, choice.deposit), gas: 1_000_000n },
-        { to: escrow, data: openCalldata(recipient, currency, choice.deposit, h, ZERO_ADDRESS), gas: 1_500_000n },
-      ],
-      voucher: hederaVoucher({ channelId, escrow, chainId }, 0n),
-    },
-    complete(signed: { openTx: Hex; signature: Hex }): MppCredential | Refusal {
-      if (!isObject(signed) || normalHash(signed.openTx) === null || typeof signed.signature !== "string" || bytesOf(signed.signature) === undefined) {
-        return refusal("mpp/credential-malformed");
-      }
-      return measured({
-        challenge,
-        payload: { action: "open", channelId, txHash: signed.openTx, cumulativeAmount: "0", signature: signed.signature },
-      });
-    },
-  };
-}
-
-/**
- * The kind of a Hedera session payment by its action, one of the four draft-hedera-session-00 defines: `open`, `topUp`,
- * `voucher` and `close`. Any other action, `use` among them, is `mpp/session-action`.
- */
-function hederaKind(presented: MppCredential): Kind | Refusal {
-  return actionKind(presented, ["voucher", "topUp"]);
-}
-
-/**
- * Who broadcasts a Hedera session payment, by its action, as draft-hedera-session-00 has it: the payer an opening or a
- * top-up, each a transaction it broadcast and names by `txHash`; the seller's server a voucher, which it redeems when
- * it closes, and the close, which it sends. Any other action is `mpp/session-action`, as `bound` refuses it.
- */
-function hederaBroadcasts(credential: MppCredential): Broadcaster | Refusal {
-  const action = credential.payload["action"];
-  if (action === "open" || action === "topUp") return "payer";
-  return action === "voucher" || action === "close" ? "payee" : refusal("mpp/session-action");
-}
-
-/** The actions an XRPL session takes: the opening, a voucher and the close. */
 function xrplKind(presented: MppCredential): Kind | Refusal {
   return actionKind(presented, ["voucher"]);
 }
-
-/**
- * The network and the payload's `channelId`, lowercase; on a within or close payment, read from the payment itself. An
- * action `channel.kind` refuses is refused here with its code.
- */
-async function hederaRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
-  const k = hederaKind(presented);
-  if (isRefusal(k)) return k;
-  let details: { [k: string]: Json };
-  if (k === "open") {
-    const e = echoedFor(presented, HEDERA);
-    if (isRefusal(e)) return e;
-    details = e.checked.details;
-  } else {
-    const d = echoedDetails(presented, "hedera");
-    if (isRefusal(d)) return d;
-    details = d;
-  }
-  const network = hederaSessionNetworkOf(details);
-  if (isRefusal(network)) return network;
-  const channel = normalHash(presented.payload["channelId"]);
-  return channel === null ? refusal("mpp/credential-malformed") : { network, channel };
-}
-
-/**
- * A voucher, or a close's final voucher, on the channel the held opening opened: `hederaVoucher` with the channel id,
- * the escrow and the chain from the opening, signed as EIP-712. A `topUp` is not built; an action the draft does not
- * define, such as `use`, is `mpp/session-action`.
- */
-async function hederaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const held = await withinChecks(w, h, "session/hedera", (c) => withinDetails(c, "hedera"), async (p) => opening(p, HEDERA), U128, [
-    "topUp",
-  ]);
-  if (isRefusal(held)) return held;
-  const o = held.opening;
-  const network = hederaSessionNetworkOf(o.checked.details);
-  if (isRefusal(network)) return network;
-  const channelId = normalHash(o.payload["channelId"]);
-  if (channelId === null) return refusal("mpp/credential-malformed");
-  const escrow = hederaEscrow(o.checked);
-  if (isRefusal(escrow)) return escrow;
-  const typedData = hederaVoucher({ channelId: channelId as Hex, escrow, chainId: hederaChain(network) }, w.cumulativeAmount);
-  const challenge = held.challenge;
-  const { action } = w;
-  const cumulativeAmount = w.cumulativeAmount.toString();
-  return {
-    requests: [{ kind: "eip712", typedData }],
-    complete(signatures: readonly string[]): MppCredential | Refusal {
-      const signature = Array.isArray(signatures) && signatures.length === 1 ? signatures[0] : undefined;
-      if (typeof signature !== "string" || (bytesOf(signature)?.length ?? 0) < 1) return refusal("mpp/credential-malformed");
-      return measured({ challenge, payload: { action, channelId, cumulativeAmount, signature } });
-    },
-  };
-}
-
-// ── mpp/session/solana.
-
-function solanaOpenTx(payload: { [k: string]: Json }): { tx: SvmTx; lookups: readonly SvmLookup[] } | Refusal {
-  const wire = wireOf(payload["transaction"]);
-  return isRefusal(wire) ? wire : decodeWithLookups(wire);
-}
-
-/**
- * The opening's checks that read no account, in order: the one `open` of the challenge's program (`svm/open-not-found`
- * when there is none, or more than one, or when its channel, account 5, is past every key the message names), its salt
- * H's first 8 bytes (`mpp/carrier-not-challenge`), the payload's `channelId` a key (`svm/channel-mismatch`), then
- * `authentication`, which draft-solana-session-00's open action requires for an `operator` voucher signer and forbids
- * for `client`, the default: missing for `operator`, or present for `client`, is `mpp/credential-malformed`; present, it
- * names the echoed challenge's id, else `svm/proof-not-challenge`. A durable nonce account named through an address
- * lookup table is `svm/nonce-account-not-static` before them. Each comes before any address lookup table is read or
- * resolved, so an opening that fails one gets its code whatever its lookups hold.
- */
-function solanaStatic(presented: MppCredential, e: Exclude<ReturnType<typeof opening>, Refusal>) {
-  const program = channelProgram(e.checked);
-  if (isRefusal(program)) return program;
-  const decoded = solanaOpenTx(e.payload);
-  if (isRefusal(decoded)) return decoded;
-  const { tx, lookups } = decoded;
-  const fromTable = staticNonce(tx);
-  if (fromTable !== null) return fromTable;
-  const loaded = lookups.reduce((n, l) => n + l.writable.length + l.readonly.length, 0);
-  const open = openInstruction(tx, program, tx.keys.length + loaded);
-  if (isRefusal(open)) return open;
-  if (open.salt !== sessionSalt(e.h)) return refusal("mpp/carrier-not-challenge");
-  const declared = keyBytes(e.payload["channelId"]);
-  if (declared === null) return refusal("svm/channel-mismatch");
-  const auth = e.payload["authentication"];
-  const operatorMode = e.checked.details["voucherSigner"] === "operator";
-  if (operatorMode !== (auth !== undefined)) return refusal("mpp/credential-malformed");
-  if (auth !== undefined && (!isObject(auth) || auth["challengeId"] !== presented.challenge.id)) {
-    return refusal("svm/proof-not-challenge");
-  }
-  const operator = operatorMode ? keyBytes(e.checked.details["operator"]) : null;
-  if (operatorMode && operator === null) return refusal("svm/signer-not-operator");
-  return { tx, lookups, open, channelId: keyString(declared), operator: operator === null ? null : keyString(operator) };
-}
-
-/**
- * The opening's checks: first those that read no account (`solanaStatic`): the one `open` of the challenge's program,
- * its salt H's first 8 bytes, the payload's `channelId` a key, and `authentication`, which draft-solana-session-00's
- * open action requires for an `operator` voucher signer and forbids for `client`, the default. Then the `open`'s
- * accounts: its channel the payload's `channelId`, else `svm/channel-mismatch`, and, for `operator`, its
- * `authorizedSigner` (account 4) the challenged `operator`, as the draft requires, else `svm/signer-not-operator`. For
- * `client`, the client chooses that signer. The draft has the server validate the complete compiled message, resolving
- * any version-0 address-lookup-table entries (Settlement Procedure, Open, step 9), and a table can supply account 4 or
- * account 5. So the accounts are read from the static keys and, for a message with address table lookups, from the
- * tables `fetchPresented` writes under `FETCHED`, in the runtime's order (`loadedKeys`): such an opening without them,
- * or whose tables are not one entry per lookup naming its table with as many keys as it names indexes, is
- * `svm/read-first`, and one whose loaded keys repeat a static key or each other is `svm/table-unusable`. A
- * string-keyed `tables` is not read: an opening carrying one gives the answer the same opening without it gives. A
- * message without lookups is read from its static keys, whatever members the credential carries. `status` reads a landed
- * transaction's table addresses.
- */
-function solanaOpening(
-  presented: MppCredential,
-): { h: AtrHash; checked: Echoed; tx: SvmTx; signer: string | undefined; channel: string } | Refusal {
-  const e = opening(presented, SOLANA);
-  if (isRefusal(e)) return e;
-  const s = solanaStatic(presented, e);
-  if (isRefusal(s)) return s;
-  const { tx, lookups } = s;
-  const read = fetchedOf(presented);
-  const keys = lookups.length === 0 ? tx.keys : loadedKeys(tx, lookups, isObject(read) ? read["tables"] : undefined);
-  if (isRefusal(keys)) return keys;
-  const open = openAccounts(s.open, keys);
-  if (isRefusal(open)) return open;
-  if (open.channel !== s.channelId) return refusal("svm/channel-mismatch");
-  if (s.operator !== null && open.signer !== s.operator) return refusal("svm/signer-not-operator");
-  return { h: e.h, checked: e.checked, tx, signer: open.signer, channel: open.channel };
-}
-
-/**
- * The opening with its tables written under `FETCHED`: for each address table lookup of its message, in order, the
- * table's address and the table's entries at the lookup's writable and read-only indexes, as the runtime loads them
- * when the opening executes (draft-solana-session-00, Settlement Procedure, Open, step 9: the server validates the
- * complete compiled message, resolving any version-0 address-lookup-table entries). Every other member of the opening
- * is copied unchanged and not read; a `FETCHED` member it carries is replaced by this read. `bound`, `reference` and
- * `buildWithin` read the open's accounts through them; `build`'s `complete`, which takes the payload alone, refuses
- * such an open with `svm/read-first`. Both sides keep the credential this returns, or a spread or `Object.assign` copy
- * of it, as the opening for the life of the channel, and pass it to `bound`, `reference` and `buildWithin`;
- * `JSON.stringify` and `structuredClone` drop the member, so a copy made by either is read as one not read. A later
- * read gives each table as it stands then, and once the table's authority deactivates or closes it, that read is
- * `svm/table-unusable` or `svm/not-found`, and no later read gives the channel's accounts.
- *
- * Before any read, the opening's checks that read no account run as `bound` runs them (the one `open`, its salt, the
- * `channelId`, `authentication`), so an opening that fails one gets its code whatever its lookups hold. Each table
- * account is then read once, at `finalized`, through `reader.account` (`readLookupTables`), which fixes what each index
- * names: an entry that a finalized block holds is never rewritten, while one written in a block that is not finalized
- * can differ on another fork. A table owned by another program, whose data is not an initialized table, or that holds
- * no entry at an index the message names and has no authority to extend it, is `svm/table-unusable`, as is a loaded
- * key that repeats a static key or another loaded key; each is a lookup the runtime refuses. A table whose deactivation
- * slot is set is `svm/table-unusable` too, because the opening may land after the table stops resolving: the runtime
- * loads from it only until that slot leaves the `SlotHashes` sysvar, which holds the slots of the last 512 blocks,
- * nothing makes it active again, and a durable nonce keeps an opening valid with no expiry. No account at a table's
- * address, an account the System program owns with no data (a table can still be created there), or no entry at an
- * index while the table's authority can still extend it, is `svm/not-found`, and a rejected read or an answer of
- * neither documented shape `svm/unreadable`: reads to repeat. Every table is read before the answer, and a
- * `svm/table-unusable` in one lookup comes before a read to repeat in another. A reader that is missing or for another
- * network than the challenge's is `svm/wrong-reader`. A message without lookups gets its tables empty, with nothing
- * read. One call per distinct table the message names.
- */
-async function solanaFetchPresented(presented: MppCredential, reader: SvmReader): Promise<SolanaTablesCredential | Refusal> {
-  const e = opening(presented, SOLANA);
-  if (isRefusal(e)) return e;
-  const network = solanaNetworkOf(e.checked.details, true);
-  if (network === null) return refusal("svm/network-undeclared");
-  if (isRefusal(network)) return network;
-  if (!isObject(reader) || reader.network !== network) return refusal("svm/wrong-reader");
-  const s = solanaStatic(presented, e);
-  if (isRefusal(s)) return s;
-  if (s.lookups.length === 0) return { ...presented, [FETCHED]: { tables: [] } };
-  const tables = await readLookupTables(reader, s.tx.keys, s.lookups);
-  return isRefusal(tables) ? tables : { ...presented, [FETCHED]: { tables } };
-}
-
-async function solanaBound(input: unknown): Promise<AtrHash | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const o = solanaOpening(presented);
-  return isRefusal(o) ? o : o.h;
-}
-
-/**
- * The read keys of the signed opening: the transaction's digest, fee payer and blockhash, and the channel account it
- * opens, whose address is derived from a salt of H's first 8 bytes. The opening carries no memo, so a search for it
- * pages the channel account's signatures.
- */
-async function solanaReference(input: unknown): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const o = solanaOpening(presented);
-  if (isRefusal(o)) return o;
-  const network = solanaNetworkOf(o.checked.details, true);
-  if (network === null) return refusal("svm/network-undeclared");
-  if (isRefusal(network)) return network;
-  const ref = await svmReference(network, o.tx);
-  return isRefusal(ref) ? ref : { ...ref, channel: o.channel };
-}
-
-/**
- * The kind of a Solana session payment by its action, read against the echoed challenge's `voucherSigner` (`client`
- * when absent), as draft-solana-session-00 says: a `voucher` authorizes service only for `client`, and in `operator`
- * mode does not authenticate the caller; a `use` is valid only for `operator`; a `close` carries `voucher` and no
- * `authentication` for `client`, and `authentication` and no `voucher` for `operator`. A `voucher` whose challenge
- * names `operator`, or a `use` whose challenge names `client` or no `voucherSigner`, is `mpp/session-action`; a `close`
- * that lacks the member its mode requires, or carries the one its mode forbids, is `mpp/credential-malformed`.
- */
-function solanaKind(presented: MppCredential): Kind | Refusal {
-  const k = actionKind(presented, ["voucher", "topUp", "use"]);
-  if (isRefusal(k)) return k;
-  const action = presented.payload["action"];
-  if (action !== "voucher" && action !== "use" && action !== "close") return k;
-  const details = echoedDetails(presented, "solana");
-  if (isRefusal(details)) return details;
-  const operator = details["voucherSigner"] === "operator";
-  if (action === "close") {
-    const voucher = presented.payload["voucher"] !== undefined;
-    const authentication = presented.payload["authentication"] !== undefined;
-    return voucher !== operator && authentication === operator ? k : refusal("mpp/credential-malformed");
-  }
-  return operator === (action === "use") ? k : refusal("mpp/session-action");
-}
-
-/**
- * A `use` credential echoing the opening challenge whose bearer proof names that challenge's id gives its H. A `voucher`
- * whose challenge's `voucherSigner` is `operator`, a `use` whose challenge's is not, and a `close` whose `voucher` and
- * `authentication` are not its mode's, are refused as `channel.kind` refuses them.
- */
-async function solanaBoundWithin(input: unknown): Promise<AtrHash | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const k = solanaKind(presented);
-  if (isRefusal(k)) return k;
-  if (presented.payload["action"] !== "use") return refusal("mpp/not-bound-within");
-  const e = echoedFor(presented, SOLANA);
-  if (isRefusal(e)) return e;
-  const auth = e.payload["authentication"];
-  if (!isObject(auth) || auth["challengeId"] !== presented.challenge.id) return refusal("svm/proof-not-challenge");
-  return e.h;
-}
-
-/**
- * The network and the payload's `channelId`, re-encoded; on a within or close payment, read from the payment itself. A
- * `voucher` whose challenge's `voucherSigner` is `operator`, a `use` whose challenge's is not, and a `close` whose
- * `voucher` and `authentication` are not its mode's, are refused as `channel.kind` refuses them.
- */
-async function solanaRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
-  const k = solanaKind(presented);
-  if (isRefusal(k)) return k;
-  let details: { [k: string]: Json };
-  if (k === "open") {
-    const e = echoedFor(presented, SOLANA);
-    if (isRefusal(e)) return e;
-    details = e.checked.details;
-  } else {
-    const d = echoedDetails(presented, "solana");
-    if (isRefusal(d)) return d;
-    details = d;
-  }
-  const network = solanaNetworkOf(details, true);
-  if (network === null) return refusal("svm/network-undeclared");
-  if (isRefusal(network)) return network;
-  const channel = keyBytes(presented.payload["channelId"]);
-  return channel === null ? refusal("mpp/credential-malformed") : { network, channel: keyString(channel) };
-}
-
-async function solanaStatus(ref: (SvmRef & { transaction: string }) | SvmCloseRef, reader: SvmReader): Promise<SvmStatus | SvmCloseStatus> {
-  if (!isObject(reader)) return { state: "pending", why: "unreadable" };
-  return isObject(ref) && "phase" in ref ? svmCloseStatus(ref, reader) : svmStatus(ref, reader);
-}
-
-/**
- * The read keys of a close, from the issued challenge and the channel: the network, the channel program and the
- * channel. The issued challenge is held as `bound` holds an echoed one (`issuedFor`), with its code for each fault: the
- * challenge's shape and size, its intent and method, which must be the pairing's, and the pairing's filter.
- */
-function solanaCloseRef(chosen: MppChallenge, channel: string): Omit<SvmCloseRef, "transaction"> | Refusal {
-  const checked = issuedFor(chosen, SOLANA);
-  if (isRefusal(checked)) return checked;
-  const network = solanaNetworkOf(checked.details, true);
-  if (network === null) return refusal("svm/network-undeclared");
-  if (isRefusal(network)) return network;
-  const c = keyBytes(channel);
-  if (c === null) return refusal("mpp/credential-malformed");
-  const program = channelProgram(checked);
-  if (isRefusal(program)) return program;
-  return { phase: "close", network, program, channel: keyString(c) };
-}
-
-/**
- * The values the buyer's channel client composes the `open` from: the salt (H's first 8 bytes), the program, the
- * network and the request's blockhash and slot. `complete` checks the composed open as `bound` does, in `bound`'s order,
- * before returning the credential: an open whose message has address table lookups is `svm/read-first`, since
- * `complete` reads no table; its credential, `{challenge, payload}`, is checked through `fetchPresented` and `bound`.
- */
-async function solanaBuild(choice: RailSessionChoice, h: AtrHash): Promise<SolanaSessionUnsigned | Refusal> {
-  if (!isObject(choice)) return refusal("svm/input-malformed");
-  const checked = chosenFor(choice.challenge, h, SOLANA);
-  if (isRefusal(checked)) return checked;
-  const network = solanaNetworkOf(checked.details, true);
-  if (network === null) return refusal("svm/network-undeclared");
-  if (isRefusal(network)) return network;
-  const challenge = checked.challenge;
-  return {
-    request: {
-      kind: "solana-session-open",
-      salt: sessionSalt(h),
-      channelProgram: checked.details["channelProgram"] as string,
-      network,
-      recentBlockhash: checked.details["recentBlockhash"] as string,
-      recentSlot: BigInt(checked.details["recentSlot"] as string),
-    },
-    complete(open: { [k: string]: Json }): MppCredential | Refusal {
-      const credential: MppCredential = { challenge, payload: open };
-      const o = solanaOpening(credential);
-      return isRefusal(o) ? o : credential;
-    },
-  };
-}
-
-/**
- * A voucher, or a close's voucher, on the channel the held opening opened, for its `client` voucher signer: one
- * `ed25519-raw` request over `solanaVoucher(channelId, cumulativeAmount)`, for the signer the opening's `open`
- * instruction named (account 4), the key vouchers "MUST verify under" (draft-solana-session-00). The opening is read as
- * `bound` reads it: for a message with address table lookups, through the tables that `fetchPresented` writes under
- * `FETCHED`, else `svm/read-first`, so the opening is the credential `fetchPresented` returned, or a spread or
- * `Object.assign` copy of it, kept for the life of the channel: a table read again after its authority deactivates or
- * closes it gives no tables. The voucher signer is read as `channel.kind` reads it, from the within challenge: one
- * naming `operator` over a `client` opening gives `channel.kind`'s code for the payment this would build
- * (`mpp/session-action` for a voucher, `mpp/credential-malformed` for a close, which carries `voucher`). An `operator`
- * channel's vouchers are the operator's, and are not built, nor are a `topUp` or a `use`; an action
- * draft-solana-session-00 does not define, such as `bearer`, is `mpp/session-action`.
- */
-async function solanaBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
-  const held = await withinChecks(w, h, "session/solana", (c) => withinDetails(c, "solana"), async (p) => solanaOpening(p), U64, [
-    "topUp",
-    "use",
-  ]);
-  if (isRefusal(held)) return held;
-  const o = held.opening;
-  // The voucher signer the readers read, the within challenge's. Under `operator`, over a `client` opening, the payment
-  // this builds is one `channel.kind` refuses, with its code; an `operator` channel's vouchers are the operator's.
-  const operator = held.within.details["voucherSigner"] === "operator";
-  const operatorChannel = o.checked.details["voucherSigner"] === "operator";
-  if (operator && !operatorChannel) {
-    const k = solanaKind({ challenge: held.challenge, payload: { action: w.action, voucher: {} } });
-    if (isRefusal(k)) return k;
-  }
-  if (operator || operatorChannel) return refusal("mpp/within-action-not-built");
-  const signer = o.signer;
-  if (signer === undefined) return refusal("svm/open-not-found");
-  const channel = keyBytes(w.opening.payload["channelId"]);
-  if (channel === null) return refusal("mpp/credential-malformed");
-  const channelId = keyString(channel);
-  const message = solanaVoucher(channelId, w.cumulativeAmount);
-  if (isRefusal(message)) return message;
-  const challenge = held.challenge;
-  const { action } = w;
-  const cumulativeAmount = w.cumulativeAmount.toString();
-  return {
-    requests: [{ kind: "ed25519-raw", message, signer }],
-    complete(signatures: readonly string[]): MppCredential | Refusal {
-      const signature = Array.isArray(signatures) && signatures.length === 1 ? signatures[0] : undefined;
-      if (typeof signature !== "string" || !isBase58Signature(signature)) return refusal("mpp/credential-malformed");
-      return measured({
-        challenge,
-        payload: {
-          action,
-          channelId,
-          voucher: { voucher: { channelId, cumulativeAmount }, signer, signature, signatureType: "ed25519" },
-        },
-      });
-    },
-  };
-}
-
-/** A base58 string of a 64-byte Ed25519 signature. */
-function isBase58Signature(s: string): boolean {
-  if (s.length < 64 || s.length > 88) return false;
-  try {
-    return base58.decode(s).length === 64;
-  } catch {
-    return false;
-  }
-}
-
-// ── mpp/session/xrpl.
 
 /** The exactly one memo among at most 8 whose `MemoData` is UTF-8 parsing as an LCP string, and its hash. */
 function xrplLcpMemo(tx: XrplTxJson): AtrHash | Refusal {
@@ -1279,161 +488,35 @@ async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWit
 // ── Resume.
 
 /**
- * The network and channel a Hedera, Solana or XRPL session challenge names for the client to resume, spelled as the
- * pairing's `channel.ref` spells it: Hedera's `methodDetails.channelId` (a bytes32, lowercase), Solana's
- * `methodDetails.channelId` (a base58 address, re-encoded), XRPL's request `channelId` (64 hex characters, upper case).
- * Null when the challenge names no channel: the member absent, or XRPL's `""`. Refused for any other challenge, or a
- * channel or network that cannot be read.
+ * The network and channel an XRPL session challenge names for the client to resume, spelled as the pairing's
+ * `channel.ref` spells it: the request's `channelId`, 64 hex characters, upper case. Null when the challenge names no
+ * channel: the member absent, or `""`. Refused for any other challenge, or a channel or network that cannot be read.
  */
 export function railSessionResume(c: MppChallenge): { network: string; channel: string } | null | Refusal {
   if (!isObject(c) || c.intent !== "session" || typeof c.request !== "string") return refusal("mpp/not-this-pairing");
-  const method = c.method;
-  if (method !== "hedera" && method !== "solana" && method !== "xrpl") return refusal("mpp/not-this-pairing");
+  if (c.method !== "xrpl") return refusal("mpp/not-this-pairing");
   const request = decodeObject(c.request);
   if (request === undefined) return refusal("mpp/request-malformed");
   const md = request["methodDetails"];
   if (md !== undefined && !isObject(md)) return refusal("mpp/request-malformed");
   const details = (md ?? {}) as { [k: string]: Json };
-  if (method === "xrpl") {
-    const named = request["channelId"];
-    if (named === undefined || named === "") return null;
-    if (typeof named !== "string" || !HASH256.test(named)) return refusal("mpp/request-malformed");
-    const network = xrplNetworkOf(details);
-    return isRefusal(network) ? network : { network, channel: named.toUpperCase() };
-  }
-  const named = details["channelId"];
-  if (named === undefined) return null;
-  if (method === "hedera") {
-    const channel = normalHash(named);
-    if (channel === null) return refusal("mpp/request-malformed");
-    const network = hederaSessionNetworkOf(details);
-    return isRefusal(network) ? network : { network, channel };
-  }
-  const key = keyBytes(named);
-  if (key === null) return refusal("mpp/request-malformed");
-  const network = solanaNetworkOf(details, true);
-  if (network === null) return refusal("svm/network-undeclared");
-  return isRefusal(network) ? network : { network, channel: keyString(key) };
+  const named = request["channelId"];
+  if (named === undefined || named === "") return null;
+  if (typeof named !== "string" || !HASH256.test(named)) return refusal("mpp/request-malformed");
+  const network = xrplNetworkOf(details);
+  return isRefusal(network) ? network : { network, channel: named.toUpperCase() };
 }
 
 // ── The records.
 
-function sessionPattern(p: Pick<LcpPattern, "pattern" | "buyerSigns" | "zeroPartyRecoverable" | "proves">, profile: string): LcpPattern {
+function sessionPattern(p: Pick<LcpPattern, "pattern" | "zeroPartyRecoverable">, profile: string): LcpPattern {
   return deepFreeze({
     ...p,
-    canonical: false,
     profile,
     onChain: true,
     forwardIndexable: false,
-    publicProof: true,
-  } as LcpPattern);
+  });
 }
-
-/**
- * `mpp/session/hedera`. `broadcaster` answers by the payment's action (`hederaBroadcasts`), for the actions
- * `channel.kind` takes. `"payer"`: the opening, whose two calls the payer's signer broadcasts, which `fetchPresented`
- * reads, named by `txHash` (`landedTx`), then `status`; and a top-up, which no member reads, so the seller confirms it
- * outside the package. `"payee"`: a voucher, which the seller's server redeems when it closes, and the close, the escrow
- * call it sends, which `closeRef` and `status` read. Any other action gets `mpp/session-action`, as `bound` refuses it.
- */
-export const sessionHedera = Object.freeze({
-  id: HEDERA,
-  pattern: sessionPattern(
-    {
-      pattern: "native-field",
-      buyerSigns: true,
-      zeroPartyRecoverable: true,
-      proves:
-        "The payer signed a Hedera EVM transaction that opened an MPP session channel on the escrow contract named in " +
-        "the challenge, with this ATR's hash as the channel's salt, and it reached consensus. The escrow's " +
-        "ChannelOpened event carries the salt, and the channel id is keccak256 over an encoding that includes it. The " +
-        "hash is also in the MPP challenge the opening answered. Each voucher signs that channel id, which commits to " +
-        "this ATR's hash. This does not show that amount, deposit, recipient, token or timing match the ATR's " +
-        "content.",
-    },
-    "mpp/session/hedera-solana-xrpl",
-  ),
-  claims: true as const,
-  unplaced,
-  tie,
-  advertise,
-  read,
-  build: hederaBuild,
-  buildWithin: hederaBuildWithin,
-  bound: hederaBound,
-  broadcaster: sessionBroadcaster(hederaKind, hederaBroadcasts, () => refusal("mpp/session-action")),
-  reference: hederaReference,
-  status: hederaStatus,
-  recover: hederaRecover,
-  fetchPresented: hederaFetchPresented,
-  landedTx: (presented: unknown): string | undefined => {
-    const c = credentialOf(presented);
-    if (isRefusal(c) || c.payload["action"] !== "open") return undefined;
-    return normalHash(c.payload["txHash"]) ?? undefined;
-  },
-  closeRef: hederaCloseRef,
-  channel: Object.freeze({
-    kind: measuring((p: MppCredential) => hederaKind(p)),
-    ref: measuringAsync(hederaRef),
-    boundWithin: measuringAsync(notBoundWithin),
-    until: (_p: MppCredential): number | undefined => undefined,
-  }),
-});
-
-/**
- * `mpp/session/solana`. The payee broadcasts every payment the session takes (`broadcaster` answers `"payee"` for the
- * actions `channel.kind` takes), as draft-solana-session-00 has it: the seller's server co-signs and broadcasts the
- * opening and a top-up, each a transaction the payer signed, once `fetchPresented` has read the opening's address
- * lookup tables (it reads no landed payment); it redeems vouchers and the operator's `use` metering when it settles,
- * and broadcasts the close. `status` and `closeRef` read them. Any other action, a voucher where the challenge's
- * `voucherSigner` is `operator` and a `use` where it is not among them, gets `mpp/session-action`, as `bound` refuses
- * it. `bound` reads the opening alone, so `channel.kind` reads the rest: a close that lacks the member its mode
- * requires, or carries the one its mode forbids, gets `mpp/credential-malformed`, as `channel.kind` refuses it. Where
- * `channel.kind` refuses the echoed challenge itself (another intent or method, or a request that does not decode or
- * whose `methodDetails` is not an object), the challenge decides, and `broadcaster` answers.
- */
-export const sessionSolana = Object.freeze({
-  id: SOLANA,
-  pattern: sessionPattern(
-    {
-      pattern: "truncated-field",
-      buyerSigns: false,
-      zeroPartyRecoverable: false,
-      proves:
-        "The ATR was assembled and delivered before approval, and its hash is in the MPP challenge the opening " +
-        "answered, protected by the server's binding of the challenge. The payer signed a Solana transaction that " +
-        "opened a session channel on the channel program named in the challenge, with the first 8 bytes of this ATR's " +
-        "hash as the channel's salt, and it executed without error. The salt binds only this hash's first 8 bytes: " +
-        "whoever assembles the ATR can construct a second ATR whose hash shares them. This does not show that amount, " +
-        "deposit, recipient, mint or timing match the ATR's content.",
-    },
-    "mpp/session/hedera-solana-xrpl",
-  ),
-  claims: true as const,
-  unplaced,
-  tie,
-  advertise,
-  read,
-  build: solanaBuild,
-  buildWithin: solanaBuildWithin,
-  bound: solanaBound,
-  broadcaster: sessionBroadcaster(
-    solanaKind,
-    () => "payee",
-    () => refusal("mpp/session-action"),
-    (c) => echoedDetails(c, "solana"),
-  ),
-  reference: solanaReference,
-  status: solanaStatus,
-  fetchPresented: solanaFetchPresented,
-  closeRef: solanaCloseRef,
-  channel: Object.freeze({
-    kind: measuring((p: MppCredential) => solanaKind(p)),
-    ref: measuringAsync(solanaRef),
-    boundWithin: measuringAsync(solanaBoundWithin),
-    until: (_p: MppCredential): number | undefined => undefined,
-  }),
-});
 
 /**
  * `mpp/session/xrpl`. The payee broadcasts every payment the session takes (`broadcaster` answers `"payee"` for the
@@ -1444,16 +527,11 @@ export const sessionSolana = Object.freeze({
  */
 export const sessionXrpl = Object.freeze({
   id: XRPL,
+  data: XRPL_DATA[XRPL],
   pattern: sessionPattern(
     {
       pattern: "native-field",
-      buyerSigns: true,
       zeroPartyRecoverable: true,
-      proves:
-        "The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's " +
-        "hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. Vouchers in " +
-        "this channel sign the channel id and an amount, not the hash. This does not show that amount, deposit, " +
-        "destination, settle delay or timing match the ATR's content.",
     },
     "mpp/session/hedera-solana-xrpl",
   ),
@@ -1476,4 +554,4 @@ export const sessionXrpl = Object.freeze({
     boundWithin: measuringAsync(notBoundWithin),
     until: xrplUntil,
   }),
-});
+}) satisfies Entry<typeof XRPL, MppCredential, Omit<XrplRef, "expect"> | XrplCloseRef, XrplReader>;

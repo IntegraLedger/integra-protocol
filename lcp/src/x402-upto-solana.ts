@@ -22,6 +22,7 @@ import {
   wireOf,
   TOKEN,
   TOKEN_2022,
+  type SvmReader,
   type SvmRef,
   type UptoSvmPaymentPayload,
 } from "./internal/svm.js";
@@ -51,6 +52,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { SOLANA } from "./internal/data/solana.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 const ID = "x402/upto/solana" as const;
@@ -269,18 +272,9 @@ async function reference(presented: unknown): Promise<Omit<SvmRef, "fromSlot"> |
 
 const pattern: LcpPattern = Object.freeze({
   pattern: "native-field",
-  canonical: true,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a Solana transaction whose one Memo instruction carries this ATR's hash in LCP string form, and " +
-    "which opened a one-request payment channel escrowing the signed maximum; it executed without error. The memo is " +
-    "in the transaction's instruction data on chain. The amount charged from the escrow, which may be zero, is the " +
-    "seller's metering, settled by the facilitator in a later transaction that does not carry the hash, and the rest " +
-    "returns to the payer. This does not show that amount, recipient, mint or timing match the ATR's content.",
 });
 
 /**
@@ -290,9 +284,9 @@ const pattern: LcpPattern = Object.freeze({
  */
 export const uptoSvm = Object.freeze({
   id: ID,
+  data: SOLANA[ID],
   pattern,
   claims: true as const,
-  carrier: "extra.memo" as const,
   unplaced,
   tie,
   advertise,
@@ -303,4 +297,4 @@ export const uptoSvm = Object.freeze({
   reference,
   status: svmChannelStatus,
   recover: svmRecover,
-});
+}) satisfies Entry<typeof ID, UptoSvmPaymentPayload, SvmRef & { transaction: string }, SvmReader>;

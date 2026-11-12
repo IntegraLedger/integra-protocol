@@ -69,6 +69,9 @@ import {
   type X402Read,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
+import { EIP155_X402 } from "./internal/data/eip155-x402.js";
+import type { Entry, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type { Eip3009TypedData } from "./evm.js";
@@ -146,16 +149,11 @@ export type LcpPattern = {
     | "opaque-challenge"
     | "id-reuse"
     | "protocol-extension"
-    | "http-advisory"
-    | "truncated-field";
-  canonical: boolean;
+    | "http-advisory";
   profile?: string;
-  buyerSigns: boolean;
   onChain: boolean;
   zeroPartyRecoverable: boolean;
   forwardIndexable: boolean;
-  publicProof: boolean;
-  proves: string;
 };
 
 export interface X402Offer {
@@ -178,7 +176,6 @@ export interface Unsigned {
 const ID = "x402/exact/eip155/eip3009" as const;
 const MAX_TARGET = 8192;
 const MAX_BODY = 1_048_576;
-const MAX_SIGNATURE_BYTES = 8192;
 const MIN_SIGNED_BYTES = 65;
 const HEX_BODY = /^0x[0-9a-fA-F]*$/;
 
@@ -366,18 +363,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: ID,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: true,
-  publicProof: true,
-  proves:
-    "The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash. The token contract verified " +
-    "that signature when it executed the transfer, and the hash is on chain as the nonce topic of its " +
-    "AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset or timing " +
-    "match the ATR's content.",
 });
 
 /**
@@ -386,6 +375,7 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactEip3009 = Object.freeze({
   id: ID,
+  data: EIP155_X402[ID],
   pattern,
   claims: true as boolean,
   unplaced,
@@ -399,7 +389,7 @@ export const exactEip3009 = Object.freeze({
   authorizer,
   status: eip3009Status,
   recover: eip3009Recover,
-});
+}) satisfies Entry<typeof ID, Eip3009Payment, Parameters<typeof eip3009Status>[0], EvmReader>;
 
 /** The payment's shape as this pairing requires it, or the refusal that names what is wrong. */
 function paymentOf(presented: unknown): Eip3009Payment | Refusal {
@@ -1264,39 +1254,17 @@ function authCaptureAuthorizer(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
 
 // ── The records and the bindings.
 
-const PERMIT2_PROVES =
-  "The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with the scheme's x402 proxy as " +
-  "spender and the payee in the witness. Permit2 verified the signature when the proxy executed the transfer, and the " +
-  "hash is in the settlement transaction's calldata as the Permit2 nonce; no event carries it. This does not show " +
-  "that amount, payee, asset or timing match the ATR's content.";
-
-const AUTH_CAPTURE_SALT =
-  "When unbound, the salt is this ATR's hash, so the settled transaction itself shows it. " +
-  "When bound, a holder of the ATR, the receiver authorizer and the policy can confirm the hash from the salt; " +
-  "the chain alone does not reveal it. This record covers that first collection; capture, void, refund and " +
-  "reclaim are the operator's and the payer's.";
-
-const AUTH_CAPTURE_EIP3009_PROVES =
-  "The payer signed a token authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is " +
-  "this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The " +
-  "token contract verified the signature when the escrow collected the payment, and the escrow's event carries the " +
-  "salt. " +
-  AUTH_CAPTURE_SALT;
-
-const AUTH_CAPTURE_PERMIT2_PROVES =
-  "The payment presented a Permit2 authorization whose nonce commits, through the escrow's PaymentInfo, to a salt " +
-  "that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. " +
-  "The escrow's event in the settlement transaction carries that PaymentInfo, salt included; it does not show which " +
-  "collector funded the payment. " +
-  AUTH_CAPTURE_SALT;
-
 function record(p: LcpPattern): LcpPattern {
   return deepFreeze(p);
 }
 
+/** The x402 EVM breadth pairings: those with data in the EVM family's module but EIP-3009 `exact`. */
+type BreadthId = Exclude<keyof typeof EIP155_X402, typeof ID | "x402/batch-settlement/eip155" | "x402/batch-settlement/cloudflare">;
+
 /** The members every x402 EVM breadth pairing shares. */
-type BreadthBase<Id extends X402PairingId> = {
+type BreadthBase<Id extends BreadthId> = {
   readonly id: Id;
+  readonly data: PairingData;
   readonly pattern: LcpPattern;
   readonly claims: boolean;
   readonly unplaced: (option: PaymentRequirements) => PaymentRequirements | Refusal;
@@ -1306,17 +1274,20 @@ type BreadthBase<Id extends X402PairingId> = {
   readonly broadcaster: (presented: unknown) => Promise<Broadcaster | Refusal>;
 };
 
+/** The reference a breadth pairing's `status` reads: the payment's read keys and the transaction that settled it. */
+type BreadthRef = EvmRef & { transaction: Hex };
+
 /** The members each x402 EVM breadth pairing gives itself. */
 type BreadthMembers = {
   readonly build: (choice: X402Choice, h: AtrHash) => Promise<X402Unsigned | Refusal>;
   readonly bound: (presented: unknown) => Promise<AtrHash | Refusal>;
   readonly reference: (presented: unknown) => Promise<EvmRef | Refusal>;
   readonly authorizer?: (presented: unknown) => Promise<Hex | Refusal>;
-  readonly status?: (ref: EvmRef & { transaction: Hex }, reader: EvmReader) => Promise<EvmBreadthStatus>;
+  readonly status?: (ref: BreadthRef, reader: EvmReader) => Promise<EvmBreadthStatus>;
   readonly recover?: (ref: { network: Eip155; transaction: Hex }, reader: EvmReader) => Promise<AtrHash | Refusal>;
 };
 
-function binding<Id extends X402PairingId, M extends BreadthMembers>(
+function binding<Id extends BreadthId, M extends BreadthMembers>(
   id: Id,
   pattern: LcpPattern,
   claims: boolean,
@@ -1324,6 +1295,7 @@ function binding<Id extends X402PairingId, M extends BreadthMembers>(
 ): BreadthBase<Id> & M {
   return Object.freeze({
     id,
+    data: EIP155_X402[id],
     pattern,
     claims,
     unplaced,
@@ -1343,14 +1315,10 @@ export const exactPermit2 = binding(
   PERMIT2_EXACT,
   record({
     pattern: "native-field",
-    canonical: false,
     profile: PERMIT2_EXACT,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: false,
-    publicProof: true,
-    proves: PERMIT2_PROVES,
   }),
   true,
   {
@@ -1361,7 +1329,7 @@ export const exactPermit2 = binding(
     status: permit2Status,
     recover: permit2Recover(PERMIT2_EXACT),
   },
-);
+) satisfies Entry<typeof PERMIT2_EXACT, PaymentPayload, BreadthRef, EvmReader>;
 
 /**
  * `x402/upto/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator,
@@ -1372,17 +1340,10 @@ export const uptoPermit2 = binding(
   PERMIT2_UPTO,
   record({
     pattern: "native-field",
-    canonical: false,
     profile: PERMIT2_UPTO,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: false,
-    publicProof: true,
-    proves:
-      PERMIT2_PROVES +
-      " The amount settled is the seller's, submitted by the facilitator the witness names, and at most the " +
-      "signed maximum.",
   }),
   true,
   {
@@ -1393,7 +1354,7 @@ export const uptoPermit2 = binding(
     status: permit2Status,
     recover: permit2Recover(PERMIT2_UPTO),
   },
-);
+) satisfies Entry<typeof PERMIT2_UPTO, PaymentPayload, BreadthRef, EvmReader>;
 
 /**
  * `x402/exact/eip155/erc7710`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator redeems
@@ -1405,21 +1366,13 @@ export const exactErc7710 = binding(
   ERC7710,
   record({
     pattern: "http-advisory",
-    canonical: true,
-    buyerSigns: false,
     onChain: false,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: false,
-    proves:
-      "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-      "recorded in <transaction>. The ATR was assembled and delivered before the payment, and the buyer's payment " +
-      "payload echoed this ATR's hash in the legalContext entry of x402's extensions. " +
-      "The buyer's delegation does not sign the hash, and the settlement transaction does not carry it.",
   }),
   false,
   { build: erc7710Build, bound: erc7710Bound, reference: erc7710Reference(ERC7710) },
-);
+) satisfies Entry<typeof ERC7710, PaymentPayload, EvmRef, never>;
 
 /**
  * `x402/exact/eip155/erc7710-salt`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1429,20 +1382,10 @@ export const exactErc7710Salt = binding(
   ERC7710_SALT,
   record({
     pattern: "native-field",
-    canonical: false,
     profile: ERC7710_SALT,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: false,
-    publicProof: true,
-    proves:
-      "The leaf delegation of the permission context redeemed for this payment, made through MetaMask's " +
-      "DelegationManager, carries this ATR's hash as its signed salt. The manager verified every delegation's " +
-      "signature when it redeemed them, and the leaf, with its salt, is in a RedeemedDelegation event in the " +
-      "settlement transaction. The leaf's signer is its delegator, which may be an account the paying account " +
-      "authorised rather than the paying account itself. This does not show that amount, payee, asset or timing " +
-      "match the ATR's content.",
   }),
   true,
   {
@@ -1453,7 +1396,7 @@ export const exactErc7710Salt = binding(
     status: boundStatus([REDEEMED_DELEGATION_TOPIC]),
     recover: redeemedLeafRecover,
   },
-);
+) satisfies Entry<typeof ERC7710_SALT, PaymentPayload, BreadthRef, EvmReader>;
 
 /**
  * `x402/auth-capture/eip155/eip3009`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1464,14 +1407,10 @@ export const authCaptureEip3009 = binding(
   AC_EIP3009,
   record({
     pattern: "id-reuse",
-    canonical: false,
     profile: "x402/auth-capture/eip155",
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: true,
-    proves: AUTH_CAPTURE_EIP3009_PROVES,
   }),
   true,
   {
@@ -1481,7 +1420,7 @@ export const authCaptureEip3009 = binding(
     authorizer: authCaptureAuthorizer(AC_EIP3009),
     status: boundStatus(ESCROW_EVENTS),
   },
-);
+) satisfies Entry<typeof AC_EIP3009, PaymentPayload, BreadthRef, EvmReader>;
 
 /**
  * `x402/auth-capture/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1492,14 +1431,10 @@ export const authCapturePermit2 = binding(
   AC_PERMIT2,
   record({
     pattern: "id-reuse",
-    canonical: false,
     profile: "x402/auth-capture/eip155",
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: true,
-    proves: AUTH_CAPTURE_PERMIT2_PROVES,
   }),
   true,
   {
@@ -1509,7 +1444,7 @@ export const authCapturePermit2 = binding(
     authorizer: authCaptureAuthorizer(AC_PERMIT2),
     status: boundStatus(ESCROW_EVENTS),
   },
-);
+) satisfies Entry<typeof AC_PERMIT2, PaymentPayload, BreadthRef, EvmReader>;
 
 function isNonEmpty(v: unknown): v is string {
   return typeof v === "string" && v !== "";

@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { pairingOf, toLcpString, type AtrHash } from "../src/index.js";
 import {
-  chargeHedera,
   decodeHederaTx,
   exactHedera,
   exactHederaExecutor,
@@ -169,9 +168,9 @@ describe("x402-exact-hedera.json", () => {
 
   // A Hedera transaction that reaches consensus with a status other than SUCCESS is final: the network charges its fee
   // and makes none of its transfers (HAPI: the TransactionReceipt's status, a ResponseCodeEnum, and the Mirror Node's
-  // `result`), as the V5 status rows read it, failed with that result. recover refuses such entries hedera/not-success, as the MPP Hedera
-  // charge's fetchPresented does; a transaction id that no counted user entry uses yet is a read to repeat,
-  // hedera/not-found (docs/reference/refusals.md).
+  // `result`), as the V5 status rows read it, failed with that result. recover refuses such entries hedera/not-success;
+  // a transaction id that no counted user entry uses yet is a read to repeat, hedera/not-found
+  // (docs/reference/refusals.md).
   it("V5: recover refuses counted user entries with no SUCCESS as hedera/not-success, and none yet as hedera/not-found", async () => {
     type Row = { entries: MirrorEntry[] | null | "reader-error"; expect: { state: string; why?: string } };
     const failedRow = (r: Row) => r.expect.state === "failed" && r.expect.why!.startsWith("result:");
@@ -286,13 +285,6 @@ describe("x402-exact-hedera.json", () => {
     expect(r.link).toBe(V.fixed.link);
     expect(r.offer.options).toEqual([O]);
     expect(exactHedera.unplaced(O)).toBe(O);
-  });
-
-  it("MPP chain ids map to the two networks named, and nothing else", () => {
-    const network = (chainId: number) => chargeHedera.network({ methodDetails: { chainId } });
-    expect(network(295)).toBe("hedera:mainnet");
-    expect(network(296)).toBe("hedera:testnet");
-    expect(network(297)).toEqual({ refused: true, code: "hedera/chain-id-unnamed" });
   });
 });
 
@@ -414,9 +406,9 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
   });
 
   it("the record states the agreement step and no public proof", () => {
-    expect(exactHederaExecutor.pattern.publicProof).toBe(false);
+    expect(exactHederaExecutor.data.coverage).toBe("none");
     expect(exactHederaExecutor.claims).toBe(false);
-    expect(exactHedera.pattern.publicProof).toBe(true);
+    expect(exactHedera.data.coverage).toBe("full");
     expect(exactHedera.claims).toBe(true);
   });
 });

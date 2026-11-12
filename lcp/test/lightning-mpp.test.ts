@@ -10,8 +10,6 @@ import { issuedDigest, pairingsOf, type MppChallenge, type MppCredential } from 
 import {
   chargeLightning,
   decodeBolt11,
-  exactLnbtc,
-  exactLnbtcNamed,
   sessionLightning,
   type Bolt11,
   type LnMppUnsigned,
@@ -398,37 +396,23 @@ describe("the Lightning MPP pairings read no amount or currency", () => {
 // what the parties hold, and no signature is verified here. Each record whose invoice carries the hash says so, and
 // none says that the payer paid, that its node checked a signature, or that the seller did not verify one.
 describe("the records of the Lightning pairings whose invoice carries the hash", () => {
-  for (const b of [exactLnbtc, chargeLightning, sessionLightning]) {
+  for (const b of [chargeLightning, sessionLightning]) {
     it(`${b.id}: proves states that no signature is verified here and that settlement is the seller's report`, () => {
-      expect(b.pattern.proves).toContain(
+      expect(b.data.proves).toContain(
         "Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the " +
           "seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; " +
           "they do not show who paid it, and no public ledger shows the payment.",
       );
-      expect(b.pattern.proves).not.toMatch(/the payer paid|checked the node signature|did not verify/i);
+      expect(b.data.proves).not.toMatch(/the payer paid|checked the node signature|did not verify/i);
     });
   }
-});
-
-// On x402/exact/lnbtc/invoice-named the invoice carries no hash and the ATR names the option as issued. Its record says
-// that, and that settlement is the seller's report; it says nothing of the payer's payment, of the buyer's gate or of a
-// check the seller made, none of which the pairing reads.
-describe("the invoice-named Lightning pairing's record", () => {
-  it("proves states what the ATR names and that settlement is the seller's report", () => {
-    const proves = exactLnbtcNamed.pattern.proves;
-    expect(proves).toContain(
-      "The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's " +
-        "signed BOLT11 invoice, whose description hash is x402's request hash.",
-    );
-    expect(proves).toContain("Settlement is the seller's report; the invoice and its preimage, which the parties hold,");
-    expect(proves).not.toMatch(/the payer paid|gate paid|seller checked/i);
-  });
 });
 
 // Both MPP Lightning pairings carry the ATR hash as the `mpp/charge` profile places it: the pattern names that profile.
 describe("the Lightning MPP patterns' profile", () => {
   it("both MPP pairings name the profile mpp/charge", () => {
     expect([chargeLightning.pattern.profile, sessionLightning.pattern.profile]).toEqual(["mpp/charge", "mpp/charge"]);
-    expect(sessionLightning.pattern).toMatchObject({ pattern: "native-field", canonical: true, buyerSigns: false });
+    expect(sessionLightning.pattern).toMatchObject({ pattern: "native-field" });
+    expect(sessionLightning.data.carrier.signed).toBeNull();
   });
 });

@@ -8,12 +8,8 @@
 import { concat, fromRlp, toRlp, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { canonicalJson, type Json } from "../src/index.js";
-import { ReaderError, type EvmReader } from "../src/evm.js";
-import type { HederaEvmReader, HederaReader } from "../src/hedera.js";
 import {
-  chargeHedera,
   chargeSolana,
-  chargeStellar,
   chargeUsdcEvm,
   chargeUsdcGateway,
   chargeUsdcSolana,
@@ -26,13 +22,9 @@ import {
   pairingsOf,
   pairingsOfPlaced,
   sessionEvm,
-  sessionHedera,
-  sessionSolana,
   sessionTempo,
   sessionXrpl,
   subscriptionTempo,
-  tempoMemo,
-  tempoPush,
   usdcGatewaySalt,
   usdcRequestHash,
   type MppCredential,
@@ -70,10 +62,7 @@ describe("bound holds the echoed challenge to the pairing's filter, and reads no
     ["charge/evm/authorization, no expires", evmAuthorization, "mpp-charge-evm-authorization.json", 1, noExpires, "mpp/expires-required"],
     ["charge/evm/authorization, amount \"abc\"", evmAuthorization, "mpp-charge-evm-authorization.json", 1, (r) => (r["amount"] = "abc"), "mpp/request-malformed"],
     ["charge/evm/permit2, externalId null", evmPermit2, "mpp-charge-evm-permit2.json", 1, (r) => (r["externalId"] = null), "mpp/request-malformed"],
-    ["charge/tempo/memo, amount \"abc\"", tempoMemo, "mpp-charge-tempo-memo.json", 1, (r) => (r["amount"] = "abc"), "mpp/request-malformed"],
-    ["charge/tempo/push, no expires", tempoPush, "mpp-charge-tempo-push.json", 1, noExpires, "mpp/expires-required"],
     ["charge/solana, no expires", chargeSolana, "mpp-charge-solana.json", 1, noExpires, H],
-    ["charge/stellar, amount \"0\"", chargeStellar, "mpp-charge-stellar.json", 1, (r) => (r["amount"] = "0"), H],
     ["charge/xrpl, no expires", chargeXrpl, "mpp-charge-xrpl.json", 1, noExpires, "mpp/expires-required"],
     ["charge/nearintents, amount \"x\"", chargeNearIntents, "mpp-charge-nearintents.json", 1, (r) => (r["amount"] = "x"), H],
     ["charge/usdc/evm, no expires", chargeUsdcEvm, "mpp-charge-usdc-evm.json", 1, noExpires, "mpp/expires-required"],
@@ -85,8 +74,7 @@ describe("bound holds the echoed challenge to the pairing's filter, and reads no
       details(r)["credentialTypes"] = ["other"];
     }, "mpp/credential-types"],
     ["session/tempo, amount \"abc\"", sessionTempo, "mpp-session-tempo.json", 1, (r) => (r["amount"] = "abc"), H],
-    ["session/solana, no expires", sessionSolana, "mpp-session-hedera-solana-xrpl.json", 3, noExpires, H],
-    ["session/xrpl, no expires and currency \"USD\"", sessionXrpl, "mpp-session-hedera-solana-xrpl.json", 5, (r, c) => {
+    ["session/xrpl, no expires and currency \"USD\"", sessionXrpl, "mpp-session-hedera-solana-xrpl.json", 1, (r, c) => {
       noExpires(r, c);
       r["currency"] = "USD";
     }, "xrpl/currency-not-xrp"],
@@ -127,15 +115,8 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
   // Method-specific extension data"); advertise refuses one that is not with mpp/request-malformed (pairingsOf).
   it("a methodDetails that is not an object is mpp/request-malformed, never read as empty", async () => {
     const rows: [string, string, number, (c: MppCredential) => Promise<unknown>][] = [
-      ["charge/tempo/memo bound", "mpp-charge-tempo-memo.json", 1, tempoMemo.bound],
-      ["charge/tempo/memo reference", "mpp-charge-tempo-memo.json", 1, tempoMemo.reference],
-      ["charge/tempo/push reference", "mpp-charge-tempo-push.json", 1, tempoPush.reference],
       ["charge/solana reference", "mpp-charge-solana.json", 1, chargeSolana.reference],
       ["charge/evm/hash reference", "mpp-charge-evm-authorization.json", 1, evmHash.reference],
-      ["charge/hedera reference", "mpp-charge-hedera.json", 1, chargeHedera.reference],
-      ["charge/hedera fetchPresented, given a default network", "mpp-charge-hedera.json", 1, (c) =>
-        chargeHedera.fetchPresented(c, { network: "hedera:testnet" } as HederaReader, "hedera:testnet")],
-      ["session/hedera channel.ref", "mpp-session-hedera-solana-xrpl.json", 1, (c) => sessionHedera.channel.ref(c)],
       ["session/evm reference", "mpp-session-evm.json", 1, sessionEvm.reference],
       ["session/tempo reference", "mpp-session-tempo.json", 1, sessionTempo.reference],
       ["subscription/tempo reference", "mpp-subscription-tempo.json", 1, subscriptionTempo.reference],
@@ -177,22 +158,6 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
     expect(await chargeNearIntents.bound(presented("mpp-charge-nearintents.json", 1, absent))).toEqual(refused("near/memo-not-lcp"));
     const noInvoice = presented("mpp-charge-xrpl.json", 1, (r) => delete details(r)["invoiceId"]);
     expect(await chargeXrpl.bound(noInvoice)).toEqual(refused("xrpl/carrier-mismatch"));
-  });
-
-  it("charge/stellar: the network", async () => {
-    const r = await chargeStellar.reference(presented("mpp-charge-stellar.json", 1, (q) => (details(q)["network"] = "stellar:mars")));
-    expect(r).toEqual(refused("stellar/option-malformed"));
-  });
-
-  // The code advertise gives the same request (pairingsOf): an MPP Stellar charge's recipient is a Stellar account or
-  // its muxed form.
-  it("charge/stellar: the recipient", async () => {
-    for (const recipient of [7, "GBAD"]) {
-      const c = presented("mpp-charge-stellar.json", 1, (q) => (q["recipient"] = recipient));
-      expect(pairingsOf(offerOf(c))).toEqual(refused("stellar/option-malformed"));
-      expect(await chargeStellar.bound(c)).toEqual(refused("stellar/option-malformed"));
-      expect(await chargeStellar.reference(c)).toEqual(refused("stellar/option-malformed"));
-    }
   });
 
   it("session/evm: the escrow and the chain", async () => {
@@ -248,13 +213,6 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
     expect(await chargeUsdcGateway.bound(c)).toEqual(refused("mpp/request-malformed"));
   });
 
-  it("session/hedera and session/solana: the escrow and the channel program", async () => {
-    const hedera = presented("mpp-session-hedera-solana-xrpl.json", 1, (r) => delete details(r)["escrowContract"]);
-    expect(await sessionHedera.reference(hedera)).toEqual(refused("mpp/request-malformed"));
-    const solana = presented("mpp-session-hedera-solana-xrpl.json", 3, (r) => (details(r)["channelProgram"] = "program"));
-    expect(await sessionSolana.reference(solana)).toEqual(refused("svm/input-malformed"));
-  });
-
   // The subscription's activation is identified by what the payer signed; its reference reads only the chain, and the
   // filter holds the request's terms to their forms (draft-tempo-subscription-00's request members).
   it("subscription/tempo: the filter, then only the chain", async () => {
@@ -268,13 +226,6 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
     expect(await subscriptionTempo.reference(presented(file, 1, (r) => delete details(r)["chainId"]))).toEqual(refused("mpp/chain-id-required"));
   });
 
-  it("charge/tempo/memo: settleBy is the signed transaction's validBefore; without expires the filter refuses", async () => {
-    const file = "mpp-charge-tempo-memo.json";
-    const signed = (await tempoMemo.reference(presented(file, 1))) as { settleBy?: string };
-    expect(signed.settleBy).toBeDefined();
-    expect(await tempoMemo.reference(presented(file, 1, noExpires))).toEqual(refused("mpp/expires-required"));
-  });
-
   // A Tempo transaction (type 0x76) is 0x76 || rlp([chainId, maxPriorityFeePerGas, maxFeePerGas, gas, calls, accessList,
   // nonceKey, nonce, validBefore, validAfter, feeToken, ...]); an empty validBefore is unset (ox 0.14.45,
   // tempo/TxEnvelopeTempo.ts `deserialize`). advertise refuses an expires that is not an RFC 3339 date-time with
@@ -285,10 +236,6 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
       items[8] = "0x";
       return concat(["0x76", toRlp(items)]);
     };
-    const memo = (edit?: Edit) => {
-      const c = presented("mpp-charge-tempo-memo.json", 1, edit);
-      return { ...c, payload: { ...c.payload, signature: noValidBefore(c.payload["signature"] as string) } };
-    };
     const session = (edit?: Edit) => {
       const c = presented("mpp-session-tempo.json", 1, edit);
       return { ...c, payload: { ...c.payload, transaction: noValidBefore(c.payload["transaction"] as string) } };
@@ -297,58 +244,14 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
       c["expires"] = "tomorrow";
     };
 
-    it("charge/tempo/memo: with expires alone, settleBy is expires; with neither, the reference is refused mpp/expires-required", async () => {
-      expect(await tempoMemo.reference(memo(noExpires))).toEqual(refused("mpp/expires-required"));
-      const byExpires = (await tempoMemo.reference(memo())) as { settleBy?: string };
-      expect(byExpires.settleBy).toBe(String(Date.parse(presented("mpp-charge-tempo-memo.json", 1).challenge.expires!) / 1000));
-    });
-
     it("session/tempo: with neither, the reference is refused mpp/expires-required", async () => {
       expect(await sessionTempo.reference(session(noExpires))).toEqual(refused("mpp/expires-required"));
     });
 
     it("an expires that is not a date is mpp/expires-required, whatever the transaction sets", async () => {
-      expect(pairingsOf(offerOf(presented("mpp-charge-tempo-memo.json", 1, notADate)))).toEqual(refused("mpp/expires-required"));
-      expect(await tempoMemo.reference(memo(notADate))).toEqual(refused("mpp/expires-required"));
       expect(await sessionTempo.reference(session(notADate))).toEqual(refused("mpp/expires-required"));
-      expect(await tempoMemo.bound(memo(notADate))).toEqual(refused("mpp/expires-required"));
-      expect(await tempoMemo.reference(presented("mpp-charge-tempo-memo.json", 1, notADate))).toEqual(refused("mpp/expires-required"));
       expect(await sessionTempo.reference(presented("mpp-session-tempo.json", 1, notADate))).toEqual(refused("mpp/expires-required"));
     });
-  });
-});
-
-describe("fetchPresented holds the echoed challenge to the filter before it reads, and reads nothing else of the request", () => {
-  /** A reader whose every call fails, and that counts its calls. */
-  const evmReader = (network: string, calls: string[]): EvmReader => ({
-    network: network as EvmReader["network"],
-    receipt: async () => {
-      calls.push("receipt");
-      throw new ReaderError("transport");
-    },
-    blockNumber: async () => 0n,
-    transaction: async () => null,
-    call: async () => "0x",
-  });
-
-  it("charge/tempo/push: amount \"abc\" is refused before the read; a request member the filter does not read reaches the reader", async () => {
-    const calls: string[] = [];
-    const c = presented("mpp-charge-tempo-push.json", 1, (r) => (r["amount"] = "abc"));
-    expect(await tempoPush.fetchPresented(c, evmReader("eip155:42431", calls))).toEqual(refused("mpp/request-malformed"));
-    expect(calls).toEqual([]);
-    const other = presented("mpp-charge-tempo-push.json", 1, (r) => (r["description"] = "x"));
-    expect(await tempoPush.fetchPresented(other, evmReader("eip155:42431", calls))).toEqual(refused("tempo/unreadable"));
-    expect(calls).toEqual(["receipt"]);
-  });
-
-  it("session/hedera: a named channel is refused before the read; no expires reaches the reader", async () => {
-    const calls: string[] = [];
-    const named = presented("mpp-session-hedera-solana-xrpl.json", 1, (r) => (details(r)["channelId"] = `0x${"11".repeat(32)}`));
-    expect(await sessionHedera.fetchPresented(named, evmReader("hedera:testnet", calls) as HederaEvmReader)).toEqual(refused("mpp/channel-named"));
-    expect(calls).toEqual([]);
-    const c = presented("mpp-session-hedera-solana-xrpl.json", 1, noExpires);
-    expect(await sessionHedera.fetchPresented(c, evmReader("hedera:testnet", calls) as HederaEvmReader)).toEqual(refused("hedera/unreadable"));
-    expect(calls).toEqual(["receipt"]);
   });
 });
 
@@ -451,7 +354,7 @@ describe("channel.ref holds an opening's echoed challenge to the pairing's filte
 // channel.ref keys only a payment of the channel: one channel.kind refuses is refused with its code, an action the
 // pairing's draft does not define among them. draft-tempo-session-00 and the EVM session draft define open, topUp,
 // voucher and close (tempoxyz/mpp-specs 08e7dd87), and draft-tempo-subscription-00's one credential is the
-// keyAuthorization; the Hedera, Solana, XRP Ledger and Lightning sessions' channel.ref refuse such a payment so.
+// keyAuthorization; the XRP Ledger and Lightning sessions' channel.ref refuse such a payment so.
 describe("channel.ref refuses a payment channel.kind refuses, with its code", () => {
   type Channel = { kind: (c: MppCredential) => unknown; ref: (c: MppCredential) => Promise<unknown> };
   const withPayload = (change: { [k: string]: Json }) => (c: MppCredential) => ({ ...c, payload: { ...c.payload, ...change } }) as MppCredential;
@@ -463,13 +366,11 @@ describe("channel.ref refuses a payment channel.kind refuses, with its code", ()
       ["session/tempo, an opening whose action is use", sessionTempo, "mpp-session-tempo.json", 1, withPayload({ action: "use" })],
       ["session/tempo, an opening whose action is bearer", sessionTempo, "mpp-session-tempo.json", 1, withPayload({ action: "bearer" })],
       ["subscription/tempo, a key authorization whose type is transaction", subscriptionTempo, "mpp-subscription-tempo.json", 1, withPayload({ type: "transaction" })],
-      ["session/hedera, an opening whose action is use", sessionHedera, RAILS, 1, withPayload({ action: "use" })],
-      ["session/solana, an opening whose action is bearer", sessionSolana, RAILS, 3, withPayload({ action: "bearer" })],
-      ["session/xrpl, an opening whose action is topUp", sessionXrpl, RAILS, 5, withPayload({ action: "topUp" })],
+      ["session/xrpl, an opening whose action is topUp", sessionXrpl, RAILS, 1, withPayload({ action: "topUp" })],
       ["session/lightning, an opening whose action is use", sessionLightning, "mpp-session-lightning.json", 1, withPayload({ action: "use" })],
     ],
     "the payments each session pairing's channel.kind refuses",
-    { exact: 9 },
+    { exact: 7 },
   );
   it.each(CASES)("%s", async (_, pairing, file, row, change) => {
     const own = presented(file, row);
@@ -526,9 +427,7 @@ describe("closeRef holds the issued challenge as bound holds the echoed one", ()
     ["session/evm", sessionEvm as never, "mpp-session-evm.json", 1, (c) => String(c.payload["channelId"])],
     ["session/tempo", sessionTempo as never, "mpp-session-tempo.json", 1, (c) => String(c.payload["channelId"])],
     ["subscription/tempo", subscriptionTempo as never, "mpp-subscription-tempo.json", 1, () => load("mpp-subscription-tempo.json").SUB2.expectRefChannel],
-    ["session/hedera", sessionHedera as never, RAILS, 1, (c) => String(c.payload["channelId"])],
-    ["session/solana", sessionSolana as never, RAILS, 3, (c) => String(c.payload["channelId"])],
-    ["session/xrpl", sessionXrpl as never, RAILS, 5, () => load(RAILS).XS2.expectChannel],
+    ["session/xrpl", sessionXrpl as never, RAILS, 1, () => load(RAILS).XS2.expectChannel],
   ];
   type Fault = (c: { [k: string]: unknown }) => unknown;
   const set = (change: { [k: string]: unknown }): Fault => (c) => ({ ...c, ...change });

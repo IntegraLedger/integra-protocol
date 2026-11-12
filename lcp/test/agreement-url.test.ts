@@ -10,10 +10,11 @@ import { exactAptos } from "../src/aptos.js";
 import { sellerReference, viAutonomous, viImmediate, visaTap } from "../src/card.js";
 import { exactHederaExecutor } from "../src/hedera.js";
 import { BINDINGS, canonicalJson, type AtrHash, type Json } from "../src/index.js";
-import { chargeLightning, exactLnbtc, exactLnbtcNamed, sessionLightning } from "../src/lightning.js";
+import { chargeLightning, sessionLightning } from "../src/lightning.js";
 import {
   chargeCard,
   chargeNearIntents,
+  chargeUsdcGateway,
   chargeStripe,
   evmHash,
   evmTransaction,
@@ -109,23 +110,12 @@ const ERC7710 = load("x402-exact-eip155-erc7710.json");
 const AP = load("x402-exact-aptos.json");
 const HX = load("x402-exact-hedera-transfer-executor.json");
 const BS = load("x402-batch-settlement.json");
-const LN = load("x402-exact-lnbtc.json");
-const LNN = load("x402-exact-lnbtc-invoice-named.json");
 
 const X402_CASES: Case[] = [
   x402Case("x402/exact/eip155/erc7710", exactErc7710, ERC7710.fixed.H, ERC7710.fixed.link, ERC7710.fixed.resource, ERC7710.fixed.option),
   x402Case("x402/exact/aptos", exactAptos, AP.fixed.H, AP.fixed.link, AP.fixed.resource, AP.fixed.O),
   x402Case("x402/exact/hedera/transfer-executor", exactHederaExecutor, HX.fixed.H, HX.fixed.link, HX.fixed.resource, HX.fixed.O),
   x402Case("x402/batch-settlement/cloudflare", batchCloudflare, BS.fixed.H, BS.fixed.link, BS.fixed.resource, BS.EC1.payload.accepted),
-  x402Case("x402/exact/lnbtc", exactLnbtc, LN.fixed.H, LN.fixed.link, LN.fixed.resource, LN.fixed.O),
-  x402Case(
-    "x402/exact/lnbtc/invoice-named",
-    exactLnbtcNamed,
-    LNN.fixed.H,
-    LNN.fixed.link,
-    LNN.fixed.resource,
-    LNN.fixed.O_N,
-  ),
 ];
 
 // ── MPP: `opaque` is base64url of RFC 8785 JSON with `legalContextAgreementUrl` beside `legalContextUrl`; the id is H
@@ -138,6 +128,7 @@ const LC = load("mpp-charge-lightning.json");
 const LS = load("mpp-session-lightning.json");
 const CC = load("mpp-charge-card.json");
 const CS = load("mpp-charge-stripe.json");
+const GW = load("mpp-charge-usdc-gateway.json");
 
 const idOf = (h: string, i: number) => `${Buffer.from(h.slice(2), "hex").toString("base64url")}.${i}`;
 const opaqueOf = (h: string, link: string, a?: string) =>
@@ -178,6 +169,13 @@ const byHand = (c: MppChallenge, h: string, link: string) => ({ ...c, id: idOf(h
 const issuedMpp = (method: string, intent: string, request: Json): MppChallenge =>
   ({ realm: MC.fixed.realm, method, intent, request: encode(request), expires: MC.fixed.expires }) as MppChallenge;
 const cardChallenge = issuedMpp("card", "charge", CC.M1.request);
+const gatewayChallenge: MppChallenge = {
+  realm: GW.fixed.realm,
+  method: "usdc",
+  intent: "charge",
+  request: b64u(GW.M5.requestJson),
+  expires: GW.fixed.expires,
+};
 const stripeDetails = (r: { methodDetails: object }) => ({ ...r, methodDetails: { ...r.methodDetails, metadata: { legal_context: `lcp:sha256:${MC.fixed.H}` } } });
 const stripeChallenge = issuedMpp("stripe", "charge", CS.M2.request);
 const subscriptionChallenge = issuedMpp("stripe", "subscription", CS.M2.request);
@@ -192,6 +190,7 @@ const MPP_CASES: Case[] = [
   mppCase("mpp/charge/nearintents", chargeNearIntents, NI.fixed.H, NI.fixed.link, NI.challenge, NI.place.expect),
   mppCase("mpp/charge/card", chargeCard, MC.fixed.H, MC.fixed.link, cardChallenge, carried(cardChallenge, { ...CC.M1.request, externalId: `lcp:sha256:${MC.fixed.H}` })),
   mppCase("mpp/charge/stripe", chargeStripe, MC.fixed.H, MC.fixed.link, stripeChallenge, carried(stripeChallenge, stripeDetails(CS.M2.request))),
+  mppCase("mpp/charge/usdc/gateway", chargeUsdcGateway, GW.fixed.H, GW.fixed.link, gatewayChallenge, byHand(gatewayChallenge, GW.fixed.H, GW.fixed.link)),
   mppCase("mpp/subscription/stripe", subscriptionStripe, MC.fixed.H, MC.fixed.link, subscriptionChallenge, carried(subscriptionChallenge, stripeDetails(CS.M2.request))),
 ];
 
@@ -281,8 +280,8 @@ const OTHER_CASES: Case[] = [
 const CASES: Case[] = [...X402_CASES, ...MPP_CASES, ...OTHER_CASES];
 
 describe("the agreement URL", () => {
-  it("covers every registered pairing whose record has no public proof", () => {
-    const registered = BINDINGS.filter((b) => b.pattern.publicProof === false).map((b) => b.id);
+  it("covers every registered pairing at coverage none", () => {
+    const registered = BINDINGS.filter((b) => b.data.coverage === "none").map((b) => b.id);
     expect([...registered].sort()).toEqual(CASES.map((c) => c.id).sort());
     for (const c of CASES) expect(BINDINGS.find((b) => b.id === c.id)).toBe(c.binding);
   });

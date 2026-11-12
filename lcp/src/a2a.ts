@@ -13,6 +13,7 @@ import {
 } from "./internal/core.js";
 import { isObject, jsonBytes, normalHash, sameJson } from "./fields.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";
+import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 
 /** The extension's URIs, in order of preference. The first is the one written when the client activated none. */
 export const A2A_EXTENSION_URIS: readonly string[] = Object.freeze([
@@ -50,7 +51,6 @@ const DESCRIPTION =
 const MAX_HEADER = 8192;
 const MAX_ELEMENTS = 64;
 const MAX_VALUE_BYTES = 4096;
-const MAX_LINK = 2048;
 
 /** One Agent Card `capabilities.extensions[]` entry per listed URI. `required` defaults to false. */
 export function agentExtension(o?: { required?: boolean }): A2aAgentExtension[] {
@@ -79,7 +79,7 @@ export function place(task: A2aTask, h: AtrHash, link: string, a2aExtensions?: s
   const nh = normalHash(h);
   if (nh === null) return refusal("a2a/legal-context-malformed");
   if (!isHttpsLink(link)) return refusal("a2a/link-not-https");
-  if (link.length > MAX_LINK) return refusal("a2a/legal-context-malformed");
+  if (link.length > MAX_LINK_LENGTH) return refusal("a2a/legal-context-malformed");
   const value = toLegalContext(nh, link).legalContext as Json;
   if ((jsonBytes(value) ?? Number.POSITIVE_INFINITY) > MAX_VALUE_BYTES) return refusal("a2a/too-large");
   for (const uri of A2A_EXTENSION_URIS) {
@@ -105,7 +105,7 @@ export function read(task: A2aTask): { h: AtrHash; link: string } | Refusal {
     if (decoded === null) {
       return isHashWithNonHttpsLink(value) ? refusal("a2a/link-not-https") : refusal("a2a/legal-context-malformed");
     }
-    if (decoded.url.length > MAX_LINK) return refusal("a2a/legal-context-malformed");
+    if (decoded.url.length > MAX_LINK_LENGTH) return refusal("a2a/legal-context-malformed");
     if (found !== undefined && (found.h !== decoded.h || found.url !== decoded.url)) {
       return refusal("a2a/legal-context-conflict");
     }

@@ -392,12 +392,12 @@ describe("C7 VI Autonomous", () => {
 });
 
 describe("C8 plain checkout", () => {
-  it("bound and build refuse card/no-signed-place for any input, and buyerSigns is false", async () => {
+  it("bound and build refuse card/no-signed-place for any input, and the payer signs no field that carries H", async () => {
     for (const x of rowsOf(V.C8.inputs, "card.json C8.inputs")) {
       expect(await sellerReference.bound(x)).toEqual(refused(V.C8.expect));
       expect(await sellerReference.build(x, H)).toEqual(refused(V.C8.expect));
     }
-    expect(sellerReference.pattern.buyerSigns).toBe(V.C8.buyerSigns);
+    expect(sellerReference.data.carrier.signed).toBeNull();
     expect(sellerReference.read(V.C2.build.doc)).toEqual({ h: H, link: L });
   });
 });
@@ -405,23 +405,23 @@ describe("C8 plain checkout", () => {
 describe("what each record proves", () => {
   const opening =
     "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. ";
-  it("every card pairing has publicProof false and opens with the agreement sentence", () => {
+  it("every card pairing has coverage none and opens with the agreement sentence", () => {
     for (const p of PAIRINGS) {
-      expect(p.pattern.publicProof).toBe(false);
+      expect(p.data.coverage).toBe("none");
       expect(p.pattern.onChain).toBe(false);
       expect(p.pattern.zeroPartyRecoverable).toBe(false);
       expect(p.pattern.forwardIndexable).toBe(false);
-      expect(p.pattern.proves.startsWith(opening)).toBe(true);
+      expect(p.data.proves.startsWith(opening)).toBe(true);
       expect(Object.isFrozen(p.pattern)).toBe(true);
     }
   });
 
-  it("patterns, profiles, buyerSigns and claims per pairing", () => {
-    expect([visaTap, viImmediate, viAutonomous, sellerReference].map((p) => [p.id, p.pattern.pattern, p.pattern.canonical, p.pattern.profile, p.pattern.buyerSigns, p.claims])).toEqual([
-      ["card/visa-tap", "protocol-extension", false, "card/visa-tap", true, true],
-      ["card/mastercard-vi/immediate", "id-reuse", true, "card/mastercard-vi", true, true],
-      ["card/mastercard-vi/autonomous", "id-reuse", true, "card/mastercard-vi", true, true],
-      ["card/seller-reference", "http-advisory", true, undefined, false, false],
+  it("patterns, profiles, whether the payer signs a field carrying H, and claims per pairing", () => {
+    expect([visaTap, viImmediate, viAutonomous, sellerReference].map((p) => [p.id, p.pattern.pattern, p.pattern.profile, p.data.carrier.signed !== null, p.claims])).toEqual([
+      ["card/visa-tap", "protocol-extension", "card/visa-tap", true, true],
+      ["card/mastercard-vi/immediate", "id-reuse", "card/mastercard-vi", true, true],
+      ["card/mastercard-vi/autonomous", "id-reuse", "card/mastercard-vi", true, true],
+      ["card/seller-reference", "http-advisory", undefined, false, false],
     ]);
   });
 

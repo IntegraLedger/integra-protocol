@@ -15,6 +15,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { CASPER } from "./internal/data/casper.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `casper:` and the chainspec name. */
@@ -409,18 +411,10 @@ function hexBytes(s: string): Uint8Array {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: ID,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a CEP-3009 transfer authorization whose nonce is this ATR's hash. The token contract verified " +
-    "that signature, and that the signing key is the payer's, when it executed the transfer, and the hash is on chain " +
-    "as the nonce argument of that call. This does not show that amount, payee, asset or timing match the ATR's " +
-    "content.",
 });
 
 /**
@@ -429,6 +423,7 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactCasper = Object.freeze({
   id: ID,
+  data: CASPER[ID],
   pattern,
   claims: true as boolean,
   unplaced,
@@ -445,4 +440,4 @@ export const exactCasper = Object.freeze({
   reference,
   status: casperStatus,
   recover: casperRecover,
-});
+}) satisfies Entry<typeof ID, CasperPaymentPayload, CasperRef & { transaction: string; h: AtrHash }, CasperReader>;

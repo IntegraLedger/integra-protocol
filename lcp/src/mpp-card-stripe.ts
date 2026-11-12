@@ -20,43 +20,27 @@ import {
   withoutCarrier,
   type MppChallenge,
   type MppChoice,
+  type MppCredential,
   type MppPairingId,
 } from "./mpp-challenge.js";
 import { stripeMetadataValid } from "./mpp-method-checks.js";
 import { broadcastsWithin } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
+import { CARD } from "./internal/data/card.js";
+import type { Entry } from "./internal/registry.js";
 
 /** The Stripe metadata key the seller places H under: at most 40 characters, no square brackets. */
 export const LEGAL_CONTEXT_METADATA_KEY = "legal_context";
 
 type ConfirmOnly = "mpp/charge/card" | "mpp/charge/stripe" | "mpp/subscription/stripe";
 
-const PROVES =
-  "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-  "recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its id and its opaque " +
-  "reference, bound to the challenge by the seller's own server, and the buyer's credential echoed that challenge. " +
-  "The seller also placed the hash in the method's reference field (externalId for card; the PaymentIntent's " +
-  "metadata for Stripe). Nothing the buyer or its card or Stripe token signed carries the hash, and nothing the " +
-  "buyer signed was checked. Settlement is the seller's report. This record does not show that the buyer's " +
-  "approval carried the hash.";
-
-const SUBSCRIPTION_PROVES = PROVES + " The close is the seller's report.";
-
-function patternOf(proves: string): LcpPattern {
-  return deepFreeze({
-    pattern: "opaque-challenge",
-    canonical: true,
-    buyerSigns: false,
-    onChain: false,
-    zeroPartyRecoverable: false,
-    forwardIndexable: false,
-    publicProof: false,
-    proves,
-  });
-}
-
-const pattern = patternOf(PROVES);
+const pattern: LcpPattern = deepFreeze({
+  pattern: "opaque-challenge",
+  onChain: false,
+  zeroPartyRecoverable: false,
+  forwardIndexable: false,
+});
 
 /**
  * MPP's `place`, with the agreement URL when given, then the carrier set to H's LCP string. An issued carrier holding
@@ -121,12 +105,12 @@ function boundAs(pairing: ConfirmOnly) {
   };
 }
 
-function pairingOf<Id extends ConfirmOnly>(id: Id, carrier: string, p: LcpPattern = pattern) {
+function pairingOf<Id extends ConfirmOnly>(id: Id) {
   return Object.freeze({
     id,
-    pattern: p,
+    data: CARD[id],
+    pattern,
     claims: false as boolean,
-    carrier,
     unplaced,
     tie,
     advertise: advertiseAs(id),
@@ -141,12 +125,12 @@ function pairingOf<Id extends ConfirmOnly>(id: Id, carrier: string, p: LcpPatter
  * `mpp/charge/card`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment the
  * payer's credential authorizes to its processor; nothing here reads it.
  */
-export const chargeCard = pairingOf("mpp/charge/card", "request.externalId");
+export const chargeCard = pairingOf("mpp/charge/card") satisfies Entry<"mpp/charge/card", MppCredential, never, never>;
 /**
  * `mpp/charge/stripe`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server creates the Stripe
  * payment with the payer's shared payment token; nothing here reads it.
  */
-export const chargeStripe = pairingOf("mpp/charge/stripe", "request.methodDetails.metadata.legal_context");
+export const chargeStripe = pairingOf("mpp/charge/stripe") satisfies Entry<"mpp/charge/stripe", MppCredential, never, never>;
 /**
  * The Stripe subscription's activation receipt: the `Payment-Receipt` payload the seller's server answered the opening
  * with, decoded from its base64url JSON (or the MCP transport's receipt object as given). `channel.ref` takes it with
@@ -198,7 +182,7 @@ async function subscriptionBoundWithin(_presented: unknown): Promise<AtrHash | R
  * Stripe subscription with the payer's shared payment token and reports its activation; nothing here reads it.
  */
 export const subscriptionStripe = Object.freeze({
-  ...pairingOf("mpp/subscription/stripe", "request.methodDetails.metadata.legal_context", patternOf(SUBSCRIPTION_PROVES)),
+  ...pairingOf("mpp/subscription/stripe"),
   channel: Object.freeze({
     /** Every payment the seller reports on this pairing is the activation, which opens the subscription. */
     kind: (_presented: unknown): "open" => "open",
@@ -207,4 +191,4 @@ export const subscriptionStripe = Object.freeze({
     /** The subscription request carries no expiry: the draft refuses `subscriptionExpires`. */
     until: (_presented: unknown): number | undefined => undefined,
   }),
-});
+}) satisfies Entry<"mpp/subscription/stripe", MppCredential, never, never>;

@@ -23,20 +23,14 @@ describe("BINDINGS", () => {
       "mpp/charge/evm/permit2",
       "mpp/charge/evm/transaction",
       "mpp/charge/evm/hash",
-      "mpp/charge/tempo/memo",
-      "mpp/charge/tempo/push",
       "mpp/session/evm",
       "mpp/session/tempo",
       "mpp/subscription/tempo",
       "mpp/charge/lightning",
       "mpp/session/lightning",
-      "mpp/charge/hedera",
       "mpp/charge/solana",
-      "mpp/charge/stellar",
       "mpp/charge/xrpl",
       "mpp/charge/nearintents",
-      "mpp/session/hedera",
-      "mpp/session/solana",
       "mpp/session/xrpl",
       "mpp/charge/card",
       "mpp/charge/stripe",
@@ -64,13 +58,10 @@ describe("BINDINGS", () => {
       "x402/exact/eip155/permit2",
       "x402/exact/hedera",
       "x402/exact/hedera/transfer-executor",
-      "x402/exact/lnbtc",
-      "x402/exact/lnbtc/invoice-named",
       "x402/exact/near",
       "x402/exact/polkadot/lcp-assets-remark",
       "x402/exact/solana",
       "x402/exact/starknet",
-      "x402/exact/stellar",
       "x402/exact/sui",
       "x402/exact/tron/lcp-trc20-memo",
       "x402/exact/tvm",
@@ -90,22 +81,18 @@ describe("the record's members", () => {
   const start = page.indexOf("| Field | Meaning |");
   const table = page.slice(start, page.indexOf("\n\n", start));
   const fields = new Set([...table.matchAll(/^\| `([A-Za-z]+)` \|/gm)].map((m) => m[1]));
-  it("the field table lists nine members", () => {
-    expect([...fields].sort()).toEqual([
-      "buyerSigns",
-      "canonical",
-      "forwardIndexable",
-      "onChain",
-      "pattern",
-      "profile",
-      "proves",
-      "publicProof",
-      "zeroPartyRecoverable",
-    ]);
+  it("the field table lists five members", () => {
+    expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
   it("every pairing's record carries only those members", () => {
-    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 67 }))
-      for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
+    const withRecord = rowsOf(BINDINGS, "BINDINGS, the implemented pairings", {
+      exact: 57,
+      keep: ["the pairings with a pattern record", (b) => "pattern" in b],
+      leave: ["x402/exact/starknet, whose entry has no pattern record", (b) => !("pattern" in b)],
+    });
+    for (const b of withRecord)
+      if ("pattern" in b)
+        for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
   });
 });
 
@@ -113,11 +100,13 @@ describe("the record's members", () => {
 // pairing declares zeroPartyRecoverable exactly where it has the recover that does so.
 describe("recover and zeroPartyRecoverable", () => {
   it("every pairing has recover exactly where its pattern says H is recoverable from the chain alone", () => {
-    const differ = BINDINGS.filter((b) => ("recover" in b && typeof b.recover === "function") !== b.pattern.zeroPartyRecoverable);
+    const differ = BINDINGS.filter(
+      (b) => ("recover" in b && typeof b.recover === "function") !== ("pattern" in b && b.pattern.zeroPartyRecoverable),
+    );
     expect(differ.map((b) => b.id)).toEqual([]);
     for (const id of ["x402/exact/eip155/permit2", "x402/upto/eip155/permit2", "mpp/session/evm", "mpp/session/tempo"]) {
       const b = BINDINGS.find((x) => x.id === id)!;
-      expect(b.pattern.zeroPartyRecoverable, id).toBe(true);
+      expect("pattern" in b && b.pattern.zeroPartyRecoverable, id).toBe(true);
     }
   });
 });

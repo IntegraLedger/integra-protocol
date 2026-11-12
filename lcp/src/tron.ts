@@ -29,6 +29,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { TRON } from "./internal/data/tron.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, tron:2494104990 Shasta. */
@@ -652,18 +654,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: ID,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a Tron transaction whose memo is this ATR's hash in LCP string form, and whose one contract " +
-    "calls transfer on the token. The network verified the signature, which covers the memo through the transaction " +
-    "id. The call succeeded with the token's Transfer event, at the finality recorded. The memo is on chain in the " +
-    "transaction. This does not show that amount, payee, token or timing match the ATR's content.",
 });
 
 /**
@@ -672,9 +666,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactTronMemo = Object.freeze({
   id: ID,
+  data: TRON[ID],
   pattern,
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise,
@@ -685,7 +679,7 @@ export const exactTronMemo = Object.freeze({
   reference,
   status: tronStatus,
   recover: tronRecover,
-});
+}) satisfies Entry<typeof ID, TronPayment, TronRef, TronReader>;
 
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;

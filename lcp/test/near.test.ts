@@ -592,7 +592,7 @@ describe("x402-exact-near.json", () => {
     const r = exactNear.read(doc);
     if ("refused" in r) throw new Error(r.code);
     expect({ h: r.h, link: r.link, options: r.offer.options }).toEqual({ h: H, link: V.fixed.link, options: [O] });
-    expect(exactNear.pattern.publicProof).toBe(true);
+    expect(exactNear.data.coverage).toBe("full");
     expect(exactNear.pattern.profile).toBe("x402/exact/near/memo");
   });
 });

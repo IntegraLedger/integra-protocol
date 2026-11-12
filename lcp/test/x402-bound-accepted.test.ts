@@ -7,8 +7,8 @@
 // `extra` removed, null, "", 0, "abc", 70000, the zero address or changed (x402 v2's PaymentRequirements,
 // specs/x402-specification-v2.md at x402-foundation/x402 e95b06661e: `amount` a string of atomic units,
 // `maxTimeoutSeconds` a number of seconds, `payTo` and `asset` strings, `extra` an object; the widths are the fields
-// `build` writes them into: a TON wallet's `valid_until` and a Stellar entry's expiration ledger, `uint32`, and the
-// commerce-payments escrow's `uint48` expiries and `uint120` amount). Under an option its `read` does not offer, each
+// `build` writes them into: a TON wallet's `valid_until`, `uint32`, and the commerce-payments escrow's `uint48` expiries
+// and `uint120` amount). Under an option its `read` does not offer, each
 // pairing's `bound` refuses the payment with the code its `advertise` gives that option. Under every option its `read`
 // offers, a pairing whose `bound` binds the payment under its own option gives the same H again, and its `reference`
 // gives read keys again, or each refuses with a code that compares what the payer signed with the option (a carrier, a
@@ -44,7 +44,6 @@ const SIGNED_AGAINST_THE_OPTION: Readonly<Record<string, Readonly<Record<string,
     "svm/channel-id-mismatch": "the opening's channel is the one the option's extra.feePayer derives",
   },
   "x402/exact/solana": { "svm/carrier-mismatch": "the transaction's memo is the option's extra.memo" },
-  "x402/exact/stellar": { "stellar/carrier-mismatch": "the transfer's destination is the option's payTo, muxed with H" },
   "x402/exact/tvm": { "tvm/carrier-mismatch": "the forward payload is the option's extra.forwardPayload" },
   "x402/exact/xrpl": {
     "xrpl/carrier-not-lcp": "H is the option's extra.invoiceId, which the signed InvoiceID carries",
@@ -131,10 +130,10 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 30552;
-const NOT_OFFERED = 876229;
-const OFFERED_OWN_BINDS = 1265;
-const OFFERED_COUNTS = [1174, 91, 1100];
+const PRESENTED = 25506;
+const NOT_OFFERED = 655658;
+const OFFERED_OWN_BINDS = 1021;
+const OFFERED_COUNTS = [932, 89, 858];
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>
@@ -194,9 +193,9 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
     }
   }, 0);
 
-  it("each presentation is answered by each of the 29 x402 pairings", () => {
-    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 29 });
-    expect(answers.length).toBe(PRESENTATIONS.length * 29);
+  it("each presentation is answered by each of the 26 x402 pairings", () => {
+    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 26 });
+    expect(answers.length).toBe(PRESENTATIONS.length * 26);
   });
 
   it("under an option its read does not offer, each pairing's bound refuses the payment with the code its advertise gives", () => {
@@ -254,10 +253,16 @@ interface BoundAcceptedRow {
   accepted: PaymentRequirements;
   expect: string;
 }
+/** The vector files that hold no x402 pairing's vectors: the stellar and lightning entry points' decoders and reads. */
+const NO_PAIRING = ["x402-exact-lnbtc.json", "x402-exact-stellar.json"];
 const X402_FILES = rowsOf(
   FILES,
   "the x402 vector files",
-  { exact: 27, keep: ["the x402 vector files", (f) => f.startsWith("x402-")], leave: ["buyer.json", (f) => f === "buyer.json"] },
+  {
+    exact: 24,
+    keep: ["the x402 pairings' vector files", (f) => f.startsWith("x402-") && !NO_PAIRING.includes(f)],
+    leave: ["buyer.json, and the x402 files that hold no x402 pairing's vectors", (f) => f === "buyer.json" || NO_PAIRING.includes(f)],
+  },
 );
 const ROWS = rowsOf(
   X402_FILES.flatMap((f) => {
@@ -265,7 +270,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 326 },
+  { exact: 304 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {

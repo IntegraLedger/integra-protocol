@@ -9,12 +9,11 @@ import { describe, expect, it } from "vitest";
 import { pairingOf } from "../src/index.js";
 import { avmCarrier, exactAvm } from "../src/avm.js";
 import { isAccount, isContract } from "../src/internal/stellar.js";
-import { chargeSolana, chargeStellar, issuedDigest, pairingsOf, pairingsOfPlaced, sessionXrpl, type MppChallenge } from "../src/mpp.js";
+import { chargeSolana, issuedDigest, sessionXrpl, type MppChallenge } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
 import { decodeStellarTx, muxedFor, stellarLocate, stellarStatus, transferEventOf, transferEventTopics } from "../src/stellar.js";
 import { decodeSuiTx, exactSui, suiStatus } from "../src/sui.js";
 import { exactTvm, lcpComment, tvmCarrier, tvmStatus } from "../src/tvm.js";
-import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import {
   avmCarrierRows,
@@ -23,19 +22,13 @@ import {
   nearCarrierInputs,
   nearChoice,
   solanaChargeBlockhashRows,
-  stellarCarrierRows,
-  stellarChargeChoices,
-  stellarChargeStrkeyAnswers,
-  stellarChargeStrkeyRows,
   stellarDigestRows,
   stellarEnvelopeInputs,
   stellarEventInputs,
   stellarLocateRows,
-  stellarOccupied,
   stellarStatusRows,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
-  stellarUnplacedRows,
   SUI_STATUS_POSITION,
   suiDecodeInputs,
   suiRecoverDecodes,
@@ -82,57 +75,22 @@ describe("recover with each rail's optional peer", () => {
   }
 });
 
-describe("mpp/charge/stellar's build with @stellar/stellar-sdk", () => {
-  it("each choice and H it refuses before it reads the transaction", async () => {
-    for (const row of rowsOf(stellarChargeChoices(), "peer-free-inputs.ts", { exact: 15 })) {
-      expect([row.case, await chargeStellar.build(row.choice as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
-    }
-  });
-});
-
-describe("the Stellar pairings' reads of a muxed address with @stellar/stellar-sdk", () => {
-  it("unplaced, x402 and MPP", () => {
-    const unplaced = { "x402/exact/stellar": exactStellar.unplaced, "mpp/charge/stellar": chargeStellar.unplaced } as const;
-    for (const row of rowsOf(stellarUnplacedRows(), "peer-free-inputs.ts", { exact: 7 })) {
-      expect([row.case, unplaced[row.pairing](row.option as never)]).toEqual([row.case, row.expect]);
-    }
-  });
-
+describe("the reads of a muxed address with @stellar/stellar-sdk", () => {
   it("issuedDigest of the vectors' challenges", async () => {
     for (const row of rowsOf(stellarDigestRows(), "peer-free-inputs.ts", { exact: 3 })) {
       expect([row.case, await issuedDigest(row.challenge as MppChallenge)]).toEqual([row.case, row.expect]);
     }
   });
-
-  it("mpp/charge/stellar's advertise of a challenge whose recipient is a muxed address", () => {
-    const { challenge, h, link, expect: code } = stellarOccupied();
-    const c = challenge as MppChallenge;
-    expect(chargeStellar.advertise([c], h, link, c)).toEqual(refused(code));
-  });
 });
 
 // The rows are held to the SDK's StrKey too: an account or a contract is one exactly when the SDK takes it as one.
 describe("the Stellar strkeys with @stellar/stellar-sdk", () => {
-  it("isAccount, isContract, muxedFor, and x402's read, advertise and build of an option holding each", async () => {
-    const f = { isAccount, isContract, muxedFor, read: exactStellar.read, advertise: exactStellar.advertise, build: exactStellar.build };
+  it("isAccount, isContract and muxedFor of each", async () => {
+    const f = { isAccount, isContract, muxedFor };
     for (const row of rowsOf(stellarStrkeyRows(), "peer-free-inputs.ts", { exact: 20 })) {
       const { s, member: _member, ...expected } = row;
       expect([row.case, StrKey.isValidEd25519PublicKey(s as string), StrKey.isValidContract(s as string)]).toEqual([row.case, row.isAccount, row.isContract]);
       expect(await stellarStrkeyAnswers(row, f as never)).toEqual(expected);
-    }
-  });
-});
-
-// The rows are held to the SDK's StrKey too: a recipient or currency is offered exactly when the SDK takes it as an
-// account or a muxed account, or as a contract.
-describe("mpp/charge/stellar's strkeys with @stellar/stellar-sdk", () => {
-  it("pairingsOf, the filter, advertise, build and bound of a challenge holding each recipient or currency", async () => {
-    const f = { pairingsOf, pairingsOfPlaced, advertise: chargeStellar.advertise, build: chargeStellar.build, bound: chargeStellar.bound };
-    for (const row of rowsOf(stellarChargeStrkeyRows(), "peer-free-inputs.ts", { exact: 14 })) {
-      const { s, member, ...expected } = row;
-      const valid = member === "recipient" ? StrKey.isValidEd25519PublicKey(s) || StrKey.isValidMed25519PublicKey(s) : StrKey.isValidContract(s);
-      expect([row.case, valid]).toEqual([row.case, row.filter.length > 0]);
-      expect(await stellarChargeStrkeyAnswers(row, f as never, null)).toEqual(expected);
     }
   });
 });
@@ -290,13 +248,6 @@ describe("every function of a pairing with an optional peer, up to the step that
   it("mpp/charge/solana: build of a choice whose blockhash is or is not a key", async () => {
     for (const row of rowsOf(solanaChargeBlockhashRows(), "peer-free-inputs.ts", { exact: 4 })) {
       expect([row.case, await row.call(chargeSolana as never)]).toEqual([row.case, row.expect]);
-    }
-  });
-
-  it("the Stellar pairings' bound and reference: the payTo or recipient carrier, before the transaction", async () => {
-    const f = { x402Bound: exactStellar.bound, x402Reference: exactStellar.reference, mppBound: chargeStellar.bound, mppReference: chargeStellar.reference };
-    for (const row of rowsOf(stellarCarrierRows(), "peer-free-inputs.ts", { exact: 13 })) {
-      expect([row.case, await row.call(f as never)]).toEqual([row.case, row.expect]);
     }
   });
 });

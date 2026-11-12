@@ -20,6 +20,9 @@ import { AGREEMENT_URL_SNAKE, agreementIn, agreementUrlFault } from "./internal/
 import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
+import { MAX_LINK_LENGTH } from "./internal/bounds.js";
+import { CARD } from "./internal/data/card.js";
+import type { Entry, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const METADATA_KEY = "legal_context";
@@ -59,6 +62,7 @@ export interface Unsigned {
 
 export interface AcpBinding<Id extends string> {
   id: Id;
+  data: PairingData;
   pattern: LcpPattern;
   claims: boolean;
   unplaced(option: HandlerOption): HandlerOption | Refusal;
@@ -73,7 +77,6 @@ export interface AcpBinding<Id extends string> {
 
 const MAX_SESSION_BYTES = 1_048_576;
 const HASH_LENGTH = 66;
-const MAX_LINK = 2048;
 const MAX_MERCHANT_ID = 256;
 const MAX_EXPIRES_AT = 64;
 const CURRENCY = /^[a-z]{3}$/;
@@ -104,7 +107,7 @@ function advertise(doc: Session, h: AtrHash, link: string, offer: HandlerOption,
   const id = normalHash(h);
   if (id === null) return refusal("acp/legal-context-malformed");
   if (!isHttpsLink(link)) return refusal("acp/link-not-https");
-  if (link.length > MAX_LINK) return refusal("acp/too-large");
+  if (link.length > MAX_LINK_LENGTH) return refusal("acp/too-large");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("acp/link-not-https");
   if (agreementFaulted !== undefined) return refusal("acp/legal-context-malformed");
@@ -146,7 +149,7 @@ function read(doc: Session): { h: AtrHash; link: string; agreement?: string; off
   if (decoded === null) {
     return isHashWithNonHttpsLink(lc) ? refusal("acp/link-not-https") : refusal("acp/legal-context-malformed");
   }
-  if (decoded.url.length > MAX_LINK) return refusal("acp/too-large");
+  if (decoded.url.length > MAX_LINK_LENGTH) return refusal("acp/too-large");
   if (!hashEquals(decoded.h, h)) return refusal("acp/legal-context-conflict");
   const agreement = agreementIn(lc);
   if (typeof agreement === "object" && agreement.fault === "link-not-https") return refusal("acp/link-not-https");
@@ -230,43 +233,21 @@ function unplaced(option: HandlerOption): HandlerOption | Refusal {
 }
 
 const PROFILE = "acp/checkout/session-id";
-const AGREEMENT_SENTENCE =
-  "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-  "recorded in <transaction>. ";
 
 const delegatedPattern: LcpPattern = Object.freeze({
   pattern: "native-field",
-  canonical: true,
   profile: PROFILE,
-  buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    AGREEMENT_SENTENCE +
-    "The checkout session this payment completed has this ATR's hash as its id, and its responses carried the ATR's " +
-    "link in metadata. The payment handler required delegate_payment, so ACP has the buyer's agent obtain a vault " +
-    "token whose allowance names this session as checkout_session_id, in a request the agent signs (a MUST in one " +
-    "section of ACP and RECOMMENDED in another) and the PSP SHOULD verify. No signature was verified here, and ACP " +
-    "does not require the PSP to hold the token to that session. The seller tied the payment to the hash in its " +
-    "report. This does not show that amount, payee or timing match the ATR's content.",
 });
 
 const undelegatedPattern: LcpPattern = Object.freeze({
   pattern: "http-advisory",
-  canonical: true,
   profile: PROFILE,
-  buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    AGREEMENT_SENTENCE +
-    "The checkout session this payment completed has this ATR's hash as its id, and its responses carried the ATR's " +
-    "link in metadata. The payment handler did not require delegate_payment, so nothing the buyer signed for the " +
-    "payment names the hash. The seller tied the payment to the hash in its report.",
 });
 
 /**
@@ -284,6 +265,7 @@ function allowanceShape(presented: unknown): true | Refusal {
  */
 export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
   id: "acp/checkout/delegated",
+  data: CARD["acp/checkout/delegated"],
   pattern: delegatedPattern,
   claims: false,
   unplaced,
@@ -293,7 +275,7 @@ export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
   build: buildDelegated,
   bound: boundDelegated,
   broadcaster: broadcastsWithin(allowanceShape, "payee"),
-});
+}) satisfies Entry<"acp/checkout/delegated", Presented, never, never>;
 
 /**
  * `acp/checkout/undelegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment handler
@@ -301,6 +283,7 @@ export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
  */
 export const undelegated: AcpBinding<"acp/checkout/undelegated"> = Object.freeze({
   id: "acp/checkout/undelegated",
+  data: CARD["acp/checkout/undelegated"],
   pattern: undelegatedPattern,
   claims: false,
   unplaced,
@@ -310,7 +293,7 @@ export const undelegated: AcpBinding<"acp/checkout/undelegated"> = Object.freeze
   build: async (): Promise<Refusal> => refusal("acp/nothing-to-sign"),
   bound: async (): Promise<Refusal> => refusal("acp/not-buyer-signed"),
   broadcaster: broadcasts("payee"),
-});
+}) satisfies Entry<"acp/checkout/undelegated", Presented, never, never>;
 
 /** Exactly ACP's six allowance members, with `reason` "one_time", strings, and a non-negative safe integer amount. */
 function isAllowance(a: unknown): a is Allowance {

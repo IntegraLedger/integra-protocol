@@ -223,15 +223,18 @@ describe("ucp.json", () => {
   });
 
   it("pairing members", () => {
-    const common = { canonical: true, profile: "ucp/checkout/legal-context", onChain: false, zeroPartyRecoverable: false,
-      forwardIndexable: false, publicProof: false };
+    const common = { profile: "ucp/checkout/legal-context", onChain: false, zeroPartyRecoverable: false, forwardIndexable: false };
     for (const p of [ap2Mandate, bookingAp2Mandate]) {
       expect(p.claims).toBe(true);
-      expect(p.pattern).toMatchObject({ ...common, pattern: "opaque-challenge", buyerSigns: true });
+      expect(p.pattern).toMatchObject({ ...common, pattern: "opaque-challenge" });
+      expect(p.data.carrier.signed).not.toBeNull();
+      expect(p.data.coverage).toBe("none");
     }
     for (const p of [unsigned, bookingUnsigned]) {
       expect(p.claims).toBe(false);
-      expect(p.pattern).toMatchObject({ ...common, pattern: "http-advisory", buyerSigns: false });
+      expect(p.pattern).toMatchObject({ ...common, pattern: "http-advisory" });
+      expect(p.data.carrier.signed).toBeNull();
+      expect(p.data.coverage).toBe("none");
     }
     expect(Object.values(PAIRINGS).map((p) => p.id)).toEqual([
       "ucp/checkout/ap2-mandate",
@@ -240,7 +243,7 @@ describe("ucp.json", () => {
       "ucp/booking/unsigned",
     ]);
     for (const p of Object.values(PAIRINGS)) {
-      expect(p.pattern).toEqual(V.pattern[p.id]);
+      expect({ ...p.pattern, proves: p.data.proves }).toEqual(V.pattern[p.id]);
       const o = { checkout: "chk_1" };
       expect((p.unplaced as (x: unknown) => unknown)(o)).toBe(o);
       expect("status" in p).toBe(false);

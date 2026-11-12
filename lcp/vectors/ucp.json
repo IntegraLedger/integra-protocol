@@ -1606,47 +1606,35 @@
  "pattern": {
   "case": "the record statements",
   "ucp/checkout/ap2-mandate": {
-   "canonical": true,
    "profile": "ucp/checkout/legal-context",
    "onChain": false,
    "zeroPartyRecoverable": false,
    "forwardIndexable": false,
-   "publicProof": false,
    "pattern": "opaque-challenge",
-   "buyerSigns": true,
    "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The checkout carried this ATR's hash and link as its legal_context link. The buyer's checkout mandate under UCP's AP2 Mandates extension carries checkout_hash, the SHA-256 of the checkout presented beside it, and the hash was read from that checkout. The seller did not verify the mandate's signature, or, where an open mandate precedes it in a chain, that mandate's signature, its delegation (cnf) or the chain's link; the PSP verifies the payment mandate over the same checkout hash. Settlement is the seller's report. This does not show that amount, payee or timing match the ATR's content."
   },
   "ucp/booking/ap2-mandate": {
-   "canonical": true,
    "profile": "ucp/checkout/legal-context",
    "onChain": false,
    "zeroPartyRecoverable": false,
    "forwardIndexable": false,
-   "publicProof": false,
    "pattern": "opaque-challenge",
-   "buyerSigns": true,
    "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The booking carried this ATR's hash and link as its legal_context link. The buyer's checkout mandate under UCP's AP2 Mandates extension carries checkout_hash, the SHA-256 of the booking presented beside it, and the hash was read from that booking. The seller did not verify the mandate's signature, or, where an open mandate precedes it in a chain, that mandate's signature, its delegation (cnf) or the chain's link; the PSP verifies the payment mandate over the same booking hash. Settlement is the seller's report. This does not show that amount, payee or timing match the ATR's content."
   },
   "ucp/checkout/unsigned": {
-   "canonical": true,
    "profile": "ucp/checkout/legal-context",
    "onChain": false,
    "zeroPartyRecoverable": false,
    "forwardIndexable": false,
-   "publicProof": false,
    "pattern": "http-advisory",
-   "buyerSigns": false,
    "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The checkout response carried this ATR's hash and link as its legal_context link. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval did not sign the hash. The seller tied the payment to the hash in its report."
   },
   "ucp/booking/unsigned": {
-   "canonical": true,
    "profile": "ucp/checkout/legal-context",
    "onChain": false,
    "zeroPartyRecoverable": false,
    "forwardIndexable": false,
-   "publicProof": false,
    "pattern": "http-advisory",
-   "buyerSigns": false,
    "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The booking response carried this ATR's hash and link as its legal_context link. UCP without the AP2 Mandates extension defines no buyer signature, so the buyer's approval did not sign the hash. The seller tied the payment to the hash in its report."
   }
  },

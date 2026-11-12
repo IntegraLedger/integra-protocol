@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import { XRPL_NETWORKS } from "../src/mpp-rail-checks.js";
-import { sessionHedera, sessionSolana, sessionXrpl } from "../src/mpp.js";
+import { sessionXrpl } from "../src/mpp.js";
 import type { LcpPattern } from "../src/x402.js";
 
 // Each session profile's published text, whole: its heading names its id, then its rules, each as published.
@@ -24,7 +24,7 @@ const PROFILES: readonly [profile: string, file: string, pairings: readonly stri
   [
     "mpp/session/hedera-solana-xrpl",
     "mpp-session-hedera-solana-xrpl.md",
-    ["mpp/session/hedera", "mpp/session/solana", "mpp/session/xrpl"],
+    ["mpp/session/xrpl"],
     [
       "**LCP profile `mpp/session/hedera-solana-xrpl`: the ATR hash at a session's opening.** Clauses 1–3 and 5 of `mpp/charge` apply to the opening challenge. One ATR covers the whole channel.",
       "",
@@ -39,7 +39,7 @@ const PROFILES: readonly [profile: string, file: string, pairings: readonly stri
 describe("the session profiles", () => {
   for (const [profile, file, pairings, text] of PROFILES) {
     it(`${profile}: its pairings name it, and profiles/${file} is its published text, whole`, () => {
-      const named = BINDINGS.filter((b) => (b.pattern as LcpPattern).profile === profile).map((b) => b.id);
+      const named = BINDINGS.filter((b) => "pattern" in b && (b.pattern as LcpPattern).profile === profile).map((b) => b.id);
       expect(named).toEqual(pairings);
       const url = new URL(`../profiles/${file}`, import.meta.url);
       expect(existsSync(url)).toBe(true);
@@ -56,60 +56,28 @@ describe("the session profiles", () => {
   });
 });
 
-// The Hedera, Solana and XRPL session records, whole: each field of the pairing's published record, and its `proves`
+// The XRPL session record, whole: each field of the pairing's published record, and its `proves`
 // sentence as published.
 const RECORDS = [
-  [
-    sessionHedera,
-    {
-      pattern: "native-field",
-      canonical: false,
-      profile: "mpp/session/hedera-solana-xrpl",
-      buyerSigns: true,
-      onChain: true,
-      zeroPartyRecoverable: true,
-      forwardIndexable: false,
-      publicProof: true,
-      proves:
-        "The payer signed a Hedera EVM transaction that opened an MPP session channel on the escrow contract named in the challenge, with this ATR's hash as the channel's salt, and it reached consensus. The escrow's ChannelOpened event carries the salt, and the channel id is keccak256 over an encoding that includes it. The hash is also in the MPP challenge the opening answered. Each voucher signs that channel id, which commits to this ATR's hash. This does not show that amount, deposit, recipient, token or timing match the ATR's content.",
-    },
-  ],
-  [
-    sessionSolana,
-    {
-      pattern: "truncated-field",
-      canonical: false,
-      profile: "mpp/session/hedera-solana-xrpl",
-      buyerSigns: false,
-      onChain: true,
-      zeroPartyRecoverable: false,
-      forwardIndexable: false,
-      publicProof: true,
-      proves:
-        "The ATR was assembled and delivered before approval, and its hash is in the MPP challenge the opening answered, protected by the server's binding of the challenge. The payer signed a Solana transaction that opened a session channel on the channel program named in the challenge, with the first 8 bytes of this ATR's hash as the channel's salt, and it executed without error. The salt binds only this hash's first 8 bytes: whoever assembles the ATR can construct a second ATR whose hash shares them. This does not show that amount, deposit, recipient, mint or timing match the ATR's content.",
-    },
-  ],
   [
     sessionXrpl,
     {
       pattern: "native-field",
-      canonical: false,
       profile: "mpp/session/hedera-solana-xrpl",
-      buyerSigns: true,
       onChain: true,
       zeroPartyRecoverable: true,
       forwardIndexable: false,
-      publicProof: true,
       proves:
         "The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. Vouchers in this channel sign the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.",
     },
   ],
 ] as const;
 
-describe("the Hedera, Solana and XRPL session records", () => {
+describe("the XRPL session record", () => {
   for (const [binding, record] of RECORDS) {
     it(`${binding.id}: every field as published, and claims`, () => {
-      expect(binding.pattern).toEqual(record);
+      expect({ ...binding.pattern, proves: binding.data.proves }).toEqual(record);
+      expect(binding.data.coverage).toBe("full");
       expect(binding.claims).toBe(true);
     });
   }

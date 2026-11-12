@@ -27,6 +27,9 @@ import {
   type SdJwt,
   type SdJwtRefusals,
 } from "./sd-jwt.js";
+import { MAX_LINK_LENGTH } from "./internal/bounds.js";
+import { CARD } from "./internal/data/card.js";
+import type { Entry, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export { disclosureDigest } from "./sd-jwt.js";
@@ -83,6 +86,7 @@ export interface ViUnsigned {
 
 export interface CardPairing<PairingId extends CardPairingId, U> {
   id: PairingId;
+  data: PairingData;
   pattern: LcpPattern;
   claims: boolean;
   unplaced(option: CardOption): CardOption | Refusal;
@@ -95,16 +99,27 @@ export interface CardPairing<PairingId extends CardPairingId, U> {
   broadcaster(presented: unknown): Promise<Broadcaster | Refusal>;
 }
 
-const MAX_CHECKOUT_ID = 128;
-const MAX_LINK = 2048;
-const MAX_TAP_FIELD = 8192;
-const MAX_TAP_MEMBERS = 16;
-const MAX_TAP_COMPONENTS = 32;
+// lcp's own resource bounds on the card pairings: the largest input each decoder accepts. No specification of these
+// forms fixes a size; each bounds the work a decoder does, and is the same for every caller, so a server sizes its own
+// request limits from them.
+
+/** The longest checkout id a card option names, in characters. */
+export const MAX_CHECKOUT_ID = 128;
+/** The longest TAP `Signature-Input` or `Signature` field lcp parses, in characters. */
+export const MAX_TAP_FIELD = 8192;
+/** The most members lcp parses in one TAP signature field, an RFC 9651 Dictionary. */
+export const MAX_TAP_MEMBERS = 16;
+/** The most items lcp parses in one inner list of a TAP signature field: a signature's covered components. */
+export const MAX_TAP_COMPONENTS = 32;
 const MAX_TAP_HASH_LINES = 4;
-const MAX_TAP_HASH_LINE = 256;
-const MAX_VI_LAYER = 65_536;
-const MAX_CHECKOUT_JWT = 16_384;
-const MAX_VI_DISCLOSURES = 32;
+/** The longest `lcp-hash` field line lcp reads from a TAP payment request, in characters. */
+export const MAX_TAP_HASH_LINE = 256;
+/** The longest Verifiable Intent layer, an SD-JWT with its disclosures, lcp reads, in characters. */
+export const MAX_VI_LAYER = 65_536;
+/** The longest `checkout_jwt` lcp reads, in characters. */
+export const MAX_CHECKOUT_JWT = 16_384;
+/** The most disclosures lcp reads in one Verifiable Intent layer. */
+export const MAX_VI_DISCLOSURES = 32;
 const SCHEMES: readonly CardScheme[] = ["visa-tap", "mastercard-vi", "seller-reference"];
 const PAYER_TAG = "agent-payer-auth";
 const CHECKOUT_VCT = "mandate.checkout.1";
@@ -138,7 +153,7 @@ function advertise(
 ): CardValues | Refusal {
   if (!isOption(offer)) return refusal("card/option-malformed");
   if (!isHttpsLink(link)) return refusal("card/link-not-https");
-  if (link.length > MAX_LINK) return refusal("card/legal-context-malformed");
+  if (link.length > MAX_LINK_LENGTH) return refusal("card/legal-context-malformed");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("card/link-not-https");
   if (agreementFaulted !== undefined) return refusal("card/legal-context-malformed");
@@ -201,7 +216,7 @@ function checkoutPayload(doc: unknown): Record<string, unknown> | Refusal {
 function legalContextOf(o: Record<string, unknown>): { h: AtrHash; link: string } | Refusal {
   const d = fromLegalContext(o);
   if (d === null) return refusal("card/legal-context-malformed");
-  if (d.url.length > MAX_LINK) return refusal("card/legal-context-malformed");
+  if (d.url.length > MAX_LINK_LENGTH) return refusal("card/legal-context-malformed");
   return { h: d.h, link: d.url };
 }
 
@@ -426,78 +441,35 @@ async function verifyEs256(jws: string, jwk: Record<string, unknown>): Promise<t
 
 // ── The pairings ──
 
-const AFTER_AGREEMENT =
-  "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-  "recorded in <transaction>. ";
-
 const visaTapPattern: LcpPattern = deepFreeze({
   pattern: "protocol-extension",
-  canonical: false,
   profile: "card/visa-tap",
-  buyerSigns: true,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    AFTER_AGREEMENT +
-    "The buyer's agent sent this ATR's hash in the lcp-hash field and listed that field among the covered components " +
-    "of every TAP agent-payer-auth message signature in the request. The seller checked that listing and did not " +
-    "verify a signature here, which belongs to its TAP recognition step. The card authorization itself does not carry " +
-    "the hash. " +
-    "This does not show that amount, payee or timing match the ATR's content.",
 });
 
 const viImmediatePattern: LcpPattern = deepFreeze({
   pattern: "id-reuse",
-  canonical: true,
   profile: "card/mastercard-vi",
-  buyerSigns: true,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    AFTER_AGREEMENT +
-    "The user's Verifiable Intent L2 mandate lists a checkout mandate whose checkout_hash is the SHA-256 of a " +
-    "checkout_jwt carrying this ATR's hash, and the payment mandate's transaction_id, where disclosed, equals it. The " +
-    "seller checked those values and did not verify the user's signature, which Verifiable Intent has the payment " +
-    "network validate before authorization. The card authorization itself does not carry the hash. This does not " +
-    "show that amount, payee or timing match the ATR's content.",
 });
 
 const viAutonomousPattern: LcpPattern = deepFreeze({
   pattern: "id-reuse",
-  canonical: true,
   profile: "card/mastercard-vi",
-  buyerSigns: true,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    AFTER_AGREEMENT +
-    "The buyer's agent signed a Verifiable Intent L3b checkout mandate whose checkout_hash is the SHA-256 of a " +
-    "checkout_jwt carrying this ATR's hash, with the key the user's L2 mandate delegates to it. The seller " +
-    "verified both ES256 signatures and the sd_hash links, but not the L1 issuer's signature. The user's own " +
-    "signature does not cover the hash, and the seller did not see the L3a payment mandate the network received, " +
-    "whose transaction_id Verifiable Intent requires to equal this checkout_hash. This does not show that amount, " +
-    "payee or timing match the ATR's content.",
 });
 
 const sellerReferencePattern: LcpPattern = deepFreeze({
   pattern: "http-advisory",
-  canonical: true,
-  buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    AFTER_AGREEMENT +
-    "This ATR's hash and link are for the seller to show the buyer and to put in its processor reference. Nothing the " +
-    "buyer signed carries the hash, nothing the buyer signed was checked, and settlement is the seller's report. This " +
-    "record does not show that the buyer's approval carried the hash.",
 });
 
 /**
@@ -507,6 +479,7 @@ const sellerReferencePattern: LcpPattern = deepFreeze({
  */
 export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze({
   id: "card/visa-tap",
+  data: CARD["card/visa-tap"],
   pattern: visaTapPattern,
   claims: true,
   unplaced,
@@ -516,7 +489,7 @@ export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze(
   build: tapBuild,
   bound: tapBound,
   broadcaster: broadcastsWithin(tapShape, "payee"),
-});
+}) satisfies Entry<"card/visa-tap", TapPresented, never, never>;
 
 /**
  * `card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
@@ -525,6 +498,7 @@ export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze(
  */
 export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned> = Object.freeze({
   id: "card/mastercard-vi/immediate",
+  data: CARD["card/mastercard-vi/immediate"],
   pattern: viImmediatePattern,
   claims: true,
   unplaced,
@@ -534,7 +508,7 @@ export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned
   build: viBuild,
   bound: viImmediateBound,
   broadcaster: broadcastsWithin(viShape, "payee"),
-});
+}) satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never>;
 
 /**
  * `card/mastercard-vi/autonomous`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
@@ -543,6 +517,7 @@ export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned
  */
 export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsigned> = Object.freeze({
   id: "card/mastercard-vi/autonomous",
+  data: CARD["card/mastercard-vi/autonomous"],
   pattern: viAutonomousPattern,
   claims: true,
   unplaced,
@@ -552,7 +527,7 @@ export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsign
   build: viBuild,
   bound: viAutonomousBound,
   broadcaster: broadcastsWithin(viShape, "payee"),
-});
+}) satisfies Entry<"card/mastercard-vi/autonomous", ViAutonomous, never, never>;
 
 /**
  * `card/seller-reference`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment
@@ -560,6 +535,7 @@ export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsign
  */
 export const sellerReference: CardPairing<"card/seller-reference", never> = Object.freeze({
   id: "card/seller-reference",
+  data: CARD["card/seller-reference"],
   pattern: sellerReferencePattern,
   claims: false,
   unplaced,
@@ -569,7 +545,7 @@ export const sellerReference: CardPairing<"card/seller-reference", never> = Obje
   build: noSignedPlace,
   bound: noSignedPlace,
   broadcaster: broadcasts("payee"),
-});
+}) satisfies Entry<"card/seller-reference", never, never, never>;
 
 // ── RFC 9651: the subset TAP's two signature fields need ──
 

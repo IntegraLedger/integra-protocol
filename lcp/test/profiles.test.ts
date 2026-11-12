@@ -8,9 +8,9 @@ import { rowsOf } from "./rows.js";
 
 const named = [
   ...new Set(
-    rowsOf(BINDINGS.map((b) => (b.pattern as LcpPattern).profile), "BINDINGS, each pairing's profile", {
+    rowsOf(BINDINGS.map((b) => ("pattern" in b ? (b.pattern as LcpPattern).profile : undefined)), "BINDINGS, each pairing's profile", {
       keep: ["the profiles the pairings name", (p) => typeof p === "string"],
-      leave: ["the pairings that name no profile", (p) => p === undefined],
+      leave: ["the pairings that name no profile, or have no pattern record", (p) => p === undefined],
     }) as string[],
   ),
 ].sort();

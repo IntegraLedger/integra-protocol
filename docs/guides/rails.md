@@ -36,23 +36,20 @@ A rail field holds H in one of these forms:
 
 | Form | Size | Used where |
 |---|---|---|
-| H's 32 bytes | 32 bytes | EVM nonces and salts, the Casper nonce, Sui's unused `Pure` input, the Stacks memo, the MPP XRPL `InvoiceID`, the Lightning invoice's `m` field (`x402/exact/lnbtc`) or description hash `h` (MPP). |
+| H's 32 bytes | 32 bytes | EVM nonces and salts, the Casper nonce, Sui's unused `Pure` input, the Stacks memo, the MPP XRPL `InvoiceID`, the Lightning invoice's description hash `h`. |
 | H's LCP string, `lcp:sha256:0x…` | 77 bytes | Memos and notes: Solana, Algorand, Hedera, NEAR, Tron, TON, Concordium, the Polkadot remark, Cardano's CIP-20 message, the XRPL session memo. |
-| H's first 8 bytes | 8 bytes | The Stellar muxed id, and the MPP Solana session salt. |
 | H's low 250 bits | one felt | The Starknet nonce. |
 | SHA-256 of H's LCP string | 32 bytes | The x402 XRPL `InvoiceID`. |
-| A value derived from the challenge id | varies | The MPP `authorization` and `permit2` charges on EVM, the MPP charges on Tempo and Hedera, and `usdc` on EVM and Gateway, whose nonce, salt or memo derives from the challenge id that carries H. |
+| A value derived from the challenge id | varies | The MPP `authorization` and `permit2` charges on EVM, and `usdc` on EVM and Gateway, whose nonce, salt or memo derives from the challenge id that carries H. |
 
 The 77 bytes of H's LCP string are the string itself. Concordium writes it as a CBOR text string of 79 bytes, 83
 inside a PLT transfer's CBOR tag 24, and Cardano's CIP-20 message holds it as two strings of 13 and 64 bytes, since a
 CIP-20 string holds at most 64 bytes.
 
-A field that holds only part of H, or a value derived from it, lets anyone holding the ATR confirm H, but does not let
-anyone recover H from the chain alone. Each pairing's `pattern` says which it is: `zeroPartyRecoverable` is true only
-where the chain keeps H itself. Where only 7 or 8 bytes of the payment depend on H, as with the Stellar muxed id, the
-MPP Solana session's salt, and the nonce of the attribution memo on Tempo and Hedera, the payment binds H only through
-those bytes: whoever assembles the ATR can construct a second ATR that shares them, and the pairing's `pattern.proves`
-says so.
+A field that holds a value derived from H, such as a digest over a preimage that holds it, lets anyone holding the
+ATR confirm H, but does not let anyone recover H from the chain alone. Each pairing's `pattern` says which it is:
+`zeroPartyRecoverable` is true only where the chain keeps H itself. No pairing takes part of H as proof: a field too
+small for H carries none of it.
 
 This example prints the forms for one H, using each rail's own helper:
 
@@ -60,14 +57,12 @@ This example prints the forms for one H, using each rail's own helper:
 import { hash, toLcpString } from "@integraledger/lcp";
 import { challengeId } from "@integraledger/lcp/mpp";
 import { snNonce } from "@integraledger/lcp/starknet";
-import { muxedId } from "@integraledger/lcp/stellar";
 import { mppInvoiceId, x402InvoiceId } from "@integraledger/lcp/xrpl";
 
 const h = await hash(new TextEncoder().encode("abc"));
 
 console.log("H:                     ", h);
 console.log("LCP string (memos):    ", toLcpString(h));
-console.log("Stellar muxed id:      ", muxedId(h));
 console.log("Starknet nonce:        ", snNonce(h));
 console.log("x402 XRPL InvoiceID:   ", await x402InvoiceId(h));
 console.log("MPP XRPL InvoiceID:    ", mppInvoiceId(h));
@@ -77,7 +72,6 @@ console.log("MPP challenge id:      ", challengeId(h, 0));
 ```text
 H:                      0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 LCP string (memos):     lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
-Stellar muxed id:       13436514500253700074n
 Starknet nonce:         0x27816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
 x402 XRPL InvoiceID:    FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73
 MPP XRPL InvoiceID:     BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD
@@ -94,17 +88,12 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | | | `x402/batch-settlement/eip155`, `mpp/session/evm` | The channel's salt. See [Channels, sessions and subscriptions](./sessions.md). |
 | | | `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | A nonce or salt derived from the MPP challenge id. |
 | | | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | The challenge only; the payment transaction carries nothing. |
-| Tempo | `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | The attribution memo MPP's SDKs write on `transferWithMemo`, whose last 7 bytes derive from the challenge id. |
-| | | `mpp/session/tempo`, `mpp/subscription/tempo` | The channel's salt, or the key authorization's witness. |
+| Tempo | `tempo` | `mpp/session/tempo`, `mpp/subscription/tempo` | The channel's salt, or the key authorization's witness. |
 | Solana | `svm`, `x402-exact-solana`, `x402-upto-solana` | `x402/exact/solana`, `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/charge/solana`, `mpp/charge/usdc/solana` | The one Memo instruction holding H's LCP string; on the MPP charges, Memo instructions whose data is not an LCP string are not read. An `x402/batch-settlement/solana` opening also carries x402's receiver-authorizer binding memo. |
-| | | `mpp/session/solana` | The session channel's salt: H's first 8 bytes. It binds those 8 bytes only: whoever assembles the ATR can construct a second ATR whose hash shares them. |
-| Stellar | `stellar`, `x402-exact-stellar` | `x402/exact/stellar`, `mpp/charge/stellar` | The seller's muxed address, whose 8-byte id is H's first 8 bytes, as the Soroban `transfer`'s `to`. x402's reference Stellar facilitator (`@x402/stellar` 2.28.0) compares the transfer event's recipient with `payTo`, and under CAP-67 that event names the base account, so it refuses the muxed `payTo` of `x402/exact/stellar`: that pairing needs a facilitator that accepts one. |
 | XRP Ledger | `xrpl`, `x402-exact-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. The payer signs with a single key: a blob that carries `Signers` is refused `xrpl/multisigned`. The blob carries `NetworkID` as rippled requires of the option's network, none where its id is at most 1024 and that id above 1024, else `xrpl/network-mismatch`, which `build`'s `complete` also gives. |
 | | | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H. The payer signs with a single key, as for `x402/exact/xrpl`. |
 | | | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo holding an LCP string: H's. The payer signs the opening with a single key. |
 | Hedera | `hedera` | `x402/exact/hedera` | The signed transaction body's memo: H's LCP string. |
-| | | `mpp/charge/hedera` | MPP's attribution memo, as the signed body memo. |
-| | | `mpp/session/hedera` | The escrow channel's salt. |
 | | | `x402/exact/hedera/transfer-executor` | The challenge only. |
 | Algorand | `avm` | `x402/exact/algorand` | The asset transfer's `note`: H's LCP string. The payment entry is read as the x402 facilitator decodes it and as algod decodes the bytes the facilitator submits: an entry either reader refuses, or that the two read as different signed transactions, is `avm/txn-malformed`, and the transaction id is the one algod computes, from the transaction's canonical encoding. The facilitator decodes an entry's base64 with Node's `Buffer.from(entry, "base64")`, which takes other spellings of the same bytes; `avmCarrier` reads the canonical form only (RFC 4648 §3.5). |
 | Aptos | `aptos` | `x402/exact/aptos` | The challenge only. No field of a standard Aptos transfer carries H; the seller ties the payment to H when it claims it for the request. `build`'s `complete` reads the signed transaction as `reference` reads it and gives `reference`'s code for each fault: a `transaction` that is not a string is `x402/payload-malformed`; text that is not base64 of a transaction prefix that reads to the end of its fields, or that names a module, function or struct with a name that is not a Move identifier, is `aptos/tx-malformed`; a transaction over the size bound, 64 KiB decoded, is `aptos/tx-too-large`; a payload that is not an entry function call is `aptos/not-entry-function`; a call that is not the framework `primary_fungible_store::transfer` or `fungible_asset::transfer` with one struct type argument and three arguments is `aptos/not-an-x402-transfer`; and a transaction for a chain other than the option's network is `aptos/chain-mismatch`. |
@@ -119,9 +108,7 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | Tron | `tron` | `x402/exact/tron/lcp-trc20-memo` | The TRC-20 transfer's memo, `raw_data.data`: H's LCP string. |
 | TON | `tvm` | `x402/exact/tvm` | The Jetton transfer's forward payload: a TEP-74 text comment holding H's LCP string. The pairing serves `tvm:-239` (mainnet) and `tvm:-3` (testnet). The settlement BoC is read as TON deserializes a bag of cells, and each message in it as TON's action phase sends it at the configuration lcp holds for the option's network, which for both is mainnet's: bytes or a settlement message TON refuses are `tvm/boc-malformed`, an outgoing message TON would not send, or a W5 send mode TON refuses or skips, is `tvm/not-jetton-transfer`, and the wallet and Jetton wallet `reference` names are the addresses TON sends to. The W5 request is read as W5's `internal_signed` path reads it: its signature is the body's last 512 bits, and nothing after `has_other_actions` 0 is read. `build` refuses a state init TON deploys no wallet from: one that holds libraries, whose fixed prefix is longer than 8 bits, or whose hash, the bits of its fixed prefix aside, is not the wallet's address. |
 | Stacks | `stacks` | `mpp/charge/usdc/stacks` | The SIP-010 `transfer`'s memo: H's 32 bytes. The signed transaction is read as a Stacks node decodes it: bytes a node does not decode and serialize back to themselves are `mpp/stacks-tx-malformed`. |
-| Lightning | `lightning` | `x402/exact/lnbtc` | The BOLT11 invoice's `m` field, which the seller's node signs. The invoice calls of LND v0.21.4 and Core Lightning v26.06.8 write no `m`, so a seller on either uses `x402/exact/lnbtc/invoice-named`. |
-| | | `x402/exact/lnbtc/invoice-named` | Nothing in the invoice: the ATR's `x402` slot names the invoice instead. The buyer's `build` reads that slot only from an ATR whose first members are `atrVersion`, `id` and `x402` and whose top-level member names do not repeat; inside the slot, a repeated member name reads as `JSON.parse` reads it, the last one counting. |
-| | | `mpp/charge/lightning`, `mpp/session/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
+| Lightning | `lightning` | `mpp/charge/lightning`, `mpp/session/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
 
 Where a profile defines the binding, the [pairings reference](../reference/pairings.md) links it, and the profile
 states the rail's rules clause by clause.
@@ -144,20 +131,17 @@ peer dependency. Install the one for each rail you use:
 Without its peer, a rail's function gives `<rail>/peer-missing` only when it reaches the one step that must decode or
 write with the peer, after every check that needs none: every other input gets the answer it gets with the peer. Every
 x402 pairing's option filter reads its options without the peer, so `pairingOf`, `read` and `advertise` need none:
-Stellar reads its strkeys whole (version byte, length and checksum), Algorand its address text and TON its raw
-addresses, and TON's `advertise` writes the comment's BoC itself, decoding only a forward payload the offer holds in
-other bytes. MPP Stellar's filter reads a challenge's `recipient` and `currency` whole, and Algorand's `bound` and
-`reference` need no peer. The other functions read or write the transaction with the peer and check everything else
-first: TON reads a BoC's base64, size, layout and CRC32C before `@ton/core` decodes its cells; the Stellar pairings'
-`bound` and `reference` hold the `payTo` or `recipient` to H's muxed id before the SDK reads the transaction; Sui's
-`build` writes its request without `@mysten/sui`, and its `complete` decodes the signed transaction; and the Solana
-`build`s check every input, a blockhash the choice gives included, before `@solana/kit` writes the message. A `status`
-or a locate reads as it does with the peer and gives the same answer, after the same calls, wherever it decodes nothing
-with the peer; a step that must decode with the peer makes a `status` pending `unreadable`, or a locate's search
-incomplete, when it is reached, after the reads before it. Of the reads, Stellar's `status` and `stellarLocate` decode
-only a transaction that succeeded (a search that lists no candidate decodes none), Sui's `status` only a present
-transaction's bytes that hash to the digest, and TON's `status` nothing: it compares raw addresses without
-`@ton/core`. Every other rail needs nothing more than the package.
+Algorand reads its address text and TON its raw addresses, and TON's `advertise` writes the comment's BoC itself,
+decoding only a forward payload the offer holds in other bytes. Algorand's `bound` and `reference` need no peer. The
+other functions read or write the transaction with the peer and check everything else first: TON reads a BoC's base64,
+size, layout and CRC32C before `@ton/core` decodes its cells; Sui's `build` writes its request without `@mysten/sui`,
+and its `complete` decodes the signed transaction; and the Solana `build`s check every input, a blockhash the choice
+gives included, before `@solana/kit` writes the message. A `status` or a locate reads as it does with the peer and gives
+the same answer, after the same calls, wherever it decodes nothing with the peer; a step that must decode with the peer
+makes a `status` pending `unreadable`, or a locate's search incomplete, when it is reached, after the reads before it.
+Of the reads, Stellar's `status` and `stellarLocate` decode only a transaction that succeeded (a search that lists no
+candidate decodes none), Sui's `status` only a present transaction's bytes that hash to the digest, and TON's `status`
+nothing: it compares raw addresses without `@ton/core`. Every other rail needs nothing more than the package.
 
 ## Reading settlement
 
@@ -172,22 +156,21 @@ credentials, the timeouts and the retries are yours. Each `status` makes a bound
 
 A reader that throws or times out never makes a payment failed: a rejected read of the transaction makes `status` answer
 pending, with the reason `unreadable`, and a later read can settle it; a rejected read of a finality mark counts as that
-mark not reached. On EVM chains and Tempo, and on the MPP Hedera session, a reader answer that is not a receipt (a
+mark not reached. On EVM chains and Tempo, a reader answer that is not a receipt (a
 `status` of 0 or 1, a bigint `blockNumber` and a list of logs), or a receipt holding a log that is not an object with a
 string `address`, an array of string `topics` and a string `data`, makes `status` answer pending `unreadable` as well,
-and `recover` and `fetchPresented` refuse it as `evm/unreadable`, `tempo/unreadable` or `hedera/unreadable`, the code
-its rail gives a failed read.
+and `recover` refuses it as `evm/unreadable` or `tempo/unreadable`, the code its rail gives a failed read.
 A reader that declares a network other than the reference's makes `status` answer the same way, with nothing read,
 so no later read through it settles the payment. The package compares only the `network` a reader declares and never
 asks its endpoint which network it serves, so a reader declares its endpoint's own: one that declares the payment's
 network over another network's endpoint finds nothing, and where a verdict rests on a point it reads, such as a head,
 ledger, slot or round, it can answer failed `expired` for a payment that landed. On `x402/exact/eip155/erc7710-salt`,
 `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
-`mpp/charge/evm/authorization`, `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` and `mpp/charge/usdc/evm`, whose
+`mpp/charge/evm/authorization` and `mpp/charge/usdc/evm`, whose
 `reference` always names the log carrying H or its commitment, a reference without a well-formed log of that event is
 pending `unreadable` too: the hash cannot be checked, nothing is read, and no later read settles it. On Casper,
-Concordium, Starknet, Tron, TON, the XRP Ledger, NEAR, Stacks, Cardano, Aptos, Sui and Stellar, and in the Solana and
-XRP Ledger session close reads, a reference that lacks a field `status` compares the landed payment with, or holds it
+Concordium, Starknet, Tron, TON, the XRP Ledger, NEAR, Stacks, Cardano, Aptos, Sui and Stellar, and in the XRP Ledger
+session close read, a reference that lacks a field `status` compares the landed payment with, or holds it
 malformed, such as a hash without the `0x` its pairing writes or an address in another encoding, is pending
 `unreadable` as well, with nothing read; so is one whose transaction id on Tron, Cardano, Algorand, Aptos, Stellar or
 the XRP Ledger, last valid round on Algorand, sender on Aptos, digest on Sui, request body hash on TON, or asset,
@@ -207,25 +190,16 @@ Failed means the rail itself says so: a reverted, aborted or expired transaction
 payment. On Tron a failed answer can come from the FullNode's head before the block is solidified, and on TON from
 transactions not yet finalized; a failed answer names no finality.
 
-`status` reads the settlement of the presented transaction. On Stacks, Stellar, Tron and NEAR, `reference` takes the
-token from that transaction, so `status` reports the settlement on the contract the transaction called, and on Solana
+`status` reads the settlement of the presented transaction. On Stacks, Tron and NEAR, `reference` takes the token from
+that transaction, so `status` reports the settlement on the contract the transaction called, and on Solana
 the reference names no token: confirming that it is the token the challenge named is the seller's check.
 
-On EVM chains and Tempo, and on the MPP Hedera session, which reads its escrow through Hedera's JSON-RPC relay, a block
-above the `finalized` mark can be replaced, by one in which the same transaction succeeds or holds other logs. A
-failed answer names no mark, so `status` gives one read from a receipt (`reverted`, `authorization-not-used`,
-`transfer-not-found`, `binding-log-not-found`, `receive-policy-blocked`, `nonce-not-used` or `open-call-not-found`)
-only when the receipt's block is at or below the reader's `finalized` mark. Above it, or where that mark cannot be
-read, `status` answers pending with the same reason, and a later read gives the verdict. Where `fetchPresented` refuses
-a reverted transaction, on `mpp/charge/tempo/push` and `mpp/session/hedera`, the same mark places the refusal:
-`tempo/reverted` or `hedera/reverted` at or below it, and above it, or where it cannot be read, `tempo/not-final` or
-`hedera/not-final`, a read to repeat ([Answering the buyer](./mpp.md#answering-the-buyer)). A receipt that succeeded
-without exactly one of the logs `bound` reads H from there, the `TransferWithMemo` with the challenge's attribution
-memo or the escrow's `ChannelOpened` naming the channel, is read at the same mark: above it `fetchPresented` answers
-`tempo/not-final` or `hedera/not-final`, and at or below it returns the landed logs, written under the member the
-registered symbol `FETCHED` keys, from which alone `bound` gives the verdict: no wire form carries that member, and a
-credential's own `landed` member is never read ([The MPP pairings](./mpp.md#the-mpp-pairings)). An EVM `recover`
-(`x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`,
+On EVM chains and Tempo, a block above the `finalized` mark can be replaced, by one in which the same transaction
+succeeds or holds other logs. A failed answer names no mark, so `status` gives one read from a receipt (`reverted`,
+`authorization-not-used`, `transfer-not-found`, `binding-log-not-found`, `receive-policy-blocked`, `nonce-not-used` or
+`open-call-not-found`) only when the receipt's block is at or below the reader's `finalized` mark. Above it, or where
+that mark cannot be read, `status` answers pending with the same reason, and a later read gives the verdict. An EVM
+`recover` (`x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`,
 `x402/upto/eip155/permit2`, `x402/batch-settlement/eip155` and `mpp/session/evm`) places by the same mark a revert and
 each verdict it reads from the receipt, the settle call it finds with the receipt's `Transfer`, or Permit2's nonce
 bitmap at the receipt's block (`evm/no-authorization-use`, `evm/no-leaf`, `evm/no-channel-created`,
@@ -234,29 +208,22 @@ holds no `Transfer` from its payer): the verdict at or below it, and `evm/not-fi
 where it cannot be read. A transaction whose own call is not an escrow open call is `evm/no-open-call` on every read,
 since its calldata is its own. A Tempo `recover` (`mpp/session/tempo` and `mpp/subscription/tempo`) places a revert,
 `tempo/open-not-found`, `tempo/no-witness` and `tempo/ambiguous` by the same mark, with `tempo/not-final` above it or
-where it cannot be read, and the `mpp/session/hedera` `recover` a revert and `hedera/channel-log-not-found`, with
-`hedera/not-final`. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the
-mark they reached, or none.
+where it cannot be read. Settled answers, and the hash a `recover` gives, are not held to the mark: they carry the mark
+they reached, or none.
 
 On Solana a block at `confirmed` has been voted on by a supermajority of the cluster but can still be replaced, and a
 transaction in it can land in another block and execute otherwise; a block at `finalized` has reached maximum lockout.
 So a Solana `status` gives a failure that rests on how the transaction executed, an error (`err`) or no token or SOL
 transfer among its instructions and inner instructions (`no-transfer`), only from the read at `finalized`. From a read
 at `confirmed` alone it answers pending `not-final`, and a later read gives the verdict. A failure that rests only on
-the signed message, which the signature fixes, holds from a read at either commitment: a message the payer did not
-sign (`not-this-instrument`), no single `open` or `top_up` payment-channels instruction (`no-channel-instruction`), or
-a reported close whose instructions do not close the channel (`not-a-close`). An account a transaction takes from an
-address lookup table, such as an inner instruction's program or a session close's channel, is read from the addresses
-the landed transaction's tables loaded (`SvmLanded.loaded`, `getTransaction`'s `meta.loadedAddresses`), so no table is
-read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups name, or
-repeat a static key or each other (the runtime refuses a transaction that loads one account twice), reads as pending
-`unreadable`. An `mpp/session/solana` opening, which the seller reads before it lands, is read through its tables
-instead: `fetchPresented` reads each table account at `finalized` and writes the tables under `FETCHED`, the only
-member `bound`, `reference` and `buildWithin` read them from ([Sessions](./sessions.md)). The signature fixes a table's address and an index into it, not the entry there, so a session close
-whose `settleAndSeal` or `seal` names its channel account through a table, and does not name the channel, is
-`not-a-close` only from the read at `finalized`, and pending `not-final` from the read at `confirmed` alone. The Solana
-`recover`s and `fetchPresented` read an error by the same rule: `svm/err` from the read at `finalized`, and
-`svm/not-final`, a read to repeat, from the read at `confirmed` alone.
+the signed message, which the signature fixes, holds from a read at either commitment: a message the payer did not sign
+(`not-this-instrument`), or no single `open` or `top_up` payment-channels instruction (`no-channel-instruction`). An
+account a transaction takes from an address lookup table, such as an inner instruction's program, is read from the
+addresses the landed transaction's tables loaded (`SvmLanded.loaded`, `getTransaction`'s `meta.loadedAddresses`), so no
+table is read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups
+name, or repeat a static key or each other (the runtime refuses a transaction that loads one account twice), reads as
+pending `unreadable`. The Solana `recover`s and `fetchPresented` read an error by the same rule: `svm/err` from the read
+at `finalized`, and `svm/not-final`, a read to repeat, from the read at `confirmed` alone.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
 transaction that fails leaves the entry unused. So a named transaction that is not found, failed, or carries another
@@ -269,14 +236,6 @@ exclusive and scans at most 10,000 ledgers per call, so a reader over it sends `
 page, only the cursor after that, and returns a `cursor` until `getEvents` has scanned through `toLedger`, even when a
 page holds no events, and keeps only the events through `toLedger`, since a cursor page can scan past it. Each page
 also returns `getEvents`' `latestLedger`, the latest ledger the RPC held when it answered.
-
-An MPP Stellar push payment (a `hash` credential, under a request whose `feePayer` is false or absent) may come from a
-payer that submits the transaction as its source account and authorizes the transfer with a source-account credential
-instead of an address entry: the transaction's signature covers the whole transaction, `to` included. Such a payment
-has no authorization entry to name, so its `reference` names the transaction and carries no `authDigest` or
-`expiration`. `status` settles when that transaction succeeded as the transfer the payer authorized as its source
-account, and is otherwise pending, never failed: there is no expiration ledger to pass, and `stellarLocate` has
-nothing to search for.
 
 On Sui, a node keeps only recent history, so an absent transaction can be one the endpoint has pruned.
 `suiStatus(ref, reader, position)` takes the checkpoint from which you need history, such as the latest checkpoint when
@@ -334,7 +293,7 @@ however late, because an internal message carries no expiry.
 | Solana | `SvmReader` | `getTransaction` at a commitment, with the node's slot at that commitment (`getSlot`) read before it when it finds nothing, `getSignaturesForAddress`, with `minContextSlot` when the search names one, `getFirstAvailableBlock`, `getAccountInfo` at `finalized` for a durable nonce account; and `isBlockhashValid` with its context slot, which the package does not call: you read it for your own verdict on a blockhash reference (below) | the commitment: `confirmed` or `finalized` |
 | Stellar | `StellarReader` | `getTransaction`, SEP-41 `transfer` events with `getEvents`' `latestLedger`, `getLatestLedger` | the ledger |
 | XRP Ledger | `XrplReader` | `tx` by hash, `tx` as a binary blob, the validated ledger index | the validated ledger index |
-| Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself; the MPP session reads its escrow through an `EvmReader` on Hedera's JSON-RPC relay | the consensus timestamp |
+| Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself | the consensus timestamp |
 | Algorand | `AvmReader` | the Indexer's transaction search by id | the confirmed round |
 | Aptos | `AptosReader` | the ledger info, read first; the transaction by hash; the sender's transaction by sequence number, with the ledger timestamp of its answer | the version |
 | Cardano | `CardanoReader` | the chain tip, read first; the transaction by id, with the indexer's latest slot when it holds none; the slot of the block at a height | the confirmations |
@@ -359,8 +318,7 @@ message lands only while the nonce account holds that value. Its reference recor
 and an empty `blockhash`. The sysvar may come from an address lookup table: the runtime resolves it and checks it when
 `AdvanceNonceAccount` runs, and the reference records the nonce the same way. A durable message names its nonce account
 as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose `AdvanceNonceAccount` takes its nonce
-account from a lookup table with `svm/nonce-account-not-static`. On `mpp/session/solana`, an opening whose sysvar
-comes from a table is read, as any opening with lookups is, once `fetchPresented` has read its tables. `svmNonceMoved(ref, reader)` reads the nonce account at
+account from a lookup table with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at
 `finalized` and answers that read's context slot once the account holds another value, or is not a nonce account, at a
 read at least 150 slots past `fromSlot`; `svm/unreadable`, a read to repeat, when the read is rejected or answers out
 of its documented shape; and null otherwise. A named transaction then not found, by a lookup whose node
@@ -383,12 +341,9 @@ Lightning has no settlement read: the invoice and its preimage, which the partie
 They do not show who paid it, and no public ledger shows the payment. Its pairings give `reference` and no `status`.
 
 On Lightning, `build` checks the binding and the invoice's form: that the invoice carries H where its pairing places
-it (or, on `x402/exact/lnbtc/invoice-named`, carries no `m`), that it answers this request, and that its currency is
-the one the network names. On x402, the pairing's option filter makes every one of these checks but H's, so its `read`
-offers only an option whose invoice and own fields pass them, and its `bound` and `reference` hold a presented payment's
-option to the same checks. It verifies no signature and does not compare the invoice's amount or payee with the offer.
-The checks x402 requires of a client on the invoice (its signature, a payee equal to `payTo`, an amount present and
-equal to the option's, and its expiry) are the payer's, done by its wallet or node.
+it, that it answers this request, and that its currency is the one the network names. It verifies no signature and
+does not compare the invoice's amount or payee with the offer: those checks are the payer's, done by its wallet or
+node.
 
 ## Recovering H from the chain alone
 
@@ -399,19 +354,18 @@ in the shape each rail's API page gives. This example lists them from the regist
 ```ts
 import { BINDINGS } from "@integraledger/lcp";
 
-const recoverable = BINDINGS.filter((b) => b.pattern.zeroPartyRecoverable).map((b) => b.id);
+const recoverable = BINDINGS.filter((b) => "pattern" in b && b.pattern.zeroPartyRecoverable).map((b) => b.id);
 console.log(recoverable.length);
 console.log(recoverable.sort().join("\n"));
 ```
 
 ```text
-27
+26
 mpp/charge/solana
 mpp/charge/usdc/solana
 mpp/charge/usdc/stacks
 mpp/charge/xrpl
 mpp/session/evm
-mpp/session/hedera
 mpp/session/tempo
 mpp/session/xrpl
 mpp/subscription/tempo
@@ -458,11 +412,10 @@ mark).
 
 ## Where the payment is not a public proof
 
-On some pairings the settlement leaves no public record that commits to H: `pattern.publicProof` is false. H still
+On some pairings the settlement leaves no public record that commits to H: `data.coverage` is `none`. H still
 rides in the challenge, and each pairing's record says what its payment shows. On most of them nothing the buyer signs
-carries H either. On `x402/exact/lnbtc` and the MPP Lightning pairings the invoice carries H, and on
-`x402/exact/lnbtc/invoice-named` the ATR names the invoice instead; either way the invoice and its preimage are held by
-the parties, and no public ledger shows them.
+carries H either. On the MPP Lightning pairings the invoice carries H; the invoice and its preimage are held by the
+parties, and no public ledger shows them.
 
 For these pairings the seller advertises an [agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the
 link, and the buyer gate declines such an offer without one: the buyer first pays that URL, whose payment is a public
@@ -471,7 +424,7 @@ proof of H, and then the full payment. This example lists the x402 and MPP pairi
 ```ts
 import { BINDINGS } from "@integraledger/lcp";
 
-const rails = BINDINGS.filter((b) => /^(x402|mpp)\//.test(b.id) && !b.pattern.publicProof).map((b) => b.id);
+const rails = BINDINGS.filter((b) => /^(x402|mpp)\//.test(b.id) && b.data.coverage === "none").map((b) => b.id);
 console.log(rails.sort().join("\n"));
 ```
 
@@ -482,14 +435,13 @@ mpp/charge/evm/transaction
 mpp/charge/lightning
 mpp/charge/nearintents
 mpp/charge/stripe
+mpp/charge/usdc/gateway
 mpp/session/lightning
 mpp/subscription/stripe
 x402/batch-settlement/cloudflare
 x402/exact/aptos
 x402/exact/eip155/erc7710
 x402/exact/hedera/transfer-executor
-x402/exact/lnbtc
-x402/exact/lnbtc/invoice-named
 ```
 
 The checkout pairings are the same where the buyer's approval does not sign H; see

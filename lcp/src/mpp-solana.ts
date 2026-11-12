@@ -52,6 +52,8 @@ import { isSolanaExternalId, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
+import { SOLANA as SOLANA_DATA } from "./internal/data/solana.js";
+import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/charge/solana" as const;
 
@@ -453,27 +455,19 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: "mpp/charge/solana",
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a Solana transaction whose one LCP-form Memo instruction carries this ATR's hash in LCP " +
-    "string form, and the transaction executed without error, carrying a token or SOL transfer. The memo is in " +
-    "the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing match " +
-    "the ATR's content.",
 });
 
 /** The members of the Solana charge pairing `spec` describes, pull mode only. */
 function pullPairing<Id extends typeof ID | "mpp/charge/usdc/solana">(spec: SolanaCharge<Id>) {
   return {
     id: spec.id,
+    data: SOLANA_DATA[spec.id],
     pattern,
     claims: true as boolean,
-    carrier: "request.externalId" as const,
     unplaced,
     tie,
     advertise: (doc: readonly MppChallenge[], h: AtrHash, link: string, offer: MppChallenge, agreementUrl?: string) =>
@@ -507,4 +501,4 @@ export const chargeSolana = Object.freeze({
     const signature = pushedField(presented, "signature", "signature");
     return isSignatureText(signature) ? signature : undefined;
   },
-});
+}) satisfies Entry<typeof ID, MppCredential, SvmRef & { transaction: string }, SvmReader>;

@@ -16,15 +16,13 @@ export const READS_TO_REPEAT: ReadonlySet<string> = new Set([
   "polkadot/unreadable",
   "stacks/unreadable",
   "starknet/unreadable",
-  "stellar/unreadable",
   "sui/unreadable",
   "svm/unreadable",
   "tempo/unreadable",
   "tron/unreadable",
   "tvm/unreadable",
   "xrpl/unreadable",
-  // The reader holds no landed transaction for the reference yet, or, on Solana, no address lookup table account or
-  // entry that a session opening names at `finalized` yet.
+  // The reader holds no landed transaction for the reference yet.
   "avm/not-found",
   "cardano/not-found",
   "casper/not-found",
@@ -35,7 +33,6 @@ export const READS_TO_REPEAT: ReadonlySet<string> = new Set([
   "polkadot/not-found",
   "stacks/not-found",
   "starknet/not-found",
-  "stellar/not-found",
   "sui/not-found",
   "svm/not-found",
   "tempo/not-found",
@@ -50,7 +47,6 @@ export const READS_TO_REPEAT: ReadonlySet<string> = new Set([
   "casper/not-executed",
   "ccd/not-finalized",
   "evm/not-final",
-  "hedera/not-final",
   "polkadot/not-final",
   "stacks/not-final",
   "starknet/not-final",

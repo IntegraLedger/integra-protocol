@@ -373,14 +373,13 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
   it("the pattern states what the record proves", () => {
     expect(exactCardano.pattern).toMatchObject({
       pattern: "native-field",
-      canonical: false,
       profile: "x402/exact/cardano",
-      buyerSigns: true,
       onChain: true,
       zeroPartyRecoverable: true,
       forwardIndexable: false,
-      publicProof: true,
     });
+    expect(exactCardano.data.carrier.signed).not.toBeNull();
+    expect(exactCardano.data.coverage).toBe("full");
     expect(exactCardano.claims).toBe(true);
   });
 });

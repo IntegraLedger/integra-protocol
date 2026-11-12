@@ -855,7 +855,7 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     expect(ref.transferLog?.identity).toBe(ERC7710.EV7.expectReference.identity);
     expect(ref.transferLog?.digest).toBe(ERC7710.EV7.expectReference.digest);
     expect(exactErc7710.claims).toBe(ERC7710.EV7.claims);
-    expect(exactErc7710.pattern.publicProof).toBe(false);
+    expect(exactErc7710.data.coverage).toBe("none");
   });
   it("EV7: the unsigned level has no status and no authorizer, since no read of the chain alone ties a transfer to it", async () => {
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
@@ -1211,14 +1211,13 @@ describe("every reference is JSON", () => {
 });
 
 describe("the records", () => {
-  it("claims and publicProof per pairing", () => {
+  it("claims and coverage per pairing", () => {
     for (const b of [exactPermit2, uptoPermit2, exactErc7710Salt, authCaptureEip3009, authCapturePermit2]) {
       expect(b.claims).toBe(true);
-      expect(b.pattern.publicProof).toBe(true);
-      expect(b.pattern.canonical).toBe(false);
+      expect(b.data.coverage).toBe("full");
     }
     expect(exactErc7710.claims).toBe(false);
-    expect(exactErc7710.pattern.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
+    expect(exactErc7710.data.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
     expect(exactErc7710Salt.recover).toBeDefined();
     for (const b of [exactPermit2, uptoPermit2]) {
       expect(b.recover, b.id).toBeDefined();

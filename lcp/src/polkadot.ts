@@ -18,6 +18,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { POLKADOT } from "./internal/data/polkadot.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type PolkadotNetwork = "polkadot:68d56f15f85d3136970ec16946040bc1" | "polkadot:67f9723393ef76214df0118c34bbbd3d";
@@ -654,19 +656,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: ID,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed one Polkadot Asset Hub extrinsic whose bytes end with the profile call, the encoding of a batch " +
-    "of a transfer of the asset and a remark whose bytes are this ATR's hash in LCP string form. The chain verified " +
-    "the signature and dispatched the extrinsic, and its record carries a Remarked event with the BLAKE2b-256 of that " +
-    "remark and a Transferred event of the asset, at the finality recorded. This does not show that amount, payee, " +
-    "asset or timing match the ATR's content.",
 });
 
 /**
@@ -675,9 +668,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactPolkadotRemark = Object.freeze({
   id: ID,
+  data: POLKADOT[ID],
   pattern,
   claims: true as const,
-  carrier: null,
   unplaced,
   tie,
   advertise,
@@ -688,4 +681,4 @@ export const exactPolkadotRemark = Object.freeze({
   reference,
   status: polkadotStatus,
   recover: polkadotRecover,
-});
+}) satisfies Entry<typeof ID, PolkadotPaymentPayload, PolkadotRef & { h: AtrHash; transaction: string }, PolkadotReader>;

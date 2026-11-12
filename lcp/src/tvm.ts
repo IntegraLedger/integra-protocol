@@ -42,6 +42,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { TVM } from "./internal/data/tvm.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
@@ -1459,17 +1461,9 @@ function isUint32(n: unknown): n is number {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: true,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer's W5 wallet signed a request whose one Jetton transfer carries this ATR's hash in its forward payload, " +
-    "as a TEP-74 text comment in LCP string form. The payer's Jetton wallet executed that transfer, and the Jetton " +
-    "wallet its `internal_transfer` reached accepted it. The comment is on chain in the transfer's message bodies. " +
-    "This does not show that amount, payee, asset or timing match the ATR's content.",
 });
 
 /**
@@ -1478,9 +1472,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactTvm = Object.freeze({
   id: ID,
+  data: TVM[ID],
   pattern,
   claims: true as boolean,
-  carrier: "extra.forwardPayload" as const,
   unplaced,
   tie,
   advertise,
@@ -1491,5 +1485,5 @@ export const exactTvm = Object.freeze({
   reference,
   status: tvmStatus,
   recover: tvmRecover,
-});
+}) satisfies Entry<typeof ID, TvmPayment, TvmRef, TvmReader>;
 

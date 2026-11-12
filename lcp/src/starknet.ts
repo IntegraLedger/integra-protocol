@@ -6,7 +6,7 @@
  */
 import { fromLegalContext, hash, hashEquals, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
-import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
+import { isObject, jsonBytes, normalHash } from "./fields.js";
 import type { StarknetPayment } from "./internal/starknet.js";
 import {
   advertiseFor,
@@ -25,10 +25,11 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   LEGAL_CONTEXT,
   tie,
-  type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { STARKNET } from "./internal/data/starknet.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type StarknetNetwork = "starknet:SN_MAIN" | "starknet:SN_SEPOLIA";
@@ -645,30 +646,13 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   return option;
 }
 
-const pattern: LcpPattern = deepFreeze({
-  pattern: "truncated-field",
-  canonical: false,
-  profile: ID,
-  buyerSigns: true,
-  onChain: true,
-  zeroPartyRecoverable: false,
-  forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed, as SNIP-12 typed data, a SNIP-9 outside execution whose nonce is the low 250 bits of this " +
-    "ATR's hash. The payer's account contract verified that signature when it executed the transfer call, and the " +
-    "nonce is in the settlement transaction's calldata. A holder of the ATR can confirm the hash from the nonce; the " +
-    "chain alone does not reveal all of it, and no event indexes it. This does not show that amount, payee, asset or " +
-    "timing match the ATR's content.",
-});
-
 /**
  * `x402/exact/starknet`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator executes the
  * outside execution the payer signed and names its transaction; `status` reads the executed call's trace.
  */
 export const exactStarknet = Object.freeze({
   id: ID,
-  pattern,
+  data: STARKNET[ID],
   claims: true as boolean,
   unplaced,
   tie,
@@ -679,4 +663,4 @@ export const exactStarknet = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference,
   status: starknetStatus,
-});
+}) satisfies Entry<typeof ID, StarknetPayment, StarknetRef & { transaction: Felt }, StarknetReader>;

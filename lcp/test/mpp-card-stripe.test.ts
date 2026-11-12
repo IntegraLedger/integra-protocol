@@ -99,7 +99,7 @@ describe("mpp/charge/card (M1)", () => {
   });
 
   it("states what it proves", () => {
-    expect({ ...chargeCard.pattern, claims: chargeCard.claims }).toEqual(CARD.pattern);
+    expect({ ...chargeCard.pattern, proves: chargeCard.data.proves, claims: chargeCard.claims }).toEqual(CARD.pattern);
   });
 });
 
@@ -146,7 +146,7 @@ describe("mpp/charge/stripe (M2)", () => {
   );
 
   it("states what it proves", () => {
-    expect({ ...chargeStripe.pattern, claims: chargeStripe.claims }).toEqual(STRIPE.pattern);
+    expect({ ...chargeStripe.pattern, proves: chargeStripe.data.proves, claims: chargeStripe.claims }).toEqual(STRIPE.pattern);
   });
 });
 
@@ -178,6 +178,6 @@ describe("mpp/subscription/stripe", () => {
   });
 
   it("states what it proves", () => {
-    expect({ ...subscriptionStripe.pattern, claims: subscriptionStripe.claims }).toEqual(SUB.pattern);
+    expect({ ...subscriptionStripe.pattern, proves: subscriptionStripe.data.proves, claims: subscriptionStripe.claims }).toEqual(SUB.pattern);
   });
 });

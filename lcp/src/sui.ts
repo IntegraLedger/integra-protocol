@@ -34,6 +34,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { SUI } from "./internal/data/sui.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 const peer: { bcs: typeof SuiBcs } | undefined = await import("@mysten/sui/bcs").then(
@@ -380,17 +382,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: ID,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a Sui transaction whose one unused Pure input is this ATR's hash. The network executed that " +
-    "transaction successfully, and the hash is on chain in its input list, readable by its digest while a node " +
-    "retains it. This does not show that amount, payee, coin type or timing match the ATR's content.",
 });
 
 /**
@@ -399,9 +394,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactSui = Object.freeze({
   id: ID,
+  data: SUI[ID],
   pattern,
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise,
@@ -412,7 +407,7 @@ export const exactSui = Object.freeze({
   reference,
   status: suiStatus,
   recover: suiRecover,
-});
+}) satisfies Entry<typeof ID, SuiPaymentPayload, SuiRef & { h: AtrHash }, SuiReader>;
 
 type ParsedCommand = ReturnType<typeof SuiBcs.Command.parse>;
 type ParsedArgument = ReturnType<typeof SuiBcs.Argument.parse>;

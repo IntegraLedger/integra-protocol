@@ -3,8 +3,8 @@
  * in the same object.
  */
 import { isHttpsLink, isOtherSchemeLink } from "../core.js";
+import { MAX_LINK_LENGTH } from "./bounds.js";
 
-const MAX_LINK = 2048;
 
 /** The member beside `legalContextUrl`. */
 export const AGREEMENT_URL = "legalContextAgreementUrl";
@@ -12,7 +12,7 @@ export const AGREEMENT_URL = "legalContextAgreementUrl";
 export const AGREEMENT_URL_SNAKE = "legal_context_agreement_url";
 
 export function isAgreementUrl(s: unknown): s is string {
-  return typeof s === "string" && s.length <= MAX_LINK && isHttpsLink(s);
+  return typeof s === "string" && s.length <= MAX_LINK_LENGTH && isHttpsLink(s);
 }
 
 /** Why a value in the agreement URL's place is refused, as the suffix of the pairing's refusal code. */

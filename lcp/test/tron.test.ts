@@ -312,9 +312,9 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     if ("refused" in r) throw new Error(r.code);
     expect({ h: r.h, link: r.link, options: r.offer.options }).toEqual({ h: H, link: V.fixed.link, options: [O] });
     expect(exactTronMemo.unplaced(O)).toBe(O);
-    expect(exactTronMemo.pattern.publicProof).toBe(true);
+    expect(exactTronMemo.data.coverage).toBe("full");
     expect(exactTronMemo.claims).toBe(true);
-    expect(exactTronMemo.carrier).toBeNull();
+    expect(exactTronMemo.data.carrier.member).toBeUndefined();
   });
 
   // A java-tron node accepts a transaction only while its expiration is after the head block's time

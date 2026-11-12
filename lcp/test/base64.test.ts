@@ -10,12 +10,11 @@ import { readFileSync } from "node:fs";
 import { base64 as scureBase64 } from "@scure/base";
 import { Cell } from "@ton/core";
 import { describe, expect, it } from "vitest";
-import { canonicalJson, toLcpString, type AtrHash } from "../src/core.js";
+import type { AtrHash } from "../src/core.js";
 import { decodeAptosTx } from "../src/aptos.js";
 import { avmCarrier, exactAvm, type AvmParams } from "../src/avm.js";
 import { decodeCardanoTx, exactCardano } from "../src/cardano.js";
-import { chargeHedera, exactHedera, FETCHED, hederaStatus, type HederaReader, type MirrorEntry } from "../src/hedera.js";
-import type { MppCredential } from "../src/mpp.js";
+import { exactHedera, hederaStatus, type HederaReader, type MirrorEntry } from "../src/hedera.js";
 import { exactNear, type NearReader } from "../src/near.js";
 import { base64Bytes, fromBase64, toBase64 } from "../src/rail-bytes.js";
 import { decodeStellarTx, transferEventOf } from "../src/stellar.js";
@@ -415,45 +414,5 @@ describe("a TON state init given to build with a pad bit set", () => {
     expect("refused" in (await build(stateInit))).toBe(false);
     expect(await build(NOT_BASE64)).toEqual(refused(code));
     expect(await build(raised(stateInit))).toEqual(refused(code));
-  });
-});
-
-describe("mpp-charge-hedera.json, with a pad bit set", () => {
-  const V = load("mpp-charge-hedera.json");
-  const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
-  const challenge = {
-    id: V.fixed.challengeId,
-    realm: V.fixed.realm,
-    method: "hedera",
-    intent: "charge",
-    request: b64u(canonicalJson(V.fixed.request) as string),
-    expires: V.fixed.expires,
-    opaque: b64u(canonicalJson({ legalContext: toLcpString(V.fixed.H), legalContextUrl: V.fixed.link }) as string),
-  };
-  const credential = (payload: MppCredential["payload"]): MppCredential => ({ challenge, payload });
-
-  it("a pull credential's transaction: bound is hedera/tx-malformed, as for one that is not base64", async () => {
-    const transaction: string = V.build.expectTransactionBase64;
-    expect(transaction.endsWith("=")).toBe(true);
-    const pull = (t: string) => credential({ type: "transaction", transaction: t });
-    expect(await chargeHedera.bound(pull(transaction))).toBe(V.bound.expectBound);
-    expect(await chargeHedera.bound(pull(NOT_BASE64))).toEqual(refused("hedera/tx-malformed"));
-    expect(await chargeHedera.bound(pull(raised(transaction)))).toEqual(refused("hedera/tx-malformed"));
-  });
-
-  it("a push credential's landed memo: fetchPresented is hedera/unreadable, as for one that is not base64", async () => {
-    // x402-exact-hedera.json V1's memo, 77 bytes, so its base64 ends in padding; fetchPresented reads any UTF-8 memo.
-    const X = load("x402-exact-hedera.json");
-    const memo: string = X.V1.expectMemoBase64;
-    expect(memo.endsWith("=")).toBe(true);
-    const push = credential({ type: "hash", transactionId: V.push.transactionId });
-    const reader = (m: string) => ({
-      network: V.fetchPresented.reader,
-      transactions: async () => (V.fetchPresented.entries as MirrorEntry[]).map((e) => ({ ...e, memo_base64: m })),
-    });
-    const landed = await chargeHedera.fetchPresented(push, reader(memo) as never);
-    expect((landed as { [FETCHED]: { memo?: string } })[FETCHED].memo).toBe(X.V1.expectMemo);
-    expect(await chargeHedera.fetchPresented(push, reader(NOT_BASE64) as never)).toEqual(refused("hedera/unreadable"));
-    expect(await chargeHedera.fetchPresented(push, reader(raised(memo)) as never)).toEqual(refused("hedera/unreadable"));
   });
 });

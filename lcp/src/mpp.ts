@@ -1,14 +1,12 @@
 /**
  * The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the
- * signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), EVM `transaction` and
- * `hash` (nothing signed carries H), and Tempo pull and push (the signed `transferWithMemo` carries the attribution
- * memo MPP's SDKs write, whose nonce is keccak256 of the id). The card, Stripe, Solana, Stellar, XRP Ledger, Hedera,
- * NEAR Intents and `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported
- * from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a
- * credential.
+ * signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and
+ * EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents and
+ * `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported from their
+ * modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
-import { addressWord, bytesOf, concat, hexOf, sameBytes, uintOf, uintWord, type Hex } from "./evm-abi.js";
+import { addressWord, bytesOf, concat, hexOf, sameBytes, uintWord, type Hex } from "./evm-abi.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
@@ -28,11 +26,9 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
-  attributionMemo,
   byType,
   mppBroadcaster,
   challengeHash,
-  checkAttribution,
   checkChallenge,
   checkedFor,
   chosenHeld,
@@ -44,17 +40,14 @@ import {
   echoedOf,
   expiresOf,
   FETCHED,
-  fetchedOf,
   isChallengeShape,
   isHexBytes,
   isObject,
   measured,
   pairingsOf,
   place,
-  pushedField,
   read,
   requestAddress,
-  tempoSplits,
   tie,
   type Checked,
   type Chosen,
@@ -62,27 +55,25 @@ import {
   type MppChallenge,
   type MppChoice,
   type MppCredential,
-  type TempoSplit,
 } from "./mpp-challenge.js";
-import { chargeHedera } from "./hedera.js";
 import { chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 import { stacksNetworkOf, usdcProfile } from "./mpp-method-checks.js";
 import { chargeNearIntents } from "./mpp-nearintents.js";
 import { chargeUsdcEvm, chargeUsdcGateway, chargeUsdcSolana, chargeUsdcStacks } from "./mpp-usdc.js";
 import { evmSessionResume, sessionEvm, sessionNetwork, sessionTempo, subscriptionTempo } from "./mpp-session.js";
-import { hederaSessionNetworkOf, solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
+import { solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { chargeLightning, sessionLightning } from "./lightning.js";
-import { railSessionResume, sessionHedera, sessionSolana, sessionXrpl } from "./mpp-session-rails.js";
+import { railSessionResume, sessionXrpl } from "./mpp-session-rails.js";
 import { chargeSolana } from "./mpp-solana.js";
-import { chargeStellar } from "./mpp-stellar.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
-import { readReceiptAtMark } from "./receipt.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpDecode, rlpUint } from "./rlp.js";
-import { failedIfFinal, finalAt, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
+import { failedIfFinal, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
-import { TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC, decodeTempoTx, memoCalldata } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
+import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
+import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
+import type { Entry } from "./internal/registry.js";
 
 export {
   CARRIER,
@@ -104,7 +95,6 @@ export {
 } from "./mpp-challenge.js";
 export type { MppChallenge, MppChoice, MppCredential, MppMethod, MppPairingId } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
-export { chargeHedera } from "./hedera.js";
 export { LEGAL_CONTEXT_METADATA_KEY, chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 export type { StripeSubscriptionReceipt } from "./mpp-card-stripe.js";
 export {
@@ -121,11 +111,8 @@ export {
 } from "./mpp-usdc.js";
 export { chargeNearIntents } from "./mpp-nearintents.js";
 export { chargeSolana } from "./mpp-solana.js";
-export { chargeStellar } from "./mpp-stellar.js";
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
 export {
-  sessionHedera,
-  sessionSolana,
   sessionXrpl,
   type RailSessionUnsigned,
   type SolanaTablesCredential,
@@ -149,7 +136,7 @@ export type {
   WithinSigningRequest,
 } from "./mpp-session.js";
 /**
- * What the buyer's signer is handed for each EVM and Tempo charge, and how its answer completes the credential. Each
+ * What the buyer's signer is handed for each EVM charge, and how its answer completes the credential. Each
  * `complete` measures the credential it would return as `bound` measures every credential, its echoed challenge
  * included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code `bound`
  * gives it.
@@ -160,14 +147,7 @@ export type MppUnsigned =
       complete(signature: Hex): MppCredential | Refusal;
     }
   | {
-      /**
-       * push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete` takes the
-       * signed transaction and returns no credential `bound` refuses: it gives the code `bound` gives the credential it
-       * would give, so it refuses a transaction that does not decode, an empty one among them, or that is signed for a
-       * chain other than `chainId` (`tempo/tx-malformed`), one without exactly one `transferWithMemo` to the currency
-       * carrying this challenge's attribution memo (`tempo/memo-not-bound`, `tempo/ambiguous`), and one whose
-       * credential is over the credential size bound (`mpp/credential-malformed`).
-       */
+      /** One Tempo call. No charge pairing's `build` in this package answers this kind. */
       request: {
         kind: "tempo-call";
         chainId: number;
@@ -178,15 +158,7 @@ export type MppUnsigned =
       complete(signedTxOrHash: Hex): MppCredential | Refusal;
     }
   | {
-      /**
-       * A Tempo charge with `splits`: the calls, in order, of one Tempo transaction, the primary transfer first, then
-       * one per split. push: the buyer's signer broadcasts, and `complete` takes the transaction hash. memo: `complete`
-       * takes the signed transaction and returns no credential `bound` refuses: it gives the code `bound` gives the
-       * credential it would give, so it refuses a transaction that does not decode, an empty one among them, or that is
-       * signed for a chain other than `chainId` (`tempo/tx-malformed`), one without exactly one `transferWithMemo` to
-       * the currency carrying this challenge's attribution memo (`tempo/memo-not-bound`, `tempo/ambiguous`), and one
-       * whose credential is over the credential size bound (`mpp/credential-malformed`).
-       */
+      /** The calls of one Tempo transaction. No charge pairing's `build` in this package answers this kind. */
       request: {
         kind: "tempo-calls";
         chainId: number;
@@ -209,10 +181,8 @@ export type MppUnsigned =
     };
 
 /**
- * A push credential with what `fetchPresented` read under `FETCHED`: the landed transaction, its block and its
- * receipt's logs from the currency (on `mpp/session/hedera`, from the escrow). Only that member is read: a
- * string-keyed `landed` is not, and `JSON.stringify` and `structuredClone` drop the member, so the seller keeps this
- * object, or a spread or `Object.assign` copy of it.
+ * A push credential with a landed EVM transaction, its block and its receipt's logs under `FETCHED`. No pairing's
+ * `fetchPresented` in this package writes it.
  */
 export interface LandedCredential extends MppCredential {
   [FETCHED]: { transaction: Hex; blockNumber: bigint; logs: readonly EvmLog[] };
@@ -222,12 +192,9 @@ const AUTHORIZATION = "mpp/charge/evm/authorization" as const;
 const PERMIT2_ID = "mpp/charge/evm/permit2" as const;
 const TRANSACTION = "mpp/charge/evm/transaction" as const;
 const HASH = "mpp/charge/evm/hash" as const;
-const MEMO = "mpp/charge/tempo/memo" as const;
-const PUSH = "mpp/charge/tempo/push" as const;
-type ChargeId = typeof AUTHORIZATION | typeof PERMIT2_ID | typeof TRANSACTION | typeof HASH | typeof MEMO | typeof PUSH;
+type ChargeId = typeof AUTHORIZATION | typeof PERMIT2_ID | typeof TRANSACTION | typeof HASH;
 
 const TEMPO_DEFAULT_CHAIN = 42431;
-const MAX_SIGNATURE = 8192;
 const MAX_WIRE = 65_536;
 const TRANSFER_SELECTOR = "0xa9059cbb";
 const PAYMENT_WITNESS = [
@@ -362,8 +329,8 @@ function echoedChain(e: Echoed): number | Refusal {
 
 /**
  * The network and channel a session challenge names for the client to resume, spelled as the pairing's `channel.ref`
- * spells it: EVM, Tempo and Hedera in `methodDetails.channelId` (a bytes32, lowercase), Solana in
- * `methodDetails.channelId` (a base58 address), XRPL in the request's `channelId` (64 hex characters, upper case). Null
+ * spells it: EVM and Tempo in `methodDetails.channelId` (a bytes32, lowercase), XRPL in the request's `channelId` (64
+ * hex characters, upper case). Null
  * when the challenge names no channel; refused for a challenge of no session pairing, or a channel or network that
  * cannot be read.
  */
@@ -382,26 +349,18 @@ export function network(challenge: MppChallenge): string | Refusal {
   const d = c.details;
   switch (`${c.intent}/${c.method}`) {
     case "charge/evm":
-    case "charge/tempo":
       return `eip155:${chainOf(c)}`;
     case "session/evm":
     case "session/tempo":
     case "subscription/tempo":
       return sessionNetwork(challenge);
-    case "charge/solana":
-    case "session/solana": {
-      const n = solanaNetworkOf(d, c.intent === "session");
+    case "charge/solana": {
+      const n = solanaNetworkOf(d, false);
       return n === null ? refusal("svm/network-undeclared") : n;
     }
     case "charge/xrpl":
     case "session/xrpl":
       return xrplNetworkOf(d);
-    case "charge/hedera":
-      return chargeHedera.network(c.request as never);
-    case "session/hedera":
-      return hederaSessionNetworkOf(d);
-    case "charge/stellar":
-      return d["network"] as string;
     case "charge/nearintents":
       return d["originNetwork"] as string;
     case "charge/usdc": {
@@ -460,7 +419,7 @@ async function authorizationBuild(choice: MppChoice, h: AtrHash): Promise<MppUns
   return {
     request: { kind: "eip712", typedData },
     complete(signature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(signature, 1, MAX_SIGNATURE_BYTES)) return refusal("mpp/credential-malformed");
       return measured({
         challenge,
         source: did(chainId, from),
@@ -573,7 +532,7 @@ async function permit2Build(choice: MppChoice, h: AtrHash): Promise<MppUnsigned 
   return {
     request: { kind: "eip712", typedData },
     complete(signature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(signature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(signature, 1, MAX_SIGNATURE_BYTES)) return refusal("mpp/credential-malformed");
       return measured({
         challenge,
         source: did(chainId, from),
@@ -785,266 +744,11 @@ function transferCalldata(to: Hex, amount: bigint): Hex {
   return hexOf(concat([bytesOf(TRANSFER_SELECTOR)!, addressWord(to), uintWord(amount)]));
 }
 
-// ── mpp/charge/tempo/memo and mpp/charge/tempo/push.
-
-/**
- * The Tempo charge's calls for the buyer's signer. On push, `complete` takes the transaction hash; on memo, the signed
- * transaction, and it returns the credential only once `bound`'s read of it (`signedMemoCall`) takes it, and otherwise
- * gives that read's refusal, so it returns no credential `bound` refuses: a transaction that is not hex bytes, or whose
- * credential is over the credential size bound, 64 KiB, is `mpp/credential-malformed`; one that does not decode, an
- * empty one among them, gives `decodeTempoTx`'s refusal, `tempo/tx-malformed`; one signed for a chain other than the
- * request's `chainId` is `tempo/tx-malformed`; and one without exactly one `transferWithMemo` to the currency carrying
- * this challenge's attribution memo is `tempo/memo-not-bound` or `tempo/ambiguous`. Nothing else in the transaction is
- * compared with what `build` made, its sender and the splits' calls among it: `bound` does not read them.
- */
-function tempoBuild(pairing: typeof MEMO | typeof PUSH) {
-  return async (choice: MppChoice, h: AtrHash): Promise<MppUnsigned | Refusal> => {
-    const o = offerFor(choice, h, pairing);
-    if (isRefusal(o)) return o;
-    const validBefore = expiresOf(o);
-    if (isRefusal(validBefore)) return validBefore;
-    const clientId: unknown = choice.clientId;
-    if (clientId !== undefined && (typeof clientId !== "string" || !clientId.isWellFormed())) return refusal("mpp/input-malformed");
-    const chainId = chainOf(o);
-    const splits = tempoSplits(o.details) as TempoSplit[] | undefined;
-    const amount = BigInt(str(o.request["amount"]));
-    const primary = amount - (splits ?? []).reduce((sum, s) => sum + s.amount, 0n);
-    const memo = attributionMemo(o.challenge.realm, o.challenge.id, clientId);
-    const data = memoCalldata(str(o.request["recipient"]) as Hex, primary, memo);
-    if (typeof data !== "string") return data;
-    const currency = str(o.request["currency"]) as Hex;
-    const calls = [{ to: currency, data }];
-    for (const s of splits ?? []) {
-      const split = s.memo === undefined ? transferCalldata(s.to, s.amount) : memoCalldata(s.to, s.amount, s.memo);
-      if (typeof split !== "string") return split;
-      calls.push({ to: currency, data: split });
-    }
-    const challenge = o.challenge;
-    const source = did(chainId, choice.from);
-    const broadcast = pairing === PUSH;
-    const complete = (signedTxOrHash: Hex): MppCredential | Refusal => {
-      if (broadcast) {
-        if (normalHash(signedTxOrHash) === null) return refusal("mpp/credential-malformed");
-        return measured({ challenge, source, payload: { type: "hash", hash: signedTxOrHash } });
-      }
-      const credential: MppCredential = { challenge, source, payload: { type: "transaction", signature: signedTxOrHash } };
-      const m = signedMemoCall(credential);
-      return isRefusal(m) ? m : credential;
-    };
-    return splits === undefined
-      ? { request: { kind: "tempo-call", chainId, call: calls[0]!, validBefore, broadcast }, complete }
-      : { request: { kind: "tempo-calls", chainId, calls, validBefore, broadcast }, complete };
-  };
-}
-
-/**
- * The one signed `transferWithMemo` call to `currency` whose memo is this challenge's attribution memo, in a transaction
- * signed for the challenge's chain (`echoedChain`): draft-tempo-charge-00 binds a Tempo transaction to its chain id, and
- * a transaction whose chain id is another is `tempo/tx-malformed`.
- */
-function signedMemoCall(
-  presented: MppCredential,
-): { h: AtrHash; checked: Echoed; memo: Hex; to: Hex; value: bigint; validBefore: bigint | null } | Refusal {
-  const e = echoed(presented, MEMO);
-  if (isRefusal(e)) return e;
-  const currency = requestAddress(e.checked, "currency");
-  if (isRefusal(currency)) return currency;
-  if (e.payload["type"] !== "transaction") return refusal("mpp/credential-type");
-  const sig = e.payload["signature"];
-  if (typeof sig !== "string" || sig.length % 2 !== 0 || !/^0x[0-9a-fA-F]*$/.test(sig)) {
-    return refusal("mpp/credential-malformed");
-  }
-  if ((sig.length - 2) / 2 > MAX_WIRE) return refusal("tempo/tx-too-large");
-  const tx = decodeTempoTx(bytesOf(sig)!);
-  if (isRefusal(tx)) return tx;
-  const chainId = echoedChain(e.checked);
-  if (isRefusal(chainId)) return chainId;
-  if (tx.chainId !== BigInt(chainId)) return refusal("tempo/tx-malformed");
-  const { realm, id } = presented.challenge;
-  const found: { memo: Hex; to: Hex; value: bigint }[] = [];
-  for (const call of tx.calls) {
-    if (call.to === null || !sameBytes(call.to, currency) || call.input.length !== 100) continue;
-    if (hexOf(call.input.subarray(0, 4)) !== TRANSFER_WITH_MEMO_SELECTOR) continue;
-    if (call.input.subarray(4, 16).some((x) => x !== 0)) continue;
-    const memo = hexOf(call.input.subarray(68, 100));
-    if (checkAttribution(memo, realm, id) !== true) continue;
-    found.push({ memo, to: hexOf(call.input.subarray(16, 36)), value: uintOf(call.input.subarray(36, 68)) });
-  }
-  if (found.length === 0) return refusal("tempo/memo-not-bound");
-  if (found.length > 1) return refusal("tempo/ambiguous");
-  return { h: e.h, checked: e.checked, ...found[0]!, validBefore: tx.validBefore };
-}
-
-async function memoBound(input: unknown): Promise<AtrHash | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const m = signedMemoCall(presented);
-  return isRefusal(m) ? m : m.h;
-}
-
-/**
- * The read keys of the signed memo transfer. `settleBy` is the transaction's `validBefore`; where it sets none, the
- * challenge's `expires`, a date the pairing's filter requires.
- */
-async function memoReference(input: unknown): Promise<EvmRef | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const m = signedMemoCall(presented);
-  if (isRefusal(m)) return m;
-  return memoRef(m.checked, m.memo, m.to, m.value, m.validBefore ?? BigInt(m.checked.expires as number));
-}
-
-async function memoRef(c: Echoed, memo: Hex, to: Hex, value: bigint, settleBy?: bigint): Promise<EvmRef | Refusal> {
-  const currency = requestAddress(c, "currency");
-  if (isRefusal(currency)) return currency;
-  const chainId = echoedChain(c);
-  if (isRefusal(chainId)) return chainId;
-  const digest = await transferDigest({ to, value });
-  if (typeof digest !== "string") return digest;
-  return {
-    network: `eip155:${chainId}`,
-    ...(settleBy === undefined ? {} : { settleBy: settleBy.toString() }),
-    bindingLog: { address: currency, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: memo },
-    transferLog: { address: currency, topic0: TRANSFER_WITH_MEMO_TOPIC, identity: "to,value", digest },
-    search: { address: currency, topics: [TRANSFER_WITH_MEMO_TOPIC, null, null, memo] },
-  };
-}
-
-/**
- * Reads the pushed transaction's receipt and returns the credential with the read under `FETCHED`: the transaction, its
- * block and the receipt's logs from `currency`. Every other member of the credential is copied unchanged and not read;
- * a `FETCHED` member it carries is replaced by this read. No receipt is `tempo/not-found` and a failed read
- * `tempo/unreadable`: reads to repeat, not a refusal of the payment. A revert whose block is at or below the reader's
- * `finalized` mark is `tempo/reverted`: nothing moved. A revert above that mark, or where the mark cannot be read, is
- * `tempo/not-final`, a read to repeat: the block can be replaced by one in which the transaction succeeds. A
- * `TransferWithMemo` log from `currency` that is not of the event's form, a 32-byte sender and recipient topic and an
- * amount word, is `tempo/unreadable` too: the reader's answer is not well formed. A receipt that succeeded whose logs
- * from `currency` do not hold exactly one `TransferWithMemo` with this challenge's attribution memo, the log `bound`
- * reads, is read at the same mark: above it, or where it cannot be read, it is `tempo/not-final`, since a block that
- * replaces it can hold other logs; at or below it the credential is returned with the read, and `bound` gives the
- * verdict. The mark is read only for a revert or such a receipt. A reader that is missing or for another network than
- * the challenge names is `tempo/wrong-reader`. At most two calls.
- */
-async function pushFetchPresented(presented: MppCredential, reader: EvmReader): Promise<LandedCredential | Refusal> {
-  if (
-    !isObject(presented) ||
-    carriesRefused(presented) ||
-    !isObject(presented.payload) ||
-    !isObject(presented.challenge)
-  ) {
-    return refusal("mpp/credential-malformed");
-  }
-  if (presented.payload["type"] !== "hash") return refusal("mpp/credential-type");
-  const hash = normalHash(presented.payload["hash"]);
-  if (hash === null) return refusal("mpp/credential-malformed");
-  const e = echoed(presented, PUSH);
-  if (isRefusal(e)) return e;
-  const currency = requestAddress(e.checked, "currency");
-  if (isRefusal(currency)) return currency;
-  const chainId = echoedChain(e.checked);
-  if (isRefusal(chainId)) return chainId;
-  const receipt = await readReceiptAtMark(`eip155:${chainId}`, hash, reader);
-  if (isRefusal(receipt)) return receipt;
-  const logs = receipt.logs.filter((l) => sameBytes(l.address, currency));
-  const memoLogs = logs.filter((l) => sameBytes(l.topics[0], TRANSFER_WITH_MEMO_TOPIC));
-  if (memoLogs.some((l) => transferParts(l, currency, TRANSFER_WITH_MEMO_TOPIC) === undefined)) {
-    return refusal("tempo/unreadable");
-  }
-  const attributed = attributedMemoLogs(logs, currency, presented.challenge);
-  if (attributed.length !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("tempo/not-final");
-  return { ...presented, [FETCHED]: { transaction: hash, blockNumber: receipt.blockNumber, logs } };
-}
-
-/** The `TransferWithMemo` logs from `currency` among `logs` whose memo topic is the challenge's attribution memo. */
-function attributedMemoLogs(logs: readonly unknown[], currency: Hex, challenge: MppCredential["challenge"]): EvmLog[] {
-  const { realm, id } = challenge;
-  return logs.filter(
-    (l): l is EvmLog =>
-      isObject(l) &&
-      Array.isArray(l.topics) &&
-      l.topics.length === 4 &&
-      sameBytes(l.address, currency) &&
-      sameBytes(l.topics[0], TRANSFER_WITH_MEMO_TOPIC) &&
-      typeof l.topics[3] === "string" &&
-      checkAttribution(l.topics[3], realm, id) === true,
-  );
-}
-
-/**
- * The one landed `TransferWithMemo` from `currency` whose memo topic is this challenge's attribution memo, among the
- * logs `fetchPresented` wrote under `FETCHED`. A credential without them, which `fetchPresented` has not read, is
- * `tempo/read-first`, whatever string-keyed members it carries.
- */
-function landedMemoLog(presented: MppCredential): { h: AtrHash; checked: Echoed; currency: Hex; log: EvmLog } | Refusal {
-  const e = echoed(presented, PUSH);
-  if (isRefusal(e)) return e;
-  if (e.payload["type"] !== "hash") return refusal("mpp/credential-type");
-  const landed = fetchedOf(presented);
-  if (!isObject(landed) || !Array.isArray(landed["logs"])) return refusal("tempo/read-first");
-  const currency = requestAddress(e.checked, "currency");
-  if (isRefusal(currency)) return currency;
-  const found = attributedMemoLogs(landed["logs"], currency, presented.challenge);
-  if (found.length === 0) return refusal("tempo/memo-not-bound");
-  if (found.length > 1) return refusal("tempo/ambiguous");
-  return { h: e.h, checked: e.checked, currency, log: found[0]! };
-}
-
-async function pushBound(input: unknown): Promise<AtrHash | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const m = landedMemoLog(presented);
-  return isRefusal(m) ? m : m.h;
-}
-
-/**
- * The read keys of the landed `TransferWithMemo` log. The landed logs are the seller's read, not the buyer's
- * credential, so a matched log that is not of the event's form is `tempo/unreadable`, a read to repeat.
- */
-async function pushReference(input: unknown): Promise<EvmRef | Refusal> {
-  const presented = credentialOf(input);
-  if (isRefusal(presented)) return presented;
-  const m = landedMemoLog(presented);
-  if (isRefusal(m)) return m;
-  const parts = transferParts(m.log, m.currency, TRANSFER_WITH_MEMO_TOPIC);
-  if (parts === undefined) return refusal("tempo/unreadable");
-  return memoRef(m.checked, normalHash(m.log.topics[3])!, parts.to, parts.value);
-}
-
 // ── The records.
 
-const LIMIT = "This does not show that amount, payee, asset or timing match the ATR's content.";
-
-function pattern(p: Omit<LcpPattern, "canonical" | "zeroPartyRecoverable" | "forwardIndexable">): LcpPattern {
-  return deepFreeze({ ...p, canonical: true, zeroPartyRecoverable: false, forwardIndexable: false });
+function pattern(p: Omit<LcpPattern, "zeroPartyRecoverable" | "forwardIndexable">): LcpPattern {
+  return deepFreeze({ ...p, zeroPartyRecoverable: false, forwardIndexable: false });
 }
-
-const MEMO_PROVES =
-  "The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the " +
-  "challenge's position, protected by the server's binding of the challenge. The payer signed a Tempo transaction " +
-  "whose transferWithMemo call carries the attribution memo MPP's SDKs write, whose 7-byte nonce is keccak256 of " +
-  "that id. The chain verified the signature when it executed the call, and the memo is on chain as the memo topic " +
-  "of the token's TransferWithMemo event. It ties the payment to the challenge instance, and binds this ATR's hash " +
-  "only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose challenge id gives the " +
-  "same 7 bytes. " +
-  LIMIT;
-
-const PUSH_PROVES =
-  "The ATR's hash is in the MPP challenge this payment answered: its id is the hash in base64url with the " +
-  "challenge's position, protected by the server's binding of the challenge. The payer signed and broadcast a Tempo " +
-  "transaction whose transferWithMemo call carries the attribution memo MPP's SDKs write, whose 7-byte nonce is " +
-  "keccak256 of that id. The chain verified the signature when it executed the call, and the memo is on chain as the " +
-  "memo topic of the token's TransferWithMemo event, read after the money had moved. It ties the payment to the " +
-  "challenge instance, and binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct " +
-  "a second ATR whose challenge id gives the same 7 bytes. " +
-  LIMIT;
-
-const CALL_PROVES =
-  "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-  "recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction " +
-  "(`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque " +
-  "carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, " +
-  "and the settlement transaction it reported succeeded and moved the token. " +
-  LIMIT;
 
 /**
  * `mpp/charge/evm/authorization`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
@@ -1054,18 +758,10 @@ const CALL_PROVES =
  */
 export const evmAuthorization = Object.freeze({
   id: AUTHORIZATION,
+  data: EIP155_TEMPO_MPP[AUTHORIZATION],
   pattern: pattern({
     pattern: "id-reuse",
-    buyerSigns: true,
     onChain: true,
-    publicProof: true,
-    proves:
-      "The payer signed an EIP-3009 transfer authorization whose nonce is keccak256 of this challenge's id and " +
-      "realm, and the id is this ATR's hash in base64url with the challenge's position. The token contract verified " +
-      "the signature when it executed the transfer, and the nonce is on chain as the nonce topic of its " +
-      "AuthorizationUsed event. A holder of the ATR and the realm can confirm the hash from that nonce; the chain " +
-      "alone does not reveal it. " +
-      LIMIT,
   }),
   claims: true as boolean,
   unplaced,
@@ -1078,7 +774,7 @@ export const evmAuthorization = Object.freeze({
   reference: authorizationReference,
   authorizer: authorizationAuthorizer,
   status: boundStatus([AUTHORIZATION_USED_TOPIC]),
-});
+}) satisfies Entry<typeof AUTHORIZATION, MppCredential, EvmRef & { transaction: Hex }, EvmReader>;
 
 /**
  * `mpp/charge/evm/permit2`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type` `permit2`):
@@ -1087,17 +783,10 @@ export const evmAuthorization = Object.freeze({
  */
 export const evmPermit2 = Object.freeze({
   id: PERMIT2_ID,
+  data: EIP155_TEMPO_MPP[PERMIT2_ID],
   pattern: pattern({
     pattern: "id-reuse",
-    buyerSigns: true,
     onChain: true,
-    publicProof: true,
-    proves:
-      "The payer signed a Permit2 transfer, single or batch, whose witness carries keccak256 of this challenge's id " +
-      "and realm, and the id is this ATR's hash in base64url with the challenge's position. Permit2 verified the " +
-      "signature when it executed the transfer; a batch's transfers all executed in that one call. The witness is in " +
-      "the settlement transaction's calldata only as a hash, and no event carries it. This does not show that " +
-      "amount, payee, asset, splits or timing match the ATR's content.",
   }),
   claims: true as boolean,
   unplaced,
@@ -1110,7 +799,7 @@ export const evmPermit2 = Object.freeze({
   reference: permit2Reference,
   authorizer: permit2Authorizer,
   status: permit2Status,
-});
+}) satisfies Entry<typeof PERMIT2_ID, MppCredential, EvmRef & { transaction: Hex }, EvmReader>;
 
 /**
  * `mpp/charge/evm/transaction`, whose `build` writes `broadcast: false`. `broadcaster` answers by the credential's
@@ -1121,12 +810,10 @@ export const evmPermit2 = Object.freeze({
  */
 export const evmTransaction = Object.freeze({
   id: TRANSACTION,
+  data: EIP155_TEMPO_MPP[TRANSACTION],
   pattern: pattern({
     pattern: "opaque-challenge",
-    buyerSigns: false,
     onChain: false,
-    publicProof: false,
-    proves: CALL_PROVES,
   }),
   claims: false as boolean,
   unplaced,
@@ -1138,7 +825,7 @@ export const evmTransaction = Object.freeze({
   broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES, () => refusal("mpp/no-signed-place"))),
   reference: networkReference(TRANSACTION),
   status: transferPresent,
-});
+}) satisfies Entry<typeof TRANSACTION, MppCredential, EvmRef & { transaction: Hex; asset: Hex }, EvmReader>;
 
 /**
  * `mpp/charge/evm/hash`, whose `build` writes `broadcast: true`. `broadcaster` answers by the credential's `type`, as
@@ -1149,12 +836,10 @@ export const evmTransaction = Object.freeze({
  */
 export const evmHash = Object.freeze({
   id: HASH,
+  data: EIP155_TEMPO_MPP[HASH],
   pattern: pattern({
     pattern: "opaque-challenge",
-    buyerSigns: false,
     onChain: false,
-    publicProof: false,
-    proves: CALL_PROVES,
   }),
   claims: false as boolean,
   unplaced,
@@ -1166,65 +851,7 @@ export const evmHash = Object.freeze({
   broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES, () => refusal("mpp/no-signed-place"))),
   reference: networkReference(HASH),
   status: transferPresent,
-});
-
-/**
- * `mpp/charge/tempo/memo`, the pull charge, whose `build` writes `broadcast: false`. The payee broadcasts
- * (`broadcaster` answers `"payee"` for a credential of `type` `transaction`): the seller's server broadcasts the signed
- * transaction the credential carries, and `status` reads it. A credential of any other type gets
- * `mpp/credential-type`, as `bound` refuses it.
- */
-export const tempoMemo = Object.freeze({
-  id: MEMO,
-  pattern: pattern({
-    pattern: "id-reuse",
-    buyerSigns: false,
-    onChain: true,
-    publicProof: true,
-    proves: MEMO_PROVES,
-  }),
-  claims: true as boolean,
-  unplaced,
-  tie,
-  advertise: advertiseAs(MEMO),
-  read,
-  build: tempoBuild(MEMO),
-  bound: memoBound,
-  broadcaster: mppBroadcaster(byType({ transaction: "payee" })),
-  reference: memoReference,
-  status: boundStatus([TRANSFER_WITH_MEMO_TOPIC]),
-});
-
-/**
- * `mpp/charge/tempo/push`, whose `build` writes `broadcast: true`. The payer broadcasts (`broadcaster` answers
- * `"payer"` for a credential of `type` `hash`) and presents the transaction's hash: `fetchPresented` reads the landed
- * transaction, then `status`. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it.
- */
-export const tempoPush = Object.freeze({
-  id: PUSH,
-  pattern: pattern({
-    pattern: "id-reuse",
-    buyerSigns: false,
-    onChain: true,
-    publicProof: true,
-    proves: PUSH_PROVES,
-  }),
-  claims: true as boolean,
-  unplaced,
-  tie,
-  advertise: advertiseAs(PUSH),
-  read,
-  build: tempoBuild(PUSH),
-  bound: pushBound,
-  broadcaster: mppBroadcaster(byType({ hash: "payer" })),
-  reference: pushReference,
-  landedTx: (presented: unknown): string | undefined => {
-    const hash = pushedField(presented, "hash", "hash");
-    return hash === undefined ? undefined : (normalHash(hash) ?? undefined);
-  },
-  status: boundStatus([TRANSFER_WITH_MEMO_TOPIC]),
-  fetchPresented: pushFetchPresented,
-});
+}) satisfies Entry<typeof HASH, MppCredential, EvmRef & { transaction: Hex; asset: Hex }, EvmReader>;
 
 /** Every MPP pairing this entry point implements. */
 export const MPP_BINDINGS = Object.freeze([
@@ -1232,20 +859,14 @@ export const MPP_BINDINGS = Object.freeze([
   evmPermit2,
   evmTransaction,
   evmHash,
-  tempoMemo,
-  tempoPush,
   sessionEvm,
   sessionTempo,
   subscriptionTempo,
   chargeLightning,
   sessionLightning,
-  chargeHedera,
   chargeSolana,
-  chargeStellar,
   chargeXrpl,
   chargeNearIntents,
-  sessionHedera,
-  sessionSolana,
   sessionXrpl,
   chargeCard,
   chargeStripe,

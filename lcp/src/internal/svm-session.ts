@@ -1,19 +1,15 @@
 /**
- * MPP Solana session pieces: the channel program's `open` instruction and its 8-byte salt, the 50-byte voucher, the
- * session bearer proof, and the read of a reported close. Discriminators are the reference program's. The public names
- * are re-exported by `../svm.ts`; the read of a reported close serves `mpp/session/solana`'s `status`.
+ * MPP Solana session pieces: the channel program's `open` instruction, the 50-byte voucher and the session bearer
+ * proof. Discriminators are the reference program's. The public names are re-exported by `../svm.ts`.
  */
-import { canonicalJson, toRawBytes, type AtrHash } from "../core.js";
+import { canonicalJson } from "../core.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import {
   channelVoucherMessage,
-  decodeLanded,
   keyBytes,
   keyString,
-  landedAt,
   type SolanaNetwork,
   type SvmInstruction,
-  type SvmReader,
   type SvmTx,
 } from "./svm.js";
 
@@ -35,17 +31,6 @@ export type SvmCloseStatus =
   | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
   | { state: "failed"; why: "err" | "not-a-close" };
 
-/**
- * H's first 8 bytes read as a little-endian u64, so the salt's encoded bytes are exactly those 8 bytes. Throws
- * TypeError when `h` is not a 32-byte hash.
- */
-export function sessionSalt(h: AtrHash): bigint {
-  const b = toRawBytes(h);
-  let v = 0n;
-  for (let i = 7; i >= 0; i--) v = (v << 8n) | BigInt(b[i]!);
-  return v;
-}
-
 function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
   return a !== undefined && a.length === b.length && a.every((x, i) => x === b[i]);
 }
@@ -54,7 +39,7 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
  * The one top-level instruction of `program` whose data starts with `OPEN_DISCRIMINATOR`, with at least 33 bytes of
  * data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`,
  * as is a channel named through an address lookup table: the message holds the table's address and an index, not the
- * account, and this function reads no table. `mpp/session/solana`'s `fetchPresented` reads an opening's tables.
+ * account, and this function reads no table.
  */
 export function openOf(tx: SvmTx, program: string): { salt: bigint; channel: string } | Refusal {
   const ix = openInstruction(tx, program);
@@ -141,50 +126,4 @@ export function sessionProof(p: { channelId: string; payer: string; challengeId:
 
 function isWellFormed(s: unknown): s is string {
   return typeof s === "string" && s.isWellFormed();
-}
-
-/**
- * Reads a reported close at `finalized`, then `confirmed`: a top-level instruction of `program` whose data byte 0 is
- * `settleAndSeal` (channel at account 1) or `seal` (channel at account 0) naming the channel, in a transaction that
- * executed without error, is settled. The channel account is read from the static keys or from the addresses the
- * transaction's address lookup tables loaded (`loaded`, as `getTransaction` lists them), since a table can supply it:
- * draft-solana-session-00 has a close bundled with a `distribute` of many recipients sent as a version-0 transaction
- * with an address lookup table. A landed transaction without such an instruction is failed `not-a-close` from a read at
- * either commitment, since the signature fixes its instructions, unless a `settleAndSeal` or `seal` of `program` in it
- * names its channel account through a table: the signature fixes only the table and the index, and an entry written in
- * a block that is not finalized can differ on another fork, so that transaction is failed `not-a-close` only from the
- * read at `finalized`, and pending `not-final` from the read at `confirmed`. One with such an instruction that landed
- * with an error is failed `err` only from the read at `finalized`, and pending `not-final` from the read at
- * `confirmed`, since a block that is not finalized can be replaced and the transaction can land in another block and
- * execute otherwise. Not found at either is pending `not-found`; a failed read, or an answer of neither documented
- * shape (a landed wire that does not decode, `loaded` addresses other than 32-byte keys in the numbers the message's
- * lookups name, or a loaded address that repeats a static key or another loaded address, included), is pending
- * `unreadable`. A ref whose program or channel is not the base58 of a 32-byte key is pending `unreadable`, with nothing
- * read. At most two calls.
- */
-export async function svmCloseStatus(ref: SvmCloseRef, reader: SvmReader): Promise<SvmCloseStatus> {
-  if (reader.network !== ref.network) return { state: "pending", why: "unreadable" };
-  const programKey = keyBytes(ref.program);
-  const channelKey = keyBytes(ref.channel);
-  if (programKey === null || channelKey === null) return { state: "pending", why: "unreadable" };
-  const read = await landedAt(reader, ref.transaction);
-  if (read === undefined) return { state: "pending", why: "unreadable" };
-  if ("notFound" in read) return { state: "pending", why: "not-found" };
-  const decoded = decodeLanded(read.landed);
-  if (decoded === null) return { state: "pending", why: "unreadable" };
-  const { tx, keys } = decoded;
-  const channelAt = tx.instructions.flatMap((ix) => {
-    if (!sameKey(tx.keys[ix.program], programKey)) return [];
-    const at = ix.data[0] === SETTLE_AND_SEAL_DISCRIMINATOR ? 1 : ix.data[0] === SEAL_DISCRIMINATOR ? 0 : -1;
-    const index = at === -1 ? undefined : ix.accounts[at];
-    return index === undefined ? [] : [index];
-  });
-  if (!channelAt.some((index) => sameKey(keys[index], channelKey))) {
-    const fromTable = channelAt.some((index) => index >= tx.keys.length);
-    if (fromTable && read.commitment === "confirmed") return { state: "pending", why: "not-final" };
-    return { state: "failed", why: "not-a-close" };
-  }
-  const { err } = read.landed;
-  if (err === null || err === undefined) return { state: "settled", commitment: read.commitment };
-  return read.commitment === "finalized" ? { state: "failed", why: "err" } : { state: "pending", why: "not-final" };
 }

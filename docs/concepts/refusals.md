@@ -73,8 +73,7 @@ the link is not an `https` URL. Their `from…` counterparts return `null` inste
 
 The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which are asynchronous, reject):
 
-- on a hash that is not 32 bytes: `ccdMemo` and `pltMemo`, `muxedId`, `mppInvoiceId` and `x402InvoiceId`, and
-  `sessionSalt`;
+- on a hash that is not 32 bytes: `ccdMemo` and `pltMemo`, and `mppInvoiceId` and `x402InvoiceId`;
 - on a Hedera value outside its type: `txIdText` and `txIdMirror` (an id that is not an account `shard.realm.num`, a
   non-negative bigint `seconds` and `nanos` from 0 to 999,999,999), `hederaChannelId` (an address that is not `0x` and
   40 hex digits, a salt that is not a 32-byte hash, a chain id other than 295 and 296) and `hederaVoucher` (the same
@@ -109,8 +108,8 @@ rests on a read of the rail that may answer differently later, with nothing for 
 payment may already have moved, so do not ask the buyer to pay again. These are each reader's `<rail>/unreadable` (the
 reader failed, or answered out of its documented form) and `<rail>/not-found` (no landed transaction for the reference
 yet), and the codes of a transaction that is not final yet: `casper/not-executed`, `ccd/not-finalized`,
-`xrpl/not-validated`, `evm/not-final` and `hedera/not-final` (a revert, or a receipt without what the read looks for,
-above the reader's `finalized` mark), `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above
+`xrpl/not-validated`, `evm/not-final` (a revert, or a receipt without what the read looks for, above the reader's
+`finalized` mark), `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above
 the finalized height), `stacks/not-final` (a failure in a block fewer than two tenures below the tip),
 `starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block), `svm/not-final` (an error at
 Solana's `confirmed`, with the transaction not found at `finalized`) and `tempo/not-final` (as `evm/not-final`, on
@@ -125,7 +124,7 @@ false, whatever its reason.
 ```ts
 import { readToRepeat } from "@integraledger/lcp";
 
-const codes = ["xrpl/not-validated", "tempo/not-final", "evm/unreadable", "evm/reverted", "evm/wrong-reader", "tempo/read-first", "server/unreadable"];
+const codes = ["xrpl/not-validated", "tempo/not-final", "evm/unreadable", "evm/reverted", "evm/wrong-reader", "svm/read-first", "server/unreadable"];
 for (const code of codes) console.log(code, readToRepeat(code));
 ```
 
@@ -135,7 +134,7 @@ tempo/not-final true
 evm/unreadable true
 evm/reverted false
 evm/wrong-reader false
-tempo/read-first false
+svm/read-first false
 server/unreadable false
 ```
 

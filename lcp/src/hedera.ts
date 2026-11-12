@@ -1,49 +1,32 @@
 /**
  * Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement
  * read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and
- * `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); and MPP's `mpp/charge/hedera`, whose
- * signed memo is MPP's attribution memo, its nonce keccak256 of the challenge id that carries the hash, with `FETCHED`,
- * the key under which its `fetchPresented` writes the seller's read onto a credential.
+ * `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); the escrow channel pieces
+ * `hederaChannelId` and `hederaVoucher`; and `FETCHED`, the key under which a pairing's `fetchPresented` writes the
+ * seller's read onto a credential.
  */
-import { fromLcpString, fromLegalContext, hash, toLcpString, type AtrHash, type Json } from "./core.js";
+import { fromLcpString, fromLegalContext, hash, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import {
   amountOf,
-  chargeRequestLegs,
-  hederaChargeRequest,
-  hederaNetworkOfChainId,
   INT64_LIMIT,
   isEntity,
   type ExecutorPayload,
   type ExecutorPaymentPayload,
+  type HederaPaymentPayload,
 } from "./internal/hedera.js";
 import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import {
-  attributionMemo,
-  byType,
-  challengeBound,
-  checkedFor,
-  checkAttribution,
-  chosenFor,
-  credentialOf,
-  FETCHED,
-  fetchedOf,
-  mppBroadcaster,
-  place,
-  read as readMpp,
-  tie as tieMpp,
-  type MppChallenge,
-  type MppCredential,
-} from "./mpp-challenge.js";
 import {
   tie,
   type LcpPattern,
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { HEDERA } from "./internal/data/hedera.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
@@ -741,18 +724,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const exactPattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: EXACT,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a Hedera transaction body whose memo carries this ATR's hash in LCP string form. A " +
-    "transaction under that body's id with that memo reached consensus with SUCCESS, and the memo is in the public " +
-    "transaction record; the fee payer, the seller's facilitator, could land another body under the same id. This " +
-    "does not show that amount, recipient, token or timing match the ATR's content.",
 });
 
 /**
@@ -762,9 +737,9 @@ const exactPattern: LcpPattern = deepFreeze({
  */
 export const exactHedera = Object.freeze({
   id: EXACT,
+  data: HEDERA[EXACT],
   pattern: exactPattern,
   claims: true as boolean,
-  carrier: "TransactionBody.memo" as const,
   unplaced,
   tie,
   advertise,
@@ -775,7 +750,7 @@ export const exactHedera = Object.freeze({
   reference,
   status: hederaStatus,
   recover,
-});
+}) satisfies Entry<typeof EXACT, HederaPaymentPayload, HederaRef, HederaReader>;
 
 // ── x402/exact/hedera/transfer-executor ─────────────────────────────────────────────────────────────────────────────
 
@@ -977,20 +952,9 @@ export async function executorStatus(
 
 const executorPattern: LcpPattern = deepFreeze({
   pattern: "http-advisory",
-  canonical: true,
-  buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-    "recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor " +
-    "contract moved the funds under an authorization the seller did not read, and the facilitator submitted the " +
-    "transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries " +
-    "it. The seller read the merged consensus record of the named transaction, and found that its one debited account, " +
-    "by at least one unit, is the payer recorded at claim. This does not show that amount, recipient, token or timing " +
-    "match the ATR's content.",
 });
 
 /**
@@ -1000,6 +964,7 @@ const executorPattern: LcpPattern = deepFreeze({
  */
 export const exactHederaExecutor = Object.freeze({
   id: EXECUTOR,
+  data: HEDERA[EXECUTOR],
   pattern: executorPattern,
   claims: false as boolean,
   unplaced,
@@ -1011,332 +976,12 @@ export const exactHederaExecutor = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference: referenceExecutor,
   status: executorStatus,
-});
-
-// ── mpp/charge/hedera ────────────────────────────────────────────────────────────────────────────────────────────────
-
-const CHARGE = "mpp/charge/hedera" as const;
-const TX_ID_TEXT = /^((?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18}))@(\d{1,19})\.(\d{1,9})$/;
-const ATTRIBUTION = /^0x[0-9a-fA-F]{64}$/;
-/** The longest valid duration a Hedera transaction may declare, in seconds. */
-const MAX_VALID_DURATION = 180;
-
-/** An MPP Hedera charge request as decoded from the challenge's `request`. */
-type MppHederaRequest = { [k: string]: Json };
-
-/**
- * The CAIP-2 network of a charge request: `methodDetails.chainId` 295 or 296; absent, `defaultNetwork`. A
- * `methodDetails` that is present and not an object is `mpp/request-malformed`, the code `advertise` gives it.
- */
-function chargeNetwork(request: MppHederaRequest, defaultNetwork?: HederaNetwork): HederaNetwork | Refusal {
-  if (!isObject(request)) return refusal("hedera/option-malformed");
-  const md = request["methodDetails"];
-  if (md !== undefined && !isObject(md)) return refusal("mpp/request-malformed");
-  const chainId = isObject(md) ? md["chainId"] : undefined;
-  if (chainId === undefined) return defaultNetwork !== undefined && isHederaNetwork(defaultNetwork) ? defaultNetwork : refusal("hedera/chain-id-unnamed");
-  return hederaNetworkOfChainId(chainId);
-}
-
-/**
- * The buyer's inputs to the Hedera charge's `build`: the chosen challenge, the payer, the node, the transaction's valid
- * start and maximum fee, and, optionally, the client id the attribution memo carries and the credential type.
- */
-export interface HederaChargeChoice {
-  challenge: MppChallenge & { id: string };
-  payer: string;
-  node: string;
-  validStart: { seconds: bigint; nanos: number };
-  maxFee: bigint;
-  clientId?: string;
-  credentialType?: "hash" | "transaction";
-}
-
-/**
- * The body the payer signs for an MPP Hedera charge: the payer's own transaction id, MPP's attribution memo for this
- * challenge as the memo, and the token transfers of `currency`: the payer's debit, the recipient's remainder and each
- * split. The chosen challenge is held as `bound` holds an echoed one (`chosenFor`), with `bound`'s code for each
- * fault, in `bound`'s order, and its id must derive from `h`, else `mpp/id-not-ours`; the request, id and realm are
- * read from the snapshot it holds. A choice that is not an object, and every other input the choice carries, is
- * `hedera/option-malformed`. `credentialType` names the credential the payer returns. `hash` is the default when the
- * caller names none, as MPP's Hedera charge makes it (draft-hedera-charge-00: "`type="hash"` (default)"): the request
- * carries `broadcast: true`, for a signer that signs and broadcasts the body and presents the transaction id. With
- * `transaction` (pull) the request carries no `broadcast`, and the signature completes the transaction for the server
- * to broadcast. Any other value is `hedera/option-malformed`.
- */
-async function buildCharge(choice: HederaChargeChoice, h: AtrHash): Promise<HederaUnsigned | Refusal> {
-  if (!isObject(choice)) return refusal("hedera/option-malformed");
-  const checked = chosenFor(choice.challenge, h, CHARGE);
-  if (isRefusal(checked)) return checked;
-  const { id, realm } = checked.challenge;
-  const request = checked.request;
-  const c = choice;
-  const legs = chargeRequestLegs(request);
-  if (isRefusal(legs)) return legs;
-  const vs = c.validStart;
-  if (
-    !isEntity(c.payer) ||
-    !isEntity(c.node) ||
-    !isObject(vs) ||
-    typeof vs.seconds !== "bigint" ||
-    vs.seconds < 0n ||
-    vs.seconds >= INT64_LIMIT ||
-    !Number.isInteger(vs.nanos) ||
-    vs.nanos < 0 ||
-    vs.nanos > 999_999_999 ||
-    typeof c.maxFee !== "bigint" ||
-    c.maxFee < 0n ||
-    c.maxFee >= UINT64_LIMIT ||
-    (c.clientId !== undefined && (typeof c.clientId !== "string" || !c.clientId.isWellFormed())) ||
-    (c.credentialType !== undefined && c.credentialType !== "transaction" && c.credentialType !== "hash") ||
-    legs.legs.some((l) => l.account === c.payer)
-  ) {
-    return refusal("hedera/option-malformed");
-  }
-  const memo = attributionMemo(realm, id, c.clientId);
-  const tokenList = [
-    ...lenField(1, entity(legs.currency)),
-    ...lenField(2, accountAmount(c.payer, -legs.amount)),
-    ...legs.legs.flatMap((l) => lenField(2, accountAmount(l.account, l.amount))),
-  ];
-  const txId = [...lenField(1, [...vField(1, vs.seconds), ...vField(2, BigInt(vs.nanos))]), ...lenField(2, entity(c.payer))];
-  const bodyBytes = Uint8Array.from([
-    ...lenField(1, txId),
-    ...lenField(2, entity(c.node)),
-    ...vField(3, c.maxFee),
-    ...lenField(4, vField(1, BigInt(VALID_DURATION))),
-    ...lenFieldNonEmpty(6, ENCODER.encode(memo)),
-    ...lenField(14, lenField(2, tokenList)),
-  ]);
-  const push = c.credentialType !== "transaction";
-  return {
-    request: push ? { kind: "hedera-body", bodyBytes, broadcast: true } : { kind: "hedera-body", bodyBytes },
-    complete: (s) => completeWith(bodyBytes, s),
-  };
-}
-
-/**
- * The echoed challenge's hash and request, checked to be a Hedera charge and held to its filter (`checkedFor`), with
- * the credential's payload type.
- */
-function chargeCredential(
-  credential: MppCredential,
-): { h: AtrHash; challenge: MppCredential["challenge"]; request: MppHederaRequest; type: "transaction" | "hash" } | Refusal {
-  const cb = challengeBound(credential);
-  if (isRefusal(cb)) return cb;
-  const { challenge, payload } = credential;
-  if (challenge.method !== "hedera" || challenge.intent !== "charge") return refusal("mpp/not-this-pairing");
-  const held = checkedFor(challenge, CHARGE);
-  if (isRefusal(held)) return held;
-  const type = payload["type"];
-  if (type !== "transaction" && type !== "hash") return refusal("mpp/credential-type");
-  return { h: cb.h, challenge, request: cb.request, type };
-}
-
-/**
- * A Hedera charge credential with what `fetchPresented` read under `FETCHED`: the network, and for a push the landed
- * memo.
- */
-type HederaLandedCharge = MppCredential & { [FETCHED]: { network: HederaNetwork; memo?: string } };
-
-/**
- * The credential with the read written under `FETCHED`: the charge's network (the request's `chainId`, or
- * `defaultNetwork` when the request names none), and for a push credential (`type="hash"`) the memo of the landed
- * SUCCESS entry. Every other member of the credential is copied unchanged and not read; a `FETCHED` member it carries
- * is replaced by this read. The reader must be of that network. A read that fails, or finds no transaction or no
- * counted user entry yet, is a refusal the seller retries (`hedera/unreadable`, `hedera/not-found`). Counted user
- * entries with no SUCCESS among them are `hedera/not-success`: the transaction reached consensus and failed, so its
- * transfers were not made, and a later read gives the same answer.
- */
-async function fetchCharge(
-  input: unknown,
-  reader: HederaReader,
-  defaultNetwork?: HederaNetwork,
-): Promise<HederaLandedCharge | Refusal> {
-  const credential = credentialOf(input);
-  if (isRefusal(credential)) return credential;
-  const c = chargeCredential(credential);
-  if (isRefusal(c)) return c;
-  const network = chargeNetwork(c.request, defaultNetwork);
-  if (isRefusal(network)) return network;
-  if (!isObject(reader) || !isHederaNetwork(reader.network)) return refusal("hedera/wrong-reader");
-  if (network !== reader.network) return refusal("hedera/wrong-reader");
-  if (c.type === "transaction") return { ...credential, [FETCHED]: { network } };
-  const id = pushTransactionId(credential);
-  if (isRefusal(id)) return id;
-  const entries = await entriesOf(network, txIdMirror(id), reader);
-  if (entries === "unreadable") return refusal("hedera/unreadable");
-  if (entries === "not-found") return refusal("hedera/not-found");
-  const own = counted(entries);
-  const success = own.find((e) => e.result === SUCCESS);
-  if (success === undefined) {
-    if (own.length === 0) return refusal("hedera/not-found");
-    return refusal("hedera/not-success");
-  }
-  const memo = memoOf(success);
-  if (memo === null) return refusal("hedera/unreadable");
-  let text: string;
-  try {
-    text = UTF8.decode(memo);
-  } catch {
-    return refusal("mpp/attribution-malformed");
-  }
-  return { ...credential, [FETCHED]: { network, memo: text } };
-}
-
-/** A push credential's `transactionId`, `shard.realm.num@seconds.nanos`. */
-function pushTransactionId(credential: MppCredential): { account: string; seconds: bigint; nanos: number } | Refusal {
-  const t = credential.payload["transactionId"];
-  const m = typeof t === "string" ? TX_ID_TEXT.exec(t) : null;
-  if (m === null) return refusal("hedera/tx-malformed");
-  return { account: m[1]!, seconds: BigInt(m[2]!), nanos: Number(m[3]!.padEnd(9, "0")) };
-}
-
-/** What `fetchPresented` wrote under `FETCHED`, or undefined; a string-keyed `landed` is not read. */
-function landedOf(credential: MppCredential): { network?: unknown; memo?: unknown } | undefined {
-  const landed = fetchedOf(credential);
-  return isObject(landed) ? landed : undefined;
-}
-
-function landedBody(credential: MppCredential): HederaBody | Refusal {
-  const wire = fromBase64(credential.payload["transaction"]);
-  if (wire === null) return refusal("hedera/tx-malformed");
-  const decoded = decodeHederaTx(wire);
-  return isRefusal(decoded) ? decoded : decoded.bodies[0]!;
-}
-
-function attributed(memo: string, challenge: { realm: string; id: string }): true | Refusal {
-  if (!ATTRIBUTION.test(memo)) return refusal("mpp/attribution-malformed");
-  return checkAttribution(memo, challenge.realm, challenge.id);
-}
-
-/**
- * The hash from the echoed challenge, once the payer's memo is this challenge's attribution memo: from the signed body
- * (`type="transaction"`), or from the landed entry's memo that `fetchPresented` wrote under `FETCHED` (`type="hash"`),
- * else `hedera/read-first`. No transfer, amount, payer or signature is read.
- */
-async function boundCharge(input: unknown): Promise<AtrHash | Refusal> {
-  const credential = credentialOf(input);
-  if (isRefusal(credential)) return credential;
-  const c = chargeCredential(credential);
-  if (isRefusal(c)) return c;
-  let memo: string;
-  if (c.type === "transaction") {
-    const body = landedBody(credential);
-    if (isRefusal(body)) return body;
-    memo = body.memo;
-  } else {
-    const landed = landedOf(credential)?.memo;
-    if (typeof landed !== "string") return refusal("hedera/read-first");
-    memo = landed;
-  }
-  const ok = attributed(memo, c.challenge);
-  return ok === true ? c.h : ok;
-}
-
-/**
- * The read keys, on the network `fetchPresented` wrote under `FETCHED` (else the request's `chainId`).
- * `type="transaction"`: from the signed body. `type="hash"`: the credential's transaction id, the landed memo, and
- * validity to the valid start plus 180 s.
- */
-async function referenceCharge(input: unknown): Promise<HederaRef | Refusal> {
-  const credential = credentialOf(input);
-  if (isRefusal(credential)) return credential;
-  const h = await boundCharge(credential);
-  if (isRefusal(h)) return h;
-  const c = chargeCredential(credential) as { request: MppHederaRequest };
-  const landed = landedOf(credential);
-  const network = landed?.network !== undefined ? landed.network : chargeNetwork(c.request);
-  if (isRefusal(network)) return network;
-  if (!isHederaNetwork(network)) return refusal("hedera/network-malformed");
-  if (credential.payload["type"] === "transaction") {
-    const body = landedBody(credential) as HederaBody;
-    return {
-      network,
-      transactionId: txIdMirror(body.id),
-      expectMemo: body.memo,
-      validUntil: Number(body.id.seconds) + body.validDuration,
-    };
-  }
-  const id = pushTransactionId(credential);
-  if (isRefusal(id)) return id;
-  return { network, transactionId: txIdMirror(id), expectMemo: landed!.memo as string, validUntil: Number(id.seconds) + MAX_VALID_DURATION };
-}
-
-/** The placement: the Hedera request checks, then MPP's `place`. */
-function advertiseCharge(
-  doc: readonly MppChallenge[],
-  h: AtrHash,
-  link: string,
-  offer: MppChallenge,
-  agreementUrl?: string,
-): MppChallenge[] | Refusal {
-  const ok = hederaChargeRequest(offer);
-  if (ok !== true) return ok;
-  return place(doc, h, link, offer, agreementUrl);
-}
-
-/**
- * The challenge as given: the hash rides in the challenge id and `opaque`, never in `request`. A challenge that carries
- * a `refused` member is `mpp/challenge-malformed`; a value that is not an object comes back as it is.
- */
-function unplacedCharge(option: MppChallenge): MppChallenge | Refusal {
-  if (isObject(option) && carriesRefused(option)) return refusal("mpp/challenge-malformed");
-  return option;
-}
-
-const chargePattern: LcpPattern = deepFreeze({
-  pattern: "id-reuse",
-  canonical: true,
-  buyerSigns: false,
-  onChain: true,
-  zeroPartyRecoverable: false,
-  forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The ATR was assembled and delivered before approval, and its hash is in the MPP challenge this payment " +
-    "answered, protected by the server's binding of the challenge, not by the payer's signature. The payer signed a " +
-    "memo whose 7-byte nonce is keccak256 of that challenge's id. It ties the payment to the challenge instance, and " +
-    "binds this ATR's hash only through those 7 bytes: whoever assembles the ATR can construct a second ATR whose " +
-    "challenge id gives the same 7 bytes. This does not show that amount, recipient, token or timing match the ATR's " +
-    "content.",
-});
-
-/**
- * `mpp/charge/hedera`. `broadcaster` answers by the credential's `type`, as the charge's `build` writes the request:
- * `hash`, the default, whose request carries `broadcast: true`, `"payer"`: the payer's signer broadcast the body and
- * presents the transaction id, which `fetchPresented` reads, then `status`; `transaction`, whose request carries no
- * `broadcast`, `"payee"`: the seller's server broadcasts the signed transaction, and `status` reads it. A credential of
- * any other type gets `mpp/credential-type`, as `bound` refuses it.
- */
-export const chargeHedera = Object.freeze({
-  id: CHARGE,
-  pattern: chargePattern,
-  claims: true as boolean,
-  carrier: "challenge" as const,
-  unplaced: unplacedCharge,
-  tie: tieMpp,
-  advertise: advertiseCharge,
-  read: readMpp,
-  network: chargeNetwork,
-  build: buildCharge,
-  fetchPresented: fetchCharge,
-  landedTx: (presented: unknown): string | undefined => {
-    const c = credentialOf(presented);
-    if (isRefusal(c) || c.payload["type"] !== "hash") return undefined;
-    const id = pushTransactionId(c);
-    return isRefusal(id) ? undefined : txIdMirror(id);
-  },
-  bound: boundCharge,
-  broadcaster: mppBroadcaster(byType({ transaction: "payee", hash: "payer" })),
-  reference: referenceCharge,
-  status: hederaStatus,
-});
+}) satisfies Entry<typeof EXECUTOR, ExecutorPaymentPayload, ExecutorRef & { transaction: string }, HederaReader>;
 
 export { FETCHED } from "./mpp-challenge.js";
 export {
   CHANNEL_CLOSED_TOPIC,
   CHANNEL_OPENED_TOPIC,
-  ESCROW_OPEN_SELECTOR,
   hederaChannelId,
   hederaVoucher,
   type HederaChannelConfig,

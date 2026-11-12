@@ -84,9 +84,8 @@ describe("ack-payment-request.json", () => {
       expect(await pr.build(x, H)).toEqual(K.K5.expect);
       expect(await pr.bound(x)).toEqual(K.K5.expect);
     }
-    const { proves, ...rest } = pr.pattern;
-    expect({ ...rest, claims: pr.claims }).toEqual(K.K5.pattern);
-    expect(proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
+    expect({ ...pr.pattern, claims: pr.claims }).toEqual(K.K5.pattern);
+    expect(pr.data.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
     expect(pr.unplaced(K.fixed.O)).toBe(K.fixed.O);
   });
 

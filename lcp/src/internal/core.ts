@@ -8,6 +8,8 @@
 
 import { refusal } from "../refusal.js";
 import { readUrl } from "./url-host.js";
+import { MAX_JSON_DEPTH, MAX_LINK_LENGTH } from "./bounds.js";
+export { MAX_JSON_DEPTH };
 
 /** `0x` followed by 64 hex digits. Every hash this module emits is lowercase. */
 export type AtrHash = `0x${string}`;
@@ -31,8 +33,6 @@ export type CoreRefusal = {
 };
 
 const MIB = 1_048_576;
-/** The deepest nesting of arrays and objects in any JSON this package writes or reads. */
-export const MAX_JSON_DEPTH = 64;
 const MAX_PARTY_SLOTS = 64;
 const SLOT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
@@ -589,8 +589,6 @@ export function fromLegalContext(o: unknown): { h: AtrHash; url: string } | null
   return { h: toHex(b), url };
 }
 
-/** The longest link a placement carries, in characters. */
-const MAX_LINK = 2048;
 
 /**
  * True for a string of at most 2048 characters that parses as an absolute URL whose scheme is not `https`, by the WHATWG
@@ -601,7 +599,7 @@ const MAX_LINK = 2048;
  * `https` as `link-not-https`.
  */
 export function isOtherSchemeLink(s: unknown): s is string {
-  if (typeof s !== "string" || s.length > MAX_LINK) return false;
+  if (typeof s !== "string" || s.length > MAX_LINK_LENGTH) return false;
   const u = readUrl(s);
   return u !== null && u.scheme !== "https";
 }

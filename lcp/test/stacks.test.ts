@@ -769,7 +769,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
   });
 
   it("states what it proves", () => {
-    expect({ ...chargeUsdcStacks.pattern, claims: chargeUsdcStacks.claims }).toEqual(V.pattern);
+    expect({ ...chargeUsdcStacks.pattern, proves: chargeUsdcStacks.data.proves, claims: chargeUsdcStacks.claims }).toEqual(V.pattern);
   });
 });
 

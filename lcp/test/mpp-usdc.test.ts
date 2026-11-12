@@ -176,7 +176,7 @@ describe("mpp/charge/usdc/evm (M3)", () => {
   });
 
   it("states what it proves", () => {
-    expect({ ...chargeUsdcEvm.pattern, claims: chargeUsdcEvm.claims }).toEqual(EVM.pattern);
+    expect({ ...chargeUsdcEvm.pattern, proves: chargeUsdcEvm.data.proves, claims: chargeUsdcEvm.claims }).toEqual(EVM.pattern);
   });
 });
 
@@ -275,6 +275,7 @@ describe("mpp/charge/usdc/solana", () => {
   it("its record is the Solana charge's", () => {
     expect(SOL.patternAs).toBe(chargeSolana.id);
     expect(chargeUsdcSolana.pattern).toEqual(chargeSolana.pattern);
+    expect(chargeUsdcSolana.data.proves).toBe(chargeSolana.data.proves);
     expect(chargeUsdcSolana.claims).toBe(chargeSolana.claims);
   });
 });
@@ -388,7 +389,7 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
   });
 
   it("states what it proves", () => {
-    expect({ ...chargeUsdcGateway.pattern, claims: chargeUsdcGateway.claims }).toEqual(GW.pattern);
+    expect({ ...chargeUsdcGateway.pattern, proves: chargeUsdcGateway.data.proves, claims: chargeUsdcGateway.claims }).toEqual(GW.pattern);
   });
 });
 

@@ -3,12 +3,8 @@ import { describe, expect, it } from "vitest";
 import { BINDINGS, type Binding } from "../src/index.js";
 
 const vectors = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}.json`, import.meta.url), "utf8"));
-const TEMPO = vectors("mpp-charge-tempo-push");
 const SOLANA = vectors("mpp-charge-solana");
-const STELLAR = vectors("mpp-charge-stellar");
 const XRPL = vectors("mpp-charge-xrpl");
-const HEDERA = vectors("mpp-charge-hedera");
-const RAILS = vectors("mpp-session-hedera-solana-xrpl");
 const SESSION_EVM = vectors("mpp-session-evm");
 
 const challenge = { id: "x", realm: "api.seller.example", method: "m", intent: "charge", request: "e30" };
@@ -20,22 +16,13 @@ const byId = (id: string): Binding => BINDINGS.find((b) => b.id === id)!;
 const PUSHED_HASH = `0x${"55".repeat(32)}`;
 const ROWS: readonly [id: string, payload: Record<string, unknown>, landed: string][] = [
   ["mpp/session/evm", { action: "open", type: "hash", hash: PUSHED_HASH, salt: SESSION_EVM.fixed.H }, PUSHED_HASH],
-  ["mpp/charge/tempo/push", { type: "hash", hash: TEMPO.MV13.T_P }, TEMPO.MV13.T_P],
   ["mpp/charge/solana", { type: "signature", signature: SOLANA.refusals[1].payload.signature }, SOLANA.refusals[1].payload.signature],
-  ["mpp/charge/stellar", { type: "hash", hash: STELLAR.refusals[0].payload.hash }, STELLAR.refusals[0].payload.hash],
   ["mpp/charge/xrpl", { type: "hash", hash: XRPL.refusals[0].payload.hash }, XRPL.refusals[0].payload.hash],
-  ["mpp/charge/hedera", { type: "hash", transactionId: HEDERA.push.transactionId }, HEDERA.push.expectReference.transactionId],
-  ["mpp/session/hedera", { action: "open", txHash: RAILS.HS3.txHash }, RAILS.HS3.txHash],
 ];
-
-// mpp/session/solana's fetchPresented reads the address lookup tables its opening's message names, not a landed payment:
-// that opening is a signed transaction the seller broadcasts, and it names no transaction.
-const READS_TABLES = ["mpp/session/solana"];
 
 describe("landedTx on push-mode pairings", () => {
   it("is exactly on the pairings that read a landed payment", () => {
-    for (const id of READS_TABLES) expect(["fetchPresented" in byId(id), byId(id).landedTx], id).toEqual([true, undefined]);
-    const push = BINDINGS.filter((b) => "fetchPresented" in b && !READS_TABLES.includes(b.id)).map((b) => b.id);
+    const push = BINDINGS.filter((b) => "fetchPresented" in b).map((b) => b.id);
     const landed = BINDINGS.filter((b) => typeof b.landedTx === "function").map((b) => b.id);
     expect(landed.filter((id) => (push as readonly string[]).includes(id))).toEqual(push);
     expect([...landed].sort()).toEqual(ROWS.map(([id]) => id).sort());

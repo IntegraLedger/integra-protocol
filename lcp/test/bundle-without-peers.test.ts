@@ -200,6 +200,9 @@ process.stdout.write(JSON.stringify(out));
 }, 0);
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
+/** The entry points that export types alone, so a module that loads one holds no binding. */
+const TYPES_ONLY: ReadonlySet<string> = new Set(["./x402-exact-stellar"]);
+
 describe("each public entry point bundled for a Worker with no optional peer installed", () => {
   it("each optional peer is unresolvable in the consumer's install", async () => {
     expect(PEERS.length).toBeGreaterThan(0);
@@ -248,7 +251,8 @@ describe("each public entry point bundled for a Worker with no optional peer ins
     const got = loaded[key];
     expect(got).toHaveProperty("bundle");
     const { bundle, built } = got as { bundle: string[]; built: string[] };
-    expect(built.length).toBeGreaterThan(0);
+    if (TYPES_ONLY.has(key)) expect(built).toEqual([]);
+    else expect(built.length).toBeGreaterThan(0);
     expect(bundle).toEqual(built);
   });
 
@@ -256,6 +260,7 @@ describe("each public entry point bundled for a Worker with no optional peer ins
     expect(errors).toEqual([]);
     expect(modules["./core"]).toEqual([
       `${PKG.name}/dist/core.js`,
+      `${PKG.name}/dist/internal/bounds.js`,
       `${PKG.name}/dist/internal/core.js`,
       `${PKG.name}/dist/internal/idna-data.js`,
       `${PKG.name}/dist/internal/reads-to-repeat.js`,
@@ -280,6 +285,7 @@ describe("each public entry point bundled for a Worker with no optional peer ins
     expect(workerModules["canonicalJson"]).toEqual([
       `${PKG.name}/dist/core.js`,
       `${PKG.name}/dist/index.js`,
+      `${PKG.name}/dist/internal/bounds.js`,
       `${PKG.name}/dist/internal/core.js`,
       `${PKG.name}/dist/refusal.js`,
     ]);

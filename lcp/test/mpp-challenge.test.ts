@@ -4,9 +4,7 @@ import { describe, expect, it } from "vitest";
 import { concat, encodePacked, keccak256, toBytes, toHex, toRlp } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
-  chargeHedera,
   chargeSolana,
-  chargeStellar,
   chargeXrpl,
   challengeH,
   challengeHash,
@@ -24,23 +22,19 @@ import {
   place,
   problem,
   read,
-  sessionHedera,
   sessionResume,
-  tempoMemo,
-  tempoPush,
   tie,
   type MppChallenge,
   type MppCredential,
 } from "../src/mpp.js";
 import { ReaderError } from "../src/evm.js";
 import { TIP20_CHANNEL_RESERVE, expiringNonceHash, memoCalldata, tempoChannelId } from "../src/tempo.js";
-import { FETCHED as HEDERA_FETCHED, type HederaEvmReader, type HederaReader } from "../src/hedera.js";
+import { FETCHED as HEDERA_FETCHED } from "../src/hedera.js";
 import { FETCHED as ROOT_FETCHED } from "../src/index.js";
-import type { StellarReader } from "../src/stellar.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
-import { C_E, C_T, H, V, b64u, challenge, fromB64u, heldOf, link, load, readerFor, realm } from "./mpp-fixtures.js";
+import { C_E, C_T, H, V, b64u, challenge, fromB64u, link, load, realm } from "./mpp-fixtures.js";
 import { READS_TO_REPEAT } from "./refusal-classes.js";
 import { rowsOf } from "./rows.js";
 
@@ -65,7 +59,7 @@ describe("mpp-challenge.json", () => {
   });
 
   it("MV3: place writes the id and opaque, leaves request unchanged, and read gives H and the link", () => {
-    for (const c of [C_E, C_T]) {
+    for (const c of [C_E]) {
       const placed = place([c], H, link, c) as MppChallenge[];
       expect(placed[0]!.id).toBe(V.MV3.expectId);
       expect(placed[0]!.opaque).toBe(V.MV3.expectOpaque);
@@ -78,12 +72,10 @@ describe("mpp-challenge.json", () => {
 
   it("MV4: the issued digest, equal for the option and its echo, changed by header", async () => {
     const echoE = (place([C_E], H, link, C_E) as MppChallenge[])[0]!;
-    const echoT = (place([C_T], H, link, C_T) as MppChallenge[])[0]!;
     expect(await issuedDigest(C_E)).toBe(V.MV4.expectE);
     expect(await issuedDigest(echoE)).toBe(V.MV4.expectE);
     expect(await issuedDigest({ ...C_E, header: V.MV4.header })).toBe(V.MV4.expectEWithHeader);
     expect(await issuedDigest(C_T)).toBe(V.MV4.expectT);
-    expect(await issuedDigest(echoT)).toBe(V.MV4.expectT);
     expect(await issuedDigest({ ...echoE, description: "shown to the user" })).toBe(V.MV4.expectE);
     expect(await issuedDigest({ ...C_E, expires: "2026-09-21T14:14:21Z" })).not.toBe(V.MV4.expectE);
   });
@@ -146,13 +138,11 @@ describe("mpp-challenge.json", () => {
 
   // `pairingsOf` names a challenge's pairings as issued, and refuses an `opaque` already carrying `legalContext`
   // (mpp/carrier-taken); a placed challenge names the same pairings once its `opaque` is set aside. C_E lists
-  // credentialTypes ["permit2", "authorization"], in that order; C_T's supportedModes is ["pull"].
+  // credentialTypes ["permit2", "authorization"], in that order.
   it("pairingsOfPlaced: the pairings of a placed challenge, as issued", () => {
     const e = (place([C_E], H, link, C_E) as MppChallenge[])[0]!;
-    const t = (place([C_T], H, link, C_T, V.fixed.agreementUrl) as MppChallenge[])[0]!;
     expect(pairingsOf(e)).toEqual({ refused: true, code: "mpp/carrier-taken" });
     expect(pairingsOfPlaced(e)).toEqual(["mpp/charge/evm/permit2", "mpp/charge/evm/authorization"]);
-    expect(pairingsOfPlaced(t)).toEqual(["mpp/charge/tempo/memo"]);
     expect(pairingsOfPlaced(C_E)).toEqual(pairingsOf(C_E));
     expect(pairingsOfPlaced({ ...e, expires: undefined } as never)).toEqual([]);
     expect(pairingsOfPlaced(null as never)).toEqual([]);
@@ -174,8 +164,6 @@ describe("mpp-challenge.json", () => {
     expect(pairingsOf(withOpaque({ legalContext: "x" }))).toEqual({ refused: true, code: "mpp/carrier-taken" });
     expect(pairingsOf(withOpaque({ legalContextAgreementUrl: "https://a.example/" }))).toEqual({ refused: true, code: "mpp/carrier-taken" });
     expect(pairingsOf(withOpaque({ order: "42" }))).toEqual(["mpp/charge/evm/permit2", "mpp/charge/evm/authorization"]);
-    const memoT = challenge("tempo", "charge", JSON.stringify({ amount: "1", currency: "0x20c0000000000000000000000000000000000000", recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00", methodDetails: { memo: "0x" + "00".repeat(32) } }));
-    expect(pairingsOf(memoT)).toEqual({ refused: true, code: "mpp/carrier-taken" });
     // The Permit2 build writes `permit2Address` as the verifying contract (draft-evm-charge-00 L281) and `externalId`
     // into the signed witness (L453-456), so their form is checked where a Permit2 pairing is offered, and only there.
     const reqMalformed = { refused: true, code: "mpp/request-malformed" };
@@ -189,8 +177,6 @@ describe("mpp-challenge.json", () => {
     expect(pairingsOf(md({ credentialTypes: ["permit2"] }, { externalId: 7 }))).toEqual(reqMalformed);
     const { expires: _unset, ...unexpiring } = md({ credentialTypes: ["transaction", "permit2"], permit2Address: "nope" }, { externalId: 7 });
     expect(pairingsOf(unexpiring)).toEqual(["mpp/charge/evm/transaction"]);
-    const pushOnlyFeePayer = challenge("tempo", "charge", JSON.stringify({ amount: "1", currency: "0x20c0000000000000000000000000000000000000", recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00", methodDetails: { supportedModes: ["push"], feePayer: true } }));
-    expect(pairingsOf(pushOnlyFeePayer)).toEqual({ refused: true, code: "mpp/modes-pull-only" });
   });
 
   // MPP's EVM charge draft (draft-evm-charge-00, "Payment Splits"): a split's `amount` is "Amount in base units for this
@@ -212,7 +198,7 @@ describe("mpp-challenge.json", () => {
     expect(place([C_E], H, link, C_E, "http://pay.seller.example/")).toEqual({ refused: true, code: "mpp/link-not-https" });
     expect(place([C_E], H, link, C_T)).toEqual({ refused: true, code: "mpp/not-this-pairing" });
     expect(read([C_E])).toEqual({ refused: true, code: "mpp/no-legal-context" });
-    const other = place([C_T], H2, link, C_T) as MppChallenge[];
+    const other = place([C_E], H2, link, C_E) as MppChallenge[];
     expect(read([placed[0]!, { ...other[0]!, id: (challengeId(H2, 1) as string) }])).toEqual({
       refused: true,
       code: "mpp/legal-context-conflict",
@@ -234,7 +220,6 @@ describe("mpp-challenge.json", () => {
   it("agreedRefusals", async () => {
     const i = V.agreedRefusals.inputs;
     expect(pairingsOf(challenge("evm", "charge", i.requestMalformed))).toEqual({ refused: true, code: "mpp/request-malformed" });
-    expect(pairingsOf(challenge("tempo", "charge", i.modesMalformed))).toEqual({ refused: true, code: "mpp/request-malformed" });
     expect(pairingsOf({ ...C_E, opaque: b64u(i.opaqueNotFlat) })).toEqual({ refused: true, code: "mpp/opaque-malformed" });
     expect(pairingsOf({ ...C_E, intent: "charge", method: "no-such-method" })).toEqual({ refused: true, code: "mpp/not-this-pairing" });
     expect(pairingsOf(challenge("evm", "charge", i.duplicateTypes))).toEqual(["mpp/charge/evm/permit2"]);
@@ -292,9 +277,9 @@ describe("problem", () => {
   const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
 
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
-    // MV10's 500 rows: 13 reads to repeat, and 10 calls that cannot read the payment: five wrong-reader and five
+    // MV10's 500 rows: 10 reads to repeat, and 6 calls that cannot read the payment: four wrong-reader and two
     // read-first codes.
-    expect(answered500.length).toBe(23);
+    expect(answered500.length).toBe(16);
     for (const code of rowsOf([...REFUSAL_CODES], "REFUSAL_CODES, the codes the package returns")) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);
@@ -304,7 +289,7 @@ describe("problem", () => {
   });
 
   it("answers each read to repeat 500 internal-payment-error, on every rail", () => {
-    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 44 })) {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 41 })) {
       expect([code, problem(code)]).toEqual([code, internal]);
     }
   });
@@ -322,95 +307,15 @@ describe("problem", () => {
     for (const code of [undefined, null, 402, {}]) expect(problem(code as never)).toEqual(internal);
   });
 
-  // A pushed payment the reader cannot read yet answers 500 and no challenge, so the buyer is not asked to pay again; a
-  // revert answers 402, since nothing moved. Each credential is its vector file's buyer row as presented.
-  it("a push the seller's reader cannot read yet answers 500; a revert answers 402", async () => {
-    const tempo = load("mpp-charge-tempo-push.json");
-    const tempoCredential = tempo.buyer.rows[1].input.presented as MppCredential;
-    const reverted = { ...tempo.MV13.receipt, status: 0 as const };
-    const tempoAnswers = async (r: Parameters<typeof readerFor>[1]) => {
-      const out = await tempoPush.fetchPresented(tempoCredential, readerFor("eip155:42431", r));
-      return "refused" in out ? [out.code, problem(out.code)] : out;
-    };
-    expect(await tempoAnswers(null)).toEqual(["tempo/not-found", internal]);
-    expect(await tempoAnswers("reader-error")).toEqual(["tempo/unreadable", internal]);
-    expect(await tempoAnswers(reverted)).toEqual(["tempo/reverted", verificationFailed]);
-
-    const hedera = load("mpp-session-hedera-solana-xrpl.json");
-    const hederaCredential = hedera.buyer.rows[1].input.presented as MppCredential;
-    const hederaAnswers = async (r: Parameters<typeof readerFor>[1]) => {
-      const reader = readerFor("hedera:testnet", r) as unknown as HederaEvmReader;
-      const out = await sessionHedera.fetchPresented(hederaCredential, reader);
-      return "refused" in out ? [out.code, problem(out.code)] : out;
-    };
-    expect(await hederaAnswers(null)).toEqual(["hedera/not-found", internal]);
-    expect(await hederaAnswers("reader-error")).toEqual(["hedera/unreadable", internal]);
-    const hederaReverted = { status: 0 as const, blockNumber: "100", logs: [] };
-    expect(await hederaAnswers(hederaReverted)).toEqual(["hedera/reverted", verificationFailed]);
-  });
-
-  // Tempo push: `bound` and `reference` on the buyer's credential as sent, before fetchPresented has read the landed
-  // logs, answer tempo/read-first, 500 and no challenge, as MV10's row gives. The credential is the vector file's B6
-  // buyer row's presented; with its fetched written under FETCHED, as fetchPresented writes it, bound reads H (MV13).
-  it("mpp/charge/tempo/push: bound and reference before fetchPresented answer tempo/read-first, 500", async () => {
-    const tempo = load("mpp-charge-tempo-push.json");
-    const input = tempo.buyer.rows.find((r: { name: string }) => r.name === "B6").input;
-    const asSent = input.presented as MppCredential;
-    const presented = heldOf(input);
-    expect(await tempoPush.bound(asSent)).toEqual({ refused: true, code: "tempo/read-first" });
-    expect(await tempoPush.reference(asSent)).toEqual({ refused: true, code: "tempo/read-first" });
-    expect(problem("tempo/read-first")).toEqual(expectOf("tempo/read-first"));
-    expect(expectOf("tempo/read-first")).toEqual(internal);
-    expect(await tempoPush.bound(presented)).toBe(H);
-  });
-
-  // Tempo push: a reader that is missing or for another network than the challenge's chain (Ethereum mainnet,
-  // eip155:1) answers tempo/wrong-reader, 500 and no challenge, as MV10's row gives; a reader for the chain that fails
-  // still answers the read to repeat, tempo/unreadable. The credential is the vector file's B6 buyer row as presented.
-  it("mpp/charge/tempo/push: a reader missing or of another network answers tempo/wrong-reader, 500", async () => {
-    const tempo = load("mpp-charge-tempo-push.json");
-    const presented = tempo.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented as MppCredential;
-    for (const reader of [readerFor("eip155:1", tempo.MV13.receipt), undefined, null]) {
-      const out = await tempoPush.fetchPresented(presented, reader as never);
-      expect([reader?.network, out]).toEqual([reader?.network, { refused: true, code: "tempo/wrong-reader" }]);
-    }
-    expect(problem("tempo/wrong-reader")).toEqual(expectOf("tempo/wrong-reader"));
-    expect(expectOf("tempo/wrong-reader")).toEqual(internal);
-    const failing = await tempoPush.fetchPresented(presented, readerFor("eip155:42431", "reader-error"));
-    expect(failing).toEqual({ refused: true, code: "tempo/unreadable" });
-  });
-
-  // The Hedera session: a reader that is missing or for another network than the challenge's chainId 296
-  // (hedera:testnet) answers hedera/wrong-reader, 500 and no challenge, as MV10's row gives; a reader for that network
-  // that fails answers the read to repeat, hedera/unreadable. The credential is the vector file's buyer row as
-  // presented.
-  it("mpp/session/hedera: a reader missing or of another network answers hedera/wrong-reader, 500", async () => {
-    const hedera = load("mpp-session-hedera-solana-xrpl.json");
-    const presented = hedera.buyer.rows[1].input.presented as MppCredential;
-    const reader = (network: string) => readerFor(network, null) as unknown as HederaEvmReader;
-    for (const r of [reader("hedera:mainnet"), undefined, null]) {
-      const out = await sessionHedera.fetchPresented(presented, r as never);
-      expect([r?.network, out]).toEqual([r?.network, { refused: true, code: "hedera/wrong-reader" }]);
-    }
-    expect(problem("hedera/wrong-reader")).toEqual(expectOf("hedera/wrong-reader"));
-    expect(expectOf("hedera/wrong-reader")).toEqual(internal);
-    const failing = readerFor("hedera:testnet", "reader-error") as unknown as HederaEvmReader;
-    expect(await sessionHedera.fetchPresented(presented, failing)).toEqual({ refused: true, code: "hedera/unreadable" });
-  });
-
-  // Solana's, Stellar's, XRPL's and the Hedera charge's push reads, one case per arm: a read that fails, finds no
-  // transaction, or finds an XRPL transaction not yet in a validated ledger, a reader of another network, and `bound`
-  // on the push credential before fetchPresented has read it answer 500 and no challenge; a landed transaction that
-  // failed answers 402 verification-failed. Each credential is its vector file's B6 buyer row's challenge as presented,
-  // with that file's push payload. The failed transactions are the files' agreedRefusals rows (Solana's meta.err, XRPL's
-  // tecPATH_DRY) and Hedera's fetchPresented row for a user entry without SUCCESS; the other Hedera reads are its
-  // fetchPresented rows, and the other network the rail's mainnet; the codes are
-  // those rows', `<rail>/wrong-reader` for another network, and the files' "not yet fetched" refusals rows (Hedera's
-  // push.expectWithout) for `bound` before fetchPresented.
+  // Solana's and XRPL's push reads, one case per arm: a read that fails, finds no transaction, or finds an XRPL
+  // transaction not yet in a validated ledger, a reader of another network, and `bound` on the push credential before
+  // fetchPresented has read it answer 500 and no challenge; a landed transaction that failed answers 402
+  // verification-failed. Each credential is its vector file's B6 buyer row's challenge as presented, with that file's
+  // push payload. The failed transactions are the files' agreedRefusals rows (Solana's meta.err, XRPL's tecPATH_DRY),
+  // and the other network the rail's mainnet; the codes are those rows', `<rail>/wrong-reader` for another network, and
+  // the files' "not yet fetched" refusals rows for `bound` before fetchPresented.
   const SO = load("mpp-charge-solana.json");
-  const ST = load("mpp-charge-stellar.json");
   const XR = load("mpp-charge-xrpl.json");
-  const HE = load("mpp-charge-hedera.json");
   const pushed = (file: typeof SO, payload: MppCredential["payload"]): MppCredential => ({
     challenge: file.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented.challenge,
     payload,
@@ -437,15 +342,6 @@ describe("problem", () => {
     inner: [],
   });
 
-  // A push under the sourceAccount section's challenge, whose feePayer is false: under feePayer true nothing is read.
-  const stellarPush: MppCredential = { challenge: ST.sourceAccount.challenge, payload: ST.refusals[0].payload };
-  const stellar = (transaction: StellarReader["transaction"], network: StellarReader["network"] = "stellar:testnet"): StellarReader => ({
-    network,
-    transaction,
-    transfers: async () => ({ events: [], complete: true, oldestLedger: 1, latestLedger: 1000 }),
-    latestLedger: async () => 1000,
-  });
-
   const xrplPush = pushed(XR, XR.refusals[0].payload);
   const xrpl = (tx: XrplReader["tx"], network: XrplReader["network"] = "xrpl:1"): XrplReader => ({
     network,
@@ -454,17 +350,6 @@ describe("problem", () => {
     validatedLedger: async () => 1000,
   });
   const xrplLanded = (validated: boolean, result: string) => async () => ({ validated, result, ledgerIndex: 990, transactionType: "Payment" });
-
-  const hederaPush = pushed(HE, { type: "hash", transactionId: HE.push.transactionId });
-  const HEDERA_FAILED = "the user entry reached consensus without SUCCESS: the transfer failed";
-  const hederaRow = (rowCase: string) => HE.fetchPresented.rows.find((r: { case: string }) => r.case === rowCase);
-  const hedera = (rowCase: string): HederaReader => {
-    const row = hederaRow(rowCase);
-    return {
-      network: row.readerNetwork ?? HE.fetchPresented.reader,
-      transactions: async () => (row.throws === true ? failing() : row.entries),
-    };
-  };
 
   const arms: [string, () => Promise<unknown>, string, { status: number; type: string }][] = [
     ["mpp/charge/solana: no transaction at confirmed", () => chargeSolana.fetchPresented(solanaPush, solana(async () => ({ notFound: true as const, slot: null }))), "svm/not-found", internal],
@@ -498,31 +383,6 @@ describe("problem", () => {
       internal,
     ],
     [
-      "mpp/charge/stellar: no transaction",
-      () => chargeStellar.fetchPresented(stellarPush, stellar(async () => ({ status: "NOT_FOUND", oldestLedger: 1 }))),
-      "stellar/not-found",
-      internal,
-    ],
-    ["mpp/charge/stellar: the read fails", () => chargeStellar.fetchPresented(stellarPush, stellar(failing)), "stellar/unreadable", internal],
-    [
-      "mpp/charge/stellar: the ledger records the transaction FAILED",
-      () => chargeStellar.fetchPresented(stellarPush, stellar(async () => ({ status: "FAILED", envelopeXdr: ST.V3.envelope, ledger: 990, oldestLedger: 1 }))),
-      "stellar/tx-failed",
-      verificationFailed,
-    ],
-    [
-      "mpp/charge/stellar: a reader of another network",
-      () => chargeStellar.fetchPresented(stellarPush, stellar(failing, "stellar:pubnet")),
-      "stellar/wrong-reader",
-      internal,
-    ],
-    [
-      "mpp/charge/stellar: bound on the push credential before fetchPresented",
-      () => chargeStellar.bound({ ...stellarPush, payload: notYetFetched(ST).payload }),
-      notYetFetched(ST).expect,
-      internal,
-    ],
-    [
       "mpp/charge/xrpl: no transaction",
       () => chargeXrpl.fetchPresented(xrplPush, xrpl(async () => ({ notFound: true, searchedAll: true }))),
       "xrpl/not-found",
@@ -553,36 +413,6 @@ describe("problem", () => {
       notYetFetched(XR).expect,
       internal,
     ],
-    [
-      "mpp/charge/hedera: the mirror node holds no such transaction",
-      () => chargeHedera.fetchPresented(hederaPush, hedera("the mirror node holds no such transaction")),
-      hederaRow("the mirror node holds no such transaction").expect,
-      internal,
-    ],
-    [
-      "mpp/charge/hedera: the read fails",
-      () => chargeHedera.fetchPresented(hederaPush, hedera("the read fails")),
-      hederaRow("the read fails").expect,
-      internal,
-    ],
-    [
-      "mpp/charge/hedera: a reader of another network",
-      () => chargeHedera.fetchPresented(hederaPush, hedera("a reader of another network")),
-      hederaRow("a reader of another network").expect,
-      internal,
-    ],
-    [
-      "mpp/charge/hedera: the user entry reached consensus without SUCCESS",
-      () => chargeHedera.fetchPresented(hederaPush, hedera(HEDERA_FAILED)),
-      hederaRow(HEDERA_FAILED).expect,
-      verificationFailed,
-    ],
-    [
-      "mpp/charge/hedera: bound on the push credential before fetchPresented",
-      () => chargeHedera.bound(hederaPush),
-      HE.push.expectWithout,
-      internal,
-    ],
   ];
   for (const [arm, fetched, code, answer] of arms) {
     it(`${arm}: ${code}, answered ${answer.status}`, async () => {
@@ -596,8 +426,7 @@ describe("problem", () => {
 // The core draft makes `expires` a SHOULD for servers (draft-httpauth-payment-01 L324), and the charge intent's
 // "REQUIRED for blockchain methods" is an example of a method elevating it (draft-payment-intent-charge-00 L143-145).
 // A pairing needs it where its build writes it into what the payer signs: the EIP-3009 validBefore, the Permit2
-// deadline, the Tempo transaction's validBefore, the Stellar entry's expiration ledger and the session openings'
-// deadline; and on NEAR Intents, whose draft says `expires` "MUST be set to the 1Click quote deadline"
+// deadline and the session openings' deadline; and on NEAR Intents, whose draft says `expires` "MUST be set to the 1Click quote deadline"
 // (draft-nearintents-charge-01 L414-415), and on the XRP Ledger charge, whose draft says "The server MUST reject a
 // credential whose challenge carries no `expires`" (draft-xrpl-charge-00 L391-392). Without `expires` those pairings
 // are left out, and a challenge left with none is mpp/expires-required.
@@ -605,10 +434,7 @@ describe("expires: required where a build writes it into what the payer signs", 
   const NEEDS = new Set([
     "mpp/charge/evm/authorization",
     "mpp/charge/evm/permit2",
-    "mpp/charge/tempo/memo",
-    "mpp/charge/tempo/push",
     "mpp/charge/usdc/evm",
-    "mpp/charge/stellar",
     "mpp/charge/nearintents",
     "mpp/charge/xrpl",
     "mpp/session/evm",
@@ -617,13 +443,9 @@ describe("expires: required where a build writes it into what the payer signs", 
   const required = { refused: true, code: "mpp/expires-required" };
   const files = [
     "mpp-charge-evm-authorization.json",
-    "mpp-charge-hedera.json",
     "mpp-charge-lightning.json",
     "mpp-charge-nearintents.json",
     "mpp-charge-solana.json",
-    "mpp-charge-stellar.json",
-    "mpp-charge-tempo-memo.json",
-    "mpp-charge-tempo-push.json",
     "mpp-charge-usdc-evm.json",
     "mpp-charge-usdc-gateway.json",
     "mpp-charge-usdc-solana.json",
@@ -700,19 +522,16 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
   const placed = (c: MppChallenge, agreementUrl?: string) =>
     (place([c], H, link, c, agreementUrl) as (MppChallenge & { id: string })[])[0]!;
   const evmCharge = (request: object) => challenge("evm", "charge", JSON.stringify(request));
-  const tempoCharge = (request: object) => challenge("tempo", "charge", JSON.stringify(request));
   const chE = placed(C_E);
-  const chT = placed(C_T);
   /** C_E's request without credentialTypes: the transaction and hash pairings. */
-  const chCalls = placed(evmCharge({ ...R_E, methodDetails: { chainId: R_E.methodDetails.chainId } }));
+  const C_CALLS = evmCharge({ ...R_E, methodDetails: { chainId: R_E.methodDetails.chainId } });
+  const chCalls = placed(C_CALLS);
   /** `inner` inside `n` arrays. */
   const nested = (n: number, inner: unknown): unknown => {
     let v = inner;
     for (let k = 0; k < n; k++) v = [v];
     return v;
   };
-  /** C_T's request without supportedModes: the memo and push pairings. */
-  const chPush = placed(tempoCharge({ ...R_T, methodDetails: { chainId: R_T.methodDetails.chainId } }));
   const from = A.fixed.payer as `0x${string}`;
   const tokenDomain = A.fixed.tokenDomain as { name: string; version: string };
   /** The unsigned payment a build gives, which a row completes. */
@@ -732,18 +551,6 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       "0x76",
       toRlp([toHex(R_T.methodDetails.chainId), "0x01", "0x02", "0x0186a0", calls, [], "0x", "0x", toHex(V.fixed.expiresUnix), "0x", R_T.currency, "0x", [], `0x${"11".repeat(65)}`] as never),
     ]);
-  /**
-   * A signed Tempo transaction of exactly `size` bytes on C_T's chain: MV7's memo call, then one more call to C_T's
-   * currency whose input is zero bytes enough to reach `size`.
-   */
-  const tempoWireOf = (size: number) => {
-    const padded = (n: number) => tempoWire([memoCall, [R_T.currency, "0x", `0x${"00".repeat(n)}`]]);
-    for (let n = size - (tempoWire([memoCall]).length - 2) / 2 - 64; n < size; n++) {
-      const w = padded(n);
-      if ((w.length - 2) / 2 === size) return w;
-    }
-    throw new Error(`no padding gives ${size} bytes`);
-  };
   /**
    * An EIP-1559 transaction of exactly `size` bytes on C_E's chain, signed by the payer key with viem: a call to C_E's
    * currency whose input is zero bytes enough to reach `size`.
@@ -773,22 +580,17 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
    * as it answers a signed transaction of the same length.
    */
   const sizedWireOf = (size: number) => `0x${"11".repeat(size)}` as `0x${string}`;
-  /** The credential the evm transaction and tempo memo builds' complete would give for `wire`, on chCalls and chT. */
+  /** The credential the evm transaction build's complete would give for `wire`, on chCalls. */
   const transactionCredential = (wire: `0x${string}`): MppCredential => ({
     challenge: chCalls,
     source: `did:pkh:eip155:${R_E.methodDetails.chainId}:${from}`,
     payload: { type: "transaction", signature: wire },
   });
-  const memoCredential = (wire: `0x${string}`): MppCredential => ({
-    challenge: chT,
-    source: `did:pkh:eip155:${R_T.methodDetails.chainId}:${from}`,
-    payload: { type: "transaction", signature: wire },
-  });
-  let largest: Promise<{ transaction: number; memo: number }> | undefined;
+  let largest: Promise<{ transaction: number }> | undefined;
   /**
    * The largest signed transaction, in bytes, whose credential `bound` does not refuse for its size: on the evm
-   * transaction pairing, whose bound then gives mpp/no-signed-place, and on the tempo memo pairing, whose bound then
-   * gives H. Bisection over 1,024 to 65,536 bytes, with bound the judge; computed once.
+   * transaction pairing, whose bound then gives mpp/no-signed-place. Bisection over 1,024 to 65,536 bytes, with bound
+   * the judge; computed once.
    */
   const largestTaken = () =>
     (largest ??= (async () => {
@@ -810,7 +612,6 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       };
       return {
         transaction: await search(async (n) => judged(await evmTransaction.bound(transactionCredential(sizedWireOf(n))), refused("mpp/no-signed-place"))),
-        memo: await search(async (n) => judged(await tempoMemo.bound(memoCredential(tempoWireOf(n))), H)),
       };
     })());
   const ZERO = "0x0000000000000000000000000000000000000000" as const;
@@ -838,20 +639,17 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     expect(pairingsOf(evmCharge(R_E))).toEqual(["mpp/charge/evm/permit2", "mpp/charge/evm/authorization"]);
     expect(pairingsOf(challenge("evm", "session", E.fixed.request))).toEqual(["mpp/session/evm"]);
     expect(pairingsOf(challenge("tempo", "subscription", U.fixed.request))).toEqual(["mpp/subscription/tempo"]);
-    expect(await tempoMemo.bound({ challenge: chT, payload: { type: "transaction", signature: tempoWire([memoCall]) } })).toBe(H);
     expect(memoCalldata(R_T.recipient, BigInt(R_T.amount), M.MV7.expectMemo)).toBe(M.MV7.expectCalldata);
     expect(tempoChannelId(descriptor)).toMatch(/^0x[0-9a-f]{64}$/);
     expect(expiringNonceHash(toBytes(tempoWire([memoCall])), M.fixed.payer)).toMatch(/^0x[0-9a-f]{64}$/);
     const auth = await built(evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, H));
     for (const bytes of [1, 8192]) expect(auth.complete(`0x${"11".repeat(bytes)}`)).not.toHaveProperty("refused");
     expect((await built(evmHash.build({ challenge: chCalls, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
-    expect((await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H))).complete(H)).not.toHaveProperty("refused");
-    const { transaction, memo } = await largestTaken();
+    const { transaction } = await largestTaken();
     expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(await evmWireOf(transaction))).not.toHaveProperty("refused");
-    expect((await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H))).complete(tempoWireOf(memo))).not.toHaveProperty("refused");
     expect(await evmAuthorization.bound(await credential())).toBe(H);
     expect(parseChallenges(Array.from({ length: 32 }, (_, k) => payment(k)))).toHaveLength(32);
-    const agreed = [placed(C_E, V.fixed.agreementUrl), (place([C_E, C_T], H, link, C_T, V.fixed.agreementUrl) as MppChallenge[])[1]!];
+    const agreed = [placed(C_E, V.fixed.agreementUrl), (place([C_E, C_CALLS], H, link, C_CALLS, V.fixed.agreementUrl) as MppChallenge[])[1]!];
     expect(read(agreed)).toMatchObject({ h: H, link, agreement: V.fixed.agreementUrl });
   });
 
@@ -864,10 +662,6 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
         pairingsOf(evmCharge({ ...R_E, amount: "1.5" })),
         pairingsOf(evmCharge({ ...R_E, externalId: 7 })),
       ],
-    'pairingsOf with a Tempo charge supportedModes that is not a list of "pull" and "push"': async () => [
-      pairingsOf(challenge("tempo", "charge", i.modesMalformed)),
-      pairingsOf(tempoCharge({ ...R_T, methodDetails: { ...R_T.methodDetails, supportedModes: "pull" } })),
-    ],
     "pairingsOf with an opaque that does not decode to a flat string map": async () => [
       pairingsOf({ ...C_E, opaque: b64u(i.opaqueNotFlat) }),
       pairingsOf({ ...C_E, opaque: "not base64url!" }),
@@ -883,9 +677,6 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       expect(twice).toEqual(pairingsOf(challenge("evm", "charge", JSON.stringify(once))));
       return [twice];
     },
-    "a Tempo charge challenge with more than one call carrying this challenge's attribution memo": async () => [
-      await tempoMemo.bound({ challenge: chT, payload: { type: "transaction", signature: tempoWire([memoCall, memoCall]) } }),
-    ],
     "an EVM session challenge whose chainId is absent or not a positive integer": async () => {
       const r = JSON.parse(E.fixed.request);
       const { chainId: _chainId, ...noChain } = r.methodDetails;
@@ -916,27 +707,20 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       await evmAuthorization.build({ challenge: chE, from: from.slice(0, -1) as `0x${string}`, now: 0, tokenDomain }, H),
       await evmAuthorization.build({ challenge: chE, from, now: 0 }, H),
       await evmPermit2.build({ challenge: chE, from, now: 0 }, H),
-      await tempoMemo.build({ challenge: chT, from, now: 0, clientId: 7 as unknown as string }, H),
     ],
     "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction whose credential is over the credential size bound, 64 KiB":
       async () => {
         const auth = await built(evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, H));
         const hash = await built(evmHash.build({ challenge: chCalls, from, now: 0 }, H));
-        const push = await built(tempoPush.build({ challenge: chPush, from, now: 0 }, H));
         const transaction = await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H));
-        const memo = await built(tempoMemo.build({ challenge: chT, from, now: 0 }, H));
         const largest = await largestTaken();
         return [
           auth.complete("0x"),
           auth.complete(`0x${"11".repeat(8193)}`),
           hash.complete(`0x${"11".repeat(31)}`),
-          push.complete(`0x${"11".repeat(33)}`),
           transaction.complete(await evmWireOf(largest.transaction + 1)),
           transaction.complete(await evmWireOf(48_000)),
           transaction.complete(await evmWireOf(65_537)),
-          memo.complete(tempoWireOf(largest.memo + 1)),
-          memo.complete(tempoWireOf(48_000)),
-          memo.complete(`0x${"11".repeat(65_537)}`),
         ];
       },
     "a credential over 64 KiB, deeper than 16 levels, or without challenge and payload objects": async () => {
@@ -957,7 +741,6 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     "bound with a payload type other than the pairing's": async () => {
       const c = await credential();
       return [
-        await tempoMemo.bound({ challenge: chT, payload: { type: "hash", hash: H } }),
         await evmAuthorization.bound({ ...c, payload: { ...c.payload, type: "permit2" } }),
         await evmPermit2.bound(c),
       ];
@@ -983,8 +766,8 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       expiringNonceHash(toBytes(tempoWire([memoCall])), M.fixed.payer.slice(0, -1)),
     ],
     "read with two challenges whose links or agreement URLs differ": async () => [
-      read([chE, (place([C_E, C_T], H, `${link}?other`, C_T) as MppChallenge[])[1]!]),
-      read([placed(C_E, V.fixed.agreementUrl), (place([C_E, C_T], H, link, C_T, `${V.fixed.agreementUrl}?other`) as MppChallenge[])[1]!]),
+      read([chE, (place([C_E, C_CALLS], H, `${link}?other`, C_CALLS) as MppChallenge[])[1]!]),
+      read([placed(C_E, V.fixed.agreementUrl), (place([C_E, C_CALLS], H, link, C_CALLS, `${V.fixed.agreementUrl}?other`) as MppChallenge[])[1]!]),
     ],
     "read with a legalContextAgreementUrl of at most 2048 characters that parses as an absolute URL whose scheme is not https":
       async () => ["http://pay.seller.example/agreement", "HTTP://pay.seller.example/agreement", "ftp://pay.seller.example/a"].map((a) => read(withAgreement(a))),
@@ -1015,8 +798,6 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
           await evmAuthorization.build({ challenge: chE, from, now: 0, tokenDomain }, h),
           await evmHash.build({ challenge: chCalls, from, now: 0 }, h),
           await evmTransaction.build({ challenge: chCalls, from, now: 0 }, h),
-          await tempoMemo.build({ challenge: chT, from, now: 0 }, h),
-          await tempoPush.build({ challenge: chPush, from, now: 0 }, h),
         );
       }
       return results;
@@ -1064,26 +845,11 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
 });
 
 // FETCHED keys the one member that holds what a seller's reader wrote onto a credential. It is the registered symbol
-// Symbol.for("@integraledger/lcp/fetched"), the same from each entry point that exports it. No wire form carries it:
-// JSON and structuredClone drop it, while a spread and Object.assign copy it; and only a credential's own member keyed
-// by it is read.
+// Symbol.for("@integraledger/lcp/fetched"), the same from each entry point that exports it.
 describe("FETCHED", () => {
   it("is the registered symbol, the same from the package root, ./mpp and ./hedera", () => {
     expect(FETCHED).toBe(Symbol.for("@integraledger/lcp/fetched"));
     expect(ROOT_FETCHED).toBe(FETCHED);
     expect(HEDERA_FETCHED).toBe(FETCHED);
-  });
-
-  it("a JSON round trip and a structuredClone drop the member, a spread and Object.assign copy it, and only an own member is read", async () => {
-    const input = load("mpp-charge-tempo-push.json").buyer.rows.find((r: { name: string }) => r.name === "B6").input;
-    const held = heldOf(input) as MppCredential & { [FETCHED]: unknown };
-    const json = JSON.parse(JSON.stringify(held, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
-    expect(Object.getOwnPropertySymbols(json)).toEqual([]);
-    expect(Object.getOwnPropertySymbols(structuredClone(held))).toEqual([]);
-    expect({ ...held }[FETCHED]).toBe(held[FETCHED]);
-    expect(Object.assign({}, held)[FETCHED]).toBe(held[FETCHED]);
-    expect(await tempoPush.bound(held)).toBe(H);
-    const inherited = Object.assign(Object.create({ [FETCHED]: held[FETCHED] }), input.presented);
-    expect(await tempoPush.bound(inherited)).toEqual({ refused: true, code: "tempo/read-first" });
   });
 });

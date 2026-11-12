@@ -1,4 +1,4 @@
-// MPP_BINDINGS lists the nine MPP charge and session pairings and the two Lightning pairings, and every pairing's reference is plain JSON.
+// MPP_BINDINGS lists every MPP pairing, the two Lightning pairings among them, and every pairing's reference is plain JSON.
 import { describe, expect, it } from "vitest";
 import { concat, keccak256, toBytes, toHex, toRlp } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
@@ -13,7 +13,6 @@ import {
   sessionTempo,
   subscriptionTempo,
   chargeCard,
-  chargeHedera,
   chargeNearIntents,
   chargeStripe,
   chargeUsdcEvm,
@@ -22,13 +21,8 @@ import {
   chargeUsdcStacks,
   subscriptionStripe,
   chargeSolana,
-  chargeStellar,
   chargeXrpl,
-  sessionHedera,
-  sessionSolana,
   sessionXrpl,
-  tempoMemo,
-  tempoPush,
   type MppChallenge,
   type MppCredential,
   type SessionUnsigned,
@@ -37,12 +31,11 @@ import { chargeLightning, sessionLightning } from "../src/lightning.js";
 import type { KeyAuthorizationUnsigned } from "../src/tempo.js";
 import { createHash } from "node:crypto";
 import { pairingsOf } from "../src/mpp.js";
-import { C_E, C_T, H, V, b64u, challenge, link, load, readerFor } from "./mpp-fixtures.js";
+import { C_E, H, V, b64u, challenge, link, load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const A = load("mpp-charge-evm-authorization.json");
 const M = load("mpp-charge-tempo-memo.json");
-const PU = load("mpp-charge-tempo-push.json");
 const E = load("mpp-session-evm.json");
 const T = load("mpp-session-tempo.json");
 const U = load("mpp-subscription-tempo.json");
@@ -65,20 +58,14 @@ describe("MPP_BINDINGS", () => {
       "mpp/charge/evm/permit2",
       "mpp/charge/evm/transaction",
       "mpp/charge/evm/hash",
-      "mpp/charge/tempo/memo",
-      "mpp/charge/tempo/push",
       "mpp/session/evm",
       "mpp/session/tempo",
       "mpp/subscription/tempo",
       "mpp/charge/lightning",
       "mpp/session/lightning",
-      "mpp/charge/hedera",
       "mpp/charge/solana",
-      "mpp/charge/stellar",
       "mpp/charge/xrpl",
       "mpp/charge/nearintents",
-      "mpp/session/hedera",
-      "mpp/session/solana",
       "mpp/session/xrpl",
       "mpp/charge/card",
       "mpp/charge/stripe",
@@ -93,21 +80,15 @@ describe("MPP_BINDINGS", () => {
       evmPermit2,
       evmTransaction,
       evmHash,
-      tempoMemo,
-      tempoPush,
-      sessionEvm,
+              sessionEvm,
       sessionTempo,
       subscriptionTempo,
       chargeLightning,
       sessionLightning,
-      chargeHedera,
-      chargeSolana,
-      chargeStellar,
-      chargeXrpl,
+          chargeSolana,
+          chargeXrpl,
       chargeNearIntents,
-      sessionHedera,
-      sessionSolana,
-      sessionXrpl,
+              sessionXrpl,
       chargeCard,
       chargeStripe,
       subscriptionStripe,
@@ -116,7 +97,7 @@ describe("MPP_BINDINGS", () => {
       chargeUsdcStacks,
       chargeUsdcGateway,
     ]);
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 26 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 20 })) {
       expect(Object.isFrozen(b)).toBe(true);
       expect(Object.isFrozen(b.pattern)).toBe(true);
     }
@@ -134,19 +115,6 @@ describe("MPP_BINDINGS", () => {
     const chEH = challenge("evm", "charge", load("mpp-charge-evm-transaction.json").fixed.R_ENoTypes);
     refs.push(await evmTransaction.reference({ challenge: chEH, source: A.MV5.expectSource } as MppCredential));
     refs.push(await evmHash.reference({ challenge: chEH, source: A.MV5.expectSource } as MppCredential));
-    const chT = placed(C_T);
-    const wire = concat([
-      "0x76",
-      toRlp(["0xa5bf", "0x01", "0x02", "0x0186a0", [[M.fixed.pathUSD, "0x", M.MV7.expectCalldata]], [], "0x", "0x", "0x6ab05f3c", "0x", M.fixed.pathUSD, "0x", [], `0x${"11".repeat(65)}`] as never),
-    ]);
-    refs.push(await tempoMemo.reference({ challenge: chT, payload: { type: "transaction", signature: wire } }));
-    const chP = placed(challenge("tempo", "charge", PU.fixed.R_TNoModes));
-    const landed = await tempoPush.fetchPresented(
-      { challenge: chP, payload: { type: "hash", hash: PU.MV13.T_P } },
-      readerFor("eip155:42431", PU.MV13.receipt),
-    );
-    refs.push(await tempoPush.reference(landed as MppCredential));
-
     const chES = placed(challenge("evm", "session", E.fixed.request));
     const s = (await sessionEvm.build(
       { challenge: chES, from: E.fixed.payer, now: 0, deposit: 5000000n, credentialType: "authorization", tokenDomain: E.fixed.tokenDomain },
@@ -164,8 +132,8 @@ describe("MPP_BINDINGS", () => {
     const sub = (await subscriptionTempo.build({ challenge: chSub, from: U.fixed.payer, now: 0 }, H)) as KeyAuthorizationUnsigned;
     refs.push(await subscriptionTempo.reference(sub.complete(await sig65(sub.request.digest)) as MppCredential));
 
-    expect(refs.length).toBe(9);
-    for (const r of rowsOf(refs, "the references the nine pairings above build", { exact: 9 })) {
+    expect(refs.length).toBe(7);
+    for (const r of rowsOf(refs, "the references the seven pairings above build", { exact: 7 })) {
       expect(r).not.toHaveProperty("refused");
       expect(roundTrip(r)).toEqual(r);
     }
@@ -174,23 +142,19 @@ describe("MPP_BINDINGS", () => {
 
 describe("mpp-challenge.json agreedRefusals, the rows the pairings apply", () => {
   it("each code as recorded", async () => {
-    const chT = placed(C_T);
     const call = [M.fixed.pathUSD, "0x", M.MV7.expectCalldata];
     const twice = concat([
       "0x76",
       toRlp(["0xa5bf", "0x01", "0x02", "0x0186a0", [call, call], [], "0x", "0x", "0x6ab05f3c", "0x", M.fixed.pathUSD, "0x", [], `0x${"11".repeat(65)}`] as never),
     ]);
-    expect(await tempoMemo.bound({ challenge: chT, payload: { type: "transaction", signature: twice } })).toEqual({
-      refused: true,
-      code: "tempo/ambiguous",
-    });
     const { memoCalldata, tempoChannelId, expiringNonceHash } = await import("../src/tempo.js");
     expect(memoCalldata("0x12", 1n, M.MV7.expectMemo)).toEqual({ refused: true, code: "tempo/tx-malformed" });
     expect(tempoChannelId({} as never)).toEqual({ refused: true, code: "tempo/descriptor-mismatch" });
     expect(expiringNonceHash(toBytes(twice), "0x12")).toEqual({ refused: true, code: "tempo/tx-malformed" });
 
     const chE = placed(C_E);
-    const second = (place([C_E, C_T], H, link + "?other", C_T) as MppChallenge[])[1]!;
+    const calls = challenge("evm", "charge", load("mpp-charge-evm-transaction.json").fixed.R_ENoTypes);
+    const second = (place([C_E, calls], H, link + "?other", calls) as MppChallenge[])[1]!;
     const { read } = await import("../src/mpp.js");
     expect(read([chE, second])).toEqual({ refused: true, code: "mpp/legal-context-conflict" });
 
@@ -211,13 +175,6 @@ describe("mpp-challenge.json agreedRefusals, the rows the pairings apply", () =>
     expect(await evmAuthorization.build({ challenge: chE, from: "0x12" as never, now: 0, tokenDomain: A.fixed.tokenDomain }, H)).toEqual({
       refused: true,
       code: "mpp/input-malformed",
-    });
-    const push = await tempoPush.build({ challenge: placed(challenge("tempo", "charge", PU.fixed.R_TNoModes)), from: A.fixed.payer, now: 0 }, H);
-    if ("refused" in push) throw new Error(push.code);
-    expect(push.complete("0x1234")).toEqual({ refused: true, code: "mpp/credential-malformed" });
-    expect(await tempoMemo.bound({ challenge: chT, payload: { type: "hash", hash: PU.MV13.T_P } })).toEqual({
-      refused: true,
-      code: "mpp/credential-type",
     });
 
     const { pairingsOf } = await import("../src/mpp.js");
@@ -256,20 +213,16 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
       C_E,
       mixed,
       challenge("evm", "charge", load("mpp-charge-evm-transaction.json").fixed.R_ENoTypes),
-      C_T,
-      challenge("tempo", "charge", PU.fixed.R_TNoModes),
       challenge("evm", "session", E.fixed.request),
       challenge("tempo", "session", T.fixed.requestV2),
       challenge("tempo", "subscription", U.fixed.request),
-      SR.SS1.hedera.challenge,
-      SR.SS1.solana.challenge,
       SR.SS1.xrpl.challenge,
       challenge("usdc", "charge", UE.M3.requestJson),
       challenge("usdc", "charge", UG.M5.requestJson),
       { ...challenge("usdc", "charge", "{}"), request: b64u(JSON.stringify(US.fixed.request)) },
     ];
     const placedBy = new Set<string>();
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 26 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 20 })) {
       for (const option of issued) {
         const offered = pairingsOf(option);
         if (!Array.isArray(offered) || !offered.includes(b.id as never)) continue;
@@ -286,13 +239,9 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
         "mpp/charge/evm/permit2",
         "mpp/charge/evm/transaction",
         "mpp/charge/evm/hash",
-        "mpp/charge/tempo/memo",
-        "mpp/charge/tempo/push",
         "mpp/session/evm",
         "mpp/session/tempo",
         "mpp/subscription/tempo",
-        "mpp/session/hedera",
-        "mpp/session/solana",
         "mpp/session/xrpl",
         "mpp/charge/usdc/evm",
         "mpp/charge/usdc/gateway",

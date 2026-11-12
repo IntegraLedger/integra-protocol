@@ -20,6 +20,8 @@ import {
 import { isExternalId } from "./mpp-rail-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
+import { NEAR } from "./internal/data/near.js";
+import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/charge/nearintents" as const;
 
@@ -70,18 +72,9 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "opaque-challenge",
-  canonical: true,
-  buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-    "recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its externalId, bound by the " +
-    "seller's server to a deposit address issued for that challenge only, and the seller reported delivery. The " +
-    "buyer's deposit does not carry the hash, and the buyer did not sign it. The NEAR Intents backend, not a contract " +
-    "the buyer signed, links the deposit to the seller.",
 });
 
 /**
@@ -92,13 +85,13 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const chargeNearIntents = Object.freeze({
   id: ID,
+  data: NEAR[ID],
   pattern,
   claims: false as boolean,
-  carrier: "request.externalId" as const,
   unplaced,
   tie,
   advertise,
   read,
   bound,
   broadcaster: mppBroadcaster(byType({ hash: "payer" }, () => refusal("near/not-hash-credential"))),
-});
+}) satisfies Entry<typeof ID, MppCredential, never, never>;

@@ -35,11 +35,9 @@ import {
   KEY_REVOKED_TOPIC,
   RECEIVE_POLICY_GUARD,
   TIP20_CHANNEL_RESERVE,
-  TRANSFER_WITH_MEMO_TOPIC,
 } from "../src/tempo.js";
 import { BATCH_SETTLEMENT, CHANNEL_CREATED_TOPIC, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
-import { FETCHED, problem, type MppCredential } from "../src/mpp.js";
-import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC } from "../src/internal/hedera-session.js";
+import { problem } from "../src/mpp.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
 import { readToRepeat } from "../src/refusal.js";
 import { load } from "./mpp-fixtures.js";
@@ -47,7 +45,6 @@ import { rowsOf } from "./rows.js";
 
 const BASE = "eip155:84532";
 const TEMPO = "eip155:42431";
-const HEDERA = "hedera:testnet";
 const TOKEN = "0x036cbd53842c5426634e7929541ec2318f3dcf7e" as Hex;
 const PAYER = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" as Hex;
 const PAYEE = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as Hex;
@@ -123,13 +120,8 @@ const escrow = ESCROW["v1.1"];
 const authorized = log(escrow.escrow, [PAYMENT_AUTHORIZED_TOPIC, H]);
 const leaf = log(DELEGATION_MANAGER, [REDEEMED_DELEGATION_TOPIC, topic(PAYER), topic(STRANGER)], ("0x" +
   [hex64(PAYER), hex64(STRANGER), hex64("0x0"), hex64("0x0"), hex64("0x0"), H.slice(2)].join("")) as Hex);
-const memo = (to: Hex, value: bigint) => log(TOKEN, [TRANSFER_WITH_MEMO_TOPIC, topic(PAYER), topic(to), H], uint(value));
 const deposited = log(BATCH_SETTLEMENT, [DEPOSITED_TOPIC, CHANNEL]);
 const sessionEscrow = "0x1111111111111111111111111111111111111111" as Hex;
-/** The Hedera escrow's `ChannelOpened(channel, payer, payee)` with its four data words: token, signer, salt H, deposit. */
-const channelOpened = (channel: Hex): EvmLog =>
-  log(sessionEscrow, [CHANNEL_OPENED_TOPIC as Hex, channel, topic(PAYER), topic(PAYEE)], ("0x" +
-    [hex64(TOKEN), hex64(STRANGER), H.slice(2), hex64(uint(VALUE))].join("")) as Hex);
 const keyId = PAYEE;
 const witness = log(ACCOUNT_KEYCHAIN, [KEY_AUTHORIZATION_WITNESS_TOPIC, topic(PAYER), H]);
 const toPayee = digest({ to: PAYEE });
@@ -239,24 +231,6 @@ const ROWS: Row[] = [
       ],
     ],
   ),
-  ...(["mpp/charge/tempo/memo", "mpp/charge/tempo/push"] as const).map(
-    (id): Row => [
-      id,
-      "the payment",
-      TEMPO,
-      {
-        transaction: TX,
-        bindingLog: { address: TOKEN, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: H },
-        transferLog: { address: TOKEN, topic0: TRANSFER_WITH_MEMO_TOPIC, identity: "to,value", digest: digest({ to: PAYEE, value: VALUE }) },
-      },
-      [
-        { why: "reverted", logs: [memo(PAYEE, VALUE)], reverted: true },
-        { why: "binding-log-not-found", logs: [transfer(PAYER, PAYEE)] },
-        { why: "transfer-not-found", logs: [memo(PAYEE, VALUE + 1n)] },
-        { why: "receive-policy-blocked", logs: [memo(PAYEE, VALUE + 1n), transfer(PAYER, RECEIVE_POLICY_GUARD)] },
-      ],
-    ],
-  ),
   [
     "mpp/session/evm",
     "a hash opening",
@@ -361,37 +335,6 @@ const ROWS: Row[] = [
       { why: "binding-log-not-found", logs: [log(ACCOUNT_KEYCHAIN, [KEY_REVOKED_TOPIC, topic(STRANGER), topic(keyId)])] },
     ],
   ],
-  [
-    "mpp/session/hedera",
-    "the opening",
-    HEDERA,
-    { transaction: TX, bindingLog: { address: sessionEscrow, topic0: CHANNEL_OPENED_TOPIC, index: 1, value: CHANNEL } },
-    [
-      { why: "reverted", logs: [log(sessionEscrow, [CHANNEL_OPENED_TOPIC as Hex, CHANNEL, topic(PAYER), topic(PAYEE)])], reverted: true },
-      { why: "binding-log-not-found", logs: [] },
-    ],
-  ],
-  // The escrow alone: status reads the escrow's one ChannelOpened with four topics and four data words, as recover does.
-  [
-    "mpp/session/hedera",
-    "the opening, by the escrow alone",
-    HEDERA,
-    { transaction: TX, escrow: sessionEscrow },
-    [
-      { why: "reverted", logs: [], reverted: true },
-      { why: "binding-log-not-found", logs: [channelOpened(CHANNEL), channelOpened(NONCE)] },
-    ],
-  ],
-  [
-    "mpp/session/hedera",
-    "the close",
-    HEDERA,
-    { phase: "close", transaction: TX, escrow: sessionEscrow, channel: CHANNEL },
-    [
-      { why: "reverted", logs: [log(sessionEscrow, [CHANNEL_CLOSED_TOPIC as Hex, CHANNEL])], reverted: true },
-      { why: "binding-log-not-found", logs: [] },
-    ],
-  ],
 ];
 
 /**
@@ -451,7 +394,7 @@ describe("an EVM failed answer is given only at or below the finalized mark", ()
   }
 
   it("covers every EVM pairing with a status, and each failed reason the EVM reads give", () => {
-    const evm = BINDINGS.filter((b) => /eip155|\/evm|tempo|session\/hedera/.test(b.id) && "status" in b && b.status);
+    const evm = BINDINGS.filter((b) => /eip155|\/evm|tempo/.test(b.id) && "status" in b && b.status);
     expect(new Set(ROWS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
     expect(new Set(ROWS.flatMap(([, , , , f]) => f.map((x) => x.why)))).toEqual(
       new Set([
@@ -466,144 +409,14 @@ describe("an EVM failed answer is given only at or below the finalized mark", ()
   });
 });
 
-// `fetchPresented` on the Tempo push charge and on the Hedera session reads the presented transaction's receipt and
-// refuses one that reverted. That refusal is a failed answer read from a receipt, so it takes the same mark:
-// `<ns>/reverted` only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
-// mark cannot be read, `<ns>/not-final`, a read to repeat, which MPP answers 500 `internal-payment-error` with no
-// challenge (mpp-challenge.json MV10). The Hedera code is mpp-session-hedera-solana-xrpl.json's agreedRefusals row.
-// A receipt that succeeded without the one log `bound` reads H from is read at the same mark, since a block above it
-// can be replaced by one with other logs: `<ns>/not-final` above it, and the landed credential at or below it, which
-// `bound` refuses (docs/reference/refusals.md, `tempo/memo-not-bound` and `hedera/channel-log-not-found`). Each
-// credential is its vector file's B6 buyer row as sent, without the `landed` member `fetchPresented` adds, and the
-// receipt's logs are that member's.
-describe("a fetchPresented revert, or a receipt without the bound log, is refused only at or below the finalized mark", () => {
-  const PU = load("mpp-charge-tempo-push.json");
-  const HS = load("mpp-session-hedera-solana-xrpl.json");
-  const MV10 = load("mpp-challenge.json").MV10.rows as { code: string; expect: { status: number; type: string } }[];
-  const b6 = (file: typeof PU, pairing: string) =>
-    file.buyer.rows.find((r: { name: string; pairing: string }) => r.name === "B6" && r.pairing === pairing);
-  const asSent = (file: typeof PU, pairing: string) => b6(file, pairing).input.presented as MppCredential;
-  const landedLogs = (file: typeof PU, pairing: string) => b6(file, pairing).input.fetched.logs as EvmLog[];
-  const hederaNotFinal = (HS.agreedRefusals.rows as { case: string; expect: string }[]).find((r) =>
-    r.case.startsWith("fetchPresented of a hedera opening whose transaction reverted"),
-  )!.expect;
-  const CASES: [id: string, network: string, credential: MppCredential, reverted: string, notFinal: string, logs: EvmLog[], unbound: string][] = [
-    [
-      "mpp/charge/tempo/push",
-      TEMPO,
-      asSent(PU, "mpp/charge/tempo/push"),
-      "tempo/reverted",
-      "tempo/not-final",
-      landedLogs(PU, "mpp/charge/tempo/push"),
-      "tempo/memo-not-bound",
-    ],
-    [
-      "mpp/session/hedera",
-      HEDERA,
-      asSent(HS, "mpp/session/hedera"),
-      "hedera/reverted",
-      hederaNotFinal,
-      landedLogs(HS, "mpp/session/hedera"),
-      "hedera/channel-log-not-found",
-    ],
-  ];
-  const fetchOf = (id: string) =>
-    (BINDINGS.find((b) => b.id === id) as unknown as {
-      fetchPresented: (c: MppCredential, reader: EvmReader) => Promise<{ refused: true; code: string } | { [FETCHED]: unknown }>;
-    }).fetchPresented;
-  const boundOf = (id: string) => (BINDINGS.find((b) => b.id === id) as unknown as { bound: (c: unknown) => Promise<unknown> }).bound;
-  const reverted: Failure = { why: "reverted", logs: [], reverted: true };
-
-  for (const [id, network, credential, revertedCode, notFinal, logs, unbound] of CASES) {
-    it(`${id}: ${revertedCode} at or below the mark, ${notFinal} above it or where it cannot be read`, async () => {
-      const fetchPresented = fetchOf(id);
-      for (const [finalized, safe] of [
-        [BLOCK, BLOCK],
-        [BLOCK + 5n, BLOCK + 10n],
-      ] as const) {
-        const marks: string[] = [];
-        expect(await fetchPresented(credential, reader(network, reverted, finalized, safe, marks)), `finalized ${finalized}`).toEqual({
-          refused: true,
-          code: revertedCode,
-        });
-        expect(marks).toContain("finalized");
-      }
-      for (const [finalized, safe] of [
-        [BLOCK - 1n, BLOCK],
-        [BLOCK - 1n, BLOCK - 1n],
-        ["fails", BLOCK],
-        ["fails", "fails"],
-      ] as const) {
-        const marks: string[] = [];
-        expect(
-          await fetchPresented(credential, reader(network, reverted, finalized, safe, marks)),
-          `finalized ${finalized}, safe ${safe}`,
-        ).toEqual({ refused: true, code: notFinal });
-        expect(marks).toContain("finalized");
-      }
-      // A receipt that succeeded with the log `bound` reads is not held to the mark: it lands above it, and no mark is
-      // read; `bound` gives H from it.
-      const marks: string[] = [];
-      const landed = await fetchPresented(credential, reader(network, { why: "", logs }, BLOCK - 1n, BLOCK - 1n, marks));
-      expect(FETCHED in landed && landed[FETCHED]).toMatchObject({ blockNumber: BLOCK });
-      expect(marks).toEqual([]);
-      expect(await boundOf(id)(landed)).toBe(H);
-    });
-
-    it(`${id}: a receipt that succeeded without the log bound reads is ${notFinal} above the mark, and lands at or below it, where bound gives ${unbound}`, async () => {
-      const fetchPresented = fetchOf(id);
-      const without: Failure = { why: "", logs: [] };
-      for (const [finalized, safe] of [
-        [BLOCK - 1n, BLOCK],
-        [BLOCK - 1n, BLOCK - 1n],
-        ["fails", BLOCK],
-        ["fails", "fails"],
-      ] as const) {
-        const marks: string[] = [];
-        expect(await fetchPresented(credential, reader(network, without, finalized, safe, marks)), `finalized ${finalized}, safe ${safe}`).toEqual({
-          refused: true,
-          code: notFinal,
-        });
-        expect(marks).toContain("finalized");
-      }
-      for (const [finalized, safe] of [
-        [BLOCK, BLOCK],
-        [BLOCK + 5n, BLOCK + 10n],
-      ] as const) {
-        const marks: string[] = [];
-        const landed = await fetchPresented(credential, reader(network, without, finalized, safe, marks));
-        expect(FETCHED in landed && landed[FETCHED], `finalized ${finalized}`).toMatchObject({ blockNumber: BLOCK, logs: [] });
-        expect(marks).toContain("finalized");
-        expect(await boundOf(id)(landed)).toEqual({ refused: true, code: unbound });
-      }
-      // Two copies of the log `bound` reads are not exactly one: the same mark places them.
-      const marks: string[] = [];
-      expect(await fetchPresented(credential, reader(network, { why: "", logs: [...logs, ...logs] }, BLOCK - 1n, BLOCK - 1n, marks))).toEqual({
-        refused: true,
-        code: notFinal,
-      });
-      expect(marks).toContain("finalized");
-    });
-  }
-
-  it("tempo/not-final and hedera/not-final are codes the package returns, and reads to repeat: 500, no challenge", () => {
-    const internal = MV10.find((r) => r.code === "mpp/not-a-code")!.expect;
-    for (const code of ["tempo/not-final", hederaNotFinal]) {
-      expect(REFUSAL_CODES.has(code), code).toBe(true);
-      expect(MV10.find((r) => r.code === code)?.expect, code).toEqual(internal);
-      expect(problem(code), code).toEqual(internal);
-    }
-  });
-});
-
-// An EVM, Tempo or Hedera session `recover` that reads a revert, or a receipt, a settle call or a Permit2 bitmap
+// An EVM or Tempo session `recover` that reads a revert, or a receipt, a settle call or a Permit2 bitmap
 // without the one use it reads H from, gives a verdict a block above the mark can change, and a refusal names no mark:
 // the verdict only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
 // cannot be read, the rail's not-final code, a read to repeat (docs/guides/rails.md, "Reading settlement"). The settle
 // calls are viem's encodings of the x402 Permit2 proxies' `settle` (x402 contracts/evm/src/x402ExactPermit2Proxy.sol,
 // x402UptoPermit2Proxy.sol), and the open call draft-evm-session-00's `open`. The TIP-20 channel reserve's
 // `ChannelOpened` carries the salt in data word 3 (TIP-1034).
-describe("an EVM, Tempo or Hedera session recover gives a revert or a verdict read from the chain only at or below the finalized mark", () => {
+describe("an EVM or Tempo session recover gives a revert or a verdict read from the chain only at or below the finalized mark", () => {
   const PERMIT = {
     name: "permit",
     type: "tuple",
@@ -658,9 +471,6 @@ describe("an EVM, Tempo or Hedera session recover gives a revert or a verdict re
     log(TIP20_CHANNEL_RESERVE, [CHANNEL_OPENED_V2_TOPIC, CHANNEL, topic(PAYER), topic(PAYEE)], ("0x" +
       [hex64(TOKEN), hex64(PAYEE), hex64(uint(VALUE)), salt.slice(2)].join("")) as Hex);
   const witnessOf = (h: Hex) => log(ACCOUNT_KEYCHAIN, [KEY_AUTHORIZATION_WITNESS_TOPIC, topic(PAYER), h]);
-  /** The Hedera escrow's `ChannelOpened(channel, payer, payee)` with its four data words: token, signer, salt H, deposit. */
-  const hederaOpened = log(sessionEscrow, [CHANNEL_OPENED_TOPIC as Hex, CHANNEL, topic(PAYER), topic(PAYEE)], ("0x" +
-    [hex64(TOKEN), hex64(STRANGER), H.slice(2), hex64(uint(VALUE))].join("")) as Hex);
   const openCall: EvmTransaction = {
     from: PAYER,
     to: sessionEscrow,
@@ -736,28 +546,6 @@ describe("an EVM, Tempo or Hedera session recover gives a revert or a verdict re
       "tempo/not-final",
     ],
     [
-      "mpp/session/hedera",
-      HEDERA,
-      { bindingLog: { address: sessionEscrow, topic0: CHANNEL_OPENED_TOPIC, index: 1, value: CHANNEL } },
-      [
-        { why: "hedera/reverted", logs: [hederaOpened], reverted: true },
-        // The escrow's `ChannelOpened` for another channel.
-        { why: "hedera/channel-log-not-found", logs: [{ ...hederaOpened, topics: [CHANNEL_OPENED_TOPIC as Hex, NONCE, topic(PAYER), topic(PAYEE)] }] },
-      ],
-      "hedera/not-final",
-    ],
-    [
-      "mpp/session/hedera",
-      HEDERA,
-      { escrow: sessionEscrow },
-      [
-        { why: "hedera/reverted", logs: [], reverted: true },
-        // Two of the escrow's `ChannelOpened` logs, for two channels.
-        { why: "hedera/channel-log-not-found", logs: [channelOpened(CHANNEL), channelOpened(NONCE)] },
-      ],
-      "hedera/not-final",
-    ],
-    [
       "mpp/subscription/tempo",
       TEMPO,
       {},
@@ -806,9 +594,9 @@ describe("an EVM, Tempo or Hedera session recover gives a revert or a verdict re
     }
   }
 
-  it("covers every EVM, Tempo and Hedera session pairing with a recover", () => {
+  it("covers every EVM and Tempo session pairing with a recover", () => {
     const evm = BINDINGS.filter(
-      (b) => /eip155|\/evm|tempo|session\/hedera/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function",
+      (b) => /eip155|\/evm|tempo/.test(b.id) && typeof (b as { recover?: unknown }).recover === "function",
     );
     expect(new Set(RECOVERS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
   });
@@ -822,6 +610,16 @@ describe("an EVM, Tempo or Hedera session recover gives a revert or a verdict re
       code: "evm/no-open-call",
     });
     expect(marks).toEqual([]);
+  });
+
+  it("tempo/not-final is a code the package returns, and a read to repeat: 500, no challenge", () => {
+    const MV10 = load("mpp-challenge.json").MV10.rows as { code: string; expect: { status: number; type: string } }[];
+    const internal = MV10.find((r) => r.code === "mpp/not-a-code")!.expect;
+    for (const code of ["tempo/not-final"]) {
+      expect(REFUSAL_CODES.has(code), code).toBe(true);
+      expect(MV10.find((r) => r.code === code)?.expect, code).toEqual(internal);
+      expect(problem(code), code).toEqual(internal);
+    }
   });
 
   it("evm/not-final is a code the package returns, and a read to repeat", () => {

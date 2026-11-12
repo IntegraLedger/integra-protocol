@@ -353,14 +353,6 @@ function copyOf(b: Uint8Array): Uint8Array<ArrayBuffer> {
   return new Uint8Array(b);
 }
 
-/** `decodeSvmTx`, with the message's address table lookups in order (none for a legacy message). */
-export function decodeWithLookups(wire: Uint8Array): { tx: SvmTx; lookups: readonly SvmLookup[] } | Refusal {
-  const d = decode(wire);
-  if (isRefusal(d)) return d;
-  const { requiredSignatures: _, loads: __, lookups, ...tx } = d;
-  return { tx, lookups };
-}
-
 function decode(wire: Uint8Array): Decoded | Refusal {
   if (!(wire instanceof Uint8Array) || wire.length === 0) return refusal("svm/tx-malformed");
   if (wire.length > MAX_WIRE) return refusal("svm/tx-too-large");

@@ -1,7 +1,6 @@
 // Every pairing's `broadcaster` against vectors/broadcaster.json: who broadcasts what a payer presents under it. The
 // build path's `broadcast` member is held to the same answer where each build is tested: mpp-charge.test.ts (EVM
-// `transaction` and `hash`, Tempo pull and push), mpp-hedera.test.ts (the Hedera charge's push and pull) and
-// mpp-session.test.ts (the EVM session's `hash` and `authorization` openings, the Tempo session's opening).
+// `transaction` and `hash`) and mpp-session.test.ts (the EVM session's `hash` and `authorization` openings, the Tempo session's opening).
 //
 // `broadcaster` answers only for a payment of a type and kind the pairing takes, within the shape gate its `bound`
 // applies first, and gives any other payment the refusal `bound` gives that fault. A session's or batch channel's
@@ -22,9 +21,9 @@ type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: st
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
 type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
-const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 67 });
-const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 35 });
-const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 37 });
+const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 58 });
+const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 27 });
+const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 22 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
 const answerOf = (id: string): Broadcaster | null => PAIRINGS.find((r) => r.pairing === id)!.broadcaster;
 
@@ -52,20 +51,14 @@ const MPP_IDS: { readonly [id in MppPairingId]: true } = {
   "mpp/charge/evm/authorization": true,
   "mpp/charge/evm/transaction": true,
   "mpp/charge/evm/hash": true,
-  "mpp/charge/tempo/memo": true,
-  "mpp/charge/tempo/push": true,
   "mpp/session/evm": true,
   "mpp/session/tempo": true,
   "mpp/subscription/tempo": true,
   "mpp/charge/lightning": true,
   "mpp/session/lightning": true,
-  "mpp/charge/hedera": true,
   "mpp/charge/solana": true,
-  "mpp/charge/stellar": true,
   "mpp/charge/xrpl": true,
   "mpp/charge/nearintents": true,
-  "mpp/session/hedera": true,
-  "mpp/session/solana": true,
   "mpp/session/xrpl": true,
   "mpp/charge/card": true,
   "mpp/charge/stripe": true,
@@ -419,24 +412,7 @@ describe("the fuzz: broadcaster refuses where bound or channel.kind refuses type
 
 // ── Under another challenge than the seed's, written by hand: what `bound`, `channel.kind` and `broadcaster` give.
 
-/** The credential with its echoed request changed by `change`. */
-function withRequest(c: Obj, change: (request: Obj) => unknown): Obj {
-  const challenge = c["challenge"] as Obj;
-  const request = JSON.parse(Buffer.from(challenge["request"] as string, "base64url").toString("utf8")) as Obj;
-  const encoded = Buffer.from(JSON.stringify(change(request)), "utf8").toString("base64url");
-  return { ...c, challenge: { ...challenge, request: encoded } };
-}
-/** The credential under its challenge in operator mode, with the request's `recipient` as the operator key. */
-const operator = (c: Obj): Obj =>
-  withRequest(c, (r) => {
-    const details = { ...(r["methodDetails"] as Obj), voucherSigner: "operator", operator: r["recipient"] };
-    return { ...r, methodDetails: details };
-  });
 const withPayload = (c: Obj, payload: Obj): Obj => ({ ...c, payload: { ...(c["payload"] as Obj), ...payload } });
-const closeWith = (c: Obj, members: Obj): Obj => {
-  const bare = set(set(c["payload"] as Obj, "voucher", ABSENT), "authentication", ABSENT);
-  return { ...c, payload: { ...bare, action: "close", ...members } };
-};
 const otherScheme = (c: Obj): Obj => ({ ...c, accepted: { ...(c["accepted"] as Obj), scheme: "exact" } });
 
 type ChallengeRow = {
@@ -447,75 +423,10 @@ type ChallengeRow = {
   kind: string;
   broadcaster: string;
 };
-const SOLANA = "mpp/session/solana";
 const BATCH_EVM = "x402/batch-settlement/eip155";
 const BATCH_SVM = "x402/batch-settlement/solana";
 const CHALLENGE_ROWS = rowsOf<ChallengeRow>(
   [
-    {
-      case: "operator mode: a close with authentication and no voucher is taken",
-      pairing: SOLANA,
-      change: (c) => closeWith(operator(c), { authentication: {} }),
-      bound: "mpp/session-action",
-      kind: "close",
-      broadcaster: "payee",
-    },
-    {
-      case: "operator mode: a close with neither member gets channel.kind's code",
-      pairing: SOLANA,
-      change: (c) => closeWith(operator(c), {}),
-      bound: "mpp/session-action",
-      kind: "mpp/credential-malformed",
-      broadcaster: "mpp/credential-malformed",
-    },
-    {
-      case: "operator mode: a close with a voucher gets channel.kind's code",
-      pairing: SOLANA,
-      change: (c) => closeWith(operator(c), { voucher: {} }),
-      bound: "mpp/session-action",
-      kind: "mpp/credential-malformed",
-      broadcaster: "mpp/credential-malformed",
-    },
-    {
-      case: "operator mode: a use is taken",
-      pairing: SOLANA,
-      change: (c) => withPayload(operator(c), { action: "use" }),
-      bound: "mpp/session-action",
-      kind: "within",
-      broadcaster: "payee",
-    },
-    {
-      case: "operator mode: a voucher is an action the session does not take",
-      pairing: SOLANA,
-      change: (c) => withPayload(operator(c), { action: "voucher" }),
-      bound: "mpp/session-action",
-      kind: "mpp/session-action",
-      broadcaster: "mpp/session-action",
-    },
-    {
-      case: "a close with neither member, under a challenge of another method: the challenge decides",
-      pairing: SOLANA,
-      change: (c) => closeWith({ ...c, challenge: { ...(c["challenge"] as Obj), method: "evm" } }, {}),
-      bound: "mpp/not-this-pairing",
-      kind: "mpp/not-this-pairing",
-      broadcaster: "payee",
-    },
-    {
-      case: "a close with neither member, under a request that does not decode: the challenge decides",
-      pairing: SOLANA,
-      change: (c) => closeWith({ ...c, challenge: { ...(c["challenge"] as Obj), request: "!" } }, {}),
-      bound: "mpp/request-malformed",
-      kind: "mpp/request-malformed",
-      broadcaster: "payee",
-    },
-    {
-      case: "a close with neither member, under a request whose methodDetails is not an object: the challenge decides",
-      pairing: SOLANA,
-      change: (c) => closeWith(withRequest(c, (r) => ({ ...r, methodDetails: "x" })), {}),
-      bound: "mpp/request-malformed",
-      kind: "mpp/request-malformed",
-      broadcaster: "payee",
-    },
     {
       case: "a refund of amount 0 whose accepted names another scheme gets channel.kind's code for the payload",
       pairing: BATCH_EVM,
@@ -558,7 +469,7 @@ const CHALLENGE_ROWS = rowsOf<ChallengeRow>(
     },
   ],
   "the payments under another challenge",
-  { exact: 13 },
+  { exact: 5 },
 );
 
 describe("under another challenge: the challenge decides only where channel.kind reads it", () => {

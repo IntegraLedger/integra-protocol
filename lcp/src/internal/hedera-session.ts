@@ -3,15 +3,12 @@
  * authorized signer, escrow and chain, the EIP-712 voucher, and the escrow's `ChannelOpened` and `ChannelClosed`
  * events. ABI words are written here, 32 bytes each. The public names are re-exported by `../hedera.ts`.
  */
-import type { AtrHash } from "../core.js";
-import { addressWord, bytes32Word, bytesOf, concat, hexOf, keccak, uintWord, type Hex } from "../evm-abi.js";
+import { addressWord, bytes32Word, concat, hexOf, keccak, uintWord, type Hex } from "../evm-abi.js";
 import type { EvmReader, EvmRef } from "../evm.js";
 import { isAddress, isObject, normalHash } from "../fields.js";
 
 type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
 
-/** `open(address,address,uint128,bytes32,address)`. */
-export const ESCROW_OPEN_SELECTOR = "0xc79ea485";
 /** `approve(address,uint256)`. */
 export const APPROVE_SELECTOR = "0x095ea7b3";
 /** `ChannelOpened(bytes32,address,address,address,address,bytes32,uint256)`: channel, payer, payee indexed. */
@@ -108,23 +105,4 @@ export function hederaVoucher(c: { channelId: Hex; escrow: Hex; chainId: 295 | 2
 
 function isChainId(n: unknown): n is 295 | 296 {
   return n === 295 || n === 296;
-}
-
-/** `approve(spender, amount)` calldata. */
-export function approveCalldata(spender: Hex, amount: bigint): Hex {
-  return hexOf(concat([bytesOf(APPROVE_SELECTOR)!, addressWord(spender), uintWord(amount)]));
-}
-
-/** The escrow's `open(payee, token, deposit, salt, authorizedSigner)` calldata. */
-export function openCalldata(payee: Hex, token: Hex, deposit: bigint, salt: AtrHash, authorizedSigner: Hex): Hex {
-  return hexOf(
-    concat([
-      bytesOf(ESCROW_OPEN_SELECTOR)!,
-      addressWord(payee),
-      addressWord(token),
-      uintWord(deposit),
-      bytes32Word(salt),
-      addressWord(authorizedSigner),
-    ]),
-  );
 }

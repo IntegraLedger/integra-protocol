@@ -19,6 +19,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { ALGORAND } from "./internal/data/algorand.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 const sdk: typeof Algosdk | null = await import("algosdk").then(
@@ -423,18 +425,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: "x402/exact/algorand/note",
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: true,
-  publicProof: true,
-  proves:
-    "The payer's account authorized an Algorand asset transfer whose note is this ATR's hash in LCP string form, " +
-    "with a signature, a multisignature or a logic signature. The ledger verified that authorization when it " +
-    "confirmed the transaction, which is final on confirmation, and the note is on chain in it. This does not show " +
-    "that amount, receiver, asset or timing match the ATR's content.",
 });
 
 /**
@@ -443,9 +437,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactAvm = Object.freeze({
   id: ID,
+  data: ALGORAND[ID],
   pattern,
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise,
@@ -456,4 +450,4 @@ export const exactAvm = Object.freeze({
   reference,
   status: avmStatus,
   recover: avmRecover,
-});
+}) satisfies Entry<typeof ID, AvmPaymentPayload, AvmRef, AvmReader>;

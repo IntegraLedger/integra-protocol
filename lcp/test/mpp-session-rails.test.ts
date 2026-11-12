@@ -1,85 +1,46 @@
 // Runs mpp-session-hedera-solana-xrpl.json through the mpp, hedera, svm and xrpl entry points. Every expected value is
-// the file's. A durable opening is the file's wire rewritten by @solana/kit (fixtures/svm-durable-nonce.ts), with
-// x402-exact-solana.json's nonce; its digest is node:crypto's SHA-256 of kit's message.
-// A close or an opening with an account from an address lookup table is @solana/kit's (fixtures/svm-lookup-table.ts).
+// the file's.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import {
-  AccountRole,
-  address,
-  appendTransactionMessageInstructions,
-  blockhash,
-  compileTransactionMessage,
-  createTransactionMessage,
-  decompileTransactionMessage,
-  getAddressEncoder,
-  getCompiledTransactionMessageDecoder,
-  getCompiledTransactionMessageEncoder,
-  getI64Encoder,
-  getProgramDerivedAddress,
-  getU64Decoder,
-  getU64Encoder,
-  pipe,
-  setTransactionMessageFeePayer,
-  setTransactionMessageLifetimeUsingBlockhash,
-} from "@solana/kit";
+import { address, getAddressEncoder, getI64Encoder, getProgramDerivedAddress, getU64Decoder, getU64Encoder } from "@solana/kit";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58 } from "@scure/base";
 import canonicalize from "canonicalize";
 import { coreTypes, decode as decodeXrpl, encode as encodeXrpl, encodeForSigning } from "ripple-binary-codec";
-import { encodeAbiParameters, encodeFunctionData, hashTypedData, keccak256, parseAbi, parseAbiParameters, type Hex as ViemHex } from "viem";
+import { encodeAbiParameters, keccak256, parseAbiParameters, type Hex as ViemHex } from "viem";
 import { canonicalJson, toLcpString, type AtrHash, type Json } from "../src/index.js";
-import type { EvmReceipt } from "../src/evm.js";
 import { ReaderError } from "../src/evm.js";
-import { hederaChannelId, type HederaEvmReader } from "../src/hedera.js";
+import { hederaChannelId } from "../src/hedera.js";
 import {
-  FETCHED,
   issuedDigest,
   pairingsOf,
-  sessionHedera,
-  sessionSolana,
   sessionXrpl,
   type MppChallenge,
   type MppCredential,
   type SessionWithin,
 } from "../src/mpp.js";
-import { decodeSvmTx, openOf, sessionProof, sessionSalt, solanaVoucher, svmLocate, type SvmLanded, type SvmReader } from "../src/svm.js";
+import { decodeSvmTx, openOf, sessionProof, solanaVoucher, svmLocate, type SvmReader } from "../src/svm.js";
 import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
-import { DURABLE, durableWire } from "./fixtures/svm-durable-nonce.js";
-import { emptyLookup, TABLE, TABLE_B, tableClose, tableOpening } from "./fixtures/svm-lookup-table.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
-import { readsOnlyFetched } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
-const VS = JSON.parse(readFileSync(new URL("../vectors/x402-exact-solana.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
 const refused = (code: string) => ({ refused: true, code });
 const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
 const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const sha256 = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
 const roundTrip = (v: unknown) => JSON.parse(JSON.stringify(v));
-const C_H: MppChallenge & { id: string } = V.SS1.hedera.placed;
-const C_S: MppChallenge & { id: string } = V.SS1.solana.placed;
 const C_X: MppChallenge & { id: string } = V.SS1.xrpl.placed;
 const cred = (challenge: MppChallenge & { id: string }, payload: MppCredential["payload"]): MppCredential => ({ challenge, payload });
-/** SS1's Solana challenge with its methodDetails changed by `change`, placed as C_S is. */
-const solanaPlaced = (change: (details: Record<string, unknown>) => void): MppChallenge & { id: string } => {
-  const r = JSON.parse(Buffer.from(V.SS1.solana.challenge.request, "base64url").toString("utf8"));
-  change(r.methodDetails);
-  const c: MppChallenge = { ...V.SS1.solana.challenge, request: b64u(canonicalJson(r) as string) };
-  const placed = sessionSolana.advertise([c], H, V.fixed.link, c);
-  if (!Array.isArray(placed)) throw new Error("not placed");
-  return placed[0] as MppChallenge & { id: string };
-};
 
 describe("SS1: the opening challenges", () => {
   it("pairingsOf, place and issuedDigest", async () => {
-    const pairings = { hedera: sessionHedera, solana: sessionSolana, xrpl: sessionXrpl } as const;
-    for (const m of ["hedera", "solana", "xrpl"] as const) {
+    const pairings = { xrpl: sessionXrpl } as const;
+    for (const m of ["xrpl"] as const) {
       const row = V.SS1[m];
       expect(pairingsOf(row.challenge)).toEqual([`mpp/session/${m}`]);
       expect(pairings[m].advertise([row.challenge], H, V.fixed.link, row.challenge)).toEqual([row.placed]);
@@ -97,7 +58,7 @@ describe("SS1: the opening challenges", () => {
   // builds writes it into what the payer signs, so a challenge without it names the pairing; one that is not an RFC
   // 3339 date-time is mpp/expires-required.
   it("a challenge without expires names its pairing", () => {
-    for (const m of ["hedera", "solana", "xrpl"] as const) {
+    for (const m of ["xrpl"] as const) {
       const { expires: _expires, ...unexpiring } = V.SS1[m].challenge as MppChallenge;
       expect(pairingsOf(unexpiring)).toEqual([`mpp/session/${m}`]);
       expect(pairingsOf({ ...V.SS1[m].challenge, expires: "tomorrow" })).toEqual(refused("mpp/expires-required"));
@@ -105,51 +66,7 @@ describe("SS1: the opening challenges", () => {
   });
 });
 
-function hederaReader(receipts: Record<string, EvmReceipt>, network = "hedera:testnet"): HederaEvmReader {
-  return {
-    network: network as HederaEvmReader["network"],
-    receipt: async (tx) => receipts[tx.toLowerCase()] ?? null,
-    blockNumber: async () => 50_000_000n,
-    transaction: async () => null,
-    call: async () => {
-      throw new ReaderError("transport");
-    },
-  };
-}
-const asReceipt = (r: { status: number; blockNumber: string; logs: EvmReceipt["logs"] }): EvmReceipt => ({
-  status: r.status as 0 | 1,
-  blockNumber: BigInt(r.blockNumber),
-  logs: r.logs,
-});
-
-/**
- * A Solana reader whose `account` answers, at a context slot of 5000, the table account SV6.tables names for each
- * address in `served`: by its name, or as `{ table, owner }` or `{ table, dataBytes }`, that account with another owner
- * or its data cut to that many bytes; null, or an address not in `served`, holds no account. It lists each address
- * read.
- */
-function tableReader(served: Record<string, unknown>, network = V.SV2.expectReference.network): { reader: SvmReader; calls: string[] } {
-  const calls: string[] = [];
-  const reader: SvmReader = {
-    network,
-    transaction: async () => Promise.reject(new Error("no transaction is read")),
-    signatures: async () => Promise.reject(new Error("no signature is read")),
-    blockhashValid: async () => Promise.reject(new Error("no blockhash is read")),
-    firstAvailableBlock: async () => Promise.reject(new Error("no block is read")),
-    account: async (address) => {
-      calls.push(address);
-      const spec = served[address] ?? null;
-      if (spec === null) return { slot: 5000n, value: null };
-      const s = (typeof spec === "string" ? { table: spec } : spec) as { table: string; owner?: string; dataBytes?: number };
-      const t = V.SV6.tables[s.table] as { owner: string; dataBase64: string };
-      const data = Uint8Array.from(Buffer.from(t.dataBase64, "base64"));
-      return { slot: 5000n, value: { owner: s.owner ?? t.owner, data: s.dataBytes === undefined ? data : data.subarray(0, s.dataBytes) } };
-    },
-  };
-  return { reader, calls };
-}
-
-describe("mpp/session/hedera", () => {
+describe("hederaChannelId: the Hedera session escrow's channel id", () => {
   // HS1's ids are eth-abi 6.0.0's encoding and eth-utils 6.0.0's keccak of the escrow's computeChannelId
   // (draft-hedera-session-00 L351-371; HederaStreamChannel.sol L307-314 at tomrowbo/mppx-hedera b5193b42). viem 2.57.4
   // re-derives both here, and hederaChannelId is held to them whole.
@@ -172,281 +89,19 @@ describe("mpp/session/hedera", () => {
     expect(hederaChannelId({ ...base, salt: H })).toBe(V.HS1.expectChannelId);
     expect(hederaChannelId({ ...base, salt: V.fixed.H2 })).toBe(V.HS1.expectChannelIdH2);
   });
-
-  // HS2's calldata are eth-abi 6.0.0's encodings of ERC-20 approve and the escrow's open (draft-hedera-session-00
-  // L417-445), and its digest is eth-account 0.14.0's of the draft's Voucher (L1068-1142). viem 2.57.4 re-derives each
-  // here, and build's two calls and its voucher are held to them whole.
-  it("HS2: build's approve and open calldata, byte for byte as viem encodes them, and the zero voucher's digest", async () => {
-    const escrow = V.fixed.escrow.toLowerCase() as ViemHex;
-    const deposit = BigInt(V.HS2.deposit);
-    const approveData = encodeFunctionData({
-      abi: parseAbi(["function approve(address spender, uint256 amount)"]),
-      functionName: "approve",
-      args: [escrow, deposit],
-    });
-    const openData = encodeFunctionData({
-      abi: parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]),
-      functionName: "open",
-      args: [V.fixed.payee, V.fixed.token, deposit, H, "0x0000000000000000000000000000000000000000"],
-    });
-    expect([approveData, openData]).toEqual([V.HS2.expectApproveCalldata, V.HS2.expectOpenCalldata]);
-    const zeroVoucher = hashTypedData({
-      domain: { name: "Hedera Stream Channel", version: "1", chainId: 296, verifyingContract: escrow },
-      primaryType: "Voucher",
-      types: { Voucher: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint128" }] },
-      message: { channelId: V.HS1.expectChannelId, cumulativeAmount: 0n },
-    });
-    expect(zeroVoucher).toBe(V.HS2.expectVoucherDigest);
-    const u = await sessionHedera.build({ challenge: C_H, from: V.fixed.payer, now: 1790000000, deposit }, H);
-    if ("refused" in u) throw new Error(u.code);
-    const [approve, open] = u.request.calls;
-    expect([approve!.data, open!.data]).toEqual([V.HS2.expectApproveCalldata, V.HS2.expectOpenCalldata]);
-    expect((approve!.data.length - 2) / 2).toBe(V.HS2.expectApproveLength);
-    expect(approve!.data.startsWith(V.HS2.expectApprovePrefix) && approve!.data.endsWith(V.HS2.expectApproveSuffix)).toBe(true);
-    expect(approve!.data).toContain(V.HS2.expectApproveContains);
-    expect((open!.data.length - 2) / 2).toBe(V.HS2.expectOpenLength);
-    expect(open!.data.startsWith(V.HS2.expectOpenSelector)).toBe(true);
-    const [from, to] = V.HS2.expectOpenSaltBytes;
-    expect(`0x${open!.data.slice(2 + 2 * from, 2 + 2 * to)}`).toBe(H);
-    expect(hashTypedData(u.request.voucher as never)).toBe(V.HS2.expectVoucherDigest);
-    const c = u.complete({ openTx: V.HS3.txHash, signature: `0x${"22".repeat(65)}` });
-    if ("refused" in c) throw new Error(c.code);
-    expect(c.payload["channelId"]).toBe(V.HS1.expectChannelId);
-    // The opening credential is held whole, as JSON text, to the draft's open credential written by hand (HS2's case).
-    const byHand = { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: `0x${"22".repeat(65)}` };
-    expect(JSON.stringify(V.HS2.expectOpenPayload)).toBe(JSON.stringify(byHand));
-    expect(JSON.stringify(c)).toBe(JSON.stringify({ challenge: C_H, payload: V.HS2.expectOpenPayload }));
-  });
-
-  it("HS3: fetchPresented, bound, channel ref and status of the opening", async () => {
-    const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
-    const reader = hederaReader({ [V.HS3.txHash]: receipt });
-    const c = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    expect(await sessionHedera.bound(c)).toEqual(refused("hedera/read-first"));
-    const landed = await sessionHedera.fetchPresented(c, reader);
-    if ("refused" in landed) throw new Error(landed.code);
-    expect(await sessionHedera.bound(landed)).toBe(V.HS3.expectBound);
-    expect(await sessionHedera.channel.ref(c)).toEqual(V.HS3.expectRef);
-    const ref = await sessionHedera.reference(c);
-    if ("refused" in ref) throw new Error(ref.code);
-    expect(roundTrip(ref)).toEqual(ref);
-    expect(await sessionHedera.status(ref, reader)).toEqual({ state: "settled", finality: "finalized", blockNumber: 40_000_000n });
-    expect(await sessionHedera.recover(ref, reader)).toBe(H);
-  });
-
-  // recover answers a reader as exactHedera.recover does (x402-exact-hedera.json, failures-are-values): one missing or
-  // for another network than the ref's is hedera/wrong-reader, and one for the network whose read fails is
-  // hedera/unreadable.
-  it("recover: a reader missing or of another network is hedera/wrong-reader", async () => {
-    const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
-    const c = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    const ref = await sessionHedera.reference(c);
-    if ("refused" in ref) throw new Error(ref.code);
-    for (const reader of [hederaReader({ [V.HS3.txHash]: receipt }, "hedera:mainnet"), undefined, null]) {
-      expect(await sessionHedera.recover(ref, reader as never), String(reader?.network)).toEqual(refused("hedera/wrong-reader"));
-    }
-    const failing = { ...hederaReader({}), receipt: async () => Promise.reject(new ReaderError("transport")) };
-    expect(await sessionHedera.recover(ref, failing)).toEqual(refused("hedera/unreadable"));
-    expect(await sessionHedera.recover(ref, hederaReader({ [V.HS3.txHash]: receipt }))).toBe(H);
-  });
-
-  // A receipt status of 0 is a transaction that failed (EIP-658, the JSON-RPC receipt's 0x0), whose logs the chain
-  // reverted: refusals.md gives `hedera/reverted` for a session opening that reverted. HS3's and HS4's openings with
-  // status 1 give H and HS4's salt; with status 0 each is a revert, whatever logs the reader gives with it, and a ref
-  // naming the escrow alone reads the revert first, and with status 1 the salt of the escrow's one ChannelOpened. A ref
-  // naming neither the escrow nor a binding log is `hedera/wrong-reader`. A log of another shape is read first of all:
-  // `hedera/unreadable`.
-  it("recover: a reverted opening is hedera/reverted, as the EVM and Tempo recovers answer a revert", async () => {
-    const r4 = V.HS4;
-    const opaque = b64u(canonicalJson({ legalContext: toLcpString(r4.salt), legalContextUrl: V.fixed.link }) as string);
-    const hs3 = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    const hs4 = cred({ ...C_H, id: r4.challengeId, opaque }, { action: "open", channelId: r4.channel, txHash: r4.openTx, cumulativeAmount: "0", signature: "0x00" });
-    const openings: [MppCredential, EvmReceipt, string][] = [
-      [hs3, { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] }, H],
-      [hs4, asReceipt(r4.openReceipt), r4.salt],
-    ];
-    for (const [c, receipt, salt] of openings) {
-      const ref = await sessionHedera.reference(c);
-      if ("refused" in ref) throw new Error(ref.code);
-      const at = (r: unknown) => hederaReader({ [ref.transaction]: r as EvmReceipt });
-      expect(await sessionHedera.recover(ref, at(receipt))).toBe(salt);
-      expect(await sessionHedera.recover(ref, at({ ...receipt, status: 0 }))).toEqual(refused("hedera/reverted"));
-      expect(await sessionHedera.recover(ref, at({ ...receipt, status: 0, logs: [] }))).toEqual(refused("hedera/reverted"));
-      if (ref.bindingLog === undefined) throw new Error("no binding log");
-      const { bindingLog, ...unbound } = ref;
-      const escrowOnly = { ...unbound, escrow: bindingLog.address };
-      expect(await sessionHedera.recover(escrowOnly, at({ ...receipt, status: 0 }))).toEqual(refused("hedera/reverted"));
-      expect(await sessionHedera.recover(escrowOnly, at(receipt))).toBe(salt);
-      expect(await sessionHedera.recover(unbound as never, at(receipt))).toEqual(refused("hedera/wrong-reader"));
-      const misshapen = { ...receipt, status: 0, logs: [...receipt.logs, { ...receipt.logs[0], data: undefined }] };
-      expect(await sessionHedera.recover(ref, at(misshapen))).toEqual(refused("hedera/unreadable"));
-    }
-  });
-
-  it("HS4: a real testnet opening and close", async () => {
-    const r4 = V.HS4;
-    expect(r4.salt.startsWith(r4.expectSaltPrefix) && r4.salt.endsWith(r4.expectSaltSuffix)).toBe(true);
-    expect(r4.channel.startsWith(r4.expectChannelPrefix) && r4.channel.endsWith(r4.expectChannelSuffix)).toBe(true);
-    expect(r4.openReceipt.blockNumber).toBe(r4.expectBlock);
-    const opaque = b64u(canonicalJson({ legalContext: toLcpString(r4.salt), legalContextUrl: V.fixed.link }) as string);
-    const challenge = { ...C_H, id: r4.challengeId, opaque };
-    const reader = hederaReader({ [r4.openTx]: asReceipt(r4.openReceipt), [r4.closeTx]: asReceipt(r4.closeReceipt) });
-    const c = cred(challenge, { action: "open", channelId: r4.channel, txHash: r4.openTx, cumulativeAmount: "0", signature: "0x00" });
-    const landed = await sessionHedera.fetchPresented(c, reader);
-    if ("refused" in landed) throw new Error(landed.code);
-    expect(await sessionHedera.bound(landed)).toBe(r4.salt);
-    const close = sessionHedera.closeRef(C_H, r4.channel);
-    if ("refused" in close) throw new Error(close.code);
-    expect(close).toEqual(r4.expectCloseRef);
-    // The live close receipt holds a log that the search filter selects: the escrow's, with each non-null topic equal.
-    const matches = (r4.closeReceipt.logs as { address: string; topics: string[] }[]).filter(
-      (l) =>
-        l.address.toLowerCase() === close.search.address.toLowerCase() &&
-        rowsOf(close.search.topics, "the close ref's search topics").every((t, i) => t === null || l.topics[i]?.toLowerCase() === t.toLowerCase()),
-    );
-    expect(matches).toHaveLength(1);
-    expect(await sessionHedera.status({ ...close, transaction: r4.closeTx }, reader)).toMatchObject({ state: "settled" });
-    expect(await sessionHedera.status({ ...close, channel: V.HS1.expectChannelId, transaction: r4.closeTx }, reader)).toEqual({
-      state: "failed",
-      why: "binding-log-not-found",
-    });
-  });
-
-  // HS6 (mpp-session-hedera-solana-xrpl.json): an opening reported as its transaction and its challenge, without the
-  // credential, names no channel. reference writes the transaction and the challenge's escrow, and recover reads the
-  // escrow's one ChannelOpened log in the receipt: HS4's live opening gives HS4's salt, and two such logs, none, a
-  // binding log naming a channel no log names, or a revert are refused. Each refusal is given at or below the reader's
-  // finalized mark (50,000,000 here, above HS4's block), and is hedera/not-final above it. status reads the same ref as
-  // recover does, and each row's expectStatus is its answer at the mark: settled where recover gives the salt, and
-  // failed where recover refuses; above the mark (both marks below the block here) the settlement is at `latest` and
-  // each failed answer pending.
-  it("HS6: recover and status from the escrow where the opening names no channel", async () => {
-    const r4 = V.HS4;
-    const opaque = b64u(canonicalJson({ legalContext: toLcpString(r4.salt), legalContextUrl: V.fixed.link }) as string);
-    const reported = cred({ ...C_H, id: r4.challengeId, opaque }, { action: "open", txHash: r4.openTx, cumulativeAmount: "0", signature: "0x00" });
-    const rows = rowsOf(V.HS6.rows, "mpp-session-hedera-solana-xrpl.json HS6.rows", { exact: 5 });
-    expect(await sessionHedera.reference(reported)).toEqual(rows[0].ref);
-    const below = (r: EvmReceipt) => ({ ...hederaReader({}), receipt: async () => r, blockNumber: async () => r.blockNumber - 1n });
-    for (const row of rows) {
-      const receipt = asReceipt(row.receipt);
-      const reader = hederaReader({ [row.ref.transaction]: receipt });
-      if (row.expectSalt !== undefined) {
-        expect(await sessionHedera.recover(row.ref, reader), row.case).toBe(row.expectSalt);
-        expect(await sessionHedera.recover(row.ref, below(receipt)), row.case).toBe(row.expectSalt);
-      } else {
-        expect(await sessionHedera.recover(row.ref, reader), row.case).toEqual(refused(row.expect));
-        expect(await sessionHedera.recover(row.ref, below(receipt)), row.case).toEqual(refused("hedera/not-final"));
-      }
-      const { state, why, finality, blockNumber } = row.expectStatus;
-      if (state === "settled") {
-        expect(row.expectSalt, row.case).toBeDefined();
-        expect(await sessionHedera.status(row.ref, reader), row.case).toEqual({ state, finality, blockNumber: BigInt(blockNumber) });
-        expect(await sessionHedera.status(row.ref, below(receipt)), row.case).toEqual({ state, finality: "latest", blockNumber: BigInt(blockNumber) });
-      } else {
-        expect([state, row.expectSalt], row.case).toEqual(["failed", undefined]);
-        expect(await sessionHedera.status(row.ref, reader), row.case).toEqual({ state, why });
-        expect(await sessionHedera.status(row.ref, below(receipt)), row.case).toEqual({ state: "pending", why });
-      }
-    }
-    // One receipt read for the escrow alone; a reader that finds none, or whose read fails, is pending.
-    let reads = 0;
-    const counted = { ...hederaReader({}), receipt: async () => (reads++, null) };
-    expect(await sessionHedera.status(rows[0].ref, counted)).toEqual({ state: "pending", why: "not-found" });
-    expect(reads).toBe(1);
-    const failing = { ...hederaReader({}), receipt: async () => Promise.reject(new ReaderError("transport")) };
-    expect(await sessionHedera.status(rows[0].ref, failing)).toEqual({ state: "pending", why: "unreadable" });
-    // A ref status cannot read, or a reader for another network, is pending unreadable, with nothing read.
-    const { escrow, ...neither } = rows[0].ref;
-    const unreadable: [string, unknown, HederaEvmReader][] = [
-      ["neither a binding log nor an escrow", neither, counted],
-      ["both a binding log and an escrow", { ...rows[3].ref, escrow }, counted],
-      ["an escrow that is not an address", { ...rows[0].ref, escrow: `${escrow}00` }, counted],
-      ["a transaction that is not a 32-byte hash", { ...rows[0].ref, transaction: rows[0].ref.transaction.slice(0, 64) }, counted],
-      ["a reader for another network", rows[0].ref, { ...counted, network: "hedera:mainnet" }],
-    ];
-    for (const [label, ref, reader] of unreadable) {
-      reads = 0;
-      expect(await sessionHedera.status(ref as never, reader), label).toEqual({ state: "pending", why: "unreadable" });
-      expect(reads, label).toBe(0);
-    }
-  });
-
-  it("HS5: channel kinds, boundWithin and until", async () => {
-    for (const [action, kind] of rowsOf(V.HS5.kinds, "mpp-session-hedera-solana-xrpl.json HS5.kinds")) expect(sessionHedera.channel.kind(cred(C_H, { action }))).toBe(kind);
-    expect(sessionHedera.channel.kind(cred(C_H, { action: V.HS5.badAction }))).toEqual(refused(V.HS5.expectBad));
-    expect(await sessionHedera.channel.boundWithin(cred(C_H, { action: "voucher" }))).toEqual(refused("mpp/not-bound-within"));
-    expect(sessionHedera.channel.until(cred(C_H, { action: "open" }))).toBeUndefined();
-  });
-
-  // draft-hedera-session-00 L840-845 at tempoxyz/mpp-specs 08e7dd87: the payload's `action` is one of `open`, `topUp`,
-  // `voucher` and `close`. A `use`, which the draft does not define, is refused by each function that reads an action;
-  // the same payment as a voucher is within, names its channel and is built, and a `topUp` is not built.
-  it("a use, which the Hedera draft does not define, is mpp/session-action from channel.kind, channel.ref and buildWithin", async () => {
-    const opened = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    const paid = (action: string) => cred(C_H, { action, channelId: V.HS1.expectChannelId, cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` });
-    const within = (action: string) => sessionHedera.buildWithin({ challenge: C_H, opening: opened, cumulativeAmount: 100n, action } as SessionWithin, H);
-    expect(sessionHedera.channel.kind(paid("voucher"))).toBe("within");
-    expect(await sessionHedera.channel.ref(paid("voucher"))).toEqual({ network: "hedera:testnet", channel: V.HS1.expectChannelId });
-    expect(await within("voucher")).not.toHaveProperty("refused");
-    expect(sessionHedera.channel.kind(paid("use"))).toEqual(refused("mpp/session-action"));
-    expect(await sessionHedera.channel.ref(paid("use"))).toEqual(refused("mpp/session-action"));
-    expect(await within("use")).toEqual(refused("mpp/session-action"));
-    expect(await within("topUp")).toEqual(refused("mpp/within-action-not-built"));
-  });
-
-  it("plant 1: another agreement's channel, and a log from another emitter, are refused, never H", async () => {
-    const r4 = V.HS4;
-    const reader = hederaReader({ [r4.openTx]: asReceipt(r4.openReceipt) });
-    const c = cred(C_H, { action: "open", channelId: r4.channel, txHash: r4.openTx, cumulativeAmount: "0", signature: "0x00" });
-    const landed = await sessionHedera.fetchPresented(c, reader);
-    if ("refused" in landed) throw new Error(landed.code);
-    expect(await sessionHedera.bound(landed)).toEqual(refused(V.plants.hedera.expect));
-    const moved = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    const held = { ...moved, [FETCHED]: { transaction: V.HS3.txHash, blockNumber: 1n, logs: [{ ...V.HS3.log, address: V.plants.hedera.otherEmitter }] } };
-    expect(await sessionHedera.bound(held)).toEqual(refused(V.plants.hedera.expectOtherEmitter));
-  });
-
-  // A `ChannelOpened` whose payer or payee topic is not a 32-byte word is not the log the opening needs; the answer is
-  // `hedera/channel-log-not-found`, as for any other log that does not match, never a throw.
-  it("a matching log whose payer or payee topic is not hex is refused, never thrown", async () => {
-    const c = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    for (const at of [2, 3]) {
-      const topics = [...V.HS3.log.topics];
-      topics[at] = "not-hex";
-      const landed = { ...c, [FETCHED]: { transaction: V.HS3.txHash, blockNumber: 1n, logs: [{ ...V.HS3.log, topics }] } };
-      await expect(sessionHedera.bound(landed)).resolves.toEqual(refused("hedera/channel-log-not-found"));
-    }
-  });
-
-  // The landed logs are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries:
-  // an opening the buyer sends with a string-keyed `landed` holding HS3's ChannelOpened log, which binds H under
-  // FETCHED, is hedera/read-first, as it is without one, and one held with both is read by its FETCHED member alone.
-  it("the landed logs are read only from fetchPresented's FETCHED member, never from a string-keyed landed", async () => {
-    const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
-    const sent = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-    const fetched = await sessionHedera.fetchPresented(sent, hederaReader({ [V.HS3.txHash]: receipt }));
-    const read = (logs: unknown) => ({ transaction: V.HS3.txHash, blockNumber: 40_000_000n, logs });
-    const landed = (c: unknown, l: unknown) => ({ ...(c as object), landed: l });
-    await readsOnlyFetched(sessionHedera, sent, fetched, V.HS3.expectBound, read([V.HS3.log]), read([]), landed, "hedera/read-first");
-  });
 });
 
-const landedSvm = (wire: Uint8Array, err: unknown = null): SvmLanded => ({ wire, err, loaded: { writable: [], readonly: [] }, inner: [] });
-
-describe("mpp/session/solana", () => {
+describe("the svm entry point's payment-channel pieces", () => {
   const wire = Uint8Array.from(Buffer.from(V.SV2.wireBase64, "base64"));
-  const open = (transaction: string, channelId = V.SV2.channel) => cred(C_S, { action: "open", channelId, transaction });
 
   // SV1's salt is @solana/kit 8.4.0's u64 little-endian decoding of H's first 8 bytes, the open's u64 salt
-  // (draft-solana-session-00 L447 and L455-459); sessionSalt, and build's request.salt below, are held to it.
+  // (draft-solana-session-00 L447 and L455-459); openOf's salt below is held to it.
   it("SV1: the salt, as @solana/kit decodes H's first 8 bytes as a little-endian u64", () => {
     const salt = getU64Decoder().decode(Buffer.from(H.slice(2, 18), "hex"));
     expect([salt.toString(), `0x${salt.toString(16)}`]).toEqual([V.SV1.expectSalt, V.SV1.expectSaltHex]);
-    expect(sessionSalt(H).toString()).toBe(V.SV1.expectSalt);
-    expect(`0x${sessionSalt(H).toString(16)}`).toBe(V.SV1.expectSaltHex);
   });
 
-  it("SV2: the open's data and channel, bound and reference", async () => {
+  it("SV2: the open's data and channel", () => {
     expect(wire.length).toBe(V.SV2.wireLength);
     const tx = decodeSvmTx(wire);
     if ("refused" in tx) throw new Error(tx.code);
@@ -455,50 +110,13 @@ describe("mpp/session/solana", () => {
     expect(o).toEqual({ salt: BigInt(V.SV1.expectSalt), channel: V.SV2.channel });
     const ix = tx.instructions.find((i) => i.data[0] === 1)!;
     expect(hex(ix.data)).toBe(V.SV2.expectOpenData);
-    expect(await sessionSolana.bound(open(V.SV2.wireBase64))).toBe(V.SV2.expectBound);
-    const ref = await sessionSolana.reference(open(V.SV2.wireBase64));
-    expect(ref).toEqual(V.SV2.expectReference);
-    expect(roundTrip(ref)).toEqual(ref);
-    expect(await sessionSolana.channel.ref(open(V.SV2.wireBase64))).toEqual({ network: V.SV2.expectReference.network, channel: V.SV2.channel });
-  });
-
-  // The sysvar's table is SV6.tables.sysvar, the address lookup table program's account holding that sysvar, served at
-  // the address the durable message names; @solana/kit's message decoder gives the lookup's indexes.
-  it("SV2's opening made durable: a sysvar from a lookup table is read first, then bound and recorded; a nonce account from one is refused", async () => {
-    const sysvar = durableWire(V.SV2.wireBase64, [DURABLE.sysvar]);
-    expect(sysvar.instruction0Accounts[0]).toBeLessThan(sysvar.staticKeys);
-    expect(sysvar.instruction0Accounts[1]).toBeGreaterThanOrEqual(sysvar.staticKeys);
-    expect(await sessionSolana.bound(open(sysvar.wireBase64))).toEqual(refused("svm/read-first"));
-    expect(await sessionSolana.reference(open(sysvar.wireBase64))).toEqual(refused("svm/read-first"));
-    const w = Buffer.from(sysvar.wireBase64, "base64");
-    const message = getCompiledTransactionMessageDecoder().decode(w.subarray(1 + 64 * w[0]!));
-    if (message.version !== 0) throw new Error("the durable opening is a v0 message");
-    const lookups = message.addressTableLookups!;
-    expect(lookups.map((l) => [l.lookupTableAddress, l.writableIndexes, l.readonlyIndexes])).toEqual([[DURABLE.table, [], [0]]]);
-    const { reader, calls } = tableReader({ [DURABLE.table]: "sysvar" });
-    const fetched = await sessionSolana.fetchPresented(open(sysvar.wireBase64), reader);
-    expect(fetched).toEqual({ ...open(sysvar.wireBase64), [FETCHED]: { tables: [{ address: DURABLE.table, writable: [], readonly: [DURABLE.sysvar] }] } });
-    expect(calls).toEqual([DURABLE.table]);
-    expect(await sessionSolana.bound(fetched)).toBe(V.SV2.expectBound);
-    expect(await sessionSolana.reference(fetched)).toEqual({
-      ...V.SV2.expectReference,
-      digest: sysvar.digest,
-      blockhash: "",
-      nonce: { account: DURABLE.nonceAccount, value: DURABLE.value },
-    });
-    const both = durableWire(V.SV2.wireBase64, [DURABLE.nonceAccount, DURABLE.sysvar]);
-    expect(both.instruction0Accounts[0]).toBeGreaterThanOrEqual(both.staticKeys);
-    expect(await sessionSolana.bound(open(both.wireBase64))).toEqual(refused("svm/nonce-account-not-static"));
-    expect(await sessionSolana.reference(open(both.wireBase64))).toEqual(refused("svm/nonce-account-not-static"));
   });
 
   // The opening carries no memo, so it is found among the signatures of the channel account it creates (the PDA whose
   // seeds include the salt, H's first 8 bytes), never the fee payer's; the search is complete only when the node still
   // holds every block from the claim slot.
   it("SV2b: a search for the opening pages the channel account, and is complete only from the first available block", async () => {
-    const reference = await sessionSolana.reference(open(V.SV2.wireBase64));
-    if ("refused" in reference) throw new Error(reference.code);
-    const ref = { ...reference, fromSlot: "100" };
+    const ref = { ...V.SV2.expectReference, fromSlot: "100" };
     const paged: string[] = [];
     const readerOf = (first: bigint): SvmReader => ({
       network: ref.network,
@@ -532,42 +150,9 @@ describe("mpp/session/solana", () => {
     expect(await svmLocate(ref, readerOf(100n), H, none)).toEqual({ complete: true });
   });
 
-  it("SV2c: with the pairing's own status, another signature on the channel account is not the opening", async () => {
-    const reference = await sessionSolana.reference(open(V.SV2.wireBase64));
-    if ("refused" in reference) throw new Error(reference.code);
-    const ref = { ...reference, fromSlot: "100" };
-    const wires: Record<string, string> = { opening: V.SV2.wireBase64, other: V.plants.solana.wireBase64 };
-    // The deposit's CPI as the RPC lists it in innerInstructions: the SPL Token program (SV2's static key 8) running
-    // transferChecked (instruction 12).
-    const deposit = { program: 8, data: Uint8Array.of(0x0c, 0x40, 0x42, 0x0f, 0, 0, 0, 0, 0, 6) };
-    const readerOf = (signatures: string[], first: bigint): SvmReader => ({
-      network: ref.network,
-      transaction: async (sig) =>
-        wires[sig] === undefined
-          ? { notFound: true as const, slot: null }
-          : { wire: Uint8Array.from(Buffer.from(wires[sig]!, "base64")), err: null, loaded: { writable: [], readonly: [] }, inner: [deposit] },
-      signatures: async (address) =>
-        address === V.SV2.channel ? signatures.map((signature, i) => ({ signature, slot: 130n - BigInt(i), memo: null })) : [],
-      blockhashValid: async () => ({ valid: true, slot: 0n }),
-      firstAvailableBlock: async () => first,
-      account: async () => {
-        throw new Error("this reference names no nonce account");
-      },
-    });
-    const status = sessionSolana.status as (r: typeof ref & { transaction: string }, reader: SvmReader) => Promise<{ state: string }>;
-    expect(await status({ ...ref, transaction: "opening" }, readerOf([], 100n))).toMatchObject({ state: "settled" });
-    expect(await status({ ...ref, transaction: "other" }, readerOf([], 100n))).toMatchObject({
-      state: "failed",
-      why: "not-this-instrument",
-    });
-    expect(await svmLocate(ref, readerOf(["other"], 100n), H, status)).toEqual({ complete: true });
-    expect(await svmLocate(ref, readerOf(["other", "opening"], 100n), H, status)).toEqual({ found: "opening", complete: true });
-    expect(await svmLocate(ref, readerOf(["other", "opening"], 101n), H, status)).toEqual({ complete: false });
-  });
-
   // SV3's voucher is the draft's 50 bytes (draft-solana-session-00 L1419-1429) as @solana/kit 8.4.0's codecs write
-  // them; solanaVoucher is held to them byte for byte, as buildWithin's message is in mpp-session-within.test.ts.
-  it("SV3: the voucher bytes, as @solana/kit's codecs write the draft's voucher, the session proof, and boundWithin of use and voucher", async () => {
+  // them; solanaVoucher is held to them byte for byte.
+  it("SV3: the voucher bytes, as @solana/kit's codecs write the draft's voucher, and the session proof", () => {
     const parts = [Uint8Array.of(0x56, 0x01), getAddressEncoder().encode(address(V.SV2.channel)), getU64Encoder().encode(100n), getI64Encoder().encode(0n)];
     expect(hex(Uint8Array.from(parts.flatMap((p) => Array.from(p))))).toBe(V.SV3.expectVoucher);
     expect(hex(solanaVoucher(V.SV2.channel, 100n) as Uint8Array)).toBe(V.SV3.expectVoucher);
@@ -579,257 +164,6 @@ describe("mpp/session/solana", () => {
     expect(new TextDecoder().decode(proof)).toBe(V.SV3.expectProofText);
     const d = sha256(proof);
     expect(d.startsWith(V.SV3.expectProofSha256Prefix) && d.endsWith(V.SV3.expectProofSha256Suffix)).toBe(true);
-    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
-    const use = cred(operator, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.fixed.MV1, payer: V.SV3.payer, signature: "x" } });
-    expect(await sessionSolana.channel.boundWithin(use)).toBe(H);
-    expect(await sessionSolana.channel.boundWithin(cred(C_S, { action: "voucher", channelId: V.SV2.channel }))).toEqual(refused("mpp/not-bound-within"));
-  });
-
-  it("SV4: a reported close", async () => {
-    const closeWire = async (discriminator: number) => {
-      const message = pipe(
-        createTransactionMessage({ version: 0 }),
-        (m) => setTransactionMessageFeePayer(address("2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"), m),
-        (m) => setTransactionMessageLifetimeUsingBlockhash({ blockhash: blockhash("EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"), lastValidBlockHeight: 0n }, m),
-        (m) =>
-          appendTransactionMessageInstructions(
-            [
-              {
-                programAddress: address("CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"),
-                accounts: [
-                  { address: address("2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"), role: AccountRole.WRITABLE_SIGNER },
-                  { address: address(V.SV2.channel), role: AccountRole.WRITABLE },
-                  { address: address("SysvarRent111111111111111111111111111111111"), role: AccountRole.READONLY },
-                ],
-                data: Uint8Array.of(discriminator),
-              },
-            ],
-            m,
-          ),
-      );
-      const bytes = new Uint8Array(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(message)));
-      const w = new Uint8Array(1 + 64 + bytes.length);
-      w[0] = 1;
-      w.set(bytes, 65);
-      return w;
-    };
-    const close = sessionSolana.closeRef(C_S, V.SV2.channel);
-    if ("refused" in close) throw new Error(close.code);
-    const ref = { ...close, transaction: "sig" };
-    const readerOf = (w: Uint8Array): SvmReader => ({
-      network: close.network,
-      transaction: async () => landedSvm(w),
-      signatures: async () => [],
-      blockhashValid: async () => ({ valid: true, slot: 0n }),
-      firstAvailableBlock: async () => 0n,
-      account: async () => {
-        throw new Error("this reference names no nonce account");
-      },
-    });
-    expect(await sessionSolana.status(ref, readerOf(await closeWire(4)))).toEqual({ state: "settled", commitment: "finalized" });
-    expect(await sessionSolana.status(ref, readerOf(await closeWire(2)))).toEqual({ state: "failed", why: "not-a-close" });
-    // A program or channel that is not the base58 of a 32-byte key cannot name the close, so the read is pending, never
-    // failed, with nothing read (docs/guides/rails.md, "Reading settlement"). "0" is outside the base58 alphabet.
-    const sealed = await closeWire(4);
-    for (const change of [{ channel: V.SV2.channel.slice(0, 32) }, { channel: undefined }, { program: `0${ref.program.slice(1)}` }, { program: undefined }]) {
-      const { reader, calls } = counting(readerOf(sealed));
-      expect(await sessionSolana.status({ ...ref, ...change } as typeof ref, reader)).toEqual({ state: "pending", why: "unreadable" });
-      expect(calls).toEqual([]);
-    }
-    // A close the node holds at neither commitment is pending not-found; SvmReader.transaction answers a landed
-    // transaction or notFound, and any other answer, such as a bare null, is pending unreadable.
-    const answering = (a: unknown): SvmReader => ({ ...readerOf(sealed), transaction: async () => a as never });
-    expect(await sessionSolana.status(ref, answering({ notFound: true, slot: 1150n }))).toEqual({ state: "pending", why: "not-found" });
-    expect(await sessionSolana.status(ref, answering(null))).toEqual({ state: "pending", why: "unreadable" });
-    // A landed answer holds SvmLanded's four members (getTransaction's transaction, meta.err, meta.loadedAddresses and
-    // meta.innerInstructions), so one without err, loaded or inner is of neither documented shape.
-    for (const missing of ["err", "loaded", "inner"]) {
-      const partial: Record<string, unknown> = { ...landedSvm(sealed) };
-      delete partial[missing];
-      expect(await sessionSolana.status(ref, answering(partial)), missing).toEqual({ state: "pending", why: "unreadable" });
-    }
-    // Solana's commitment levels (solana.com/docs/rpc, "Configuring State Commitment"): a block at `confirmed` has been
-    // voted on by a supermajority of the cluster, and one at `finalized` has reached maximum lockout. A block that is not
-    // finalized can be replaced, and the close can land in another block and execute otherwise, so an error is a
-    // failure only from the read at `finalized`. The signature fixes the instructions, so a transaction that does not
-    // close the channel is not a close at either commitment. The error is the vector file's (x402-exact-solana.json V4).
-    const err = (VS.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!.err;
-    const at = (commitment: "finalized" | "confirmed", w: Uint8Array): SvmReader => ({
-      ...readerOf(w),
-      transaction: async (_sig, c) => (commitment === "confirmed" && c === "finalized" ? { notFound: true, slot: null } : landedSvm(w, err)),
-    });
-    expect(await sessionSolana.status(ref, at("finalized", sealed))).toEqual({ state: "failed", why: "err" });
-    expect(await sessionSolana.status(ref, at("confirmed", sealed))).toEqual({ state: "pending", why: "not-final" });
-    const notClose = await closeWire(2);
-    for (const commitment of ["finalized", "confirmed"] as const) {
-      expect(await sessionSolana.status(ref, at(commitment, notClose)), commitment).toEqual({ state: "failed", why: "not-a-close" });
-    }
-  });
-
-  // SV4.tableClose's wire is @solana/kit 8.4.0's close with its channel from an address lookup table, held byte for
-  // byte; kit's decompile of that message, given the table's addresses, names the channel at the close's account 1 as
-  // the table's entry. getTransaction lists the addresses a transaction's lookup tables loaded as
-  // meta.loadedAddresses ("Transaction addresses loaded from address lookup tables", the RPC documentation as
-  // @solana/rpc-types quotes it), writable then read-only after the static keys, the order kit's decompile gives.
-  it("SV4.tableClose: a close whose channel comes from an address lookup table is read through the loaded addresses", async () => {
-    const t = V.SV4.tableClose;
-    expect(tableClose("2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4", V.SV2.channel, "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k")).toBe(t.wireBase64);
-    const w = Uint8Array.from(Buffer.from(t.wireBase64, "base64"));
-    const compiled = getCompiledTransactionMessageDecoder().decode(w.subarray(65));
-    if (compiled.version !== 0) throw new Error("the close is a v0 message");
-    const ix = decompileTransactionMessage(compiled, { addressesByLookupTableAddress: { [address(TABLE)]: [address(V.SV2.channel)] } }).instructions[0]!;
-    expect(ix.accounts![1]).toEqual({ address: V.SV2.channel, addressIndex: 0, lookupTableAddress: TABLE, role: AccountRole.WRITABLE });
-    expect(compiled.instructions[0]!.accountIndices![1]).toBe(compiled.staticAccounts.length);
-    const close = sessionSolana.closeRef(C_S, V.SV2.channel);
-    if ("refused" in close) throw new Error(close.code);
-    const ref = { ...close, transaction: "sig" };
-    type Row = { case: string; loaded: { writable: string[]; readonly: string[] }; expect: unknown };
-    for (const row of rowsOf(t.rows as Row[], "mpp-session-hedera-solana-xrpl.json SV4.tableClose.rows", { exact: 6 })) {
-      const loaded = { writable: row.loaded.writable.map((k) => base58.decode(k)), readonly: row.loaded.readonly.map((k) => base58.decode(k)) };
-      const reader: SvmReader = {
-        network: close.network,
-        transaction: async () => ({ wire: w, err: null, loaded, inner: [] }),
-        signatures: async () => [],
-        blockhashValid: async () => ({ valid: true, slot: 0n }),
-        firstAvailableBlock: async () => 0n,
-        account: async () => {
-          throw new Error("a close read reads no account");
-        },
-      };
-      expect(await sessionSolana.status(ref, reader), row.case).toEqual(row.expect);
-    }
-  });
-
-  /** A close's reader: `landed(commitment)` answers the transaction call at that commitment; no account is read. */
-  const closeReader = (network: SvmReader["network"], landed: (commitment: "finalized" | "confirmed") => unknown): SvmReader => ({
-    network,
-    transaction: async (_sig, commitment) => landed(commitment) as never,
-    signatures: async () => [],
-    blockhashValid: async () => ({ valid: true, slot: 0n }),
-    firstAvailableBlock: async () => 0n,
-    account: async () => {
-      throw new Error("a close read reads no account");
-    },
-  });
-  const keysOf = (keys: readonly string[]) => keys.map((k) => base58.decode(k));
-
-  // @solana/kit 8.4.0 writes the close with a table holding its channel and the Rent sysvar: the message's lookup loads
-  // one writable and one read-only address. The runtime refuses a transaction that loads one account twice, whether it
-  // repeats a static key or another loaded address (AccountLoadedTwice from validate_account_locks over the static keys
-  // and the resolved addresses: anza-xyz/agave f516a892, tag v3.0.14, accounts-db/src/account_locks.rs:160-170 and its
-  // test_validate_account_locks_duplicate_dynamic, accounts-db/src/accounts.rs:510,
-  // transaction-view/src/resolved_transaction_view.rs:194-198), so no landed transaction lists such a repeat.
-  it("SV4.tableClose's close with two table entries: loaded addresses that repeat an account are pending unreadable", async () => {
-    const payee = "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4";
-    const rent = "SysvarRent111111111111111111111111111111111";
-    const base64 = tableClose(payee, V.SV2.channel, "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k", [V.SV2.channel, rent]);
-    const w = Uint8Array.from(Buffer.from(base64, "base64"));
-    const compiled = getCompiledTransactionMessageDecoder().decode(w.subarray(65));
-    if (compiled.version !== 0) throw new Error("the close is a v0 message");
-    expect([compiled.staticAccounts, compiled.addressTableLookups]).toEqual([
-      [payee, "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX"],
-      [{ lookupTableAddress: TABLE, writableIndexes: [0], readonlyIndexes: [1] }],
-    ]);
-    const close = sessionSolana.closeRef(C_S, V.SV2.channel);
-    if ("refused" in close) throw new Error(close.code);
-    const ref = { ...close, transaction: "sig" };
-    const landed = (writable: string[], readonly: string[]) =>
-      closeReader(close.network, () => ({ wire: w, err: null, loaded: { writable: keysOf(writable), readonly: keysOf(readonly) }, inner: [] }));
-    expect(await sessionSolana.status(ref, landed([V.SV2.channel], [rent]))).toEqual({ state: "settled", commitment: "finalized" });
-    for (const [writable, readonly, about] of [
-      [[V.SV2.channel], [V.SV2.channel], "the channel loaded twice"],
-      [[V.SV2.channel], [payee], "the fee payer, a static key, loaded"],
-    ] as const) {
-      expect(await sessionSolana.status(ref, landed([...writable], [...readonly])), about).toEqual({ state: "pending", why: "unreadable" });
-    }
-  });
-
-  // The signature fixes a table's address and an index into it, not the entry there: an entry written in a block that
-  // is not finalized can differ on another fork, since such a block can be replaced (solana.com/docs/rpc, "Configuring
-  // State Commitment"). So SV4.tableClose with another key at its channel's table index (SV4.tableClose.rows[1]'s) is
-  // not-a-close only from the read at finalized; the same close that names the channel is settled at confirmed.
-  it("SV4.tableClose: a table entry that is not the channel is failed not-a-close only from the read at finalized", async () => {
-    const t = V.SV4.tableClose;
-    const w = Uint8Array.from(Buffer.from(t.wireBase64, "base64"));
-    const close = sessionSolana.closeRef(C_S, V.SV2.channel);
-    if ("refused" in close) throw new Error(close.code);
-    const ref = { ...close, transaction: "sig" };
-    const at = (commitment: "finalized" | "confirmed", writable: string[]) =>
-      closeReader(close.network, (c) =>
-        commitment === "confirmed" && c === "finalized"
-          ? { notFound: true, slot: null }
-          : { wire: w, err: null, loaded: { writable: keysOf(writable), readonly: [] }, inner: [] },
-      );
-    const [named, other] = [t.rows[0].loaded.writable, t.rows[1].loaded.writable];
-    expect(named).toEqual([V.SV2.channel]);
-    expect(await sessionSolana.status(ref, at("confirmed", other))).toEqual({ state: "pending", why: "not-final" });
-    expect(await sessionSolana.status(ref, at("finalized", other))).toEqual({ state: "failed", why: "not-a-close" });
-    expect(await sessionSolana.status(ref, at("confirmed", named))).toEqual({ state: "settled", commitment: "confirmed" });
-  });
-
-  // An opening's status reads its transfer among the instructions over the static keys and the loaded addresses; SV2's
-  // message loads none, so a landed answer listing one is out of getTransaction's documented form.
-  it("SV2c: a landed opening whose loaded addresses are not the ones its message's lookups name is pending unreadable", async () => {
-    const reference = await sessionSolana.reference(open(V.SV2.wireBase64));
-    if ("refused" in reference) throw new Error(reference.code);
-    const deposit = { program: 8, data: Uint8Array.of(0x0c, 0x40, 0x42, 0x0f, 0, 0, 0, 0, 0, 6) };
-    const readerOf = (loaded: SvmLanded["loaded"]): SvmReader => ({
-      network: reference.network,
-      transaction: async () => ({ wire, err: null, loaded, inner: [deposit] }),
-      signatures: async () => [],
-      blockhashValid: async () => ({ valid: true, slot: 0n }),
-      firstAvailableBlock: async () => 0n,
-      account: async () => {
-        throw new Error("this reference names no nonce account");
-      },
-    });
-    const ref = { ...reference, fromSlot: "100", transaction: "opening" };
-    expect(await sessionSolana.status(ref, readerOf({ writable: [], readonly: [] }))).toEqual({ state: "settled", commitment: "finalized" });
-    for (const loaded of [{ writable: [base58.decode(V.SV2.channel)], readonly: [] }, { writable: [], readonly: [base58.decode(V.SV2.channel)] }]) {
-      expect(await sessionSolana.status(ref, readerOf(loaded))).toEqual({ state: "pending", why: "unreadable" });
-    }
-  });
-
-  // agreedRefusals.rows 21 and 22 hold openings @solana/kit 8.4.0 writes with the open's account 4 or account 5 from an
-  // address lookup table (each row's composed); they are held byte for byte, each named account past the static keys.
-  it("the lookup-table openings of agreedRefusals.rows 21 and 22 are @solana/kit's, byte for byte", async () => {
-    const [signer, channel] = [V.agreedRefusals.rows[21], V.agreedRefusals.rows[22]];
-    const seed = new Uint8Array(32).fill(1);
-    expect(base58.encode(ed25519.getPublicKey(new Uint8Array(32).fill(3)))).toBe(signer.operator);
-    const made = [await tableOpening(V.SV5.opening.wireBase64, signer.operator, "signer", seed), await tableOpening(V.SV5.opening.wireBase64, V.SV3.payer, "channel", seed)];
-    expect(made.map((m) => [m.wireBase64, m.channel])).toEqual([
-      [signer.wireBase64, signer.channel],
-      [channel.wireBase64, channel.channel],
-    ]);
-    expect(channel.channel).toBe(V.SV2.channel);
-    for (const [m, at] of [[made[0]!, 4], [made[1]!, 5]] as const) {
-      const tx = decodeSvmTx(Uint8Array.from(Buffer.from(m.wireBase64, "base64")));
-      if ("refused" in tx) throw new Error(tx.code);
-      const ix = tx.instructions.find((i) => base58.encode(tx.keys[i.program]!) === "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX")!;
-      expect([tx.keys.length, ix.accounts[at]]).toEqual([m.staticKeys, m.staticKeys]);
-    }
-  });
-
-  it("build returns the salt and the request's values; complete checks the composed open", async () => {
-    const u = await sessionSolana.build({ challenge: C_S, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
-    if ("refused" in u) throw new Error(u.code);
-    expect(u.request.salt).toBe(BigInt(V.SV1.expectSalt));
-    expect(u.complete({ action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 })).toMatchObject({ challenge: C_S });
-    expect(u.complete({ action: "open", channelId: V.plants.solana.channel, transaction: V.plants.solana.wireBase64 })).toEqual(
-      refused(V.plants.solana.expect),
-    );
-  });
-
-  it("plant 2: an opening under another hash's salt, and a use proof for another challenge, are refused, never H", async () => {
-    const w = Uint8Array.from(Buffer.from(V.plants.solana.wireBase64, "base64"));
-    const d = sha256(w);
-    expect(d.startsWith(V.plants.solana.expectWireSha256Prefix) && d.endsWith(V.plants.solana.expectWireSha256Suffix)).toBe(true);
-    expect(getU64Decoder().decode(Buffer.from(V.fixed.H2.slice(2, 18), "hex")).toString()).toBe(V.plants.solana.expectSaltH2);
-    expect(sessionSalt(V.fixed.H2).toString()).toBe(V.plants.solana.expectSaltH2);
-    expect(await sessionSolana.bound(open(V.plants.solana.wireBase64, V.plants.solana.channel))).toEqual(refused(V.plants.solana.expect));
-    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
-    const use = cred(operator, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: V.plants.solana.useWrongChallengeId, payer: V.SV3.payer, signature: "x" } });
-    expect(await sessionSolana.channel.boundWithin(use)).toEqual(refused(V.plants.solana.expectUse));
   });
 
   // SV5.opening is written by hand from the Solana v0 message format (its case): SV2's message with the open's account 4
@@ -864,333 +198,6 @@ describe("mpp/session/solana", () => {
       seeds: [enc.encode(address(V.SV5.opening.channel)), at(8), at(3)],
     });
     expect([escrow, keyOf(tx, ix.accounts[7]!)]).toEqual([V.SV5.opening.escrow, V.SV5.opening.escrow]);
-  });
-
-  // SV5's challenge is C_S with SV5's methodDetails. The open action's authentication is REQUIRED for an operator voucher
-  // signer and MUST be absent for client, the default (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87). For
-  // operator, the open's authorizedSigner MUST equal the challenged operator (L1252-1254, L1982-1985), so the operator
-  // opening is SV5.opening, and its proof is SV5.opening's proof text signed with the payer's seed 01, in base58. For
-  // client, the client controls authorizedSigner: SV2's open, and SV5.opening too, are client openings.
-  it("SV5: an operator opening carries authentication and a client opening none; bound, reference and complete refuse the other", async () => {
-    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
-    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
-    expect([operator.id, client.id]).toEqual([V.fixed.MV1, V.fixed.MV1]);
-    const proof = sessionProof({ channelId: V.SV5.opening.channel, payer: V.SV3.payer, challengeId: operator.id });
-    expect(new TextDecoder().decode(proof)).toBe(V.SV5.opening.expectProofText);
-    const signature = ed25519.sign(proof, new Uint8Array(32).fill(1));
-    expect(hex(signature)).toBe(V.SV5.opening.expectProofSignature);
-    const authentication = { ...V.SV5.expectAuthentication, signature: base58.encode(signature) };
-    expect(Object.keys(authentication)).toEqual(V.SV5.expectAuthenticationKeys);
-    const payload = { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 };
-    const opened = { action: "open", channelId: V.SV5.opening.channel, transaction: V.SV5.opening.wireBase64 };
-    const held = [
-      [cred(operator, { ...opened, authentication }), V.SV5.opening.expectReference],
-      [cred(client, payload), V.SV2.expectReference],
-      [cred(C_S, payload), V.SV2.expectReference],
-      [cred(client, opened), V.SV5.opening.expectReference],
-    ] as const;
-    for (const [c, reference] of held) {
-      expect(await sessionSolana.bound(c)).toBe(H);
-      expect(await sessionSolana.reference(c)).toEqual(reference);
-    }
-    const other = [cred(operator, opened), cred(client, { ...payload, authentication }), cred(C_S, { ...payload, authentication })];
-    for (const c of other) {
-      expect(await sessionSolana.bound(c)).toEqual(refused("mpp/credential-malformed"));
-      expect(await sessionSolana.reference(c)).toEqual(refused("mpp/credential-malformed"));
-    }
-    for (const [c, open, expected] of [
-      [operator, { ...opened, authentication }, { challenge: operator, payload: { ...opened, authentication } }],
-      [operator, opened, refused("mpp/credential-malformed")],
-      [client, payload, { challenge: client, payload }],
-      [client, { ...payload, authentication }, refused("mpp/credential-malformed")],
-    ] as const) {
-      const u = await sessionSolana.build({ challenge: c, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
-      if ("refused" in u) throw new Error(u.code);
-      expect(u.complete(open)).toEqual(expected);
-    }
-  });
-
-  // draft-solana-session-00 L1338 at tempoxyz/mpp-specs 08e7dd87: the `use` action "is valid only when `voucherSigner`
-  // is `operator`"; `client` is the default when the challenge omits it (L258). A `use` echoing SV5's operator challenge
-  // is within and gives H; one echoing a client challenge, or C_S with no voucherSigner, is refused by each function
-  // that reads it. A voucher under either challenge stays within, and only `use` gives H.
-  it("SV5: a use is within only on an operator channel; channel.kind, channel.ref and channel.boundWithin refuse it on a client channel", async () => {
-    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
-    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
-    const use = (c: MppChallenge & { id: string }) =>
-      cred(c, { action: "use", channelId: V.SV2.channel, authentication: { type: "proof", challengeId: c.id, payer: V.SV3.payer, signature: "x" } });
-    expect(sessionSolana.channel.kind(use(operator))).toBe("within");
-    expect(await sessionSolana.channel.ref(use(operator))).toEqual({ network: V.SV2.expectReference.network, channel: V.SV2.channel });
-    expect(await sessionSolana.channel.boundWithin(use(operator))).toBe(H);
-    for (const c of [client, C_S]) {
-      expect(sessionSolana.channel.kind(use(c))).toEqual(refused("mpp/session-action"));
-      expect(await sessionSolana.channel.ref(use(c))).toEqual(refused("mpp/session-action"));
-      expect(await sessionSolana.channel.boundWithin(use(c))).toEqual(refused("mpp/session-action"));
-    }
-  });
-
-  // draft-solana-session-00 L1324-1326 at tempoxyz/mpp-specs 08e7dd87: a `voucher` action "directly authorizes service
-  // only for `client`. In `operator` mode, vouchers are operator-generated settlement artifacts and MUST NOT authenticate
-  // the caller"; `client` is the default when the challenge omits `voucherSigner` (L258). A voucher echoing a client
-  // challenge, or C_S with no voucherSigner, is within and names its channel; one echoing SV5's operator challenge is
-  // refused by each function that reads it. No voucher gives H.
-  it("SV5: a voucher is within only on a client channel; channel.kind, channel.ref and channel.boundWithin refuse it on an operator channel", async () => {
-    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
-    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
-    const voucher = (c: MppChallenge & { id: string }) => cred(c, { action: "voucher", channelId: V.SV2.channel });
-    for (const c of [client, C_S]) {
-      expect(sessionSolana.channel.kind(voucher(c))).toBe("within");
-      expect(await sessionSolana.channel.ref(voucher(c))).toEqual({ network: V.SV2.expectReference.network, channel: V.SV2.channel });
-      expect(await sessionSolana.channel.boundWithin(voucher(c))).toEqual(refused("mpp/not-bound-within"));
-    }
-    expect(sessionSolana.channel.kind(voucher(operator))).toEqual(refused("mpp/session-action"));
-    expect(await sessionSolana.channel.ref(voucher(operator))).toEqual(refused("mpp/session-action"));
-    expect(await sessionSolana.channel.boundWithin(voucher(operator))).toEqual(refused("mpp/session-action"));
-  });
-
-  // draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: a close's `voucher` is "REQUIRED for `client` and
-  // MUST be absent for `operator`", and its `authentication` is "REQUIRED for `operator` and MUST be absent for
-  // `client`"; `client` is the default when the challenge omits `voucherSigner` (L258). A close carrying its mode's
-  // member alone is the close and names its channel; any other is refused by each function that reads it. The close
-  // buildWithin builds on a client channel carries its voucher alone, and is the close.
-  it("SV5: a close carries voucher on a client channel and authentication on an operator channel; channel.kind, channel.ref and channel.boundWithin refuse any other", async () => {
-    const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
-    const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
-    const voucher = { voucher: { channelId: V.SV2.channel, cumulativeAmount: "100" }, signer: V.SV3.payer, signature: "x", signatureType: "ed25519" };
-    const authentication = (c: MppChallenge & { id: string }) => ({ type: "proof", challengeId: c.id, payer: V.SV3.payer, signature: "x" });
-    const close = (c: MppChallenge & { id: string }, members: Record<string, unknown>) => cred(c, { action: "close", channelId: V.SV2.channel, ...members } as MppCredential["payload"]);
-    const calls = async (p: MppCredential) => [sessionSolana.channel.kind(p), await sessionSolana.channel.ref(p), await sessionSolana.channel.boundWithin(p)];
-    const closed = ["close", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")];
-    const malformed = Array(3).fill(refused("mpp/credential-malformed"));
-    for (const c of [client, C_S]) {
-      expect(await calls(close(c, { voucher }))).toEqual(closed);
-      for (const members of [{}, { authentication: authentication(c) }, { voucher, authentication: authentication(c) }]) {
-        expect(await calls(close(c, members))).toEqual(malformed);
-      }
-    }
-    expect(await calls(close(operator, { authentication: authentication(operator) }))).toEqual(closed);
-    for (const members of [{}, { voucher }, { voucher, authentication: authentication(operator) }]) {
-      expect(await calls(close(operator, members))).toEqual(malformed);
-    }
-    const opening = cred(C_S, { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 });
-    const u = await sessionSolana.buildWithin({ challenge: C_S, opening, cumulativeAmount: 100n, action: "close" }, H);
-    if ("refused" in u) throw new Error(u.code);
-    const built = u.complete([base58.encode(new Uint8Array(64).fill(1))]);
-    if ("refused" in built) throw new Error(built.code);
-    expect(Object.keys(built.payload)).toEqual(["action", "channelId", "voucher"]);
-    expect(await calls(built)).toEqual(closed);
-  });
-});
-
-// SV6: an opening that names account 4 or account 5 through an address lookup table, and fetchPresented, which reads
-// each table at finalized and writes `tables`. Each table account is the address lookup table program's own, written in
-// the LiteSVM bundled with solders 0.26.0; each row's expected tables are @solana/kit 8.4.0's message decoder's lookups
-// mapped over the table's entries, and its liteSvm the runtime's answer to the opening with those accounts (SV6.about).
-describe("SV6: fetchPresented reads an opening's address lookup tables", () => {
-  type Row = {
-    case: string;
-    opening: string;
-    challenges: string[];
-    accounts?: Record<string, unknown>;
-    expect?: { tables: unknown[] } | string;
-    bound?: string;
-    channel?: string;
-    signer?: string;
-    given?: unknown[];
-    before?: string;
-    read?: string[];
-  };
-  const S = V.SV6;
-  const R = V.agreedRefusals.rows;
-  /** The channel tableOpening derives for plants.solana's opening, whose salt is sessionSalt(H2), with account 4 rows[21].operator. */
-  const WRONG_SALT_CHANNEL = "58wwaqTCtqNbnDHV3F4MPwvqhXMxbbnRdfcqEByHeVyx";
-  const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
-  const operator = solanaPlaced((d) => Object.assign(d, { voucherSigner: "operator", operator: R[21].operator }));
-  const challenges: Record<string, MppChallenge & { id: string }> = { operator, client, C_S };
-  const openings: Record<string, { wireBase64: string; channel: string }> = {
-    "agreedRefusals.rows[21]": R[21],
-    "agreedRefusals.rows[22]": R[22],
-    "agreedRefusals.rows[23]": R[23],
-    "SV6.openings.channelAtOne": { wireBase64: S.openings.channelAtOne.wireBase64, channel: R[22].channel },
-    "SV6.openings.bothTables": { wireBase64: S.openings.bothTables.wireBase64, channel: R[21].channel },
-    "SV6.openings.threeNoOpen": { wireBase64: S.openings.threeNoOpen.wireBase64, channel: R[21].channel },
-    "SV6.openings.threeWrongSalt": { wireBase64: S.openings.threeWrongSalt.wireBase64, channel: WRONG_SALT_CHANNEL },
-    "SV6.openings.emptyLookup": { wireBase64: S.openings.emptyLookup.wireBase64, channel: V.SV2.channel },
-  };
-  /** The row's opening answering challenge `c`, with authentication naming the challenge's id for operator. */
-  const presentedOf = (row: Row, c: string): MppCredential => {
-    const o = openings[row.opening]!;
-    const challenge = challenges[c]!;
-    const auth = c === "operator" ? { authentication: { type: "proof", challengeId: challenge.id, payer: V.SV3.payer, signature: "x" } } : {};
-    return cred(challenge, { action: "open", channelId: o.channel, transaction: o.wireBase64, ...auth });
-  };
-  const rows = rowsOf(S.rows as Row[], "mpp-session-hedera-solana-xrpl.json SV6.rows", { exact: 19 });
-
-  it("the openings SV6 adds are @solana/kit's, byte for byte, and each table account holds its entries under the program's header", async () => {
-    const seed = new Uint8Array(32).fill(1);
-    const atOne = await tableOpening(V.SV5.opening.wireBase64, V.SV3.payer, "channel", seed, [R[21].operator]);
-    const both = await tableOpening(V.SV5.opening.wireBase64, R[21].operator, "both", seed);
-    const noOpen = await tableOpening(V.SV5.opening.wireBase64, R[21].operator, "three", seed, [], 0);
-    const wrongSalt = await tableOpening(V.plants.solana.wireBase64, R[21].operator, "three", seed);
-    expect([atOne.wireBase64, atOne.channel]).toEqual([S.openings.channelAtOne.wireBase64, R[22].channel]);
-    expect([both.wireBase64, both.channel]).toEqual([S.openings.bothTables.wireBase64, R[21].channel]);
-    expect([noOpen.wireBase64, noOpen.channel]).toEqual([S.openings.threeNoOpen.wireBase64, R[21].channel]);
-    expect([wrongSalt.wireBase64, wrongSalt.channel]).toEqual([S.openings.threeWrongSalt.wireBase64, WRONG_SALT_CHANNEL]);
-    expect(emptyLookup(V.SV2.wireBase64, "So11111111111111111111111111111111111111112", seed)).toBe(S.openings.emptyLookup.wireBase64);
-    // Each three-table opening names three lookups, of TABLE, TABLE_B and TABLE_C.
-    for (const o of [S.openings.threeNoOpen, S.openings.threeWrongSalt]) {
-      const w = Buffer.from(o.wireBase64, "base64");
-      const compiled = getCompiledTransactionMessageDecoder().decode(w.subarray(1 + 64 * w[0]!));
-      if (compiled.version !== 0) throw new Error("the opening is a v0 message");
-      expect(compiled.addressTableLookups!.length).toBe(3);
-    }
-    expect(S.tables.channel21.madeAt).toBe(TABLE_B);
-    for (const [name, t] of Object.entries(S.tables) as [string, { owner: string; entries: string[]; dataBase64: string }][]) {
-      const d = Buffer.from(t.dataBase64, "base64");
-      expect(t.owner, name).toBe("AddressLookupTab1e1111111111111111111111111");
-      expect([d.readUInt32LE(0), d.readBigUInt64LE(4), d[21], d.length], name).toEqual([
-        1,
-        name === "deactivated" ? 1000n : 0xffff_ffff_ffff_ffffn,
-        name === "frozen" ? 0 : 1,
-        56 + 32 * t.entries.length,
-      ]);
-      expect(t.entries.map((_, i) => base58.encode(d.subarray(56 + 32 * i, 88 + 32 * i))), name).toEqual(t.entries);
-    }
-  });
-
-  // The runtime loads a version-0 message's addresses lookup by lookup, each lookup's writable entries to the writable
-  // list and its read-only entries to the read-only list, after the static keys (agave v3.0.14,
-  // runtime/src/bank/address_lookup_table.rs L41-68 and accounts-db/src/accounts.rs L145-156). bothTables's first lookup
-  // loads account 4 read-only and its second account 5 writable, so that order differs from lookup by lookup in turn.
-  // @solana/kit's decompile, given the tables, names the operator at account 4 and the channel at account 5.
-  it("SV6.openings.bothTables: kit's decompile with the tables names account 4 and account 5 as bound reads them", () => {
-    const w = Buffer.from(S.openings.bothTables.wireBase64, "base64");
-    const compiled = getCompiledTransactionMessageDecoder().decode(w.subarray(1 + 64 * w[0]!));
-    if (compiled.version !== 0) throw new Error("the opening is a v0 message");
-    expect(compiled.addressTableLookups!.map((l) => [l.lookupTableAddress, l.writableIndexes, l.readonlyIndexes])).toEqual([
-      [TABLE_B, [], [0]],
-      [TABLE, [0], []],
-    ]);
-    const tables = { [address(TABLE)]: S.tables.channel21.entries.map(address), [address(TABLE_B)]: S.tables.signer.entries.map(address) };
-    const ix = decompileTransactionMessage(compiled, { addressesByLookupTableAddress: tables }).instructions[2]!;
-    expect([ix.accounts![4]!.address, ix.accounts![5]!.address]).toEqual([R[21].operator, R[21].channel]);
-  });
-
-  for (const row of rows) {
-    it(row.case, async () => {
-      for (const c of rowsOf(row.challenges, `${row.case}: challenges`)) {
-        const presented = presentedOf(row, c);
-        expect(await sessionSolana.bound(presented), c).toEqual(refused(row.before ?? "svm/read-first"));
-        expect(await sessionSolana.reference(presented), c).toEqual(refused(row.before ?? "svm/read-first"));
-        if (row.given !== undefined) {
-          for (const tables of rowsOf(row.given, `${row.case}: given`)) {
-            const held = { ...presented, [FETCHED]: { tables } } as MppCredential;
-            expect(await sessionSolana.bound(held), JSON.stringify(tables)).toEqual(refused(row.bound!));
-            expect(await sessionSolana.reference(held), JSON.stringify(tables)).toEqual(refused(row.bound!));
-          }
-          continue;
-        }
-        const { reader, calls } = tableReader(row.accounts!);
-        const fetched = await sessionSolana.fetchPresented(presented, reader);
-        expect(calls.sort(), c).toEqual((row.read ?? Object.keys(row.accounts!)).sort());
-        if (typeof row.expect === "string") {
-          expect(fetched, c).toEqual(refused(row.expect));
-          continue;
-        }
-        expect(fetched, c).toEqual({ ...presented, [FETCHED]: { tables: row.expect!.tables } });
-        if ("refused" in fetched) throw new Error(fetched.code);
-        const u = await sessionSolana.build({ challenge: challenges[c]!, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
-        if ("refused" in u) throw new Error(u.code);
-        expect(u.complete(presented.payload), c).toEqual(refused("svm/read-first"));
-        if (row.bound !== undefined) {
-          expect(await sessionSolana.bound(fetched), c).toEqual(row.bound === "H" ? H : refused(row.bound));
-        }
-        if (row.channel !== undefined) {
-          expect(await sessionSolana.reference(fetched), c).toMatchObject({ network: V.SV2.expectReference.network, channel: row.channel });
-        }
-        if (row.signer !== undefined) {
-          for (const action of ["voucher", "close"] as const) {
-            const built = await sessionSolana.buildWithin({ challenge: challenges[c]!, opening: fetched, cumulativeAmount: 100n, action } as SessionWithin, H);
-            expect(built, `${c} ${action}`).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: row.signer }] });
-          }
-        }
-      }
-    });
-  }
-
-  // The tables are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries. rows[4]'s
-  // opening, under the operator challenge, names account 4 through TABLE, whose entry there is the channel: read, it is
-  // svm/signer-not-operator. Under FETCHED, a table naming the operator at that index gives H; sent as a string-keyed
-  // tables, it is svm/read-first to bound, reference and buildWithin, as it is without one; held with both, the read
-  // alone is read.
-  it("the tables are read only from fetchPresented's FETCHED member: a string-keyed tables naming the operator is never H", async () => {
-    const row = rows[4]!;
-    const sent = presentedOf(row, "operator");
-    const fetched = await sessionSolana.fetchPresented(sent, tableReader(row.accounts!).reader);
-    const tables = (c: unknown, read: unknown) => ({ ...(c as object), tables: (read as { tables: unknown }).tables });
-    const operatorAt4 = { tables: [{ address: TABLE, writable: [], readonly: [R[21].operator] }] };
-    expect(await sessionSolana.bound({ ...sent, [FETCHED]: operatorAt4 } as MppCredential)).toBe(H);
-    await readsOnlyFetched(sessionSolana, sent, fetched, refused(row.bound!), operatorAt4, operatorAt4, tables, "svm/read-first");
-    const within = (opening: unknown) =>
-      sessionSolana.buildWithin({ challenge: operator, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
-    expect(await within(fetched)).toEqual(refused(row.bound!));
-    expect(await within(tables(sent, operatorAt4))).toEqual(refused("svm/read-first"));
-    expect(await within(tables(fetched, operatorAt4))).toEqual(refused(row.bound!));
-    // On a client channel, buildWithin builds for the signer the read names, from the held opening, a spread or an
-    // Object.assign copy of it; a JSON round trip or a structuredClone of it, and a string-keyed tables naming another
-    // signer, are svm/read-first.
-    const client2 = rows[2]!;
-    const sent2 = presentedOf(client2, "client");
-    const fetched2 = await sessionSolana.fetchPresented(sent2, tableReader(client2.accounts!).reader);
-    const build = (opening: unknown) =>
-      sessionSolana.buildWithin({ challenge: client, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
-    for (const held of [fetched2, { ...(fetched2 as object) }, Object.assign({}, fetched2)]) {
-      expect(await build(held)).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: client2.signer }] });
-    }
-    const otherSigner = { tables: [{ address: TABLE, writable: [], readonly: [R[21].channel] }] };
-    for (const copy of [JSON.parse(JSON.stringify(fetched2)), structuredClone(fetched2), tables(sent2, otherSigner)]) {
-      expect(await build(copy)).toEqual(refused("svm/read-first"));
-    }
-    expect(await build(tables(fetched2, otherSigner))).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: client2.signer }] });
-  });
-
-  it("fetchPresented of an opening without lookups adds tables empty and reads nothing", async () => {
-    const { reader, calls } = tableReader({});
-    const c = cred(C_S, { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 });
-    const fetched = await sessionSolana.fetchPresented(c, reader);
-    expect(fetched).toEqual({ ...c, [FETCHED]: { tables: [] } });
-    expect(calls).toEqual([]);
-    expect(await sessionSolana.bound(fetched)).toBe(V.SV2.expectBound);
-    // A message without lookups is read from its static keys, whatever tables the credential carries, under FETCHED
-    // or as a string-keyed member.
-    expect(await sessionSolana.bound({ ...c, [FETCHED]: { tables: "x" } } as unknown as MppCredential)).toBe(V.SV2.expectBound);
-    expect(await sessionSolana.bound({ ...c, tables: "x" } as MppCredential)).toBe(V.SV2.expectBound);
-  });
-
-  it("fetchPresented reads each distinct table once, refuses a reader for another network, and reads a failed or malformed answer as svm/unreadable", async () => {
-    const both = presentedOf(rows[3]!, "operator");
-    const { reader, calls } = tableReader(rows[3]!.accounts!);
-    expect(await sessionSolana.fetchPresented(both, reader)).toEqual({ ...both, [FETCHED]: { tables: (rows[3]!.expect as { tables: unknown[] }).tables } });
-    expect(calls).toEqual([TABLE_B, TABLE]);
-    const opening = presentedOf(rows[1]!, "C_S");
-    const counted = tableReader({ [TABLE]: "channel" });
-    for (const other of [tableReader({}, "solana:4uhcVJyU9pJkvQyS88uRDiswHXSCkY3z").reader, null, "x"]) {
-      expect(await sessionSolana.fetchPresented(opening, other as SvmReader)).toEqual(refused("svm/wrong-reader"));
-    }
-    const answering = (answer: () => Promise<unknown>): SvmReader => ({ ...counted.reader, account: answer as SvmReader["account"] });
-    const table = Uint8Array.from(Buffer.from(S.tables.channel.dataBase64, "base64"));
-    for (const answer of [
-      () => Promise.reject(new Error("transport")),
-      async () => null,
-      async () => ({ slot: 5000, value: { owner: S.tables.channel.owner, data: table } }),
-      async () => ({ slot: 5000n }),
-      async () => ({ slot: 5000n, value: { owner: S.tables.channel.owner, data: S.tables.channel.dataBase64 } }),
-      async () => ({ slot: 5000n, value: { data: table } }),
-    ]) {
-      expect(await sessionSolana.fetchPresented(opening, answering(answer)), String(answer)).toEqual(refused("svm/unreadable"));
-    }
-    expect(await sessionSolana.fetchPresented(cred(C_S, { action: "close", channelId: V.SV2.channel }), counted.reader)).toEqual(refused("mpp/session-action"));
-    expect(counted.calls).toEqual([]);
   });
 });
 
@@ -1489,7 +496,7 @@ describe("mpp/session/xrpl", () => {
     const amountRows = rowsOf<any>(V.SS1refusals, "mpp-session-hedera-solana-xrpl.json SS1refusals", {
       keep: ["the xrpl rows whose request is malformed", (r: { method: string; expect: string }) => r.method === "xrpl" && r.expect === "mpp/request-malformed"],
       leave: [
-        "the rows that name a channel or carry a malformed expires, which the opening challenges' pairingsOf test above runs",
+        "the row that names a channel, which the opening challenges' pairingsOf test above runs",
         (r: { expect: string; expires?: string }) => r.expect === "mpp/channel-named" || r.expires !== undefined,
       ],
     });
@@ -1583,12 +590,10 @@ describe("mpp/session/xrpl", () => {
   });
 });
 
-// The channel of a within or close payment is read from the payment itself, "read from any of its payments": on Hedera
-// `{network, channel: payload.channelId}` in lower case ("Implementations MUST use lowercase hex"), on Solana the
-// payload's `channelId` re-encoded from its 32 bytes, on XRPL the payload's `channelId` in upper case ("MUST be
-// canonicalised before use as a key"). The seller issues within challenges itself, never with the opening's id, so the
-// echoed challenge here carries the seller's own id and names the channel. The channels are HS1's, SV2's and XS2's;
-// the networks are those the opening challenges name.
+// The channel of a within or close payment is read from the payment itself, "read from any of its payments": on XRPL
+// the payload's `channelId` in upper case ("MUST be canonicalised before use as a key"). The seller issues within
+// challenges itself, never with the opening's id, so the echoed challenge here carries the seller's own id and names the
+// channel. The channel is XS2's; the network is the one the opening challenge names.
 describe("channel.ref of a within or close payment, on the seller's own challenge", () => {
   const requestOf = (c: MppChallenge) => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
   function own(opening: MppChallenge, name: (r: Record<string, unknown>) => void): MppChallenge & { id: string } {
@@ -1596,31 +601,6 @@ describe("channel.ref of a within or close payment, on the seller's own challeng
     name(r);
     return { realm: opening.realm, method: opening.method, intent: opening.intent, expires: opening.expires!, request: b64u(canonicalJson(r) as string), id: "seller-own-id" };
   }
-
-  it("hedera: a voucher's and a close's ref is {hedera:testnet, payload.channelId}", async () => {
-    const channel = V.HS1.expectChannelId as string;
-    const c = own(C_H, (r) => ((r["methodDetails"] as Record<string, unknown>)["channelId"] = channel));
-    for (const action of ["voucher", "topUp", "close"]) {
-      const p = cred(c, { action, channelId: channel.toUpperCase().replace("0X", "0x"), cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` });
-      expect(await sessionHedera.channel.ref(p)).toEqual({ network: "hedera:testnet", channel });
-    }
-    expect(sessionHedera.channel.kind(cred(c, { action: "voucher", channelId: channel }))).toBe("within");
-    expect(await sessionHedera.channel.ref(cred({ ...c, method: "solana" }, { action: "voucher", channelId: channel }))).toEqual(refused("mpp/not-this-pairing"));
-  });
-
-  it("solana: a voucher's and a close's ref is {the request's network, payload.channelId}", async () => {
-    const channel = V.SV2.channel as string;
-    const c = own(C_S, (r) => ((r["methodDetails"] as Record<string, unknown>)["channelId"] = channel));
-    const voucher = { voucher: { channelId: channel, cumulativeAmount: "100" }, signer: V.SV3.payer, signature: "x", signatureType: "ed25519" };
-    for (const payload of [
-      { action: "voucher", channelId: channel, voucher },
-      { action: "topUp", channelId: channel, additionalAmount: "100", transaction: "x" },
-      { action: "close", channelId: channel, voucher },
-    ]) {
-      expect(await sessionSolana.channel.ref(cred(c, payload))).toEqual({ network: V.SV2.expectReference.network, channel });
-    }
-    expect(sessionSolana.channel.kind(cred(c, { action: "voucher", channelId: channel }))).toBe("within");
-  });
 
   it("xrpl: a voucher's and a close's ref is {xrpl:1, payload.channelId in upper case}", async () => {
     const channel = V.XS2.expectChannel as string;
@@ -1633,35 +613,28 @@ describe("channel.ref of a within or close payment, on the seller's own challeng
   });
 });
 
-describe("the three session pairings' records", () => {
-  // The record reads the opening, never a later voucher, so each proves states what the opening shows and none says
+describe("the XRPL session pairing's record", () => {
+  // The record reads the opening, never a later voucher, so its proves states what the opening shows and does not say
   // that later requests in the channel were paid under this ATR.
-  it("publicProof and claims are true on all three, and no proves speaks of later requests", () => {
-    for (const b of [sessionHedera, sessionSolana, sessionXrpl]) {
-      expect(b.pattern.publicProof).toBe(true);
+  it("coverage is full, claims is true, and its proves does not speak of later requests", () => {
+    for (const b of [sessionXrpl]) {
+      expect(b.data.coverage).toBe("full");
       expect(b.claims).toBe(true);
-      expect(b.pattern.proves).not.toMatch(/later requests|paid under this ATR|did not meter/i);
+      expect(b.data.proves).not.toMatch(/later requests|paid under this ATR|did not meter/i);
     }
   });
 });
 
 // Each agreedRefusals row, run through the calls its case names: one call for each condition the case lists, on the
-// file's opening challenges, HS3's opening, XS1's and XS2's XRPL values and SV2's channel.
+// file's XRPL opening challenge, XS1's and XS2's XRPL values and SV2's channel.
 describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", () => {
   type Row = { case: string; expect: string };
-  /** The rows whose openings carry a string-keyed landed or tables member that fetchPresented did not write. */
-  const ROW_25 = "bound of a hedera opening carrying a landed member, HS3's receipt logs, that fetchPresented did not write: bound reads the landed logs only from what fetchPresented writes, under lcp's FETCHED member, which no wire form carries, so the opening is read as one without it";
-  const ROW_26 =
-    "a solana opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, its challenge's voucherSigner operator, carrying a tables member whose entry for account 4 is the challenge's operator, that fetchPresented did not write: bound, reference and buildWithin read the open's accounts only through the tables fetchPresented writes, under lcp's FETCHED member, which no wire form carries, so the opening is read as one without it, never as bound to H (read through fetchPresented from SV6.tables.channel, as SV6.rows[4] serves it, account 4 is the channel, and the opening is svm/signer-not-operator)";
   /** The method's opening challenge, as issued, with its decoded request changed by `change`. */
-  const requestOf = (m: "hedera" | "solana" | "xrpl", change: (r: Record<string, any>) => void): MppChallenge => {
+  const requestOf = (m: "xrpl", change: (r: Record<string, any>) => void): MppChallenge => {
     const r = JSON.parse(Buffer.from(V.SS1[m].challenge.request, "base64url").toString("utf8"));
     change(r);
     return { ...V.SS1[m].challenge, request: b64u(canonicalJson(r) as string) };
   };
-  const hs3 = cred(C_H, { action: "open", channelId: V.HS1.expectChannelId, txHash: V.HS3.txHash, cumulativeAmount: "0", signature: "0x00" });
-  const receipt: EvmReceipt = { status: 1, blockNumber: 40_000_000n, logs: [V.HS3.log] };
-  const reverted = hederaReader({ [V.HS3.txHash]: { ...receipt, status: 0 } });
   const xrplOpen = (transaction: string) => cred(C_X, { action: "open", transaction, amount: "100", signature: "00" });
   /** XS2's opening with `n` memos: its LCP memo, then memos of one zero byte. */
   const withMemos = (n: number) => {
@@ -1671,7 +644,6 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
   };
   /** XS1's account with its last character changed: the classic address's checksum fails. */
   const notAddress = `${V.XS1.account.slice(0, -1)}m`;
-  const hederaChoice = { challenge: C_H, from: V.fixed.payer, now: 1790000000, deposit: BigInt(V.HS2.deposit) };
   const xrplChoice = {
     challenge: C_X,
     from: V.XS2.account,
@@ -1686,134 +658,32 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     },
   };
 
-  const solanaOpen = { action: "open", channelId: V.SV2.channel, transaction: V.SV2.wireBase64 };
-  /** SV5's operator-mode open, whose account 4 is the challenge's operator. */
-  const operatorOpen = { action: "open", channelId: V.SV5.opening.channel, transaction: V.SV5.opening.wireBase64 };
-  const operator = solanaPlaced((d) => Object.assign(d, V.SV5.methodDetails));
-  const client = solanaPlaced((d) => (d["voucherSigner"] = "client"));
-  const proofFor = (c: MppChallenge & { id: string }) => ({ type: "proof", challengeId: c.id, payer: V.SV3.payer, signature: "x" });
-  /** The opening a lookup-table row holds, and the operator challenge naming that row's operator. */
-  const tableOpen = (row: { channel: string; wireBase64: string }) => ({ action: "open", channelId: row.channel, transaction: row.wireBase64 });
-  const tableOperator = solanaPlaced((d) => Object.assign(d, { voucherSigner: "operator", operator: V.agreedRefusals.rows[21].operator }));
-  /** bound, reference and build's complete of the opening `payload` answering challenge `c`. */
-  const solanaCalls = async (c: MppChallenge & { id: string }, payload: MppCredential["payload"]) => {
-    const u = await sessionSolana.build({ challenge: c, from: V.SV3.payer, now: 1790000000, deposit: 10_000_000n }, H);
-    if ("refused" in u) throw new Error(u.code);
-    return [await sessionSolana.bound(cred(c, payload)), await sessionSolana.reference(cred(c, payload)), u.complete(payload)];
-  };
-  /** channel.kind, channel.ref and channel.boundWithin of a `use` echoing challenge `c`, its proof naming `c`'s id. */
-  const solanaUseCalls = async (c: MppChallenge & { id: string }) => {
-    const use = cred(c, { action: "use", channelId: V.SV2.channel, authentication: proofFor(c) });
-    return [sessionSolana.channel.kind(use), await sessionSolana.channel.ref(use), await sessionSolana.channel.boundWithin(use)];
-  };
-  /** channel.kind, channel.ref and channel.boundWithin of a `voucher` echoing challenge `c`. */
-  const solanaVoucherCalls = async (c: MppChallenge & { id: string }) => {
-    const voucher = cred(c, { action: "voucher", channelId: V.SV2.channel });
-    return [sessionSolana.channel.kind(voucher), await sessionSolana.channel.ref(voucher), await sessionSolana.channel.boundWithin(voucher)];
-  };
-  /** channel.kind, channel.ref and channel.boundWithin of a `close` echoing challenge `c`, with `members` beside its channel. */
-  const solanaCloseCalls = async (c: MppChallenge & { id: string }, members: Record<string, unknown>) => {
-    const close = cred(c, { action: "close", channelId: V.SV2.channel, ...members } as MppCredential["payload"]);
-    return [sessionSolana.channel.kind(close), await sessionSolana.channel.ref(close), await sessionSolana.channel.boundWithin(close)];
-  };
-  const closeVoucher = { voucher: { channelId: V.SV2.channel, cumulativeAmount: "100" }, signer: V.SV3.payer, signature: "x", signatureType: "ed25519" };
-  /** channel.kind and channel.ref of a Hedera payment under `action`, and buildWithin of `action` on HS3's opening. */
-  const hederaActionCalls = async (action: string) => {
-    const paid = cred(C_H, { action, channelId: V.HS1.expectChannelId, cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` });
-    const within = await sessionHedera.buildWithin({ challenge: C_H, opening: hs3, cumulativeAmount: 100n, action } as SessionWithin, H);
-    return [sessionHedera.channel.kind(paid), await sessionHedera.channel.ref(paid), within];
-  };
   /** channel.kind and channel.ref of an XRPL payment under `action`, and buildWithin of `action` on XS2's opening. */
   const xrplActionCalls = async (action: string) => {
     const paid = cred(C_X, { action, channelId: V.XS2.expectChannel, amount: "100", signature: "00" });
     const within = await sessionXrpl.buildWithin({ challenge: C_X, opening: xrplOpen(V.XS2.blob), cumulativeAmount: 100n, action } as SessionWithin, H);
     return [sessionXrpl.channel.kind(paid), await sessionXrpl.channel.ref(paid), within];
   };
-  /** channel.kind and channel.ref of a Solana payment under `action`, and buildWithin of `action` on SV2's opening. */
-  const solanaActionCalls = async (action: string) => {
-    const paid = cred(C_S, { action, channelId: V.SV2.channel });
-    const within = await sessionSolana.buildWithin({ challenge: C_S, opening: cred(C_S, solanaOpen), cumulativeAmount: 100n, action } as SessionWithin, H);
-    return [sessionSolana.channel.kind(paid), await sessionSolana.channel.ref(paid), within];
-  };
-
   // Each input a row changes is accepted as given, so each refusal below is the change's.
   it("the inputs the rows change, as given, are accepted", async () => {
-    for (const m of ["hedera", "solana", "xrpl"] as const) expect(pairingsOf(requestOf(m, () => undefined))).toEqual([`mpp/session/${m}`]);
-    expect(await sessionHedera.fetchPresented(hs3, reverted)).toEqual(refused("hedera/reverted"));
+    for (const m of ["xrpl"] as const) expect(pairingsOf(requestOf(m, () => undefined))).toEqual([`mpp/session/${m}`]);
     expect(await sessionXrpl.bound(xrplOpen(withMemos(8)))).toBe(H);
     expect(xrplChannelId(V.XS1.account, V.XS1.destination, V.XS1.sequence)).toBe(V.XS1.expect);
     expect(solanaVoucher(V.SV2.channel, 100n)).toBeInstanceOf(Uint8Array);
-    expect(await sessionHedera.build(hederaChoice, H)).not.toHaveProperty("refused");
     expect(await sessionXrpl.build(xrplChoice, H)).not.toHaveProperty("refused");
-    for (const [c, payload, reference] of [
-      [operator, { ...operatorOpen, authentication: proofFor(operator) }, V.SV5.opening.expectReference],
-      [client, solanaOpen, V.SV2.expectReference],
-      [C_S, solanaOpen, V.SV2.expectReference],
-    ] as const) {
-      const [bound, referenced, completed] = await solanaCalls(c, payload);
-      expect([bound, referenced, completed]).toEqual([H, reference, { challenge: c, payload }]);
-    }
-    expect(await solanaUseCalls(operator)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, H]);
-    for (const c of [client, C_S]) {
-      expect(await solanaVoucherCalls(c)).toEqual(["within", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")]);
-    }
-    const closed = ["close", { network: V.SV2.expectReference.network, channel: V.SV2.channel }, refused("mpp/not-bound-within")];
-    for (const c of [client, C_S]) expect(await solanaCloseCalls(c, { voucher: closeVoucher })).toEqual(closed);
-    expect(await solanaCloseCalls(operator, { authentication: proofFor(operator) })).toEqual(closed);
-    const [kind, ref, within] = await hederaActionCalls("voucher");
-    expect([kind, ref]).toEqual(["within", { network: "hedera:testnet", channel: V.HS1.expectChannelId }]);
-    expect(within).not.toHaveProperty("refused");
-    for (const calls of [await xrplActionCalls("voucher"), await solanaActionCalls("voucher")]) {
+    for (const calls of [await xrplActionCalls("voucher")]) {
       expect(calls[0]).toBe("within");
       for (const answer of calls.slice(1)) expect(answer).not.toHaveProperty("refused");
-    }
-    // The lookup-table rows' openings composed without the table, every account a static key: rows 21 and 23's is bound
-    // under its operator challenge and gives a client voucher its signer; row 22's is bound under C_S.
-    const seed = new Uint8Array(32).fill(1);
-    const signerStatic = await tableOpening(V.SV5.opening.wireBase64, V.agreedRefusals.rows[21].operator, null, seed);
-    const channelStatic = await tableOpening(V.SV5.opening.wireBase64, V.SV3.payer, null, seed);
-    expect([signerStatic.channel, channelStatic.channel]).toEqual([V.agreedRefusals.rows[21].channel, V.agreedRefusals.rows[22].channel]);
-    for (const [c, payload, channel] of [
-      [tableOperator, { ...tableOpen(signerStatic), authentication: proofFor(tableOperator) }, signerStatic.channel],
-      [C_S, tableOpen(channelStatic), channelStatic.channel],
-    ] as const) {
-      const [bound, referenced, completed] = await solanaCalls(c, payload);
-      expect([bound, (referenced as { channel?: string }).channel, completed]).toEqual([H, channel, { challenge: c, payload }]);
-    }
-    for (const c of [client, C_S]) {
-      const built = await sessionSolana.buildWithin({ challenge: c, opening: cred(c, tableOpen(signerStatic)), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
-      expect(built).toMatchObject({ requests: [{ kind: "ed25519-raw", signer: V.agreedRefusals.rows[21].operator }] });
     }
   });
 
   const cases: Record<string, () => Promise<unknown[]>> = {
-    "a hedera session request whose currency, recipient or escrowContract is not an address": async () => [
-      pairingsOf(requestOf("hedera", (r) => (r["currency"] = r["currency"].slice(0, -1)))),
-      pairingsOf(requestOf("hedera", (r) => (r["recipient"] = r["recipient"].slice(0, -1)))),
-      pairingsOf(requestOf("hedera", (r) => (r["methodDetails"].escrowContract = r["methodDetails"].escrowContract.slice(0, -1)))),
-    ],
-    "a solana session request whose network is absent or not one of MPP's three names": async () => [
-      pairingsOf(requestOf("solana", (r) => delete r["methodDetails"].network)),
-      pairingsOf(requestOf("solana", (r) => (r["methodDetails"].network = "testnet"))),
-    ],
     "an xrpl session request whose recipient is not shaped as a classic address (r and 24 to 34 base58 characters)": async () => [
       pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = `x${r["recipient"].slice(1)}`))),
       pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = r["recipient"].slice(0, 24)))),
       pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = `${r["recipient"]}aa`))),
       pairingsOf(requestOf("xrpl", (r) => (r["recipient"] = `${r["recipient"].slice(0, -1)}0`))),
     ],
-    "bound of a hedera opening before fetchPresented added the landed logs": async () => [await sessionHedera.bound(hs3)],
-    "fetchPresented or recover with a reader for another hedera network": async () => {
-      const ref = await sessionHedera.reference(hs3);
-      if ("refused" in ref) throw new Error(ref.code);
-      const mainnet = hederaReader({ [V.HS3.txHash]: receipt }, "hedera:mainnet");
-      return [await sessionHedera.fetchPresented(hs3, mainnet), await sessionHedera.recover(ref, mainnet)];
-    },
-    "fetchPresented of a hedera opening whose transaction reverted, in a block above the reader's finalized mark or with a reader that cannot give that mark":
-      async () => [
-        await sessionHedera.fetchPresented(hs3, { ...reverted, blockNumber: async () => receipt.blockNumber - 1n }),
-        await sessionHedera.fetchPresented(hs3, { ...reverted, blockNumber: async () => Promise.reject(new ReaderError("transport")) }),
-      ],
     "an xrpl opening with more than 8 memos": async () => [
       await sessionXrpl.bound(xrplOpen(withMemos(9))),
       await sessionXrpl.reference(xrplOpen(withMemos(9))),
@@ -1834,16 +704,11 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
       solanaVoucher(V.SV2.channel, 100n, 1n << 63n),
     ],
     "bound of a credential whose action is not open": async () => [
-      await sessionHedera.bound(cred(C_H, { action: "voucher", channelId: V.HS1.expectChannelId, cumulativeAmount: "100", signature: `0x${"22".repeat(65)}` })),
-      await sessionSolana.bound(cred(C_S, { action: "close", channelId: V.SV2.channel, cumulativeAmount: "100", signature: "x" })),
       await sessionXrpl.bound(cred(C_X, { action: "voucher", channelId: V.XS2.expectChannel, amount: "200", signature: "00" })),
     ],
     "build with a malformed from, deposit or XRPL channel terms": async () => {
       const x = xrplChoice.xrpl;
       return [
-        await sessionHedera.build({ ...hederaChoice, from: V.fixed.payer.slice(0, -1) }, H),
-        await sessionHedera.build({ ...hederaChoice, deposit: 0n }, H),
-        await sessionHedera.build({ ...hederaChoice, deposit: 1n << 128n }, H),
         await sessionXrpl.build({ ...xrplChoice, from: notAddress }, H),
         await sessionXrpl.build({ ...xrplChoice, deposit: 0n }, H),
         await sessionXrpl.build({ ...xrplChoice, deposit: 1n << 64n }, H),
@@ -1855,67 +720,8 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
         await sessionXrpl.build({ ...xrplChoice, xrpl: { ...x, cancelAfter: -1 } }, H),
       ];
     },
-    "a solana opening without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: REQUIRED for operator)":
-      async () => solanaCalls(operator, operatorOpen),
-    "a solana opening with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1197 at tempoxyz/mpp-specs 08e7dd87: MUST be absent for client)":
-      async () => [
-        ...(await solanaCalls(client, { ...solanaOpen, authentication: proofFor(client) })),
-        ...(await solanaCalls(C_S, { ...solanaOpen, authentication: proofFor(C_S) })),
-      ],
-    "a solana use, its challenge's voucherSigner client or absent (draft-solana-session-00 L1338 at tempoxyz/mpp-specs 08e7dd87: valid only when voucherSigner is operator)":
-      async () => [
-        ...(await solanaUseCalls(client)),
-        ...(await solanaUseCalls(C_S)),
-      ],
-    "a solana voucher, its challenge's voucherSigner operator (draft-solana-session-00 L1324-1326 at tempoxyz/mpp-specs 08e7dd87: in operator mode MUST NOT authenticate the caller)":
-      async () => solanaVoucherCalls(operator),
-    "a hedera use (draft-hedera-session-00 L840-845 at tempoxyz/mpp-specs 08e7dd87: the payload's action is one of open, topUp, voucher and close)":
-      async () => hederaActionCalls("use"),
-    "a solana close without voucher or with authentication, its challenge's voucherSigner client or absent (draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: voucher REQUIRED for client, authentication MUST be absent for client)":
-      async () => {
-        const out: unknown[] = [];
-        for (const c of [client, C_S]) {
-          out.push(...(await solanaCloseCalls(c, {})), ...(await solanaCloseCalls(c, { voucher: closeVoucher, authentication: proofFor(c) })));
-        }
-        return out;
-      },
-    "a solana close with voucher or without authentication, its challenge's voucherSigner operator (draft-solana-session-00 L1361-1362 at tempoxyz/mpp-specs 08e7dd87: voucher MUST be absent for operator, authentication REQUIRED for operator)":
-      async () => [
-        ...(await solanaCloseCalls(operator, { voucher: closeVoucher, authentication: proofFor(operator) })),
-        ...(await solanaCloseCalls(operator, {})),
-      ],
     "an xrpl topUp, use or bearer (draft-xrpl-session-00 L334-377 at tempoxyz/mpp-specs 08e7dd87: the payload's action is open, voucher or close)":
       async () => [...(await xrplActionCalls("topUp")), ...(await xrplActionCalls("use")), ...(await xrplActionCalls("bearer"))],
-    "a solana bearer (draft-solana-session-00 L1178-1353 at tempoxyz/mpp-specs 08e7dd87: the actions are open, voucher, use, topUp and close)":
-      async () => solanaActionCalls("bearer"),
-    "a solana opening whose open instruction's authorizedSigner (account 4) is not the challenge's operator, its challenge's voucherSigner operator (draft-solana-session-00 L1252-1254 and L1982-1985 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner MUST equal the challenged operator)":
-      async () => {
-        const opening = { ...solanaOpen, authentication: proofFor(operator) };
-        const within = await sessionSolana.buildWithin({ challenge: operator, opening: cred(operator, opening), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H);
-        return [...(await solanaCalls(operator, opening)), within];
-      },
-    "a solana opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, that key its challenge's operator and its challenge's voucherSigner operator, without the tables fetchPresented writes (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete read the open's accounts through the tables fetchPresented reads)":
-      async () => solanaCalls(tableOperator, { ...tableOpen(V.agreedRefusals.rows[21]), authentication: proofFor(tableOperator) }),
-    "a solana opening whose open instruction names its channel (account 5) through an address lookup table, without the tables fetchPresented writes (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; bound, reference and build's complete read the open's accounts through the tables fetchPresented reads)":
-      async () => [...(await solanaCalls(client, tableOpen(V.agreedRefusals.rows[22]))), ...(await solanaCalls(C_S, tableOpen(V.agreedRefusals.rows[22])))],
-    "a solana voucher built on a client opening whose open instruction names its authorizedSigner (account 4) through an address lookup table, without the tables fetchPresented writes (draft-solana-session-00 L465-472 and L1962-1964 at tempoxyz/mpp-specs 08e7dd87: authorizedSigner and channel are non-signer accounts, and the server validates the compiled message resolving any version-0 address-lookup-table entries; buildWithin reads the voucher signer through the tables fetchPresented reads)":
-      async () => [
-        await sessionSolana.buildWithin({ challenge: client, opening: cred(client, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H),
-        await sessionSolana.buildWithin({ challenge: C_S, opening: cred(C_S, tableOpen(V.agreedRefusals.rows[23])), cumulativeAmount: 100n, action: "close" } as SessionWithin, H),
-      ],
-    [ROW_25]: async () => {
-      const { landed } = V.agreedRefusals.rows[25];
-      return [await sessionHedera.bound({ ...hs3, landed: { ...landed, blockNumber: BigInt(landed.blockNumber) } })];
-    },
-    [ROW_26]: async () => {
-      const { tables } = V.agreedRefusals.rows[26];
-      const opening = { ...cred(tableOperator, { ...tableOpen(V.agreedRefusals.rows[21]), authentication: proofFor(tableOperator) }), tables };
-      return [
-        await sessionSolana.bound(opening),
-        await sessionSolana.reference(opening),
-        await sessionSolana.buildWithin({ challenge: tableOperator, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin, H),
-      ];
-    },
   };
 
   // The row whose blobs carry NetworkID: XS2's opening re-signed with each of its networkIds, and the same steps without
@@ -1939,7 +745,7 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     return out;
   };
 
-  // Rows 27 to 30: channel.ref of an xrpl opening reads it as bound does, the memo and NetworkID, with bound's codes.
+  // Rows 8 to 11: channel.ref of an xrpl opening reads it as bound does, the memo and NetworkID, with bound's codes.
   const lcpMemo = (tx: { Memos: { Memo: { MemoData: string } }[] }) =>
     tx.Memos.findIndex((m) => Buffer.from(m.Memo.MemoData, "hex").toString("utf8").includes(H.slice(2)));
   const xs2 = decodeXrpl(V.XS2.blob) as { Memos: { Memo: { MemoData: string } }[] };
@@ -1956,7 +762,7 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
     for (const blob of blobs) out.push(await sessionXrpl.bound(xrplOpen(blob)), await sessionXrpl.channel.ref(xrplOpen(blob)));
     return out;
   };
-  const refRows = (V.agreedRefusals.rows as Row[]).slice(27, 31);
+  const refRows = (V.agreedRefusals.rows as Row[]).slice(8, 12);
   it("channel.ref of XS2's opening, which bound takes, gives its channel", async () => {
     expect(await sessionXrpl.bound(xrplOpen(V.XS2.blob))).toBe(H);
     expect(await sessionXrpl.channel.ref(xrplOpen(V.XS2.blob))).toMatchObject({ channel: V.XS2.expectChannel });

@@ -30,6 +30,7 @@ import {
   xrplStatus,
   type XrplNetwork,
   type XrplPaymentPayload,
+  type XrplReader,
   type XrplRef,
   type XrplTxJson,
   type XrplUnsigned,
@@ -43,6 +44,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { XRPL } from "./internal/data/xrpl.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 const ID = "x402/exact/xrpl" as const;
@@ -266,17 +269,9 @@ async function reference(presented: unknown): Promise<Omit<XrplRef, "fromLedger"
 
 const pattern: LcpPattern = Object.freeze({
   pattern: "id-reuse",
-  canonical: true,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed, with a single key, an XRPL Payment whose InvoiceID is the SHA-256 of this ATR's hash in LCP " +
-    "string form, and the Payment is in a validated ledger with tesSUCCESS. The hash can be confirmed from the ATR's bytes but not " +
-    "recovered from the ledger alone. This does not show that amount, destination, asset or timing match the ATR's " +
-    "content.",
 });
 
 /**
@@ -285,9 +280,9 @@ const pattern: LcpPattern = Object.freeze({
  */
 export const exactXrpl = Object.freeze({
   id: ID,
+  data: XRPL[ID],
   pattern,
   claims: true as boolean,
-  carrier: "extra.invoiceId" as const,
   unplaced,
   tie,
   advertise,
@@ -297,4 +292,4 @@ export const exactXrpl = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference,
   status: xrplStatus,
-});
+}) satisfies Entry<typeof ID, XrplPaymentPayload, XrplRef, XrplReader>;

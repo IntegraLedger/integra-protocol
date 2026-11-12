@@ -31,15 +31,14 @@ each intent and method. Where the payer signs it, as `externalId` on `solana` ch
 
 The package reads a challenge's `id`, `request` and `opaque` as base64url without padding in its canonical form only
 (RFC 4648 §3.5). One with `=` padding, or whose last character has a bit set past its last byte, is malformed:
-`mpp/id-not-ours`, `mpp/request-malformed` and `mpp/opaque-malformed`, on every pairing, the Hedera charge's request
-checks included. `read` passes over a challenge whose `id` or `opaque` is in such a form, as it passes over one
-that carries no hash.
+`mpp/id-not-ours`, `mpp/request-malformed` and `mpp/opaque-malformed`, on every pairing. `read` passes over a challenge
+whose `id` or `opaque` is in such a form, as it passes over one that carries no hash.
 
 `issuedDigest(challenge)` is the digest of what the seller issued: SHA-256 over the RFC 8785 form of the bound
 members, with `request` decoded and its `CARRIER` member left out, and `opaque` without the LCP members. The seller
-compares the echoed challenge's digest with the one it recorded at issue. A `stellar` charge's `recipient` is the one
-carrier that stays in part: the digest keeps its base `G…` account and leaves out only the muxed id, so an echoed
-challenge whose `recipient` names another account gives another digest.
+compares the echoed challenge's digest with the one it recorded at issue. A `stellar` charge's `recipient` is read as
+issued: the digest keeps its base `G…` account and leaves out a muxed id, so an echoed challenge whose `recipient`
+names another account gives another digest.
 
 ## Placing and reading
 
@@ -54,10 +53,9 @@ those a placed challenge offers, with the Lightning invoice the seller's node wr
 
 A challenge's `expires`, when present, is an RFC 3339 date-time, else `mpp/expires-required`. MPP's core makes it a
 SHOULD for servers. A pairing needs it where its `build` writes it into what the payer signs: the EVM `authorization`
-and `permit2` charges, Tempo's pull and push charges, the `usdc` EVM charge, the Stellar charge and the EVM and Tempo
-sessions; the NEAR Intents and XRP Ledger charge drafts require it too. Without `expires` those pairings are left out of
-what `pairingsOf`, `advertise`, `build`, `bound` and `reference` take, and a challenge left with no pairing is
-`mpp/expires-required`.
+and `permit2` charges, the `usdc` EVM charge and the EVM and Tempo sessions; the NEAR Intents and XRP Ledger charge
+drafts require it too. Without `expires` those pairings are left out of what `pairingsOf`, `advertise`, `build`, `bound`
+and `reference` take, and a challenge left with no pairing is `mpp/expires-required`.
 
 ```ts
 import { hash, isRefusal } from "@integraledger/lcp";
@@ -114,22 +112,15 @@ Payment scheme's problem type and HTTP status for a refusal code this package re
 |---|---|---|
 | `evm` | `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` | The signed nonce, or the witness's `challengeHash`: keccak256 of the challenge id and realm (`challengeHash`). |
 | `evm` | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | Nothing signed or landed; H is in the challenge. On `transaction`, `build`'s `complete` takes an EIP-1559 transaction, else `mpp/credential-malformed`, signed for the challenge's `methodDetails.chainId`, else `evm/chain-mismatch`, as draft-evm-charge-00's transaction verification reads it. |
-| `tempo` | `mpp/charge/tempo/memo`, `mpp/charge/tempo/push` | The attribution memo MPP's SDKs write on the `transferWithMemo` (the layout MPP's Hedera method specifies), whose last 7 bytes are from keccak256 of the challenge id (`attributionMemo`): H is bound through those 7 bytes only. The `memo` credential's transaction is signed for the challenge's chain, `methodDetails.chainId` (42431 where it names none), else `tempo/tx-malformed`. `build`'s `complete` returns no credential `bound` refuses: it gives the code `bound` gives the credential it would give, so it refuses a transaction signed for another chain or one that does not decode, an empty one among them, one without the `transferWithMemo` carrying the attribution memo (`tempo/memo-not-bound`), and one whose credential is over the credential size bound (`mpp/credential-malformed`). A Tempo charge challenge whose `amount` is not 0 and that sets its own `methodDetails.memo` is refused (`mpp/carrier-taken`). With `methodDetails.splits`, `build` answers `tempo-calls`, the calls of one Tempo transaction as draft-tempo-charge-00's Split Payments section gives them: the primary `transferWithMemo` of `amount` less the splits, carrying the attribution memo, then one call per split in array order, `transferWithMemo` with the split's `memo` where it names one and `transfer` where it does not. |
 | `solana` | `mpp/charge/solana` | The one LCP-form Memo instruction, holding H's LCP string (the request's `externalId`); other Memo instructions, such as split labels, are not read. |
-| `stellar` | `mpp/charge/stellar` | The seller's muxed recipient address, whose 8-byte id is H's first 8 bytes: H is bound through those 8 bytes only. |
 | `xrpl` | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H itself (the request's `methodDetails.invoiceId`), in a Payment the payer signs with a single key. The Payment carries no `NetworkID`: each network the challenge names has an id of at most 1024, where rippled refuses one, so a blob that carries it is `xrpl/network-mismatch`, which `build`'s `complete`, reading the blob as `bound` does, also gives. |
-| `hedera` | `mpp/charge/hedera` | MPP's attribution memo as the signed body memo: H is bound through its 7-byte nonce only. |
 | `lightning` | `mpp/charge/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
 | `usdc` | `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | The EIP-3009 nonce, or the Gateway burn intent's salt: `usdc`'s derivation over the challenge id. |
 | `usdc` | `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks` | The signed LCP-form Memo instruction (H's LCP string), or the SIP-010 `transfer` memo (H's 32 bytes). The Stacks transaction is signed for the challenge's `chainId`, which `build`'s request names, at that network's version, 0x00 on chain 1 (mainnet) and 0x80 on any other, as a Stacks node requires, else `stacks/chain-mismatch`, which `build`'s `complete` also gives it. |
 | `nearintents` | `mpp/charge/nearintents` | The request's `externalId`; the deposit carries nothing. |
 | `card`, `stripe` | `mpp/charge/card`, `mpp/charge/stripe`, `mpp/subscription/stripe` | The request's `externalId`, or `methodDetails.metadata.legal_context`, which on a `stripe` charge the seller's server copies into the PaymentIntent it creates at settlement; MPP's Stripe subscription method does not say where the metadata goes. The buyer's card or token signs nothing that carries H. |
-| sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/hedera`, `mpp/session/solana`, `mpp/session/xrpl`, `mpp/session/lightning` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). |
+| sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/session/lightning` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). |
 | subscription | `mpp/subscription/tempo` | The key authorization the payer's root key signs, whose witness is H. |
-
-Where only 7 or 8 bytes of what the payer signs depend on H (the nonce of the attribution memo on Tempo and Hedera, the
-Stellar muxed id, and the Solana session's 8-byte channel salt), the payment binds H only through those bytes: whoever
-assembles the ATR can construct a second ATR that shares them. Those pairings state this in their `pattern.proves`.
 
 `challengeHash` is keccak256 of the UTF-8 of `JSON.stringify([id, realm])`: the id and realm framed as a JSON array of
 two strings, as the `mppx` SDK computes it from 0.13.1, so that no two pairs share a preimage (`"ab"` and `"c"`, `"a"`
@@ -137,13 +128,10 @@ and `"bc"`). MPP's EVM charge draft (draft-evm-charge-00) still writes `abi.enco
 concatenation; a credential signed over that form is `mpp/nonce-not-challenge-hash`, or
 `mpp/witness-not-challenge-hash` for `permit2`.
 
-The challenge's `id` and `realm`, and the client id a Tempo or Hedera payer may add to the attribution memo, are hashed
-as UTF-8. A string holding a lone surrogate has no UTF-8 form, so a challenge whose `realm` is not a well-formed string
-is `mpp/challenge-malformed` in `pairingsOf`, `place` and `build`, and in every `bound`, and in each `reference` and
-`fetchPresented` that reads H from a credential's echoed challenge. An `id` that is not a well-formed string derives
-from no H: every `bound`, and every `build`, the Hedera charge's among them, refuses it `mpp/id-not-ours`.
-The build that takes such a client id refuses it (`mpp/input-malformed` on Tempo, `hedera/option-malformed` on
-Hedera).
+The challenge's `id` and `realm` are hashed as UTF-8. A string holding a lone surrogate has no UTF-8 form, so a
+challenge whose `realm` is not a well-formed string is `mpp/challenge-malformed` in `pairingsOf`, `place` and `build`,
+and in every `bound`, and in each `reference` and `fetchPresented` that reads H from a credential's echoed challenge. An
+`id` that is not a well-formed string derives from no H: every `bound`, and every `build`, refuses it `mpp/id-not-ours`.
 
 Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and returns what the buyer signs; on card and
 Stripe, where nothing the buyer signs can carry H, it refuses `mpp/no-signed-place`. Its `bound(credential)` reads H
@@ -151,85 +139,65 @@ from the echoed challenge and, where the payer signs a value that carries it, ch
 carries H, the card, Stripe and EVM `transaction` and `hash` pairings refuse `mpp/no-signed-place`. `reference` and
 `status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents
 only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
-refuses one that failed: `tempo/reverted` on Tempo, which it gives only once the receipt's block is at or below the
-reader's `finalized` mark (`tempo/not-final` above that mark, or where it cannot be read), `svm/err` on Solana,
-which it gives only once a read at `finalized` holds the transaction with its error (`svm/not-final` when the error is
-at `confirmed` and that read does not hold the transaction yet), `stellar/tx-failed` on Stellar, `xrpl/not-success`
-on the XRP Ledger, which it reads only once the transaction is in a validated ledger (`xrpl/not-validated` before
-that), and
-`hedera/not-success` on Hedera. The Hedera session's `fetchPresented` refuses a reverted opening by the same mark:
-`hedera/reverted` at or below it, `hedera/not-final` above it or where it cannot be read
-([Reading settlement](./sessions.md#reading-settlement)). On the Tempo push charge and the Hedera session, a
-transaction that succeeded without exactly one of the logs `bound` reads H from is read by the same mark: above it
-`fetchPresented` answers `tempo/not-final` or `hedera/not-final`, and at or below it returns the landed credential,
-which `bound` refuses (`tempo/memo-not-bound`, `tempo/ambiguous` or `hedera/channel-log-not-found`). A read
-that fails, cannot yet read the landed payment, or reads a revert or error that is not final yet is a read to repeat,
-not a refusal of the payment: the seller asks again later. `readToRepeat(code)`, from the package root, is true for each
-such code ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)).
+refuses one that failed: `svm/err` on Solana, which it gives only once a read at `finalized` holds the transaction with
+its error (`svm/not-final` when the error is at `confirmed` and that read does not hold the transaction yet), and
+`xrpl/not-success` on the XRP Ledger, which it reads only once the transaction is in a validated ledger
+(`xrpl/not-validated` before that). A read that fails, cannot yet read the landed payment, or reads a revert or error
+that is not final yet is a read to repeat, not a refusal of the payment: the seller asks again later.
+`readToRepeat(code)`, from the package root, is true for each such code ([Reads to
+repeat](../concepts/refusals.md#reads-to-repeat)).
 
 `fetchPresented` returns the credential with what it read written under one member, keyed by the registered symbol
 `FETCHED`, `Symbol.for("@integraledger/lcp/fetched")`, which `@integraledger/lcp`, `@integraledger/lcp/mpp` and
-`@integraledger/lcp/hedera` export: the landed logs on the Tempo push charge and the Hedera session, the network and,
-for a push, the landed memo on the Hedera charge, the landed transaction on the Solana and Stellar charges, the signed
-blob on the XRP Ledger charge, and the address lookup tables on the Solana session. `bound`, `reference` and
-`buildWithin` read the seller's read from that member and from no other. A credential's own `landed`, `tables`, push
+`@integraledger/lcp/hedera` export: the landed transaction on the Solana charge, and the signed blob on the XRP Ledger
+charge. `bound` and `reference` read the seller's read from that member and from no other. A credential's own push
 `transaction` or `blob` member, or any other string-keyed member, is never read: a credential that arrives with one
 gives the answer the same credential without it gives, `<rail>/read-first` where the read is needed. No wire form
 carries a symbol-keyed member: `JSON.parse` makes none, and `JSON.stringify` and `structuredClone` drop it. So the
 seller keeps the object `fetchPresented` returned, or a spread or `Object.assign` copy of it, both of which copy the
 member; a copy made through JSON or `structuredClone` is read as a credential `fetchPresented` has not read. Calling
-`bound` first, and `fetchPresented` when it answers `<rail>/read-first`, reads only what the seller's reader read; a
-Hedera pull credential whose request names no `chainId` gets its network only through `fetchPresented`, since `bound`
-gives H there and `reference` gives `hedera/chain-id-unnamed` without it.
+`bound` first, and `fetchPresented` when it answers `<rail>/read-first`, reads only what the seller's reader read.
 
-`bound`, `reference` and `fetchPresented` start from the echoed challenge's H, require its intent and method to be
-the pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which
-must name the pairing (`pairingsOfPlaced`). A challenge those checks refuse gives their code, and one that offers only
-other pairings (another credential type, mode or `usdc` profile, or no `expires` where the pairing needs it) is
-`mpp/not-this-pairing`, as `advertise` and `build` answer for the same challenge. Every MPP `build` that takes a
-chosen challenge, the Hedera charge's among them, holds it as `bound` holds an echoed one, before it builds anything.
-It reads the challenge as `bound` reads its JSON form: a snapshot of its own members (`realm`, `method`, `intent`,
-`request`, `id`, `expires`, `digest`, `description`, `header` and `opaque`), so a member the challenge inherits counts
-as absent. It reads the challenge only from that snapshot, and the credential its `complete` returns carries the
-snapshot, so a change made to the caller's challenge after `build` does not reach the credential. Each fault in the
-challenge gets `bound`'s code, in `bound`'s order: a challenge that is not an object, is not challenge-shaped or has no
-string id, or whose least credential, `{ challenge, payload: {} }`, is over the credential size bound
-(`mpp/credential-malformed`); its realm; an id that derives from H; an `opaque` that names that H (else
-`mpp/opaque-not-this-hash`); its request; its intent and method; and the same filter. An id that derives from an H
-other than the one `build` is given is then `mpp/id-not-ours`. A fault in an argument other than the challenge keeps
-the build's own code: a choice that is not an object (`mpp/input-malformed`, or `svm/input-malformed` on the Solana
-charges and session, `stellar/tx-malformed` on the Stellar charge, `mpp/credential-malformed` on Lightning and
-`hedera/option-malformed` on the Hedera charge), and the payer, token domain, spender, deposit, client id and each
-other value the choice carries. So no `complete` is handed a challenge `bound` refuses, and the Hedera charge's
-`build`, whose `complete` returns the signed transaction, signs no body under such a challenge. `pairingsOf` makes every check `build`,
-`bound` and `reference` make on the challenge alone: on Lightning, that the invoice decodes with one `h` field and no
-`d`, carries the request's payment hash and the currency
-of the `network` the challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or
-`confidential` transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the build writes; on
-Permit2 and the Tempo charges, an `amount` above its `splits`, and on Tempo their form; on the Stellar charge, an
-`amount` below 2^127, the `i128` of a SEP-41 `transfer`, and the `recipient` and `currency` strkeys whole, version
-byte, length and checksum, without `@stellar/stellar-sdk`; on the XRP Ledger charge, no `memos`; the XRPL session
-recipient's checksum;
-the Tempo subscription's period and expiry within the key authorization's uint64; and, on `usdc`'s EVM and Gateway
-profiles, a request in its RFC 8785 form. So no pairing binds a payment presented under a challenge `pairingsOf` would
-not name for it. Of a challenge the filter takes, each function reads only the request members its own read keys or
-derivation use, such as the network or chain, the currency, the recipient, the escrow, the member that carries H, and
-`expires` where it is the payment's deadline; on the Lightning charge and session, the read keys name the network of
-the invoice's currency. The EVM `transaction` and `hash` charges' `bound` then refuses (`mpp/no-signed-place`), and a
-`fetchPresented` given a signed transaction returns it as given.
+`bound`, `reference` and `fetchPresented` start from the echoed challenge's H, require its intent and method to be the
+pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which must
+name the pairing (`pairingsOfPlaced`). A challenge those checks refuse gives their code, and one that offers only other
+pairings (another credential type, mode or `usdc` profile, or no `expires` where the pairing needs it) is
+`mpp/not-this-pairing`, as `advertise` and `build` answer for the same challenge. Every MPP `build` that takes a chosen
+challenge holds it as `bound` holds an echoed one, before it builds anything. It reads the challenge as `bound` reads
+its JSON form: a snapshot of its own members (`realm`, `method`, `intent`, `request`, `id`, `expires`, `digest`,
+`description`, `header` and `opaque`), so a member the challenge inherits counts as absent. It reads the challenge only
+from that snapshot, and the credential its `complete` returns carries the snapshot, so a change made to the caller's
+challenge after `build` does not reach the credential. Each fault in the challenge gets `bound`'s code, in `bound`'s
+order: a challenge that is not an object, is not challenge-shaped or has no string id, or whose least credential, `{
+challenge, payload: {} }`, is over the credential size bound (`mpp/credential-malformed`); its realm; an id that derives
+from H; an `opaque` that names that H (else `mpp/opaque-not-this-hash`); its request; its intent and method; and the
+same filter. An id that derives from an H other than the one `build` is given is then `mpp/id-not-ours`. A fault in an
+argument other than the challenge keeps the build's own code: a choice that is not an object (`mpp/input-malformed`, or
+`svm/input-malformed` on the Solana charges and `mpp/credential-malformed` on Lightning), and the payer, token domain,
+spender, deposit and each other value the choice carries. So no `complete` is handed a challenge `bound` refuses.
+`pairingsOf` makes every check `build`, `bound` and `reference` make on the challenge alone: on Lightning, that the
+invoice decodes with one `h` field and no `d`, carries the request's payment hash and the currency of the `network` the
+challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or `confidential`
+transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the build writes; on Permit2, an `amount`
+above its `splits`; on the XRP Ledger charge, no `memos`; the XRPL session recipient's checksum; the Tempo
+subscription's period and expiry within the key authorization's uint64; and, on `usdc`'s EVM and Gateway profiles, a
+request in its RFC 8785 form. So no pairing binds a payment presented under a challenge `pairingsOf` would not name for
+it. Of a challenge the filter takes, each function reads only the request members its own read keys or derivation use,
+such as the network or chain, the currency, the recipient, the escrow, the member that carries H, and `expires` where it
+is the payment's deadline; on the Lightning charge and session, the read keys name the network of the invoice's
+currency. The EVM `transaction` and `hash` charges' `bound` then refuses (`mpp/no-signed-place`), and a `fetchPresented`
+given a signed transaction returns it as given.
 
 The `complete` of each `build` that makes a credential measures it as `bound` measures every credential, its echoed
 challenge included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code
 `bound` gives it, whatever the challenge's own size. It holds the payment it carries to the size `bound` reads it at
-too: the XRP Ledger charge's signed blob to 4,096 hex digits (`xrpl/blob-too-large`), and the Stellar charge's signed
-envelope to 8,192 base64 characters (`stellar/tx-too-large`). So no `build`'s `complete` returns a credential `bound`
-refuses for its size. It checks in `bound`'s order, measuring the credential before it reads the payment: a payment
-fault in a credential over the bound, such as a Stellar envelope over 8,192 characters, a `usdc` Stacks transaction
-over 16,384 bytes or a Tempo key authorization over 8,192 bytes, is `mpp/credential-malformed`, as `bound` gives it.
-One rule covers the credentials in a channel too: a `buildWithin`'s `complete` measures the in-channel credential it
-would return, and a session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` measure the payment they
-are given before they read it, with the same bound and code, except the Stripe subscription's, which read only the
-activation receipt.
+too: the XRP Ledger charge's signed blob to 4,096 hex digits (`xrpl/blob-too-large`). So no `build`'s `complete` returns
+a credential `bound` refuses for its size. It checks in `bound`'s order, measuring the credential before it reads the
+payment: a payment fault in a credential over the bound, such as a `usdc` Stacks transaction over 16,384 bytes or a
+Tempo key authorization over 8,192 bytes, is `mpp/credential-malformed`, as `bound` gives it. One rule covers the
+credentials in a channel too: a `buildWithin`'s `complete` measures the in-channel credential it would return, and a
+session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` measure the payment they are given before they
+read it, with the same bound and code, except the Stripe subscription's, which read only the activation receipt.
 
 `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
 an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
@@ -239,7 +207,7 @@ not H), the deadline, the token and the contract that records the nonce's use, f
 32 bytes anywhere in its input, and reads that record set at the receipt's block and unset at the block before, as on
 x402's Permit2 pairings.
 
-On the EVM, Tempo and `usdc` EVM charges, `status` answers failed, such as `reverted`, `binding-log-not-found`,
+On the EVM and `usdc` EVM charges, `status` answers failed, such as `reverted`, `binding-log-not-found`,
 `transfer-not-found`, `receive-policy-blocked` or `nonce-not-used`, only once the receipt's block is at or below the
 reader's `finalized` mark. Above that mark, where the block can be replaced, or where the mark cannot be read, it
 answers pending with the same reason ([Reading settlement](./rails.md#reading-settlement)).
@@ -255,8 +223,8 @@ The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states where ea
 |---|---|---|
 | `mpp/credential-malformed`, `mpp/request-malformed`, `mpp/opaque-malformed` | 402 | `malformed-credential` |
 | `mpp/id-not-ours` | 402 | `invalid-challenge` |
-| A read to repeat, a code `readToRepeat` answers true for: each rail's `<rail>/not-found` and `<rail>/unreadable` (such as `tempo/not-found` and `svm/unreadable`), `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final`, `hedera/not-final`, `polkadot/not-final`, `stacks/not-final`, `starknet/not-final`, `svm/not-final` and `tempo/not-final` | 500 | `internal-payment-error` |
-| A call that cannot read the payment: `tempo/wrong-reader`, `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `tempo/read-first`, `svm/read-first`, `stellar/read-first`, `xrpl/read-first`, `hedera/read-first` | 500 | `internal-payment-error` |
+| A read to repeat, a code `readToRepeat` answers true for: each rail's `<rail>/not-found` and `<rail>/unreadable` (such as `tempo/not-found` and `svm/unreadable`), `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final`, `polkadot/not-final`, `stacks/not-final`, `starknet/not-final`, `svm/not-final` and `tempo/not-final` | 500 | `internal-payment-error` |
+| A call that cannot read the payment: `tempo/wrong-reader`, `svm/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `svm/read-first`, `xrpl/read-first` | 500 | `internal-payment-error` |
 | Every other code this package returns | 402 | `verification-failed` |
 | A code this package does not return | 500 | `internal-payment-error` |
 
@@ -265,18 +233,11 @@ its read fails, cannot yet read the landed payment, or reads a revert, an error 
 the seller asks again later ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)). A call that cannot read the
 payment is the seller's own call: a reader that is not
 for the network the challenge or reference names, or a ref `recover` cannot read: one that is not an object, one
-whose `transaction` is not in its rail's form (a 32-byte hash on Tempo and the Hedera session, a signature, base58 of
-64 bytes, on Solana, 64 hex digits on XRPL), or on the Hedera session one that names a `bindingLog` that is not an
-object with an address `address` and a 32-byte `value`, an `escrow` that is not an address, or neither or both of them
-(`<rail>/wrong-reader`), or `bound` or `reference` on a push
-credential before `fetchPresented` has read it, or on an `mpp/session/solana` opening whose address lookup tables it
-has not read (`<rail>/read-first`). The same call gives the same code until the
+whose `transaction` is not in its rail's form (a 32-byte hash on Tempo, a signature, base58 of 64 bytes, on Solana, 64
+hex digits on XRPL) (`<rail>/wrong-reader`), or `bound` or `reference` on a push credential before `fetchPresented` has
+read it (`<rail>/read-first`). The same call gives the same code until the
 seller changes it. In both, the payment may already have moved, so the seller sends no fresh challenge the buyer could
 pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a 402, and
 neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem` gives it 500
 `internal-payment-error`, never a 402.
 
-On `mpp/session/solana`, both sides keep the credential `fetchPresented` returned, with its tables under `FETCHED`, or
-a spread or `Object.assign` copy of it, as the opening for the life of the channel, and pass it to `bound`, `reference` and `buildWithin`: a later read gives each address
-lookup table as it stands then, and once the table's authority deactivates or closes it, that read is
-`svm/table-unusable` or `svm/not-found`, and no later read gives the channel's accounts.

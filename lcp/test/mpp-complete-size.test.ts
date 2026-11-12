@@ -3,18 +3,13 @@
 // code `bound` gives it. mpp-challenge.json's credentialSize rows are the sizes; each pairing's credential is the one its
 // build and complete give on its vector file's B2 inputs and the payment its B6 row carries, under that file's placed
 // challenge with a description of as many characters as bring the credential to the row's size.
-import { xdr } from "@stellar/stellar-sdk/base";
 import { decode as decodeXrpl, encode as encodeXrpl } from "ripple-binary-codec";
 import { describe, expect, it } from "vitest";
 import { concat, toHex, type Hex } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
 import { BINDINGS, type Json } from "../src/index.js";
-import type { StellarPaymentPayload } from "../src/internal/stellar.js";
-import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
-import { exactStellar } from "../src/x402-exact-stellar.js";
 import {
   chargeSolana,
-  chargeStellar,
   chargeUsdcEvm,
   chargeUsdcGateway,
   chargeUsdcSolana,
@@ -25,13 +20,9 @@ import {
   evmPermit2,
   evmTransaction,
   sessionEvm,
-  sessionHedera,
-  sessionSolana,
   sessionTempo,
   sessionXrpl,
   subscriptionTempo,
-  tempoMemo,
-  tempoPush,
   type MppChallenge,
   type MppCredential,
 } from "../src/mpp.js";
@@ -51,8 +42,6 @@ type Inputs = {
   returnInvoice?: string;
   computeUnitLimit?: number;
   computeUnitPrice?: string;
-  simulatedXdr?: string;
-  currentLedger?: number;
   fee?: string;
   sequence?: number;
   lastLedgerSequence?: number;
@@ -166,24 +155,6 @@ const P: Record<string, Pairing> = {
     run: async (challenge, b2) =>
       built(await evmHash.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(b2.advertised),
   },
-  "mpp/charge/tempo/memo": {
-    file: "mpp-charge-tempo-memo.json",
-    bound: tempoMemo.bound,
-    run: async (challenge, b2, b6) =>
-      built(await tempoMemo.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(
-        b6.payload["signature"] as Hex,
-      ),
-  },
-  // bound reads the push payment once fetchPresented has landed it.
-  "mpp/charge/tempo/push": {
-    file: "mpp-charge-tempo-push.json",
-    bound: tempoPush.bound,
-    answer: "tempo/read-first",
-    run: async (challenge, b2, b6) =>
-      built(await tempoPush.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)).complete(
-        b6.payload["hash"] as Hex,
-      ),
-  },
   "mpp/charge/lightning": {
     file: "mpp-charge-lightning.json",
     bound: chargeLightning.bound,
@@ -202,16 +173,6 @@ const P: Record<string, Pairing> = {
     file: "mpp-charge-usdc-solana.json",
     bound: chargeUsdcSolana.bound,
     run: solanaRun(chargeUsdcSolana.build, (r) => r["solana"] as { [k: string]: Json }),
-  },
-  // complete takes the payer's 64-byte signature, which it does not verify.
-  "mpp/charge/stellar": {
-    file: "mpp-charge-stellar.json",
-    bound: chargeStellar.bound,
-    run: async (challenge, b2) => {
-      const i = b2.input.inputs!;
-      const choice = { challenge, payer: accountOf(b2), now: b2.input.now ?? 0, simulatedXdr: i.simulatedXdr!, currentLedger: i.currentLedger! };
-      return built(await chargeStellar.build(choice, b2.advertised)).complete(new Uint8Array(64).fill(0x11));
-    },
   },
   "mpp/charge/xrpl": {
     file: "mpp-charge-xrpl.json",
@@ -291,28 +252,6 @@ const P: Record<string, Pairing> = {
       return u.complete(concat([s.r, s.s, toHex(Number(s.v), { size: 1 })]));
     },
   },
-  // bound reads the opening once fetchPresented has landed it.
-  "mpp/session/hedera": {
-    file: "mpp-session-hedera-solana-xrpl.json",
-    bound: sessionHedera.bound,
-    answer: "hedera/read-first",
-    run: async (challenge, b2, b6) => {
-      const choice = { challenge, from: accountOf(b2), now: b2.input.now ?? 0, deposit: BigInt(b2.input.inputs!.deposit!) };
-      const u = built(await sessionHedera.build(choice, b2.advertised)) as { complete(s: { openTx: Hex; signature: Hex }): unknown };
-      return u.complete({ openTx: b6.payload["txHash"] as Hex, signature: b6.payload["signature"] as Hex });
-    },
-  },
-  // The Solana session's build reads no deposit: the channel client composes the open payload.
-  "mpp/session/solana": {
-    file: "mpp-session-hedera-solana-xrpl.json",
-    bound: sessionSolana.bound,
-    run: async (challenge, b2, b6) => {
-      const u = built(await sessionSolana.build({ challenge, from: accountOf(b2), now: b2.input.now ?? 0, deposit: 1n }, b2.advertised)) as {
-        complete(open: Payload): unknown;
-      };
-      return u.complete(b6.payload);
-    },
-  },
   "mpp/session/xrpl": {
     file: "mpp-session-hedera-solana-xrpl.json",
     bound: sessionXrpl.bound,
@@ -364,7 +303,7 @@ function setUp(id: string) {
 
 type SizeRow = { case: string; size: number; taken?: true; expect?: string };
 const ROWS = rowsOf<SizeRow>(MC.credentialSize.rows, "mpp-challenge.json credentialSize.rows", { exact: 3 });
-const PAIRINGS = rowsOf(Object.keys(P), "the pairings whose build returns a complete that makes a credential", { exact: 21 });
+const PAIRINGS = rowsOf(Object.keys(P), "the pairings whose build returns a complete that makes a credential", { exact: 16 });
 
 describe("mpp-challenge.json credentialSize: every complete measures its credential as bound does", () => {
   for (const id of PAIRINGS) {
@@ -429,88 +368,13 @@ describe("mpp-charge-xrpl.json completeBlob: complete reads the blob as bound re
   }
 });
 
-/**
- * `envelope` with its transaction's ext set to Soroban transaction data whose footprint holds one read-only contract-data
- * key: contract id 32 bytes of 0x07, key an ScVal of `keyBytes` zero bytes, persistent; zero resources and fee.
- */
-function footprinted(envelope: string, keyBytes: number): string {
-  const env = xdr.TransactionEnvelope.fromXdr(envelope, "base64").toXdrObject();
-  if (env.type !== 2) throw new Error("not a v1 envelope");
-  const key = { type: 6, contractData: { contract: { type: 1, contractId: new Uint8Array(32).fill(7) }, key: { type: 13, bytes: new Uint8Array(keyBytes) }, durability: 1 } };
-  const resources = { footprint: { readOnly: [key], readWrite: [] }, instructions: 0, diskReadBytes: 0, writeBytes: 0 };
-  (env.v1.tx as { ext: unknown }).ext = { v: 1, sorobanData: { ext: { v: 0 }, resources, resourceFee: 0n } };
-  return Buffer.from(xdr.TransactionEnvelope.schema.encode(env, { maxDepth: 1_000_000 })).toString("base64");
-}
-const SIGNATURE = new Uint8Array(64).fill(0x11);
-
-describe("mpp-charge-stellar.json completeXdr: complete refuses a signed envelope bound refuses for its length", () => {
-  type XdrRow = { case: string; keyBytes: number; simulatedLength: number; signedLength: number; taken?: true; expect?: string };
-  const ROWS_XDR = rowsOf<XdrRow>(load("mpp-charge-stellar.json").completeXdr.rows, "mpp-charge-stellar.json completeXdr.rows", { exact: 3 });
-  const { placed } = setUp("mpp/charge/stellar");
-  const b2 = buyer("mpp-charge-stellar.json", "mpp/charge/stellar", "B2")!;
-  const completed = async (keyBytes: number) => {
-    const simulatedXdr = footprinted(b2.input.inputs!.simulatedXdr!, keyBytes);
-    const choice = { challenge: placed, payer: accountOf(b2), now: b2.input.now ?? 0, simulatedXdr, currentLedger: b2.input.inputs!.currentLedger! };
-    return { simulatedXdr, made: built(await chargeStellar.build(choice, b2.advertised)).complete(SIGNATURE) };
-  };
-  const credentialOf = (transaction: string) => ({ challenge: placed, payload: { type: "transaction", transaction } });
-
-  for (const row of ROWS_XDR) {
-    it(row.case, async () => {
-      const { simulatedXdr, made } = await completed(row.keyBytes);
-      expect(simulatedXdr.length).toBe(row.simulatedLength);
-      if (row.taken) {
-        const transaction = (made as MppCredential).payload["transaction"] as string;
-        expect(transaction.length).toBe(row.signedLength);
-        expect(made).toEqual(credentialOf(transaction));
-        expect(await chargeStellar.bound(made)).toBe(b2.advertised);
-      } else {
-        expect(made).toEqual(refused(row.expect!));
-        // The envelope complete would write: a taken row's signed envelope with this row's key, which the payer does not sign.
-        const taken = (await completed(ROWS_XDR.find((r) => r.taken)!.keyBytes)).made as MppCredential;
-        const over = footprinted(taken.payload["transaction"] as string, row.keyBytes);
-        expect(over.length).toBe(row.signedLength);
-        expect(await chargeStellar.bound(credentialOf(over))).toEqual(refused(row.expect!));
-      }
-    });
-  }
-});
-
-// x402-exact-stellar.json V2's simulated envelope, with a footprint key as completeXdr's rows make it: the x402 build's
-// complete writes the signature as the MPP one does, and refuses the same lengths its bound refuses.
-describe("x402 exact Stellar: complete refuses a signed envelope over 8,192 characters, as bound does", () => {
-  const X = load("x402-exact-stellar.json");
-  const accepted: PaymentRequirements = X.V3.accepted;
-  const required: PaymentRequired = { x402Version: 2, resource: X.fixed.resource, accepts: [accepted] };
-  const complete = async (keyBytes: number) => {
-    const simulatedXdr = footprinted(X.V2.simulatedXdr, keyBytes);
-    expect(simulatedXdr.length).toBeLessThanOrEqual(8192);
-    const choice = { required, accepted, simulatedXdr, currentLedger: X.V2.currentLedger, payer: X.fixed.payer };
-    return built(await exactStellar.build(choice, X.fixed.H)).complete(SIGNATURE);
-  };
-  const paid = (transaction: string): StellarPaymentPayload => ({ x402Version: 2, accepted, payload: { transaction }, extensions: X.V3.extensions });
-
-  it("the longest signed envelope within the bound is taken, and the next is refused stellar/tx-too-large", async () => {
-    let n = 5000;
-    while (typeof (await complete(n + 4)) === "string") n += 4;
-    const within = (await complete(n)) as string;
-    expect(within.length).toBeLessThanOrEqual(8192);
-    expect(within.length).toBeGreaterThan(8184);
-    expect(await exactStellar.bound(paid(within))).toBe(X.V3.expectBound);
-    expect(await complete(n + 4)).toEqual(refused("stellar/tx-too-large"));
-    const over = footprinted(within, n + 4);
-    expect(over.length).toBeGreaterThan(8192);
-    expect(await exactStellar.bound(paid(over))).toEqual(refused("stellar/tx-too-large"));
-  });
-});
-
 // completeOrder: a complete checks the credential in its bound's order. bound measures a credential before it reads the
 // payment it carries, so a payment fault in a credential over the credential size bound is mpp/credential-malformed
 // from complete as from bound, and at the bound each gives the fault's own code (bound the row's bound code, or H, where
 // it reads nothing of the payment).
 describe("mpp-challenge.json completeOrder: a complete checks the credential in its bound's order", () => {
   type OrderRow = { case: string; pairing: string; fault: string; size: number; expect: string; bound?: string; boundTakes?: true };
-  const ROWS_ORDER = rowsOf<OrderRow>(MC.completeOrder.rows, "mpp-challenge.json completeOrder.rows", { exact: 14 });
+  const ROWS_ORDER = rowsOf<OrderRow>(MC.completeOrder.rows, "mpp-challenge.json completeOrder.rows", { exact: 10 });
   /** The pairing's credential, completed from its B2 and B6 rows under its credentialSize challenge. */
   const taken = async (pairing: string) => {
     const { placed, complete } = setUp(pairing);
@@ -521,14 +385,6 @@ describe("mpp-challenge.json completeOrder: a complete checks the credential in 
     const c = await taken(pairing);
     return { ...c, challenge, payload: { ...c.payload, [field]: value } };
   };
-  const stellarB2 = buyer("mpp-charge-stellar.json", "mpp/charge/stellar", "B2")!;
-  /** The Stellar build's complete under `challenge`, B2's simulated envelope given a footprint key of `keyBytes` bytes. */
-  const stellarComplete = async (challenge: Placed, keyBytes: number) => {
-    const i = stellarB2.input.inputs!;
-    const simulatedXdr = footprinted(i.simulatedXdr!, keyBytes);
-    const choice = { challenge, payer: accountOf(stellarB2), now: stellarB2.input.now ?? 0, simulatedXdr, currentLedger: i.currentLedger! };
-    return built(await chargeStellar.build(choice, stellarB2.advertised)).complete(SIGNATURE);
-  };
   const stacksWire = rowsOf(load("mpp-charge-usdc-stacks.json").agreedRefusals.rows as { wireHex: string; bytes?: number }[], "mpp-charge-usdc-stacks.json agreedRefusals.rows", { min: 49 })[48]!;
   const subscriptionB2 = buyer("mpp-subscription-tempo.json", "mpp/subscription/tempo", "B2")!;
   const subscriptionUnsigned = (challenge: Placed) =>
@@ -538,21 +394,9 @@ describe("mpp-challenge.json completeOrder: a complete checks the credential in 
   const otherChain = (TX.agreedRefusals.rows[0].transactions as Hex[])[0]!;
   const xrplB2 = buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B2")!;
   const lightningB2 = buyer("mpp-charge-lightning.json", "mpp/charge/lightning", "B2")!;
-  const solanaB2 = buyer("mpp-session-hedera-solana-xrpl.json", "mpp/session/solana", "B2")!;
-  const solanaOpen = buyer("mpp-session-hedera-solana-xrpl.json", "mpp/session/solana", "B6")!.input.presented!.payload;
 
   type Fault = { complete(challenge: Placed): Promise<unknown>; credential(challenge: Placed): Promise<MppCredential> };
   const FAULTS: Record<string, Fault> = {
-    // complete writes and signs the envelope; bound is given completeXdr's way of it, a taken envelope given the key.
-    "a signed envelope of 8,200 characters": {
-      complete: (challenge) => stellarComplete(challenge, 5405),
-      credential: async (challenge) => {
-        const within = (await stellarComplete(setUp("mpp/charge/stellar").placed, 5401)) as MppCredential;
-        const over = footprinted(within.payload["transaction"] as string, 5405);
-        expect(over.length).toBe(8200);
-        return swapped("mpp/charge/stellar", challenge, "transaction", over);
-      },
-    },
     "a transaction of 16,385 bytes": {
       complete: async (challenge) => {
         const u = built(await chargeUsdcStacks.build({ challenge, from: accountOf(buyer("mpp-charge-usdc-stacks.json", "mpp/charge/usdc/stacks", "B2")!) }, setUp("mpp/charge/usdc/stacks").h)) as { complete(tx: Uint8Array): unknown };
@@ -589,10 +433,6 @@ describe("mpp-challenge.json completeOrder: a complete checks the credential in 
     "a preimage that is not 64 hex digits": {
       complete: async (challenge) => built(await chargeLightning.build({ challenge }, lightningB2.advertised)).complete("00"),
       credential: (challenge) => swapped("mpp/charge/lightning", challenge, "preimage", "00"),
-    },
-    "an opening whose action is voucher": {
-      complete: (challenge) => P["mpp/session/solana"]!.run(challenge, solanaB2, { payload: { ...solanaOpen, action: "voucher" } }),
-      credential: (challenge) => swapped("mpp/session/solana", challenge, "action", "voucher"),
     },
   };
 
@@ -852,21 +692,11 @@ describe("build, bound and broadcaster give one answer at the credential bounds 
   }
 });
 
-// A session complete reads the opening it is given as bound reads it, in bound's order. The Solana session's complete
-// refuses an opening that is not an object with mpp/credential-malformed, as bound refuses a credential carrying it;
-// the XRPL session's reads the blob's type in bound's read of the opening (xrpl/blob-malformed), and the claim
-// signature, which bound does not read, after it.
+// A session complete reads the opening it is given as bound reads it, in bound's order. The XRPL session's reads the
+// blob's type in bound's read of the opening (xrpl/blob-malformed), and the claim signature, which bound does not read,
+// after it.
 describe("a session complete gives bound's code for an opening member of another type, in bound's order", () => {
   const FILE = "mpp-session-hedera-solana-xrpl.json";
-
-  it("mpp/session/solana: an opening that is not an object is mpp/credential-malformed, as bound gives it", async () => {
-    const b2 = buyer(FILE, "mpp/session/solana", "B2")!;
-    const { placed } = setUp("mpp/session/solana");
-    for (const open of [null, "x", 5]) {
-      expect(await P["mpp/session/solana"]!.run(placed, b2, { payload: open as never })).toEqual(refused("mpp/credential-malformed"));
-      expect(await sessionSolana.bound({ challenge: placed, payload: open })).toEqual(refused("mpp/credential-malformed"));
-    }
-  });
 
   it("mpp/session/xrpl: a blob that is not a string is xrpl/blob-malformed, before the claim signature, as bound gives it", async () => {
     const b2 = buyer(FILE, "mpp/session/xrpl", "B2")!;

@@ -332,7 +332,7 @@ describe("mpp-session-evm.json", () => {
   });
 
   it("the record", () => {
-    expect(sessionEvm.pattern).toEqual(Object.fromEntries(Object.entries(E.pattern).filter(([k]) => k !== "claims")));
+    expect({ ...sessionEvm.pattern, proves: sessionEvm.data.proves }).toEqual(Object.fromEntries(Object.entries(E.pattern).filter(([k]) => k !== "claims")));
     expect(sessionEvm.claims).toBe(E.pattern.claims);
   });
 });
@@ -1458,7 +1458,7 @@ describe("mpp-session-tempo.json", () => {
   });
 
   it("the record", () => {
-    expect(sessionTempo.pattern).toEqual(Object.fromEntries(Object.entries(T.pattern).filter(([k]) => k !== "claims")));
+    expect({ ...sessionTempo.pattern, proves: sessionTempo.data.proves }).toEqual(Object.fromEntries(Object.entries(T.pattern).filter(([k]) => k !== "claims")));
   });
 });
 
@@ -1468,8 +1468,8 @@ describe("the EVM and Tempo sessions' records", () => {
   // salt, H, so each proves ends with that sentence, written word for word.
   it("each proves ends with the voucher's commitment, and none speaks of later requests", () => {
     for (const b of [sessionEvm, sessionTempo]) {
-      expect(b.pattern.proves.endsWith(" Each voucher in this channel signs a commitment to this ATR's hash.")).toBe(true);
-      expect(b.pattern.proves).not.toMatch(/later requests|paid under this ATR|did not meter/i);
+      expect(b.data.proves.endsWith(" Each voucher in this channel signs a commitment to this ATR's hash.")).toBe(true);
+      expect(b.data.proves).not.toMatch(/later requests|paid under this ATR|did not meter/i);
     }
   });
 });
@@ -1835,7 +1835,7 @@ describe("mpp-subscription-tempo.json", () => {
     const badKey = JSON.parse(f.request);
     badKey.methodDetails.accessKey.keyType = "ed25519";
     expect(pairingsOf(challenge("tempo", "subscription", JSON.stringify(badKey)))).toEqual({ refused: true, code: "mpp/access-key-malformed" });
-    expect(subscriptionTempo.pattern).toEqual(Object.fromEntries(Object.entries(U.pattern).filter(([k]) => k !== "claims")));
+    expect({ ...subscriptionTempo.pattern, proves: subscriptionTempo.data.proves }).toEqual(Object.fromEntries(Object.entries(U.pattern).filter(([k]) => k !== "claims")));
   });
 
   // The record reads the activation, or through keySearch one transfer made under the key, and neither proves says
@@ -1843,7 +1843,7 @@ describe("mpp-subscription-tempo.json", () => {
   // word for word.
   it("proves and keyProves say nothing of later billing periods", () => {
     const end = "This does not show that amount, period, payee, asset or timing match the ATR's content.";
-    for (const p of [subscriptionTempo.pattern.proves, subscriptionTempo.keyProves]) {
+    for (const p of [subscriptionTempo.data.proves, subscriptionTempo.keyProves]) {
       expect(p.endsWith(` ${end}`)).toBe(true);
       expect(p).not.toMatch(/later billing|renewal|paid under this ATR/i);
     }

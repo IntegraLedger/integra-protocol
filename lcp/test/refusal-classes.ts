@@ -1,11 +1,10 @@
 // Each refusal code the package returns, and whether it is a read to repeat. Each class is decided from the code's
 // meaning in docs/reference/refusals.md and from the code that returns it, never read from `readToRepeat`. A read to
 // repeat rests on a read of the rail that may answer differently later, with nothing the caller must change: a reader
-// that failed or answered out of its documented form, no landed transaction yet (or, on Solana, no address lookup
-// table account or entry yet), or a transaction not final yet. Every other code is a verdict that a later read answers
-// the same way, or a call the caller must change before it can succeed: a reader for another network or a ref it cannot
-// read, a push credential or a Solana session opening read before `fetchPresented`, a missing peer dependency, or
-// malformed input.
+// that failed or answered out of its documented form, no landed transaction yet, or a transaction not final yet. Every
+// other code is a verdict that a later read answers the same way, or a call the caller must change before it can
+// succeed: a reader for another network or a ref it cannot read, a push credential read before `fetchPresented`, a
+// missing peer dependency, or malformed input.
 
 /** The reads to repeat. */
 export const READS_TO_REPEAT: readonly string[] = [
@@ -22,7 +21,6 @@ export const READS_TO_REPEAT: readonly string[] = [
   "evm/not-final",
   "evm/not-found",
   "evm/unreadable",
-  "hedera/not-final",
   "hedera/not-found",
   "hedera/unreadable",
   "near/not-found",
@@ -36,8 +34,6 @@ export const READS_TO_REPEAT: readonly string[] = [
   "starknet/not-final",
   "starknet/not-found",
   "starknet/unreadable",
-  "stellar/not-found",
-  "stellar/unreadable",
   "sui/not-found",
   "sui/unreadable",
   "svm/not-final",
@@ -120,28 +116,27 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "reverted", "wrong-reader",
   ],
   hedera: [
-    "chain-id-unnamed", "channel-id-mismatch", "channel-log-not-found", "deprecated-fields", "executor-malformed",
-    "executor-not-offered", "list-inconsistent", "memo-not-lcp", "network-malformed", "no-legal-context", "no-memo",
-    "not-success", "option-malformed", "read-first", "reverted", "tx-malformed", "tx-too-large", "wrong-reader",
+    "deprecated-fields", "executor-malformed", "executor-not-offered", "list-inconsistent", "memo-not-lcp",
+    "no-legal-context", "no-memo", "not-success", "option-malformed", "tx-malformed", "tx-too-large", "wrong-reader",
   ],
   ln: [
     "currency-network", "description-inline", "description-present", "expires-after-invoice", "field-length",
-    "field-repeated", "invoice-malformed", "invoice-not-named", "invoice-too-large", "no-description-hash",
-    "no-legal-context", "no-metadata", "no-payment-in-action", "not-this-pairing", "payment-hash-mismatch",
-    "payment-hash-required", "preimage-malformed", "request-hash-mismatch", "return-invoice-malformed",
+    "field-repeated", "invoice-malformed", "invoice-too-large", "no-description-hash", "no-metadata",
+    "no-payment-in-action", "not-this-pairing", "payment-hash-mismatch", "payment-hash-required", "preimage-malformed",
+    "request-hash-mismatch", "return-invoice-malformed",
   ],
   mpp: [
     "access-key-malformed", "attribution-malformed", "attribution-mismatch", "carrier-not-challenge",
     "carrier-occupied", "carrier-taken", "chain-id-required", "challenge-malformed", "channel-named",
     "channel-not-bound", "credential-malformed", "credential-type", "credential-types", "escrow-malformed",
     "expires-required", "gateway-unread", "header-malformed", "id-not-ours", "input-malformed",
-    "legal-context-conflict", "legal-context-malformed", "link-not-https", "metadata-malformed", "modes-pull-only",
-    "network-unnamed", "no-legal-context", "no-signed-place", "nonce-not-challenge-hash", "nonce-not-channel",
-    "nonce-not-usdc-derivation", "not-an-opening", "not-bound-within", "not-this-pairing", "opaque-malformed",
-    "opaque-not-this-hash", "receipt-malformed", "receipt-missing", "request-malformed", "request-not-jcs",
-    "salt-not-this-hash", "salt-not-usdc-derivation", "session-action", "session-protocol", "source-required",
-    "splits-malformed", "stacks-memo-not-h", "stacks-tx-malformed", "usdc-profile", "within-action-not-built",
-    "witness-not-challenge-hash", "witness-taken",
+    "legal-context-conflict", "legal-context-malformed", "link-not-https", "metadata-malformed", "network-unnamed",
+    "no-legal-context", "no-signed-place", "nonce-not-challenge-hash", "nonce-not-channel", "nonce-not-usdc-derivation",
+    "not-an-opening", "not-bound-within", "not-this-pairing", "opaque-malformed", "opaque-not-this-hash",
+    "receipt-malformed", "receipt-missing", "request-malformed", "request-not-jcs", "salt-not-this-hash",
+    "salt-not-usdc-derivation", "session-action", "session-protocol", "source-required", "splits-malformed",
+    "stacks-memo-not-h", "stacks-tx-malformed", "usdc-profile", "within-action-not-built", "witness-not-challenge-hash",
+    "witness-taken",
   ],
   near: [
     "actions", "args-malformed", "carrier-occupied", "memo-missing", "memo-not-lcp", "network-malformed", "no-relayer",
@@ -159,9 +154,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "nonce-not-bound", "option-malformed", "reverted", "signature-malformed", "typed-data-malformed", "wrong-reader",
   ],
   stellar: [
-    "amount-mismatch", "asset-mismatch", "carrier-mismatch", "carrier-occupied", "event-malformed", "network-malformed",
-    "no-address-auth", "no-carrier", "not-one-transfer", "option-malformed", "payer-mismatch", "peer-missing",
-    "read-first", "tx-failed", "tx-malformed", "tx-too-large", "wrong-reader",
+    "event-malformed", "network-malformed", "no-address-auth", "not-one-transfer", "option-malformed", "peer-missing",
+    "tx-malformed", "tx-too-large",
   ],
   sui: [
     "aborted", "ambiguous", "hash-not-carried", "network-malformed", "not-programmable", "peer-missing", "tx-malformed",
@@ -169,15 +163,14 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   svm: [
     "bundle-empty", "carrier-mismatch", "carrier-not-canonical", "carrier-occupied", "channel-id-mismatch",
-    "channel-instruction", "channel-mismatch", "err", "input-malformed", "memo-count", "memo-not-lcp", "memo-not-utf8",
-    "network-malformed", "network-undeclared", "no-carrier", "no-channel-instruction", "nonce-account-not-static",
-    "open-not-found", "pda-not-found", "peer-missing", "proof-not-challenge", "read-first", "signer-not-operator",
-    "table-unusable", "tx-malformed", "tx-too-large", "wrong-reader",
+    "channel-instruction", "err", "input-malformed", "memo-count", "memo-not-lcp", "memo-not-utf8", "network-malformed",
+    "network-undeclared", "no-carrier", "no-channel-instruction", "nonce-account-not-static", "open-not-found",
+    "pda-not-found", "peer-missing", "read-first", "table-unusable", "tx-malformed", "tx-too-large", "wrong-reader",
   ],
   tempo: [
-    "ambiguous", "descriptor-mismatch", "key-authorization-malformed", "key-not-authorized", "memo-not-bound",
-    "no-access-key", "no-witness", "open-ambiguous", "open-not-found", "read-first", "reverted", "salt-not-bound",
-    "tx-malformed", "tx-too-large", "witness-not-bound", "wrong-reader",
+    "ambiguous", "descriptor-mismatch", "key-authorization-malformed", "key-not-authorized", "no-access-key",
+    "no-witness", "open-ambiguous", "open-not-found", "reverted", "salt-not-bound", "tx-malformed", "tx-too-large",
+    "witness-not-bound", "wrong-reader",
   ],
   tron: [
     "address-malformed", "contracts", "fee-limit", "memo-not-lcp", "network-malformed", "not-transfer", "not-trigger",

@@ -103,13 +103,6 @@ describe("B6 payments built from their inputs where the file records the signed 
     await signedBy(voucher, p.voucherSignature, f.payer);
   });
 
-  it("mpp/charge/tempo/memo: the wire's length and SHA-256 are MV7's", () => {
-    const d = load("mpp-charge-tempo-memo.json");
-    const wire = toBytes(presented(d, "mpp/charge/tempo/memo").payload.signature);
-    expect(wire.length).toBe(d.MV7.expectWireLength);
-    expect(sha256(wire)).toBe(d.MV7.expectWireSha256);
-  });
-
   it("mpp/session/tempo: the open's wire has TS2's length and SHA-256, and the zero voucher's digest is TS4's", async () => {
     const d = load("mpp-session-tempo.json");
     const f = d.fixed;

@@ -458,7 +458,7 @@ describe("buyer.json: the rows the core and the binding can check", () => {
     const signed = u.complete(b6.signature) as PaymentPayload;
     const isB6 = hashTypedData(forViem(u.typedData)) === b6.digest && signed.payload.signature === b6.signature;
     // The gate pays the agreement URL only where the pairing's payment is not itself a public proof of H.
-    const outcome = { agreementFetches: exactEip3009.pattern.publicProof ? 0 : 1, paymentSignature: isB6 ? "B6" : signed.payload.signature };
+    const outcome = { agreementFetches: exactEip3009.data.coverage === "full" ? 0 : 1, paymentSignature: isB6 ? "B6" : signed.payload.signature };
     expect(outcome).toEqual({ agreementFetches: r.expect.agreementFetches, paymentSignature: r.expect.paymentSignature });
   });
 
@@ -479,7 +479,7 @@ describe("buyer.json: the rows the core and the binding can check", () => {
   const RUN = [
     "B1", "B2", "B2b", "B3", "B4", "B5", "B6", "B7", "B9", "B10", "B12",
     "BA1", "BA2", "BA3", "BA4", "BA5", "BA6", "BA7", "BA8", "BA9", "BA10", "BA11", "BA12", "BA13", "BA14",
-    "BE1", "BS1", "BS2", "BX1", "BW1", "BW2", "B19", "B20", "BA15", "BA16", "BA17", "BA18", "BW3", "BW4", "B21", "B22", "BA19",
+    "BE1", "BX1", "BW1", "BW2", "B19", "B20", "BA15", "BA16", "BA17", "BA18", "BW3", "BW4", "B21", "B22", "BA19",
   ];
   it("every row is one a test here runs a part of, or one whose every step is the gate's", () => {
     const run = rowsOf(B.rows as { name: string }[], "buyer.json rows", {

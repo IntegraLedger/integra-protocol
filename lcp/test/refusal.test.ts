@@ -148,7 +148,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   }
 
   it("MPP's credential reader refuses a credential carrying a refused member as malformed", () => {
-    const c = held("mpp/charge/tempo/push");
+    const c = held("mpp/charge/evm/authorization");
     expect(isRefusal(credentialOf(c))).toBe(false);
     expect(credentialOf(withRefused(c))).toEqual({ refused: true, code: "mpp/credential-malformed" });
     expect(credentialOf(shaped())).toEqual({ refused: true, code: "mpp/credential-malformed" });
@@ -209,24 +209,6 @@ describe("no entry point passes a caller's value back as a refusal", () => {
       }
     });
   }
-
-  // x402/exact/lnbtc/invoice-named's unplaced hands the option back unchanged as well (its invoice carries no hash, and
-  // the ATR names the option as issued), so it refuses one that carries a refused member with x402/option-malformed,
-  // the code its option checks give; a value that is not an object comes back as it is. The option is the vector
-  // file's O_N.
-  it("x402/exact/lnbtc/invoice-named: unplaced refuses an option carrying a refused member as x402/option-malformed", () => {
-    const named = BINDINGS.find((b) => b.id === "x402/exact/lnbtc/invoice-named");
-    const unplaced = named?.unplaced as (o: unknown) => unknown;
-    const option = JSON.parse(readFileSync(new URL("x402-exact-lnbtc-invoice-named.json", dir), "utf8")).fixed.O_N as object;
-    expect(unplaced(option)).toBe(option);
-    const expected = { refused: true, code: "x402/option-malformed" };
-    for (const v of [withRefused(option), shaped(), refusal("ack/token-malformed")]) {
-      const out = unplaced(v);
-      expect(out).toEqual(expected);
-      expect(isRefusal(out)).toBe(true);
-    }
-    for (const v of ["lnbc", 7, null]) expect(unplaced(v)).toBe(v);
-  });
 
   // The x402 EVM pairings' unplaced hands the option back unchanged as well (none carries the hash inside the option),
   // so it refuses one that carries a refused member with x402/option-malformed, the code their option checks give; a
@@ -313,10 +295,10 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   }
 
   // On the x402 pairings whose option carries the hash (in the member the pairing's carrier names), unplaced gives the
-  // option as the seller issued it: without that member, or on x402/exact/stellar with payTo back to its base account.
-  // It refuses an option that carries a refused member with x402/option-malformed before it removes anything, whether
-  // or not the carrier is in place; a value that is not an object comes back as it is. Each option is the one its
-  // pairing's vector file advertises (buyer row B2, the document's one option), with the carrier in place.
+  // option as the seller issued it: without that member. It refuses an option that carries a refused member with
+  // x402/option-malformed before it removes anything, whether or not the carrier is in place; a value that is not an
+  // object comes back as it is. Each option is the one its pairing's vector file advertises (buyer row B2, the
+  // document's one option), with the carrier in place.
   const placedOf: Map<string, unknown> = new Map(
     readdirSync(dir)
       .filter((n) => n.endsWith(".json"))
@@ -334,9 +316,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "x402/upto/solana",
     "x402/batch-settlement/solana",
     "x402/exact/xrpl",
-    "x402/exact/stellar",
     "x402/exact/tvm",
-    "x402/exact/lnbtc",
   ];
   for (const id of carrierX402) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
@@ -377,29 +357,24 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/charge/evm/permit2",
     "mpp/charge/evm/transaction",
     "mpp/charge/evm/hash",
-    "mpp/charge/tempo/memo",
-    "mpp/charge/tempo/push",
     "mpp/session/evm",
     "mpp/session/tempo",
     "mpp/subscription/tempo",
-    "mpp/charge/hedera",
-    "mpp/session/hedera",
-    "mpp/session/solana",
     "mpp/session/xrpl",
     "mpp/charge/usdc/evm",
     "mpp/charge/usdc/stacks",
     "mpp/charge/usdc/gateway",
   ];
-  it("the MPP pairings whose unplaced returns the advertised challenge as given are these sixteen", () => {
+  it("the MPP pairings whose unplaced returns the advertised challenge as given are these eleven", () => {
     const mpp = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 26,
+      exact: 20,
       keep: ["the MPP pairings", (b) => b.id.startsWith("mpp/")],
       leave: ["the pairings of the other carriers, which the tests above take", (b) => !b.id.startsWith("mpp/")],
     });
     for (const b of mpp) expect(advertisedOf.get(b.id), b.id).toBeTypeOf("object");
     const same = mpp.filter((b) => (b.unplaced as (c: unknown) => unknown)(advertisedOf.get(b.id)) === advertisedOf.get(b.id));
     expect(same.map((b) => b.id).sort()).toEqual([...sameChallenge].sort());
-    expect(sameChallenge.length).toBe(16);
+    expect(sameChallenge.length).toBe(11);
   });
   for (const id of sameChallenge) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
@@ -418,10 +393,10 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   }
 
   // On the MPP pairings whose request carries the hash (in the member the pairing's carrier names), unplaced gives the
-  // challenge with that member removed from request, or on mpp/charge/stellar with recipient back to its base account.
-  // It refuses a challenge that carries a refused member with mpp/challenge-malformed before it removes anything,
-  // whether or not the carrier is in place; a value that is not an object comes back as it is. Each challenge is the
-  // one its pairing's vector file advertises (buyer row B2), with the carrier in place.
+  // challenge with that member removed from request. It refuses a challenge that carries a refused member with
+  // mpp/challenge-malformed before it removes anything, whether or not the carrier is in place; a value that is not an
+  // object comes back as it is. Each challenge is the one its pairing's vector file advertises (buyer row B2), with the
+  // carrier in place.
   const carrierMpp = [
     "mpp/charge/lightning",
     "mpp/session/lightning",
@@ -429,7 +404,6 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/charge/usdc/solana",
     "mpp/charge/xrpl",
     "mpp/charge/nearintents",
-    "mpp/charge/stellar",
     "mpp/charge/card",
     "mpp/charge/stripe",
     "mpp/subscription/stripe",
@@ -454,9 +428,9 @@ describe("no entry point passes a caller's value back as a refusal", () => {
 
   // The pairings of the two carrier blocks above are exactly those whose unplaced gives the advertised option or
   // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
-  it("the x402 and MPP pairings whose unplaced removes a carrier are these seventeen", () => {
+  it("the x402 and MPP pairings whose unplaced removes a carrier are these fourteen", () => {
     const pairings = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 29 + 26,
+      exact: 26 + 20,
       keep: ["the x402 and MPP pairings", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
       leave: ["the ACK, ACP, AP2, card and UCP pairings, whose unplaced the checkout tests above take", (b) => options[b.id.split("/")[0]!] !== undefined],
     });
@@ -466,7 +440,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
       return (b.unplaced as (o: unknown) => unknown)(advertised) !== advertised;
     });
     expect(removing.map((b) => b.id).sort()).toEqual([...carrierX402, ...carrierMpp].sort());
-    expect(carrierX402.length + carrierMpp.length).toBe(17);
+    expect(carrierX402.length + carrierMpp.length).toBe(14);
   });
 
   // So no pairing hands back a value that carries a refused member: every unplaced refuses one, with
@@ -531,24 +505,17 @@ describe("every placement function refuses a seller document carrying a refused 
   const refused = (code: string) => ({ refused: true, code });
 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
-  // the carrier (unplaced). The x402/exact/lnbtc invoice, which carries the hash, exists when advertise is called, so
-  // advertise takes the option with it, and advertiseBeforeCarrier takes it without.
+  // the carrier (unplaced).
   const x402 = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 29,
+    exact: 26,
     keep: ["the x402 pairings", (b) => b.id.startsWith("x402/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("x402/")],
   });
-  it("the x402 pairings are twenty-nine, each with an advertised document of one option", () => {
-    expect(x402.length).toBe(29);
+  it("the x402 pairings are twenty-six, each with an advertised document of one option", () => {
+    expect(x402.length).toBe(26);
     for (const b of x402) expect((advertisedDoc.get(b.id) as { accepts: unknown[] }).accepts.length, b.id).toBe(1);
   });
-  const x402Calls = [
-    ...x402.map((b) => [b.id, "advertise", b.advertise as Place, b.id !== "x402/exact/lnbtc"] as const),
-    ...rowsOf(x402, "the x402 pairings", {
-      keep: ["the x402 pairings with advertiseBeforeCarrier", (b) => typeof b.advertiseBeforeCarrier === "function"],
-      leave: ["the x402 pairings with none, which place only with advertise", (b) => b.advertiseBeforeCarrier === undefined],
-    }).map((b) => [b.id, "advertiseBeforeCarrier", b.advertiseBeforeCarrier as Place, true] as const),
-  ];
+  const x402Calls = x402.map((b) => [b.id, "advertise", b.advertise as Place, true] as const);
   const issuedX402 = (id: string, asIssued: boolean) => {
     const b = BINDINGS.find((p) => p.id === id)!;
     const advertised = advertisedDoc.get(id) as { accepts: unknown[]; extensions: { legalContext: { info: Record<string, string> } } };
@@ -628,7 +595,7 @@ describe("every placement function refuses a seller document carrying a refused 
   // opaque, which place writes. The Lightning invoice, which carries the hash, exists when advertise is called, so
   // advertise takes the challenge with it, and advertiseBeforeCarrier takes it without.
   const mpp = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 26,
+    exact: 20,
     keep: ["the MPP pairings", (b) => b.id.startsWith("mpp/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("mpp/")],
   });
@@ -640,8 +607,8 @@ describe("every placement function refuses a seller document carrying a refused 
     const h = fromLcpString(opaque["legalContext"]!);
     return { issued, h, link: opaque["legalContextUrl"]!, agreementUrl: opaque["legalContextAgreementUrl"] };
   };
-  it("the MPP pairings are twenty-six, each with an advertised list of one challenge whose opaque holds only the legal context", () => {
-    expect(mpp.length).toBe(26);
+  it("the MPP pairings are twenty, each with an advertised list of one challenge whose opaque holds only the legal context", () => {
+    expect(mpp.length).toBe(20);
     for (const b of mpp) {
       const [c, ...rest] = advertisedDoc.get(b.id) as Record<string, string>[];
       expect(rest, b.id).toEqual([]);

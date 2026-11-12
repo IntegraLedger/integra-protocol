@@ -30,6 +30,9 @@ import {
   type SdJwt,
   type SdJwtRefusals,
 } from "./sd-jwt.js";
+import { MAX_LINK_LENGTH } from "./internal/bounds.js";
+import { CARD } from "./internal/data/card.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const CHECKOUT_VCT = "mandate.checkout.1";
@@ -70,7 +73,6 @@ const ID = "ap2/checkout-mandate" as const;
 const MIB = 1_048_576;
 const MAX_HOPS = 2;
 const MAX_ID = 256;
-const MAX_LINK = 2048;
 const CHECKOUT_HASH = /^[A-Za-z0-9_-]{43}$/;
 const MANDATE_REFUSALS: SdJwtRefusals = {
   malformed: () => refusal("ap2/mandate-malformed"),
@@ -212,7 +214,7 @@ function advertise(
   if (id.length > MAX_ID) return refusal("ap2/too-large");
   if (id !== offer.checkout) return refusal("ap2/option-not-this-checkout");
   if (!isHttpsLink(link)) return refusal("ap2/link-not-https");
-  if (link.length > MAX_LINK) return refusal("ap2/too-large");
+  if (link.length > MAX_LINK_LENGTH) return refusal("ap2/too-large");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("ap2/link-not-https");
   if (agreementFaulted !== undefined) return refusal("ap2/legal-context-malformed");
@@ -254,7 +256,7 @@ function readCheckout(doc: Jws): { h: AtrHash; link: string; offer: Ap2Offer } |
   if (!Object.hasOwn(payload, "legalContext")) return refusal("ap2/no-legal-context");
   const lc = fromLegalContext(payload);
   if (lc === null) return refusal("ap2/legal-context-malformed");
-  if (lc.url.length > MAX_LINK) return refusal("ap2/too-large");
+  if (lc.url.length > MAX_LINK_LENGTH) return refusal("ap2/too-large");
   return { h: lc.h, link: lc.url, offer: { checkoutJwt: doc, payload, checkout: id } };
 }
 
@@ -284,7 +286,7 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   if (!Object.hasOwn(b.payload, "legalContext")) return refusal("ap2/no-legal-context");
   const lc = fromLegalContext(b.payload);
   if (lc === null) return refusal("ap2/legal-context-malformed");
-  if (lc.url.length > MAX_LINK) return refusal("ap2/too-large");
+  if (lc.url.length > MAX_LINK_LENGTH) return refusal("ap2/too-large");
   return lc.h;
 }
 
@@ -299,22 +301,10 @@ function unplaced(option: CheckoutOption): CheckoutOption | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "opaque-challenge",
-  canonical: true,
   profile: ID,
-  buyerSigns: true,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-    "recorded in <transaction>. The buyer's closed AP2 Checkout Mandate carries checkout_hash, the SHA-256 of the " +
-    "checkout JWT presented beside it, and that JWT's payload carries this ATR's hash as its legalContext member. The " +
-    "mandate's signer is the user's trusted surface, or the agent under the user's open mandate, presented before it " +
-    "in a chain. The seller did not verify that signature, the open mandate's signature or delegation to the agent's " +
-    "key (cnf), or the chain's link between them: AP2 has the Credential Provider verify the Payment Mandate, whose " +
-    "transaction_id is the same hash, before a payment credential issues. The seller reported the payment. This does " +
-    "not show that amount, payee or timing match the ATR's content.",
 });
 
 /**
@@ -324,6 +314,7 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const checkoutMandate = Object.freeze({
   id: ID,
+  data: CARD[ID],
   pattern,
   claims: true as boolean,
   unplaced,
@@ -333,7 +324,7 @@ export const checkoutMandate = Object.freeze({
   build,
   bound,
   broadcaster: broadcastsWithin(mandateShape, "payee"),
-});
+}) satisfies Entry<typeof ID, Presented, never, never>;
 
 function isOption(o: unknown): o is CheckoutOption {
   if (!isJsonObject(o)) return false;

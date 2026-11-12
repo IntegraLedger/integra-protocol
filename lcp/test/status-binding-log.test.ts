@@ -53,8 +53,6 @@ const PAIRINGS: [string, NonNullable<EvmRef["bindingLog"]>][] = [
   ["x402/auth-capture/eip155/permit2", { address: ESCROW["v1.0"].escrow, topic0: ESCROW["v1.0"].chargedTopic, index: 1, value: H }],
   ["x402/batch-settlement/eip155", { address: BATCH_SETTLEMENT, topic0: DEPOSITED_TOPIC, index: 1, value: H }],
   ["mpp/charge/evm/authorization", { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H }],
-  ["mpp/charge/tempo/memo", { address: TOKEN, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: H }],
-  ["mpp/charge/tempo/push", { address: TOKEN, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: H }],
   ["mpp/charge/usdc/evm", { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H }],
 ];
 
@@ -94,8 +92,8 @@ describe("a ref without its pairing's binding log", () => {
       expect(calls).toEqual(["receipt", "blockNumber"]);
     });
   }
-  it("covers each of the eight pairings", () => {
-    expect(PAIRINGS.map(([id]) => rowsOf(BINDINGS, "BINDINGS, every pairing").some((b) => b.id === id))).toEqual(Array(8).fill(true));
+  it("covers each of the six pairings", () => {
+    expect(PAIRINGS.map(([id]) => rowsOf(BINDINGS, "BINDINGS, every pairing").some((b) => b.id === id))).toEqual(Array(6).fill(true));
   });
 });
 

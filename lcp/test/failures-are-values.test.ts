@@ -12,7 +12,7 @@ import { avmRecover, avmStatus } from "../src/avm.js";
 import { cardanoRecover, cardanoStatus } from "../src/cardano.js";
 import { casperRecover, casperStatus, cep3009TypedData, exactCasper } from "../src/casper.js";
 import { ccdRecover, ccdStatus, exactCcd } from "../src/ccd.js";
-import { canonicalJson, toLcpString, type AtrHash } from "../src/core.js";
+import type { AtrHash } from "../src/core.js";
 import {
   eip3009Recover,
   eip3009Status,
@@ -24,7 +24,6 @@ import {
   transferDigest,
 } from "../src/evm.js";
 import {
-  CHANNEL_OPENED_TOPIC,
   exactHedera,
   executorStatus,
   hederaChannelId,
@@ -38,16 +37,13 @@ import { counting } from "./fixtures/counting-reader.js";
 import { permit2Status, redeemedLeafRecover } from "../src/internal/evm.js";
 import { signedWire } from "../src/internal/svm.js";
 import { xrplCloseStatus } from "../src/internal/xrpl-session.js";
-import { exactLnbtc, exactLnbtcNamed, invoiceH } from "../src/lightning.js";
+import { invoiceH } from "../src/lightning.js";
 import {
   chargeCard,
   chargeNearIntents,
   chargeSolana,
   chargeUsdcSolana,
   chargeXrpl,
-  FETCHED,
-  sessionHedera,
-  sessionSolana,
   sessionStatus,
   sessionTempo,
   sessionXrpl,
@@ -73,7 +69,6 @@ import { decodeTronTx, encodeTronRaw, tronCarrier, tronRecover, tronStatus } fro
 import { exactTvm, tvmRecover } from "../src/tvm.js";
 import { BATCH_SETTLEMENT, batchCloudflare, batchEvm, batchSvm, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
-import { exactStellar } from "../src/x402-exact-stellar.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import { uptoSvm } from "../src/x402-upto-solana.js";
 import {
@@ -380,12 +375,11 @@ describe("x402 over EVM", () => {
   ]);
 });
 
-describe("x402 over Solana, XRPL and Stellar", () => {
+describe("x402 over Solana and XRPL", () => {
   answers([
     ["exactSvm.build", exactSvm.build, [undefined, H], 0, refused("x402/not-v2")],
     ["uptoSvm.build", uptoSvm.build, [undefined, H], 0, refused("x402/not-v2")],
     ["exactXrpl.build", exactXrpl.build, [undefined, H], 0, refused("x402/not-v2")],
-    ["exactStellar.build", exactStellar.build, [undefined, H], 0, refused("x402/not-v2")],
   ]);
 });
 
@@ -772,9 +766,6 @@ describe("x402 batch settlement", () => {
 describe("mpp", () => {
   reads([
     ["chargeSolana.recover", chargeSolana.recover, "mpp-charge-solana.json", refused("svm/wrong-reader")],
-    ["sessionHedera.status", sessionHedera.status, "x402-exact-hedera.json", UNREADABLE],
-    ["sessionHedera.recover", sessionHedera.recover, "x402-exact-hedera.json", refused("hedera/wrong-reader")],
-    ["sessionSolana.status", sessionSolana.status, "x402-exact-solana.json", UNREADABLE],
     ["sessionXrpl.status", sessionXrpl.status, "x402-exact-xrpl.json", UNREADABLE],
     ["sessionXrpl.recover", sessionXrpl.recover, "x402-exact-xrpl.json", refused("xrpl/wrong-reader")],
   ]);
@@ -822,146 +813,6 @@ describe("mpp", () => {
       }
     }
   });
-  // HS3's opening receipt holds its one ChannelOpened log, and HS4's testnet opening the token's Transfer into the
-  // escrow and then the escrow's ChannelOpened (mpp-session-hedera-solana-xrpl.json): recover gives each opening's
-  // salt, H and HS4's salt. The ref is the one reference writes: the escrow, lowercase, and the channel.
-  it("sessionHedera.recover reads a reader answer that is not a receipt, or a receipt holding a log that is not an object with a string address, an array of string topics and a string data, as hedera/unreadable, the code of a failed read", async () => {
-    const S = load("mpp-session-hedera-solana-xrpl.json");
-    const network = "hedera:testnet";
-    const ref = (transaction: string, channel: string) => ({
-      network,
-      transaction,
-      bindingLog: { address: S.fixed.escrow.toLowerCase(), topic0: CHANNEL_OPENED_TOPIC, index: 1, value: channel },
-    });
-    const answering = (receipt: unknown) => ({ network, receipt: async () => receipt });
-    const open = S.HS4.openReceipt;
-    const holding = (logs: unknown[]) => answering({ status: open.status, blockNumber: BigInt(open.blockNumber), logs });
-    const hs3 = ref(S.HS3.txHash, S.HS1.expectChannelId);
-    const hs4 = ref(S.HS4.openTx, S.HS4.channel);
-    expect(await sessionHedera.recover(hs3 as never, holding([S.HS3.log]) as never)).toBe(S.fixed.H);
-    expect(await sessionHedera.recover(hs4 as never, holding(open.logs) as never)).toBe(S.HS4.salt);
-    const read = open.logs.findIndex((l: { topics: string[] }) => l.topics[1] === S.HS4.channel);
-    for (const [label, logs] of misshapen(open.logs, read)) {
-      expect(await sessionHedera.recover(hs4 as never, holding(logs) as never), label).toEqual(refused("hedera/unreadable"));
-    }
-    const receipt = { status: open.status, blockNumber: BigInt(open.blockNumber), logs: open.logs };
-    for (const [label, bad] of notReceipts(receipt)) {
-      expect(await sessionHedera.recover(hs4 as never, answering(bad) as never), label).toEqual(refused("hedera/unreadable"));
-    }
-  });
-  // HS3's and HS4's openings (mpp-session-hedera-solana-xrpl.json): fetchPresented adds the receipt's logs as landed,
-  // from which bound reads H and HS4's salt. A status or block number of another type than the 0 or 1 and the bigint a
-  // reader gives for the node's 0x0 or 0x1 and quantity, reverted or not, is a reader answer that is not well formed, as
-  // a log of another shape is: `hedera/unreadable`, before any finalized mark is read.
-  it("sessionHedera.fetchPresented reads a reader answer that is not a receipt, or a receipt holding a log that is not an object with a string address, an array of string topics and a string data, as hedera/unreadable, as the Tempo read does", async () => {
-    const S = load("mpp-session-hedera-solana-xrpl.json");
-    const network = "hedera:testnet";
-    let marks = 0;
-    const answering = (receipt: unknown) => ({
-      network,
-      receipt: async () => receipt,
-      blockNumber: async () => {
-        marks++;
-        return 50_000_000n;
-      },
-    });
-    const opening = (challenge: object, channelId: string, txHash: string) => ({
-      challenge,
-      payload: { action: "open", channelId, txHash, cumulativeAmount: "0", signature: "0x00" },
-    });
-    const opaque = Buffer.from(
-      canonicalJson({ legalContext: toLcpString(S.HS4.salt), legalContextUrl: S.fixed.link }) as string,
-    ).toString("base64url");
-    const hs3 = opening(S.SS1.hedera.placed, S.HS1.expectChannelId, S.HS3.txHash);
-    const hs4 = opening({ ...S.SS1.hedera.placed, id: S.HS4.challengeId, opaque }, S.HS4.channel, S.HS4.openTx);
-    const open = S.HS4.openReceipt;
-    const receipt = { status: open.status, blockNumber: BigInt(open.blockNumber), logs: open.logs };
-    for (const [c, r, h] of [
-      [hs3, { status: 1, blockNumber: 40_000_000n, logs: [S.HS3.log] }, S.HS3.expectBound],
-      [hs4, receipt, S.HS4.salt],
-    ] as const) {
-      const landed = await sessionHedera.fetchPresented(c as never, answering(r) as never);
-      if ("refused" in landed) throw new Error(landed.code);
-      expect(landed[FETCHED].blockNumber).toBe(r.blockNumber);
-      expect(await sessionHedera.bound(landed)).toBe(h);
-    }
-    const read = open.logs.findIndex((l: { topics: string[] }) => l.topics[1] === S.HS4.channel);
-    for (const [label, logs] of misshapen(open.logs, read)) {
-      const answer = await sessionHedera.fetchPresented(hs4 as never, answering({ ...receipt, logs }) as never);
-      expect(answer, label).toEqual(refused("hedera/unreadable"));
-    }
-    const blocks: unknown[] = [null, false, true, "", [], 0, undefined];
-    const notOpenings: [string, unknown][] = [
-      ...notReceipts(receipt),
-      ...[0, 1].flatMap((status) =>
-        blocks.map((b): [string, unknown] => [`status ${status}, block number ${String(b)}`, { ...receipt, status, blockNumber: b }]),
-      ),
-      ...["0x0", 2, null].map((status): [string, unknown] => [`status ${String(status)}`, { ...receipt, status }]),
-    ];
-    for (const [label, bad] of notOpenings) {
-      expect(await sessionHedera.fetchPresented(hs4 as never, answering(bad) as never), label).toEqual(refused("hedera/unreadable"));
-    }
-    expect(marks).toBe(0);
-  });
-  // The ref reference writes for HS4's opening (mpp-session-hedera-solana-xrpl.json) names the transaction, a 32-byte
-  // hash, and either the binding log, whose address is the escrow's and whose value is the channel, a 32-byte hash, or,
-  // where the opening names no channel, the escrow alone, an address; hex digits read the same in either case
-  // (docs/guides/rails.md). A ref whose transaction, binding log or escrow is not of that form, or that names neither the
-  // binding log nor the escrow, or both, is a ref recover cannot read: `hedera/wrong-reader`, with nothing read, as the
-  // XRPL session's recover answers one (docs/guides/mpp.md, "Answering the buyer").
-  it("sessionHedera.recover refuses a ref whose transaction is not a 32-byte hash, whose bindingLog is not an object with an address and a 32-byte value, whose escrow is not an address, or that names neither or both, as hedera/wrong-reader, with nothing read", async () => {
-    const S = load("mpp-session-hedera-solana-xrpl.json");
-    const network = "hedera:testnet";
-    const open = S.HS4.openReceipt;
-    let reads = 0;
-    const reader = {
-      network,
-      receipt: async () => {
-        reads++;
-        return { status: open.status, blockNumber: BigInt(open.blockNumber), logs: open.logs };
-      },
-    };
-    const b = { address: S.fixed.escrow.toLowerCase(), topic0: CHANNEL_OPENED_TOPIC, index: 1, value: S.HS4.channel };
-    const ref = { network, transaction: S.HS4.openTx, bindingLog: b };
-    const escrowRef = { network, transaction: S.HS4.openTx, escrow: b.address };
-    const upper = (h: string) => `0x${h.slice(2).toUpperCase()}`;
-    const controls = [
-      ref,
-      { ...ref, transaction: upper(ref.transaction) },
-      { ...ref, bindingLog: { ...b, address: upper(b.address), value: upper(b.value) } },
-      escrowRef,
-      { ...escrowRef, escrow: upper(b.address) },
-    ];
-    for (const control of controls) {
-      reads = 0;
-      expect(await sessionHedera.recover(control as never, reader as never)).toBe(S.HS4.salt);
-      expect(reads).toBe(1);
-    }
-    const bindingLogs: unknown[] = [
-      ...NOT_OBJECTS,
-      [],
-      {},
-      without("address")(b),
-      without("value")(b),
-      ...[1, null, H, b.address.slice(0, 40)].map((address) => ({ ...b, address })),
-      ...[5, null, b.address, `${b.value}00`].map((value) => ({ ...b, value })),
-    ];
-    const escrows: unknown[] = [...NOT_OBJECTS, {}, H, b.address.slice(0, 40), `${b.address}00`];
-    const malformed: [string, unknown][] = [
-      ...rowsOf(bindingLogs, "bindingLogs").map((bl): [string, unknown] => [`bindingLog ${JSON.stringify(bl)}`, { ...ref, bindingLog: bl }]),
-      ...rowsOf(escrows, "escrows").map((e): [string, unknown] => [`escrow ${JSON.stringify(e)}`, { ...escrowRef, escrow: e }]),
-      ...[null, 1, H.slice(0, 64), `${H}00`].map((t): [string, unknown] => [`transaction ${String(t)}`, { ...ref, transaction: t }]),
-      ...[null, 1, H.slice(0, 64), `${H}00`].map((t): [string, unknown] => [`transaction ${String(t)}, escrow`, { ...escrowRef, transaction: t }]),
-      ["no transaction", without("transaction")(ref)],
-      ["neither a binding log nor an escrow", without("bindingLog")(ref)],
-      ["both a binding log and an escrow", { ...ref, escrow: b.address }],
-    ];
-    for (const [label, bad] of malformed) {
-      reads = 0;
-      expect(await sessionHedera.recover(bad as never, reader as never), label).toEqual(refused("hedera/wrong-reader"));
-      expect(reads, label).toBe(0);
-    }
-  });
 });
 
 describe("tempo", () => {
@@ -973,13 +824,8 @@ describe("tempo", () => {
 
 describe("lightning", () => {
   answers([
-    ["exactLnbtc.build", exactLnbtc.build, [undefined, H], 0, refused("x402/not-v2")],
-    ["exactLnbtcNamed.build", exactLnbtcNamed.build, [undefined, H], 0, refused("x402/not-v2")],
     ["invoiceH", invoiceH, [undefined, "h"], 0, refused("ln/invoice-malformed")],
   ]);
-  it("exactLnbtc.unplaced hands back a value that is not an option unchanged", () => {
-    for (const bad of MALFORMED) expect(exactLnbtc.unplaced(bad as never), String(bad)).toBe(bad);
-  });
 });
 
 describe("sui", () => {

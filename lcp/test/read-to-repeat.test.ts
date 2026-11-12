@@ -20,18 +20,18 @@ describe("readToRepeat", () => {
   });
 
   it("answers true for each read to repeat", () => {
-    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 44 })) {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 41 })) {
       expect([code, readToRepeat(code)]).toEqual([code, true]);
     }
   });
 
   it("answers false for every other code the package returns, each wrong-reader and read-first code among them", () => {
-    const rows = rowsOf(others, "refusal-classes.ts NOT_READS_TO_REPEAT", { exact: 457 });
+    const rows = rowsOf(others, "refusal-classes.ts NOT_READS_TO_REPEAT", { exact: 434 });
     for (const code of rows) expect([code, readToRepeat(code)]).toEqual([code, false]);
     const calls = rowsOf(rows, "refusal-classes.ts NOT_READS_TO_REPEAT", {
       keep: ["wrong-reader and read-first codes", (c) => /\/(wrong-reader|read-first)$/.test(c)],
       leave: ["every other code", (c) => !/\/(wrong-reader|read-first)$/.test(c)],
-      exact: 22,
+      exact: 18,
     });
     for (const code of calls) expect([code, readToRepeat(code)]).toEqual([code, false]);
   });

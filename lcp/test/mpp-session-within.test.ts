@@ -1,19 +1,8 @@
-// In-channel payments (`buildWithin`) for the five MPP session pairings: a voucher, or a close's final voucher, on the
+// In-channel payments (`buildWithin`) for the three MPP session pairings: a voucher, or a close's final voucher, on the
 // channel the held opening opened. Each expected digest or byte string is a vector file's value, or is recomputed here
-// from the voucher's type definition in MPP's session drafts with an independent tool: viem 2.57.4 for EIP-712,
-// @noble/curves 2.4.0 for Ed25519, @solana/kit 8.4.0 for the Solana opening's accounts and the Solana voucher's
-// bytes, and ripple-binary-codec 2.11.0 for the XRPL claim.
+// from the voucher's type definition in MPP's session drafts with an independent tool: viem 2.57.4 for EIP-712 and
+// ripple-binary-codec 2.11.0 for the XRPL claim.
 import { readFileSync } from "node:fs";
-import { ed25519 } from "@noble/curves/ed25519.js";
-import { base58 } from "@scure/base";
-import {
-  address,
-  getAddressEncoder,
-  getCompiledTransactionMessageDecoder,
-  getI64Encoder,
-  getTransactionDecoder,
-  getU64Encoder,
-} from "@solana/kit";
 import { encodeForSigningClaim } from "ripple-binary-codec";
 import { describe, expect, it } from "vitest";
 import {
@@ -32,8 +21,6 @@ import { privateKeyToAccount, sign } from "viem/accounts";
 import {
   place,
   sessionEvm,
-  sessionHedera,
-  sessionSolana,
   sessionTempo,
   sessionXrpl,
   type MppChallenge,
@@ -52,7 +39,6 @@ const T = load("mpp-session-tempo.json");
 const R = JSON.parse(readFileSync(new URL("../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
 const H2 = E.fixed.H2 as `0x${string}`;
 const payer = privateKeyToAccount(E.fixed.payerKey);
-const ZERO = "0x0000000000000000000000000000000000000000" as const;
 const refused = (code: string) => ({ refused: true, code });
 const placed = (c: MppChallenge, h = H) => (place([c], h, link, c) as MppChallenge[])[0] as MppChallenge & { id: string };
 const affix = (v: string, e: { prefix: string; suffix: string }) => {
@@ -257,121 +243,6 @@ describe("mpp/session/tempo: buildWithin", async () => {
   });
 });
 
-describe("mpp/session/hedera: buildWithin", () => {
-  const C_H: MppChallenge & { id: string } = R.SS1.hedera.placed;
-  const opening: MppCredential = {
-    challenge: C_H,
-    payload: { action: "open", channelId: R.HS1.expectChannelId, txHash: R.HS3.txHash, cumulativeAmount: "0", signature: "0x00" },
-  };
-  const within = { ...R.SS1.hedera.challenge, id: "seller-own-id" };
-  const w = (cumulativeAmount: bigint, action = "voucher") => ({ challenge: within, opening, cumulativeAmount, action }) as SessionWithin;
-
-  it("inChannelSize: complete, channel.kind, channel.ref and channel.boundWithin measure the in-channel credential", () =>
-    inChannelRows(sessionHedera, within, async (challenge) => unsigned(await sessionHedera.buildWithin({ ...w(100n), challenge }, H)).complete([`0x${"11".repeat(65)}`])));
-
-  // HS2's digest is eth-account 0.14.0's of the draft's Voucher at 0 (draft-hedera-session-00 L1068-1142); viem
-  // re-derives it here, and buildWithin's voucher at 0 is held to it.
-  it("hederaVoucher under \"Hedera Stream Channel\": HS2's digest at 0, as viem hashes the draft's voucher, and the draft's payload", async () => {
-    expect(draftVoucher("Hedera Stream Channel", "uint128", 296, R.fixed.escrow, R.HS1.expectChannelId, 0n)).toBe(R.HS2.expectVoucherDigest);
-    expect(hashTypedData(forViem(eip712Of(unsigned(await sessionHedera.buildWithin(w(0n), H)))))).toBe(R.HS2.expectVoucherDigest);
-    const at = unsigned(await sessionHedera.buildWithin(w(25n, "close"), H));
-    const td = eip712Of(at);
-    expect(hashTypedData(forViem(td))).toBe(draftVoucher("Hedera Stream Channel", "uint128", 296, R.fixed.escrow, R.HS1.expectChannelId, 25n));
-    const signature = await payer.signTypedData(forViem(td));
-    expect(at.complete([signature])).toEqual({
-      challenge: within,
-      payload: { action: "close", channelId: R.HS1.expectChannelId, cumulativeAmount: "25", signature },
-    });
-    // EIP-2098's 64-byte form of the same signature (viem's serializeCompactSignature) is a signature too; one of no
-    // bytes is not.
-    const compact = serializeCompactSignature(signatureToCompactSignature(parseSignature(signature)));
-    expect(at.complete([compact])).toMatchObject({ payload: { signature: compact } });
-    expect(at.complete(["0x"])).toEqual(refused("mpp/credential-malformed"));
-    expect(await sessionHedera.buildWithin(w(1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
-    expect(await sessionHedera.buildWithin(w(1n), H2)).toEqual(refused("mpp/id-not-ours"));
-  });
-});
-
-describe("mpp/session/solana: buildWithin", () => {
-  const C_S: MppChallenge & { id: string } = R.SS1.solana.placed;
-  const opening: MppCredential = { challenge: C_S, payload: { action: "open", channelId: R.SV2.channel, transaction: R.SV2.wireBase64 } };
-  const within = { ...R.SS1.solana.challenge, id: "seller-own-id" };
-  const w = (cumulativeAmount: bigint, action = "voucher") => ({ challenge: within, opening, cumulativeAmount, action }) as SessionWithin;
-
-  it("inChannelSize: complete, channel.kind, channel.ref and channel.boundWithin measure the in-channel credential", () =>
-    inChannelRows(sessionSolana, within, async (challenge) => unsigned(await sessionSolana.buildWithin({ ...w(100n), challenge }, H)).complete([base58.encode(new Uint8Array(64).fill(1))])));
-  /** The open instruction's authorized signer (account 4), read by @solana/kit from SV2's wire. */
-  const authorized = (() => {
-    const tx = getTransactionDecoder().decode(Uint8Array.from(Buffer.from(R.SV2.wireBase64, "base64")));
-    const msg = getCompiledTransactionMessageDecoder().decode(tx.messageBytes) as unknown as {
-      staticAccounts: readonly string[];
-      instructions: readonly { programAddressIndex: number; accountIndices?: readonly number[] }[];
-    };
-    const ix = msg.instructions.find((i) => msg.staticAccounts[i.programAddressIndex] === "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX")!;
-    return msg.staticAccounts[ix.accountIndices![4]!]!;
-  })();
-
-  // SV3's 50 bytes are the draft's voucher (draft-solana-session-00 L1419-1429) as @solana/kit's codecs write them:
-  // 0x56 0x01, the channel's address bytes, the amount as a u64 and expiresAt 0 as an i64, little-endian.
-  it("one ed25519-raw request over SV3's 50 bytes, as @solana/kit's codecs write the draft's voucher, for the opening's signer, and the draft's voucher payload", async () => {
-    const parts = [Uint8Array.of(0x56, 0x01), getAddressEncoder().encode(address(R.SV2.channel)), getU64Encoder().encode(100n), getI64Encoder().encode(0n)];
-    expect(Buffer.from(parts.flatMap((p) => Array.from(p))).toString("hex")).toBe(R.SV3.expectVoucher);
-    const u = unsigned(await sessionSolana.buildWithin(w(100n), H));
-    expect(u.requests.length).toBe(1);
-    const r = u.requests[0]!;
-    if (r.kind !== "ed25519-raw") throw new Error(r.kind);
-    expect(Buffer.from(r.message).toString("hex")).toBe(R.SV3.expectVoucher);
-    expect(r.signer).toBe(authorized);
-    const seed = new Uint8Array(32).fill(1);
-    expect(base58.encode(ed25519.getPublicKey(seed))).toBe(authorized);
-    const signature = ed25519.sign(r.message, seed);
-    affix(Buffer.from(signature).toString("hex"), { prefix: "e4504793", suffix: "11e00e" });
-    expect(u.complete([base58.encode(signature)])).toEqual({
-      challenge: within,
-      payload: {
-        action: "voucher",
-        channelId: R.SV2.channel,
-        voucher: {
-          voucher: { channelId: R.SV2.channel, cumulativeAmount: "100" },
-          signer: authorized,
-          signature: base58.encode(signature),
-          signatureType: "ed25519",
-        },
-      },
-    });
-    expect(u.complete(["not-base58-0OIl"])).toEqual(refused("mpp/credential-malformed"));
-  });
-
-  it("an operator channel's vouchers, a use and another ATR's opening are refused", async () => {
-    const request = JSON.parse(Buffer.from(C_S.request, "base64url").toString("utf8"));
-    request.methodDetails.voucherSigner = "operator";
-    request.methodDetails.operator = request.methodDetails.feePayerKey;
-    const operatorChallenge = placed({ ...R.SS1.solana.challenge, request: Buffer.from(JSON.stringify(request)).toString("base64url") });
-    // An operator opening carries the payer's session proof as authentication (draft-solana-session-00 L1197), and its
-    // open names the operator as authorizedSigner (L1252-1254): SV5's opening, not SV2's, whose account 4 is the payer.
-    const authentication = { type: "proof", challengeId: operatorChallenge.id, payer: R.SV3.payer, signature: "x" };
-    const operatorOpen = { action: "open", channelId: R.SV5.opening.channel, transaction: R.SV5.opening.wireBase64, authentication };
-    const operatorOpening = { challenge: operatorChallenge, payload: operatorOpen };
-    expect(await sessionSolana.buildWithin({ ...w(1n), opening: operatorOpening }, H)).toEqual(refused("mpp/within-action-not-built"));
-    expect(await sessionSolana.buildWithin({ ...w(1n), opening: { ...opening, challenge: operatorChallenge } }, H)).toEqual(refused("mpp/credential-malformed"));
-    const payerSigned = { challenge: operatorChallenge, payload: { ...opening.payload, authentication } };
-    expect(await sessionSolana.buildWithin({ ...w(1n), opening: payerSigned }, H)).toEqual(refused("svm/signer-not-operator"));
-    expect(await sessionSolana.buildWithin(w(1n, "use"), H)).toEqual(refused("mpp/within-action-not-built"));
-    expect(await sessionSolana.buildWithin(w(1n), H2)).toEqual(refused("mpp/id-not-ours"));
-    expect(await sessionSolana.buildWithin(w(1n << 64n), H)).toEqual(refused("mpp/input-malformed"));
-  });
-
-  // draft-solana-session-00 L1178-1353 at tempoxyz/mpp-specs 08e7dd87: the actions are "open", "voucher", "use",
-  // "topUp" and "close". A `bearer`, which the draft does not define, is mpp/session-action from buildWithin as from
-  // channel.kind; a `topUp` and a `use`, which it defines, are not built.
-  it("an action the Solana draft does not define is mpp/session-action from buildWithin and channel.kind; a topUp or a use is not built", async () => {
-    expect(sessionSolana.channel.kind({ challenge: C_S, payload: { action: "bearer", channelId: R.SV2.channel } })).toEqual(refused("mpp/session-action"));
-    expect(await sessionSolana.buildWithin(w(1n, "bearer"), H)).toEqual(refused("mpp/session-action"));
-    expect(await sessionSolana.buildWithin(w(1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
-    expect(await sessionSolana.buildWithin(w(1n, "use"), H)).toEqual(refused("mpp/within-action-not-built"));
-  });
-});
-
 describe("mpp/session/xrpl: buildWithin", () => {
   const C_X: MppChallenge & { id: string } = R.SS1.xrpl.placed;
   const opening: MppCredential = { challenge: C_X, payload: { action: "open", transaction: R.XS2.blob, amount: "100", signature: "00" } };
@@ -426,7 +297,7 @@ describe("mpp-challenge.json withinChallenge: buildWithin reads the within chall
     action?: "voucher" | "close";
     expect: string;
   };
-  const ROWS_WITHIN = rowsOf<WithinRow>(load("mpp-challenge.json").withinChallenge.rows, "mpp-challenge.json withinChallenge.rows", { exact: 18 });
+  const ROWS_WITHIN = rowsOf<WithinRow>(load("mpp-challenge.json").withinChallenge.rows, "mpp-challenge.json withinChallenge.rows", { exact: 12 });
   type Pairing = ChannelMembers & { buildWithin(w: SessionWithin, h: typeof H): Promise<unknown> };
   type Within = MppChallenge & { id: string };
   /** The pairing, the opening, the within challenge of the opening's request (`control`) and of the row's, and a signature. */
@@ -462,14 +333,6 @@ describe("mpp-challenge.json withinChallenge: buildWithin reads the within chall
       const opening = row.opening ?? "v2";
       const within = issuedOf(tempo[row.within ?? opening].challenge);
       return { pairing: sessionTempo, opening: tempo[opening], control: issuedOf(tempo[opening].challenge), within, signature: hex65 };
-    },
-    "mpp/session/hedera": () => {
-      const payload = { action: "open", channelId: R.HS1.expectChannelId, txHash: R.HS3.txHash, cumulativeAmount: "0", signature: "0x00" };
-      return rail(sessionHedera, { challenge: R.SS1.hedera.placed, payload }, hex65);
-    },
-    "mpp/session/solana": () => {
-      const payload = { action: "open", channelId: R.SV2.channel, transaction: R.SV2.wireBase64 };
-      return rail(sessionSolana, { challenge: R.SS1.solana.placed, payload }, base58.encode(new Uint8Array(64).fill(1)));
     },
     "mpp/session/xrpl": () => {
       const payload = { action: "open", transaction: R.XS2.blob, amount: "100", signature: "00" };

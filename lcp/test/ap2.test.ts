@@ -222,15 +222,14 @@ describe("ap2-checkout-mandate.json", () => {
     expect(checkoutMandate.unplaced(o)).toBe(o);
     expect(checkoutMandate.pattern).toMatchObject({
       pattern: "opaque-challenge",
-      canonical: true,
       profile: "ap2/checkout-mandate",
-      buyerSigns: true,
       onChain: false,
       zeroPartyRecoverable: false,
       forwardIndexable: false,
-      publicProof: false,
     });
-    expect(checkoutMandate.pattern).toEqual(V.pattern.expect);
+    expect(checkoutMandate.data.carrier.signed).not.toBeNull();
+    expect(checkoutMandate.data.coverage).toBe("none");
+    expect({ ...checkoutMandate.pattern, proves: checkoutMandate.data.proves }).toEqual(V.pattern.expect);
     expect("status" in checkoutMandate).toBe(false);
   });
 });

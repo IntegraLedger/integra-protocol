@@ -3,8 +3,8 @@
 // name, from the vectors' inputs, and the test checks that its bytes sit in an `ArrayBuffer`, not a
 // `SharedArrayBuffer`. The decoders that read bytes the caller passes run on a Node `Buffer`, pooled and over a
 // `SharedArrayBuffer`, and on a `Uint8Array` subclass whose iterator yields nothing: what they give is the bytes they
-// read, and shares no memory with the input. Twenty entries that read the caller's bytes (decoders, carriers, a
-// reader's bytes, and ten builds' `complete`) give the same answer on that subclass as on a plain `Uint8Array`.
+// read, and shares no memory with the input. Nineteen entries that read the caller's bytes (decoders, carriers, a
+// reader's bytes, and eight builds' `complete`) give the same answer on that subclass as on a plain `Uint8Array`.
 import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import { describe, expect, it } from "vitest";
@@ -27,8 +27,6 @@ import { decodeHederaTx, exactHedera, type HederaUnsigned } from "../src/hedera.
 import { decodeBolt11 } from "../src/lightning.js";
 import {
   chargeSolana,
-  chargeStellar,
-  sessionSolana,
   sessionXrpl,
   type MppChallenge,
   type MppCredential,
@@ -45,7 +43,6 @@ import {
   ss58Decode,
   type PolkadotUnsigned,
 } from "../src/polkadot.js";
-import type { StellarUnsigned } from "../src/stellar.js";
 import { decodeSuiTx, exactSui, type SuiUnsigned } from "../src/sui.js";
 import {
   buildChannelMessage,
@@ -63,7 +60,6 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, tronAddress, tronCarrier, t
 import { exactTvm, type TvmUnsigned } from "../src/tvm.js";
 import { batchSvm, type SigningRequest } from "../src/x402-batch-settlement.js";
 import { exactSvm, type SvmUnsigned } from "../src/x402-exact-solana.js";
-import { exactStellar } from "../src/x402-exact-stellar.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { xrplClaim } from "../src/xrpl.js";
 
@@ -76,17 +72,15 @@ const HE = load("x402-exact-hedera.json");
 const LN = load("x402-exact-lnbtc.json");
 const SS = load("mpp-session-hedera-solana-xrpl.json");
 const SO = load("mpp-charge-solana.json");
-const ST = load("mpp-charge-stellar.json");
 const NE = load("x402-exact-near.json");
 const PO = load("x402-exact-polkadot-lcp-assets-remark.json");
 const SU = load("x402-exact-sui.json");
-const TM = load("mpp-charge-tempo-memo.json");
+const TT = load("mpp-session-tempo.json");
 const SUB = load("mpp-subscription-tempo.json");
 const TR = load("x402-exact-tron-lcp-trc20-memo.json");
 const TV = load("x402-exact-tvm.json");
 const BA = load("x402-batch-settlement.json");
 const SV = load("x402-exact-solana.json");
-const XS = load("x402-exact-stellar.json");
 
 /** A result past its refusal: what a call gives when it succeeds. */
 type Ok<T> = Exclude<Awaited<T>, { refused: true } | string | null | undefined>;
@@ -121,10 +115,8 @@ type Outputs = {
   "decodeBolt11 metadata": NonNullable<Ok<ReturnType<typeof decodeBolt11>>["metadata"]>;
   // mpp
   "sessionXrpl request.claim.bytes": Extract<RailSessionUnsigned, { request: { kind: "xrpl-session-open" } }>["request"]["claim"]["bytes"];
-  "WithinSigningRequest ed25519-raw message": Extract<WithinSigningRequest, { kind: "ed25519-raw" }>["message"];
   "WithinSigningRequest xrpl-claim bytes": Extract<WithinSigningRequest, { kind: "xrpl-claim" }>["bytes"];
   "chargeSolana request.message": Ok<ReturnType<typeof chargeSolana.build>>["request"]["message"];
-  "chargeStellar request.preimage": Ok<ReturnType<typeof chargeStellar.build>>["request"]["preimage"];
   // near
   "NearUnsigned request.hash": NearUnsigned["request"]["hash"];
   ftTransferArgs: Ok<ReturnType<typeof ftTransferArgs>>;
@@ -161,8 +153,6 @@ type Outputs = {
   "SigningRequest ed25519-raw": Extract<SigningRequest, { kind: "ed25519-raw" }>["message"];
   // x402-exact-solana
   "SvmUnsigned request.message": SvmUnsigned["request"]["message"];
-  // stellar
-  "StellarUnsigned request.preimage": StellarUnsigned["request"]["preimage"];
   // svm
   "decodeSvmTx signatures[]": Ok<ReturnType<typeof decodeSvmTx>>["signatures"][number];
   "decodeSvmTx message": Ok<ReturnType<typeof decodeSvmTx>>["message"];
@@ -196,13 +186,6 @@ const bytesOfBase64 = (b: string) => Uint8Array.from(Buffer.from(b, "base64"));
 const x402 = (resource: unknown, o: PaymentRequirements): PaymentRequired => ({ x402Version: 2, resource, accepts: [o] }) as PaymentRequired;
 
 const SS_H: AtrHash = SS.fixed.H;
-const solanaWithin = (): SessionWithin => {
-  const opening: MppCredential = {
-    challenge: SS.SS1.solana.placed,
-    payload: { action: "open", channelId: SS.SV2.channel, transaction: SS.SV2.wireBase64 },
-  };
-  return { challenge: { ...SS.SS1.solana.challenge, id: "seller-own-id" }, opening, cumulativeAmount: 100n, action: "voucher" } as SessionWithin;
-};
 const xrplWithin = (): SessionWithin => {
   const opening: MppCredential = {
     challenge: SS.SS1.xrpl.placed,
@@ -227,7 +210,7 @@ const keyAuthorization = (): TempoKeyAuthorization => {
   } as TempoKeyAuthorization;
 };
 const svmWire = () => bytesOfBase64(SS.SV2.wireBase64);
-const tempoWire = () => bytesOfHex(TM.buyer.rows[1].input.presented.payload.signature);
+const tempoWire = () => bytesOfHex(TT.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented.payload.transaction);
 const nearBuild = async () => {
   const O: PaymentRequirements = NE.fixed.O;
   const choice = {
@@ -251,17 +234,6 @@ const tronBuild = async () => {
     feeLimit: BigInt(TR.fixed.feeLimit),
   };
   return unwrap(await exactTronMemo.build(choice, TR.fixed.H));
-};
-const stellarBuild = async () => {
-  const accepted: PaymentRequirements = XS.V3.accepted;
-  const choice = {
-    required: x402(XS.fixed.resource, accepted),
-    accepted,
-    simulatedXdr: XS.V2.simulatedXdr,
-    currentLedger: XS.V2.currentLedger,
-    payer: XS.fixed.payer,
-  };
-  return unwrap(await exactStellar.build(choice, XS.fixed.H));
 };
 const avmBuild = async () => {
   const O: PaymentRequirements = AV.fixed.O;
@@ -288,11 +260,6 @@ const hederaBuild = async () => {
 };
 const chargeSolanaBuild = async () =>
   unwrap(await chargeSolana.build({ challenge: SO.place.expect, payer: SO.fixed.payer }, SO.fixed.H));
-const chargeStellarBuild = async () => {
-  const now = Date.parse(ST.fixed.expires) / 1000 - 60;
-  const choice = { challenge: ST.place.expect, simulatedXdr: XS.V2.simulatedXdr, currentLedger: 988, now, payer: XS.fixed.payer };
-  return unwrap(await chargeStellar.build(choice, ST.fixed.H));
-};
 const polkadotBuild = async () => {
   const O: PaymentRequirements = PO.fixed.O;
   return unwrap(await exactPolkadotRemark.build({ required: x402(PO.fixed.resource, O), accepted: O }, PO.fixed.H));
@@ -377,18 +344,12 @@ const cases: { [K in keyof Outputs]: Case<Outputs[K]> } = {
     if (u.request.kind !== "xrpl-session-open") throw new Error(u.request.kind);
     return u.request.claim.bytes;
   },
-  "WithinSigningRequest ed25519-raw message": async () => {
-    const r = unwrap(await sessionSolana.buildWithin(solanaWithin(), SS_H)).requests[0]!;
-    if (r.kind !== "ed25519-raw") throw new Error(r.kind);
-    return r.message;
-  },
   "WithinSigningRequest xrpl-claim bytes": async () => {
     const r = unwrap(await sessionXrpl.buildWithin(xrplWithin(), SS_H)).requests[0]!;
     if (r.kind !== "xrpl-claim") throw new Error(r.kind);
     return r.bytes;
   },
   "chargeSolana request.message": async () => (await chargeSolanaBuild()).request.message,
-  "chargeStellar request.preimage": async () => (await chargeStellarBuild()).request.preimage,
 
   "NearUnsigned request.hash": async () => (await nearBuild()).request.hash,
   ftTransferArgs: () => unwrap(ftTransferArgs(NE.fixed.O.payTo, NE.fixed.O.amount, NE.fixed.H)),
@@ -438,8 +399,6 @@ const cases: { [K in keyof Outputs]: Case<Outputs[K]> } = {
   },
 
   "SvmUnsigned request.message": async () => (await svmBuild()).request.message,
-
-  "StellarUnsigned request.preimage": async () => (await stellarBuild()).request.preimage,
 
   "decodeSvmTx signatures[]": () => unwrap(decodeSvmTx(svmWire())).signatures,
   "decodeSvmTx message": () => unwrap(decodeSvmTx(svmWire())).message,
@@ -528,9 +487,9 @@ describe("byte outputs: each declared Uint8Array<ArrayBuffer>", () => {
     expect([blobParts, bufferSources]).toEqual(["each output", "each output"]);
   });
 
-  it("66 outputs: each one's bytes sit in an ArrayBuffer, not a SharedArrayBuffer, on the vectors' inputs", async () => {
+  it("63 outputs: each one's bytes sit in an ArrayBuffer, not a SharedArrayBuffer, on the vectors' inputs", async () => {
     const names = Object.keys(cases) as (keyof Outputs)[];
-    expect(names.length).toBe(66);
+    expect(names.length).toBe(63);
     const seen: string[] = [];
     const notInArrayBuffer: string[] = [];
     for (const name of names) {
@@ -541,7 +500,7 @@ describe("byte outputs: each declared Uint8Array<ArrayBuffer>", () => {
       seen.push(name);
     }
     expect(notInArrayBuffer).toEqual([]);
-    expect(seen.length).toBe(66);
+    expect(seen.length).toBe(63);
   });
 });
 
@@ -658,23 +617,21 @@ describe("byte outputs read from the caller's bytes are copies", () => {
 type Entry = (wrap: (b: Uint8Array) => Uint8Array) => unknown;
 
 describe("the caller's bytes are read by index, never through their iterator", () => {
-  it("21 entries: a Uint8Array subclass whose iterator yields nothing gives the answer a plain Uint8Array gives", async () => {
+  it("19 entries: a Uint8Array subclass whose iterator yields nothing gives the answer a plain Uint8Array gives", async () => {
     const signature = (n: number, last: number) => {
       const s = Uint8Array.from({ length: n }, (_, i) => i % 32);
       s[n - 1] = last;
       return s;
     };
-    const [avm, hedera, near, polkadot, stellar, tron, tvm, svm, solanaCharge, stellarCharge] = await Promise.all([
+    const [avm, hedera, near, polkadot, tron, tvm, svm, solanaCharge] = await Promise.all([
       avmBuild(),
       hederaBuild(),
       nearBuild(),
       polkadotBuild(),
-      stellarBuild(),
       tronBuild(),
       tvmBuild(),
       svmBuild(),
       chargeSolanaBuild(),
-      chargeStellarBuild(),
     ]);
     const tronTx = (wrap: (b: Uint8Array) => Uint8Array) => {
       const t = unwrap(decodeTronTx(TR.V2.expectPayload.payload.transaction));
@@ -718,12 +675,10 @@ describe("the caller's bytes are read by index, never through their iterator", (
         hedera.complete({ publicKey: wrap(signature(32, 0x1f)), signature: wrap(signature(64, 0x1f)), type: "ed25519" }),
       "NearUnsigned.complete, Ed25519": (wrap) => near.complete({ keyType: 0, bytes: wrap(signature(64, 0x1f)) }),
       "PolkadotUnsigned.complete, the extrinsic": (wrap) => polkadot.complete(wrap(bytesOfHex(PO.V3.extrinsic))),
-      "StellarUnsigned.complete": (wrap) => stellar.complete(wrap(signature(64, 0x1f))),
       "TronUnsigned.complete": (wrap) => tron.complete(wrap(signature(65, 27))),
       "TvmUnsigned.complete": (wrap) => tvm.complete(wrap(signature(64, 0x1f))),
       "SvmUnsigned.complete": (wrap) => svm.complete(wrap(signature(64, 0x1f))),
       "chargeSolana complete": (wrap) => solanaCharge.complete(wrap(signature(64, 0x1f))),
-      "chargeStellar complete": (wrap) => stellarCharge.complete(wrap(signature(64, 0x1f))),
     };
     const answer = async (e: Entry, wrap: (b: Uint8Array) => Uint8Array): Promise<unknown> => {
       try {
@@ -748,6 +703,6 @@ describe("the caller's bytes are read by index, never through their iterator", (
       runs++;
     }
     expect(differ).toEqual([]);
-    expect(runs).toBe(21);
+    expect(runs).toBe(19);
   });
 });

@@ -9,12 +9,11 @@ agreement payment, on the x402, MPP, checkout and card pairings this package imp
 
 `@integraledger/lcp` is the reference implementation of the **Legal Context Protocol (LCP)**: the pattern in which the
 hash of the agreement's record is bound into the payment, so that where the payment the buyer approves carries the hash,
-that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. The
-seller assembles the record and advertises its hash; the buyer fetches the record, compares it with the hash, and, on
-most pairings, signs a payment that carries the hash; the seller reads the hash back from the payment, and on most
-rails from the settlement. On some pairings (`pattern.buyerSigns` false) the buyer's signature does not cover the
-hash, and where the pairing's `claims` is false, nothing in the payment is bound to it; the agreement payment is the
-proof.
+that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `data.proves` says so.
+The seller assembles the record and advertises its hash; the buyer fetches the record, compares it with the hash, and,
+on most pairings, signs a payment that carries the hash; the seller reads the hash back from the payment, and on most
+rails from the settlement. On some pairings (`data.carrier.signed` null) the buyer's signature does not cover the hash,
+and where the pairing's `claims` is false, nothing in the payment is bound to it; the agreement payment is the proof.
 
 The package is deterministic and small at its core. It holds no key, signs nothing, calls no network on its own, and
 carries no business or legal logic. What the agreement says is the parties' business; this package hashes the record,
@@ -36,7 +35,7 @@ places the hash in the payment and reads it back.
 |---|---|
 | **Agentic Transaction Record (ATR)** | The agreement's record: the exact bytes the seller serves; `assemble` writes them as one JSON object. |
 | **ATR hash (H)** | SHA-256 over the ATR's exact bytes. |
-| **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. |
+| **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `data.proves` says so. |
 | **Pairing** | A payment protocol, scheme and rail combination, such as `x402/exact/eip155/eip3009`. |
 | **Binding** | How H rides in a pairing's payment: the field its specification defines. |
 | **Buyer gate** | The buyer-side check that compares the served bytes with H before anything is signed. |
@@ -77,7 +76,7 @@ dependencies: install the one for each rail you use, at a version in the range t
 | Rail | Install | Used by |
 |---|---|---|
 | Solana | `@solana/kit` | the Solana pairings on x402 and MPP |
-| Stellar | `@stellar/stellar-sdk` | the Stellar pairings on x402 and MPP |
+| Stellar | `@stellar/stellar-sdk` | the `stellar` entry point's transaction and event decoding |
 | XRP Ledger | `ripple-binary-codec` | the XRPL pairings on x402 and MPP |
 | Sui | `@mysten/sui` | `x402/exact/sui` |
 | NEAR | `borsh` | `x402/exact/near` |
@@ -223,7 +222,8 @@ The protocol and rail entry points:
 |---|---|
 | `@integraledger/lcp/x402` | x402 documents, the `legalContext` extension, the request commitment, and the EVM `exact`, `upto` and `auth-capture` pairings. |
 | `@integraledger/lcp/x402-batch-settlement` | x402 `batch-settlement` on EVM, Solana and Cloudflare: one ATR per channel. |
-| `@integraledger/lcp/x402-exact-solana`, `…/x402-upto-solana`, `…/x402-exact-stellar`, `…/x402-exact-xrpl` | The x402 pairings on Solana, Stellar and the XRP Ledger. |
+| `@integraledger/lcp/x402-exact-solana`, `…/x402-upto-solana`, `…/x402-exact-xrpl` | The x402 pairings on Solana and the XRP Ledger. |
+| `@integraledger/lcp/x402-exact-stellar` | The `Broadcaster` type, and no pairing. |
 | `@integraledger/lcp/mpp` | MPP challenges, H as the challenge id, and every MPP charge, session and subscription pairing. |
 | `@integraledger/lcp/acp`, `…/ucp`, `…/ap2`, `…/ack` | Agentic checkouts: ACP, UCP, AP2 and ACK. |
 | `@integraledger/lcp/card` | Visa TAP, Mastercard Verifiable Intent and the plain card checkout. |
@@ -235,21 +235,22 @@ The [entry point reference](https://github.com/IntegraLedger/integra-protocol/bl
 lists every export of every entry point, and the
 [API reference](https://github.com/IntegraLedger/integra-protocol/tree/main/docs/reference/api) gives each signature.
 
-Every pairing has these members, except that `mpp/charge/nearintents` has no `build`: `id`, `pattern` (what a payment
-through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the option as the
-seller issued it), `tie` (the ATR's binding slot), `advertise` and `read` (H into and out of the challenge), `build`
-(what the buyer signs, with H in its place), `bound` (H back out of the payment), and `broadcaster` (who broadcasts what
-the buyer presents: `"payer"`, which sent it before presenting it, or `"payee"`, which sends or executes it after; a
-payment of a type, kind or shape the pairing does not take gets `bound`'s refusal).
-Pairings that settle on a readable rail add `reference`, `status` and, where the rail keeps H, `recover`. EVM pull
-pairings add `authorizer`, the account whose signature authorises the pull.
+Every pairing has these members, except that `mpp/charge/nearintents` has no `build` and `x402/exact/starknet` no
+`pattern`: `id`, `pattern` (its binding record), `data` (its data, typed `PairingData`, with `data.proves`, what a
+payment through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the
+option as the seller issued it), `tie` (the ATR's binding slot), `advertise` and `read` (H into and out of the
+challenge), `build` (what the buyer signs, with H in its place), `bound` (H back out of the payment), and `broadcaster`
+(who broadcasts what the buyer presents: `"payer"`, which sent it before presenting it, or `"payee"`, which sends or
+executes it after; a payment of a type, kind or shape the pairing does not take gets `bound`'s refusal). Pairings that
+settle on a readable rail add `reference`, `status` and, where the rail keeps H, `recover`. EVM pull pairings add
+`authorizer`, the account whose signature authorises the pull.
 
 ## Supported pairings
 
 Generated from `BINDINGS` by `scripts/docs-reference.mjs`, which CI runs to check this list against the registry.
 
 <!-- pairings:start -->
-67 pairings on 7 surfaces.
+58 pairings on 7 surfaces.
 
 | Surface | Pairings |
 |---|---|
@@ -257,14 +258,14 @@ Generated from `BINDINGS` by `scripts/docs-reference.mjs`, which CI runs to chec
 | `acp` (2) | `acp/checkout/delegated`, `acp/checkout/undelegated` |
 | `ap2` (1) | `ap2/checkout-mandate` |
 | `card` (4) | `card/mastercard-vi/autonomous`, `card/mastercard-vi/immediate`, `card/seller-reference`, `card/visa-tap` |
-| `mpp` (26) | `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/hedera`, `mpp/charge/lightning`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/stellar`, `mpp/charge/stripe`, `mpp/charge/tempo/memo`, `mpp/charge/tempo/push`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/hedera`, `mpp/session/lightning`, `mpp/session/solana`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/stripe`, `mpp/subscription/tempo` |
+| `mpp` (20) | `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/lightning`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/lightning`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/stripe`, `mpp/subscription/tempo` |
 | `ucp` (4) | `ucp/booking/ap2-mandate`, `ucp/booking/unsigned`, `ucp/checkout/ap2-mandate`, `ucp/checkout/unsigned` |
-| `x402` (29) | `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/cloudflare`, `x402/batch-settlement/eip155`, `x402/batch-settlement/solana`, `x402/exact/algorand`, `x402/exact/aptos`, `x402/exact/cardano`, `x402/exact/casper`, `x402/exact/ccd`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`, `x402/exact/hedera`, `x402/exact/hedera/transfer-executor`, `x402/exact/lnbtc`, `x402/exact/lnbtc/invoice-named`, `x402/exact/near`, `x402/exact/polkadot/lcp-assets-remark`, `x402/exact/solana`, `x402/exact/starknet`, `x402/exact/stellar`, `x402/exact/sui`, `x402/exact/tron/lcp-trc20-memo`, `x402/exact/tvm`, `x402/exact/xrpl`, `x402/upto/eip155/permit2`, `x402/upto/solana` |
+| `x402` (26) | `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/cloudflare`, `x402/batch-settlement/eip155`, `x402/batch-settlement/solana`, `x402/exact/algorand`, `x402/exact/aptos`, `x402/exact/cardano`, `x402/exact/casper`, `x402/exact/ccd`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`, `x402/exact/hedera`, `x402/exact/hedera/transfer-executor`, `x402/exact/near`, `x402/exact/polkadot/lcp-assets-remark`, `x402/exact/solana`, `x402/exact/starknet`, `x402/exact/sui`, `x402/exact/tron/lcp-trc20-memo`, `x402/exact/tvm`, `x402/exact/xrpl`, `x402/upto/eip155/permit2`, `x402/upto/solana` |
 <!-- pairings:end -->
 
 The [pairings reference](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/pairings.md)
-gives each one's binding pattern, whether the buyer signs H, whether the binding is visible on a public ledger, and the
-sentence its record states about what the payment proves.
+gives each one's coverage, binding pattern, whether the binding is visible on a public ledger, and the sentence its
+record states about what the payment proves.
 
 ## What it guarantees, and what it does not
 
@@ -286,7 +287,7 @@ sentence its record states about what the payment proves.
   record is what they agreed;
 - hold keys, sign, move funds, call a facilitator or fetch anything on its own;
 - store ATRs: the seller and the buyer each keep their own copy;
-- verify every signature it reads; each pairing's `proves` says what the payment shows.
+- verify every signature it reads; each pairing's `data.proves` says what the payment shows.
 
 ## Vectors and conformance
 

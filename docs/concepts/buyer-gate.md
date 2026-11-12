@@ -79,7 +79,7 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 |---|---|
 | `hash-mismatch` | The served bytes do not hash to H: one changed byte, the same JSON written another way, or an agreement resource advertising another ATR's hash. |
 | `signed-not-bound` | What the signer returned does not carry the H the buyer compared. |
-| `offer-unreadable` | The pairing's `read` refused the document, or its `build` refused the option with the buyer's inputs, such as a Stellar simulated transfer whose amount, token or payer is not the option's; the row carries the refusal code, and nothing is signed. |
+| `offer-unreadable` | The pairing's `read` refused the document, or its `build` refused the option with the buyer's inputs; the row carries the refusal code, and nothing is signed. |
 | `link-not-https` | The link or the agreement URL that `read` gave is not an `https` link, and it is not fetched. Each pairing's own `read` refuses a link or agreement URL of another scheme, which declines `offer-unreadable` with the refusal's code. An agreement URL refused at the agreement step, by `transact` or by `agree` called with it alone, carries this package's code for the value as its detail: `x402/link-not-https` for a URL of another scheme, `x402/legal-context-malformed` for any other value (`BA5`). |
 | `atr-unfetchable` | The fetch redirected, returned an error status, failed, did not answer in time, or answered in a content coding other than `identity`. |
 | `atr-too-large` | The body is larger than 1 MiB. The fetch is cancelled. |
@@ -88,14 +88,14 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 | `pairing-not-supported` | The pairing id is not one the gate implements, or `finish` is handed a chosen payment of another pairing than its binding's (`B19`), before anything is rebuilt. |
 | `agreement-pending` | An agreement payment for this ATR is settling, and the full payment is not signed: the gate made the agreement payment and its receipt did not arrive in time (`BA3`), or the agreement URL answered the unpaid request `202` (`BA14`), and nothing is signed. After that unpaid `202`, call again later without approval: once the agreement payment is recorded, the agreement URL answers its receipt. Never sign a second agreement payment. |
 | `agreement-failed` | The agreement's receipt names another ATR's hash, an agreement answer is in a content coding other than `identity`, `PAYMENT-REQUIRED` is not strict base64, padded, in the standard alphabet and with its pad bits zero (`BA13`, `BA18`, `BA19`), or the JSON text of `PAYMENT-REQUIRED` or of the receipt is led by a byte-order mark (`BA17`, `BA18`); the full payment is not signed. |
-| `agreement-not-offered` | The chosen pairing's payment is not a public proof of H (`pattern.publicProof` is false) and the offer names no agreement URL. The link is fetched and compared first; nothing is signed. |
+| `agreement-not-offered` | The chosen pairing's payment is not a public proof of H (its `data.coverage` is `none`) and the offer names no agreement URL. The link is fetched and compared first; nothing is signed. |
 
 ## The agreement URL
 
-Where the pairing's `publicProof` is false, the seller advertises an **agreement URL** (`legalContextAgreementUrl`)
+Where the pairing's `data.coverage` is `none`, the seller advertises an **agreement URL** (`legalContextAgreementUrl`)
 beside the link; the buyer gate declines such an offer without one. The buyer first pays that URL, whose payment carries
 H publicly, and pays the full payment only after its `200` receipt names the same H. Where the chosen pairing's payment
-is itself a public proof of H (`pattern.publicProof`), the buyer does not pay the agreement URL.
+is itself a public proof of H (`data.coverage` is `full`), the buyer does not pay the agreement URL.
 
 The agreement payment is a payment like any other, so the buyer's agent approves it before anything is signed:
 
@@ -127,9 +127,6 @@ The gate compares the served bytes with H before anything is signed. It never pa
 - **The link is the seller's choice.** `isHttpsLink` accepts loopback, private and link-local hosts, such as
   `127.0.0.1`, `10.0.0.1`, `169.254.169.254`, `localhost` and `[::1]`. A buyer that fetches from inside a private
   network refuses such destinations itself.
-- **Some proofs hold part of H.** Where a pairing's proof holds only 7 or 8 bytes of H, or of a value derived from it,
-  whoever assembles the ATR can construct a second ATR that shares them. The gate compares the whole H with the bytes
-  served; the pairing's `proves` states what the payment binds.
 
 ## Next
 

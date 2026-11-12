@@ -18,7 +18,7 @@ import {
   type Json,
 } from "./core.js";
 import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
-import { isAddress, normalHash, uint256Of } from "./fields.js";
+import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
 import { broadcasterOf, type Broadcaster } from "./internal/broadcaster.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
@@ -31,17 +31,21 @@ import {
   usdcChargePairings,
 } from "./mpp-method-checks.js";
 import {
-  hederaChargePairings,
-  hederaSessionPairings,
   nearIntentsChargePairings,
   solanaChargePairings,
-  solanaSessionPairings,
-  stellarChargePairings,
   xrplChargePairings,
   xrplSessionPairings,
 } from "./mpp-rail-checks.js";
 import { base64UrlBytes, fromBase64Url, toBase64Url } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, readToRepeat, refusal, type Refusal } from "./refusal.js";
+import { MAX_CHALLENGE_DEPTH, MAX_CHALLENGES, MAX_CREDENTIAL_BYTES, MAX_LINK_LENGTH } from "./internal/bounds.js";
+import { CARD } from "./internal/data/card.js";
+import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
+import { LIGHTNING } from "./internal/data/lightning.js";
+import { NEAR } from "./internal/data/near.js";
+import { SOLANA } from "./internal/data/solana.js";
+import { STACKS } from "./internal/data/stacks.js";
+import { XRPL } from "./internal/data/xrpl.js";
 
 /** A challenge's auth-params after quoted-string unescaping. `request` and `opaque` are base64url-nopad JSON. */
 export interface MppChallenge {
@@ -77,44 +81,57 @@ export type MppMethod =
   | "hedera";
 export type MppIntent = "charge" | "session" | "subscription";
 
+const INTENTS: readonly MppIntent[] = ["charge", "session", "subscription"];
+const METHODS: readonly MppMethod[] = [
+  "evm",
+  "tempo",
+  "solana",
+  "lightning",
+  "card",
+  "stripe",
+  "usdc",
+  "nearintents",
+  "stellar",
+  "xrpl",
+  "hedera",
+];
+
+type CarrierTable = { [i in MppIntent]: { [m in MppMethod]?: readonly string[] | null } };
+
 /**
- * The request member a pairing writes H into, by intent and method; null where no request member carries it. `usdc`
- * carries H in a request member only on its Solana profile. A Stellar charge's `recipient` carries H's first 8 bytes as
- * its muxed id only: its base account stays a member of what was issued.
+ * The two tables `CARRIER` and `USDC_CARRIER` are, from the MPP entries' `carrier` datum: each entry's `member`, or null
+ * where it has none, keyed by the intent and method its id `mpp/<intent>/<method>[/<rest>]` names, or, for `usdc`, by
+ * the id's fourth segment, the profile its `methodDetails.type` names.
+ */
+function carrierTables(): { byMethod: CarrierTable; usdc: { [profile: string]: readonly string[] | null } } {
+  const byMethod: CarrierTable = { charge: {}, session: {}, subscription: {} };
+  const usdc: { [profile: string]: readonly string[] | null } = {};
+  for (const family of [CARD, EIP155_TEMPO_MPP, LIGHTNING, NEAR, SOLANA, STACKS, XRPL]) {
+    for (const [id, data] of Object.entries(family)) {
+      const [protocol, i, m, rest] = id.split("/");
+      const intent = INTENTS.find((x) => x === i);
+      const method = METHODS.find((x) => x === m);
+      if (protocol !== "mpp" || intent === undefined || method === undefined) continue;
+      const member = data.carrier.member ?? null;
+      if (method === "usdc" && rest !== undefined) usdc[rest] = member;
+      else byMethod[intent][method] = member;
+    }
+  }
+  return deepFreeze({ byMethod, usdc });
+}
+
+const CARRIERS = /* @__PURE__ */ carrierTables();
+
+/**
+ * The request member a pairing writes H into, by intent and method; null where no request member carries it. It is
+ * derived from the MPP entries' `carrier` datum: each pairing's `carrier.member`, keyed by the intent and method its
+ * id names. `usdc` carries H in a request member only on its Solana profile, which `USDC_CARRIER` keys by profile.
  */
 export const CARRIER: { readonly [i in MppIntent]: { readonly [m in MppMethod]?: readonly string[] | null } } =
-  deepFreeze({
-    charge: {
-      card: ["externalId"],
-      stripe: ["methodDetails", "metadata", "legal_context"],
-      usdc: null,
-      evm: null,
-      tempo: null,
-      solana: ["externalId"],
-      stellar: ["recipient"],
-      xrpl: ["methodDetails", "invoiceId"],
-      hedera: null,
-      lightning: ["methodDetails", "invoice"],
-      nearintents: ["externalId"],
-    },
-    session: {
-      lightning: ["depositInvoice"],
-      hedera: null,
-      solana: null,
-      xrpl: null,
-      evm: null,
-      tempo: null,
-    },
-    subscription: { tempo: null, stripe: ["methodDetails", "metadata", "legal_context"] },
-  });
+  CARRIERS.byMethod;
 
 /** The request member `usdc` writes H into, by `methodDetails.type`; null where no request member carries it. */
-const USDC_CARRIER: { readonly [profile: string]: readonly string[] | null } = deepFreeze({
-  evm: null,
-  solana: ["externalId"],
-  stacks: null,
-  gateway: null,
-});
+const USDC_CARRIER: { readonly [profile: string]: readonly string[] | null } = CARRIERS.usdc;
 
 /** The id of each MPP pairing `pairingsOf` can name. */
 export type MppPairingId =
@@ -122,20 +139,14 @@ export type MppPairingId =
   | "mpp/charge/evm/authorization"
   | "mpp/charge/evm/transaction"
   | "mpp/charge/evm/hash"
-  | "mpp/charge/tempo/memo"
-  | "mpp/charge/tempo/push"
   | "mpp/session/evm"
   | "mpp/session/tempo"
   | "mpp/subscription/tempo"
   | "mpp/charge/lightning"
   | "mpp/session/lightning"
-  | "mpp/charge/hedera"
   | "mpp/charge/solana"
-  | "mpp/charge/stellar"
   | "mpp/charge/xrpl"
   | "mpp/charge/nearintents"
-  | "mpp/session/hedera"
-  | "mpp/session/solana"
   | "mpp/session/xrpl"
   | "mpp/charge/card"
   | "mpp/charge/stripe"
@@ -158,17 +169,13 @@ export interface MppChoice {
   tokenDomain?: { name: string; version: string };
   /** permit2 only: the seller server's submitting address. */
   spender?: Hex;
-  /** tempo only: the payer's label in the attribution memo, a well-formed string. */
+  /** The payer's label in an attribution memo, a well-formed string. No pairing's `build` in this package reads it. */
   clientId?: string;
 }
 
 const PROBLEM_BASE = "https://paymentauth.org/problems/";
 const MAX_FIELD = 8192;
-const MAX_CHALLENGES = 32;
 const MAX_DECODED = 8192;
-const MAX_JSON_DEPTH = 16;
-const MAX_CREDENTIAL = 65_536;
-const MAX_LINK = 2048;
 const LCP_KEYS = ["legalContext", "legalContextUrl", "legalContextAgreementUrl"] as const;
 const PARAMS = ["id", "realm", "method", "intent", "request", "expires", "digest", "description", "header", "opaque"];
 const BOUND = ["realm", "method", "intent", "request", "expires", "digest", "header", "opaque"] as const;
@@ -187,8 +194,7 @@ const MPP_TAG = keccak("mpp").subarray(0, 4);
 /**
  * MPP's 32-byte attribution memo: keccak256("mpp")[0..3], `0x01`, keccak256(realm)[0..9], keccak256(clientId)[0..9]
  * or ten zero bytes, then keccak256(challengeId)[0..6], each over the string's UTF-8. A string that is not well-formed
- * is written as `TextEncoder` writes it, with U+FFFD for each lone surrogate; the pairings refuse such a realm,
- * challenge id or client id before they call it.
+ * is written as `TextEncoder` writes it, with U+FFFD for each lone surrogate. No pairing in this package calls it.
  */
 export function attributionMemo(realm: string, challengeId: string, clientId?: string): Hex {
   const out = new Uint8Array(32);
@@ -203,7 +209,7 @@ export function attributionMemo(realm: string, challengeId: string, clientId?: s
 /**
  * Checks a memo's tag, version, server id for `realm` and nonce for `challengeId`. The client id is not read. A `realm`
  * or `challengeId` that is not well-formed is hashed as `attributionMemo` hashes it, with U+FFFD for each lone
- * surrogate; the pairings refuse such a challenge before they call it.
+ * surrogate. No pairing in this package calls it.
  */
 export function checkAttribution(memo: string, realm: string, challengeId: string): true | Refusal {
   const m = normalHash(memo);
@@ -423,17 +429,13 @@ export interface Checked {
 
 /**
  * The pairings that need the challenge's `expires`: each one's `build` writes it into what the payer signs (the
- * EIP-3009 `validBefore`, the Permit2 `deadline`, the Tempo transaction's `validBefore`, the Stellar entry's expiration
- * ledger, the session opening's deadline), or, on NEAR Intents and the XRP Ledger charge, the method's draft requires
- * it. Without `expires` a challenge offers none of them.
+ * EIP-3009 `validBefore`, the Permit2 `deadline`, the session opening's deadline), or, on NEAR Intents and the XRP
+ * Ledger charge, the method's draft requires it. Without `expires` a challenge offers none of them.
  */
 const NEEDS_EXPIRES: ReadonlySet<MppPairingId> = new Set<MppPairingId>([
   "mpp/charge/evm/authorization",
   "mpp/charge/evm/permit2",
-  "mpp/charge/tempo/memo",
-  "mpp/charge/tempo/push",
   "mpp/charge/usdc/evm",
-  "mpp/charge/stellar",
   "mpp/charge/nearintents",
   "mpp/charge/xrpl",
   "mpp/session/evm",
@@ -449,8 +451,7 @@ export function expiresOf(checked: Checked): number | Refusal {
 }
 
 /**
- * Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. A
- * Tempo charge whose `amount` is 0 names none: MPP pays it with a `proof` credential, which moves no money. An
+ * Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. An
  * `expires` that is present must be an RFC 3339 date-time, else `mpp/expires-required`. Without `expires`, the pairings
  * whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
  * it, are left out, and a challenge left with no pairing is `mpp/expires-required`. These checks are each pairing's one
@@ -555,71 +556,6 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c
     }
   }
   return listed;
-}
-
-/**
- * `charge` on `tempo`: `currency` and `recipient` addresses and `amount` a decimal, else `mpp/request-malformed`; a zero
- * `amount` names none. Then the modes `supportedModes` and `feePayer` leave, and `splits` as `tempoSplits` reads them,
- * which `build` writes after the primary transfer of `amount` less their sum (draft-tempo-charge-00 L233): a sum of
- * `amount` or more leaves the primary transfer nothing, `mpp/input-malformed`, the code the Permit2 charge gives.
- */
-function tempoChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
-  if (!isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
-    return refusal("mpp/request-malformed");
-  }
-  if (d["chainId"] !== undefined && !isPositiveInt(d["chainId"])) return refusal("mpp/request-malformed");
-  // A zero charge is paid with a `proof` credential, which moves no money, so no pairing binds it; `supportedModes`
-  // does not apply to it.
-  if (BigInt(r["amount"] as string) === 0n) return [];
-  if (d["memo"] !== undefined) return refusal("mpp/carrier-taken");
-  const modes = d["supportedModes"];
-  let pull = true;
-  let push = true;
-  if (modes !== undefined) {
-    if (!Array.isArray(modes) || !modes.every((m) => m === "pull" || m === "push")) return refusal("mpp/request-malformed");
-    pull = modes.includes("pull");
-    push = modes.includes("push");
-  }
-  if (d["feePayer"] === true) push = false;
-  const out: MppPairingId[] = [];
-  if (pull) out.push("mpp/charge/tempo/memo");
-  if (push) out.push("mpp/charge/tempo/push");
-  if (out.length === 0) return refusal("mpp/modes-pull-only");
-  const splits = tempoSplits(d);
-  if (isRefusal(splits)) return splits;
-  const split = (splits ?? []).reduce((sum, s) => sum + s.amount, 0n);
-  return BigInt(r["amount"] as string) - split > 0n ? out : refusal("mpp/input-malformed");
-}
-
-const MAX_TEMPO_SPLITS = 10;
-const BYTES32_HEX = /^0x[0-9a-fA-F]{64}$/;
-
-/** A Tempo charge split as its `build` writes it: the recipient, the amount and, when present, the memo. */
-export interface TempoSplit {
-  to: Hex;
-  amount: bigint;
-  memo?: Hex;
-}
-
-/**
- * A Tempo charge's `methodDetails.splits`, as draft-tempo-charge-00's Split Payments section gives them: absent, or 1 to
- * 10 entries, each an address `recipient`, a decimal `amount` above zero and, when present, a `bytes32` hex `memo`;
- * otherwise `mpp/splits-malformed`.
- */
-export function tempoSplits(details: { [k: string]: Json }): TempoSplit[] | undefined | Refusal {
-  const splits = details["splits"];
-  if (splits === undefined) return undefined;
-  if (!Array.isArray(splits) || splits.length < 1 || splits.length > MAX_TEMPO_SPLITS) return refusal("mpp/splits-malformed");
-  const out: TempoSplit[] = [];
-  for (const s of splits) {
-    if (!isObject(s) || !isAddress(s["recipient"])) return refusal("mpp/splits-malformed");
-    const amount = uint256Of(s["amount"]);
-    if (amount === undefined || amount === 0n) return refusal("mpp/splits-malformed");
-    const memo = s["memo"];
-    if (memo !== undefined && (typeof memo !== "string" || !BYTES32_HEX.test(memo))) return refusal("mpp/splits-malformed");
-    out.push(memo === undefined ? { to: s["recipient"] as Hex, amount } : { to: s["recipient"] as Hex, amount, memo: memo as Hex });
-  }
-  return out;
 }
 
 function evmSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
@@ -731,19 +667,14 @@ function lightningPairings(pairing: "mpp/charge/lightning" | "mpp/session/lightn
 /** Each (intent, method) this entry point serves, and the check that names its pairings. */
 const PAIRING_CHECKS: { readonly [intentAndMethod: string]: PairingCheck } = Object.freeze({
   "charge/evm": evmChargePairings,
-  "charge/tempo": tempoChargePairings,
   "session/evm": evmSessionPairings,
   "session/tempo": tempoSessionPairings,
   "subscription/tempo": subscriptionPairings,
   "charge/lightning": lightningPairings("mpp/charge/lightning"),
   "session/lightning": lightningPairings("mpp/session/lightning"),
-  "charge/hedera": hederaChargePairings,
   "charge/solana": solanaChargePairings,
-  "charge/stellar": stellarChargePairings,
   "charge/xrpl": xrplChargePairings,
   "charge/nearintents": nearIntentsChargePairings,
-  "session/hedera": hederaSessionPairings,
-  "session/solana": solanaSessionPairings,
   "session/xrpl": xrplSessionPairings,
   "charge/card": cardChargePairings,
   "charge/stripe": stripeChargePairings,
@@ -823,7 +754,7 @@ export function place(
   const hash = normalHash(h);
   if (hash === null) return refusal("mpp/challenge-malformed");
   if (!isHttpsLink(link)) return refusal("mpp/link-not-https");
-  if (link.length > MAX_LINK) return refusal("mpp/legal-context-malformed");
+  if (link.length > MAX_LINK_LENGTH) return refusal("mpp/legal-context-malformed");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("mpp/link-not-https");
   if (agreementFaulted !== undefined) return refusal("mpp/legal-context-malformed");
@@ -927,12 +858,13 @@ function asIssued(
   request: { [k: string]: Json },
   unmux: typeof stellarUnmux | undefined,
 ): { [k: string]: Json } {
-  const path = carrierOf(c, request);
-  if (path === null || memberAt(request, path) === undefined) return request;
   if (isStellarCharge(c)) {
+    if (memberAt(request, ["recipient"]) === undefined) return request;
     const m = unmux?.(request["recipient"]) ?? null;
     return m === null ? request : { ...request, recipient: m.base };
   }
+  const path = carrierOf(c, request);
+  if (path === null || memberAt(request, path) === undefined) return request;
   return without(request, path);
 }
 
@@ -1069,7 +1001,7 @@ function shapeGate(c: unknown, bound: boolean): MppCredential | Refusal {
   }
   if (!isChallengeShape(c.challenge) || (bound && typeof c.challenge.id !== "string")) return refusal("mpp/credential-malformed");
   if (c.source !== undefined && typeof c.source !== "string") return refusal("mpp/credential-malformed");
-  return jsonWithin(c, MAX_CREDENTIAL) ? (c as unknown as MppCredential) : refusal("mpp/credential-malformed");
+  return jsonWithin(c, MAX_CREDENTIAL_BYTES) ? (c as unknown as MppCredential) : refusal("mpp/credential-malformed");
 }
 
 /**
@@ -1168,7 +1100,7 @@ function echoedRead(c: unknown, bound: boolean): { h: AtrHash | undefined; reque
  * `complete` returns a credential `bound` refuses for its size, whatever the challenge's own size.
  */
 export function measured<C extends MppCredential>(credential: C): C | Refusal {
-  return jsonWithin(credential, MAX_CREDENTIAL) ? credential : refusal("mpp/credential-malformed");
+  return jsonWithin(credential, MAX_CREDENTIAL_BYTES) ? credential : refusal("mpp/credential-malformed");
 }
 
 /**
@@ -1177,13 +1109,13 @@ export function measured<C extends MppCredential>(credential: C): C | Refusal {
  * measures every credential before it reads it. So one rule covers every credential, in the channel or opening it.
  */
 export function measuring<P, T>(kind: (presented: P) => T): (presented: P) => T | Refusal {
-  return (presented) => (jsonWithin(presented, MAX_CREDENTIAL) ? kind(presented) : refusal("mpp/credential-malformed"));
+  return (presented) => (jsonWithin(presented, MAX_CREDENTIAL_BYTES) ? kind(presented) : refusal("mpp/credential-malformed"));
 }
 
 /** `measuring` for a session pairing's `channel.ref` and `channel.boundWithin`, which answer in a promise. */
 export function measuringAsync<P, T>(read: (presented: P) => Promise<T>): (presented: P) => Promise<T | Refusal> {
   return async (presented) =>
-    jsonWithin(presented, MAX_CREDENTIAL) ? read(presented) : refusal("mpp/credential-malformed");
+    jsonWithin(presented, MAX_CREDENTIAL_BYTES) ? read(presented) : refusal("mpp/credential-malformed");
 }
 
 /**
@@ -1357,7 +1289,7 @@ const INVALID_CHALLENGE = ["mpp/id-not-ours"];
 /**
  * The codes of a call that cannot read the payment: a reader that is not for the network the challenge or reference
  * names, or a ref `recover` cannot read, and `bound` or `reference` on a push credential before `fetchPresented` has
- * read it, or on a Solana session opening whose address lookup tables it has not read.
+ * read it. Only the codes `REFUSAL_CODES` holds are returned by this package.
  */
 const CANNOT_READ = [
   "tempo/wrong-reader",
@@ -1380,13 +1312,11 @@ const CANNOT_READ = [
  * - 500 `internal-payment-error`: a read to repeat, a code `readToRepeat` answers true for, so the seller asks again
  *   later: a reader that failed or answered out of its form (`<rail>/unreadable`), no landed transaction yet
  *   (`<rail>/not-found`), or a transaction not final yet, such as a revert above the reader's `finalized` mark
- *   (`tempo/not-final`, `hedera/not-final`) or one not in a validated ledger (`xrpl/not-validated`);
+ *   (`tempo/not-final`) or one not in a validated ledger (`xrpl/not-validated`);
  * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
  *   changes the call: a reader that is not for the network the challenge or reference names, or a ref `recover`
- *   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `stellar/wrong-reader`, `xrpl/wrong-reader` and
- *   `hedera/wrong-reader`), and `bound` or `reference` on a push credential before `fetchPresented` has read it, or on
- *   a Solana session opening whose address lookup tables it has not read (`tempo/read-first`, `svm/read-first`,
- *   `stellar/read-first`, `xrpl/read-first` and `hedera/read-first`);
+ *   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound`
+ *   or `reference` on a push credential before `fetchPresented` has read it (`svm/read-first` and `xrpl/read-first`);
  * - 402 `verification-failed`: every other code this package returns;
  * - 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
  *
@@ -1469,7 +1399,7 @@ export function decodeObject(s: string): { [k: string]: Json } | undefined {
     return undefined;
   }
   const v = parseJson(text);
-  if (!isObject(v) || depthOf(v, 0) > MAX_JSON_DEPTH) return undefined;
+  if (!isObject(v) || depthOf(v, 0) > MAX_CHALLENGE_DEPTH) return undefined;
   if (typeof canonicalJson(v) !== "string") return undefined;
   return v as { [k: string]: Json };
 }
@@ -1531,7 +1461,7 @@ function without(o: { [k: string]: Json }, path: readonly string[]): { [k: strin
 }
 
 function depthOf(v: unknown, d: number): number {
-  if (d > MAX_JSON_DEPTH || typeof v !== "object" || v === null) return d;
+  if (d > MAX_CHALLENGE_DEPTH || typeof v !== "object" || v === null) return d;
   let max = d + 1;
   for (const x of Object.values(v)) max = Math.max(max, depthOf(x, d + 1));
   return max;
@@ -1547,7 +1477,7 @@ function jsonWithin(v: unknown, max: number): boolean {
   const walk = (x: unknown, d: number): boolean => {
     if (typeof x === "string") budget -= x.length + 2;
     else if (typeof x === "number" || typeof x === "bigint" || typeof x === "boolean" || x === null) budget -= 8;
-    else if (typeof x === "object" && d + 1 > MAX_JSON_DEPTH) return false;
+    else if (typeof x === "object" && d + 1 > MAX_CHALLENGE_DEPTH) return false;
     else if (Array.isArray(x)) {
       budget -= 2;
       for (const y of x) if (!walk(y, d + 1)) return false;
@@ -1564,7 +1494,7 @@ function jsonWithin(v: unknown, max: number): boolean {
 }
 
 function isLink(s: unknown): s is string {
-  return typeof s === "string" && s.length <= MAX_LINK && isHttpsLink(s);
+  return typeof s === "string" && s.length <= MAX_LINK_LENGTH && isHttpsLink(s);
 }
 
 function isPositiveInt(v: unknown): v is number {

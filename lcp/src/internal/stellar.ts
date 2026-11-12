@@ -173,8 +173,8 @@ export interface StellarUnsigned {
 }
 
 /**
- * A payment on `x402/exact/stellar`: the base64 XDR of the transaction with the payer's entry signed. The root names it
- * among the payments `Presented` covers; no entry point exports it.
+ * A Stellar x402 payment: the base64 XDR of the transaction with the payer's entry signed. The root names it among the
+ * payments `Presented` covers; no pairing in this package takes it, and no entry point exports it.
  */
 export interface StellarPaymentPayload {
   x402Version: 2;
@@ -187,7 +187,7 @@ export interface StellarPaymentPayload {
 // ── the carrier ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** The hash's first 8 bytes, big-endian, as a u64. Throws TypeError when `h` is not a 32-byte hash. */
-export function muxedId(h: AtrHash): bigint {
+function muxedId(h: AtrHash): bigint {
   const b = toRawBytes(h);
   let v = 0n;
   for (let i = 0; i < 8; i++) v = (v << 8n) | BigInt(b[i]!);
@@ -208,14 +208,6 @@ export function muxedFor(base: string, h: AtrHash): string | Refusal {
 
 export function isMuxed(s: unknown): s is string {
   return unmux(s) !== null;
-}
-
-/**
- * True for a strkey that a Soroban `transfer`'s `from` can be: a well-formed `G…`, `C…` or `M…` strkey. It needs no
- * peer, so a `build` refuses any other payer before it reads the simulated transaction.
- */
-export function isPayer(s: unknown): s is string {
-  return isAccount(s) || isContract(s) || isMuxed(s);
 }
 
 function need(): typeof StellarBase | null {
@@ -602,8 +594,8 @@ export function readSourceTransfer(xdrB64: string, network: StellarNetwork): Sou
  * (another entry, a delegate, the footprint, another operation), which is decoded whatever its depth, so its nesting
  * does not refuse the envelope. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
  * passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
- * without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `mpp/charge/stellar`'s push
- * credential, once its transaction landed, reads a payer that authorized the transfer as the transaction's source
+ * without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `stellarStatus` and
+ * `stellarLocate`, on a ref without `authDigest`, read a payer that authorized the transfer as the transaction's source
  * account.
  */
 export function decodeStellarTx(xdrB64: string, network: StellarNetwork): StellarPayment | Refusal {

@@ -35,7 +35,7 @@ the ATR through the channel it belongs to.
 
 ## The pairings
 
-Ten pairings have a `channel` member. The table says where H rides at the opening, which later payments count as
+Eight pairings have a `channel` member. The table says where H rides at the opening, which later payments count as
 within the channel, and what `channel.boundWithin` and `channel.until` read.
 
 | Pairing | H at the opening | Within, and the close | `boundWithin` | `until` |
@@ -44,8 +44,6 @@ within the channel, and what `channel.boundWithin` and `channel.until` read.
 | `x402/batch-settlement/solana` | The opening transaction's seller Memo instruction, H's LCP string (the option's `extra.memo`), beside x402's receiver-authorizer binding memo. | A voucher or a top-up is within; a refund is the close. | Refuses `x402/not-bound-within`. | none |
 | `mpp/session/evm` | The channel's `salt`: in the signed `open` call, the EIP-3009 nonce MPP derives over the channel parameters and the salt, or the Permit2 witness. | A voucher or a top-up is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/session/tempo` | The `salt` of the signed `open` call to the channel escrow, in a transaction signed for the challenge's chain, `methodDetails.chainId` (4217 where a v1 challenge names none), else `tempo/tx-malformed`. On the v2 escrow, the payload's descriptor carries that salt and, as draft-tempo-session-00 requires, the `open` call's payee, operator, token and authorizedSigner, the open transaction's sender, recovered from its signature, as its payer and the expiring nonce hash of that transaction under that sender, else `tempo/descriptor-mismatch`. On the v1 escrow, the payload's `channelId` is the channel that transaction opens, computed from its sender and its `open` call, else `mpp/channel-not-bound`. The transaction is checked first, its `open` call and then its sender, as draft-tempo-session-00's open verification orders them, and with its sender its `aa_authorization_list`, each entry a list of four items ending in a signature that is not a keychain signature of type `0x03`, which Tempo's node refuses there as in the sender's, so an opening with a fault in its transaction and another in its channel id or descriptor is refused with the transaction's code. `build`'s `complete` returns no credential `bound` refuses: it gives the code `bound` gives the credential it would give for a transaction, which names the build's `from` (as the v2 descriptor's payer, and in the v1 `channelId`) and the `open` call `build` made, so it refuses each fault above, a sender other than `from`, a call naming other parties, and a transaction whose credential is over the credential size bound (`mpp/credential-malformed`); `voucher` refuses the same transactions. | A voucher or a top-up is within; `close` is the close. | On the v2 escrow, the salt in the payment's channel descriptor, once the descriptor's channel id is the payment's channel and its operator is the challenge's `methodDetails.operator`, the zero address where the challenge names none, as on the opening. | none |
-| `mpp/session/hedera` | The `salt` of the escrow's `open`. | A voucher or a top-up is within; `close` is the close. Any other action, a `use` among them, is refused with `mpp/session-action`. | Refuses `mpp/not-bound-within`. | none |
-| `mpp/session/solana` | The `open` instruction's `salt`: H's first 8 bytes. It binds those 8 bytes only: whoever assembles the ATR can construct a second ATR whose hash shares them. The opening carries `authentication`, naming the opening challenge's id, when the challenge's `voucherSigner` is `operator`, and none when it is `client` or absent. When it is `operator`, the `open` instruction's `authorizedSigner` (account 4) is the challenge's `operator`, as draft-solana-session-00 requires, else `svm/signer-not-operator`. The draft has the server resolve a version-0 message's address lookup table entries before it broadcasts, and a table can supply account 4 or account 5: for an opening whose message has lookups, `fetchPresented` reads the tables and writes them under `FETCHED`, through which alone `bound`, `reference` and `buildWithin` read the `open`'s accounts; without them they refuse `svm/read-first`, as `complete`, which reads no table, does. | A voucher, a top-up or a `use` is within; `close` is the close. A voucher is valid only when the challenge's `voucherSigner` is `client` or absent, and a `use` only when it is `operator`: `channel.kind`, `channel.ref` and `channel.boundWithin` refuse either outside its mode with `mpp/session-action`. A close carries `voucher` and no `authentication` when the challenge's `voucherSigner` is `client` or absent, and `authentication` and no `voucher` when it is `operator`: the three refuse any other close with `mpp/credential-malformed`. | H from a `use` credential whose session proof names the opening challenge's id. | none |
 | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo holding an LCP string, H's, in an opening the payer signs with a single key and that carries no `NetworkID`, as rippled requires on each network the challenge names, whose ids are at most 1024, else `xrpl/network-mismatch`, which `build`'s `complete` also gives. | A voucher is within; `close` is the close. | Refuses `mpp/not-bound-within`. | The opening's `CancelAfter`, where it sets one. |
 | `mpp/session/lightning` | The deposit invoice's description hash `h`, which the seller's node signs. | A bearer proof or a top-up is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/subscription/tempo` | The `witness` of the key authorization the payer's root key signs. | Only the activation, a key authorization, is classified: it is the opening. | Refuses `mpp/not-bound-within`. | The request's `subscriptionExpires`. |
@@ -79,11 +77,9 @@ console.log(channels.sort().join("\n"));
 ```
 
 ```text
-10
+8
 mpp/session/evm
-mpp/session/hedera
 mpp/session/lightning
-mpp/session/solana
 mpp/session/tempo
 mpp/session/xrpl
 mpp/subscription/stripe
@@ -112,12 +108,12 @@ On top of the members every pairing has, a channel pairing has:
 | `channel.boundWithin(payment)` | seller | H from a payment within the channel, where the pairing's payments within carry it; otherwise a refusal. |
 | `channel.until(payment)` | seller | The channel's end in Unix seconds, where its opening sets one; on the MPP sessions, none for a payment `channel.kind` refuses or an opening whose echoed challenge `bound` refuses. |
 | `buildWithin(within, h)` | buyer | A later voucher, or the close, for a channel opened under H. It refuses a channel that was not, except on `x402/batch-settlement/solana`, whose configuration does not carry H. |
-| `closeRef(challenge, channel)` | seller | The read keys of the channel's close, on the MPP sessions on EVM, Tempo, Hedera, Solana and the XRP Ledger, and on `mpp/subscription/tempo`, where a third argument names the payer's account. |
+| `closeRef(challenge, channel)` | seller | The read keys of the channel's close, on the MPP sessions on EVM, Tempo and the XRP Ledger, and on `mpp/subscription/tempo`, where a third argument names the payer's account. |
 
-`buildWithin` exists on the two x402 channels and the MPP sessions on EVM, Tempo, Hedera, Solana and the XRP Ledger.
-On MPP it builds a voucher or the close. It does not build a top-up, which is a further deposit, or Solana's operator
-`use` (`mpp/within-action-not-built`). An action the pairing's draft does not define, such as a `topUp` on the XRP
-Ledger, is `mpp/session-action`, as `channel.kind` answers it.
+`buildWithin` exists on the two x402 channels and the MPP sessions on EVM, Tempo and the XRP Ledger. On MPP it builds a
+voucher or the close. It does not build a top-up, which is a further deposit (`mpp/within-action-not-built`). An action
+the pairing's draft does not define, such as a `topUp` on the XRP Ledger, is `mpp/session-action`, as `channel.kind`
+answers it.
 
 On MPP, `buildWithin` reads the within challenge, the challenge of the seller's 402 within the channel, as the
 pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that carries it, with their code for
@@ -125,16 +121,14 @@ each fault. It reads a snapshot of the challenge's own members, which the in-cha
 that is not an object, is not challenge-shaped or has no string id, or whose least credential is over the credential
 size bound, is `mpp/credential-malformed`, and another intent or method `mpp/not-this-pairing`. Then come the request
 members the readers read: on the EVM and Tempo sessions its request, `sessionProtocol`, `chainId` and `escrowContract`,
-and on the Hedera, Solana and XRP Ledger sessions its `methodDetails` and the network they name. The seller issues
+and on the XRP Ledger session its `methodDetails` and the network it names. The seller issues
 that challenge with its own id and the channel named, so it is not held to the pairing's filter, which refuses a
 challenge naming a channel. Where a reader refuses a payment whose within challenge names channel parameters other
 than the opening's, `buildWithin` gives that reader's code. On Tempo, a v2 within challenge whose escrow, chain or
 operator does not give the opening's channel, or one over a v1 opening, is `tempo/descriptor-mismatch`, and a v1 within
-challenge over a v2 opening is `mpp/not-bound-within`, as `channel.boundWithin` answers. On Solana, a within challenge
-whose `voucherSigner` is `operator` over a `client` opening is `mpp/session-action` for a voucher and
-`mpp/credential-malformed` for a close, as `channel.kind` answers. The readers do not compare the network or escrow a
-within challenge names with the opening's on the EVM session, a Tempo v1 session or the Hedera, Solana and XRP Ledger
-sessions, and neither does `buildWithin`.
+challenge over a v2 opening is `mpp/not-bound-within`, as `channel.boundWithin` answers. The readers do not compare the
+network or escrow a within challenge names with the opening's on the EVM session, a Tempo v1 session or the XRP Ledger
+session, and neither does `buildWithin`.
 
 `buildWithin` checks its input in this order: the within challenge and the request members its readers read, H
 (`mpp/id-not-ours` for one that is not a valid ATR hash), the cumulative amount, the action, and only then the opening
@@ -275,98 +269,42 @@ it matches each later payment to an open channel by `channel.ref`, and so to tha
 worth, and when to settle, are the seller's to decide under the scheme. The channel members classify a payment and
 name its channel; none of them reads a voucher's amount.
 
-**The buyer** keeps the ATR's bytes it compared at the opening, and the opening itself. On `mpp/session/solana`, both
-sides keep, as the opening, the credential `fetchPresented` returned, with its tables under `FETCHED`, or a spread or
-`Object.assign` copy of it ([Reading settlement](#reading-settlement)). On MPP, a session challenge
-that names a `channelId` resumes a channel (`sessionResume` reads it on the MPP sessions on EVM, Tempo, Hedera, Solana
-and the XRP Ledger): the buyer pays it with a voucher only for a channel it opened for an ATR it compared.
+**The buyer** keeps the ATR's bytes it compared at the opening, and the opening itself. On MPP, a session challenge
+that names a `channelId` resumes a channel (`sessionResume` reads it on the MPP sessions on EVM, Tempo and the XRP
+Ledger): the buyer pays it with a voucher only for a channel it opened for an ATR it compared.
 
 ## What the record says
 
-Each channel pairing's `pattern.proves` states what the opening shows, and never that later requests or billing periods
+Each channel pairing's `data.proves` states what the opening shows, and never that later requests or billing periods
 were paid under this ATR, which the record never reads. Where each voucher signs a value that commits to H, such as a
 `channelId` over the salt, it says so in one sentence, such as *"Each voucher in this channel signs a commitment to
-this ATR's hash."* The EVM, Tempo and Hedera sessions and the EVM batch-settlement channel say so; on the XRP Ledger
-session, `pattern.proves` says that each voucher signs the channel id and an amount, not H. The
+this ATR's hash."* The EVM and Tempo sessions and the EVM batch-settlement channel say so; on the XRP Ledger
+session, `data.proves` says that each voucher signs the channel id and an amount, not H. The
 [pairings reference](../reference/pairings.md#what-each-binding-proves) quotes each one.
 
 ## Reading settlement
 
-`reference(opening)` and `status(ref, reader)` read the opening's settlement, as on any pairing. On the MPP sessions
-on EVM, Tempo, Hedera, Solana and the XRP Ledger, and on `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives
-the read keys of the close from the issued challenge and the channel, and `status` reads the close through the same
-reader. On `mpp/session/evm`, a transaction
-that is not a call closing that channel reads as pending, with the reason `not-a-close`. On the EVM, Tempo and Hedera
-sessions, the Tempo subscription and `x402/batch-settlement/eip155`, an opening, a close or a transfer under the
-subscription's access key reads as failed only once the
-receipt's block is at or below the reader's `finalized` mark; above that mark, where the block can be replaced,
-or where the mark cannot be read, it reads as pending with the same reason
-([Reading settlement](./rails.md#reading-settlement)). On `mpp/session/solana`, `x402/upto/solana` and
-`x402/batch-settlement/solana`, an opening or a close that landed with an error, or an `mpp/session/solana` opening
-with no token or SOL transfer, reads as failed only from the read at `finalized`, and as pending `not-final` from the
-read at `confirmed`. A Solana close's channel account may come from an address lookup table: `status` reads it from the
-addresses the landed transaction's tables loaded, and a landed answer whose loaded addresses are not the ones the
-message's lookups name, or repeat a static key or each other, reads as pending `unreadable`. An x402 opening with no
-single `open` or `top_up` payment-channels instruction (`no-channel-instruction`), or a close whose instructions do not
-close the channel (`not-a-close`), reads as failed from a read at either commitment, since the signature fixes the
-instructions. A Solana close whose `settleAndSeal` or `seal` names its channel account through a table, and does not
-name the channel, is the exception: the signature fixes the table and the index, not the entry, so it reads as failed
-`not-a-close` only from the read at `finalized`, and as pending `not-final` from the read at `confirmed`.
-On `mpp/session/solana`, `fetchPresented(credential, reader)` reads each address lookup table the opening's message
-names, once, through the reader's `account` (`getAccountInfo` at `finalized`), and returns the credential with its
-tables written under the member the registered symbol `FETCHED` keys: for each lookup in order, the table's address and
-its entries at the lookup's writable and read-only indexes. Before
-any read, it checks what needs no account, as `bound` does: the one `open`, its salt, the `channelId` and
-`authentication`, so an opening that fails one gets its code, such as `svm/open-not-found` or
-`mpp/carrier-not-challenge`, whatever its lookups hold. `bound`, `reference` and `buildWithin` read the `open`'s
-accounts from the static keys, then every lookup's writable entries, then every lookup's read-only entries, the order
-the runtime loads them in. The read at `finalized` fixes what each index names: the address lookup table program only
-appends entries, and a closed table's address never holds a table again, while an entry written in a block that is not
-finalized can differ on another fork. A table owned by another program, whose data is not an initialized table, or
-that holds no entry at an index the message names and has no authority to extend it, is `svm/table-unusable`, as is a
-loaded address that repeats a static key or another loaded address: the runtime refuses each such lookup. A table
-whose deactivation slot is set is `svm/table-unusable` too, because the opening may land after the table stops
-resolving: the runtime loads from it only until that slot leaves the `SlotHashes` sysvar, which holds the slots of the
-last 512 blocks, nothing makes it active again, and a durable nonce keeps an opening valid with no expiry. No account
-at a table's address, an account there that the System program owns with no data (a table can still be created
-there), or no entry at an index of a table its authority can still extend, is `svm/not-found`, a read to repeat.
-`fetchPresented` reads every table before it answers, and a `svm/table-unusable` in one lookup comes before a read to
-repeat in another. An opening whose message has no lookups gets its tables empty, with nothing read; `build`'s
-`complete`, which reads no table, refuses an `open` whose message has lookups with `svm/read-first`, and the buyer
-checks that credential through `fetchPresented` and `bound`. `bound`, `reference` and `buildWithin` read the tables
-only from that member: an opening's own `tables` member, or any other string-keyed member, is never read, so an opening
-that arrives with one gives the answer it gives without it, `svm/read-first` for a message with lookups. No wire form
-carries the member, and `JSON.stringify` and `structuredClone` drop it, so both sides keep the object `fetchPresented`
-returned, or a spread or `Object.assign` copy of it, as the opening for the life of the channel, and pass it to
-`bound`, `reference` and `buildWithin` ([The MPP pairings](./mpp.md#the-mpp-pairings)): a later read gives each table as it stands then, and once the table's authority deactivates or closes it, that read is
-`svm/table-unusable` or `svm/not-found`, and no later read gives the channel's accounts.
-On `mpp/session/hedera`, `fetchPresented`, which reads the
-opening's receipt before `bound` and writes its escrow logs under `FETCHED`, the only member `bound` reads them from,
-refuses a revert by the same mark: an opening that reverted is `hedera/reverted` only
-once its block is at or below the reader's `finalized` mark, and `hedera/not-final`, a read to repeat, above that mark
-or where it cannot be read. An opening that succeeded whose escrow logs hold not exactly one `ChannelOpened` naming the
-channel is read by the same mark: `hedera/not-final` above it, and landed at or below it, where `bound` refuses it as
-`hedera/channel-log-not-found`. A reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a
-list of logs), or that holds a log that is not an object with a string `address`, an array of string `topics` and a
-string `data`, is `hedera/unreadable`, a read to repeat, and no mark is read for it. `recover` reads the same mark: an
-opening that reverted, whether or not its receipt holds the opening's log, is `hedera/reverted`, and a receipt without
-exactly one opening `ChannelOpened` log `hedera/channel-log-not-found`, each only once its block is at or below the
-reader's `finalized` mark, and `hedera/not-final` above that mark or where it cannot be read. `recover` works from what
-a transaction and its challenge identify: where the opening names no channel, as a transaction reported without its
-credential does not, `reference` gives the transaction and the challenge's `methodDetails.escrowContract`, and
-`recover` reads the escrow's one `ChannelOpened` log, with four topics and four data words, in that transaction.
-`status` reads that escrow-only reference as `recover` does: the escrow's one such log settles the opening, and none,
-or more than one, is failed `binding-log-not-found` at or below the reader's `finalized` mark and pending above it. On
-`mpp/subscription/tempo`,
-the close is the account keychain's `KeyRevoked` naming the payer's account and the access key, so `closeRef(challenge,
-channel, account)` takes the account the activation registered the key for, which `keySearch` reads from the
-activation's receipt as `accessKey.account`; without it, `closeRef` refuses `mpp/input-malformed`. Another account's
-revocation of the same key is not this close. On `mpp/session/evm`, `mpp/session/tempo` and `mpp/subscription/tempo`, a
-reference that names none of the keys its own pairing's `reference`, `closeRef` and `keySearch` write for the opening
-or the close (`opens`, `closes` or a binding log under `AuthorizationUsed` on the EVM session; `opened` or a binding
-log under `ChannelClosed` on the Tempo session; `revokes`, an `accessKey` with `account` or a binding log under
-`KeyAuthorizationWitness` on the subscription), or that names a key another of the three writes, reads as pending, with
-the reason `unreadable`, and nothing is read: no read could check H or the close.
+`reference(opening)` and `status(ref, reader)` read the opening's settlement, as on any pairing. On the MPP sessions on
+EVM, Tempo and the XRP Ledger, and on `mpp/subscription/tempo`, `closeRef(challenge, channel)` gives the read keys of
+the close from the issued challenge and the channel, and `status` reads the close through the same reader. On
+`mpp/session/evm`, a transaction that is not a call closing that channel reads as pending, with the reason
+`not-a-close`. On the EVM and Tempo sessions, the Tempo subscription and `x402/batch-settlement/eip155`, an opening, a
+close or a transfer under the subscription's access key reads as failed only once the receipt's block is at or below the
+reader's `finalized` mark; above that mark, where the block can be replaced, or where the mark cannot be read, it reads
+as pending with the same reason ([Reading settlement](./rails.md#reading-settlement)). On `x402/upto/solana` and
+`x402/batch-settlement/solana`, a transaction that landed with an error reads as failed only from the read at
+`finalized`, and as pending `not-final` from the read at `confirmed`. An x402 opening with no single `open` or `top_up`
+payment-channels instruction (`no-channel-instruction`) reads as failed from a read at either commitment, since the
+signature fixes the instructions. On `mpp/subscription/tempo`, the close is the account keychain's `KeyRevoked` naming
+the payer's account and the access key, so `closeRef(challenge, channel, account)` takes the account the activation
+registered the key for, which `keySearch` reads from the activation's receipt as `accessKey.account`; without it,
+`closeRef` refuses `mpp/input-malformed`. Another account's revocation of the same key is not this close. On
+`mpp/session/evm`, `mpp/session/tempo` and `mpp/subscription/tempo`, a reference that names none of the keys its own
+pairing's `reference`, `closeRef` and `keySearch` write for the opening or the close (`opens`, `closes` or a binding log
+under `AuthorizationUsed` on the EVM session; `opened` or a binding log under `ChannelClosed` on the Tempo session;
+`revokes`, an `accessKey` with `account` or a binding log under `KeyAuthorizationWitness` on the subscription), or that
+names a key another of the three writes, reads as pending, with the reason `unreadable`, and nothing is read: no read
+could check H or the close.
 
 The `mpp/subscription/tempo` activation is read by what the payer signed in the key authorization: its `reference`
 names the `Transfer` of the authorization's one limit token, which is also its one allowed-call target, to its one

@@ -103,6 +103,10 @@ import {
   type PaymentRequirements,
   type X402Choice,
 } from "./x402.js";
+import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
+import { EIP155_X402 } from "./internal/data/eip155-x402.js";
+import { SOLANA } from "./internal/data/solana.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 // ── EVM pieces ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -332,7 +336,7 @@ type BatchPairingId = typeof EVM_ID | typeof SVM_ID | typeof CF_ID;
 const MIN_DELAY = 900;
 const MAX_DELAY = 2_592_000;
 const MAX_MEMO = 256;
-const MAX_SIGNATURE_HEX = 2 + 2 * 8192;
+const MAX_SIGNATURE_HEX = 2 + 2 * MAX_SIGNATURE_BYTES;
 
 function isDelay(v: unknown): v is number {
   return Number.isInteger(v) && (v as number) >= MIN_DELAY && (v as number) <= MAX_DELAY;
@@ -879,21 +883,13 @@ function batchBroadcaster(kind: (payload: Record<string, unknown>) => unknown) {
  */
 export const batchEvm = Object.freeze({
   id: EVM_ID,
+  data: EIP155_X402[EVM_ID],
   pattern: Object.freeze({
     pattern: "native-field",
-    canonical: false,
     profile: EVM_ID,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: false,
-    publicProof: true,
-    proves:
-      "The payer signed a token authorization for a deposit into an x402 batch-settlement channel whose identifier, the " +
-      "EIP-712 hash of the channel's configuration, commits to this ATR's hash as the configuration's salt. The token " +
-      "contract or Permit2 verified that signature when the channel contract collected the deposit, and the hash is on " +
-      "chain as the salt in the channel's ChannelCreated event. Each voucher in this channel signs a commitment to this " +
-      "ATR's hash. This does not show that amount, payee, asset or timing match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
   unplaced,
@@ -913,7 +909,7 @@ export const batchEvm = Object.freeze({
     boundWithin: evmBoundWithin,
     until: (_p: BatchPaymentPayload): number | undefined => undefined,
   }),
-});
+}) satisfies Entry<typeof EVM_ID, BatchPaymentPayload, EvmRef & { transaction: Hex }, EvmReader>;
 
 // ── SVM pairing ──────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1328,22 +1324,14 @@ function svmUnplaced(option: PaymentRequirements): PaymentRequirements | Refusal
  */
 export const batchSvm = Object.freeze({
   id: SVM_ID,
+  data: SOLANA[SVM_ID],
   pattern: Object.freeze({
     pattern: "native-field",
-    canonical: true,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: false,
-    publicProof: true,
-    proves:
-      "The payer signed a Solana transaction whose seller Memo instruction (`extra.memo`) carries this ATR's hash in " +
-      "LCP string form, and which opened an x402 batch-settlement payment channel; it executed without error. The memo " +
-      "is in the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing " +
-      "match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
-  carrier: "extra.memo" as const,
   unplaced: svmUnplaced,
   tie,
   advertise: svmAdvertise,
@@ -1361,7 +1349,7 @@ export const batchSvm = Object.freeze({
     boundWithin: async (_p: BatchPaymentPayload): Promise<AtrHash | Refusal> => refusal("x402/not-bound-within"),
     until: (_p: BatchPaymentPayload): number | undefined => undefined,
   }),
-});
+}) satisfies Entry<typeof SVM_ID, BatchPaymentPayload, SvmRef & { transaction: string }, SvmReader>;
 
 // ── Cloudflare pairing ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1400,20 +1388,12 @@ async function cfBound(presented: unknown): Promise<AtrHash | Refusal> {
  */
 export const batchCloudflare = Object.freeze({
   id: CF_ID,
+  data: EIP155_X402[CF_ID],
   pattern: Object.freeze({
     pattern: "protocol-extension",
-    canonical: true,
-    buyerSigns: true,
     onChain: false,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: false,
-    proves:
-      "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-      "recorded in <transaction>. The buyer's agent signed, with the HTTP message signature key it registered with Cloudflare, a request whose " +
-      "PAYMENT-SIGNATURE header echoes this ATR's hash in the legalContext entry of x402's extensions. Cloudflare " +
-      "verifies that signature and bills the agent's registered identity off chain. This does not show that amount, " +
-      "asset or timing match the ATR's content.",
   }) as LcpPattern,
   claims: true as boolean,
   unplaced,
@@ -1423,4 +1403,4 @@ export const batchCloudflare = Object.freeze({
   build: cfBuild,
   bound: cfBound,
   broadcaster: x402Broadcaster("payee", { payload: null }),
-});
+}) satisfies Entry<typeof CF_ID, CloudflarePaymentPayload, never, never>;

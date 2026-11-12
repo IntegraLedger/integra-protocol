@@ -9,7 +9,7 @@ const DELIVERED = "The ATR was assembled and delivered before approval";
 const DELIVERED_BEFORE_PAYMENT = "The ATR was assembled and delivered before the payment";
 const AGREED: Readonly<Record<string, string>> = { "x402/exact/eip155/erc7710": DELIVERED_BEFORE_PAYMENT };
 
-/** Every string under a member named `proves`, at any depth of a pairing's `pattern`. */
+/** Every string under a member named `proves`, at any depth of a pairing's `data`. */
 function provesOf(v: unknown, out: string[] = []): string[] {
   if (typeof v !== "object" || v === null) return out;
   for (const [k, x] of Object.entries(v)) {
@@ -21,7 +21,7 @@ function provesOf(v: unknown, out: string[] = []): string[] {
 
 describe("proves: what the record shows about the ATR before approval", () => {
   const all = rowsOf(
-    BINDINGS.map((b) => ({ id: b.id, proves: provesOf((b as { pattern?: unknown }).pattern) })),
+    BINDINGS.map((b) => ({ id: b.id, proves: provesOf(b.data) })),
     "BINDINGS, each pairing's proves sentences",
   );
 
@@ -41,19 +41,5 @@ describe("proves: what the record shows about the ATR before approval", () => {
     expect(seen).toBeGreaterThan(0);
     const erc7710 = all.find((b) => b.id === "x402/exact/eip155/erc7710");
     expect(erc7710?.proves).toEqual([expect.stringContaining(DELIVERED_BEFORE_PAYMENT)]);
-  });
-
-  it("each sentence about the ATR before approval says it was assembled and delivered before approval", () => {
-    const before = /The ATR was assembled[^.]*before approval/;
-    const about = rowsOf(all, "BINDINGS, each pairing's proves sentences", {
-      keep: ["the pairings with a sentence about the ATR before approval", (b) => b.proves.some((p) => before.test(p))],
-      leave: ["the pairings whose sentences say nothing of the ATR before approval", (b) => !b.proves.some((p) => before.test(p))],
-    });
-    expect(about.length).toBeGreaterThan(0);
-    for (const b of about) {
-      for (const p of rowsOf(b.proves.filter((s) => before.test(s)), `${b.id}: its sentences about the ATR before approval`)) {
-        expect([b.id, p]).toEqual([b.id, expect.stringContaining(DELIVERED)]);
-      }
-    }
   });
 });

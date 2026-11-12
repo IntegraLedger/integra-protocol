@@ -104,6 +104,9 @@ import {
   type TempoKeyAuthorization,
 } from "./tempo.js";
 import type { LcpPattern } from "./x402.js";
+import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
+import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
+import type { Entry } from "./internal/registry.js";
 
 export type { ReceiveTypedData } from "./internal/evm.js";
 
@@ -190,10 +193,7 @@ export type SessionStatus =
 /**
  * The buyer's inputs to an in-channel payment: the within 402's challenge, which the in-channel credential echoes as
  * `buildWithin` reads it, a snapshot of its own members (`withinChecks`); the held opening, exactly as signed; the
- * cumulative amount to sign; and the action. On `mpp/session/solana`, the held opening is the credential
- * `fetchPresented` returned, with its tables under `FETCHED`, or a spread or `Object.assign` copy of it, kept for the
- * life of the channel: a later read gives each address lookup table as it stands then, and once the table's authority
- * deactivates or closes it no tables can be read.
+ * cumulative amount to sign; and the action.
  */
 export interface SessionWithin {
   challenge: MppChallenge & { id: string };
@@ -274,7 +274,7 @@ export async function withinChecks<O, R>(
 function oneHexSignature(signatures: readonly string[]): Hex | Refusal {
   if (!Array.isArray(signatures) || signatures.length !== 1) return refusal("mpp/credential-malformed");
   const [s] = signatures;
-  return isHexBytes(s, 1, MAX_SIGNATURE) ? s : refusal("mpp/credential-malformed");
+  return isHexBytes(s, 1, MAX_SIGNATURE_BYTES) ? s : refusal("mpp/credential-malformed");
 }
 
 const SESSION_EVM = "mpp/session/evm" as const;
@@ -296,7 +296,6 @@ const TRANSFER_SELECTORS: readonly Hex[] = ["0xa9059cbb", TRANSFER_WITH_MEMO_SEL
  */
 export const EVM_CLOSE_SELECTORS = Object.freeze(["0x0d65c51d", "0x79d35ded", "0x8e19899e"] as const);
 const TEMPO_V1_DEFAULT_CHAIN = 4217;
-const MAX_SIGNATURE = 8192;
 /** The shortest voucher signature `complete` takes: one byte. */
 const SHORTEST_SIGNATURE = "0x00";
 const MAX_WIRE = 65_536;
@@ -967,7 +966,7 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
       },
     ];
     const complete = (funded: Hex, voucherSignature: Hex): MppCredential | Refusal => {
-      if (normalHash(funded) === null || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (normalHash(funded) === null || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE_BYTES)) return refusal("mpp/credential-malformed");
       const payload = { ...base, type: "hash", hash: funded, signature: voucherSignature };
       return measured({ challenge, source, payload });
     };
@@ -1023,7 +1022,7 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
   }
   if (isRefusal(typedData)) return typedData;
   const complete = (funded: Hex, voucherSignature: Hex): MppCredential | Refusal => {
-    if (!isHexBytes(funded, 1, MAX_SIGNATURE) || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) {
+    if (!isHexBytes(funded, 1, MAX_SIGNATURE_BYTES) || !isHexBytes(voucherSignature, 1, MAX_SIGNATURE_BYTES)) {
       return refusal("mpp/credential-malformed");
     }
     return measured({
@@ -1548,7 +1547,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
     complete(signedTx: Hex, voucherSignature: Hex): MppCredential | Refusal {
       const c = held(signedTx, voucherSignature);
       if (isRefusal(c)) return c;
-      if (!isHexBytes(voucherSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(voucherSignature, 1, MAX_SIGNATURE_BYTES)) return refusal("mpp/credential-malformed");
       return c;
     },
   };
@@ -1783,7 +1782,7 @@ async function subscriptionBuild(choice: SessionChoice, h: AtrHash): Promise<Key
   return {
     request: { kind: "tempo-key-authorization", authorization, digest: keccakHex(unsigned) },
     complete(rootSignature: Hex): MppCredential | Refusal {
-      if (!isHexBytes(rootSignature, 1, MAX_SIGNATURE)) return refusal("mpp/credential-malformed");
+      if (!isHexBytes(rootSignature, 1, MAX_SIGNATURE_BYTES)) return refusal("mpp/credential-malformed");
       const signed = encodeKeyAuthorization(authorization, rootSignature);
       // A key authorization over its own bound is still measured in its credential first, as `bound` reads them: the
       // same RLP list, rlp([authorization, signature]), that `encodeKeyAuthorization` writes within the bound.
@@ -1816,22 +1815,13 @@ function subscriptionCloseRef(chosen: MppChallenge, _channel: string, account?: 
 
 // ── The records.
 
-/** Each voucher signs the channel id, which commits to the salt, H. */
-const VOUCHERS_COMMIT = "Each voucher in this channel signs a commitment to this ATR's hash.";
-
-function sessionPattern(proves: string): LcpPattern {
-  return deepFreeze({
-    pattern: "native-field",
-    canonical: false,
-    profile: "mpp/session/evm-tempo",
-    buyerSigns: true,
-    onChain: true,
-    zeroPartyRecoverable: true,
-    forwardIndexable: false,
-    publicProof: true,
-    proves,
-  });
-}
+const SESSION_PATTERN: LcpPattern = deepFreeze({
+  pattern: "native-field",
+  profile: "mpp/session/evm-tempo",
+  onChain: true,
+  zeroPartyRecoverable: true,
+  forwardIndexable: false,
+});
 
 async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refusal> {
   return refusal("mpp/not-bound-within");
@@ -1874,19 +1864,8 @@ const noEnd = (_presented: MppCredential): number | undefined => undefined;
  */
 export const sessionEvm = Object.freeze({
   id: SESSION_EVM,
-  pattern: sessionPattern(
-    "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with " +
-      "the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, " +
-      "keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer " +
-      "signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over " +
-      "the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and " +
-      "the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's " +
-      "deposit to the escrow. Where the payer sent the open call, or a relayer sent the escrow's Permit2 opening, the " +
-      "seller read that call: it is to the escrow, its salt is this ATR's hash, and its payer, payee, token and " +
-      "authorized signer give this channel id, so the payer is the account that signed the call or, on Permit2, the " +
-      "transfer. This does not show that amount, payee, asset or timing match the ATR's content. " +
-      VOUCHERS_COMMIT,
-  ),
+  data: EIP155_TEMPO_MPP[SESSION_EVM],
+  pattern: SESSION_PATTERN,
   claims: true as const,
   unplaced,
   tie,
@@ -1907,7 +1886,7 @@ export const sessionEvm = Object.freeze({
     boundWithin: measuringAsync(notBoundWithin),
     until: noEnd,
   }),
-});
+}) satisfies Entry<typeof SESSION_EVM, MppCredential, SessionRef & { transaction: Hex }, EvmReader>;
 
 /**
  * Who broadcasts a Tempo session payment: the seller's server, every payment the session takes, as
@@ -1928,14 +1907,8 @@ function tempoBroadcasts(credential: MppCredential): Broadcaster | Refusal {
  */
 export const sessionTempo = Object.freeze({
   id: SESSION_TEMPO,
-  pattern: sessionPattern(
-    "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with " +
-      "the challenge's position. The payer signed a Tempo transaction whose one call to the channel escrow opens a " +
-      "channel with this ATR's hash as its salt, and the chain verified that signature when it executed the call. The " +
-      "escrow's ChannelOpened event names the channel, whose id commits to the salt; on the TIP-1034 escrow the event " +
-      "also carries the salt itself. This does not show that amount, payee, asset or timing match the ATR's content. " +
-      VOUCHERS_COMMIT,
-  ),
+  data: EIP155_TEMPO_MPP[SESSION_TEMPO],
+  pattern: SESSION_PATTERN,
   claims: true as const,
   unplaced,
   tie,
@@ -1955,7 +1928,7 @@ export const sessionTempo = Object.freeze({
     boundWithin: measuringAsync(tempoBoundWithin),
     until: noEnd,
   }),
-});
+}) satisfies Entry<typeof SESSION_TEMPO, MppCredential, SessionRef & { transaction: Hex }, EvmReader>;
 
 /**
  * `mpp/subscription/tempo`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
@@ -1966,21 +1939,12 @@ export const sessionTempo = Object.freeze({
  */
 export const subscriptionTempo = Object.freeze({
   id: SUBSCRIPTION,
+  data: EIP155_TEMPO_MPP[SUBSCRIPTION],
   pattern: deepFreeze({
     pattern: "native-field",
-    canonical: true,
-    buyerSigns: true,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: true,
-    publicProof: true,
-    proves:
-      "The ATR's hash is the MPP subscription challenge's id, in base64url. The payer's root key signed a Tempo key " +
-      "authorization whose witness is this ATR's hash, granting the seller's access key a per-period limit. The chain " +
-      "verified that signature when the activation transaction registered the key, and the account keychain's " +
-      "KeyAuthorizationWitness event carries the payer's account and this hash as topics. The same transaction " +
-      "transferred the token the payer's key authorization limits to the recipient it allows. This does not show that " +
-      "amount, period, payee, asset or timing match the ATR's content.",
   } satisfies LcpPattern),
   claims: true as const,
   unplaced,
@@ -2013,4 +1977,4 @@ export const subscriptionTempo = Object.freeze({
     "transfer, <transaction>, made under that key: the account keychain's AccessKeySpend event in it names the payer's " +
     "account, the key and the token. This does not show that amount, period, payee, asset or timing match the ATR's " +
     "content.",
-});
+}) satisfies Entry<typeof SUBSCRIPTION, MppCredential, SessionRef & { transaction: Hex }, EvmReader>;

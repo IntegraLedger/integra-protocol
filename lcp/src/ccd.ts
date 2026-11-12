@@ -21,6 +21,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { CCD } from "./internal/data/ccd.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash. */
@@ -521,18 +523,10 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: ID,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a Concordium transaction one of whose transfers carries this ATR's hash, in LCP string form, " +
-    "as its memo. The chain accepted the transaction only with the sender's valid signature, and the memo is on " +
-    "chain in the finalized transfer event. This does not show that amount, payee, token or timing match the ATR's " +
-    "content.",
 });
 
 /**
@@ -541,6 +535,7 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactCcd = Object.freeze({
   id: ID,
+  data: CCD[ID],
   pattern,
   claims: true as boolean,
   unplaced,
@@ -553,4 +548,4 @@ export const exactCcd = Object.freeze({
   reference,
   status: ccdStatus,
   recover: ccdRecover,
-});
+}) satisfies Entry<typeof ID, CcdPaymentPayload, CcdRef & { transaction: string; h: AtrHash }, CcdReader>;

@@ -19,6 +19,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "../refusal.js"
 import type { PaymentPayload, PaymentRequired, PaymentRequirements, X402Offer } from "../x402.js";
 import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./agreement.js";
 import { broadcastsWithin, type Broadcaster } from "./broadcaster.js";
+import { MAX_LINK_LENGTH, MAX_OPTIONS } from "./bounds.js";
 
 export const LEGAL_CONTEXT = "legalContext";
 
@@ -33,8 +34,6 @@ export const LEGAL_CONTEXT_SCHEMA: Json = deepFreeze({
   required: ["type", "value", "legalContextUrl"],
 });
 
-export const MAX_OPTIONS = 32;
-export const MAX_LINK = 2048;
 
 /**
  * A pairing's option filter: `true` for an option the pairing serves, a refusal naming why an option of this pairing
@@ -106,7 +105,7 @@ export function advertiseFor(filter: OptionFilter): X402Advertise {
     if (f === undefined) return refusal("x402/option-not-this-pairing");
     if (f !== true) return f;
     if (!isHttpsLink(link)) return refusal("x402/link-not-https");
-    if (link.length > MAX_LINK) return refusal("x402/legal-context-malformed");
+    if (link.length > MAX_LINK_LENGTH) return refusal("x402/legal-context-malformed");
     const agreementFaulted = agreementUrlFault(agreementUrl);
     if (agreementFaulted?.fault === "link-not-https") return refusal("x402/link-not-https");
     if (agreementFaulted !== undefined) return refusal("x402/legal-context-malformed");
@@ -190,7 +189,7 @@ export function legalContextOf(extensions: unknown): { h: AtrHash; link: string 
   if (decoded === null) {
     return isHashWithNonHttpsLink(info) ? refusal("x402/link-not-https") : refusal("x402/legal-context-malformed");
   }
-  if (decoded.url.length > MAX_LINK) return refusal("x402/legal-context-malformed");
+  if (decoded.url.length > MAX_LINK_LENGTH) return refusal("x402/legal-context-malformed");
   return { h: decoded.h, link: decoded.url };
 }
 

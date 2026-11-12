@@ -206,7 +206,7 @@ recovered from the chain alone: true
 
 ## The agreement URL
 
-Where the chosen pairing's `pattern.publicProof` is false, the payment is not a public proof of H, and the buyer gates
+Where the chosen pairing's `data.coverage` is `none`, the payment is not a public proof of H, and the buyer gates
 require an agreement URL: pass it to `advertise` as `agreementUrl`, and `read` returns it as `agreement`. The buyer
 gates decline an offer that names none (`agreement-not-offered`). The buyer pays that URL first, with a payment that is
 itself a public proof of H, and makes the full payment only after the URL's receipt. Build the agreement URL from a

@@ -38,6 +38,8 @@ import {
 import { isXrplInvoiceId, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
+import { XRPL } from "./internal/data/xrpl.js";
+import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/charge/xrpl" as const;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
@@ -280,15 +282,9 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: true,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed, with a single key, an XRPL Payment whose InvoiceID is this ATR's hash, and the Payment is in a " +
-    "validated ledger with tesSUCCESS. This does not show that amount, destination, asset or timing match the ATR's content.",
 });
 
 /**
@@ -299,9 +295,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const chargeXrpl = Object.freeze({
   id: ID,
+  data: XRPL[ID],
   pattern,
   claims: true as boolean,
-  carrier: "request.methodDetails.invoiceId" as const,
   unplaced,
   tie,
   advertise,
@@ -317,4 +313,4 @@ export const chargeXrpl = Object.freeze({
     const hash = pushedField(presented, "hash", "hash");
     return hash !== undefined && HASH.test(hash) ? hash.toUpperCase() : undefined;
   },
-});
+}) satisfies Entry<typeof ID, MppCredential, XrplRef, XrplReader>;

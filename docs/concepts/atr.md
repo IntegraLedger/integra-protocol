@@ -7,8 +7,8 @@ description: What an ATR is, and how assemble writes its exact bytes.
 
 An **Agentic Transaction Record (ATR)** is the agreement's record: the exact bytes the seller serves and the buyer
 fetches before it pays; `assemble` writes them as one JSON object. Where the payment the buyer approves carries the
-ATR's hash, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves`
-says so.
+ATR's hash, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's
+`data.proves` says so.
 
 This package decides nothing about what an ATR says. It fixes only three things: a format marker, a per-transaction
 identifier, and the values that tie the record to one payment. Everything else is the parties' content, carried

@@ -5,7 +5,7 @@ import { xdr } from "@stellar/stellar-sdk/base";
 import { describe, expect, it } from "vitest";
 import { MSGPACK_MAX_DEPTH } from "../src/avm.js";
 import { msgpackWithinCaps } from "../src/internal/avm.js";
-import { scValsWithinCaps, XDR_MAX_DEPTH, type StellarPaymentPayload } from "../src/internal/stellar.js";
+import { scValsWithinCaps, XDR_MAX_DEPTH } from "../src/internal/stellar.js";
 import {
   XdrString,
   type InvokeHostFunctionOpWire,
@@ -21,8 +21,6 @@ import {
   type StellarReader,
   type StellarRef,
 } from "../src/stellar.js";
-import { exactStellar } from "../src/x402-exact-stellar.js";
-import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { decodeBlob, XRPL_MAX_DEPTH } from "../src/xrpl.js";
 import { rowsOf } from "./rows.js";
 import { wellFormedUtf8 } from "./utf8-syntax.js";
@@ -503,7 +501,7 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
 
   // x402-exact-stellar.json V5: its ref is V2's (V3's) payer entry, and its first row is that envelope landed. Each row
   // that adds an unused entry, a footprint or a delegate is that payment, whatever the depth of what it adds.
-  it("a landed payment whose envelope nests anything lcp does not read, at any depth, settles, is found and binds", async () => {
+  it("a landed payment whose envelope nests anything lcp does not read, at any depth, settles and is found", async () => {
     const ref = X.V5.ref as StellarRef & { transaction: string };
     const landed = X.V5.rows[0];
     const unusedRows = rowsOf(envelopes, "decoder-caps.json scval.envelopes", {
@@ -528,13 +526,6 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
       };
       expect(await stellarStatus(ref, reader), r.name).toEqual(landed.expect);
       expect(await stellarLocate(ref, reader), r.name).toEqual({ found: ref.transaction, complete: true });
-      const p: StellarPaymentPayload = {
-        x402Version: 2,
-        accepted: X.V3.accepted,
-        payload: { transaction: r.xdr },
-        extensions: X.V3.extensions,
-      };
-      expect(await exactStellar.bound(p), r.name).toBe(X.V3.expectBound);
     }
   });
 
@@ -547,26 +538,6 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
     expect(n).toBeGreaterThan(186);
     expect(sdkDefaultDecodes(deepest)).toBe(false);
     expect(decodeStellarTx(deepest, "stellar:testnet")).toEqual(decodeStellarTx(X.V2.expectEnvelope, "stellar:testnet"));
-  });
-
-  // x402-exact-stellar.json V2: build over its simulated envelope with an unused entry added past js-xdr's default depth
-  // (SE35's entry), and the payer's signature completes V2's envelope with that entry: the writer is not what decides.
-  it("build and complete keep an unused entry nested past js-xdr's default depth", async () => {
-    const entry = unusedEntry(instances(186));
-    const simulatedXdr = edited(entry, X.V2.simulatedXdr);
-    const accepted: PaymentRequirements = X.V3.accepted;
-    const required: PaymentRequired = { x402Version: 2, resource: X.fixed.resource, accepts: [accepted] };
-    const u = await exactStellar.build({ required, accepted, simulatedXdr, currentLedger: X.V2.currentLedger, payer: X.fixed.payer }, X.fixed.H);
-    if ("refused" in u) throw new Error(u.code);
-    const env = xdr.TransactionEnvelope.fromXdr(X.V2.expectEnvelope, "base64").toXdrObject();
-    if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not V2's envelope");
-    const c = env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth[0]!.credentials;
-    if (c.type !== 1 || c.address.signature.type !== 16) throw new Error("not V2's signature");
-    const sig = c.address.signature.vec![0]!;
-    if (sig.type !== 17) throw new Error("not V2's signature");
-    const signature = sig.map![1]!.val;
-    if (signature.type !== 13) throw new Error("not V2's signature");
-    expect(u.complete(signature.bytes)).toBe(edited(entry));
   });
 
   // @stellar/stellar-sdk 17.2.1's XDR schemas, walked as js-xdr 5.0.0 reads them: it enters one level for each union,

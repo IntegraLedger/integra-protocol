@@ -1,18 +1,15 @@
-// Runs x402-exact-stellar.json through the stellar and x402/exact/stellar entry points. Every expected value is the file's.
+// Runs x402-exact-stellar.json through the stellar entry point. Every expected value is the file's.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ed25519 } from "@noble/curves/ed25519.js";
 import { Keypair, Networks, StrKey, authorizeEntry, buildAuthorizationEntryPreimage, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { ScVal, TransactionEnvelope } from "@stellar/stellar-sdk/xdr";
 import { ReaderError } from "../src/evm.js";
-import { pairingOf, type AtrHash } from "../src/index.js";
-import type { StellarPaymentPayload } from "../src/internal/stellar.js";
+import type { AtrHash } from "../src/index.js";
 import {
   PASSPHRASE,
   decodeStellarTx,
   muxedFor,
-  muxedId,
   stellarLocate,
   stellarStatus,
   transferEventOf,
@@ -20,17 +17,13 @@ import {
   type StellarReader,
   type StellarRef,
 } from "../src/stellar.js";
-import { exactStellar } from "../src/x402-exact-stellar.js";
-import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { account, muxed, signed, simulated, type Case } from "./fixtures/stellar-signed-invocation.js";
 import { rowsOf } from "./rows.js";
 import type { TransactionEnvelopeWire } from "@stellar/stellar-sdk/xdr";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
-const EVM = JSON.parse(readFileSync(new URL("../vectors/x402-exact-eip155-eip3009.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
-const O: PaymentRequirements = V.fixed.option;
 const refused = (code: string) => ({ refused: true, code });
 const sha256 = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
 const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex"));
@@ -85,8 +78,6 @@ function readerFor(row: Row): StellarReader {
 
 describe("x402-exact-stellar.json", () => {
   it("V1: the carrier", () => {
-    expect(muxedId(H)).toBe(BigInt(V.V1.muxedId));
-    expect(muxedId(H).toString(16)).toBe(V.V1.muxedIdHex);
     const m = muxedFor(V.fixed.seller, H);
     expect(m).toBe(V.V1.M);
     expect((m as string).length).toBe(V.V1.Mlength);
@@ -97,77 +88,6 @@ describe("x402-exact-stellar.json", () => {
     const to = body.invokeHostFunctionOp.hostFunction.invokeContract.args[1]!;
     expect(ScVal.fromXdrObject(to).toXdr("base64")).toBe(V.V1.toScValXdr);
     expect(sha256(PASSPHRASE["stellar:testnet"]).slice(0, 8)).toBe(V.V2.networkIdPrefix);
-  });
-
-  it("advertise sets payTo to the muxed carrier, read gives H, unplaced gives the option as issued", () => {
-    const doc = exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
-    if ("refused" in doc) throw new Error(doc.code);
-    expect(doc.accepts[0]).toEqual(V.V3.accepted);
-    const r = exactStellar.read(doc);
-    if ("refused" in r) throw new Error(r.code);
-    expect(r.h).toBe(H);
-    expect(exactStellar.unplaced(doc.accepts[0]!)).toEqual(O);
-    expect(pairingOf(O)).toBe("x402/exact/stellar");
-  });
-
-  it("V2: build returns the vector's preimage; the payer's signature completes the vector's envelope", async () => {
-    const accepted: PaymentRequirements = V.V3.accepted;
-    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-    const u = await exactStellar.build(
-      { required, accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer },
-      H,
-    );
-    if ("refused" in u) throw new Error(u.code);
-    expect(u.request.kind).toBe("stellar-auth");
-    expect(u.request.preimage.length).toBe(V.V2.expectPreimageLength);
-    expect(sha256(u.request.preimage)).toBe(V.V2.expectPreimageSha256);
-    const sig = ed25519.sign(fromHex(sha256(u.request.preimage)), fromHex(V.fixed.payerSeed));
-    const sigHex = Buffer.from(sig).toString("hex");
-    expect(sigHex.startsWith(V.V2.expectSignaturePrefix)).toBe(true);
-    expect(sigHex.endsWith(V.V2.expectSignatureSuffix)).toBe(true);
-    expect(u.complete(sig)).toBe(V.V2.expectEnvelope);
-  });
-
-  it("build refuses an H that is not a 32-byte hash as x402/payload-malformed (docs/reference/refusals.md)", async () => {
-    const accepted: PaymentRequirements = V.V3.accepted;
-    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-    const choice = { required, accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer };
-    for (const bad of [null, "0x12", H.slice(2), `lcp:sha256:${H}`]) {
-      expect(await exactStellar.build(choice, bad as AtrHash), String(bad)).toEqual({ refused: true, code: "x402/payload-malformed" });
-    }
-  });
-
-  it("V3: bound and reference", async () => {
-    expect(Buffer.from(V.V3.envelope, "base64").length).toBe(V.V3.envelopeLength);
-    const p: StellarPaymentPayload = {
-      x402Version: 2,
-      accepted: V.V3.accepted,
-      payload: { transaction: V.V3.envelope },
-      extensions: V.V3.extensions,
-    };
-    expect(await exactStellar.bound(p)).toBe(V.V3.expectBound);
-    const r = await exactStellar.reference(p);
-    expect(r).toEqual(V.V3.expectReference);
-    expect(JSON.parse(JSON.stringify(r))).toEqual(r);
-  });
-
-  it("V4: refusals", async () => {
-    for (const row of rowsOf(V.V4, "x402-exact-stellar.json V4")) {
-      if (row.advertiseOption !== undefined) {
-        const o: PaymentRequirements = row.advertiseOption;
-        expect(exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o)).toEqual(
-          refused(row.expect),
-        );
-        continue;
-      }
-      const p: StellarPaymentPayload = {
-        x402Version: 2,
-        accepted: row.accepted,
-        payload: { transaction: row.envelope },
-        extensions: row.extensions,
-      };
-      expect(await exactStellar.bound(p), row.case).toEqual(refused(row.expect));
-    }
   });
 
   it("V5: status and stellarLocate", async () => {
@@ -354,9 +274,6 @@ describe("x402-exact-stellar.json", () => {
       expect(await stellarLocate(ref, listed)).toEqual({ found: "bb".repeat(32), complete: true });
       const code = V.agreedRefusals.rows[3].expect;
       expect(decodeStellarTx(row.envelope, "stellar:testnet")).toEqual(refused(code));
-      const p: StellarPaymentPayload = { x402Version: 2, accepted: V.V3.accepted, payload: { transaction: row.envelope }, extensions: V.V3.extensions };
-      expect(await exactStellar.bound(p)).toEqual(refused(code));
-      expect(await exactStellar.reference(p)).toEqual(refused(code));
     });
 
     // rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing: the host tries the entries in order, skips one
@@ -375,30 +292,8 @@ describe("x402-exact-stellar.json", () => {
     });
   });
 
-  it("V3v2: sorobanCredentialsAddressV2 decodes, builds and settles", async () => {
-    const accepted: PaymentRequirements = V.V3.accepted;
-    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-    const u = await exactStellar.build(
-      { required, accepted, simulatedXdr: V.V3v2.simulatedXdr, currentLedger: V.V3v2.currentLedger, payer: V.fixed.payer },
-      H,
-    );
-    if ("refused" in u) throw new Error(u.code);
-    expect(u.request.preimage.length).toBe(V.V3v2.expectPreimageLength);
-    expect(sha256(u.request.preimage)).toBe(V.V3v2.expectPreimageSha256);
-    const sig = ed25519.sign(fromHex(sha256(u.request.preimage)), fromHex(V.fixed.payerSeed));
-    expect(Buffer.from(sig).toString("hex")).toBe(V.V3v2.expectSignature);
-    expect(u.complete(sig)).toBe(V.V3v2.envelope);
+  it("V3v2: sorobanCredentialsAddressV2 decodes and settles", async () => {
     expect(Buffer.from(V.V3v2.envelope, "base64").length).toBe(V.V3v2.envelopeLength);
-    const p: StellarPaymentPayload = {
-      x402Version: 2,
-      accepted,
-      payload: { transaction: V.V3v2.envelope },
-      extensions: V.V3.extensions,
-    };
-    expect(await exactStellar.bound(p)).toBe(V.V3v2.expectBound);
-    const r = await exactStellar.reference(p);
-    expect(r).toEqual(V.V3v2.expectReference);
-    expect(JSON.parse(JSON.stringify(r))).toEqual(r);
     const ref = { ...V.V3v2.expectReference, transaction: "aa".repeat(32) } as StellarRef & { transaction: string };
     expect(await stellarStatus(ref, readerFor({ status: "SUCCESS", envelope: V.V3v2.envelope, ledger: 990 }))).toEqual(V.V3v2.expectStatus);
     const v1: StellarRef & { transaction: string } = { ...ref, authDigest: V.V3.expectReference.authDigest };
@@ -562,89 +457,6 @@ describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvoc
     buildRows.forEach((c, i) => expect(simulated(V.V2.simulatedXdr, c)).toBe(V.V4build.rows[i].simulatedXdr));
   });
 
-  it("build refuses a simulated envelope whose signed invocation is not the operation's, pays another account, or moves another amount or token, or from another payer, than the option names", async () => {
-    const accepted: PaymentRequirements = V.V3.accepted;
-    const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-    for (const row of rowsOf(V.V4build.rows, "x402-exact-stellar.json V4build.rows", { exact: buildRows.length })) {
-      const choice = { required, accepted, simulatedXdr: row.simulatedXdr, currentLedger: V.V4build.currentLedger, payer: V.fixed.payer };
-      expect(await exactStellar.build(choice, H), row.case).toEqual(refused(row.expect));
-    }
-  });
-
-  it("reference's authDigest is SHA-256 of the HashIDPreimage the SDK builds, and the payer's signature verifies over it", async () => {
-    const p: StellarPaymentPayload = { x402Version: 2, accepted: V.V3.accepted, payload: { transaction: V.V3.envelope }, extensions: V.V3.extensions };
-    const r = await exactStellar.reference(p);
-    if ("refused" in r) throw new Error(r.code);
-    const env = xdr.TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
-    if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
-    const wire = env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth[0]!;
-    const entry = xdr.SorobanAuthorizationEntry.fromXdrObject(wire);
-    const preimage = buildAuthorizationEntryPreimage(entry, 1000, Networks.TESTNET).toXdr("raw");
-    expect(r.authDigest).toBe(`0x${sha256(preimage)}`);
-    if (wire.credentials.type !== 1 || wire.credentials.address.signature.type !== 16) throw new Error("not an account signature");
-    const map = wire.credentials.address.signature.vec![0]!;
-    if (map.type !== 17) throw new Error("not a signature map");
-    const sig = map.map!.find((e) => e.key.type === 15 && e.key.sym.toString() === "signature")!.val;
-    if (sig.type !== 13) throw new Error("not bytes");
-    expect(ed25519.verify(sig.bytes, fromHex(sha256(preimage)), Keypair.fromRawEd25519Seed(Buffer.from(seed)).rawPublicKey())).toBe(true);
-  });
-
-  // x402 v2's PaymentRequirements gives `amount` as the atomic amount in a string, and the filter holds it to the
-  // canonical decimal of a positive integer (x402-option-amount.test.ts); x402-exact-stellar.json's agreed refusal for
-  // an amount that is not a positive i128 is `x402/option-malformed`.
-  it("an option whose amount is 0, -1 or 2^127 is not served: advertise and build refuse it, read and pairingOf do not offer it", async () => {
-    const doc = exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [V.fixed.option] }, H, V.fixed.link, V.fixed.option);
-    if ("refused" in doc) throw new Error(doc.code);
-    for (const amount of ["0", "-1", (1n << 127n).toString()]) {
-      const o: PaymentRequirements = { ...V.fixed.option, amount };
-      expect(exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o), amount).toEqual(
-        refused("x402/option-malformed"),
-      );
-      expect(exactStellar.read({ ...doc, accepts: [{ ...doc.accepts[0]!, amount }] }), amount).toEqual(refused("x402/no-payable-option"));
-      expect(pairingOf(o), amount).toBeUndefined();
-      const accepted = { ...doc.accepts[0]!, amount };
-      const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-      const simulatedXdr = V.V2.simulatedXdr;
-      expect(await exactStellar.build({ required, accepted, simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer }, H), amount).toEqual(
-        refused("x402/option-malformed"),
-      );
-    }
-  });
-
-  // The transfer's amount is an i128 (x402-foundation/x402 8228bd6d specs/schemes/exact/scheme_exact_stellar.md:121),
-  // whose XDR is Int128Parts { int64 hi; uint64 lo; } (stellar-xdr, as @stellar/stellar-sdk 17.2.1 generates it): its
-  // largest value is 2^127 - 1, which has 39 decimal digits, as 10^38 does. The SDK's nativeToScVal encodes 10^38 and
-  // 2^127 - 1 as an i128 and throws RangeError for 2^127 and 10^39; an option asking for either of those is
-  // x402-exact-stellar.json's agreed refusal for an amount that is not a positive i128.
-  it("an option's amount is served up to 2^127 - 1, the largest i128, and refused from 2^127: advertise and build", async () => {
-    for (const amount of [10n ** 38n, (1n << 127n) - 1n]) {
-      const o: PaymentRequirements = { ...V.fixed.option, amount: amount.toString() };
-      const doc = exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o);
-      if ("refused" in doc) throw new Error(`${amount}: ${doc.code}`);
-      const accepted = doc.accepts[0]!;
-      expect(accepted).toEqual({ ...V.V3.accepted, amount: amount.toString() });
-      const simulatedXdr = simulated(V.V2.simulatedXdr, moved(amount));
-      const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-      const u = await exactStellar.build({ required, accepted, simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer }, H);
-      if ("refused" in u) throw new Error(`${amount}: ${u.code}`);
-      const env = xdr.TransactionEnvelope.fromXdr(simulatedXdr, "base64").toXdrObject();
-      if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
-      const entry = xdr.SorobanAuthorizationEntry.fromXdrObject(env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth[0]!);
-      const preimage = buildAuthorizationEntryPreimage(entry, V.V2.expectExpiration, Networks.TESTNET).toXdr("raw");
-      expect(sha256(u.request.preimage), amount.toString()).toBe(sha256(preimage));
-    }
-    for (const amount of [1n << 127n, 10n ** 39n]) {
-      expect(() => nativeToScVal(amount, { type: "i128" })).toThrow(RangeError);
-      const o: PaymentRequirements = { ...V.fixed.option, amount: amount.toString() };
-      expect(exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o), amount.toString()).toEqual(
-        refused("x402/option-malformed"),
-      );
-      const accepted: PaymentRequirements = { ...V.V3.accepted, amount: amount.toString() };
-      const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
-      const choice = { required, accepted, simulatedXdr: V.V2.simulatedXdr, currentLedger: V.V2.currentLedger, payer: V.fixed.payer };
-      expect(await exactStellar.build(choice, H), amount.toString()).toEqual(refused("x402/option-malformed"));
-    }
-  });
 });
 
 // An envelope's length is counted in UTF-16 code units, as JavaScript's String length counts it: the rows' strings end
@@ -664,51 +476,23 @@ describe("x402-exact-stellar.json agreedRefusals: an envelope string beyond the 
   for (const r of rows) {
     it(`${r.case}: ${r.expect}`, async () => {
       expect(decodeStellarTx(r.transaction!, "stellar:testnet")).toEqual(refused(r.expect));
-      const p = { x402Version: 2, accepted: V.V3.accepted, payload: { transaction: r.transaction! }, extensions: V.V3.extensions };
-      expect(await exactStellar.bound(p as never)).toEqual(refused(r.expect));
     });
   }
 });
 
 // The agreedRefusals rows without a transaction string state a refusal in words. The peer-missing row runs in
-// stellar-peer-missing.test.ts and row 3 in the V5 two-entry test above; each case below calls the entry points its row
-// names, once for each condition the row lists, with inputs built from the file's V2 simulated envelope, V3's envelope,
-// option and extensions, V4build's other token contract and payer, and the first events row, and every result is the
-// row's code.
+// stellar-peer-missing.test.ts and row 3 in the V5 two-entry test above; each case below calls the decoder its row
+// names, once for each condition the row lists, with inputs built from the file's V2 simulated envelope, V3's envelope
+// and the first events row, and every result is the row's code.
 describe("x402-exact-stellar.json agreedRefusals: every row that states its refusal in words runs", () => {
-  const accepted: PaymentRequirements = V.V3.accepted;
-  const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [accepted] };
   const seller = StrKey.decodeEd25519PublicKey(V.fixed.seller);
   const M = muxed(seller, BigInt(V.V1.muxedId));
-  const G = account(seller);
   const A = BigInt(V.fixed.option.amount);
   const agree: Case = { operation: { to: M, amount: A }, signed: { to: M, amount: A } };
   const seed = fromHex(V.fixed.payerSeed);
 
-  /** build on V2's simulated envelope and ledger for V3's option, the payer and H, with any of them replaced. */
-  const build = (x: { accepted?: PaymentRequirements; simulatedXdr?: string; payer?: string; h?: AtrHash } = {}) => {
-    const option = x.accepted ?? accepted;
-    return exactStellar.build(
-      {
-        required: { ...required, accepts: [option] },
-        accepted: option,
-        simulatedXdr: x.simulatedXdr ?? V.V2.simulatedXdr,
-        currentLedger: V.V2.currentLedger,
-        payer: x.payer ?? V.fixed.payer,
-      },
-      x.h ?? H,
-    );
-  };
-  /** V3's payment, with its envelope or option replaced. */
-  const payment = (x: { transaction?: string; accepted?: PaymentRequirements } = {}): StellarPaymentPayload => ({
-    x402Version: 2,
-    accepted: x.accepted ?? accepted,
-    payload: { transaction: x.transaction ?? V.V3.envelope },
-    extensions: V.V3.extensions,
-  });
-  const boundAndReference = async (p: unknown) => [await exactStellar.bound(p as never), await exactStellar.reference(p as never)];
-  /** decodeStellarTx, bound and reference of V3's payment carrying `envelope`. */
-  const read = async (envelope: string) => [decodeStellarTx(envelope, "stellar:testnet"), ...(await boundAndReference(payment({ transaction: envelope })))];
+  /** decodeStellarTx of `envelope`. */
+  const read = async (envelope: string) => [decodeStellarTx(envelope, "stellar:testnet")];
   /** The envelope decoded, changed, and encoded again. */
   const edited = (xdrB64: string, change: (e: TransactionEnvelopeWire) => TransactionEnvelopeWire | void): string => {
     const e = xdr.TransactionEnvelope.fromXdr(xdrB64, "base64").toXdrObject();
@@ -749,27 +533,21 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
           const body = { sourceAccountEd25519: tx.sourceAccount.ed25519, fee: tx.fee, seqNum: tx.seqNum, timeBounds: null, memo: tx.memo };
           return { type: 0, v0: { tx: { ...body, operations: tx.operations, ext: { v: 0 } }, signatures } };
         });
-        const u = await build();
-        if ("refused" in u) throw new Error(u.code);
         return [
           ...(await read(`-${envelope.slice(1)}`)),
           ...(await read(envelope.slice(0, -1))),
           ...(await read(padBit)),
           ...(await read(v0)),
           ...(await read(trailing)),
-          u.complete(new Uint8Array(63)),
-          u.complete(new Uint8Array(65)),
         ];
       },
     "an envelope over 8192 base64 characters": async () => {
-      // One account fewer, each envelope is within the bound: bound reads V3's payment, and build builds.
-      expect([withFootprint(V.V3.envelope, 136).length, withFootprint(V.V2.simulatedXdr, 140).length]).toEqual([8172, 8156]);
-      expect(await exactStellar.bound(payment({ transaction: withFootprint(V.V3.envelope, 136) }))).toBe(H);
-      expect("refused" in (await build({ simulatedXdr: withFootprint(V.V2.simulatedXdr, 140) }))).toBe(false);
+      // One account fewer, the envelope is within the bound: decodeStellarTx reads it.
+      expect(withFootprint(V.V3.envelope, 136).length).toBe(8172);
+      expect("refused" in decodeStellarTx(withFootprint(V.V3.envelope, 136), "stellar:testnet")).toBe(false);
       const envelope = withFootprint(V.V3.envelope, 137);
-      const simulatedXdr = withFootprint(V.V2.simulatedXdr, 141);
-      expect([envelope.length, simulatedXdr.length]).toEqual([8224, 8208]);
-      return [...(await read(envelope)), await build({ simulatedXdr })];
+      expect(envelope.length).toBe(8224);
+      return read(envelope);
     },
     "an operation that is not one transfer(from, to, amount), or an entry whose rootInvocation is not that same invocation byte for byte with no sub-invocations, checked after the carrier":
       async () => {
@@ -789,59 +567,8 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
           ...(await read(approve)),
           ...(await read(await signed(V.V2.simulatedXdr, otherAmount, seed, 1000))),
           ...(await read(await signed(V.V2.simulatedXdr, subInvocation, seed, 1000))),
-          await build({ simulatedXdr: simulated(V.V2.simulatedXdr, otherAmount) }),
-          await build({ simulatedXdr: simulated(V.V2.simulatedXdr, subInvocation) }),
         ];
       },
-    "build when the option's payTo is not muxed with muxedId(h), or the simulated to is not the option's payTo": async () => [
-      await build({ accepted: { ...accepted, payTo: V.fixed.seller } }),
-      await build({ h: `0x${"11".repeat(32)}` }),
-      await build({ simulatedXdr: simulated(V.V2.simulatedXdr, { operation: { to: G, amount: A }, signed: { to: G, amount: A } }) }),
-    ],
-    "build when the operation and the signed invocation agree but call a token contract other than the option's asset (x402 scheme_exact_stellar: the SEP-41 token of requirements.asset; MPP stellar charge: the contract matching currency), checked after the carrier and the one-transfer check":
-      async () => [
-        await build({ simulatedXdr: simulated(V.V2.simulatedXdr, { ...agree, asset: StrKey.decodeContract(V.V4build.otherAsset) }) }),
-        await build({ accepted: { ...accepted, asset: V.V4build.otherAsset } }),
-      ],
-    "build when the agreed transfer's amount is not the option's amount (x402 scheme_exact_stellar: argument 2 MUST equal requirements.amount exactly, as i128; MPP stellar charge: the request's amount), checked after the asset":
-      async () => [
-        await build({ simulatedXdr: simulated(V.V2.simulatedXdr, { operation: { to: M, amount: A + 1n }, signed: { to: M, amount: A + 1n } }) }),
-        await build({ accepted: { ...accepted, amount: (A + 1n).toString() } }),
-      ],
-    "build when the agreed transfer's from is not the choice's payer, the account whose key signs, checked after the amount": async () => [
-      await build({ payer: V.V4build.otherPayer }),
-      await build({ simulatedXdr: simulated(V.V2.simulatedXdr, { ...agree, from: StrKey.decodeEd25519PublicKey(V.V4build.otherPayer) }) }),
-    ],
-    "advertise or build with an amount that is not a positive i128 in decimal, or maxTimeoutSeconds not a positive integer": async () => {
-      const amounts: unknown[] = ["0", "010", "-1", "1.5", "0x10", "1e7", (1n << 127n).toString(), 10_000_000];
-      const timeouts: unknown[] = [0, -60, 1.5, "60"];
-      const offered = [
-        ...amounts.map((amount) => ({ amount })),
-        ...timeouts.map((maxTimeoutSeconds) => ({ maxTimeoutSeconds })),
-      ];
-      const results: unknown[] = [];
-      for (const x of offered) {
-        const o = { ...V.fixed.option, ...x } as PaymentRequirements;
-        results.push(exactStellar.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, V.fixed.link, o));
-        results.push(await build({ accepted: { ...accepted, ...x } as PaymentRequirements }));
-      }
-      return results;
-    },
-    "a payment whose option fails the pairing's filter": async () => {
-      const options = [
-        { ...accepted, scheme: "upto" },
-        { ...accepted, network: "eip155:8453" },
-        { ...accepted, asset: V.fixed.seller },
-        { ...accepted, payTo: V.fixed.asset },
-        { ...accepted, extra: { areFeesSponsored: false } },
-        { ...accepted, extra: {} },
-      ];
-      return (await Promise.all(options.map((o) => boundAndReference(payment({ accepted: o as PaymentRequirements }))))).flat();
-    },
-    "a payment without an echoed extensions.legalContext": async () => {
-      const { extensions: _extensions, ...without } = payment();
-      return [...(await boundAndReference(without)), ...(await boundAndReference({ ...payment(), extensions: {} }))];
-    },
     "a transfer event whose topics or data are not a SEP-41 transfer (symbol transfer, an address to, and an i128 or a map for data), or over 1024 base64 characters":
       async () => {
         const { topic, value } = V.events.rows[0] as { topic: string[]; value: string };
@@ -858,18 +585,6 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
           transferEventOf([name, from, to, "A".repeat(1028)], value),
         ];
       },
-    // With the SDK here; stellar-peer-missing.test.ts reads the same row without it. The row's accepts, then that accepts
-    // with x402-exact-eip155-eip3009.json's option added, which is another pairing's.
-    "read of a challenge whose accepts holds no Stellar option, with @stellar/stellar-sdk and without it: here no option at all":
-      async () => {
-        const [row] = rowsOf(V.agreedRefusals.rows as { accepts?: PaymentRequirements[] }[], "x402-exact-stellar.json agreedRefusals.rows", {
-          exact: 1,
-          keep: ["the row with accepts", (r) => r.accepts !== undefined],
-          leave: ["every other row", (r) => r.accepts === undefined],
-        });
-        const doc = (accepts: PaymentRequirements[]) => ({ x402Version: 2 as const, resource: V.fixed.resource, accepts, extensions: V.V3.extensions });
-        return [exactStellar.read(doc(row!.accepts!)), exactStellar.read(doc([...row!.accepts!, EVM.fixed.O]))];
-      },
   };
 
   const rows = rowsOf(V.agreedRefusals.rows as { case: string; transaction?: string; expect: string }[], "x402-exact-stellar.json agreedRefusals.rows", {
@@ -879,7 +594,7 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
       (r, i) => r.transaction === undefined && r.expect !== "stellar/peer-missing" && i !== 3,
     ],
     leave: [
-      "the peer-missing row, which stellar-peer-missing.test.ts runs; row 3, which the V5 two-entry test runs by its index and the build test below runs at build; and the rows with a transaction string, which the 8192-bound test above runs",
+      "the peer-missing row, which stellar-peer-missing.test.ts runs; row 3, which the V5 two-entry test runs by its index; and the rows with a transaction string, which the 8192-bound test above runs",
       (r, i) => r.expect === "stellar/peer-missing" || i === 3 || typeof r.transaction === "string",
     ],
   });
@@ -895,45 +610,4 @@ describe("x402-exact-stellar.json agreedRefusals: every row that states its refu
       for (const r of results) expect(r).toEqual(refused(row.expect));
     });
   }
-
-  // Row 3 at build: V2's simulated envelope with two address entries for the payer, with none, and with its one entry
-  // carrying sorobanCredentialsSourceAccount.
-  it("row 3: build refuses an envelope without exactly one address entry for the payer", async () => {
-    const withAuth = (change: (auth: unknown[]) => unknown[]) =>
-      edited(V.V2.simulatedXdr, (e) => {
-        const body = v1Of(e).tx.operations[0]!.body;
-        if (body.type !== 24) throw new Error("not an invocation");
-        body.invokeHostFunctionOp.auth = change(body.invokeHostFunctionOp.auth) as typeof body.invokeHostFunctionOp.auth;
-      });
-    const results = [
-      await build({ simulatedXdr: withAuth((auth) => [auth[0], auth[0]]) }),
-      await build({ simulatedXdr: withAuth(() => []) }),
-      await build({ simulatedXdr: withAuth((auth) => [{ ...(auth[0] as object), credentials: { type: 0 } }]) }),
-    ];
-    for (const r of results) expect(r).toEqual(refused(V.agreedRefusals.rows[3].expect));
-  });
-
-  // The order the case texts state: a check "checked after" another answers second, so one input that fails both
-  // answers the code of the check made first.
-  it("each check a case states is made after another answers second when one input fails both", async () => {
-    const code = (start: string) => rowsOf(rows, "x402-exact-stellar.json agreedRefusals.rows", {
-      exact: 1,
-      keep: [`the row whose case starts "${start}"`, (r) => r.case.startsWith(start)],
-      leave: ["every other row", (r) => !r.case.startsWith(start)],
-    })[0]!.expect;
-    const carrier = code("build when the option's payTo is not muxed");
-    const oneTransfer = code("an operation that is not one transfer");
-    const asset = code("build when the operation and the signed invocation agree but call a token contract");
-    const amount = code("build when the agreed transfer's amount");
-    const subInvocation = simulated(V.V2.simulatedXdr, { ...agree, subInvocation: true });
-    const other = V.V4build.otherAsset as string;
-    const more = (A + 1n).toString();
-    expect([
-      await build({ accepted: { ...accepted, payTo: V.fixed.seller }, simulatedXdr: subInvocation }),
-      await build({ accepted: { ...accepted, payTo: V.fixed.seller, asset: other } }),
-      await build({ accepted: { ...accepted, asset: other }, simulatedXdr: subInvocation }),
-      await build({ accepted: { ...accepted, asset: other, amount: more } }),
-      await build({ accepted: { ...accepted, amount: more }, payer: V.V4build.otherPayer }),
-    ]).toEqual([carrier, carrier, oneTransfer, asset, amount].map(refused));
-  });
 });

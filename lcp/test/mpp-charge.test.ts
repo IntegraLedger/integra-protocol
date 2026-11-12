@@ -1,4 +1,5 @@
-// The six MPP charge pairings against their vector files. Every expected value is the files';
+// The four MPP EVM charge pairings against their vector files, and the tempo entry point's memo pieces against
+// mpp-charge-tempo-memo.json. Every expected value is the files';
 // viem 2.57.4 is the independent tool for EIP-712, signatures, RLP and keccak.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -7,7 +8,6 @@ import {
   domainSeparator,
   encodeAbiParameters,
   encodeFunctionData,
-  fromRlp,
   hashStruct,
   hashTypedData,
   keccak256,
@@ -22,7 +22,6 @@ import {
   type Hex as ViemHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { Transaction as TempoTransaction } from "viem/tempo";
 import { TRANSFER_TOPIC, type EvmLog, type EvmRef, type Permit2TypedData } from "../src/evm.js";
 import {
   attributionMemo,
@@ -33,13 +32,8 @@ import {
   evmHash,
   evmPermit2,
   evmTransaction,
-  FETCHED,
   pairingsOf,
   place,
-  problem,
-  tempoMemo,
-  tempoPush,
-  type LandedCredential,
   type MppChallenge,
   type MppCredential,
   type MppUnsigned,
@@ -52,7 +46,7 @@ import {
   memoCalldata,
 } from "../src/tempo.js";
 import { counting } from "./fixtures/counting-reader.js";
-import { C_E, C_T, H, b64u, challenge, fromB64u, link, load, readerFor, readsOnlyFetched, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
+import { C_E, H, b64u, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const A = load("mpp-charge-evm-authorization.json");
@@ -62,7 +56,6 @@ const HS = load("mpp-charge-evm-hash.json");
 /** An EVM charge challenge without `credentialTypes`, which offers the `transaction` and `hash` pairings. */
 const C_EH = challenge("evm", "charge", TX.fixed.R_ENoTypes);
 const M = load("mpp-charge-tempo-memo.json");
-const PU = load("mpp-charge-tempo-push.json");
 
 const sha256 = (b: Uint8Array) => "0x" + createHash("sha256").update(b).digest("hex");
 const forViem = (td: unknown) => td as Parameters<typeof hashTypedData>[0];
@@ -150,7 +143,7 @@ describe("mpp-charge-evm-authorization.json", () => {
     expect(await evmAuthorization.bound({ ...cred, challenge: { ...cred.challenge, opaque: undefined } as never }))
       .toEqual({ refused: true, code: "mpp/opaque-not-this-hash" });
     expect(u.complete("0x")).toEqual({ refused: true, code: "mpp/credential-malformed" });
-    expect(evmAuthorization.pattern).toEqual(Object.fromEntries(Object.entries(A.pattern).filter(([k]) => k !== "claims")));
+    expect({ ...evmAuthorization.pattern, proves: evmAuthorization.data.proves }).toEqual(Object.fromEntries(Object.entries(A.pattern).filter(([k]) => k !== "claims")));
     expect(evmAuthorization.claims).toBe(A.pattern.claims);
   });
 
@@ -431,7 +424,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(cred.payload).toEqual({ type: "transaction", signature: raw });
     expect(await evmTransaction.bound(cred)).toEqual(TX.MV11.expectBound);
     expect(evmTransaction.claims).toBe(TX.MV11.expectClaims);
-    expect(evmTransaction.pattern).toEqual(Object.fromEntries(Object.entries(TX.pattern).filter(([k]) => k !== "claims")));
+    expect({ ...evmTransaction.pattern, proves: evmTransaction.data.proves }).toEqual(Object.fromEntries(Object.entries(TX.pattern).filter(([k]) => k !== "claims")));
   });
 
   // draft-evm-charge-00 (tempoxyz/mpp-specs 08e7dd87) L696-697 and L873-879: the transaction credential carries an
@@ -501,7 +494,7 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
       .toEqual(HS.MV12.expectOtherEmitter);
     expect(await status({ status: 0, blockNumber: "100", logs: [] })).toEqual(HS.MV12.expectReverted);
     expect(await status("reader-error")).toEqual({ state: "pending", why: "unreadable" });
-    expect(evmHash.pattern).toEqual(Object.fromEntries(Object.entries(HS.pattern).filter(([k]) => k !== "claims")));
+    expect({ ...evmHash.pattern, proves: evmHash.data.proves }).toEqual(Object.fromEntries(Object.entries(HS.pattern).filter(([k]) => k !== "claims")));
   });
 
   // Neither pairing binds (nothing the payer signs carries H), and both hold the echoed challenge to their filter first:
@@ -648,27 +641,8 @@ function wireT(calldata: string, chainId = 42431, padding?: number): Uint8Array 
 }
 
 describe("mpp-charge-tempo-memo.json", () => {
-  // Each splits row replaces only methodDetails.splits of the splits request, whose primary amount is amount minus the
-  // splits' sum (draft-tempo-charge-00 L233), and pairingsOf and the Tempo charge build refuse it with the row's code,
-  // build given the splits request as placed with the row's request in its place. The last row's splits is present and
-  // null: present, so not the absent case, and not a list of entries.
-  it("splits: the request leaves the primary its remainder, and pairingsOf and build refuse each refusal row with its code", async () => {
-    const r = JSON.parse(M.splits.request);
-    const sum = (r.methodDetails.splits as { amount: string }[]).reduce((t, x) => t + BigInt(x.amount), 0n);
-    expect((BigInt(r.amount) - sum).toString()).toBe(M.splits.expectPrimaryAmount);
-    const rows = rowsOf(M.splits.agreedRefusals.rows as { case: string; splits: unknown; expect: string }[], "mpp-charge-tempo-memo.json splits.agreedRefusals.rows");
-    for (const row of rows) {
-      expect("splits" in row, row.case).toBe(true);
-      expect(row.expect, row.case).toMatch(/^mpp\/(splits|input)-malformed$/);
-      const issued = challenge("tempo", "charge", JSON.stringify({ ...r, methodDetails: { ...r.methodDetails, splits: row.splits } }));
-      expect(pairingsOf(issued), row.case).toEqual({ refused: true, code: row.expect });
-      const c = { ...placedOf(challenge("tempo", "charge", M.splits.request)), request: issued.request };
-      expect(await tempoMemo.build({ challenge: c, from: A.fixed.payer, now: A.fixed.now }, H), row.case).toEqual({ refused: true, code: row.expect });
-    }
-    expect(rows.at(-1)).toEqual({ case: "splits present and null", splits: null, expect: "mpp/splits-malformed" });
-  });
-
-  const ch = placedOf(C_T);
+  // The id MPP's placement gives the one challenge it places: H's challengeId at position 0.
+  const ch = { id: challengeId(H, 0) as string };
   const memo = M.MV7.expectMemo;
 
   it("MV7: the attribution memo and its check", () => {
@@ -684,20 +658,11 @@ describe("mpp-charge-tempo-memo.json", () => {
     expect(keccak256(toBytes(ch.id)).slice(2, 16)).toBe(memo.slice(52));
   });
 
-  it("MV7: the selector, topic, calldata, wire, build, bound and reference", async () => {
+  it("MV7: the selector, topic, calldata and wire", async () => {
     expect(keccak256(toBytes(M.MV7.selectorSignature)).slice(0, 10)).toBe(TRANSFER_WITH_MEMO_SELECTOR);
     expect(TRANSFER_WITH_MEMO_SELECTOR).toBe(M.MV7.expectSelector);
     expect(keccak256(toBytes(M.MV7.topicSignature))).toBe(TRANSFER_WITH_MEMO_TOPIC);
     expect(memoCalldata(M.fixed.recipient, 1000000n, memo)).toBe(M.MV7.expectCalldata);
-    const u = await tempoMemo.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in u) throw new Error(u.code);
-    expect(u.request).toEqual({
-      kind: "tempo-call",
-      chainId: 42431,
-      call: { to: PATHUSD, data: M.MV7.expectCalldata },
-      validBefore: 1790000060,
-      broadcast: false,
-    });
     const T = wireT(M.MV7.expectCalldata);
     expect(T.length).toBe(M.MV7.expectWireLength);
     expect(sha256(T)).toBe(M.MV7.expectWireSha256);
@@ -705,115 +670,6 @@ describe("mpp-charge-tempo-memo.json", () => {
     if ("refused" in decoded) throw new Error(decoded.code);
     expect(decoded.chainId).toBe(42431n);
     expect(decoded.validBefore).toBe(1790000060n);
-    const cred = u.complete(toHex(T)) as MppCredential;
-    expect([(u.request as { broadcast?: boolean }).broadcast, await tempoMemo.broadcaster(cred)]).toEqual([false, "payee"]);
-    expect(cred.payload).toEqual({ type: "transaction", signature: toHex(T) });
-    expect(await tempoMemo.bound(cred)).toBe(H);
-    const ref = (await tempoMemo.reference(cred)) as EvmRef;
-    expect(JSON.parse(JSON.stringify(ref))).toEqual({
-      network: "eip155:42431",
-      settleBy: "1790000060",
-      bindingLog: { address: PATHUSD, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: memo },
-      transferLog: { address: PATHUSD, topic0: TRANSFER_WITH_MEMO_TOPIC, identity: "to,value", digest: M.MV7.expectReferenceDigest },
-      search: { address: PATHUSD, topics: [TRANSFER_WITH_MEMO_TOPIC, null, null, memo] },
-    });
-  });
-
-  it("MV8: status on fixture receipts", async () => {
-    const cred = { challenge: ch, source: "", payload: { type: "transaction", signature: toHex(wireT(M.MV7.expectCalldata)) } };
-    const ref = { ...((await tempoMemo.reference(cred)) as EvmRef), transaction: `0x${"33".repeat(32)}` as `0x${string}` };
-    const logs = (emitter: string): EvmLog[] => [
-      { address: PATHUSD, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(M.fixed.recipient)], data: wordOf(1000000n) },
-      {
-        address: emitter as `0x${string}`,
-        topics: [TRANSFER_WITH_MEMO_TOPIC, topicOf(A.fixed.payer), topicOf(M.fixed.recipient), memo],
-        data: wordOf(1000000n),
-      },
-    ];
-    const status = async (l: EvmLog[]) =>
-      withBigints(await tempoMemo.status(ref, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs: l })));
-    expect(await status(logs(PATHUSD))).toEqual(M.MV8.expectSettled);
-    expect(await status(logs("0x0000000000000000000000000000000000000001"))).toEqual(M.MV8.expectOtherEmitter);
-    const blocked: EvmLog[] = [
-      { address: PATHUSD, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(M.MV8.guard)], data: wordOf(1000000n) },
-    ];
-    expect(await status(blocked)).toEqual(M.MV8.expectBlocked);
-    const memoLog = (from: string, value: bigint, m: string): EvmLog => ({
-      address: PATHUSD,
-      topics: [TRANSFER_WITH_MEMO_TOPIC, topicOf(from), topicOf(M.fixed.recipient), m as `0x${string}`],
-      data: wordOf(value),
-    });
-    const apart = [memoLog(M.MV8.memoOnAnotherLog.sender, 1n, memo), memoLog(A.fixed.payer, 1000000n, M.MV7.expectMemoPosition1)];
-    expect(await status(apart), M.MV8.memoOnAnotherLog.case).toEqual(M.MV8.memoOnAnotherLog.expect);
-    expect(await status([memoLog(A.fixed.payer, 1000000n, memo)])).toEqual(M.MV8.expectSettled);
-    expect(tempoMemo.pattern).toEqual(Object.fromEntries(Object.entries(M.pattern).filter(([k]) => k !== "claims")));
-  });
-
-  it("zeroAmount: a charge of amount 0 names no pairing, and nothing is built for it", async () => {
-    for (const r of rowsOf(M.zeroAmount.requests, "mpp-charge-tempo-memo.json zeroAmount.requests")) {
-      const c = challenge("tempo", "charge", r);
-      expect(pairingsOf(c)).toEqual(M.zeroAmount.expectPairings);
-      expect(tempoMemo.advertise([c], H, link, c)).toEqual(M.zeroAmount.expect);
-      expect(await tempoMemo.build({ challenge: placedOf(c), from: A.fixed.payer, now: A.fixed.now }, H))
-        .toEqual(M.zeroAmount.expect);
-    }
-  });
-
-  it("plant: a memo signed for the challenge ….1 does not bind the challenge ….0", async () => {
-    const planted = M.MV7.expectCalldata.slice(0, -64) + M.MV7.expectMemoPosition1.slice(2);
-    const cred = { challenge: ch, source: "", payload: { type: "transaction", signature: toHex(wireT(planted)) } };
-    expect(await tempoMemo.bound(cred)).toEqual(M.plant.expect);
-  });
-
-  // Tempo's charge draft (tempoxyz/mpp-specs 08e7dd87, draft-tempo-charge-00.md :717-720): a Tempo Transaction's chain
-  // ID binds it to one chain, and the charge pays on methodDetails.chainId, 42431 where the challenge names none
-  // (:166). The chain id is the transaction's first field, read here with viem's fromRlp. build's complete returns no
-  // credential bound refuses: it refuses the row's transaction with the row's code, as bound and reference refuse the
-  // credential complete would give for it, which carries it with the source complete writes. A padding row's credential
-  // is over the credential size bound; a calldata row's call carries the memo of another challenge
-  // (draft-tempo-charge-00 binds the memo to the challenge id). The same transaction without the row's change is
-  // completed, and gives H.
-  it("agreedRefusals: complete refuses a memo transfer with the code bound gives the credential it would give", async () => {
-    type Row = { case: string; transactionChainId?: number; padding?: number; calldata?: string; expect: string };
-    const rows = rowsOf(M.agreedRefusals.rows as Row[], "mpp-charge-tempo-memo.json agreedRefusals.rows", { exact: 3 });
-    const source = `did:pkh:eip155:42431:${M.fixed.payer}`;
-    const wireOf = (row: Row) => wireT(row.calldata ?? M.MV7.expectCalldata, row.transactionChainId ?? 42431, row.padding);
-    const presented = (c: MppChallenge, row: Row): MppCredential => {
-      const wire = wireOf(row);
-      expect(fromRlp(toHex(wire.subarray(1)))[0]).toBe(num(row.transactionChainId ?? 42431));
-      return { challenge: c, source, payload: { type: "transaction", signature: toHex(wire) } } as MppCredential;
-    };
-    const u = await tempoMemo.build({ challenge: ch, from: M.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in u) throw new Error(u.code);
-    const own = u.complete(toHex(wireT(M.MV7.expectCalldata)));
-    expect(own).toEqual(presented(ch, { case: "MV7's wire T", expect: "" }));
-    expect(await tempoMemo.bound(own)).toBe(H);
-    for (const row of rows) {
-      const refused = { refused: true, code: row.expect };
-      expect([row.transactionChainId, row.padding, row.calldata].filter((m) => m !== undefined), row.case).toHaveLength(1);
-      expect(u.complete(toHex(wireOf(row))), row.case).toEqual(refused);
-      expect(await tempoMemo.bound(presented(ch, row)), row.case).toEqual(refused);
-      expect(await tempoMemo.reference(presented(ch, row)), row.case).toEqual(refused);
-    }
-    expect(wireOf({ case: "", calldata: M.MV7.expectCalldata.slice(0, -64) + M.MV7.expectMemoPosition1.slice(2), expect: "" })).toEqual(
-      wireOf(rows.find((r) => r.calldata !== undefined)!),
-    );
-    // viem's tempo Transaction.deserialize reads neither "0x76", the type byte with no RLP list after it, nor "0x", no
-    // bytes at all, as a Tempo transaction: complete refuses each with tempo/tx-malformed, the code bound gives the
-    // credential that carries it.
-    for (const undecodable of ["0x76", "0x"] as const) {
-      const txMalformed = { refused: true, code: "tempo/tx-malformed" };
-      const carrying = { challenge: ch, source: "", payload: { type: "transaction", signature: undecodable } } as MppCredential;
-      expect(() => TempoTransaction.deserialize(undecodable as never), undecodable).toThrow();
-      expect(u.complete(undecodable), undecodable).toEqual(txMalformed);
-      expect(await tempoMemo.bound(carrying), undecodable).toEqual(txMalformed);
-    }
-    const bare = JSON.parse(fromB64u(C_T.request));
-    delete bare.methodDetails.chainId;
-    const onDefault = placedOf(challenge("tempo", "charge", JSON.stringify(bare)));
-    expect(onDefault.id).toBe(ch.id);
-    expect(await tempoMemo.bound(presented(onDefault, { case: "chain 42431", transactionChainId: 42431, expect: "" }))).toBe(H);
-    expect(await tempoMemo.bound(presented(onDefault, { case: "chain 4217", transactionChainId: 4217, expect: "" }))).toEqual({ refused: true, code: "tempo/tx-malformed" });
   });
 
   it("decodeTempoTx refuses what is not a 0x76 transaction", async () => {
@@ -822,129 +678,19 @@ describe("mpp-charge-tempo-memo.json", () => {
     expect(decodeTempoTx(new Uint8Array(65_537).fill(0x76))).toEqual({ refused: true, code: "tempo/tx-too-large" });
     const nonCanonical = Uint8Array.from([0x76, 0xc1, 0x81, 0x05]);
     expect(decodeTempoTx(nonCanonical)).toEqual({ refused: true, code: "tempo/tx-malformed" });
-    const noMemo = { challenge: ch, source: "", payload: { type: "transaction", signature: toHex(wireT("0x")) } };
-    expect(await tempoMemo.bound(noMemo)).toEqual({ refused: true, code: "tempo/memo-not-bound" });
   });
 });
 
-describe("mpp-charge-tempo-push.json", () => {
-  const cNoModes = challenge("tempo", "charge", PU.fixed.R_TNoModes);
-  const ch = placedOf(cNoModes);
-  const receipt = PU.MV13.receipt;
-
-  it("MV13: modes, build, fetchPresented, bound and reference", async () => {
-    expect(pairingsOf(cNoModes)).toEqual(PU.MV13.expectPairings);
-    expect(pairingsOf(challenge("tempo", "charge", PU.fixed.R_TFeePayer))).toEqual(PU.MV13.expectFeePayer);
-    const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in u) throw new Error(u.code);
-    expect(u.request).toEqual({
-      kind: "tempo-call",
-      chainId: 42431,
-      call: { to: PATHUSD, data: M.MV7.expectCalldata },
-      validBefore: 1790000060,
-      broadcast: true,
-    });
-    const cred = u.complete(PU.MV13.T_P) as MppCredential;
-    expect([(u.request as { broadcast?: boolean }).broadcast, await tempoPush.broadcaster(cred)]).toEqual([true, "payer"]);
-    expect(cred.payload).toEqual({ type: "hash", hash: PU.MV13.T_P });
-    const landed = (await tempoPush.fetchPresented(cred, readerFor("eip155:42431", receipt))) as LandedCredential;
-    expect(withBigints(landed[FETCHED])).toEqual({ transaction: PU.MV13.T_P, blockNumber: "100", logs: receipt.logs });
-    expect(await tempoPush.bound(landed)).toBe(H);
-    const ref = (await tempoPush.reference(landed)) as EvmRef;
-    expect(ref.transferLog?.digest).toBe(PU.MV13.expectReferenceDigest);
-    expect(ref.settleBy).toBeUndefined();
-    expect(ref.bindingLog).toEqual({ address: PATHUSD, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: M.MV7.expectMemo });
-    expect(await tempoPush.fetchPresented(cred, readerFor("eip155:42431", null))).toEqual(PU.MV13.expectNotFound);
-    expect(await tempoPush.fetchPresented(cred, readerFor("eip155:42431", { ...receipt, status: 0 }))).toEqual(
-      PU.MV13.expectReverted,
-    );
-    expect(await tempoPush.fetchPresented(cred, readerFor("eip155:42431", "reader-error"))).toEqual({
-      refused: true,
-      code: "tempo/unreadable",
-    });
-  });
-
-  it("zeroAmount: a charge of amount 0 names no pairing, and nothing is built for it", async () => {
-    for (const r of rowsOf(PU.zeroAmount.requests, "mpp-charge-tempo-push.json zeroAmount.requests")) {
-      const c = challenge("tempo", "charge", r);
-      expect(pairingsOf(c)).toEqual(PU.zeroAmount.expectPairings);
-      expect(tempoPush.advertise([c], H, link, c)).toEqual(PU.zeroAmount.expect);
-      expect(await tempoPush.build({ challenge: placedOf(c), from: A.fixed.payer, now: A.fixed.now }, H))
-        .toEqual(PU.zeroAmount.expect);
-    }
-  });
-
-  it("the record: every flag the file pins, and the memo's proves with the push's two changes", () => {
-    const { proves, ...flags } = tempoPush.pattern;
-    const pinned = Object.fromEntries(Object.entries(PU.pattern).filter(([k]) => k !== "claims" && k !== "provesRule"));
-    expect(flags).toEqual(pinned);
-    expect(tempoPush.claims).toBe(PU.pattern.claims);
-    expect(proves).toContain("signed and broadcast");
-    expect(proves).toContain("read after the money had moved");
-  });
-
-  // TransferWithMemo(address indexed from, address indexed to, uint256 amount, bytes32 indexed memo) (tempo.ts's
-  // topic): under the Solidity ABI's event encoding each indexed address is one 32-byte topic and the amount one
-  // 32-byte data word. A landed log without them is the reader's malformed answer, not the buyer's: tempo/unreadable,
-  // which problem() answers 500 internal-payment-error, a read to repeat, at fetchPresented and at reference.
-  it("a landed TransferWithMemo log not of the event's form is tempo/unreadable, a read to repeat", async () => {
-    const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in u) throw new Error(u.code);
-    const cred = u.complete(PU.MV13.T_P) as MppCredential;
-    const memo = receipt.logs[1] as EvmLog;
-    const short = `0x${"01".repeat(20)}`;
-    const unreadable = { refused: true, code: "tempo/unreadable" };
-    for (const [name, log] of [
-      ["no amount word", { ...memo, data: "0x" }],
-      ["a 20-byte sender topic", { ...memo, topics: [memo.topics[0], short, memo.topics[2], memo.topics[3]] }],
-      ["a 20-byte recipient topic", { ...memo, topics: [memo.topics[0], memo.topics[1], short, memo.topics[3]] }],
-    ] as const) {
-      const logs = [receipt.logs[0], log];
-      expect([name, await tempoPush.fetchPresented(cred, readerFor("eip155:42431", { ...receipt, logs }))]).toEqual([
-        name,
-        unreadable,
-      ]);
-      const landed = { ...cred, [FETCHED]: { transaction: PU.MV13.T_P, blockNumber: 100n, logs } };
-      expect([name, await tempoPush.reference(landed)]).toEqual([name, unreadable]);
-    }
-    expect(problem("tempo/unreadable")).toEqual({ status: 500, type: "https://paymentauth.org/problems/internal-payment-error" });
-  });
-
-  it("plant: a memo log emitted by another TIP-20 is not this payment's carrier", async () => {
-    const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in u) throw new Error(u.code);
-    const cred = u.complete(PU.MV13.T_P) as MppCredential;
-    const moved = { ...receipt, logs: [receipt.logs[0], { ...receipt.logs[1], address: PU.fixed.otherTip20 }] };
-    const landed = (await tempoPush.fetchPresented(cred, readerFor("eip155:42431", moved))) as LandedCredential;
-    expect(await tempoPush.bound(landed)).toEqual(PU.plant.expect);
-    const held = { ...cred, [FETCHED]: { transaction: PU.MV13.T_P, blockNumber: 100n, logs: moved.logs } };
-    expect(await tempoPush.bound(held)).toEqual(PU.plant.expect);
-  });
-
-  // The landed logs are read only from the member FETCHED keys, which fetchPresented writes and no wire form carries:
-  // a credential the buyer sends with a string-keyed `landed` of logs that bind H under FETCHED is tempo/read-first, as
-  // it is without one, and one held with both is read by its FETCHED member alone.
-  it("the landed logs are read only from fetchPresented's FETCHED member, never from a string-keyed landed", async () => {
-    const u = await tempoPush.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in u) throw new Error(u.code);
-    const sent = u.complete(PU.MV13.T_P) as MppCredential;
-    const fetched = await tempoPush.fetchPresented(sent, readerFor("eip155:42431", receipt));
-    const read = (logs: unknown) => ({ transaction: PU.MV13.T_P, blockNumber: 100n, logs });
-    const landed = (c: unknown, l: unknown) => ({ ...(c as object), landed: l });
-    await readsOnlyFetched(tempoPush, sent, fetched, H, read(receipt.logs), read([]), landed, "tempo/read-first");
-  });
-});
-
-// splits.expectCalls: the calls the Tempo charge build writes for the splits request, in array order
-// (draft-tempo-charge-00 L273): the primary recipient's transfer of amount minus the splits' sum (L233), carrying the
-// challenge's attribution memo, then one call per split, transferWithMemo where the split carries a memo (L313-315) and
-// transfer where it does not, each to the request's currency. memoCalldata writes the transferWithMemo calls too.
-describe("mpp-charge-tempo-memo.json splits.expectCalls: build's calls, and memoCalldata's transferWithMemo calls", () => {
+// splits.expectCalls: the calls that pay the splits request on Tempo, in array order (draft-tempo-charge-00 L273): the
+// primary recipient's transfer of amount minus the splits' sum (L233), carrying the challenge's attribution memo, then
+// one call per split, transferWithMemo where the split carries a memo (L313-315) and transfer where it does not, each
+// to the request's currency. memoCalldata writes the transferWithMemo calls.
+describe("mpp-charge-tempo-memo.json splits.expectCalls: memoCalldata's transferWithMemo calls", () => {
   type Call = { to: string; data: string };
   const r = JSON.parse(M.splits.request);
   const splits = r.methodDetails.splits as { amount: string; recipient: ViemHex; memo?: ViemHex }[];
   const primary = BigInt(r.amount) - splits.reduce((t, s) => t + BigInt(s.amount), 0n);
-  const id = placedOf(challenge("tempo", "charge", M.splits.request)).id;
+  const id = challengeId(H, 0) as string;
   const transfers = [
     { to: r.recipient as ViemHex, amount: primary, memo: attributionMemo(realm, id) as ViemHex | undefined },
     ...splits.map((s) => ({ to: s.recipient, amount: BigInt(s.amount), memo: s.memo })),
@@ -981,21 +727,9 @@ describe("mpp-charge-tempo-memo.json splits.expectCalls: build's calls, and memo
     expect(encoded).toEqual(calls);
   });
 
-  it("build on the splits request answers tempo-calls whose calls are expectCalls, byte for byte; push the same, broadcast", async () => {
-    const c = challenge("tempo", "charge", M.splits.request);
-    const u = await tempoMemo.build({ challenge: placedOf(c), from: A.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in u) throw new Error(u.code);
-    expect(u.request).toEqual({ kind: "tempo-calls", chainId: 42431, calls, validBefore: 1790000060, broadcast: false });
-    expect(JSON.stringify(u.request.kind === "tempo-calls" ? u.request.calls : null)).toBe(JSON.stringify(calls));
-    const pushed = { ...r, methodDetails: { ...r.methodDetails, supportedModes: ["push"] } };
-    const p = await tempoPush.build({ challenge: placedOf(challenge("tempo", "charge", JSON.stringify(pushed))), from: A.fixed.payer, now: A.fixed.now }, H);
-    if ("refused" in p) throw new Error(p.code);
-    expect(p.request).toEqual({ kind: "tempo-calls", chainId: 42431, calls, validBefore: 1790000060, broadcast: true });
-  });
-
   const withMemo = rowsOf(calls, "mpp-charge-tempo-memo.json splits.expectCalls", {
     keep: ["the transferWithMemo calls", (c) => c.data.startsWith(TRANSFER_WITH_MEMO_SELECTOR)],
-    leave: ["the transfer call of the split without a memo, which build writes and memoCalldata does not", (c) => c.data.startsWith(transferSelector)],
+    leave: ["the transfer call of the split without a memo, which memoCalldata does not write", (c) => c.data.startsWith(transferSelector)],
   });
   for (const call of withMemo) {
     const i = calls.indexOf(call);

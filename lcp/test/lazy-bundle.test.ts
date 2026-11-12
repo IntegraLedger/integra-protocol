@@ -93,13 +93,17 @@ beforeAll(() => {
 }, 0);
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
+/** The entry points that export types alone, so a module that loads one holds no binding. */
+const TYPES_ONLY: ReadonlySet<string> = new Set(["./x402-exact-stellar"]);
+
 describe("each public entry point in one bundle behind a lazy import()", () => {
   it.each(ENTRIES)("%s loads", (key) => {
     const m = loaded.get(key);
     expect(m).not.toBe("did not settle");
     expect(m).toHaveProperty("lazy");
     const { lazy, built } = m as { lazy: string[]; built: string[] };
-    expect(built.length).toBeGreaterThan(0);
+    if (TYPES_ONLY.has(key)) expect(built).toEqual([]);
+    else expect(built.length).toBeGreaterThan(0);
     expect(lazy).toEqual(built);
   });
 });

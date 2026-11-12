@@ -41,6 +41,8 @@ pnpm --filter @integraledger/lcp exec vitest run test/vectors.test.ts test/core.
 node scripts/idna/idna-data.mjs --check
 node scripts/docs-samples.mjs
 node scripts/docs-reference.mjs --check
+node scripts/check-public-package.mjs
+node scripts/check-public-units.mjs
 ```
 
 - `idna-data.mjs --check` fetches the Unicode 17.0.0 files `scripts/idna/sources.tsv` lists, each checked against its
@@ -67,6 +69,14 @@ node scripts/docs-reference.mjs --check
   that the page marks as a read to repeat exactly the codes `readToRepeat` answers true for. After a change to the
   registry, the exports, the vectors or the refusal codes, run `node scripts/docs-reference.mjs` and commit what it
   writes.
+- `check-public-package.mjs` reads every file git lists, its content and its path, and fails on any item of a list of
+  names, phrases and refusal-code namespaces that have no place in this repository. It holds the list as SHA-256
+  digests and compares the digest of every sequence of one to three words, so a hyphen, a space or a capital between
+  words matches alike; it prints each finding as the file, the line and the item's position in the list, never the
+  text. `--file <path>` also reads a file git does not list.
+- `check-public-units.mjs` checks `scripts/public-units.json` against the built package: every export of every entry
+  point is in exactly one unit, each unit names exports the package has, states what it does for anyone using the
+  protocol and names the specification or profile that fixes it, and the file passes `check-public-package.mjs`.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm run browser && pnpm build` inside that
   folder, on Linux x64. `pnpm run browser` fetches, retrying a failed download five times, the browser build the
   Mermaid diagrams are drawn in, Chrome Headless Shell, which `website/scripts/browser.mjs` pins by version and by the
@@ -128,8 +138,9 @@ node scripts/docs-reference.mjs --check
   first=$(mktemp -d) && pnpm build && mv out "$first/out" && rm -rf .next && pnpm build && diff -r --brief "$first/out" out
   ```
 
-CI runs the commands in the block above and the rest of `.github/workflows/ci.yml` on every push to `main`, when
-dispatched by hand, and from the publish workflow before it packs. Its other steps check:
+CI runs the commands in the block above, other than `check-public-package.mjs` and `check-public-units.mjs`, and the
+rest of `.github/workflows/ci.yml` on every push to `main`, when dispatched by hand, and from the publish workflow
+before it packs. Its other steps check:
 
 - **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in one
   step, byte for byte the same in every job, before its first other step that runs. The `floor` job then fetches the

@@ -28,6 +28,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { CARDANO } from "./internal/data/cardano.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type CardanoNetwork = "cardano:mainnet" | "cardano:preprod" | "cardano:preview";
@@ -307,19 +309,10 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
-  canonical: false,
   profile: ID,
-  buyerSigns: true,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
-  publicProof: true,
-  proves:
-    "The payer signed a Cardano transaction whose body commits, through its auxiliary_data_hash, to a CIP-20 " +
-    "message (label 674) carrying this ATR's hash. The ledger included the transaction as valid, at the stated " +
-    "depth; a Cardano transaction with fewer than k blocks after it (2160 on mainnet) can be rolled back. The hash " +
-    "is in the transaction's metadata on chain. This does not show that amount, payee, asset or timing match the " +
-    "ATR's content.",
 });
 
 /**
@@ -328,9 +321,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactCardano = Object.freeze({
   id: ID,
+  data: CARDANO[ID],
   pattern,
   claims: true as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise,
@@ -341,7 +334,7 @@ export const exactCardano = Object.freeze({
   reference,
   status: cardanoStatus,
   recover: cardanoRecover,
-});
+}) satisfies Entry<typeof ID, CardanoPaymentPayload, CardanoRef, CardanoReader>;
 
 function decodeBytes(bytes: Uint8Array): CardanoTx | Refusal {
   const top = oneItem(bytes);

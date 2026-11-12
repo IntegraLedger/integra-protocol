@@ -1646,8 +1646,8 @@ describe("x402-exact-tvm.json", () => {
       refused: true,
       code: "tvm/carrier-mismatch",
     });
-    expect(exactTvm.pattern.publicProof).toBe(true);
-    expect(exactTvm.carrier).toBe("extra.forwardPayload");
+    expect(exactTvm.data.coverage).toBe("full");
+    expect(exactTvm.data.carrier.member).toEqual(["extra", "forwardPayload"]);
   });
 });
 

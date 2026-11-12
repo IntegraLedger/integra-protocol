@@ -21,6 +21,9 @@ import type { LcpPattern } from "./index.js";
 import { agreementFault, agreementUrlFault, isAgreementUrl } from "./internal/agreement.js";
 import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { MAX_LINK_LENGTH } from "./internal/bounds.js";
+import { CARD } from "./internal/data/card.js";
+import type { Entry, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const LINK_TYPE = "legal_context";
@@ -49,7 +52,6 @@ type Option = CheckoutOption | BookingOption;
 const MIB = 1_048_576;
 const MAX_LINKS = 64;
 const MAX_ID = 256;
-const MAX_LINK = 2048;
 const MERCHANT_AUTHORIZATION = /^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$/;
 
 
@@ -71,7 +73,7 @@ export function legalContextLink(c: Checkout): { h: AtrHash; link: string } | Re
   if (!isHttpsLink(url)) {
     return isOtherSchemeLink(url) ? refusal("ucp/link-not-https") : refusal("ucp/legal-context-malformed");
   }
-  if (url.length > MAX_LINK) return refusal("ucp/too-large");
+  if (url.length > MAX_LINK_LENGTH) return refusal("ucp/too-large");
   return { h, link: url };
 }
 
@@ -103,6 +105,7 @@ export function tie<O extends Option>(options: readonly O[]): ["ucp", { options:
 
 export interface UcpBinding<Id extends string, O extends Option> {
   id: Id;
+  data: PairingData;
   pattern: LcpPattern;
   claims: boolean;
   unplaced(option: O): O | Refusal;
@@ -149,7 +152,7 @@ function advertiseFor(key: "checkout" | "booking") {
     if (c.id !== (offer as unknown as Record<string, string>)[key]) return refusal("ucp/option-not-this-checkout");
     if (isSigned(c)) return refusal("ucp/already-signed");
     if (!isHttpsLink(link)) return refusal("ucp/link-not-https");
-    if (link.length > MAX_LINK) return refusal("ucp/too-large");
+    if (link.length > MAX_LINK_LENGTH) return refusal("ucp/too-large");
     const agreementFaulted = agreementUrlFault(agreementUrl);
     if (agreementFaulted?.fault === "link-not-https") return refusal("ucp/link-not-https");
     if (agreementFaulted !== undefined) return refusal("ucp/legal-context-malformed");
@@ -264,46 +267,23 @@ function unplaced<O extends Option>(option: O): O | Refusal {
   return option;
 }
 
-const AGREEMENT =
-  "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-  "recorded in <transaction>. ";
-
 function ap2Pattern(noun: "checkout" | "booking"): LcpPattern {
   return deepFreeze({
     pattern: "opaque-challenge",
-    canonical: true,
     profile: "ucp/checkout/legal-context",
-    buyerSigns: true,
     onChain: false,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: false,
-    proves:
-      AGREEMENT +
-      `The ${noun} carried this ATR's hash and link as its legal_context link. The buyer's checkout mandate under ` +
-      `UCP's AP2 Mandates extension carries checkout_hash, the SHA-256 of the ${noun} presented beside it, and the ` +
-      `hash was read from that ${noun}. The seller did not verify the mandate's signature, or, where an open mandate ` +
-      "precedes it in a chain, that mandate's signature, its delegation (cnf) or the chain's link; the PSP verifies " +
-      `the payment mandate over the same ${noun} hash. Settlement is the seller's report. This does not show that ` +
-      "amount, payee or timing match the ATR's content.",
   });
 }
 
 function unsignedPattern(noun: "checkout" | "booking"): LcpPattern {
   return deepFreeze({
     pattern: "http-advisory",
-    canonical: true,
     profile: "ucp/checkout/legal-context",
-    buyerSigns: false,
     onChain: false,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
-    publicProof: false,
-    proves:
-      AGREEMENT +
-      `The ${noun} response carried this ATR's hash and link as its legal_context link. UCP without the AP2 Mandates ` +
-      "extension defines no buyer signature, so the buyer's approval did not sign the hash. The seller tied the " +
-      "payment to the hash in its report.",
   });
 }
 
@@ -314,6 +294,7 @@ function unsignedPattern(noun: "checkout" | "booking"): LcpPattern {
  */
 export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> = Object.freeze({
   id: "ucp/checkout/ap2-mandate",
+  data: CARD["ucp/checkout/ap2-mandate"],
   pattern: ap2Pattern("checkout"),
   claims: true,
   unplaced,
@@ -323,7 +304,7 @@ export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> 
   build: buildAp2,
   bound: boundAp2,
   broadcaster: broadcastsWithin(mandateShape, "payee"),
-});
+}) satisfies Entry<"ucp/checkout/ap2-mandate", Presented, never, never>;
 
 /**
  * `ucp/checkout/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
@@ -331,6 +312,7 @@ export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> 
  */
 export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Object.freeze({
   id: "ucp/checkout/unsigned",
+  data: CARD["ucp/checkout/unsigned"],
   pattern: unsignedPattern("checkout"),
   claims: false,
   unplaced,
@@ -340,7 +322,7 @@ export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Obj
   build: buildUnsigned,
   bound: boundUnsigned,
   broadcaster: broadcasts("payee"),
-});
+}) satisfies Entry<"ucp/checkout/unsigned", Presented, never, never>;
 
 /**
  * `ucp/booking/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
@@ -349,6 +331,7 @@ export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Obj
  */
 export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOption> = Object.freeze({
   id: "ucp/booking/ap2-mandate",
+  data: CARD["ucp/booking/ap2-mandate"],
   pattern: ap2Pattern("booking"),
   claims: true,
   unplaced,
@@ -358,7 +341,7 @@ export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOpt
   build: buildAp2,
   bound: boundAp2,
   broadcaster: broadcastsWithin(mandateShape, "payee"),
-});
+}) satisfies Entry<"ucp/booking/ap2-mandate", Presented, never, never>;
 
 /**
  * `ucp/booking/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
@@ -366,6 +349,7 @@ export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOpt
  */
 export const bookingUnsigned: UcpBinding<"ucp/booking/unsigned", BookingOption> = Object.freeze({
   id: "ucp/booking/unsigned",
+  data: CARD["ucp/booking/unsigned"],
   pattern: unsignedPattern("booking"),
   claims: false,
   unplaced,
@@ -375,7 +359,7 @@ export const bookingUnsigned: UcpBinding<"ucp/booking/unsigned", BookingOption> 
   build: buildUnsigned,
   bound: boundUnsigned,
   broadcaster: broadcasts("payee"),
-});
+}) satisfies Entry<"ucp/booking/unsigned", Presented, never, never>;
 
 function isOption(o: unknown, key: "checkout" | "booking"): boolean {
   if (!isObject(o)) return false;

@@ -13,7 +13,7 @@ not, the pairing's statement of what it proves says so.
 [`@integraledger/lcp`](https://github.com/IntegraLedger/integra-protocol/tree/main/lcp) is its reference
 implementation, for TypeScript and JavaScript. It assembles the record, hashes it, and carries the hash in the
 payment, or beside it in an agreement payment, on the x402, MPP, checkout and card pairings it implements: on EVM
-chains, Solana, Stellar, the XRP Ledger and every other rail the [rails guide](./guides/rails.md) lists.
+chains, Solana, the XRP Ledger and every other rail the [rails guide](./guides/rails.md) lists.
 
 ## How it works
 
@@ -37,9 +37,9 @@ sequenceDiagram
 2. **The seller advertises its hash.** H goes into the payment challenge, beside an `https` link to the seller's copy.
 3. **The buyer compares before it signs.** It fetches the bytes, hashes them, and signs nothing unless they hash to H.
 4. **The payment carries H.** On most pairings the buyer signs a payment with H in the field its protocol or rail
-   provides: a nonce, a memo, a salt, an invoice field. On some (`pattern.buyerSigns` false) the buyer's signature does
+   provides: a nonce, a memo, a salt, an invoice field. On some (`data.carrier.signed` null) the buyer's signature does
    not cover H, and where the pairing's `claims` is false, nothing in the payment is bound to H; the agreement payment
-   is the proof. Each pairing's `pattern` and `claims` say which.
+   is the proof. Each pairing's `data` and `claims` say which.
 5. **Anyone holding the record can match it.** The seller reads H back from the payment where the pairing's `claims` is
    true, and on most rails from the settlement on chain.
 
@@ -55,7 +55,7 @@ These pages use each term in one sense:
 |---|---|
 | **Agentic Transaction Record (ATR)** | The agreement's record: the exact bytes the seller serves; `assemble` writes them as one JSON object. |
 | **ATR hash (H)** | SHA-256 over the ATR's exact bytes. |
-| **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `proves` says so. |
+| **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `data.proves` says so. |
 | **Pairing** | A payment protocol, scheme and rail combination, such as `x402/exact/eip155/eip3009`. |
 | **Binding** | How H rides in a pairing's payment: the field its specification defines. |
 | **Buyer gate** | The buyer-side check that compares the served bytes with H before anything is signed. |

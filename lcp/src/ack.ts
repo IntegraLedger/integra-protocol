@@ -20,6 +20,9 @@ import { broadcasts } from "./internal/broadcaster.js";
 import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import { decodeJsonSegment, jwsSegments, withinDepth } from "./sd-jwt.js";
 import type { LcpPattern } from "./x402.js";
+import { MAX_LINK_LENGTH } from "./internal/bounds.js";
+import { CARD } from "./internal/data/card.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** An ACK payment option as the seller wrote it. */
@@ -48,7 +51,6 @@ const ID = "ack/payment-request" as const;
 const MAX_BODY_BYTES = 65_536;
 const MAX_TOKEN = 16_384;
 const MAX_OPTIONS = 16;
-const MAX_LINK = 2048;
 const MAX_CREDENTIAL_SUBJECT_BYTES = 65_536;
 
 /** The binding slot: the Payment Request's options exactly as issued. */
@@ -71,7 +73,7 @@ function advertise(
   const nh = normalHash(h);
   if (nh === null) return refusal("ack/legal-context-malformed");
   if (!isHttpsLink(link)) return refusal("ack/link-not-https");
-  if (link.length > MAX_LINK) return refusal("ack/legal-context-malformed");
+  if (link.length > MAX_LINK_LENGTH) return refusal("ack/legal-context-malformed");
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("ack/link-not-https");
   if (agreementFaulted !== undefined) return refusal("ack/legal-context-malformed");
@@ -108,7 +110,7 @@ function read(
   if (lc === undefined) return refusal("ack/no-legal-context");
   const decoded = fromLegalContext({ legalContext: lc });
   if (decoded === null) return refusal("ack/legal-context-malformed");
-  if (decoded.url.length > MAX_LINK) return refusal("ack/legal-context-malformed");
+  if (decoded.url.length > MAX_LINK_LENGTH) return refusal("ack/legal-context-malformed");
   if (!hashEquals(signed, decoded.h)) return refusal("ack/legal-context-conflict");
   const agreement = agreementIn(lc);
   if (typeof agreement === "object") return refusal("ack/legal-context-malformed");
@@ -146,19 +148,10 @@ function unplaced(option: AckPaymentOption): AckPaymentOption | Refusal {
 
 const pattern: LcpPattern = Object.freeze({
   pattern: "native-field",
-  canonical: true,
   profile: ID,
-  buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-    "recorded in <transaction>. This ATR's hash is the id of the seller's ACK Payment Request token, with the link " +
-    "beside it; a receipt for that request embeds the token. The token's signature is not verified here. ACK defines " +
-    "no payer signature, so nothing the buyer signed carries the hash, and settlement is the seller's report. This " +
-    "does not show that the buyer's approval carried the hash.",
 });
 
 /**
@@ -168,6 +161,7 @@ const pattern: LcpPattern = Object.freeze({
  */
 export const paymentRequest = Object.freeze({
   id: ID,
+  data: CARD[ID],
   pattern,
   claims: false as boolean,
   unplaced,
@@ -177,7 +171,7 @@ export const paymentRequest = Object.freeze({
   build: async (_doc: unknown, _h: AtrHash): Promise<Refusal> => refusal("ack/no-signed-place"),
   bound: async (_presented: unknown): Promise<Refusal> => refusal("ack/no-signed-place"),
   broadcaster: broadcasts("payer"),
-});
+}) satisfies Entry<typeof ID, Json, never, never>;
 
 /**
  * The JSON object in a compact JWS's second segment, decoded as base64url without padding, fatal UTF-8 and JSON, or

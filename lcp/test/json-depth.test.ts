@@ -10,7 +10,6 @@ import { checkoutMandate } from "../src/ap2.js";
 import { viImmediate } from "../src/card.js";
 import { jsonWithinDepth, MAX_JSON_DEPTH, parseJson } from "../src/internal/core.js";
 import { parse as parseDiscovery } from "../src/discovery.js";
-import { atrNamesInvoice } from "../src/lightning.js";
 import { usdcRequestHash } from "../src/mpp-usdc.js";
 import { unsigned } from "../src/ucp.js";
 import { rowsOf } from "./rows.js";
@@ -70,15 +69,6 @@ describe("each entry point that reads JSON text reads 64 levels and refuses 65",
     const request = (n: number) => `{"a":${nest(n - 1, "")}}`;
     expect(await usdcRequestHash(b64u(request(64)))).toMatch(/^0x[0-9a-f]{64}$/);
     expect(await usdcRequestHash(b64u(request(65)))).toEqual(refused("mpp/request-malformed"));
-  });
-
-  it("the ATR's named invoice: an ATR nested to 64 levels is read; 65 is not", () => {
-    const atr = (n: number) =>
-      new TextEncoder().encode(
-        `{"atrVersion":"1","id":"1b4e28ba-2fa1-41d2-883f-0016d3cca427","x402":{"accepts":[{"extra":{"invoice":"lnbc1"}}]},"seller":${nest(n - 1, "")}}`,
-      );
-    expect(atrNamesInvoice(atr(64), "lnbc1")).toBe(true);
-    expect(atrNamesInvoice(atr(65), "lnbc1")).toBe(false);
   });
 
   it("ACK: a token payload nested to 64 levels is read; 65 is ack/token-malformed", () => {

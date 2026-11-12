@@ -112,31 +112,33 @@ function pairingsPage() {
   s += generatedNote;
   s +=
     `\`BINDINGS\` holds ${rows.length} pairings on ${surfaces.length} surfaces (${surfaces.map(code).join(", ")}). ` +
-    "Each row gives the pairing's id, the export that implements it, and these members of its `pattern` record: " +
-    "the binding pattern, whether the buyer's signature covers the ATR hash, whether the binding is visible on a " +
-    "public ledger, whether the settlement is a public proof, whether the hash can be recovered from the chain " +
-    "alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) " +
-    "explains each member, `canonical` and `forwardIndexable` included.\n\n";
+    "Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the " +
+    "payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and " +
+    "`confirmed`, and these members of its `pattern` record, where it has one: the binding pattern, whether the " +
+    "binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP " +
+    "profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, " +
+    "`forwardIndexable` included.\n\n";
   for (const surface of surfaces) {
     s += `## ${code(surface)}\n\n`;
-    s += "| Pairing | Export | Pattern | Buyer signs H | Binding on chain | Public proof | Recoverable from chain | Profile |\n";
+    s += "| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |\n";
     s += "|---|---|---|---|---|---|---|---|\n";
     for (const b of rows.filter((x) => x.id.split("/")[0] === surface)) {
-      const p = b.pattern;
+      const p = b.pattern ?? {};
       const where = (exportedFrom.get(b.id) ?? []).map((w) => {
         const [e, k] = w.split(".");
         return `${code(k)} from ${code(subpath(e))}`;
       });
       const profile = p.profile === undefined ? "" : profileLink(p.profile);
-      s += `| ${code(b.id)} | ${where.join("<br>")} | ${code(p.pattern)} | ${yes(p.buyerSigns)} | ${yes(p.onChain)} | ${yes(p.publicProof)} | ${yes(p.zeroPartyRecoverable)} | ${profile} |\n`;
+      const pattern = b.pattern === undefined ? ["", "", ""] : [code(p.pattern), yes(p.onChain), yes(p.zeroPartyRecoverable)];
+      s += `| ${code(b.id)} | ${where.join("<br>")} | ${code(b.data.coverage)} | ${b.data.confirmed} | ${pattern.join(" | ")} | ${profile} |\n`;
     }
     s += "\n";
   }
   s += "## What each binding proves\n\n";
   s +=
-    "Each pairing's `pattern.proves` states what a payment through it shows, and what it does not. The text is the " +
+    "Each pairing's `data.proves` states what a payment through it shows, and what it does not. The text is the " +
     "package's own, quoted as it is. Where it names `<network>` and `<transaction>`, the record fills them in.\n\n";
-  for (const b of rows) s += `### ${code(b.id)}\n\n${b.pattern.proves}\n\n`;
+  for (const b of rows) s += `### ${code(b.id)}\n\n${b.data.proves}\n\n`;
   return s;
 }
 

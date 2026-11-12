@@ -1,5 +1,5 @@
-// The lcp half of buyer.json's rows for the agreement option and its PAYMENT-REQUIRED header, content codings, Stellar
-// builds, mpp/session/xrpl amounts and the within challenge's opaque: each fixture is what its row says it is, and each
+// The lcp half of buyer.json's rows for the agreement option and its PAYMENT-REQUIRED header, content codings,
+// mpp/session/xrpl amounts and the within challenge's opaque: each fixture is what its row says it is, and each
 // build the rows name refuses with the row's code before anything reaches a signer. The gates run the whole rows.
 // Every expected value is the file's.
 import { readFileSync } from "node:fs";
@@ -8,12 +8,11 @@ import { describe, expect, it } from "vitest";
 import { hashTypedData, type TypedDataDefinition } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { hash, hashEquals, isHttpsLink, isOtherSchemeLink, pairingOf, parseJson, toLcpString, type AtrHash } from "../src/index.js";
-import { chargeStellar, pairingsOf, sessionResume, sessionTempo, type MppChallenge } from "../src/mpp.js";
+import { pairingsOf, sessionResume, sessionTempo, type MppChallenge } from "../src/mpp.js";
 import { decodeStringMap } from "../src/mpp-challenge.js";
 import { isRefusal } from "../src/refusal.js";
 import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
 import { batchSvm } from "../src/x402-batch-settlement.js";
-import { exactStellar } from "../src/x402-exact-stellar.js";
 import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
@@ -214,54 +213,16 @@ describe("buyer.json BE1: the served bodies decode to A under the coding each ca
   }
 });
 
-interface StellarCase {
-  case: string;
-  inputs: { simulatedXdr: string; currentLedger: number };
-  expect: { decline?: string; detail?: string; signCalls: number; signRequestKind?: string };
-}
-
-describe("buyer.json BS1 and BS2: the Stellar build refuses before the signer", () => {
-  it("abc, which the links serve, hashes to the advertised H", async () => {
-    for (const name of ["BS1", "BS2", "BX1"]) {
-      const h = await hash(fromHex(row(name).input.servesHex));
-      expect(hashEquals(h, "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")).toBe(true);
-    }
-  });
-
-  const payerOf = (account: string) => account.split(":")[2]!;
-  const outcome = (u: unknown) =>
-    isRefusal(u) ? { decline: "offer-unreadable", detail: u.code, signCalls: 0 } : { signCalls: 1, signRequestKind: (u as { request: { kind: string } }).request.kind };
-
-  it("BS1: x402/exact/stellar", async () => {
-    const r = row("BS1").input;
-    expect(r.pairing).toBe("x402/exact/stellar");
-    const read = exactStellar.read(r.doc);
-    if (isRefusal(read)) throw new Error(read.code);
-    for (const c of rowsOf(r.cases as StellarCase[], "buyer.json BS1 input.cases")) {
-      const accepted = read.offer.options[0]!;
-      const u = await exactStellar.build({ required: read.offer.required, accepted, ...c.inputs, payer: payerOf(r.account) }, read.h);
-      expect([c.case, outcome(u)]).toEqual([c.case, c.expect]);
-    }
-  });
-
-  it("BS2: mpp/charge/stellar", async () => {
-    const r = row("BS2").input;
-    expect(r.pairing).toBe("mpp/charge/stellar");
-    const read = chargeStellar.read(r.doc);
-    if (isRefusal(read)) throw new Error(read.code);
-    const challenge = read.offer.challenges[0] as MppChallenge & { id: string };
-    for (const c of rowsOf(r.cases as StellarCase[], "buyer.json BS2 input.cases")) {
-      const u = await chargeStellar.build({ challenge, ...c.inputs, now: r.now, payer: payerOf(r.account) }, read.h);
-      expect([c.case, outcome(u)]).toEqual([c.case, c.expect]);
-    }
-  });
-});
-
 describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document with only request.amount replaced", () => {
   const B2 = load("mpp-session-hedera-solana-xrpl.json").buyer.rows.find(
     (r: { name: string; pairing: string }) => r.name === "B2" && r.pairing === "mpp/session/xrpl",
   ).input;
   const cases = rowsOf(row("BX1").input.cases as { case: string; doc: { request: string }[]; expect: { decline?: string; detail?: string; refusal?: string } }[], "buyer.json BX1 input.cases");
+
+  it("abc, which the link serves, hashes to the advertised H", async () => {
+    const h = await hash(fromHex(row("BX1").input.servesHex));
+    expect(hashEquals(h, "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")).toBe(true);
+  });
 
   it("the row's account and inputs are B2's", () => {
     expect(row("BX1").input.account).toBe(B2.account);

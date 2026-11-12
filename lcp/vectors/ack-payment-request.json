@@ -191,13 +191,10 @@
   },
   "pattern": {
    "pattern": "native-field",
-   "canonical": true,
    "profile": "ack/payment-request",
-   "buyerSigns": false,
    "onChain": false,
    "zeroPartyRecoverable": false,
    "forwardIndexable": false,
-   "publicProof": false,
    "claims": false
   }
  },

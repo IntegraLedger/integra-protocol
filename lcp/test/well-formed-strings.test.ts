@@ -8,15 +8,12 @@
 import { readFileSync } from "node:fs";
 import { keccak256, toBytes } from "viem";
 import { describe, expect, it } from "vitest";
-import { chargeHedera } from "../src/hedera.js";
 import {
   attributionMemo,
   challengeHash,
   evmAuthorization,
   pairingsOf,
   place,
-  tempoMemo,
-  tempoPush,
   usdcNonce,
   type MppChallenge,
   type MppCredential,
@@ -27,8 +24,6 @@ import { H, V, b64u, link, load, realm } from "./mpp-fixtures.js";
 const LONE = "\uD800";
 const FFFD = "�";
 const A = load("mpp-charge-evm-authorization.json");
-const HD = load("mpp-charge-hedera.json");
-const PU = load("mpp-charge-tempo-push.json");
 const B = load("x402-batch-settlement.json");
 const refused = (code: string) => ({ refused: true, code });
 const issued = (r: string, method = "evm", request = V.fixed.R_E): MppChallenge => ({
@@ -86,46 +81,9 @@ describe("MPP: a challenge's realm and id, and the payer's client id", () => {
     );
   });
 
-  it("the Tempo builds refuse a client id that is not well-formed: mpp/input-malformed", async () => {
-    const memo = placed(issued(realm, "tempo", V.fixed.R_T));
-    const push = placed(issued(realm, "tempo", PU.fixed.R_TNoModes));
-    expect(attributionMemo(realm, memo.id, `c${LONE}`)).toBe(attributionMemo(realm, memo.id, `c${FFFD}`));
-    for (const [build, ch] of [
-      [tempoMemo.build, memo],
-      [tempoPush.build, push],
-    ] as const) {
-      const at = (clientId: string) => ({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, clientId });
-      expect(await build(at(`c${LONE}`), H)).toEqual(refused("mpp/input-malformed"));
-      expect("refused" in (await build(at(`c${FFFD}`), H))).toBe(false);
-    }
-  });
-
-  it("the Hedera charge build refuses such a realm or id with bound's code, and such a client id (hedera/option-malformed)", async () => {
-    const own = placed(issued(HD.fixed.realm as string, "hedera", JSON.stringify(HD.fixed.request)));
-    const build = (challenge: MppChallenge, clientId?: string) =>
-      chargeHedera.build(
-        {
-          challenge: challenge as MppChallenge & { id: string },
-          payer: HD.fixed.payer,
-          node: HD.fixed.node,
-          validStart: { seconds: BigInt(HD.fixed.validStart.seconds), nanos: HD.fixed.validStart.nanos },
-          maxFee: BigInt(HD.fixed.maxFee),
-          ...(clientId === undefined ? {} : { clientId }),
-        },
-        H,
-      );
-    // The build holds the challenge as bound holds an echoed one: a realm that is not well-formed is
-    // mpp/challenge-malformed, and an id that is not is no id derived from H, mpp/id-not-ours.
-    for (const [challenge, code] of [
-      [{ ...own, realm: own.realm + LONE }, "mpp/challenge-malformed"],
-      [{ ...own, id: own.id + LONE }, "mpp/id-not-ours"],
-    ] as const) {
-      expect(await build(challenge)).toEqual(refused(code));
-      expect(await chargeHedera.bound({ challenge, payload: { type: "hash", transactionId: "0.0.5555@1700000000.0" } })).toEqual(refused(code));
-    }
-    expect(await build(own, `c${LONE}`)).toEqual(refused("hedera/option-malformed"));
-    expect("refused" in (await build({ ...own, realm: own.realm + FFFD }))).toBe(false);
-    expect("refused" in (await build(own, `c${FFFD}`))).toBe(false);
+  it("attributionMemo writes a client id that is not well-formed as TextEncoder writes it", () => {
+    const own = placed(issued(realm));
+    expect(attributionMemo(realm, own.id, `c${LONE}`)).toBe(attributionMemo(realm, own.id, `c${FFFD}`));
   });
 });
 

@@ -67,13 +67,10 @@
  },
  "pattern": {
   "pattern": "id-reuse",
-  "canonical": true,
-  "buyerSigns": true,
   "claims": true,
   "onChain": true,
   "zeroPartyRecoverable": false,
   "forwardIndexable": false,
-  "publicProof": true,
   "proves": "The payer signed a Permit2 transfer, single or batch, whose witness carries keccak256 of this challenge's id and realm, and the id is this ATR's hash in base64url with the challenge's position. Permit2 verified the signature when it executed the transfer; a batch's transfers all executed in that one call. The witness is in the settlement transaction's calldata only as a hash, and no event carries it. This does not show that amount, payee, asset, splits or timing match the ATR's content."
  },
  "buyer": {

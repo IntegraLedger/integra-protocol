@@ -39,8 +39,10 @@ const groups: { file: string; group: Group }[] = rowsOf(
   {
     keep: ["the files with buyer rows", (f) => f.data.buyer !== undefined],
     leave: [
-      "the files with no buyer member: buyer.json, whose rows vectors.test.ts and buyer-vectors.test.ts run, and the files that " +
-        "hold no one pairing's vectors (core, discovery, the MPP challenge, A2A, SD-JWT, the decoder caps)",
+      "the files with no buyer member: buyer.json, whose rows vectors.test.ts and buyer-vectors.test.ts run, the files that " +
+        "hold no one pairing's vectors (core, discovery, the MPP challenge, A2A, SD-JWT, the decoder caps), and the files " +
+        "that hold the stellar, lightning and tempo entry points' vectors and no pairing's (x402-exact-stellar, " +
+        "x402-exact-lnbtc, mpp-charge-stellar, mpp-charge-tempo-memo)",
       (f) => f.data.buyer === undefined,
     ],
   },
@@ -136,38 +138,6 @@ describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
       const got = [];
       for (const c of row.input.check!) got.push(await check(fromHex(c.bytesHex), row.input, p));
       expect(got).toEqual(row.expect);
-    });
-  }
-});
-
-// x402's lnbtc buyer recomputes the request hash from its own request, so each lnbtc B2 row's inputs carry that
-// request: x402's published example, GET of the row's resource with an empty body. Its `http:1` canonical description,
-// written out here from x402's scheme_exact_lnbtc.md (members in RFC 8785 order, bodyHash the SHA-256 of no bytes),
-// hashes to the option's requestHash.
-describe("the lnbtc B2 rows carry the buyer's own request", () => {
-  const DESCRIPTION =
-    '{"bodyHash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","domain":"x402:exact:lnbtc:bolt11:http:1",' +
-    '"headers":[],"method":"GET","url":"https://api.example.com/article/A"}';
-  const lnbtc = rowsOf(rows, "the buyer rows of every vector file", {
-    exact: 2,
-    keep: ["the B2 rows of the two lnbtc pairings", ({ row }) => row.name === "B2" && row.pairing.startsWith("x402/exact/lnbtc")],
-    leave: [
-      "the B2 rows of the other pairings and every B6 row, which the B2 and B6 tests above run",
-      ({ row }) => row.name !== "B2" || !row.pairing.startsWith("x402/exact/lnbtc"),
-    ],
-  });
-
-  it("both lnbtc pairings have a B2 row", () => {
-    expect(lnbtc.map(({ row }) => row.pairing).sort()).toEqual(["x402/exact/lnbtc", "x402/exact/lnbtc/invoice-named"]);
-  });
-
-  for (const { file, row } of lnbtc) {
-    it(`${file} B2: inputs.request is GET of the resource, whose description hashes to the option's requestHash`, async () => {
-      const doc = row.input.doc as { resource: { url: string }; accepts: { extra: { requestHash: string } }[] };
-      const inputs = (row.input as { inputs?: { request?: unknown } }).inputs;
-      expect(inputs?.request).toEqual({ method: "GET", url: doc.resource.url });
-      expect(doc.resource.url).toBe("https://api.example.com/article/A");
-      expect(await hash(new TextEncoder().encode(DESCRIPTION))).toBe(`0x${doc.accepts[0]!.extra.requestHash}`);
     });
   }
 });

@@ -29,6 +29,8 @@ import {
   type PaymentRequired,
   type PaymentRequirements,
 } from "./x402.js";
+import { APTOS } from "./internal/data/aptos.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `aptos:` and the numeric chain id. */
@@ -379,20 +381,9 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "http-advisory",
-  canonical: true,
-  buyerSigns: false,
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
-  publicProof: false,
-  proves:
-    "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-    "recorded in <transaction>. " +
-    "The ATR was assembled before the challenge went out, and the challenge advertised its hash and link. The " +
-    "payer's signed Aptos transaction does not carry the hash. The seller " +
-    "tied the hash to this payment when it claimed it for this request, and identified the settlement as " +
-    "the payer's committed transaction by sender, sequence number and a digest of its transfer. This does not show " +
-    "that the buyer's approval carried the hash, or that amount, payee, asset or timing match the ATR's content.",
 });
 
 /**
@@ -402,9 +393,9 @@ const pattern: LcpPattern = deepFreeze({
  */
 export const exactAptos = Object.freeze({
   id: ID,
+  data: APTOS[ID],
   pattern,
   claims: false as boolean,
-  carrier: null,
   unplaced,
   tie,
   advertise,
@@ -414,7 +405,7 @@ export const exactAptos = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference,
   status: aptosStatus,
-});
+}) satisfies Entry<typeof ID, AptosPaymentPayload, AptosRef, AptosReader>;
 
 /**
  * True when the committed transaction is the one the payer signed: its transfer hashes to the ref's digest, given in

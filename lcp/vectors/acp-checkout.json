@@ -232,24 +232,18 @@
  "patterns": {
   "acp/checkout/delegated": {
    "pattern": "native-field",
-   "canonical": true,
    "profile": "acp/checkout/session-id",
-   "buyerSigns": false,
    "onChain": false,
    "zeroPartyRecoverable": false,
    "forwardIndexable": false,
-   "publicProof": false,
    "claims": false
   },
   "acp/checkout/undelegated": {
    "pattern": "http-advisory",
-   "canonical": true,
    "profile": "acp/checkout/session-id",
-   "buyerSigns": false,
    "onChain": false,
    "zeroPartyRecoverable": false,
    "forwardIndexable": false,
-   "publicProof": false,
    "claims": false
   }
  },

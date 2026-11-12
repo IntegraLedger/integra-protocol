@@ -113,9 +113,8 @@ describe("acp-checkout.json", () => {
 
   it("each record states its pattern, and neither pairing claims", () => {
     for (const b of [delegated, undelegated]) {
-      const { proves, ...rest } = b.pattern;
-      expect({ ...rest, claims: b.claims }).toEqual(V.patterns[b.id]);
-      expect(proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
+      expect({ ...b.pattern, claims: b.claims }).toEqual(V.patterns[b.id]);
+      expect(b.data.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
       expect(b.unplaced(V.V1.options[0])).toBe(V.V1.options[0]);
     }
   });

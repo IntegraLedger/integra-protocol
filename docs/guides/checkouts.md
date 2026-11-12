@@ -22,11 +22,11 @@ seller advertises into and what the buyer presents:
 | Card networks | `@integraledger/lcp/card` | `card/visa-tap`, `card/mastercard-vi/immediate`, `card/mastercard-vi/autonomous`, `card/seller-reference` | A covered `lcp-hash` field of the agent's message signature, the `checkout_jwt` a Verifiable Intent mandate signs, or the seller's processor reference. | Visa TAP and Verifiable Intent |
 | A2A | `@integraledger/lcp/a2a` | none | The Task's `metadata`, under the extension's URI. Delivery only. | no |
 
-The "Buyer signs H" column is each pairing's `pattern.buyerSigns`. The
+The "Buyer signs H" column says where each pairing's `data.carrier.signed` names a field. The
 [pairings reference](../reference/pairings.md#what-each-binding-proves) gives the sentence each pairing's record
 states about what a payment through it proves.
 
-Where the pairing's `publicProof` is false, the seller advertises an
+Where the pairing's `data.coverage` is `none`, the seller advertises an
 [agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the link; the buyer gate declines such an offer
 without one. Every checkout pairing's `advertise` takes it as its last argument and writes it where the protocol keeps
 the link, and its `read` returns it as `agreement`.

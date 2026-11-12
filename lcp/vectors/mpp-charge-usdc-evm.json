@@ -61,13 +61,10 @@
  },
  "pattern": {
   "pattern": "id-reuse",
-  "canonical": true,
-  "buyerSigns": true,
   "claims": true,
   "onChain": true,
   "zeroPartyRecoverable": false,
   "forwardIndexable": false,
-  "publicProof": true,
   "proves": "The payer signed an EIP-3009 authorization whose nonce is keccak256 of the JCS of this challenge's id, realm and request hash, and the id is this ATR's hash in base64url with the challenge's position. The token contract verified the signature when it executed the transfer, and the nonce is on chain in its AuthorizationUsed event. A holder of the ATR, the realm and the request can confirm the hash; the chain alone does not reveal it. This does not show that amount, payee, asset or timing match the ATR's content."
  },
  "buyer": {

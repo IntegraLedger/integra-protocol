@@ -392,8 +392,8 @@ describe("x402-exact-algorand.json", () => {
       expect(await exactAvm.bound(presented)).toBe(V.V3.expectBound);
       expect(await exactAvm.reference(presented)).toEqual(V.V3.expectReference);
     }
-    expect(exactAvm.pattern.proves).toContain("with a signature, a multisignature or a logic signature");
-    expect(exactAvm.pattern.proves).not.toContain("payer signed");
+    expect(exactAvm.data.proves).toContain("with a signature, a multisignature or a logic signature");
+    expect(exactAvm.data.proves).not.toContain("payer signed");
   });
 
   it("plant: a note search is never a settlement", async () => {

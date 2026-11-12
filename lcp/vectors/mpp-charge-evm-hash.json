@@ -49,13 +49,10 @@
  },
  "pattern": {
   "pattern": "opaque-challenge",
-  "canonical": true,
-  "buyerSigns": false,
   "claims": false,
   "onChain": false,
   "zeroPartyRecoverable": false,
   "forwardIndexable": false,
-  "publicProof": false,
   "proves": "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction (`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, and the settlement transaction it reported succeeded and moved the token. This does not show that amount, payee, asset or timing match the ATR's content."
  },
  "buyer": {

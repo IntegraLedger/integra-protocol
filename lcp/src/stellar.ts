@@ -7,7 +7,6 @@ export {
   SCVAL_MAX_DEPTH,
   decodeStellarTx,
   muxedFor,
-  muxedId,
   stellarLocate,
   stellarStatus,
   transferEventOf,

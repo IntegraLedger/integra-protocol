@@ -1,25 +1,11 @@
 /**
- * BOLT11 invoices and the Lightning pairings on x402 and MPP. On `x402/exact/lnbtc` the seller's node writes the ATR hash as the
- * invoice's `m` field and signs it; on `x402/exact/lnbtc/invoice-named` the invoice carries no hash and the ATR's
- * `x402` slot names the invoice instead. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The
- * payer signs nothing; it pays the invoice.
+ * BOLT11 invoices, the x402 Lightning payment's types, and the Lightning pairings on MPP. On MPP the seller's node writes
+ * the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
  */
-import { canonicalJson, fromLegalContext, hashEquals, parseJson, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, hashEquals, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import {
-  decode,
-  FIELD,
-  fieldHash,
-  isLnOffer,
-  isLnOption,
-  lnbtcFilter,
-  namedFilter,
-  offerChecks,
-  optionChecks,
-  type LnOption,
-} from "./internal/lightning.js";
+import { decode, fieldHash } from "./internal/lightning.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, paymentWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
 import {
   credentialOf,
   checkChallenge,
@@ -39,12 +25,9 @@ import {
 } from "./mpp-challenge.js";
 import { toBase64Url } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import {
-  tie,
-  type LcpPattern,
-  type PaymentRequired,
-  type PaymentRequirements,
-} from "./x402.js";
+import type { LcpPattern, PaymentRequired, PaymentRequirements } from "./x402.js";
+import { LIGHTNING } from "./internal/data/lightning.js";
+import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /**
@@ -92,12 +75,7 @@ export type LnPaymentPayload = {
   extensions?: PaymentRequired["extensions"];
 };
 
-const MAX_ACCEPTS_READ = 32;
-const MAX_ATR = 1_048_576;
-const SKEW_SECONDS = 60;
 const PREIMAGE = /^[0-9a-f]{64}$/;
-/** The ATR's text: strict UTF-8 with a byte-order mark kept, so an ATR that begins with one is not one JSON object. */
-const atrText = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
  * Decodes a BOLT11 invoice of up to 8,192 characters, past Bech32's 90-character limit, which BOLT 11 lets an invoice
@@ -112,325 +90,11 @@ export function invoiceH(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
   return fieldHash(b, field);
 }
 
-/**
- * True when the ATR's bytes are one JSON object in the core's layout whose `x402` slot's `accepts` holds, among its
- * first 32 entries, an option whose `extra.invoice` is exactly `invoice`. The object's first members are `atrVersion`,
- * `id` and `x402`, in that order, and no member name appears twice, so every JSON reader finds the same `x402` slot.
- * Only that slot is read; inside it, a repeated member name reads as `JSON.parse` reads it, the last one counting.
- */
-export function atrNamesInvoice(atr: Uint8Array, invoice: string): boolean {
-  if (!(atr instanceof Uint8Array) || atr.length > MAX_ATR || typeof invoice !== "string") return false;
-  let text: string;
-  try {
-    text = atrText.decode(atr);
-  } catch {
-    return false;
-  }
-  const parsed = parseJson(text);
-  if (!isObject(parsed)) return false;
-  const names = memberNames(text);
-  if (names[0] !== "atrVersion" || names[1] !== "id" || names[2] !== "x402") return false;
-  if (new Set(names).size !== names.length) return false;
-  const slot = parsed["x402"];
-  const accepts = isObject(slot) ? slot["accepts"] : undefined;
-  if (!Array.isArray(accepts)) return false;
-  return accepts.slice(0, MAX_ACCEPTS_READ).some((o: unknown) => {
-    const extra = isObject(o) ? o["extra"] : undefined;
-    return isObject(extra) && extra["invoice"] === invoice;
-  });
-}
-
-/**
- * The member names of the JSON object `text` holds, decoded, in the order written. `text` is one JSON object that
- * `JSON.parse` has read, so the scan only walks it; each step moves forward, so the scan ends within its length.
- */
-function memberNames(text: string): string[] {
-  let i = 0;
-  const space = (): void => {
-    while (i < text.length && (text[i] === " " || text[i] === "\t" || text[i] === "\n" || text[i] === "\r")) i++;
-  };
-  const skipString = (): void => {
-    i++;
-    while (i < text.length && text[i] !== '"') i += text[i] === "\\" ? 2 : 1;
-    i++;
-  };
-  const skipValue = (): void => {
-    let depth = 0;
-    while (i < text.length) {
-      const c = text[i];
-      if (c === '"') {
-        skipString();
-        if (depth === 0) return;
-        continue;
-      }
-      if (c === "{" || c === "[") depth++;
-      else if (c === "}" || c === "]") {
-        if (depth === 0) return;
-        depth--;
-        i++;
-        if (depth === 0) return;
-        continue;
-      } else if (c === "," && depth === 0) return;
-      i++;
-    }
-  };
-  const names: string[] = [];
-  space();
-  i++;
-  space();
-  while (i < text.length && text[i] === '"') {
-    const start = i;
-    skipString();
-    names.push(JSON.parse(text.slice(start, i)) as string);
-    space();
-    i++;
-    space();
-    skipValue();
-    space();
-    if (text[i] !== ",") break;
-    i++;
-    space();
-  }
-  return names;
-}
-
 function hex(b: Uint8Array): string {
   let s = "";
   for (const x of b) s += x.toString(16).padStart(2, "0");
   return s;
 }
-
-/**
- * The option without `extra.invoice`, the dynamic field that carries the hash on `x402/exact/lnbtc`. An option that
- * carries a `refused` member is `x402/option-malformed`; a value that is not an object comes back as it is.
- */
-function withoutInvoice(option: PaymentRequirements): PaymentRequirements | Refusal {
-  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
-  if (!isObject(option) || !isObject(option.extra) || !Object.hasOwn(option.extra, "invoice")) return option;
-  const { invoice: _, ...extra } = option.extra;
-  return { ...option, extra };
-}
-
-function completeFor(required: PaymentRequired, accepted: PaymentRequirements): (preimage: string) => LnPaymentPayload | Refusal {
-  return (preimage) => {
-    if (typeof preimage !== "string" || !PREIMAGE.test(preimage)) return refusal("ln/preimage-malformed");
-    return paymentWith(required, accepted, { preimage });
-  };
-}
-
-/**
- * The read keys of a payment whose option the pairing's filter serves: the option's `network`, which is the network of
- * the invoice's currency; the invoice's payment hash; and its timestamp plus expiry plus x402's 60 s skew.
- */
-async function x402Reference(presented: unknown, want: boolean): Promise<LnRef | Refusal> {
-  if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = acceptedBy(presented["accepted"], want ? lnbtcFilter : namedFilter);
-  if (isRefusal(accepted)) return accepted;
-  const b = decode((accepted as LnOption).extra.invoice) as Bolt11;
-  return { network: accepted.network, paymentHash: hex(b.paymentHash), settleBy: b.timestamp + b.expiry + SKEW_SECONDS };
-}
-
-const X1_OPENING =
-  "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, " +
-  "recorded in <transaction>. ";
-/** What the record shows of the payment itself: the seller's report, and the invoice and preimage the parties hold. */
-const REPORT =
-  "Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice " +
-  "was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, " +
-  "payee or timing match the ATR's content.";
-/** On the pairings whose invoice carries the hash: no signature is verified here, and the payer signs nothing. */
-const UNVERIFIED = "Its signature is not verified here, and the payer signed nothing that carries the hash. " + REPORT;
-
-// ── x402/exact/lnbtc ──
-
-const LNBTC = "x402/exact/lnbtc" as const;
-const lnbtcShared = advertiseFor(filterOf(isLnOption));
-
-/**
- * The x402 entry point's legal-context placement, then the invoice's checks: its `m` is `h`, its `h` is the request
- * hash.
- */
-function lnbtcAdvertise(
-  doc: PaymentRequired,
-  h: AtrHash,
-  link: string,
-  offer: PaymentRequirements,
-  agreementUrl?: string,
-): PaymentRequired | Refusal {
-  const placed = lnbtcShared(doc, h, link, offer, agreementUrl);
-  if (isRefusal(placed)) return placed;
-  const b = optionChecks(offer as LnOption, h);
-  return isRefusal(b) ? b : placed;
-}
-
-const lnbtcBeforeShared = advertiseFor(filterOf(isLnOffer));
-
-/**
- * `advertise` for the offer the seller sends before its node writes the invoice: the legal-context placement and the
- * option's own checks (a 64-hex-digit `requestHash`, x402's client checks). The invoice, its `m` and its `h` are not
- * read.
- */
-function lnbtcAdvertiseBeforeCarrier(
-  doc: PaymentRequired,
-  h: AtrHash,
-  link: string,
-  offer: PaymentRequirements,
-  agreementUrl?: string,
-): PaymentRequired | Refusal {
-  const placed = lnbtcBeforeShared(doc, h, link, offer, agreementUrl);
-  if (isRefusal(placed)) return placed;
-  return offerChecks(offer as PaymentRequirements & { extra: { [k: string]: Json } }) ?? placed;
-}
-
-async function lnbtcBuild(c: { required: PaymentRequired; accepted: PaymentRequirements }, h: AtrHash): Promise<LnUnsigned | Refusal> {
-  if (normalHash(h) === null) return refusal("ln/no-metadata");
-  if (!isObject(c)) return refusal("x402/not-v2");
-  const wrong = chosen(c.required, c.accepted, filterOf(isLnOption));
-  if (wrong !== true) return wrong;
-  const accepted = c.accepted as LnOption;
-  const b = optionChecks(accepted, h);
-  if (isRefusal(b)) return b;
-  return { request: { kind: "bolt11-pay", invoice: accepted.extra.invoice }, complete: completeFor(c.required, c.accepted) };
-}
-
-/**
- * The hash in the invoice the payer paid: its `m` field, from an option the pairing's filter serves, so the invoice's
- * fields, its currency and the option's own fields are the ones `advertise` and `build` check. No signature is
- * verified here.
- */
-async function lnbtcBound(presented: unknown): Promise<AtrHash | Refusal> {
-  if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = acceptedBy(presented["accepted"], lnbtcFilter);
-  if (isRefusal(accepted)) return accepted;
-  return fieldHash(decode((accepted as LnOption).extra.invoice) as Bolt11, "m");
-}
-
-/**
- * `x402/exact/lnbtc`. The payer broadcasts (`broadcaster` answers `"payer"`): its node pays the invoice before the
- * preimage is presented. The seller's node, which received the payment, confirms it; `reference` names the invoice,
- * and no `status` reads it.
- */
-export const exactLnbtc = Object.freeze({
-  id: LNBTC,
-  pattern: deepFreeze({
-    pattern: "native-field",
-    canonical: true,
-    profile: LNBTC,
-    buyerSigns: false,
-    onChain: false,
-    zeroPartyRecoverable: false,
-    forwardIndexable: false,
-    publicProof: false,
-    proves:
-      X1_OPENING +
-      "The seller's node's BOLT11 invoice has this ATR's hash as its payment metadata and x402's request hash as its " +
-      "description hash. " +
-      UNVERIFIED,
-  } satisfies LcpPattern) as LcpPattern,
-  claims: true as boolean,
-  carrier: "extra.invoice#m" as const,
-  unplaced: withoutInvoice,
-  tie,
-  advertise: lnbtcAdvertise,
-  advertiseBeforeCarrier: lnbtcAdvertiseBeforeCarrier,
-  read: readFor(lnbtcFilter) as (doc: PaymentRequired) => X402Read | Refusal,
-  build: lnbtcBuild,
-  bound: lnbtcBound,
-  broadcaster: x402Broadcaster("payer", { payload: null }),
-  reference: (presented: unknown) => x402Reference(presented, true),
-});
-
-// ── x402/exact/lnbtc/invoice-named ──
-
-const NAMED = "x402/exact/lnbtc/invoice-named" as const;
-const namedShared = advertiseFor(filterOf(isLnOption));
-
-/** The invoice's checks with `m` forbidden, then the x402 entry point's legal-context placement. */
-function namedAdvertise(
-  doc: PaymentRequired,
-  h: AtrHash,
-  link: string,
-  offer: PaymentRequirements,
-  agreementUrl?: string,
-): PaymentRequired | Refusal {
-  if (isLnOption(offer)) {
-    const b = optionChecks(offer, null);
-    if (isRefusal(b)) return b;
-  }
-  return namedShared(doc, h, link, offer, agreementUrl);
-}
-
-/**
- * The option unchanged: the invoice carries no hash, so the option as issued is what the ATR names. An option that
- * carries a `refused` member is `x402/option-malformed`.
- */
-function namedUnplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
-  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
-  return option;
-}
-
-/** Pays only an invoice that the ATR's own `x402` slot names. */
-async function namedBuild(
-  c: { required: PaymentRequired; accepted: PaymentRequirements; atr: Uint8Array },
-  h: AtrHash,
-): Promise<LnUnsigned | Refusal> {
-  if (!isObject(c)) return refusal("x402/not-v2");
-  const wrong = chosen(c.required, c.accepted, filterOf(isLnOption));
-  if (wrong !== true) return wrong;
-  const accepted = c.accepted as LnOption;
-  const b = optionChecks(accepted, null);
-  if (isRefusal(b)) return b;
-  if (!atrNamesInvoice(c.atr, accepted.extra.invoice)) return refusal("ln/invoice-not-named");
-  return { request: { kind: "bolt11-pay", invoice: accepted.extra.invoice }, complete: completeFor(c.required, c.accepted) };
-}
-
-/**
- * The candidate hash: the echoed legal context's value, under an option the pairing's filter serves. The paid invoice
- * carries none; the seller's digest over the option it issued, invoice included, is what ties this payment to the ATR.
- */
-async function namedBound(presented: unknown): Promise<AtrHash | Refusal> {
-  if (!isObject(presented) || presented["x402Version"] !== 2) return refusal("x402/not-v2");
-  const accepted = acceptedBy(presented["accepted"], namedFilter);
-  if (isRefusal(accepted)) return accepted;
-  const extensions = presented["extensions"];
-  const lc = isObject(extensions) ? extensions["legalContext"] : undefined;
-  const decoded = isObject(lc) ? fromLegalContext({ legalContext: lc["info"] }) : null;
-  return decoded === null ? refusal("ln/no-legal-context") : decoded.h;
-}
-
-/**
- * `x402/exact/lnbtc/invoice-named`. The payer broadcasts (`broadcaster` answers `"payer"`): its node pays the invoice
- * before the preimage is presented. The seller's node, which received the payment, confirms it; `reference` names the
- * invoice, and no `status` reads it.
- */
-export const exactLnbtcNamed = Object.freeze({
-  id: NAMED,
-  pattern: deepFreeze({
-    pattern: "http-advisory",
-    canonical: true,
-    buyerSigns: false,
-    onChain: false,
-    zeroPartyRecoverable: false,
-    forwardIndexable: false,
-    publicProof: false,
-    proves:
-      X1_OPENING +
-      "The ATR names this payment: its binding slot holds the payment option as issued, including the seller node's " +
-      "signed BOLT11 invoice, whose description hash is x402's request hash. The invoice does not carry this ATR's " +
-      "hash, and the payer signed nothing that does. " +
-      REPORT,
-  } satisfies LcpPattern) as LcpPattern,
-  claims: true as boolean,
-  carrier: null,
-  unplaced: namedUnplaced,
-  tie,
-  advertise: namedAdvertise,
-  read: readFor(namedFilter) as (doc: PaymentRequired) => X402Read | Refusal,
-  build: namedBuild,
-  bound: namedBound,
-  broadcaster: x402Broadcaster("payer", { payload: null }),
-  reference: (presented: unknown) => x402Reference(presented, false),
-});
 
 // ── mpp/charge/lightning and mpp/session/lightning ──
 
@@ -623,27 +287,18 @@ function lnReference(pairing: LnMppPairingId) {
   };
 }
 
-const MPP_LN_PROVES =
-  X1_OPENING +
-  "The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. " +
-  UNVERIFIED;
-
-function lnMppBinding<P extends LnMppPairingId>(id: P, carrier: string, proves: string = MPP_LN_PROVES) {
+function lnMppBinding<P extends LnMppPairingId>(id: P) {
   return Object.freeze({
     id,
+    data: LIGHTNING[id],
     pattern: deepFreeze({
       pattern: "native-field",
-      canonical: true,
       profile: "mpp/charge",
-      buyerSigns: false,
       onChain: false,
       zeroPartyRecoverable: false,
       forwardIndexable: false,
-      publicProof: false,
-      proves,
     } satisfies LcpPattern) as LcpPattern,
     claims: true as boolean,
-    carrier,
     unplaced: lnUnplaced(id),
     tie: mppTie,
     read: mppRead,
@@ -661,7 +316,7 @@ function lnMppBinding<P extends LnMppPairingId>(id: P, carrier: string, proves: 
  * preimage is presented. The seller's node, which received the payment, confirms it; `reference` names the invoice,
  * and no `status` reads it.
  */
-export const chargeLightning = lnMppBinding(LN_CHARGE, "request.methodDetails.invoice#h");
+export const chargeLightning = lnMppBinding(LN_CHARGE) satisfies Entry<typeof LN_CHARGE, MppCredential, LnRef, never>;
 /** The one network name every Lightning session channel key carries: a bearer or close challenge names no invoice. */
 const SESSION_CHANNEL_NETWORK = "lightning";
 const PAYMENT_HASH = /^[0-9a-fA-F]{64}$/;
@@ -714,8 +369,6 @@ async function sessionBoundWithin(_presented: unknown): Promise<AtrHash | Refusa
   return refusal("mpp/not-bound-within");
 }
 
-const MPP_LN_SESSION_PROVES = MPP_LN_PROVES + " The close is the seller's report.";
-
 /**
  * `mpp/session/lightning`. `broadcaster` answers by the payment's action (`sessionBroadcasts`), for the actions
  * `channel.kind` takes. `"payer"`: the opening and a top-up, whose deposits the payer's node paid, and a bearer proof,
@@ -724,7 +377,7 @@ const MPP_LN_SESSION_PROVES = MPP_LN_PROVES + " The close is the seller's report
  * refuses it.
  */
 export const sessionLightning = Object.freeze({
-  ...lnMppBinding(LN_SESSION, "request.depositInvoice#h", MPP_LN_SESSION_PROVES),
+  ...lnMppBinding(LN_SESSION),
   broadcaster: sessionBroadcaster(sessionKind, sessionBroadcasts, () => refusal("ln/no-payment-in-action")),
   channel: Object.freeze({
     kind: measuring(sessionKind),
@@ -732,4 +385,4 @@ export const sessionLightning = Object.freeze({
     boundWithin: measuringAsync(sessionBoundWithin),
     until: (_presented: unknown): number | undefined => undefined,
   }),
-});
+}) satisfies Entry<typeof LN_SESSION, MppCredential, LnRef, never>;

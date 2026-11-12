@@ -32,7 +32,6 @@ const ROWS: readonly [id: string, ref: Record<string, unknown>, member: string, 
   ["mpp/session/evm", { network: "eip155:8453" }, "transaction", NOT_HASH, "evm/wrong-reader"],
   ["mpp/session/tempo", { network: "eip155:42431" }, "transaction", NOT_HASH, "tempo/wrong-reader"],
   ["mpp/subscription/tempo", { network: "eip155:42431" }, "transaction", NOT_HASH, "tempo/wrong-reader"],
-  ["mpp/session/hedera", { network: "hedera:testnet", escrow: `0x${"11".repeat(20)}` }, "transaction", NOT_HASH, "hedera/wrong-reader"],
   ["x402/exact/cardano", { network: "cardano:preprod" }, "txId", NOT_HASH, "cardano/wrong-reader"],
   ["x402/exact/tron/lcp-trc20-memo", { network: "tron:728126428" }, "txid", NOT_HASH, "tron/wrong-reader"],
   ["mpp/charge/usdc/stacks", { network: "stacks:1", contract: "SP3Y2ZSH8P7D50B0VBTSX11S7XSG24M1VB9YFQA4K.token-aeusdc" }, "transaction", NOT_HASH, "stacks/wrong-reader"],
@@ -90,9 +89,9 @@ describe("recover, given a ref whose transaction id is not in its rail's form", 
   }
 });
 
-// The Tempo receipt read under `fetchPresented` on the push charge and the Tempo recovers answers a transaction that is
-// not a 32-byte hash as those recovers answer a ref naming one: `tempo/wrong-reader`, with nothing read
-// (docs/reference/refusals.md, `tempo/wrong-reader`), never `tempo/not-found`, a read to repeat.
+// The Tempo receipt read under the Tempo recovers answers a transaction that is not a 32-byte hash as those recovers
+// answer a ref naming one: `tempo/wrong-reader`, with nothing read (docs/reference/refusals.md, `tempo/wrong-reader`),
+// never `tempo/not-found`, a read to repeat.
 describe("the Tempo receipt read, given a transaction that is not a 32-byte hash", () => {
   it("is tempo/wrong-reader, with nothing read", async () => {
     for (const value of rowsOf(NOT_HASH, "the malformed transaction ids")) {
