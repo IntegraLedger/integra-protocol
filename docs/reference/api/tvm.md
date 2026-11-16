@@ -135,7 +135,7 @@ GET /api/v3/masterchainInfo: the last indexed block's gen_utime.
 
 ### TvmRef
 
-The read keys a payment's settlement is read by.
+The read keys a payment's settlement is read by, and the payee, the `payTo` of the option the payment answers.
 
 #### Properties
 
@@ -143,6 +143,7 @@ The read keys a payment's settlement is read by.
 | ------ | ------ | ------ |
 | <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. |
 | <a id="property-network-1"></a> `network` | `` `tvm:${number}` `` | - |
+| <a id="property-payee"></a> `payee` | `string` | - |
 | <a id="property-requestbodyhash"></a> `requestBodyHash` | `` `0x${string}` `` | The representation hash of the signed W5 request: the whole body of the message to the payer's wallet, its signature and any bit or reference after `has_other_actions` 0, which W5 does not read, included. |
 | <a id="property-transferbodyhash"></a> `transferBodyHash` | `` `0x${string}` `` | The representation hash of the Jetton transfer body the W5 request sends. |
 | <a id="property-validuntil"></a> `validUntil` | `number` | - |
@@ -190,13 +191,17 @@ tvm:<global_id>: tvm:-239 mainnet, tvm:-3 testnet.
 
 ### TvmStatus
 
-> **TvmStatus** = \{ `finality`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"in-flight"` \| `"not-final"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"aborted"` \| `"no-transfer"` \| `"bounced"` \| `"expired"`; \}
+> **TvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `TvmMark`\>
+
+The answer of `tvmStatus`, as the profile `read-status` gives it. Its marks are `confirmed` and `finalized`, TON
+Center v3's finality states 1 and 2, in that order; it reads no ledger position, so a position given as `after`
+places nothing.
 
 ## Variables
 
 ### exactTvm
 
-> `const` **exactTvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmUnsigned`](#tvmunsigned)\>; `carrier`: `"extra.forwardPayload"`; `claims`: `boolean`; `id`: `"x402/exact/tvm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmRef`](#tvmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`TvmStatus`](#tvmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactTvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmUnsigned`](#tvmunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/tvm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmRef`](#tvmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TvmStatus`](#tvmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/tvm`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator sends the request
 the payer's W5 wallet signed; `status` reads the wallet's transaction and the Jetton transfers it led to.
@@ -281,7 +286,7 @@ its CRC32C need no peer: without @ton/core they give the codes they give with it
 
 ### tvmRecover()
 
-> **tvmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **tvmRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from the payer Jetton wallet's transaction: the comment in its inbound Jetton transfer. A
 transaction with no inbound message body, or whose body is not a Jetton `transfer`, is `tvm/not-jetton-transfer`. A
@@ -289,15 +294,15 @@ body that is not a bag of cells with one root is an answer out of the reader's d
 ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body's cells
 cannot be read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader, the read
 and the body's size, bag-of-cells layout and CRC32C are checked, which need no peer, so an empty body is
-`tvm/unreadable` and one over 8 KiB `tvm/boc-too-large` either way. One call.
+`tvm/unreadable` and one over 8 KiB `tvm/boc-too-large` either way. The input's `tx` is the transaction's hash, and
+its `option` the option the payment answers, an object, of which the read needs no member; an input whose `tx` is
+not a non-empty string, or whose option is not an object, is `tvm/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: `` `tvm:${number}` ``; `transaction`: `string`; \} |
-| `ref.network` | `` `tvm:${number}` `` |
-| `ref.transaction` | `string` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `tvm:${number}` ``, [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`TvmReader`](#tvmreader) |
 
 #### Returns
@@ -308,30 +313,35 @@ and the body's size, bag-of-cells layout and CRC32C are checked, which need no p
 
 ### tvmStatus()
 
-> **tvmStatus**(`ref`, `reader`): `Promise`\<[`TvmStatus`](#tvmstatus)\>
+> **tvmStatus**(`ref`, `reader`, `query`): `Promise`\<[`TvmStatus`](#tvmstatus)\>
 
-Reads the head's time first. Then finds the signed request by its body hash on the payer's W5 wallet: only a W5
-transaction there that did not abort and emitted the Jetton transfer counts, because W5 checks the request's
-signature before any action runs, so a request the payer did not sign sends nothing from that wallet. It follows that
-message to the payer's Jetton wallet, and that wallet's `internal_transfer` to whichever Jetton wallet
-takes it, which is not compared with `payTo`: settled
-when both Jetton wallets executed without aborting, at the lower finality of the two. An equal Jetton body executed
-any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
-Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
-emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
-pending `not-found` up to 60 seconds past `validUntil`, since a W5 transaction runs at its shard block's time, which
-a masterchain block references only later; past that, failed `expired` when the W5 wallet holds no transaction with
-the request, `no-transfer` when one executed and emitted nothing, and `aborted` when every one aborted, each only
-when the lookup names an indexed time at or past the head read first. The lookup shows the W5 wallet's transactions
-only through the blocks its index holds, and an internal request that aborts leaves its seqno unused (wallet_v5.fc
-commits the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose
-index lags that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted
-is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`,
-at any head and at any finality. A transaction on any other account is ignored. A failed or malformed read, a
-malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
-network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
-lowercase. At most four calls. The read decodes no cell, and the accounts are raw addresses, compared without
-@ton/core (`rawKey`), so every answer is the same with it and without it.
+Answers the read of the request as the profile `read-status` gives it. The read takes the head's time first. Then it
+finds the signed request by its body hash on the payer's W5 wallet: only a W5 transaction there that did not abort
+and emitted the Jetton transfer counts, because W5 checks the request's signature before any action runs, so a
+request the payer did not sign sends nothing from that wallet. It follows that message to the payer's Jetton wallet,
+and that wallet's `internal_transfer` to whichever Jetton wallet takes it, which is not compared with `payTo`. The
+W5 transaction is the payer's act where both Jetton wallets executed without aborting, at the lower finality of the
+two, `confirmed` (1) or `finalized` (2); at TON Center's state 0 it names no included act. An equal Jetton body
+executed any other way is never counted. A W5 transaction that emitted the Jetton transfer names no included act
+until the Jetton wallet takes it, because an internal message carries no expiry. The payer's Jetton wallet's
+transaction aborted, or an aborted delivery, is the act included with a failed result, the W5 transaction having
+taken the request; one with no `internal_transfer` carries no act that binds H. When no W5 transaction with the
+request emitted the Jetton transfer, the head read first decides, because W5 refuses the request once
+`valid_until <= now()`: up to 60 seconds past `validUntil` it names no included act, since a W5 transaction runs at
+its shard block's time, which a masterchain block references only later; past that, the request's validity has
+passed when the W5 wallet holds no transaction with it, a W5 transaction that executed and emitted nothing carries no
+act, and one where every W5 transaction aborted is the act included with a failed result that left the seqno
+unused, each only when the lookup names an indexed time at or past the head read first. The lookup shows the W5
+wallet's transactions only through the blocks its index holds, and an internal request that aborts leaves its seqno
+unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before
+`validUntil`: a lookup whose index lags that head, or that names no time, names no included act. A transaction on any
+other account is ignored. The read holds no search for H, so none of these answers `failed`. A read that rejects is
+unreadable `transport`, an answer out of the reader's form `unparseable`, and a reader for another network than the
+ref's `chain-mismatch`. A ref, a reader or a query that is not one, a reader that names no network, or a malformed
+reference (a `requestBodyHash` that is not `0x` and 64 hex digits included) is unreadable `unparseable`, with nothing
+read; the request's body hash is looked up in lowercase. At most four calls. The read decodes no cell, and the
+accounts are raw addresses, compared without @ton/core (`rawKey`), so every answer is the same with it and without
+it.
 
 #### Parameters
 
@@ -339,6 +349,7 @@ lowercase. At most four calls. The read decodes no cell, and the accounts are ra
 | ------ | ------ |
 | `ref` | [`TvmRef`](#tvmref) |
 | `reader` | [`TvmReader`](#tvmreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`TvmRef`](#tvmref), `bigint`, `TvmMark`\> |
 
 #### Returns
 

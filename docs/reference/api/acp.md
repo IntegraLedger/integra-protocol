@@ -20,6 +20,7 @@ description: "The exports of @integraledger/lcp/acp."
 | Property | Type |
 | ------ | ------ |
 | <a id="property-claims"></a> `claims` | `boolean` |
+| <a id="property-data"></a> `data` | [`PairingData`](index.md#pairingdata) |
 | <a id="property-id"></a> `id` | `Id` |
 | <a id="property-pattern"></a> `pattern` | [`LcpPattern`](x402.md#lcppattern) |
 | <a id="property-tie"></a> `tie` | (`options`) => \[`"acp"`, \{ `options`: readonly [`HandlerOption`](#handleroption)[]; \}\] |

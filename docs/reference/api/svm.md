@@ -94,7 +94,8 @@ the message carries in its blockhash field.
 Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
 `@integraledger/lcp/evm`, and no function in this package reads a rejection as finding nothing. A rejected
 `transaction` or `account` call, and a rejected `firstAvailableBlock` call in a status read, is unreadable:
-`svm/unreadable`, a read to repeat, or a status read's pending `unreadable`. In `svmLocate`, a rejected
+`svm/unreadable`, a read to repeat, or a status read's `unreadable`, `transport` (`too-large` or `unparseable` for a
+`ReaderError` of kind `too-large` or `malformed`). In `svmLocate`, a rejected
 `firstAvailableBlock` or `signatures` call leaves the search `complete` false. `transaction` answers `notFound` when
 the node holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`),
 read from that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it
@@ -220,6 +221,7 @@ adds.
 | <a id="property-fromslot"></a> `fromSlot` | `string` | The slot the seller read when it kept the reference, as a decimal string. |
 | <a id="property-network-1"></a> `network` | `` `solana:${string}` `` | - |
 | <a id="property-nonce"></a> `nonce?` | [`SvmNonce`](#svmnonce) | Present exactly when the message uses a durable nonce. |
+| <a id="property-payee"></a> `payee` | `string` | The option's payee, which `reference` takes from the option the payment answers. |
 | <a id="property-transaction"></a> `transaction?` | `string` | - |
 
 ***
@@ -249,7 +251,9 @@ field in its own fresh `ArrayBuffer`, and a function that reads one takes any ba
 
 ### ChannelStatus
 
-> **ChannelStatus** = [`SvmStatus`](#svmstatus) \| \{ `state`: `"failed"`; `why`: `"no-channel-instruction"`; \}
+> **ChannelStatus** = [`SvmStatus`](#svmstatus)
+
+A channel opening's read, as the profile `read-status` answers it: the answer `svmStatus` gives.
 
 ***
 
@@ -267,32 +271,31 @@ CAIP-2: `solana:` and 32 base58 characters.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-channel-2"></a> `channel` | `string` |
-| <a id="property-network-2"></a> `network` | [`SolanaNetwork`](#solananetwork) |
-| <a id="property-phase"></a> `phase` | `"close"` |
-| <a id="property-program"></a> `program` | `string` |
-| <a id="property-transaction-1"></a> `transaction` | `string` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-channel-2"></a> `channel` | `string` | - |
+| <a id="property-network-2"></a> `network` | [`SolanaNetwork`](#solananetwork) | - |
+| <a id="property-payee-1"></a> `payee` | `string` | The option's payee. |
+| <a id="property-phase"></a> `phase` | `"close"` | - |
+| <a id="property-program"></a> `program` | `string` | - |
+| <a id="property-transaction-1"></a> `transaction` | `string` | - |
 
 ***
 
 ### SvmCloseStatus
 
-> **SvmCloseStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"` \| `"not-final"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-a-close"`; \}
+> **SvmCloseStatus** = [`SvmStatus`](#svmstatus)
 
-A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one, or a
-close whose channel account, named through an address lookup table, is not the channel, seen only at `confirmed`.
+A reported close's read, as the profile `read-status` answers it: the answer `SvmStatus` names.
 
 ***
 
 ### SvmStatus
 
-> **SvmStatus** = \{ `commitment`: `"confirmed"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"` \| `"not-final"`; \} \| \{ `state`: `"failed"`; `why`: `"err"` \| `"not-this-instrument"` \| `"no-transfer"` \| `"nonce-moved"`; \}
+> **SvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `SvmMark`\>
 
-A Solana settlement read. Pending `not-final` is a failure that rests on how the transaction executed (its `err`, or
-the inner instructions a check reads), seen only at `confirmed`: a block that is not finalized can be replaced, and
-the transaction can land in another block and execute otherwise, so only the read at `finalized` gives that failure.
+A Solana settlement read, as the profile `read-status` answers it. The position is a slot; the read names none, so
+a query that gives `after` is answered `pending`, `search-incomplete`, unless an earlier position decides it.
 
 ## Variables
 
@@ -584,7 +587,7 @@ The `open` instruction's data: `01` ‖ salt u64 ‖ deposit u64 ‖ gracePeriod
 The one top-level instruction of `program` whose data starts with `OPEN_DISCRIMINATOR`, with at least 33 bytes of
 data and 6 accounts: its salt (data bytes 1–8, little-endian) and its channel (account 5). Else `svm/open-not-found`,
 as is a channel named through an address lookup table: the message holds the table's address and an index, not the
-account, and this function reads no table. `mpp/session/solana`'s `fetchPresented` reads an opening's tables.
+account, and this function reads no table.
 
 #### Parameters
 
@@ -619,25 +622,6 @@ string (one holding a lone surrogate has no UTF-8 form): it never returns a mess
 #### Returns
 
 `Uint8Array`\<`ArrayBuffer`\>
-
-***
-
-### sessionSalt()
-
-> **sessionSalt**(`h`): `bigint`
-
-H's first 8 bytes read as a little-endian u64, so the salt's encoded bytes are exactly those 8 bytes. Throws
-TypeError when `h` is not a 32-byte hash.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `h` | `` `0x${string}` `` |
-
-#### Returns
-
-`bigint`
 
 ***
 
@@ -684,13 +668,14 @@ any other spelling is `svm/carrier-not-canonical`. A `tx` that is not a decoded 
 
 ### svmChannelStatus()
 
-> **svmChannelStatus**(`ref`, `reader`): `Promise`\<[`ChannelStatus`](#channelstatus)\>
+> **svmChannelStatus**(`ref`, `reader`, `query`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
 `svmStatus` with the presence test replaced: exactly one top-level payment-channels instruction whose
 discriminator is `open` (1) or `top_up` (3). The test reads only the signed message, so a transaction without it is
-failed `no-channel-instruction` from a read at either commitment; an error is failed `err` only from the read at
-`finalized`, and pending `not-final` from the read at `confirmed`. At most two calls, or five for a durable-nonce
-reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at `finalized`.
+no act at either commitment, `pending`, `search-incomplete`; an error is `pending`, `below-mark`, from the read at
+`confirmed`, and `pending`, `search-incomplete`, from the read at `finalized`. At most two calls, or five for a
+durable-nonce reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at
+`finalized`.
 
 #### Parameters
 
@@ -698,10 +683,11 @@ reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one
 | ------ | ------ |
 | `ref` | [`SvmRef`](#svmref) & `object` |
 | `reader` | [`SvmReader`](#svmreader) |
+| `query` | `SvmQuery` |
 
 #### Returns
 
-`Promise`\<[`ChannelStatus`](#channelstatus)\>
+`Promise`\<[`SvmStatus`](#svmstatus)\>
 
 ***
 
@@ -732,11 +718,14 @@ Finds the instrument when no transaction was named: pages the fee payer's signat
 `fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form,
 matched without regard to case. With `channel` in the reference, it pages that account's signatures instead, and
 every signature is a candidate. Each candidate is read through `status`, the pairing's own (`svmStatus` when none
-is given), at most 50 per pass.
+is given), at most 50 per pass: `svmStatus` and `svmChannelStatus` read it with their presence tests, a candidate
+read settled at either commitment is found, and one read failed (a message the payer did not sign, an error or no
+transfer at `finalized`) is passed; any other function is called with the ref and the reader, and its answer's
+`state` read the same way.
 `complete` is true only when the node's first available block is at or before `fromSlot`, the pages reached
-`fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending
-leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is `complete`
-false, with nothing read.
+`fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending or
+unreadable leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is
+`complete` false, with nothing read.
 
 `minContextSlot` places the search no earlier than a read the caller made first, such as the nonce account read whose
 context slot `svmNonceMoved` gives, or the `blockhashValid` read's `slot`: every page names it, so a node that has not
@@ -750,7 +739,7 @@ reached that slot fails the call and the search is `complete` false. A `minConte
 | `ref` | [`SvmRef`](#svmref) | `undefined` |
 | `reader` | [`SvmReader`](#svmreader) | `undefined` |
 | `h` | `` `0x${string}` `` | `undefined` |
-| `status` | (`ref`, `reader`) => `Promise`\<\{ `state`: `string`; `why?`: `string`; \}\> | `svmStatus` |
+| `status` | (`ref`, `reader`, ...`rest`) => `Promise`\<\{ `state`: `string`; \}\> | `svmStatus` |
 | `minContextSlot?` | `bigint` | `undefined` |
 
 #### Returns
@@ -793,20 +782,20 @@ found, shows the message never landed.
 
 ### svmRecover()
 
-> **svmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **svmRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Zero-party recovery: the ATR hash in the landed transaction's one memo. A transaction that landed with an error is
-`svm/err` when the read at `finalized` holds it, and `svm/not-final` when only the read at `confirmed` holds it, since
-a block that is not finalized can be replaced. A landed wire that does not decode is `svm/unreadable`. A ref whose
-`transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One or two calls.
+Zero-party recovery: the ATR hash in the landed transaction's one memo, read by `tx`, the transaction's signature;
+`option`, the x402 option or MPP challenge the ATR's binding slot holds, must be an object, and no member of it is
+read. A transaction that landed with an error is `svm/err` when the read at `finalized` holds it, and `svm/not-final`
+when only the read at `confirmed` holds it, since a block that is not finalized can be replaced. A landed wire that
+does not decode is `svm/unreadable`. An input that is not an object, an option that is not an object, and a `tx` that
+is not a signature, base58 of 64 bytes, are `svm/wrong-reader`, with nothing read. One or two calls.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: `` `solana:${string}` ``; `transaction`: `string`; \} |
-| `ref.network` | `` `solana:${string}` `` |
-| `ref.transaction` | `string` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `solana:${string}` ``, [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`SvmReader`](#svmreader) |
 
 #### Returns
@@ -817,22 +806,16 @@ a block that is not finalized can be replaced. A landed wire that does not decod
 
 ### svmStatus()
 
-> **svmStatus**(`ref`, `reader`): `Promise`\<[`SvmStatus`](#svmstatus)\>
+> **svmStatus**(`ref`, `reader`, `query`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
-Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
-without error, and must carry a token or SOL transfer, a top-level or an inner instruction, whose program is read
-from the static keys or from the addresses the transaction's lookup tables loaded. A message the payer did not sign
-is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message. An error, or
-no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the read at
-`finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither documented
-shape (a landed wire that does not decode, `loaded` addresses other than 32-byte keys in the numbers the message's
-lookups name, or a loaded address that repeats a static key or another loaded address, included), or a reader for
-another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`, with nothing
-read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's first available
-block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot at or past the
-context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can never land. A
-lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
-durable-nonce reference.
+The read of a named transaction's settlement, answered by the profile `read-status`: the message the payer signed
+(by digest), executed without error, carrying a token or SOL transfer, a top-level or an inner instruction, whose
+program is read from the static keys or from the addresses the transaction's lookup tables loaded. Read at
+`finalized` or `confirmed`, it is `settled` at the mark asked for or above it, and `pending`, `below-mark`, under it;
+an error seen only at `confirmed` is `pending`, `below-mark`. Every other read that is not unreadable answers
+`pending`, `search-incomplete`, since this read is no search for H. A ref, reader or query of the wrong form is
+`unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read. At most two
+calls, or five for a durable-nonce reference.
 
 #### Parameters
 
@@ -840,6 +823,7 @@ durable-nonce reference.
 | ------ | ------ |
 | `ref` | [`SvmRef`](#svmref) & `object` |
 | `reader` | [`SvmReader`](#svmreader) |
+| `query` | `SvmQuery` |
 
 #### Returns
 

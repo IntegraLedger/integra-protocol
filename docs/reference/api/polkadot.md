@@ -81,7 +81,8 @@ Bounded, read-only calls against one network's Sidecar. Every failure rejects.
 
 ### PolkadotRef
 
-The read keys: the accepted option's network, and the extrinsic's hash and the call's asset from the signed bytes.
+The read keys: the accepted option's network, the extrinsic's hash and the call's asset from the signed bytes, and
+the payee, the `payTo` of the option the payment answers.
 
 #### Properties
 
@@ -90,6 +91,7 @@ The read keys: the accepted option's network, and the extrinsic's hash and the c
 | <a id="property-assetid"></a> `assetId` | `number` |
 | <a id="property-extrinsichash"></a> `extrinsicHash` | `` `0x${string}` `` |
 | <a id="property-network-1"></a> `network` | [`PolkadotNetwork`](#polkadotnetwork) |
+| <a id="property-payee"></a> `payee` | `string` |
 
 ***
 
@@ -154,11 +156,12 @@ byte field in its own fresh `ArrayBuffer`, and `encodeProfileCall` takes any bac
 
 ### PolkadotStatus
 
-> **PolkadotStatus** = \{ `finality`: `"finalized"` \| `"head"`; `height`: `bigint`; `state`: `"settled"`; `transaction`: `string`; \} \| \{ `state`: `"pending"`; `why`: `"not-located"` \| `"not-found"` \| `"unreadable"`; \} \| \{ `finality`: `"finalized"` \| `"head"`; `height`: `bigint`; `state`: `"failed"`; `transaction`: `string`; `why`: `"not-this-extrinsic"` \| `"dispatch-failed"` \| `"no-remark"` \| `"no-transfer"`; \}
+> **PolkadotStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `PolkadotMark`\>
 
-A settlement or failure names the timepoint it read, `<block hash>-<index>`: the one given, or the canonical one when
-the given block left the chain and the canonical block at that height holds the same extrinsic at that index.
-Pending `not-located` asks for the payment to be located (`polkadotLocate`).
+The answer of `polkadotStatus`, as the profile `read-status` gives it. Its marks are `head` and `finalized`, in that
+order, and its position the block height. An answer that names a transaction names the timepoint it read,
+`<block hash>-<index>`: the one given, or the canonical one when the given block left the chain and the canonical
+block at that height holds the same extrinsic at that index.
 
 ## Variables
 
@@ -172,7 +175,7 @@ Pallet and call indices, the same on both networks.
 
 ### exactPolkadotRemark
 
-> `const` **exactPolkadotRemark**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotUnsigned`](#polkadotunsigned)\>; `carrier`: `null`; `claims`: `true`; `id`: `"x402/exact/polkadot/lcp-assets-remark"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotRef`](#polkadotref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactPolkadotRemark**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotUnsigned`](#polkadotunsigned)\>; `claims`: `true`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/polkadot/lcp-assets-remark"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotRef`](#polkadotref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/polkadot/lcp-assets-remark`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
 facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by block and index.
@@ -271,7 +274,7 @@ ref whose `extrinsicHash` is not `0x` and 64 hex digits is `polkadot/wrong-reade
 
 ### polkadotRecover()
 
-> **polkadotRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **polkadotRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 The hash from the landed extrinsic alone, for anyone holding its timepoint. It reads the block's raw extrinsics, then
 the chain's record of the extrinsic at the index, and ties the two before anything else: the raw bytes' BLAKE2b-256
@@ -284,16 +287,16 @@ block that the finalized chain does not hold, with no copy of the extrinsic at t
 its height, is `polkadot/not-located`. That record must show the extrinsic dispatched with the `Remarked` event for
 the remark and a `Transferred` event of the call's asset: one that does not is `polkadot/no-remark` or
 `polkadot/no-transfer` once the finalized chain holds its block, and `polkadot/not-final` while the block is above the
-finalized height, since that block can be replaced. A ref whose `transaction` is not a `<block hash>-<index>`
-timepoint is `polkadot/wrong-reader`, with nothing read. At most four calls.
+finalized height, since that block can be replaced. The input's `tx` is the timepoint, and its `option` the option
+the payment answers, an object, of which the read needs no member. An input whose `tx` is not a
+`<block hash>-<index>` timepoint, or whose option is not an object, is `polkadot/wrong-reader`, with nothing read. At
+most four calls.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: [`PolkadotNetwork`](#polkadotnetwork); `transaction`: `string`; \} |
-| `ref.network` | [`PolkadotNetwork`](#polkadotnetwork) |
-| `ref.transaction` | `string` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<[`PolkadotNetwork`](#polkadotnetwork), [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`PolkadotReader`](#polkadotreader) |
 
 #### Returns
@@ -304,16 +307,23 @@ timepoint is `polkadot/wrong-reader`, with nothing read. At most four calls.
 
 ### polkadotStatus()
 
-> **polkadotStatus**(`ref`, `reader`): `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>
+> **polkadotStatus**(`ref`, `reader`, `query`): `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>
 
-Reads the extrinsic at its timepoint `<block hash>-<index>`. It must have the recorded hash, have dispatched, and
-carry the `Remarked` event for this hash's remark and a `Transferred` event of the recorded asset. A settlement and a
-failure alike carry the finality of the read: `finalized` when the finalized chain holds that block, `head` when it
-is above the finalized height. When the finalized chain holds another block at that height, the extrinsic at the
-same index of the canonical block is read instead if its hash is the recorded one; otherwise the answer is pending
-`not-located`. A block the reader does not have is pending `not-found`. A failed read, a bare broadcast hash or a
-reader for another network is pending. A ref whose `extrinsicHash` is not `0x` and 64 hex digits, or whose `assetId`
-is not an integer from 0 below 2^32, is pending `unreadable`, with nothing read.
+Answers the read of the extrinsic at its timepoint `<block hash>-<index>` as the profile `read-status` gives it. The
+extrinsic is the payer's act when it has the recorded hash, dispatched, and carries the `Remarked` event for this
+hash's remark and a `Transferred` event of the recorded asset, at the mark of the read: `finalized` when the
+finalized chain holds that block, `head` when it is above the finalized height; its position is the block's height.
+When the finalized chain holds another block at that height, the extrinsic at the same index of the canonical block
+is read instead if its hash is the recorded one. An extrinsic with the recorded hash that did not dispatch is the
+payer's act included with a failed result, which took the account's nonce. An extrinsic with another hash, or with
+no `Remarked` or `Transferred` event of the payment, carries no act of the payer's that binds H; a bare broadcast
+hash, a block the reader does not have, and a block that left the chain with no copy of the extrinsic name no
+included act. The read holds no search for H and does not read the account's nonce, so none of these answers
+`failed`. A read that rejects is unreadable `transport`, an answer that is not a record or a height `unparseable`,
+and a reader for another network than the ref's `chain-mismatch`. A ref, a reader or a query that is not one, a
+reader that names no network, or a ref whose network is not a Polkadot network, whose `extrinsicHash` is not `0x`
+and 64 hex digits, whose `assetId` is not an integer from 0 below 2^32, whose `h` is not a hash or whose
+`transaction` is neither a timepoint nor a bare hash, is unreadable `unparseable`, with nothing read.
 
 #### Parameters
 
@@ -321,6 +331,7 @@ is not an integer from 0 below 2^32, is pending `unreadable`, with nothing read.
 | ------ | ------ |
 | `ref` | [`PolkadotRef`](#polkadotref) & `object` |
 | `reader` | [`PolkadotReader`](#polkadotreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`PolkadotRef`](#polkadotref) & `object`, `bigint`, `PolkadotMark`\> |
 
 #### Returns
 

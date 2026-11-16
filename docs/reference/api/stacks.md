@@ -121,8 +121,8 @@ The transaction by its `0x`-prefixed id, with its function arguments; `notFound`
 ### StacksRef
 
 The read keys of a Stacks payment: its network, the contract the transaction calls, the origin and its nonce as a
-decimal string, and the transaction id (absent for a sponsored transaction, whose id is fixed only by the sponsor's
-signature).
+decimal string, the transaction id (absent for a sponsored transaction, whose id is fixed only by the sponsor's
+signature), and the payee, the recipient of the challenge the payment answers.
 
 #### Properties
 
@@ -132,6 +132,7 @@ signature).
 | <a id="property-network-1"></a> `network` | `` `stacks:${string}` `` |
 | <a id="property-nonce"></a> `nonce` | `string` |
 | <a id="property-origin"></a> `origin` | `string` |
+| <a id="property-payee"></a> `payee` | `string` |
 | <a id="property-transaction"></a> `transaction?` | `` `0x${string}` `` |
 
 ## Type Aliases
@@ -146,13 +147,16 @@ CAIP-2: `stacks:1` (mainnet), `stacks:2147483648` (testnet).
 
 ### StacksStatus
 
-> **StacksStatus** = \{ `blockHeight`: `bigint`; `finality`: `"block"` \| `"bitcoin"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"mempool"` \| `"dropped"` \| `"unreadable"`; \} \| \{ `blockHeight`: `bigint`; `finality`: `"block"` \| `"bitcoin"`; `state`: `"failed"`; `why`: `"abort-by-response"` \| `"abort-by-post-condition"` \| `"skipped"` \| `"not-this-instrument"`; \} \| \{ `finality`: `"block"`; `state`: `"failed"`; `why`: `"nonce-used"`; \}
+> **StacksStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `StacksMark`\>
+
+The answer of `stacksStatus`, as the profile `read-status` gives it. Its marks are `block` and `bitcoin`, in that
+order, and its position the block height.
 
 ## Functions
 
 ### stacksRecover()
 
-> **stacksRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **stacksRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Zero-party: H from the fourth argument of a mined, successful call to the contract's `transfer`, in one reader call,
 or at most three for a failed one. A ref or reader that is not an object, a reader for another network, or a ref
@@ -161,16 +165,17 @@ documented shape, or a mined transaction whose status is none of `success`, `abo
 `abort_by_post_condition` and `problematic_skipped`, `stacks/unreadable`; an unknown or unmined transaction
 `stacks/not-found`. A failed status is `stacks/not-success` once the tip's tenure height is at least the block's plus
 two, as `stacksStatus` reads `bitcoin` finality; below that, or where a tenure read fails, it is `stacks/not-final`,
-since that block can be replaced. No `(some <32 bytes>)` memo of the call is `stacks/no-memo`.
+since that block can be replaced. No `(some <32 bytes>)` memo of a call to the contract's `transfer` is
+`stacks/no-memo`. The input's `tx` is the transaction id, and its `option` the challenge the payment answers, whose
+decoded request names the contract in `methodDetails.stacks`: its `contractAddress`, `.` and its `contractName`. An
+input whose `tx` is not a 32-byte hash, or whose option is not a challenge whose request names a contract so, is
+`stacks/wrong-reader`, with nothing read.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `contract`: `string`; `network`: `` `stacks:${string}` ``; `transaction`: `` `0x${string}` ``; \} |
-| `ref.contract` | `string` |
-| `ref.network` | `` `stacks:${string}` `` |
-| `ref.transaction` | `` `0x${string}` `` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `stacks:${string}` ``, [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`StacksReader`](#stacksreader) |
 
 #### Returns
@@ -181,21 +186,25 @@ since that block can be replaced. No `(some <32 bytes>)` memo of the call is `st
 
 ### stacksStatus()
 
-> **stacksStatus**(`ref`, `reader`): `Promise`\<[`StacksStatus`](#stacksstatus)\>
+> **stacksStatus**(`ref`, `reader`, `query`): `Promise`\<[`StacksStatus`](#stacksstatus)\>
 
-The payment's settlement, in at most four reader calls. The origin's confirmed nonce is read first, then the
-transaction. A wrong reader, a failed transaction read, or an answer of no documented shape is pending
-`unreadable`. A mined transaction must be the origin's at its nonce, calling `transfer` on the ref's `contract`, the
-contract the presented transaction called, with `(some H)` as its fourth argument, else failed `not-this-instrument`;
-then the API's `status` decides. A mined transaction's
-answer, settled or failed, carries its finality: `bitcoin` once the tip's tenure height is at least the block's plus
-two, else `block`, and a failed or malformed tenure read counts as `block`. Unmined and dropped, or unknown, it is
-failed `nonce-used` only when the nonce read before the lookup was already at or above the transaction's: that nonce
-was read at the API's tip, so `block`. It counts so only when the lookup names a height at or above the one the nonce
-read names; a lookup that lags the nonce read, or a lookup or nonce read naming no height, is pending `dropped` or
-`not-found`. A failed or malformed nonce read then is pending `unreadable`. A ref whose origin is not a c32 address
-in upper case, or whose contract is not such an address, `.` and a contract name, is pending `unreadable`, with
-nothing read.
+Answers the read of the payment as the profile `read-status` gives it, in at most four reader calls. The origin's
+confirmed nonce is read first, then the transaction. A mined transaction that is the origin's at its nonce, calling
+`transfer` on the ref's `contract`, the contract the presented transaction called, with `(some H)` as its fourth
+argument, is the payer's act; the API's `status` then decides whether it succeeded. A mined act, succeeded or not,
+is read at its mark, `bitcoin` once the tip's tenure height is at least the block's plus two, else `block`, a failed
+or malformed tenure read counting as `block`, and at its block height. An act aborted by its response or a post
+condition is included with a failed result that took the nonce; a skipped one took none. A mined transaction of the
+origin at its nonce that is not that transfer means the nonce is taken by another act, and one of another origin or
+nonce carries no act of the payer's. An unmined, dropped or unknown transaction names no included act, except where
+the nonce read before the lookup was already at or above the transaction's and the lookup names a height at or above
+the one the nonce read names: the nonce is then taken by another act. The read holds no search for H, so none of
+these answers `failed`. A transaction read that rejects, or a nonce read that rejects where the answer needs it, is
+unreadable `transport`; an answer of no documented shape, or a mined status the API does not document, is
+`unparseable`; a reader for another network than the ref's is `chain-mismatch`. A ref, a reader or a query that is
+not one, a reader that names no network, or a ref whose nonce is not a decimal below 2^64, whose origin is not a c32
+address in upper case, whose contract is not such an address, `.` and a contract name, or whose transaction or `h`
+is not a 32-byte hash, is unreadable `unparseable`, with nothing read.
 
 #### Parameters
 
@@ -203,6 +212,7 @@ nothing read.
 | ------ | ------ |
 | `ref` | [`StacksRef`](#stacksref) & `object` |
 | `reader` | [`StacksReader`](#stacksreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`StacksRef`](#stacksref) & `object`, `bigint`, `StacksMark`\> |
 
 #### Returns
 

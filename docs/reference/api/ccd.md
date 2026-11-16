@@ -10,7 +10,8 @@ description: "The exports of @integraledger/lcp/ccd."
 ### CcdReader
 
 Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
-`@integraledger/lcp/evm`; any rejection reads as unreadable.
+`@integraledger/lcp/evm`: a `ReaderError` reads by its kind (`too-large` as `too-large`, `malformed` as
+`unparseable`), and any other rejection as `transport`.
 
 #### Properties
 
@@ -44,13 +45,14 @@ The read keys `reference` returns.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-asset"></a> `asset` | `string` |
-| <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` |
-| <a id="property-network-1"></a> `network` | `` `ccd:${string}` `` |
-| <a id="property-settleby"></a> `settleBy` | `number` |
-| <a id="property-transaction"></a> `transaction?` | `string` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-asset"></a> `asset` | `string` | - |
+| <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | - |
+| <a id="property-network-1"></a> `network` | `` `ccd:${string}` `` | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's `payTo`. |
+| <a id="property-settleby"></a> `settleBy` | `number` | - |
+| <a id="property-transaction"></a> `transaction?` | `string` | - |
 
 ***
 
@@ -121,13 +123,16 @@ CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash.
 
 ### CcdStatus
 
-> **CcdStatus** = \{ `finality`: `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"received"` \| `"committed"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"rejected"` \| `"not-this-instrument"`; \}
+> **CcdStatus** = [`StatusAnswer`](index.md#statusanswer)\<`never`, `CcdMark`, `never`\>
+
+The answer of `ccdStatus`. Its marks are `committed` and `finalized`, the final one; the read gives no ledger
+position, so the answer names none and the query takes no `after`.
 
 ## Variables
 
 ### exactCcd
 
-> `const` **exactCcd**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCcd**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/ccd`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the sponsor,
 signs and submits the sponsored transaction the payer signed; `status` reads the finalized transfer.
@@ -194,21 +199,19 @@ hash.
 
 ### ccdRecover()
 
-> **ccdRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **ccdRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 The hash from a settlement block item alone, when it is finalized and successful: the memo of its one transfer whose
 memo `memoCarrier` reads (a PLT memo with tag 24 unwrapped), as `status` counts the transfers whose memo carries
 `ref.h`. A transfer without a memo, or whose memo `memoCarrier` refuses, is passed over; no such transfer, or more
-than one, is `ccd/no-carrier`. A ref whose `transaction` is not 64 hex digits is `ccd/wrong-reader`, with nothing
-read.
+than one, is `ccd/no-carrier`. An input whose `tx` is not 64 hex digits, or whose option is not an object, is
+`ccd/wrong-reader`, with nothing read; the option is not read further.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: `` `ccd:${string}` ``; `transaction`: `string`; \} |
-| `ref.network` | `` `ccd:${string}` `` |
-| `ref.transaction` | `string` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `ccd:${string}` ``, [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`CcdReader`](#ccdreader) |
 
 #### Returns
@@ -219,15 +222,12 @@ read.
 
 ### ccdStatus()
 
-> **ccdStatus**(`ref`, `reader`): `Promise`\<[`CcdStatus`](#ccdstatus)\>
+> **ccdStatus**(`ref`, `reader`, `query`): `Promise`\<[`CcdStatus`](#ccdstatus)\>
 
-Reads the named block item. Settled when it is finalized and successful, with exactly one transfer whose memo
-`memoCarrier` reads as `ref.h` (a PLT memo with tag 24 unwrapped) and whose sender, receiver and amount hash to
-`ref.idDigest`. Not final, unknown or unreadable is pending; a reader for another network is pending. A ref whose `h`
-or `idDigest` is not `0x` and 64 hex digits is pending `unreadable`, with nothing read; hashes compare in either case.
-`ref.asset` is not read, and the transfer's kind (which decides only whether a PLT memo's tag 24 is unwrapped) and
-token id are compared with nothing: a transfer of another token, or of CCD, with the same sender, receiver, amount
-and memo reads as settled.
+The read of the payment by its block item, as the profile `read-status` answers it: the finalized transfer that
+carries `ref.h` under the recorded digest is the act, settled at `finalized`. A rejected item, an item that is not
+this act, one not yet finalized and one the node does not know answer `pending`, `search-incomplete`, since the read
+has no search for H.
 
 #### Parameters
 
@@ -235,6 +235,7 @@ and memo reads as settled.
 | ------ | ------ |
 | `ref` | [`CcdRef`](#ccdref) & `object` |
 | `reader` | [`CcdReader`](#ccdreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`CcdRef`](#ccdref) & `object`, `never`, `CcdMark`, `never`\> |
 
 #### Returns
 

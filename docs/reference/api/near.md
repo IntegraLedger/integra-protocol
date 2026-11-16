@@ -82,8 +82,8 @@ key's nonce and the `block_height` of the block whose state it reads; null: no s
 
 ### NearRef
 
-The read keys `reference` returns, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings. `transaction`
-is added when the facilitator names it.
+The read keys `reference` returns, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings, and `payee`
+is the option's `payTo`. `transaction` is added when the facilitator names it.
 
 #### Properties
 
@@ -94,6 +94,7 @@ is added when the facilitator names it.
 | <a id="property-maxblockheight"></a> `maxBlockHeight` | `string` | - |
 | <a id="property-network-1"></a> `network` | [`NearNetwork`](#nearnetwork) | - |
 | <a id="property-nonce"></a> `nonce` | `string` | - |
+| <a id="property-payee"></a> `payee` | `string` | - |
 | <a id="property-payer"></a> `payer` | `string` | - |
 | <a id="property-publickey"></a> `publicKey` | `string` | - |
 | <a id="property-transaction"></a> `transaction?` | `string` | - |
@@ -143,13 +144,16 @@ x402's NEAR network identifiers.
 
 ### NearStatus
 
-> **NearStatus** = \{ `finality`: `"final"` \| `"optimistic"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"in-flight"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"not-this-instrument"` \| `"transfer-failed"`; \}
+> **NearStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `NearMark`\>
+
+The answer of `nearStatus`, as the profile `read-status` gives it. Its marks are `optimistic` and `final`, in that
+order; it reads no ledger position, so a position given as `after` places nothing.
 
 ## Variables
 
 ### exactNear
 
-> `const` **exactNear**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearUnsigned`](#nearunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/near"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearRef`](#nearref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`NearStatus`](#nearstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactNear**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearUnsigned`](#nearunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/near"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearRef`](#nearref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`NearStatus`](#nearstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/near`. The payee broadcasts (`broadcaster` answers `"payee"`): a relayer of the seller's facilitator
 submits the delegate action the payer signed; `status` reads the relayed transaction's receipts.
@@ -260,7 +264,7 @@ unreadable; so is a ref whose payer is not a NEAR account id.
 
 ### nearRecover()
 
-> **nearRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **nearRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from the settlement transaction: the `memo` in its delegated `ft_transfer` arguments. A transaction
 that carries no delegate action, or whose delegate calls another method, is `near/not-ft-transfer`, as `nearStatus`
@@ -275,15 +279,15 @@ contract refuses (a `receiver_id`, `amount` or `memo` named more than once, a ke
 `receiver_id` that is not a NEAR account id, or an `amount` that is not a string of an optional `+` and ASCII digits
 below 2^128) are `near/args-malformed`, since the contract makes no transfer with them; then a `memo` that is not a
 string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. Otherwise the hash is recovered
-whatever the transfer's outcome, and nothing else in the arguments is compared with the ATR's content.
+whatever the transfer's outcome, and nothing else in the arguments is compared with the ATR's content. The input's
+`tx` is the transaction's hash, and its `option` the option the payment answers, an object, of which the read needs
+no member; an input whose `tx` is not a non-empty string, or whose option is not an object, is `near/wrong-reader`.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: [`NearNetwork`](#nearnetwork); `transaction`: `string`; \} |
-| `ref.network` | [`NearNetwork`](#nearnetwork) |
-| `ref.transaction` | `string` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<[`NearNetwork`](#nearnetwork), [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`NearReader`](#nearreader) |
 
 #### Returns
@@ -294,23 +298,28 @@ whatever the transfer's outcome, and nothing else in the arguments is compared w
 
 ### nearStatus()
 
-> **nearStatus**(`ref`, `reader`): `Promise`\<[`NearStatus`](#nearstatus)\>
+> **nearStatus**(`ref`, `reader`, `query`): `Promise`\<[`NearStatus`](#nearstatus)\>
 
-Finds the relayed transaction under each relayer the reader lists (at most four), then requires its delegate to be
-the instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success
-is settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
-`ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
-on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
-the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
-every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, a
-reader for another network, an outcome that is not well formed (a delegate sender or receiver, or a receipt's
-executor, that is not a NEAR account id among them), or a delegate whose arguments are not base64 in its canonical
-form (RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed, or a relayer list
-that is empty or whose first four are not each a NEAR account id, is pending `unreadable`, with nothing read: the
-asset and the payer must be NEAR account ids, and the public key `ed25519:` and the base58 of 32 bytes or
-`secp256k1:` and of 64. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or
-`.`, where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
-`AccountId`).
+Answers the read of the relayed transaction as the profile `read-status` gives it. The read finds the transaction
+under each relayer the reader lists (at most four), then requires its delegate to be the instrument the ref names,
+and reads the receipts the token contract executed. The delegate is that instrument when its sender, key and nonce
+are the ref's, it calls `ft_transfer` on `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; nothing
+in the arguments is compared with the ATR's content. A succeeded token receipt is the payer's act, at `final` when
+`final_execution_status` is `FINAL`, every receipt's block then being final, and at `optimistic` otherwise, `EXECUTED`
+included; a failed one is the payer's act included with a failed result, which consumed the access key's nonce. A
+delegate of the ref's payer and key, at the ref's nonce or above it, that is not that instrument, a second one the
+payer signed on the same nonce included, means the nonce is taken by another act; a transaction with no such delegate carries no act of the
+payer's; a transaction no relayer knows, or whose token receipt has not run, names no included act. The read holds
+no search for H and does not read the access key's nonce, so none of these answers `failed`. A read that rejects is
+unreadable `transport`; an outcome that is not well formed (a delegate sender or receiver, or a receipt's executor,
+that is not a NEAR account id among them), or a delegate whose arguments are not base64 in its canonical form
+(RFC 4648 §3.5), is `unparseable`. A ref, a reader or a query that is not one, a reader that names no network, a
+ref whose network, nonce, asset, payer, public key or digest is malformed, or a relayer list that is empty or whose
+first four are not each a NEAR account id, is unreadable `unparseable`, and a reader for another network than the
+ref's `chain-mismatch`, each with nothing read: the asset and the
+payer must be NEAR account ids, and the public key `ed25519:` and the base58 of 32 bytes or `secp256k1:` and of 64.
+A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`, where a separator
+(`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's `AccountId`).
 
 #### Parameters
 
@@ -318,6 +327,7 @@ asset and the payer must be NEAR account ids, and the public key `ed25519:` and 
 | ------ | ------ |
 | `ref` | [`NearRef`](#nearref) & `object` |
 | `reader` | [`NearReader`](#nearreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`NearRef`](#nearref) & `object`, `bigint`, `NearMark`\> |
 
 #### Returns
 

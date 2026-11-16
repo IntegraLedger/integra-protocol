@@ -7,6 +7,21 @@ description: "The exports of @integraledger/lcp."
 
 ## Interfaces
 
+### AgreementData
+
+Present where the pairing's payment can itself be an agreement.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-fee"></a> `fee` | `readonly` | `string` | Who can pay the fee, by the chain and the published scheme. |
+| <a id="property-floor"></a> `floor` | `readonly` | `"0"` \| `` `1${string}` `` \| `` `2${string}` `` \| `` `3${string}` `` \| `` `4${string}` `` \| `` `5${string}` `` \| `` `6${string}` `` \| `` `7${string}` `` \| `` `8${string}` `` \| `` `9${string}` `` \| `"rule"` | The smallest amount the scheme and token admit, in base units: `"0"`, or a decimal with no sign and no leading zero; or `rule`, which `advertise` evaluates. |
+| <a id="property-only"></a> `only?` | `readonly` | `true` | Present where the form is offered as an agreement and never as a charge. |
+| <a id="property-succeeded"></a> `succeeded` | `readonly` | `string` | The fields that show the transaction succeeded. |
+
+***
+
 ### Authorizer
 
 The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account
@@ -32,16 +47,29 @@ authorization's use before any transaction is named.
 
 ***
 
+### Carrier
+
+Where H rides.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-member"></a> `member?` | `readonly` | readonly `string`[] | The member of the option or challenge request the seller writes H into, as a path from the option (x402) or from the decoded request (MPP); absent where the seller writes it into none. |
+| <a id="property-signed"></a> `signed` | `readonly` | `string` \| `null` | The field of what the payer signs that carries H, in the profile's words; null where none does. |
+
+***
+
 ### CarrierAfterH
 
 The optional member of a pairing whose carrier the seller writes after H: `advertise`'s checks and placement, without
-the checks on that carrier.
+the checks on that carrier. It takes the arguments its pairing's `advertise` takes.
 
 #### Methods
 
 ##### advertiseBeforeCarrier()?
 
-> `optional` **advertiseBeforeCarrier**(`doc`, `h`, `link`, `offer`, `agreementUrl?`): `unknown`
+> `optional` **advertiseBeforeCarrier**(`doc`, `h`, `link`, `offer`, ...`rest`): `unknown`
 
 ###### Parameters
 
@@ -51,13 +79,218 @@ the checks on that carrier.
 | `h` | `` `0x${string}` `` |
 | `link` | `string` |
 | `offer` | `never` |
-| `agreementUrl?` | `string` |
+| ...`rest` | `never`[] |
 
 ###### Returns
 
 `unknown`
 
+***
+
+### Codec
+
+A pairing's codec. `Presented` is what the payer presents, `Ref` the reference `reference` gives, `Reader` the
+reader the caller supplies to `status`, `recover` and `fetchPresented`, and `F` the family's other types. A pairing
+with no read has no `status` and no `recover`, and takes `never` for `Reader`, and for `Ref` where it has no
+`reference`.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Presented` |
+| `Ref` |
+| `Reader` |
+| `F` *extends* [`Family`](#family) |
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-advertise"></a> `advertise` | `readonly` | (`doc`, `h`, `link`, `offer`, ...`rest`) => [`Refusal`](#refusal) \| `F`\[`"advertised"`\] | - |
+| <a id="property-advertisebeforecarrier"></a> `advertiseBeforeCarrier?` | `readonly` | (`doc`, `h`, `link`, `offer`, ...`rest`) => [`Refusal`](#refusal) \| `F`\[`"advertised"`\] | `advertise` without the checks on a carrier the seller writes after H. |
+| <a id="property-bound"></a> `bound` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | - |
+| <a id="property-broadcaster"></a> `broadcaster` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| [`Broadcaster`](#broadcaster)\> | - |
+| <a id="property-build"></a> `build?` | `readonly` | (`choice`, `h`) => `Promise`\<[`Refusal`](#refusal) \| `F`\[`"unsigned"`\]\> | Absent where lcp builds no payment for the pairing: the payer's own client builds it. |
+| <a id="property-channel"></a> `channel?` | `readonly` | `object` | For a channel, a session or a subscription. |
+| `channel.boundWithin` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | - |
+| `channel.kind` | `readonly` | (`presented`) => [`Refusal`](#refusal) \| `ChannelKind` | - |
+| `channel.ref` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\> | - |
+| `channel.until` | `readonly` | (`presented`) => `number` \| `undefined` | - |
+| <a id="property-fetchpresented"></a> `fetchPresented?` | `readonly` | (`presented`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `Presented`\> | For a form its payer broadcasts: the presented payment completed with the landed transaction it names. |
+| <a id="property-keyproves"></a> `keyProves?` | `readonly` | `string` | What the record proves for a transfer `keySearch` finds. |
+| <a id="property-keysearch"></a> `keySearch?` | `readonly` | (`ref`, `receipt`, `h`) => [`Refusal`](#refusal) \| `Ref` | The read keys of a transfer made under a key the payer authorised over H, from the receipt that registered it. |
+| <a id="property-landedtx"></a> `landedTx?` | `readonly` | (`presented`) => `string` \| `undefined` | For a form its payer broadcasts: the transaction the presented payment names, or undefined. |
+| <a id="property-read"></a> `read` | `readonly` | (`doc`) => [`Refusal`](#refusal) \| `F`\[`"offered"`\] | - |
+| <a id="property-recover"></a> `recover?` | `readonly` | (`input`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | H, or the value an agreement's transaction carries, read back from a landed transaction. |
+| <a id="property-reference"></a> `reference?` | `readonly` | (`presented`, `option`) => `Promise`\<[`Refusal`](#refusal) \| `Ref`\> | The read keys of a presented payment, with the payee of the option it answers. |
+| <a id="property-status"></a> `status?` | `readonly` | (`ref`, `reader`, `query`) => `Promise`\<`F`\[`"answer"`\]\> | The read of the act the query asks about, from the reference and what the landed transaction adds to it. |
+
+***
+
+### Family
+
+A family's own types, as one descriptor: what `read` and `advertise` take and give, what `build` takes and gives,
+the option a payment answers, and what `status` and `recover` take and answer.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-advertised"></a> `advertised` | `readonly` | `unknown` | What `advertise` gives. |
+| <a id="property-answer"></a> `answer` | `readonly` | `unknown` | What `status` answers. |
+| <a id="property-choice"></a> `choice` | `readonly` | `unknown` | The buyer's inputs `build` takes. |
+| <a id="property-doc"></a> `doc` | `readonly` | `unknown` | The advertised document `read` reads. |
+| <a id="property-landed"></a> `landed` | `readonly` | `unknown` | The members of `status`'s reference that `reference` does not give, which the caller adds: the landed transaction, and where the read takes them, H and the position its search starts from; `unknown` where there are none. |
+| <a id="property-network"></a> `network` | `readonly` | `unknown` | The network `recover` takes. |
+| <a id="property-offer"></a> `offer` | `readonly` | `unknown` | The offer `advertise` places H on: the x402 option, the MPP challenge, or the protocol's own option. |
+| <a id="property-offered"></a> `offered` | `readonly` | `unknown` | What `read` gives: the hash, the link, the agreement URL where the document carries one, and the offer. |
+| <a id="property-option"></a> `option` | `readonly` | `unknown` | The x402 option or MPP challenge a payment answers, which `reference` and `recover` take. |
+| <a id="property-placedin"></a> `placedIn` | `readonly` | `unknown` | What `advertise` places H in: the document, or nothing where H goes into values the seller places itself. |
+| <a id="property-query"></a> `query` | `readonly` | `unknown` | What `status` takes beside the reference and the reader. |
+| <a id="property-receipt"></a> `receipt?` | `readonly` | `unknown` | The receipt `keySearch` reads; absent where the pairing has no `keySearch`. |
+| <a id="property-rest"></a> `rest` | `readonly` | readonly `unknown`[] | The arguments `advertise` takes after `offer`: on MPP the challenge's position, then the agreement URL. |
+| <a id="property-unsigned"></a> `unsigned` | `readonly` | `unknown` | What `build` gives the payer to sign. |
+
+***
+
+### ForeignItem
+
+A transaction that carries H, succeeded, and is not the act asked about.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Position` |
+
+#### Properties
+
+| Property | Modifier | Type |
+| ------ | ------ | ------ |
+| <a id="property-moved"></a> `moved?` | `readonly` | readonly [`Moved`](#moved)[] |
+| <a id="property-position"></a> `position?` | `readonly` | `Position` |
+| <a id="property-reason"></a> `reason` | `readonly` | [`ForeignReason`](#foreignreason) |
+| <a id="property-signer"></a> `signer?` | `readonly` | `string` |
+| <a id="property-transaction"></a> `transaction` | `readonly` | `string` |
+
+***
+
+### LegalContextReturn
+
+What a `Legal-Context` header carries: H, and the sale's return value where it has one, as 32 bytes.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-h"></a> `h` | `` `0x${string}` `` |
+| <a id="property-returnvalue"></a> `returnValue?` | `Uint8Array`\<`ArrayBufferLike`\> |
+
+***
+
+### Life
+
+The longest a signed payment can stay payable where the rail itself bounds it, with the chain rule it comes from.
+
+#### Properties
+
+| Property | Modifier | Type |
+| ------ | ------ | ------ |
+| <a id="property-rule"></a> `rule` | `readonly` | `string` |
+| <a id="property-unit"></a> `unit` | `readonly` | `string` |
+| <a id="property-value"></a> `value` | `readonly` | `number` |
+
+***
+
+### Moved
+
+One transfer or deposit an act made, as the read observed it.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-amount"></a> `amount` | `readonly` | `string` | - |
+| <a id="property-asset"></a> `asset` | `readonly` | `string` | - |
+| <a id="property-to"></a> `to` | `readonly` | `string` | The account it reached, or the beneficiary a contract names. |
+
+***
+
+### ReadData
+
+What a read of the pairing needs.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-contracts"></a> `contracts` | `readonly` | readonly `string`[] | The contracts the read names. |
+| <a id="property-endpoint"></a> `endpoint` | `readonly` | readonly [`EndpointKind`](#endpointkind)[] | The endpoint kinds the read goes through, each of which a network declares for the read to be made there. |
+| <a id="property-fallback"></a> `fallback?` | `readonly` | [`EndpointKind`](#endpointkind) | The kind of a declared archival endpoint the read goes on to where the endpoint does not hold the history or state it needs; absent where the read has none. |
+| <a id="property-history"></a> `history?` | `readonly` | `string` | The history the read needs; absent where the pairing's entry states none. |
+| <a id="property-lapse"></a> `lapse?` | `readonly` | `string` | The signed fact after which the payment can no longer land; absent where the pairing's entry states none. |
+| <a id="property-life"></a> `life?` | `readonly` | [`Life`](#life) | Absent where the rail sets no bound or the pairing's entry states none. |
+| <a id="property-note"></a> `note?` | `readonly` | `string` | What the read asks of its endpoints beyond their kinds; absent where nothing. |
+| <a id="property-search"></a> `search` | `readonly` | `string` | The search key and its bound. |
+
+***
+
+### RecoverInput
+
+What `recover` takes: the network, the transaction id, and the option or challenge the ATR's binding slot holds.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Network` |
+| `Option` |
+
+#### Properties
+
+| Property | Modifier | Type |
+| ------ | ------ | ------ |
+| <a id="property-network-1"></a> `network` | `readonly` | `Network` |
+| <a id="property-option-1"></a> `option` | `readonly` | `Option` |
+| <a id="property-tx"></a> `tx` | `readonly` | `string` |
+
+***
+
+### StatusQuery
+
+What `status` takes beside the reference and the reader: the act, the finality asked for, and, where the caller gives
+them, the final position the transaction must come after, the search position an earlier answer returned, and the
+other acts under the same H.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `Ref` | - |
+| `Position` | - |
+| `Mark` | - |
+| `Cursor` | `Position` |
+
+#### Properties
+
+| Property | Modifier | Type |
+| ------ | ------ | ------ |
+| <a id="property-act"></a> `act` | `readonly` | [`Act`](#act) |
+| <a id="property-after"></a> `after?` | `readonly` | `Position` |
+| <a id="property-finality"></a> `finality` | `readonly` | `Mark` |
+| <a id="property-others"></a> `others?` | `readonly` | readonly [`OtherAct`](#otheract)\<`Ref`\>[] |
+| <a id="property-search-1"></a> `search?` | `readonly` | `Cursor` |
+
 ## Type Aliases
+
+### Act
+
+> **Act** = `"payment"` \| `"agreement"`
+
+The act `status` is asked about.
+
+***
 
 ### AtrHash
 
@@ -103,6 +336,65 @@ its refusal (a batch channel reads the payload alone, under any `accepted` optio
 
 ***
 
+### Coverage
+
+> **Coverage** = `"full"` \| `"none"`
+
+`full`: the payer's own signed act, on a public ledger, binds all of H, a 256-bit digest over a preimage that holds H,
+or on Starknet H's low 250 bits. `none`: no public payer-signed act carries H.
+
+***
+
+### EndpointKind
+
+> **EndpointKind** = `"fullnode-http"` \| `"fullnode-rest"` \| `"graphql"` \| `"grpc-v2"` \| `"indexer-rest"` \| `"json-rpc"` \| `"mirror-rest"` \| `"rest-api"` \| `"rippled"` \| `"stacks-api-rest"` \| `"toncenter-v3"`
+
+A kind of endpoint a read goes through, as the pairing's chain names it.
+
+***
+
+### Entry
+
+> **Entry**\<`Id`, `Presented`, `Ref`, `Reader`, `F`\> = [`Codec`](#codec)\<`Presented`, `Ref`, `Reader`, `F`\> & `NoneWhereNever`\<`Presented`, `Ref`, `Reader`\> & `object`
+
+A registry entry: its id, its data and its codec. It takes `never` for `Reader` only where the codec has no member
+that takes a reader, for `Ref` only where it has no `reference`, and never for `Presented`.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `data` | [`PairingData`](#pairingdata) |
+| `id` | `Id` |
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Id` *extends* `string` |
+| `Presented` |
+| `Ref` |
+| `Reader` |
+| `F` *extends* [`Family`](#family) |
+
+***
+
+### FailedReason
+
+> **FailedReason** = `"instrument-unused"` \| `"instrument-consumed"` \| `"transaction-failed"` \| `"before-position"`
+
+The reasons of a `failed` answer.
+
+***
+
+### ForeignReason
+
+> **ForeignReason** = `"payee-signed"` \| `"other-signer"` \| `"given"` \| `"other-kind"` \| `"other-account"`
+
+Why a transaction that carries H is not the act asked about, in the order in which they are tried.
+
+***
+
 ### Json
 
 > **Json** = `string` \| `number` \| `boolean` \| `null` \| readonly [`Json`](#json)[] \| \{\[`k`: `string`\]: [`Json`](#json); \}
@@ -121,9 +413,40 @@ An MPP pairing of intent and method.
 
 ***
 
+### OtherAct
+
+> **OtherAct**\<`Ref`\> = \{ `ref`: `Ref`; \} \| \{ `transaction`: `string`; \}
+
+Another act under the same H, which `status` never settles on: by its reference, or by its transaction.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Ref` |
+
+***
+
+### PairingData
+
+> **PairingData** = `DataMembers` & \{ `agreement?`: [`AgreementData`](#agreementdata); `agreementOn?`: `never`; `coverage`: `"full"`; `link?`: `never`; \} \| \{ `agreement?`: `never`; `agreementOn?`: `"any"` \| `"same-network"` \| `` `x402/${string}` `` \| `` `mpp/${string}` ``; `coverage`: `"none"`; `link`: `"h"` \| `"pointer"` \| `"none"`; \}
+
+A pairing's data. At coverage `full` it has no `link` and no `agreementOn`; at coverage `none` it has a `link` and
+no `agreement`, since only a payment that is itself a public proof of H can be an agreement.
+
+***
+
 ### PairingId
 
 > **PairingId** = [`Binding`](#binding)\[`"id"`\]
+
+***
+
+### PendingReason
+
+> **PendingReason** = `"below-mark"` \| `"instrument-live"` \| `"search-incomplete"` \| `"not-found"`
+
+The reasons of a `pending` answer, in the order in which they are answered: the first that holds.
 
 ***
 
@@ -150,6 +473,48 @@ A refusal returned as a value. `code` is `<entry point>/<reason>`.
 
 ***
 
+### StatusAnswer
+
+> **StatusAnswer**\<`Position`, `Mark`, `Cursor`\> = `Named`\<`Position`, `Mark`\> & `object` \| `Named`\<`Position`, `Mark`\> & `object` \| `Named`\<`Position`, `Mark`\> & `object` \| \{ `foreign`: readonly [`ForeignItem`](#foreignitem)\<`Position`\>[]; `reason`: [`UnreadableReason`](#unreadablereason); `state`: `"unreadable"`; \}
+
+The answer of `status`: one state, one reason of a closed list, what it read, and the foreign items it met.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `Position` | - |
+| `Mark` | - |
+| `Cursor` | `Position` |
+
+#### Union Members
+
+`Named`\<`Position`, `Mark`\> & `object`
+
+***
+
+`Named`\<`Position`, `Mark`\> & `object`
+
+***
+
+`Named`\<`Position`, `Mark`\> & `object`
+
+***
+
+##### Type Literal
+
+\{ `foreign`: readonly [`ForeignItem`](#foreignitem)\<`Position`\>[]; `reason`: [`UnreadableReason`](#unreadablereason); `state`: `"unreadable"`; \}
+
+***
+
+### UnreadableReason
+
+> **UnreadableReason** = `"history-gap"` \| `"transport"` \| `"unparseable"` \| `"too-large"` \| `"chain-mismatch"`
+
+The reasons of an `unreadable` answer.
+
+***
+
 ### UrlAuthority
 
 > **UrlAuthority** = `object`
@@ -169,7 +534,7 @@ What the basic URL parser gives for an absolute URL's scheme and authority.
 
 ### X402Binding
 
-> **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactLnbtc`](lightning.md#exactlnbtc) \| *typeof* [`exactLnbtcNamed`](lightning.md#exactlnbtcnamed) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactStellar`](x402-exact-stellar.md#exactstellar) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm)
+> **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm)
 
 An x402 pairing of scheme and rail.
 
@@ -196,6 +561,99 @@ carries it: `JSON.parse` and `structuredClone` make no symbol-keyed member, and 
 `structuredClone` drop it, so the seller keeps the object `fetchPresented` returned, or a spread or `Object.assign`
 copy of it, both of which copy the member. One symbol, exported from `@integraledger/lcp`, `@integraledger/lcp/mpp`
 and `@integraledger/lcp/hedera`, the entry points whose pairings write it.
+
+***
+
+### LEGAL\_CONTEXT\_HEADER
+
+> `const` **LEGAL\_CONTEXT\_HEADER**: `"Legal-Context"` = `"Legal-Context"`
+
+The header's name.
+
+***
+
+### LEGAL\_CONTEXT\_SERVES
+
+> `const` **LEGAL\_CONTEXT\_SERVES**: `"legalContextServes"` = `"legalContextServes"`
+
+The member by which an agreement option names the charge options it serves: in an x402 option's `extra`, in an MPP challenge's `opaque`.
+
+***
+
+### MAX\_CHALLENGE\_DEPTH
+
+> `const` **MAX\_CHALLENGE\_DEPTH**: `16` = `16`
+
+The deepest nesting of arrays and objects lcp reads in an MPP challenge's decoded `request` and `opaque`. A challenge
+is read before anything is bound to it, so it is held to less depth than an ATR.
+
+***
+
+### MAX\_CHALLENGES
+
+> `const` **MAX\_CHALLENGES**: `32` = `32`
+
+The most challenges lcp reads in one MPP response. A challenge id lcp derives from H names the challenge's position
+in the response, and an id holds the positions 0 to 31.
+
+***
+
+### MAX\_CREDENTIAL\_BYTES
+
+> `const` **MAX\_CREDENTIAL\_BYTES**: `65536` = `65_536`
+
+The largest MPP credential lcp decodes, in bytes. The MPP draft sets no size.
+
+***
+
+### MAX\_HEADER\_BYTES
+
+> `const` **MAX\_HEADER\_BYTES**: `65536` = `65_536`
+
+The largest JSON lcp decodes from an x402 header, `PAYMENT-REQUIRED` and the others, in bytes. x402 sets no size.
+
+***
+
+### MAX\_JSON\_DEPTH
+
+> `const` **MAX\_JSON\_DEPTH**: `64` = `64`
+
+The deepest nesting of arrays and objects in any JSON lcp writes or reads, an ATR's among it. RFC 8259 permits any
+depth; a parser's recursion is bounded by it.
+
+***
+
+### MAX\_LINK\_LENGTH
+
+> `const` **MAX\_LINK\_LENGTH**: `2048` = `2048`
+
+The longest link, in characters, that a placement writes or a reader accepts: the ATR's link and the agreement's URL.
+No specification of a link's carrier fixes a length.
+
+***
+
+### MAX\_OPTIONS
+
+> `const` **MAX\_OPTIONS**: `32` = `32`
+
+The most options lcp reads in one x402 document (`accepts`). x402 sets no count.
+
+***
+
+### MAX\_SIGNATURE\_BYTES
+
+> `const` **MAX\_SIGNATURE\_BYTES**: `8192` = `8192`
+
+The longest signature lcp decodes, in bytes. A smart-contract wallet's signature (ERC-1271, and ERC-6492's wrapped
+form) has no length its standard fixes, so lcp bounds it here, for every pairing that reads one.
+
+***
+
+### RETURN\_VALUE\_BYTES
+
+> `const` **RETURN\_VALUE\_BYTES**: `32` = `32`
+
+The length of a sale's return value, in bytes.
 
 ## Functions
 
@@ -486,6 +944,27 @@ are ignored.
 
 ***
 
+### fromLegalContextHeader()
+
+> **fromLegalContextHeader**(`value`): [`Refusal`](#refusal) \| [`LegalContextReturn`](#legalcontextreturn)
+
+H, and the return value where the header carries `rv`, from a `Legal-Context` header's value: an RFC 9651 Item whose
+bare item is a token that is H's LCP string in lowercase hex, with no parameter but `rv`, a byte sequence of 32 bytes
+in canonical padded base64, and spaces only where RFC 9651 admits them (before and after the item, and after a `;`).
+Any other value is `return/header-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `value` | `unknown` |
+
+#### Returns
+
+[`Refusal`](#refusal) \| [`LegalContextReturn`](#legalcontextreturn)
+
+***
+
 ### fromRawBytes()
 
 > **fromRawBytes**(`b`): `` `0x${string}` `` \| `null`
@@ -627,18 +1106,14 @@ A random RFC 9562 version 4 UUID, lowercase.
 
 > **pairingOf**(`option`): `PairingOn`\<`"x402"`\> \| `undefined`
 
-The x402 pairing that serves an option: for an `exact` option on a Lightning network, `x402/exact/lnbtc` when its
-invoice has an `m` field, and `x402/exact/lnbtc/invoice-named` when it has none, each when that pairing's option
-filter serves it; else the first x402 pairing in `BINDINGS` whose `read` offers it, on a document holding that option
-alone. Undefined when none does. Each pairing's `read` applies the one filter its `advertise`, `build`, `bound` and
-`reference` apply, so the pairing named takes the option at every step.
+The x402 pairing that serves an option: the first x402 pairing in `BINDINGS` whose `read` offers it, on a document
+holding that option alone. Undefined when none does. Each pairing's `read` applies the one filter its `advertise`,
+`build`, `bound` and `reference` apply, so the pairing named takes the option at every step.
 
 No two x402 pairings' `read` offers one option, except the two ERC-7710 levels, which share the `erc7710` option: this
-names `x402/exact/eip155/erc7710`, and `pairingOfPayment` names the level from a payment. No `read` offers the
-Lightning offer the seller sends before its node writes the invoice; this names `x402/exact/lnbtc` for it when its
-`extra.requestHash` and its own fields pass the checks that pairing's `advertiseBeforeCarrier` makes. A Worker
-that serves one pairing need not import this function, which loads every pairing: the pairing's own `read`, on a
-document holding the option, or its `bound`, on a presented payment, answers for that pairing alone.
+names `x402/exact/eip155/erc7710`, and `pairingOfPayment` names the level from a payment. A Worker that serves one
+pairing need not import this function, which loads every pairing: the pairing's own `read`, on a document holding
+the option, or its `bound`, on a presented payment, answers for that pairing alone.
 
 #### Parameters
 
@@ -706,11 +1181,10 @@ The value of JSON text nested at most 64 levels deep; undefined for text that is
 True when `code` is a read to repeat: a refusal whose answer rests on a read of the rail that may answer differently
 later, with nothing the caller must change. The caller asks again later, since the payment may already have moved.
 These are each reader's `<rail>/unreadable` (the reader failed, or answered out of its documented form) and
-`<rail>/not-found` (the reader holds no landed transaction for the reference yet; on Solana, also no address lookup
-table account, or entry, that an `mpp/session/solana` opening names at `finalized` yet), and the codes of a
-transaction that is not final yet: `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final`
-and `hedera/not-final` (a revert, or a receipt without what the read looks for, in a block above the reader's
-`finalized` mark, which can be replaced by one in which the transaction succeeds or holds other logs),
+`<rail>/not-found` (the reader holds no landed transaction for the reference yet), and the codes of a transaction
+that is not final yet: `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final` (a revert,
+or a receipt without what the read looks for, in a block above the reader's `finalized` mark, which can be replaced
+by one in which the transaction succeeds or holds other logs),
 `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above the finalized height),
 `stacks/not-final` (a failure in a Stacks block fewer than two tenures below the tip, which can be replaced),
 `starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block, which can change),
@@ -720,7 +1194,7 @@ and `hedera/not-final` (a revert, or a receipt without what the read looks for, 
 False for every other string. A verdict is not a read to repeat: a later read gives the same answer. Nor is a call the
 caller must change before it can succeed: `<rail>/wrong-reader` (a reader for another network, or a ref the rail
 cannot read) and `<rail>/read-first` (`bound` or `reference` on a push credential before `fetchPresented` has read
-it, or on an `mpp/session/solana` opening whose address lookup tables it has not read), a missing peer dependency,
+it), a missing peer dependency,
 and malformed input. A string the package does not return is false.
 
 #### Parameters
@@ -752,6 +1226,28 @@ and fragment states accept every input, so they are not read.
 #### Returns
 
 [`UrlAuthority`](#urlauthority) \| `null`
+
+***
+
+### servesOf()
+
+> **servesOf**(`option`): readonly `string`[] \| [`Refusal`](#refusal) \| `undefined`
+
+The charge options an agreement option names as those it serves: each `x402/<i>` or `mpp/<i>`, the option at index
+`i` of the ATR binding slot of that name (`accepts` of `x402`, `challenges` of `mpp`). On an x402 option the member is
+`extra.legalContextServes`, an array of those strings; on an MPP challenge it is `opaque`'s `legalContextServes`, those
+strings joined by one space. Undefined where the option carries no such member; `return/serves-malformed` where the
+member is not 1 to 32 distinct such strings.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `option` | `unknown` |
+
+#### Returns
+
+readonly `string`[] \| [`Refusal`](#refusal) \| `undefined`
 
 ***
 
@@ -836,6 +1332,27 @@ Throws TypeError when `h` is not a 32-byte hash or `url` is not an `https://` UR
 | `legalContext.legalContextUrl?` | `string` |
 | `legalContext.type` | `"sha256"` |
 | `legalContext.value` | `` `0x${string}` `` |
+
+***
+
+### toLegalContextHeader()
+
+> **toLegalContextHeader**(`h`, `returnValue?`): `string` \| [`Refusal`](#refusal)
+
+The header's value, an RFC 9651 Item: H's LCP string as a token, and, where `returnValue` is given, the parameter
+`rv`, its 32 bytes as a byte sequence. An H that is not a 32-byte hash, or a return value that is not 32 bytes, is
+`return/header-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `h` | `` `0x${string}` `` |
+| `returnValue?` | `Uint8Array`\<`ArrayBufferLike`\> |
+
+#### Returns
+
+`string` \| [`Refusal`](#refusal)
 
 ***
 

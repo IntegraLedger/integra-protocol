@@ -117,6 +117,7 @@ header.
 | <a id="property-expiresat-1"></a> `expiresAt` | `string` | - |
 | <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | - |
 | <a id="property-network-1"></a> `network` | `` `aptos:${number}` `` | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's `payTo`. |
 | <a id="property-sender-2"></a> `sender` | `` `0x${string}` `` | - |
 | <a id="property-sequencenumber-1"></a> `sequenceNumber` | `string` | Decimal strings. |
 | <a id="property-transaction"></a> `transaction?` | `` `0x${string}` `` | The facilitator's transaction hash, once named. |
@@ -166,13 +167,16 @@ CAIP-2: `aptos:` and the numeric chain id.
 
 ### AptosStatus
 
-> **AptosStatus** = \{ `state`: `"settled"`; `transaction`: [`Hex`](evm.md#hex); `version`: `bigint`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"in-mempool"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"aborted"` \| `"superseded"` \| `"expired"`; \}
+> **AptosStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `"committed"`, `bigint`\>
+
+The answer of `aptosStatus`: positions are ledger versions, and the one mark is `committed`, a transaction the REST
+endpoint serves as committed, which is final.
 
 ## Variables
 
 ### exactAptos
 
-> `const` **exactAptos**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosUnsigned`](#aptosunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/aptos"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosRef`](#aptosref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`AptosStatus`](#aptosstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactAptos**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosUnsigned`](#aptosunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/aptos"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosRef`](#aptosref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`AptosStatus`](#aptosstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/aptos`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
 transaction the payer signed and names its hash; `status` finds it by that hash, else by the payer's sender and
@@ -200,19 +204,12 @@ SHA-256 over the RFC 8785 form of `{sender, sequenceNumber, function, typeArgume
 
 ### aptosStatus()
 
-> **aptosStatus**(`ref`, `reader`): `Promise`\<[`AptosStatus`](#aptosstatus)\>
+> **aptosStatus**(`ref`, `reader`, `query`): `Promise`\<[`AptosStatus`](#aptosstatus)\>
 
-Finds the payer's transaction by the facilitator's hash when named, else by sender and sequence number, and
-identifies it by the transfer's digest and its expiry: a committed transaction at that sequence number with another
-transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. The
-ledger is read first. The Aptos prologue takes a transaction only while the ledger's time in whole seconds is below
-its expiry (aptos-core's `transaction_validation.move`: `timestamp::now_seconds() < txn_expiration_time`), so status
-is failed `expired` only when the ledger's timestamp is at or past `expiresAt` and the lookup by sequence number
-finds nothing at a ledger timestamp at or past that ledger's; a lookup computed at an earlier ledger, or naming none,
-is pending `not-found`. A failed read, or a reader for another network, is pending. A ref whose sequence number or
-expiry is not a decimal string below 2^64, or whose `sender`, `idDigest` or named `transaction` is not `0x` and 64
-hex digits, is pending `unreadable`, with nothing read; hex digits read the same in either case, and the reader is
-given the sender and the transaction in lowercase. At most three calls.
+The read of the payment, as the profile `read-status` answers it at coverage `none`: the transaction at the payer's
+sequence number with the signed transfer and expiry is the act, settled at `committed`; an aborted one is failed
+`transaction-failed`; nothing there past the expiry is failed `instrument-unused`; another transaction there is
+`pending`, `search-incomplete`, as is one still in the mempool.
 
 #### Parameters
 
@@ -220,6 +217,7 @@ given the sender and the transaction in lowercase. At most three calls.
 | ------ | ------ |
 | `ref` | [`AptosRef`](#aptosref) |
 | `reader` | [`AptosReader`](#aptosreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`AptosRef`](#aptosref), `bigint`, `"committed"`, `bigint`\> |
 
 #### Returns
 

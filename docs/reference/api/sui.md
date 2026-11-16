@@ -67,12 +67,15 @@ transactions (the available range's inclusive lower bound), or null when the end
 
 ### SuiRef
 
+The read keys: the network, the digest, the epoch bound, and the payee, the `payTo` of the option the payment answers.
+
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-digest"></a> `digest` | `string` | - |
 | <a id="property-network-1"></a> `network` | [`SuiNetwork`](#suinetwork) | - |
+| <a id="property-payee"></a> `payee` | `string` | - |
 | <a id="property-untilepoch"></a> `untilEpoch` | `string` \| `null` | The last epoch the transaction can execute in, as a decimal string, or null when it sets no maximum epoch. |
 
 ***
@@ -140,13 +143,16 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ### SuiStatus
 
-> **SuiStatus** = \{ `checkpoint`: `bigint` \| `null`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"aborted"` \| `"expired"` \| `"not-this-instrument"`; \}
+> **SuiStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `SuiMark`\>
+
+The answer of `suiStatus`, as the profile `read-status` gives it. Its one mark is `final`, the effects of an executed
+transaction, and its position the checkpoint sequence number.
 
 ## Variables
 
 ### exactSui
 
-> `const` **exactSui**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiUnsigned`](#suiunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/sui"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiRef`](#suiref)\>; `status`: (`ref`, `reader`, `position`) => `Promise`\<[`SuiStatus`](#suistatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactSui**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiUnsigned`](#suiunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/sui"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiRef`](#suiref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SuiStatus`](#suistatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/sui`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator executes the
 transaction the payer signed; `status` reads it by the digest the signed bytes fix.
@@ -198,21 +204,21 @@ object whose `unusedPure` is an array of `Uint8Array`s, is `sui/tx-malformed`.
 
 ### suiRecover()
 
-> **suiRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **suiRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
-bytes is `sui/wrong-reader`, with nothing read. Bytes that do not hash to the digest are `sui/unreadable`; bytes that
-do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` answers them failed `not-this-instrument`.
-Without @mysten/sui the transaction cannot be decoded: bytes that hash to the digest, of a transaction that did not
-abort, are `sui/peer-missing`, after the ref, the reader and the read are checked, which need no peer. One call.
+Reads the hash back from the executed transaction alone, by its digest, the input's `tx`; the input's `option` is
+the option the payment answers, an object, of which the read needs no member. An input whose `tx` is not base58 of
+32 bytes, or whose option is not an object, is `sui/wrong-reader`, with nothing read. Bytes that do not hash to the
+digest are `sui/unreadable`; bytes that do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` reads
+no act in them. Without @mysten/sui the transaction cannot be decoded: bytes that hash to the digest, of a
+transaction that did not abort, are `sui/peer-missing`, after the input, the reader and the read are checked, which
+need no peer. One call.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `digest`: `string`; `network`: [`SuiNetwork`](#suinetwork); \} |
-| `ref.digest` | `string` |
-| `ref.network` | [`SuiNetwork`](#suinetwork) |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<[`SuiNetwork`](#suinetwork), [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`SuiReader`](#suireader) |
 
 #### Returns
@@ -223,19 +229,25 @@ abort, are `sui/peer-missing`, after the ref, the reader and the read are checke
 
 ### suiStatus()
 
-> **suiStatus**(`ref`, `reader`, `position`): `Promise`\<[`SuiStatus`](#suistatus)\>
+> **suiStatus**(`ref`, `reader`, `query`): `Promise`\<[`SuiStatus`](#suistatus)\>
 
-Reads the recorded digest. A failed read, or a reader for another network, is pending. `position` is the checkpoint
-from which the caller needs the endpoint's history: one at or before every checkpoint the payment could have
-executed in, such as the latest checkpoint when the payment is requested. An absent transaction is expired once the
-latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
-pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. One
-with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
-bytes carrying this hash, and its effects' status decides. A ref whose `digest` is not base58 of 32 bytes, whose `h`
-is not `0x` and 64 hex digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and a
-`position` that is not a non-negative bigint, are pending `unreadable`, with nothing read. One call. Only the decode
-of a present transaction's bytes needs @mysten/sui: without it bytes that hash to the digest and that `decodeSuiTx`
-cannot read before the peer are pending `unreadable` after the call, and every other answer is the one with it.
+Answers the read of the recorded digest as the profile `read-status` gives it. The digest is the single-use value:
+Sui derives it from the signed bytes alone, so a transaction with it that executed, succeeded or not, consumed it. A
+present transaction must be these bytes carrying this hash, else it carries no act that binds H; its effects' status
+then decides: `SUCCESS` is the payer's act, and `FAILURE` the act included with a failed result, each at the one
+mark `final` and at its checkpoint, where the effects name one. An absent transaction is past its validity once the
+latest epoch is past its bound and the endpoint holds transactions from the position the query gives as `after`, or
+earlier: such a position is at or before every checkpoint the payment could have executed in, such as the latest
+checkpoint when the payment is requested. Otherwise it names no included act, since an endpoint that holds a shorter
+history may have pruned a transaction that executed; one with no bound (a null `untilEpoch`) can execute in any later
+epoch. The read holds no search for H, so none of these answers `failed` but `before-position`. A read that rejects
+is unreadable `transport`; an answer out of the reader's form, bytes that do not hash to the digest, or, without
+@mysten/sui, bytes that hash to the digest and that `decodeSuiTx` cannot read before the peer, are `unparseable`;
+and a reader for another network than the ref's is `chain-mismatch`. A ref, a reader or a query that is not one, a
+reader that names no network, a ref whose `digest` is not base58 of 32 bytes, whose `h` is not `0x` and 64 hex
+digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and an `after` that is not a
+non-negative bigint, are unreadable `unparseable`, with nothing read. One call. Only the decode of a present
+transaction's bytes needs @mysten/sui; every other answer is the one with it.
 
 #### Parameters
 
@@ -243,7 +255,7 @@ cannot read before the peer are pending `unreadable` after the call, and every o
 | ------ | ------ |
 | `ref` | [`SuiRef`](#suiref) & `object` |
 | `reader` | [`SuiReader`](#suireader) |
-| `position` | `bigint` |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`SuiRef`](#suiref) & `object`, `bigint`, `"final"`\> |
 
 #### Returns
 

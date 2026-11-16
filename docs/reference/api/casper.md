@@ -65,13 +65,14 @@ The read keys `reference` returns.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-asset"></a> `asset` | `string` |
-| <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` |
-| <a id="property-network-1"></a> `network` | `` `casper:${string}` `` |
-| <a id="property-settleby"></a> `settleBy` | `number` |
-| <a id="property-transaction"></a> `transaction?` | `string` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-asset"></a> `asset` | `string` | - |
+| <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | - |
+| <a id="property-network-1"></a> `network` | `` `casper:${string}` `` | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's `payTo`. |
+| <a id="property-settleby"></a> `settleBy` | `number` | - |
+| <a id="property-transaction"></a> `transaction?` | `string` | - |
 
 ***
 
@@ -149,7 +150,10 @@ CAIP-2: `casper:` and the chainspec name.
 
 ### CasperStatus
 
-> **CasperStatus** = \{ `blockHeight`: `bigint`; `finality`: `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"not-executed"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"reverted"` \| `"not-this-instrument"`; \}
+> **CasperStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `"finalized"`, `bigint`\>
+
+The answer of `casperStatus`: positions are block heights, and the one mark is `finalized`, since the node serves
+only executed transactions of final blocks.
 
 ***
 
@@ -171,7 +175,7 @@ keccak256("EIP712Domain(string name,string version,string chain_name,bytes32 con
 
 ### exactCasper
 
-> `const` **exactCasper**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperUnsigned`](#casperunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/casper"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperRef`](#casperref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`CasperStatus`](#casperstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCasper**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperUnsigned`](#casperunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/casper"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperRef`](#casperref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`CasperStatus`](#casperstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/casper`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
 call that executes the payer's signed authorization; `status` reads the executed call.
@@ -200,20 +204,17 @@ SHA-256 over the 33 + 33 bytes of the two addresses and the value as a 32-byte b
 
 ### casperRecover()
 
-> **casperRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **casperRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`. A
-ref whose `transaction` is not 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
-`casper/wrong-reader`, with nothing read.
+The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on the token
+package the option names, `option.asset`. An input whose `tx` is not 64 hex digits, or whose option names no package
+hash of 64 hex digits as its `asset`, is `casper/wrong-reader`, with nothing read.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `asset`: `string`; `network`: `` `casper:${string}` ``; `transaction`: `string`; \} |
-| `ref.asset` | `string` |
-| `ref.network` | `` `casper:${string}` `` |
-| `ref.transaction` | `string` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `casper:${string}` ``, [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`CasperReader`](#casperreader) |
 
 #### Returns
@@ -224,21 +225,20 @@ ref whose `transaction` is not 64 hex digits, or whose `asset` is not a package 
 
 ### casperStatus()
 
-> **casperStatus**(`ref`, `reader`): `Promise`\<[`CasperStatus`](#casperstatus)\>
+> **casperStatus**(`ref`, `reader`, `query`): `Promise`\<[`CasperStatus`](#casperstatus)\>
 
-Reads the named transaction. Settled, at the height of its block, when it executed without error as a call to
-`ref.asset`'s `transfer_with_authorization` or `receive_with_authorization` whose `nonce` argument is `h` and whose
-`from`, `to` and `value` hash to `ref.idDigest`. A failed read, or a reader for another network, is pending. A ref
-whose `h` or `idDigest` is not `0x` and 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
-pending `unreadable`, with nothing read; hashes compare in either case. `ref.asset` names the token package whose
-call carries the payment, which identifies the instrument; nothing is compared with the ATR's content.
+The read of the payment by the transaction the facilitator named, as the profile `read-status` answers it: the
+payer's executed authorization call settles at `finalized`; a reverted call, a call not yet executed, another call
+and a transaction the node does not know answer `pending`, `search-incomplete`, since the read has no search for H.
+On the act `agreement`, `ref.h` is the agreement's own value, the nonce the payer signed.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | [`CasperRef`](#casperref) & `object` |
+| `ref` | `CasperRefRead` |
 | `reader` | [`CasperReader`](#casperreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<`CasperRefRead`, `bigint`, `"finalized"`, `bigint`\> |
 
 #### Returns
 

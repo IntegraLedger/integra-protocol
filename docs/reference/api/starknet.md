@@ -135,7 +135,8 @@ from `@integraledger/lcp/evm`; any rejection reads as unreadable.
 
 ### StarknetRef
 
-The read keys `reference` returns; `transaction` is added when the facilitator names it.
+The read keys `reference` returns, with `payee`, the `payTo` of the option the payment answers; `transaction` is added
+when the facilitator names it.
 
 #### Properties
 
@@ -146,6 +147,7 @@ The read keys `reference` returns; `transaction` is added when the facilitator n
 | <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | - |
 | <a id="property-network-1"></a> `network` | [`StarknetNetwork`](#starknetnetwork) | - |
 | <a id="property-nonce"></a> `nonce` | `` `0x${string}` `` | - |
+| <a id="property-payee"></a> `payee` | `string` | - |
 | <a id="property-settleby"></a> `settleBy` | `number` | - |
 | <a id="property-transaction"></a> `transaction?` | `` `0x${string}` `` | - |
 
@@ -198,7 +200,10 @@ Lowercase `0x` hex with no leading zero digit, below FELT_P.
 
 ### StarknetStatus
 
-> **StarknetStatus** = \{ `blockNumber`: `bigint`; `finality`: `"ACCEPTED_ON_L2"` \| `"ACCEPTED_ON_L1"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"pre-confirmed"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"reverted"` \| `"not-this-instrument"`; \}
+> **StarknetStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `StarknetMark`\>
+
+The answer of `starknetStatus`, as the profile `read-status` gives it. Its marks are `ACCEPTED_ON_L2` and
+`ACCEPTED_ON_L1`, in that order, and its position the block number.
 
 ## Variables
 
@@ -220,7 +225,7 @@ sn_keccak("Transfer"): the first key of a SNIP-2 token's `Transfer` event.
 
 ### exactStarknet
 
-> `const` **exactStarknet**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetUnsigned`](#starknetunsigned)\>; `claims`: `boolean`; `id`: `"x402/exact/starknet"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetRef`](#starknetref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`StarknetStatus`](#starknetstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactStarknet**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetUnsigned`](#starknetunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/starknet"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetRef`](#starknetref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StarknetStatus`](#starknetstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/starknet`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator executes the
 outside execution the payer signed and names its transaction; `status` reads the executed call's trace.
@@ -368,25 +373,28 @@ one nonce are `starknet/ambiguous`. A `PRE_CONFIRMED` receipt, or one with no bl
 
 ### starknetStatus()
 
-> **starknetStatus**(`ref`, `reader`): `Promise`\<[`StarknetStatus`](#starknetstatus)\>
+> **starknetStatus**(`ref`, `reader`, `query`): `Promise`\<[`StarknetStatus`](#starknetstatus)\>
 
-Reads the named transaction's receipt. A receipt that is `PRE_CONFIRMED`, or names no block, is pending
-`pre-confirmed`: a pre-confirmed block can change. From a receipt accepted on L2 or L1, a `REVERTED` one is failed
-`reverted`, and a `SUCCEEDED` one must emit exactly one `Transfer` event from `ref.asset` whose sender is `ref.from`,
-and that transfer must have this payment's identity, else failed `not-this-instrument`. An asset `Transfer` event of
-neither standard layout, or with an amount limb of 2^128 or more, is the token's own event as the chain holds it,
-which a re-read gives again, and is failed `not-this-instrument` too. Then its trace must hold exactly one `transfer`
-call on `ref.asset` with this identity nested, at any depth, below an `execute_from_outside_v2` whose calldata
-carries this nonce, no invocation on the path to either having reverted. A trace that holds none, or more than one,
-or that is nested deeper than 16 levels or holds more than 512 invocations, which the walk reads no further, is
-failed `not-this-instrument`: an accepted transaction's trace does not change, and `starknetLandedNonce` gives
-`starknet/no-transfer` for none and for a trace beyond those bounds. A call below such a `transfer` is the token's
-own execution of it (a library call repeats the frame) and is not read as another transfer. A failed read, a
+Answers the read of the named transaction as the profile `read-status` gives it. A receipt that is `PRE_CONFIRMED`,
+or names no block, names no included act: a pre-confirmed block can change. A receipt accepted on L2 or L1 is read
+at that mark and at its block number. A `REVERTED` one is included with a failed result, whose outside execution,
+the payer's nonce with it, is rolled back. A `SUCCEEDED` one is the payer's act where it emits exactly one `Transfer`
+event from `ref.asset` whose sender is `ref.from`, with this payment's identity, and its trace holds exactly one
+`transfer` call on `ref.asset` with this identity nested, at any depth, below an `execute_from_outside_v2` whose
+calldata carries this nonce, no invocation on the path to either having reverted. Otherwise it carries no act of the
+payer's that binds H: an asset `Transfer` event of neither standard layout, or with an amount limb of 2^128 or more,
+is the token's own event as the chain holds it; a trace that holds no such call, or more than one, or that is nested
+deeper than 16 levels or holds more than 512 invocations, which the walk reads no further, is the trace an accepted
+transaction keeps. A call below such a `transfer` is the token's own execution of it (a library call repeats the
+frame) and is not read as another transfer. The read holds no search for H and does not read the payer's
+outside-execution nonce, so none of these answers `failed`. A read that rejects is unreadable `transport`; a
 malformed answer (an asset `Transfer` event with a key or data member that is not `0x` and 1 to 64 hex digits below
-`FELT_P`, whatever the other events hold, among them), or a reader for another network is pending. A ref whose
-`from`, `asset` or `nonce` is not `0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64
-hex digits, is pending `unreadable`, with nothing read; felts compare as numbers and the digest as a hash, in either
-case. Two calls.
+`FELT_P`, whatever the other events hold, or an invocation that is not well formed, among them) is `unparseable`; a
+receipt with no trace is `history-gap`; and a reader for another network than the ref's is `chain-mismatch`. A ref,
+a reader or a query that is not one, a reader that names no network, or a ref whose `transaction`, `from`, `asset`
+or `nonce` is not `0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64 hex digits, is
+unreadable `unparseable`, with nothing read; felts compare as numbers and the digest as a hash, in either case. Two
+calls.
 
 #### Parameters
 
@@ -394,6 +402,7 @@ case. Two calls.
 | ------ | ------ |
 | `ref` | [`StarknetRef`](#starknetref) & `object` |
 | `reader` | [`StarknetReader`](#starknetreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`StarknetRef`](#starknetref) & `object`, `bigint`, `StarknetMark`\> |
 
 #### Returns
 

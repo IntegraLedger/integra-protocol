@@ -34,6 +34,7 @@ One card option offered at a checkout. `checkout` is the seller's own id: 1–12
 | Property | Type |
 | ------ | ------ |
 | <a id="property-claims"></a> `claims` | `boolean` |
+| <a id="property-data"></a> `data` | [`PairingData`](index.md#pairingdata) |
 | <a id="property-id"></a> `id` | `PairingId` |
 | <a id="property-pattern"></a> `pattern` | [`LcpPattern`](x402.md#lcppattern) |
 | <a id="property-tie"></a> `tie` | (`options`) => \[`"card"`, \{ `options`: readonly [`CardOption`](#cardoption)[]; \}\] |
@@ -232,6 +233,70 @@ The checkout mandate for the wallet (L2) or the agent (L3b) to sign, and the pay
 > **CardScheme** = `"visa-tap"` \| `"mastercard-vi"` \| `"seller-reference"`
 
 ## Variables
+
+### MAX\_CHECKOUT\_ID
+
+> `const` **MAX\_CHECKOUT\_ID**: `128` = `128`
+
+The longest checkout id a card option names, in characters.
+
+***
+
+### MAX\_CHECKOUT\_JWT
+
+> `const` **MAX\_CHECKOUT\_JWT**: `16384` = `16_384`
+
+The longest `checkout_jwt` lcp reads, in characters.
+
+***
+
+### MAX\_TAP\_COMPONENTS
+
+> `const` **MAX\_TAP\_COMPONENTS**: `32` = `32`
+
+The most items lcp parses in one inner list of a TAP signature field: a signature's covered components.
+
+***
+
+### MAX\_TAP\_FIELD
+
+> `const` **MAX\_TAP\_FIELD**: `8192` = `8192`
+
+The longest TAP `Signature-Input` or `Signature` field lcp parses, in characters.
+
+***
+
+### MAX\_TAP\_HASH\_LINE
+
+> `const` **MAX\_TAP\_HASH\_LINE**: `256` = `256`
+
+The longest `lcp-hash` field line lcp reads from a TAP payment request, in characters.
+
+***
+
+### MAX\_TAP\_MEMBERS
+
+> `const` **MAX\_TAP\_MEMBERS**: `16` = `16`
+
+The most members lcp parses in one TAP signature field, an RFC 9651 Dictionary.
+
+***
+
+### MAX\_VI\_DISCLOSURES
+
+> `const` **MAX\_VI\_DISCLOSURES**: `32` = `32`
+
+The most disclosures lcp reads in one Verifiable Intent layer.
+
+***
+
+### MAX\_VI\_LAYER
+
+> `const` **MAX\_VI\_LAYER**: `65536` = `65_536`
+
+The longest Verifiable Intent layer, an SD-JWT with its disclosures, lcp reads, in characters.
+
+***
 
 ### sellerReference
 

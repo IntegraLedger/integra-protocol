@@ -322,7 +322,7 @@ authorizedSigner, expiringNonceHash, escrow, chainId)).
 
 ### witnessRecover()
 
-> **witnessRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **witnessRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Reads the transaction's receipt and returns topic 2 of its one `KeyAuthorizationWitness` log from the account
 keychain: none is `tempo/no-witness`, and more than one `tempo/ambiguous`. A failed read is `tempo/unreadable`, no
@@ -330,16 +330,15 @@ receipt `tempo/not-found` and a revert `tempo/reverted`, as `readReceiptAtMark` 
 `tempo/no-witness` and `tempo/ambiguous` are given only where the receipt's block is at or below the reader's
 `finalized` mark: above it, or where that mark cannot be read, each is `tempo/not-final`, a read to repeat, since a
 block above the mark can be replaced by one in which the transaction succeeds or holds other logs. The mark is read
-only for those. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash, or a reader
-for another network than the ref names, is `tempo/wrong-reader`, with nothing read. At most two calls.
+only for those. The challenge is not read. An input or reader that is not an object, an input whose `tx` is not a
+32-byte hash, or a reader for another network than the input names, is `tempo/wrong-reader`, with nothing read. At
+most two calls.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: `string`; `transaction`: `` `0x${string}` ``; \} |
-| `ref.network` | `string` |
-| `ref.transaction` | `` `0x${string}` `` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`string`, [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`EvmReader`](evm.md#evmreader) |
 
 #### Returns

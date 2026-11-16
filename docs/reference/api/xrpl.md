@@ -82,7 +82,8 @@ Bounded, read-only calls against one network's endpoint. Every failure rejects, 
 
 ### XrplRef
 
-The read keys `reference` returns, with `fromLedger`, the ledger index the transaction search starts from.
+The read keys `reference` returns, with `fromLedger`, the ledger index the transaction search starts from, and the
+option's payee, which `reference` takes from the option the payment answers.
 
 #### Properties
 
@@ -92,6 +93,7 @@ The read keys `reference` returns, with `fromLedger`, the ledger index the trans
 | <a id="property-fromledger"></a> `fromLedger` | `number` |
 | <a id="property-lastledgersequence"></a> `lastLedgerSequence` | `number` \| `null` |
 | <a id="property-network-1"></a> `network` | `` `xrpl:${number}` `` |
+| <a id="property-payee"></a> `payee` | `string` |
 | <a id="property-transaction"></a> `transaction` | `string` |
 
 ***
@@ -158,12 +160,15 @@ take, as rippled reads it, is `xrpl/network-mismatch`.
 
 > **XrplCloseRef** = `object`
 
+The read keys of a reported close: the network, the channel, the close's transaction and the option's payee.
+
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
 | <a id="property-channel"></a> `channel` | `string` |
 | <a id="property-network-2"></a> `network` | [`XrplNetwork`](#xrplnetwork) |
+| <a id="property-payee-1"></a> `payee` | `string` |
 | <a id="property-phase"></a> `phase` | `"close"` |
 | <a id="property-transaction-1"></a> `transaction` | `string` |
 
@@ -171,7 +176,9 @@ take, as rippled reads it, is `xrpl/network-mismatch`.
 
 ### XrplCloseStatus
 
-> **XrplCloseStatus** = \{ `ledgerIndex`: `number`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"not-validated"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"not-a-close"`; \}
+> **XrplCloseStatus** = [`XrplStatus`](#xrplstatus)
+
+A reported close's read, as the profile `read-status` answers it: the answer `XrplStatus` names.
 
 ***
 
@@ -185,7 +192,9 @@ CAIP-2: `xrpl:` and the chain's NetworkID, 0 to 4294967295.
 
 ### XrplStatus
 
-> **XrplStatus** = \{ `ledgerIndex`: `number`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"not-validated"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"expired"` \| `"claimed-fee"` \| `"not-this-instrument"`; \}
+> **XrplStatus** = [`StatusAnswer`](index.md#statusanswer)\<`number`, `XrplMark`\>
+
+An XRPL read, as the profile `read-status` answers it. The position is a ledger index.
 
 ## Variables
 
@@ -306,13 +315,15 @@ The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as 
 
 ### xrplOpenStatus()
 
-> **xrplOpenStatus**(`ref`, `reader`): `Promise`\<[`XrplStatus`](#xrplstatus)\>
+> **xrplOpenStatus**(`ref`, `reader`, `query`): `Promise`\<[`XrplStatus`](#xrplstatus)\>
 
-Reads an opening by the hash computed from its signed blob: settled only when a validated ledger holds it with
-`tesSUCCESS` as a `PaymentChannelCreate`; `tec` codes are final failures that claimed the fee; past
-`LastLedgerSequence` with the whole range searched it expired. A failed read is pending. A ref whose `transaction` is
-not 64 hex digits is pending `unreadable`, with nothing read; the transaction is looked up in upper case. At most two
-calls.
+Reads an opening by the hash computed from its signed blob, as the profile `read-status` answers it: the
+`PaymentChannelCreate` a validated ledger holds with `tesSUCCESS` is `settled` at its ledger index. A `tec` result,
+a validated success of another type, an expiry past `LastLedgerSequence`, a lookup that finds nothing and a
+transaction in no validated ledger yet are `pending`, `search-incomplete`, since this read is no search for H; a
+ledger index at or before the query's `after` is `failed`, `before-position`. A ref, reader or query of the wrong
+form is `unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read; the
+transaction is looked up in upper case. At most two calls.
 
 #### Parameters
 
@@ -320,6 +331,7 @@ calls.
 | ------ | ------ |
 | `ref` | `Omit`\<[`XrplRef`](#xrplref), `"expect"`\> |
 | `reader` | [`XrplReader`](#xrplreader) |
+| `query` | `XrplQuery`\<`Omit`\<[`XrplRef`](#xrplref), `"expect"`\>\> |
 
 #### Returns
 
@@ -329,13 +341,15 @@ calls.
 
 ### xrplStatus()
 
-> **xrplStatus**(`ref`, `reader`): `Promise`\<[`XrplStatus`](#xrplstatus)\>
+> **xrplStatus**(`ref`, `reader`, `query`): `Promise`\<[`XrplStatus`](#xrplstatus)\>
 
-Reads a transaction by the hash computed from its signed blob. Settled only when a validated ledger holds it with
-`tesSUCCESS` as a Payment whose `InvoiceID` is the one expected; `tec` codes are final failures that claimed the fee;
-past `LastLedgerSequence` with the whole range searched it expired. A failed read is pending. A ref whose
-`transaction` or `expect` is not 64 hex digits is pending `unreadable`, with nothing read; the transaction is looked
-up in upper case, and invoice ids compare in either case. At most two calls.
+Reads a payment by the hash computed from its signed blob, as the profile `read-status` answers it: the Payment a
+validated ledger holds with `tesSUCCESS` and the `InvoiceID` expected (in either case) is `settled` at its ledger
+index. A `tec` result, a validated success of another type or invoice, an expiry past `LastLedgerSequence`, a lookup
+that finds nothing and a transaction in no validated ledger yet are `pending`, `search-incomplete`, since this read
+is no search for H; a ledger index at or before the query's `after` is `failed`, `before-position`. A ref, reader or
+query of the wrong form is `unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with
+nothing read. At most two calls.
 
 #### Parameters
 
@@ -343,6 +357,7 @@ up in upper case, and invoice ids compare in either case. At most two calls.
 | ------ | ------ |
 | `ref` | [`XrplRef`](#xrplref) |
 | `reader` | [`XrplReader`](#xrplreader) |
+| `query` | `XrplQuery`\<[`XrplRef`](#xrplref)\> |
 
 #### Returns
 

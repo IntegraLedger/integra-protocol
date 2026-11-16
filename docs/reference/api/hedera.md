@@ -16,6 +16,7 @@ description: "The exports of @integraledger/lcp/hedera."
 | <a id="property-asset"></a> `asset` | `string` | - |
 | <a id="property-iddigest"></a> `idDigest` | `` `0x${string}` `` | `hederaIdDigest` of the payer. |
 | <a id="property-network"></a> `network` | [`HederaNetwork`](#hederanetwork) | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's `payTo`. |
 | <a id="property-settleby"></a> `settleBy` | `number` | Unix seconds: the time `reference` ran plus `maxTimeoutSeconds`. |
 | <a id="property-transaction"></a> `transaction?` | `string` | The facilitator's `SettlementResponse.transaction`, mirror form. |
 
@@ -43,31 +44,10 @@ description: "The exports of @integraledger/lcp/hedera."
 | <a id="property-authorizedsigner"></a> `authorizedSigner` | `` `0x${string}` `` |
 | <a id="property-chainid"></a> `chainId` | `295` \| `296` |
 | <a id="property-escrow"></a> `escrow` | `` `0x${string}` `` |
-| <a id="property-payee"></a> `payee` | `` `0x${string}` `` |
+| <a id="property-payee-1"></a> `payee` | `` `0x${string}` `` |
 | <a id="property-payer"></a> `payer` | `` `0x${string}` `` |
 | <a id="property-salt"></a> `salt` | `` `0x${string}` `` |
 | <a id="property-token"></a> `token` | `` `0x${string}` `` |
-
-***
-
-### HederaChargeChoice
-
-The buyer's inputs to the Hedera charge's `build`: the chosen challenge, the payer, the node, the transaction's valid
-start and maximum fee, and, optionally, the client id the attribution memo carries and the credential type.
-
-#### Properties
-
-| Property | Type |
-| ------ | ------ |
-| <a id="property-challenge"></a> `challenge` | [`MppChallenge`](mpp.md#mppchallenge) & `object` |
-| <a id="property-clientid"></a> `clientId?` | `string` |
-| <a id="property-credentialtype"></a> `credentialType?` | `"transaction"` \| `"hash"` |
-| <a id="property-maxfee"></a> `maxFee` | `bigint` |
-| <a id="property-node"></a> `node` | `string` |
-| <a id="property-payer-1"></a> `payer` | `string` |
-| <a id="property-validstart"></a> `validStart` | `object` |
-| `validStart.nanos` | `number` |
-| `validStart.seconds` | `bigint` |
 
 ***
 
@@ -111,6 +91,7 @@ The read keys `reference` returns.
 | ------ | ------ | ------ |
 | <a id="property-expectmemo"></a> `expectMemo` | `string` | - |
 | <a id="property-network-2"></a> `network` | [`HederaNetwork`](#hederanetwork) | - |
+| <a id="property-payee-2"></a> `payee` | `string` | The option's `payTo`. |
 | <a id="property-transactionid"></a> `transactionId` | `string` | Mirror form. |
 | <a id="property-validuntil"></a> `validUntil` | `number` | Unix seconds: valid start plus the valid duration. |
 
@@ -239,7 +220,10 @@ read.
 
 ### HederaStatus
 
-> **HederaStatus** = \{ `consensus`: `string`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"not-this-instrument"` \| `` `result:${string}` ``; \}
+> **HederaStatus** = [`StatusAnswer`](index.md#statusanswer)\<`string`, `"consensus"`, `string`\>
+
+The answer of `hederaStatus` and `executorStatus`: positions are the Mirror Node's `consensus_timestamp`
+(`seconds.nanos`), and the one mark is `consensus`, the record the Mirror Node serves, which is final.
 
 ## Variables
 
@@ -259,29 +243,9 @@ read.
 
 ***
 
-### chargeHedera
-
-> `const` **chargeHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `carrier`: `"challenge"`; `claims`: `boolean`; `fetchPresented`: (`input`, `reader`, `defaultNetwork?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `HederaLandedCharge`\>; `id`: `"mpp/charge/hedera"`; `landedTx`: (`presented`) => `string` \| `undefined`; `network`: (`request`, `defaultNetwork?`) => [`Refusal`](index.md#refusal) \| [`HederaNetwork`](#hederanetwork); `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}; \}; `reference`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](mpp.md#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](mpp.md#mppchallenge); \}\>
-
-`mpp/charge/hedera`. `broadcaster` answers by the credential's `type`, as the charge's `build` writes the request:
-`hash`, the default, whose request carries `broadcast: true`, `"payer"`: the payer's signer broadcast the body and
-presents the transaction id, which `fetchPresented` reads, then `status`; `transaction`, whose request carries no
-`broadcast`, `"payee"`: the seller's server broadcasts the signed transaction, and `status` reads it. A credential of
-any other type gets `mpp/credential-type`, as `bound` refuses it.
-
-***
-
-### ESCROW\_OPEN\_SELECTOR
-
-> `const` **ESCROW\_OPEN\_SELECTOR**: `"0xc79ea485"` = `"0xc79ea485"`
-
-`open(address,address,uint128,bytes32,address)`.
-
-***
-
 ### exactHedera
 
-> `const` **exactHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `carrier`: `"TransactionBody.memo"`; `claims`: `boolean`; `id`: `"x402/exact/hedera"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/hedera"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/hedera`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the
 transaction's fee payer, adds its signature to the transaction the payer signed and submits it; `status` reads it by
@@ -291,7 +255,7 @@ its transaction id.
 
 ### exactHederaExecutor
 
-> `const` **exactHederaExecutor**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `amount`: `string`; `asset`: `string`; `executors`: readonly `string`[]; `kind`: `"hedera-executor"`; `network`: [`HederaNetwork`](#hederanetwork); `payTo`: `string`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| `ExecutorPaymentPayload`; \}\>; `claims`: `boolean`; `id`: `"x402/exact/hedera/transfer-executor"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ExecutorRef`](#executorref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactHederaExecutor**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `amount`: `string`; `asset`: `string`; `executors`: readonly `string`[]; `kind`: `"hedera-executor"`; `network`: [`HederaNetwork`](#hederanetwork); `payTo`: `string`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| `ExecutorPaymentPayload`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/hedera/transfer-executor"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ExecutorRef`](#executorref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/hedera/transfer-executor`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
 facilitator submits the executor's transfer under the authorization the payer signed, and names its transaction;
@@ -320,17 +284,11 @@ id, valid duration, memo and exact bytes, the bytes a copy of `wire`'s. Every bo
 
 ### executorStatus()
 
-> **executorStatus**(`ref`, `reader`): `Promise`\<[`HederaStatus`](#hederastatus)\>
+> **executorStatus**(`ref`, `reader`, `query`): `Promise`\<[`HederaStatus`](#hederastatus)\>
 
-Reads the merged consensus record of the named transaction: the user entry must be SUCCESS; each account's net
-change in the asset is summed over the user entry and its children, with HIP-406 staking rewards taken back out of
-HBAR transfers. The fee payer's rows are kept: fees are paid in HBAR, so token rows are whole, and on HBAR the fee the
-user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
-reads as what it paid or received. Exactly one account must be debited, by at least one unit, and its digest must be
-the recorded one: the payment is the named transaction's debit of the payer. Payee and amount are not read. A transfer
-list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`. A ref whose
-`transaction` is not a Mirror Node transaction id, whose `asset` is not `shard.realm.num` or whose `idDigest` is not
-`0x` and 64 hex digits is pending `unreadable`, with nothing read.
+The read of the executor's transfer by the transaction the facilitator named, as the profile `read-status` answers
+it at coverage `none`: the named transaction is the act, settled at `consensus` where it debits the payer. With no
+single-use value to read, a missing or failed transaction answers no `failed`.
 
 #### Parameters
 
@@ -338,6 +296,7 @@ list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pe
 | ------ | ------ |
 | `ref` | [`ExecutorRef`](#executorref) & `object` |
 | `reader` | [`HederaReader`](#hederareader) |
+| `query` | `HederaQuery`\<[`ExecutorRef`](#executorref) & `object`\> |
 
 #### Returns
 
@@ -384,15 +343,11 @@ The core's hash over the ASCII of `payer`: the payer's identity, never shown in 
 
 ### hederaStatus()
 
-> **hederaStatus**(`ref`, `reader`): `Promise`\<[`HederaStatus`](#hederastatus)\>
+> **hederaStatus**(`ref`, `reader`, `query`): `Promise`\<[`HederaStatus`](#hederastatus)\>
 
-Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
-records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
-not this instrument, and any other result is failed with that result. A failed read, a reader for another network,
-or a SUCCESS entry whose `memo_base64` is not base64 in its canonical form (RFC 4648 §3.5) is pending. A ref whose
-`expectMemo` is not a string is pending `unreadable`, with nothing read. It never answers expired: a transaction id
-that no entry uses stays pending `not-found`, and `validUntil` is not read, so the caller decides when to stop
-reading.
+The read of the payment by its transaction id, as the profile `read-status` answers it: the record of the id with
+the recorded memo is the act, settled at `consensus`; another memo under the id is a consumed value and the
+transaction's own failed result a failed act, each `pending`, `search-incomplete`, since the read has no search for H.
 
 #### Parameters
 
@@ -400,6 +355,7 @@ reading.
 | ------ | ------ |
 | `ref` | [`HederaRef`](#hederaref) |
 | `reader` | [`HederaReader`](#hederareader) |
+| `query` | `HederaQuery`\<[`HederaRef`](#hederaref)\> |
 
 #### Returns
 

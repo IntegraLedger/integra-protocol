@@ -73,11 +73,12 @@ is JSON-serialisable.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-lastvalid"></a> `lastValid` | `string` |
-| <a id="property-network-1"></a> `network` | `` `algorand:${string}` `` |
-| <a id="property-txid"></a> `txid` | `string` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-lastvalid"></a> `lastValid` | `string` | - |
+| <a id="property-network-1"></a> `network` | `` `algorand:${string}` `` | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's `payTo`. |
+| <a id="property-txid"></a> `txid` | `string` | - |
 
 ***
 
@@ -124,13 +125,16 @@ CAIP-2: the first 32 characters of the URL-safe base64 genesis hash.
 
 ### AvmStatus
 
-> **AvmStatus** = \{ `finality`: `"final"`; `round`: `bigint`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"expired"`; \}
+> **AvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `"final"`, `bigint`\>
+
+The answer of `avmStatus`: positions are confirmed rounds, and the one mark is `final`, a transaction the Indexer
+serves as confirmed, which is final.
 
 ## Variables
 
 ### exactAvm
 
-> `const` **exactAvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmUnsigned`](#avmunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/algorand"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmRef`](#avmref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`AvmStatus`](#avmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactAvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmUnsigned`](#avmunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/algorand"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AvmRef`](#avmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`AvmStatus`](#avmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/algorand`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
 signed transaction `complete` returns; `status` reads it by the transaction id computed from the signed bytes.
@@ -183,18 +187,17 @@ own (`readEntry`), so nothing here needs algosdk: every answer is the same witho
 
 ### avmRecover()
 
-> **avmRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **avmRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-The hash from the landed payment's note, for anyone holding the transaction id. A ref whose `txid` is not the 52
-base32 characters of a 32-byte hash is `avm/wrong-reader`, with nothing read. One call.
+The hash from the landed payment's note, for anyone holding the transaction id. An input whose `tx` is not the 52
+base32 characters of a 32-byte hash, or whose option is not an object, is `avm/wrong-reader`, with nothing read; the
+option is not read further. One call.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: `` `algorand:${string}` ``; `txid`: `string`; \} |
-| `ref.network` | `` `algorand:${string}` `` |
-| `ref.txid` | `string` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `algorand:${string}` ``, [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`AvmReader`](#avmreader) |
 
 #### Returns
@@ -205,12 +208,11 @@ base32 characters of a 32-byte hash is `avm/wrong-reader`, with nothing read. On
 
 ### avmStatus()
 
-> **avmStatus**(`ref`, `reader`): `Promise`\<[`AvmStatus`](#avmstatus)\>
+> **avmStatus**(`ref`, `reader`, `query`): `Promise`\<[`AvmStatus`](#avmstatus)\>
 
-Reads the payment by its id. Found is settled and final; absent after the last valid round is expired; otherwise
-pending. A failed read, or a reader for another network, is pending. A ref whose `txid` is not the 52 base32
-characters of a 32-byte hash, as `reference` writes it, or whose `lastValid` is not a decimal below 2^64, is pending
-`unreadable`, with nothing read.
+The read of the payment by its transaction id, as the profile `read-status` answers it: the confirmed transaction is
+the act, settled at `final`; an id not found, or not found after its last valid round, is `pending`,
+`search-incomplete`, since the read has no search for H.
 
 #### Parameters
 
@@ -218,6 +220,7 @@ characters of a 32-byte hash, as `reference` writes it, or whose `lastValid` is 
 | ------ | ------ |
 | `ref` | [`AvmRef`](#avmref) |
 | `reader` | [`AvmReader`](#avmreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`AvmRef`](#avmref), `bigint`, `"final"`, `bigint`\> |
 
 #### Returns
 

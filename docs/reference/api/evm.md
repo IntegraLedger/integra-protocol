@@ -299,6 +299,7 @@ The read keys for a later settlement read of an EVM payment, and nothing else.
 | <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](#pullauthorization) | The signed pull authorization and where the chain records its use, where the pairing's reference records one. |
 | <a id="property-bindinglog"></a> `bindingLog?` | \{ address: \`0x$\{string\}\`; topic0: \`0x$\{string\}\`; value: \`0x$\{string\}\`; \} & (\{ index: 2 \| 1 \| 3; \} \| \{ dataWord: number; \}) | The log carrying H or its commitment: in topic `index`, or in 32-byte data word `dataWord`. |
 | <a id="property-network-1"></a> `network` | `` `eip155:${string}` `` \| `HederaNetwork` | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's payee, which `reference` takes from the option the payment answers. |
 | <a id="property-search"></a> `search?` | `object` | The log filter that finds the transaction when none is named; absent, only a named transaction is read. |
 | `search.address` | `` `0x${string}` `` | - |
 | `search.topics` | readonly (`` `0x${string}` `` \| `null`)[] | - |
@@ -323,12 +324,15 @@ A transaction as `eth_getTransactionByHash` gives it: `from`, the address that s
 
 ### EvmTxRef
 
+The reference an EIP-3009 `status` reads: the network, the token, the transaction and the option's payee.
+
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
 | <a id="property-asset"></a> `asset` | `` `0x${string}` `` |
 | <a id="property-network-2"></a> `network` | `` `eip155:${string}` `` |
+| <a id="property-payee-1"></a> `payee` | `string` |
 | <a id="property-transaction"></a> `transaction` | `` `0x${string}` `` |
 
 ***
@@ -456,13 +460,17 @@ token, `validBefore` and the transfer digest.
 
 ### EvmBreadthStatus
 
-> **EvmBreadthStatus** = [`EvmStatus`](#evmstatus) \| \{ `state`: `"failed"` \| `"pending"`; `why`: `"binding-log-not-found"` \| `"transfer-not-found"` \| `"receive-policy-blocked"` \| `"nonce-not-used"`; \}
+> **EvmBreadthStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>
+
+What the EVM breadth pairings' `status` answers, in the same terms as `EvmStatus`.
 
 ***
 
 ### EvmStatus
 
-> **EvmStatus** = \{ `blockNumber`: `bigint`; `finality`: `"latest"` \| `"safe"` \| `"finalized"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"` \| `"reverted"` \| `"authorization-not-used"` \| `"transfer-not-found"`; \} \| \{ `state`: `"failed"`; `why`: `"reverted"` \| `"authorization-not-used"` \| `"transfer-not-found"`; \}
+> **EvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>
+
+What an EVM `status` answers: its positions are block numbers, its marks `EvmMark`.
 
 ***
 
@@ -675,23 +683,24 @@ carry 12 zero bytes, and there are at most 8 delegations, 16 caveats each, and 8
 
 ### eip3009Recover()
 
-> **eip3009Recover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **eip3009Recover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from a settlement transaction alone: the one distinct nonce among the `AuthorizationUsed` logs
-that `asset` emitted in it; none is `evm/no-authorization-use`, and more than one `evm/ambiguous`. A failed read, a
-reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object with a string
-`address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
+that the option's `asset` emitted in it; none is `evm/no-authorization-use`, and more than one `evm/ambiguous`. A
+failed read, a reader answer that is neither `null` nor a receipt, or a receipt holding a log that is not an object
+with a string `address`, an array of string `topics` and a string `data`, is `evm/unreadable`; no receipt (`null`) is
 `evm/not-found`. A reverted transaction is `evm/reverted`. A revert, `evm/no-authorization-use` and `evm/ambiguous`
 are given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark
 cannot be read, each is `evm/not-final`, a read to repeat: a block above the mark can be replaced by one in which the
-transaction succeeds or holds other logs, and a refusal names no mark. The mark is read only for those. A ref whose
-`transaction` is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At most two calls.
+transaction succeeds or holds other logs, and a refusal names no mark. The mark is read only for those. An input or
+reader that is not an object, a reader for another network, a `tx` that is not a 32-byte hash, or an option whose
+`asset` is not an address, is `evm/wrong-reader`, with nothing read. At most two calls.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | [`EvmTxRef`](#evmtxref) |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `eip155:${string}` ``, [`PaymentRequirements`](x402.md#paymentrequirements)\> |
 | `reader` | [`EvmReader`](#evmreader) |
 
 #### Returns
@@ -702,26 +711,27 @@ transaction succeeds or holds other logs, and a refusal names no mark. The mark 
 
 ### eip3009Status()
 
-> **eip3009Status**(`ref`, `reader`): `Promise`\<[`EvmStatus`](#evmstatus)\>
+> **eip3009Status**(`ref`, `reader`, `query`): `Promise`\<[`EvmStatus`](#evmstatus)\>
 
-Reads the named transaction as this payment's EIP-3009 settlement. Settled when its receipt succeeded and holds the
-pair one authorization produces: a log from `asset` with exactly three topics, the first `AuthorizationUsed` and the
-third equal to `h`, and the `Transfer` paired with it, which `transferLog` identifies. The pair follows the order in
-which EIP-3009's reference implementation and USDC's FiatToken emit them, the use and then its transfer; EIP-3009
-itself states no order. The `Transfer` paired with a use is the first one from its authorizer (topic 1) after it and
-before the token's next `AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the
-token's previous `AuthorizationUsed` and before it. No such `AuthorizationUsed` log is failed
-`authorization-not-used`; no paired `Transfer` that `transferLog` identifies is failed `transfer-not-found`. On a
-token that emits the `Transfer` first, a use followed in the same transaction by another authorization of its payer
-pairs with that authorization's transfer: where their terms differ it reads failed, and where the payer signed the
-use's nonce twice it can read settled on the other's transfer. The finality is the highest block mark at or above the
-receipt's block. A receipt the reader does not hold is pending `not-found`, and a reverted one failed `reverted`. A
-failed answer (`reverted`, `authorization-not-used`, `transfer-not-found`) is given only where the receipt's block is
-at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the same reason is pending. A
-failed read, a reader for another network, a `transaction` or `h` that is not a 32-byte hash, an `asset` that is not
-an address, a `transferLog` that is not one, a reader answer that is neither `null` nor a receipt, or a receipt
-holding a log that is not an object with a string `address`, an array of string `topics` and a string `data`, is
-pending `unreadable`, never failed. At most three calls.
+Reads the named transaction as this payment's EIP-3009 settlement, and answers as the profile `read-status` does for
+what it observed. The read is settled when the receipt succeeded and holds the pair one authorization produces: a log
+from `asset` with exactly three topics, the first `AuthorizationUsed` and the third equal to `h`, and the `Transfer`
+paired with it, which `transferLog` identifies. The pair follows the order in which EIP-3009's reference
+implementation and USDC's FiatToken emit them, the use and then its transfer; EIP-3009 itself states no order. The
+`Transfer` paired with a use is the first one from its authorizer (topic 1) after it and before the token's next
+`AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the token's previous
+`AuthorizationUsed` and before it. On a token that emits the `Transfer` first, a use followed in the same transaction
+by another authorization of its payer pairs with that authorization's transfer: where their terms differ the
+transaction is not this act, and where the payer signed the use's nonce twice it can read settled on the other's
+transfer. The mark is the highest block mark at or above the receipt's block, and the position the receipt's block.
+Settled at a mark is the act at that mark: `settled` at or above the finality asked for, `below-mark` under it. A
+receipt the reader does not hold, a reverted one (which consumes no nonce), and a transaction without such a use or
+its transfer are no act, and with no search for H yet answer `pending` `search-incomplete`. A reader that rejects is
+unreadable by its error (`rejected`); a reader for another network `chain-mismatch`; a `transaction` or `h` that is
+not a 32-byte hash, an `asset` that is not an address, a `transferLog` that is not one, a reader answer that is
+neither `null` nor a receipt, or a receipt holding a log that is not an object with a string `address`, an array of
+string `topics` and a string `data`, `unparseable`; and a query that is not one `status` takes, `unparseable`, with
+nothing read. At most three calls.
 
 #### Parameters
 
@@ -729,6 +739,7 @@ pending `unreadable`, never failed. At most three calls.
 | ------ | ------ |
 | `ref` | [`EvmTxRef`](#evmtxref) & `object` |
 | `reader` | [`EvmReader`](#evmreader) |
+| `query` | `EvmQuery`\<[`EvmTxRef`](#evmtxref) & `object`\> |
 
 #### Returns
 
@@ -767,26 +778,26 @@ The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in 
 
 ### evmStatus()
 
-> **evmStatus**(`ref`, `reader`): `Promise`\<[`EvmBreadthStatus`](#evmbreadthstatus)\>
+> **evmStatus**(`ref`, `reader`, `query`): `Promise`\<[`EvmBreadthStatus`](#evmbreadthstatus)\>
 
-Reads the named transaction. A reader for another network, or a failed read, is pending; no receipt is pending
-`not-found`; a revert is failed. On success each log the ref names must be present, emitted by the named contract:
-the binding log with `value` in its topic or data word, and the transfer log whose named fields hash to the digest.
-Where the binding log is EIP-3009's `AuthorizationUsed` and the transfer log names `from`, the two are one
-authorization's, paired as `eip3009Status` pairs them: the transfer is the one paired with a use of the binding's
-value, from its authorizer (topic 1), else failed `transfer-not-found`. Where the binding log and the transfer log
-name one event of one contract, as Tempo's `TransferWithMemo` carries the memo and the transfer together, they are
-one log: the transfer counts only from a log that carries the binding, else failed `transfer-not-found`. Where the
-binding log is the DelegationManager's `RedeemedDelegation`, only a leaf's log carries it: one whose delegate (data
-word 1) is the redeemer (topic 2) or the wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from`
-is then that leaf's root delegator (topic 1), else failed `transfer-not-found`; two leaves of one root delegator
-redeemed in one transaction are read alike, so one transfer from it counts for either. Settled carries the highest
-finality mark reached. A ref whose `transaction` is not a 32-byte hash, or whose `bindingLog` or `transferLog` is
-present and not of the form a reference writes, is pending `unreadable`, with nothing read. Where a log the ref names
-is missing and the receipt holds a `Transfer` that the token of the ref's transfer log, or else of its binding log,
-emitted to `RECEIVE_POLICY_GUARD`, the reason is `receive-policy-blocked` instead. A failed answer is given only where
-the receipt's block is at or below the reader's `finalized` mark; above it, or where that mark cannot be read, the
-same reason is pending. At most three calls.
+Reads the named transaction, and answers as the profile `read-status` does for what it observed, at coverage `full`:
+the ref names the log that carries H. The read is settled when the receipt succeeded and each log the ref names is
+present, emitted by the named contract: the binding log with `value` in its topic or data word, and the transfer log
+whose named fields hash to the digest. Where the binding log is EIP-3009's `AuthorizationUsed` and the transfer log
+names `from`, the two are one authorization's, paired as `eip3009Status` pairs them: the transfer is the one paired
+with a use of the binding's value, from its authorizer (topic 1). Where the binding log and the transfer log name one
+event of one contract, as Tempo's `TransferWithMemo` carries the memo and the transfer together, they are one log:
+the transfer counts only from a log that carries the binding. Where the binding log is the DelegationManager's
+`RedeemedDelegation`, only a leaf's log carries it: one whose delegate (data word 1) is the redeemer (topic 2) or the
+wildcard delegate, as `redeemedLeafRecover` reads it. The transfer's `from` is then that leaf's root delegator
+(topic 1); two leaves of one root delegator redeemed in one transaction are read alike, so one transfer from it
+counts for either. Settled carries the highest finality mark reached and the receipt's block as the position: the act
+at that mark, `settled` at or above the finality asked for and `below-mark` under it. A receipt the reader does not
+hold, a reverted one, a missing log, and a transfer a Tempo receive policy sent to `RECEIVE_POLICY_GUARD` are no act,
+and with no search for H yet answer `pending` `search-incomplete`. A reader that rejects is unreadable by its error
+(`rejected`), a reader for another network `chain-mismatch`, and a ref whose `transaction` is not a 32-byte hash, or
+whose `bindingLog` or `transferLog` is present and not of the form a reference writes, a malformed reader answer, or a
+query that is not one `status` takes, `unparseable`, with nothing read for a ref or a query. At most three calls.
 
 #### Parameters
 
@@ -794,6 +805,7 @@ same reason is pending. At most three calls.
 | ------ | ------ |
 | `ref` | [`EvmRef`](#evmref) & `object` |
 | `reader` | [`EvmReader`](#evmreader) |
+| `query` | `EvmQuery`\<[`EvmRef`](#evmref) & `object`\> |
 
 #### Returns
 

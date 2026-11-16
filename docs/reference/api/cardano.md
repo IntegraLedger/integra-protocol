@@ -96,6 +96,7 @@ failed.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-network-1"></a> `network` | [`CardanoNetwork`](#cardanonetwork) | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's `payTo`. |
 | <a id="property-ttlslot"></a> `ttlSlot` | `string` | The slot from which the transaction cannot land (body key 3, `invalid_hereafter`), as a decimal string. |
 | <a id="property-txid"></a> `txId` | `` `0x${string}` `` | - |
 
@@ -150,13 +151,16 @@ failed.
 
 ### CardanoStatus
 
-> **CardanoStatus** = \{ `blockHeight`: `bigint`; `confirmations`: `bigint`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"phase-2-invalid"` \| `"expired"`; \}
+> **CardanoStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `bigint`, `bigint`\>
+
+The answer of `cardanoStatus`: positions are block heights, and marks are counts of confirmations, the newer blocks
+above the transaction's; the final mark is the count the query asks for.
 
 ## Variables
 
 ### exactCardano
 
-> `const` **exactCardano**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoUnsigned`](#cardanounsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/cardano"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoRef`](#cardanoref)\>; `status`: (`ref`, `reader`, `depth`) => `Promise`\<[`CardanoStatus`](#cardanostatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCardano**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoUnsigned`](#cardanounsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/cardano"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CardanoRef`](#cardanoref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`CardanoStatus`](#cardanostatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/cardano`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
 transaction the payer signed; `status` reads it by the id its body fixes.
@@ -192,10 +196,10 @@ not a 32-byte hash is `x402/payload-malformed`.
 
 ### cardanoRecover()
 
-> **cardanoRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **cardanoRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Reads the hash back from the included transaction alone, by its id. A ref whose `txId` is not a 32-byte hash is
-`cardano/wrong-reader`, with nothing read. Bytes that are not one CBOR array whose first item, the body, has the id
+Reads the hash back from the included transaction alone, by its id, `input.tx`. An input whose `tx` is not a 32-byte
+hash, or whose option is not an object, is `cardano/wrong-reader`, with nothing read; the option is not read further. Bytes that are not one CBOR array whose first item, the body, has the id
 as its Blake2b-256 are not the transaction the id names, and are `cardano/unreadable`, as a failed read is, whatever
 the decoder answers for them; its refusals answer only for bytes whose body has the id. One call.
 
@@ -203,9 +207,7 @@ the decoder answers for them; its refusals answer only for bytes whose body has 
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: [`CardanoNetwork`](#cardanonetwork); `txId`: `` `0x${string}` ``; \} |
-| `ref.network` | [`CardanoNetwork`](#cardanonetwork) |
-| `ref.txId` | `` `0x${string}` `` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<[`CardanoNetwork`](#cardanonetwork), [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`CardanoReader`](#cardanoreader) |
 
 #### Returns
@@ -216,19 +218,12 @@ the decoder answers for them; its refusals answer only for bytes whose body has 
 
 ### cardanoStatus()
 
-> **cardanoStatus**(`ref`, `reader`, `depth`): `Promise`\<[`CardanoStatus`](#cardanostatus)\>
+> **cardanoStatus**(`ref`, `reader`, `query`): `Promise`\<[`CardanoStatus`](#cardanostatus)\>
 
-Reads the tip first, then the recorded id. A failed read, or a reader for another network, is pending. `depth` is
-the number of newer blocks at which the caller takes a settlement as final. The ledger takes a transaction only in a
-slot below its TTL (cardano-ledger's Allegra `inInterval`: `slot < top`, the check Babbage and Conway run), so an
-absent transaction is expired once the slot of the block `depth` below the tip is at or past `ttlSlot` and the lookup
-names a slot at or past the tip's: a rollback of fewer than `depth` blocks, or a lookup that lags the tip read first,
-never turns a payment that landed into a failed one. While that block's slot is below `ttlSlot`, the tip is fewer
-than `depth` blocks high, the reader holds no block at that height, or the lookup names an earlier slot or none, it
-is pending `not-found`. A present one fails only when the ledger marks it invalid. A `depth` that is not a
-non-negative bigint is pending `unreadable`, and so is a ref whose `txId` is not `0x` and 64 hex digits, with nothing
-read; the id is looked up in lowercase. At most three calls: `slotAt` only for an absent transaction once the tip's
-slot is at or past `ttlSlot` and the lookup covers the tip, and not at `depth` 0, where the tip is that block.
+The read of the payment by its transaction id, as the profile `read-status` answers it, with `query.finality` the
+count of confirmations the caller takes as final, which is also the depth expiry is read at. A valid transaction
+settles at that count or above it and is `below-mark` under it; an invalid one, an expired TTL and a transaction
+not found answer `pending`, `search-incomplete`, since the read has no search for H.
 
 #### Parameters
 
@@ -236,7 +231,7 @@ slot is at or past `ttlSlot` and the lookup covers the tip, and not at `depth` 0
 | ------ | ------ |
 | `ref` | [`CardanoRef`](#cardanoref) |
 | `reader` | [`CardanoReader`](#cardanoreader) |
-| `depth` | `bigint` |
+| `query` | `CardanoQuery` |
 
 #### Returns
 

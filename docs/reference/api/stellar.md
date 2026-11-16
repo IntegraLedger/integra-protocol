@@ -31,7 +31,8 @@ description: "The exports of @integraledger/lcp/stellar."
 ### StellarReader
 
 Bounded, read-only calls against one network's RPC. Every failure rejects, for example with `ReaderError` from
-`@integraledger/lcp/evm`; any rejection reads as unreadable.
+`@integraledger/lcp/evm`: a `ReaderError` reads by its kind (`too-large` as `too-large`, `malformed` as
+`unparseable`), and any other rejection as `transport`.
 
 #### Properties
 
@@ -114,6 +115,7 @@ The read keys `reference` returns.
 | <a id="property-expiration"></a> `expiration?` | `number` | The entry's expiration ledger. Absent with `authDigest`. |
 | <a id="property-fromledger"></a> `fromLedger` | `number` | - |
 | <a id="property-network-1"></a> `network` | [`StellarNetwork`](#stellarnetwork) | - |
+| <a id="property-payee"></a> `payee` | `string` | The option's `payTo`. |
 | <a id="property-tobase-1"></a> `toBase` | `string` | - |
 | <a id="property-toid-1"></a> `toId` | `string` | The muxed id, as a decimal string. |
 | <a id="property-transaction"></a> `transaction?` | `string` | - |
@@ -161,13 +163,10 @@ the read of a signed transfer refuses it.
 
 ### StellarStatus
 
-> **StellarStatus** = \{ `ledger`: `number`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"transaction-failed"` \| `"not-this-instrument"` \| `"unreadable"`; \} \| \{ `state`: `"failed"`; `why`: `"expired"`; \}
+> **StellarStatus** = [`StatusAnswer`](index.md#statusanswer)\<`number`, `"closed"`, `number`\>
 
-What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded, or, for a
-ref without `authDigest`, the named transaction succeeded as the transfer the payer authorized as its source account.
-`pending`: nothing final yet; `why` names what the named transaction read as (`not-found`, `transaction-failed`, a
-successful transaction that is `not-this-instrument`) or that a read failed (`unreadable`). `failed` is final:
-`expired`, the ledger is past the entry's expiration and a complete search finds no transaction that used it.
+The answer of `stellarStatus`: positions are ledger sequence numbers, and the one mark is `closed`, a transaction in
+a closed ledger, which is final.
 
 ## Variables
 
@@ -207,8 +206,8 @@ and the XDR must be consumed whole. The operation and that entry nest ScVals and
 (another entry, a delegate, the footprint, another operation), which is decoded whatever its depth, so its nesting
 does not refuse the envelope. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
 passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
-without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `mpp/charge/stellar`'s push
-credential, once its transaction landed, reads a payer that authorized the transfer as the transaction's source
+without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `stellarStatus` and
+`stellarLocate`, on a ref without `authDigest`, read a payer that authorized the transfer as the transaction's source
 account.
 
 #### Parameters
@@ -246,24 +245,6 @@ strkeys are read and written without @stellar/stellar-sdk, so every answer is th
 
 ***
 
-### muxedId()
-
-> **muxedId**(`h`): `bigint`
-
-The hash's first 8 bytes, big-endian, as a u64. Throws TypeError when `h` is not a 32-byte hash.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `h` | `` `0x${string}` `` |
-
-#### Returns
-
-`bigint`
-
-***
-
 ### stellarLocate()
 
 > **stellarLocate**(`ref`, `reader`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
@@ -297,28 +278,12 @@ cannot be read without it (`stellar/peer-missing` at the decode), which leaves t
 
 ### stellarStatus()
 
-> **stellarStatus**(`ref`, `reader`): `Promise`\<[`StellarStatus`](#stellarstatus)\>
+> **stellarStatus**(`ref`, `reader`, `query`): `Promise`\<[`StellarStatus`](#stellarstatus)\>
 
-Reads the instrument through a named transaction. Settled when that transaction succeeded and used the authorization
-entry `ref.authDigest` names. A landed transaction is read by the payer's first address-credential entry whose
-`rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations; other entries of the payer in
-it are not read. Otherwise the entry can still be used by another transaction until its expiration ledger, so a named
-transaction that is not found, failed, or succeeded with another entry is pending. The read is final only past that
-ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
-transaction that used the entry, failed `expired` when it is complete, finds none, and each events page names a
-`latestLedger` at or above the one read first, and pending otherwise: an events index that lags the ledger read first
-is never read as absence. A failed read, or a reader for another network, is pending. A ref that lacks a field the
-read uses, or holds one in another form than `reference` writes, is pending `unreadable`, with nothing read: a
-`transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
-an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
-strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
-`expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The read needs no @stellar/stellar-sdk but to
-decode a transaction that succeeded: without it a named transaction that succeeded is pending `unreadable` after its
-one call, a search's candidate that succeeded leaves the search incomplete (pending with the named transaction's
-reason), and every other answer is the one with the SDK, after the same calls. One call when the named transaction
-settles or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
-the transaction's source account, with no `expiration` either) is settled when the named transaction succeeded as
-that transfer, and is otherwise pending: there is no expiration ledger to pass.
+The read of the instrument, as the profile `read-status` answers it: a transaction that used the authorization
+entry is the act, settled at `closed` at its ledger. A named transaction that failed, one not found or one that
+succeeded with another entry, and an entry expired with no transaction found answer `pending`, `search-incomplete`,
+since the read's search for H is not read whole.
 
 #### Parameters
 
@@ -326,6 +291,7 @@ that transfer, and is otherwise pending: there is no expiration ledger to pass.
 | ------ | ------ |
 | `ref` | [`StellarRef`](#stellarref) & `object` |
 | `reader` | [`StellarReader`](#stellarreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`StellarRef`](#stellarref) & `object`, `number`, `"closed"`, `number`\> |
 
 #### Returns
 

@@ -112,7 +112,7 @@ the lookup, or null when the reader cannot read it from that node. A lookup nami
 ### TronRef
 
 The read keys `reference` returns, JSON-serialisable. `asset` is the contract's 21-byte address; `expiration` is
-decimal milliseconds.
+decimal milliseconds; `payee` is the `payTo` of the option the payment answers.
 
 #### Properties
 
@@ -121,6 +121,7 @@ decimal milliseconds.
 | <a id="property-asset"></a> `asset` | `` `0x${string}` `` |
 | <a id="property-expiration-1"></a> `expiration` | `string` |
 | <a id="property-network-1"></a> `network` | `` `tron:${number}` `` |
+| <a id="property-payee"></a> `payee` | `string` |
 | <a id="property-txid"></a> `txid` | `` `0x${string}` `` |
 
 ***
@@ -165,13 +166,16 @@ CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, 
 
 ### TronStatus
 
-> **TronStatus** = \{ `blockNumber`: `bigint`; `finality`: `"solidified"` \| `"head"`; `state`: `"settled"`; \} \| \{ `state`: `"pending"`; `why`: `"not-found"` \| `"unreadable"`; \} \| \{ `result?`: `string`; `state`: `"failed"`; `why`: `"contract-failed"` \| `"no-transfer"` \| `"expired"`; \}
+> **TronStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `TronMark`\>
+
+The answer of `tronStatus`, as the profile `read-status` gives it. Its marks are `head` and `solidified`, in that
+order, and its position the block number.
 
 ## Variables
 
 ### exactTronMemo
 
-> `const` **exactTronMemo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronUnsigned`](#tronunsigned)\>; `carrier`: `null`; `claims`: `boolean`; `id`: `"x402/exact/tron/lcp-trc20-memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`ref`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronRef`](#tronref)\>; `status`: (`ref`, `reader`) => `Promise`\<[`TronStatus`](#tronstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactTronMemo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronUnsigned`](#tronunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/tron/lcp-trc20-memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronRef`](#tronref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TronStatus`](#tronstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/tron/lcp-trc20-memo`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator
 broadcasts the TRC-20 transfer the payer signed; `status` reads it by transaction id.
@@ -293,20 +297,20 @@ The hash in the memo of a transaction whose one contract calls `transfer`, and t
 
 ### tronRecover()
 
-> **tronRecover**(`ref`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+> **tronRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
 Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. A ref
 whose `txid` is not a 32-byte hash is `tron/wrong-reader`, with nothing read. Raw data longer than the size bound
 `decodeTronTx` reads is `tron/tx-too-large`, the code that function gives such a transaction. Raw data whose SHA-256
-is not the id is not the transaction it names, and is `tron/unreadable`, as a failed read is. One call.
+is not the id is not the transaction it names, and is `tron/unreadable`, as a failed read is. The input's `tx` is the
+id, and its `option` the option the payment answers, an object, of which the read needs no member; an input whose
+`tx` is not a 32-byte hash, or whose option is not an object, is `tron/wrong-reader`, with nothing read. One call.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | \{ `network`: `` `tron:${number}` ``; `txid`: `` `0x${string}` ``; \} |
-| `ref.network` | `` `tron:${number}` `` |
-| `ref.txid` | `` `0x${string}` `` |
+| `input` | [`RecoverInput`](index.md#recoverinput)\<`` `tron:${number}` ``, [`PaymentRequirements`](x402.md#paymentrequirements) \| [`MppChallenge`](mpp.md#mppchallenge)\> |
 | `reader` | [`TronReader`](#tronreader) |
 
 #### Returns
@@ -317,18 +321,23 @@ is not the id is not the transaction it names, and is `tron/unreadable`, as a fa
 
 ### tronStatus()
 
-> **tronStatus**(`ref`, `reader`): `Promise`\<[`TronStatus`](#tronstatus)\>
+> **tronStatus**(`ref`, `reader`, `query`): `Promise`\<[`TronStatus`](#tronstatus)\>
 
-Reads the latest solidified block first, then the transaction by id: through the FullNode's `/walletsolidity` API for
-solidified data, then its `/wallet` API at the head. Settled when its receipt result is `SUCCESS` and it holds a
-`Transfer` log from `ref.asset`; otherwise failed, at whichever lookup finds the transaction first, the head's
-included, and a failed answer names no level. Failed as `expired` only when that earlier solidified block is two
-slots past the expiration and neither lookup finds the transaction, each naming a block time at or past that earlier
-block's: a lookup whose node lags the block read first, or that names no time, is pending `not-found`. A failed read,
-an answer of neither documented shape, or a reader for another network is pending `unreadable`. A ref whose `txid` is
-not `0x` and 64 hex digits, or whose `asset` is not the token's 21-byte address in hex (`41` and 20 bytes, `0x`
-optional), is pending `unreadable`, with nothing read; the reader is given the txid in lowercase. At most three
-calls.
+Answers the read of the transaction by id as the profile `read-status` gives it. The id is the single-use value: Tron
+derives it from the signed raw data alone, so a transaction with it that was included, succeeded or not, consumed it.
+The read takes the latest solidified block first, then the transaction by id: through the FullNode's
+`/walletsolidity` API for solidified data, at the mark `solidified`, then its `/wallet` API at the head, at the mark
+`head`, and at its block number. A transaction whose receipt result is `SUCCESS` and that holds a `Transfer` log from
+`ref.asset` is the payer's act; one whose result is not `SUCCESS` is the act included with a failed result; one that
+holds no such log carries no act of the payer's. The id's validity has passed once that earlier solidified block is
+two slots past the expiration and neither lookup finds the transaction, each naming a block time at or past that
+earlier block's; a lookup whose node lags the block read first, or that names no time, names no included act. The
+read holds no search for H, so none of these answers `failed`. A read that rejects is unreadable `transport`; an
+answer of neither documented shape, or a ref whose expiration is not decimal milliseconds where the read needs it,
+`unparseable`; and a reader for another network than the ref's `chain-mismatch`. A ref, a reader or a query that is
+not one, a reader that names no network, or a ref whose `txid` is not `0x` and 64 hex digits, or whose `asset` is
+not the token's 21-byte address in hex (`41` and 20 bytes, `0x` optional), is unreadable `unparseable`, with nothing
+read; the reader is given the txid in lowercase, and the answer names it so. At most three calls.
 
 #### Parameters
 
@@ -336,6 +345,7 @@ calls.
 | ------ | ------ |
 | `ref` | [`TronRef`](#tronref) |
 | `reader` | [`TronReader`](#tronreader) |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`TronRef`](#tronref), `bigint`, `TronMark`\> |
 
 #### Returns
 
