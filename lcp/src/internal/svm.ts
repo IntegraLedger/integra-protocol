@@ -652,14 +652,17 @@ function advanceNonce(tx: SvmTx): SvmInstruction | null {
 }
 
 /**
- * `svm/version-not-built` when an x402 Solana option's `extra` holds `transactionVersions` and it does not admit version
- * 0, the one message version this package's builders write: the field is the set of versions the sponsor accepts, the
- * JSON integers 0 and 1, and a field holding any other entry is invalid (scheme_exact_svm.md §1.5 at
- * x402-foundation/x402 88b66dd4). Absent, the accepted set is `[0]`. Else null.
+ * `svm/version-not-built` when `fields`, an x402 Solana option's `extra` or an MPP Solana charge challenge's Solana
+ * details, holds `transactionVersions` and it does not admit version 0, the one message version this package's builders
+ * write: the field is the set of versions the sponsor or server accepts, the JSON integers 0 and 1, and a field holding
+ * any other entry is invalid (x402: scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4; MPP: the draft
+ * `methodDetails.transactionVersions` of tempoxyz/mpp-specs pull request 355, as solana-foundation/pay-kit 86400da reads
+ * it in `typescript/packages/mpp/src/Methods.ts` and `src/utils/transaction-versions.ts`). Absent, the accepted set is
+ * `[0]`. Else null.
  */
-export function unbuiltVersion(extra: unknown): Refusal | null {
-  if (!isObject(extra) || !("transactionVersions" in extra)) return null;
-  const versions = extra["transactionVersions"];
+export function unbuiltVersion(fields: unknown): Refusal | null {
+  if (!isObject(fields) || !("transactionVersions" in fields)) return null;
+  const versions = fields["transactionVersions"];
   const admitsV0 = Array.isArray(versions) && versions.every((v) => v === 0 || v === 1) && versions.includes(0);
   return admitsV0 ? null : refusal("svm/version-not-built");
 }

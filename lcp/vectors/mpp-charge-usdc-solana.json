@@ -227,5 +227,104 @@
     "expect": "svm/input-malformed"
    }
   ]
+ },
+ "transactionVersions": {
+  "case": "build of mpp-charge-solana.json build's input on the placed challenge of fixed.request whose Solana profile, methodDetails.solana, holds transactionVersions set to each row's value, the row without the member holding none; the profile holds the Solana details build reads, as methodDetails does for MPP's solana method. The draft methodDetails.transactionVersions of tempoxyz/mpp-specs pull request 355, unmerged, as solana-foundation/pay-kit 86400da reads it, unreleased (@solana/mpp 0.7.0 has no such field): the transaction message versions the server accepts, an array of the JSON integers 0 and 1, strings, other numbers and a bare integer refused (typescript/packages/mpp/src/Methods.ts, transactionVersions); absent, the accepted set is [0]; a present, empty list accepts nothing (src/utils/transaction-versions.ts, acceptedTransactionVersions); the client builds the highest version listed (negotiateTransactionVersion; src/client/Charge.ts:211-220); the server accepts exactly the versions listed and refuses legacy, before it co-signs (src/server/Charge.ts:390-433) and on chain (:1072-1085). This package's builders write version-0 messages only, so a row whose field admits 0, or that has no field (the first row), is built as mpp-charge-solana.json build's message, its first byte 128 and its SHA-256 that file's build.buildMessageSha256, and a row whose field does not admit 0 is refused svm/version-not-built, with no message to sign.",
+  "rows": [
+   {
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     1
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+    }
+   },
+   {
+    "transactionVersions": [
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+    }
+   },
+   {
+    "transactionVersions": [
+     1,
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+    }
+   },
+   {
+    "transactionVersions": [
+     1
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     "0"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     2
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     "legacy"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": null,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": 0,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   }
+  ]
  }
 }
