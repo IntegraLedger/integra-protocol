@@ -19,6 +19,7 @@ import {
   svmRecover,
   svmReference,
   svmSigning,
+  unbuiltVersion,
   wireOf,
   TOKEN,
   TOKEN_2022,
@@ -166,8 +167,8 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * The `open` message the payer signs: the channel escrows the option's amount, and its one memo is `extra.memo`. The
  * payload carries `openSlot` as a JSON number, so an `openSlot` above 2^53 − 1 is `svm/input-malformed`. H is checked
  * first, then the form of the choice's payer, token program, blockhash and compute budget (`isPayerInput`), nonce,
- * `openSlot` and `now`, then its document and option, then the option's memo against H and its token program against
- * the choice's.
+ * `openSlot` and `now`, then its document and option, then the option's `extra.transactionVersions` (`unbuiltVersion`),
+ * then the option's memo against H and its token program against the choice's.
  */
 async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmPaymentPayload> | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
@@ -186,6 +187,8 @@ async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmP
   if (ok !== true) return ok;
   const { accepted, required } = c;
   const extra = accepted.extra!;
+  const version = unbuiltVersion(extra);
+  if (version !== null) return version;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
   if (c.tokenProgram !== extra["tokenProgram"]) return refusal("svm/input-malformed");

@@ -21,6 +21,7 @@ import {
   svmStatus,
   signedWire,
   staticNonce,
+  unbuiltVersion,
   wireOf,
   type SolanaNetwork,
   type SvmReader,
@@ -368,7 +369,9 @@ async function buildSolMessage(i: {
  * transfers are not built: the pairing's filter refuses a challenge that asks for them (`svm/input-malformed`). Every
  * input's form is checked before @solana/kit writes the message, the blockhash's as a key (base58 of 32 bytes, as
  * @solana/kit's `blockhash` reads it) included, so without the kit a choice is `svm/peer-missing` only once every one
- * holds.
+ * holds. The checks run in order: the choice, then the challenge, then the Solana details' `transactionVersions`
+ * (`unbuiltVersion`: a list that is present and does not admit version 0, the one version this builds, is
+ * `svm/version-not-built`, with no message to sign), then the request's `externalId` against H, then the inputs.
  */
 async function build(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
@@ -380,6 +383,8 @@ async function build(
   if (isRefusal(checked)) return checked;
   const r = checked.request;
   const d = spec.details(checked);
+  const version = unbuiltVersion(d);
+  if (version !== null) return version;
   const memo = toLcpString(h);
   if (r["externalId"] !== memo) return refusal("svm/carrier-mismatch");
   if (keyBytes(choice.payer) === null) return refusal("svm/input-malformed");

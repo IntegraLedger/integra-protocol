@@ -14,6 +14,7 @@ import {
   svmReference,
   staticNonce,
   svmSigning,
+  unbuiltVersion,
   svmStatus,
   wireOf,
   type SolanaNetwork,
@@ -144,7 +145,8 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 /**
  * The v0 message the payer signs for the chosen option, whose one memo is the option's `extra.memo`. H is checked
  * first, then the form of the choice's payer, token program, decimals, blockhash and compute budget (`isPayerInput`),
- * then its document and option, then the option's memo against H.
+ * then its document and option, then the option's `extra.transactionVersions` (`unbuiltVersion`), then the option's
+ * memo against H.
  */
 async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
@@ -155,6 +157,8 @@ async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
+  const version = unbuiltVersion(accepted.extra);
+  if (version !== null) return version;
   const memo = accepted.extra!["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
   const message = await buildSvmMessage({

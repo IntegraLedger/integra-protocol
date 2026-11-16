@@ -24,10 +24,10 @@
   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
  },
  "EV2": {
-  "case": "build(choice, H): ceiling 5000000, deadline 1790000300, witness {to, facilitator: F, validAfter: 0}, spender the upto proxy. expectDigest is the EIP-712 digest of that typed data, computed with eth-account 0.14.0 encode_typed_data over types written from Permit2's witness hashing (Uniswap/permit2 cc56ad0f, src/libraries/PermitHash.sol L19, L31-32 and L85-94, the spender msg.sender; the domain {name \"Permit2\", chainId, verifyingContract} of src/EIP712.sol L15-17) and the x402 upto Permit2 proxy's witness, Witness(address to,address facilitator,uint256 validAfter) (x402-foundation/x402 751590a2, contracts/evm/src/x402UptoPermit2Proxy.sol L23-27), with chain id 84532 and Permit2 at 0x000000000022D473030F116dDEE9F6B43aC78BA3; it equals keccak256(0x1901, the domain separator, hashWithWitness's struct hash) computed with eth-abi 6.0.0",
+  "case": "build(choice, H): ceiling 5000000, deadline 1790000300, witness {to, facilitator: F, validAfter: 0}, spender the upto proxy. expectDigest is the EIP-712 digest of that typed data, computed with eth-account 0.14.0 encode_typed_data over types written from Permit2's witness hashing (Uniswap/permit2 cc56ad0f, src/libraries/PermitHash.sol L19, L31-32 and L85-94, the spender msg.sender; the domain {name \"Permit2\", chainId, verifyingContract} of src/EIP712.sol L15-17) and the x402 upto Permit2 proxy's witness, Witness(address to,address facilitator,uint256 validAfter) (x402-foundation/x402 751590a2, contracts/evm/src/x402UptoPermit2Proxy.sol L23-27), with chain id 84532 and Permit2 at 0x000000000022D473030F116dDEE9F6B43aC78BA3; it equals keccak256(0x1901, the domain separator, hashWithWitness's struct hash) computed with eth-abi 6.0.0. The payload's nonce is H as a uint256 in decimal digits, expectNonceDecimal: the stock upto client writes its Permit2 nonce so (@x402/evm 2.31.0, src/utils.ts L61-64, used by src/upto/client/permit2.ts L43), and the stock facilitator refuses any other spelling with \"permit2Authorization.nonce must be a uint256 decimal string\" (src/types.ts L87 and L202, from 2.30.0). bound gives H from that nonce and from its 0x + 64 hex spelling, the spelling of the example in scheme_upto_evm.md L128 at x402-foundation/x402 88b66dd4 (boundOfHexNonce)",
   "expectDigest": "0xba1b93f12786a4e31fd4dca016d1b48f2d0f72df9df896efb00543a94aedd993",
   "expectSpender": "0x4020A4f3b7b90ccA423B9fabCc0CE57C6C240002",
-  "expectNonceHex": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectNonceDecimal": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
   "expectDeadline": "1790000300",
   "witnessTypeString": "Witness witness)TokenPermissions(address token,uint256 amount)Witness(address to,address facilitator,uint256 validAfter)",
   "expectWitnessTypeHash": {
@@ -35,6 +35,7 @@
    "suffix": "3b75"
   },
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "boundOfHexNonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "identity": "from,to",
    "digest": "0x985095b2658beb5772db3bac823a1ae16066af3437a62e39737caa14a885cd00",
@@ -284,7 +285,7 @@
         },
         "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "spender": "0x4020A4f3b7b90ccA423B9fabCc0CE57C6C240002",
-        "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "nonce": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
         "deadline": "1790000300",
         "witness": {
          "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",

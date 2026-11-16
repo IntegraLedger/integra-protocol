@@ -59,7 +59,8 @@ description: "The exports of @integraledger/lcp/svm."
 
 ### SvmLanded
 
-A landed transaction as `getTransaction` returns it with encoding `base64` and `maxSupportedTransactionVersion` 0.
+A landed transaction as `getTransaction` returns it with encoding `base64` and `maxSupportedTransactionVersion` 1,
+the highest message version this package decodes.
 
 #### Properties
 
@@ -184,7 +185,11 @@ fails the call, and the reader rejects with `ReaderError`.
 
 > **transaction**(`signature`, `commitment`): `Promise`\<[`SvmLanded`](#svmlanded) \| \{ `notFound`: `true`; `slot`: `bigint` \| `null`; \}\>
 
-`getTransaction` at that commitment, or `notFound` with the node's slot there.
+`getTransaction` at that commitment, with encoding `base64` and `maxSupportedTransactionVersion: 1`, or `notFound`
+with the node's slot there. A reader must ask with 1: a node asked with 0 answers a version-1 transaction with an
+error (-32015), which this call's contract reads as a rejection, so a version-1 payment, which `bound` and
+`reference` accept, reads `svm/unreadable` and its status `unreadable`, `transport`, on every read, and never
+reads settled.
 
 ###### Parameters
 
@@ -491,10 +496,11 @@ when the channel id is not a base58 key or a number is out of range.
 
 > **decodeSvmTx**(`wire`): [`Refusal`](index.md#refusal) \| [`SvmTx`](#svmtx)\<`ArrayBuffer`\>
 
-Decodes a legacy or v0 wire transaction of at most 1,232 bytes; a longer one is `svm/tx-too-large`. Bytes that are not
-one well-formed transaction are `svm/tx-malformed`, as is a v0 message with an address table lookup that names no
-index, which the runtime refuses ("each lookup table must be used to load at least one account"). Each byte field is
-a copy, so none shares memory with `wire`.
+Decodes a legacy or v0 wire transaction of at most 1,232 bytes, or a v1 wire transaction (SIMD-0385) of at most 4,096
+bytes; a longer one is `svm/tx-too-large`. Bytes that are not one well-formed transaction are `svm/tx-malformed`, as
+is a v0 message with an address table lookup that names no index, which the runtime refuses ("each lookup table must
+be used to load at least one account"), and a v1 message that SIMD-0385's sanitization refuses (`decodeV1`). Each
+byte field is a copy, so none shares memory with `wire`.
 
 #### Parameters
 

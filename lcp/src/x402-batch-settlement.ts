@@ -72,6 +72,7 @@ import {
   staticNonce,
   svmChannelStatus,
   svmReference,
+  unbuiltVersion,
   wireOf,
   TOKEN,
   TOKEN_2022,
@@ -1163,7 +1164,8 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
  * A `payerAuthorizer` that is not a point on the Ed25519 curve, which the program's `open` refuses as the authorized
  * signer, is `svm/input-malformed`. H is checked first, then the form of the choice's payer, token program, blockhash
  * and compute budget (`isPayerInput`), deposit, `payerAuthorizer`, salt and `openSlot`, then its document and option,
- * then the option's memo against H and its token program against the choice's.
+ * then the option's `extra.transactionVersions` (`unbuiltVersion`), then the option's memo against H and its token
+ * program against the choice's.
  */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
@@ -1184,6 +1186,8 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   if (ok !== true) return ok;
   const { accepted, required } = c;
   const extra = accepted.extra!;
+  const version = unbuiltVersion(extra);
+  if (version !== null) return version;
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
   if (c.tokenProgram !== extra["tokenProgram"]) return refusal("svm/input-malformed");
@@ -1257,7 +1261,9 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
  * A later voucher, or a full refund, for a channel this buyer opened. Each carries the voucher for
  * `maxClaimableAmount`. A refund carries no `amount`; with `recentBlockhash` it also carries a `request_close` message
  * for the payer, signed first: the Compute Budget prefix, `request_close` with the payer (read-only signer) and the
- * channel (writable), then one Memo v3 with `extra.memo` when the option carries one.
+ * channel (writable), then one Memo v3 with `extra.memo` when the option carries one. That message is v0, so a refund
+ * with `recentBlockhash` under an option whose `extra.transactionVersions` does not admit version 0 is
+ * `svm/version-not-built` (`unbuiltVersion`).
  */
 async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(w)) return refusal("x402/not-v2");
@@ -1302,6 +1308,8 @@ async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigne
       };
     }
     const extra = accepted.extra!;
+    const version = unbuiltVersion(extra);
+    if (version !== null) return version;
     const memo = extra["memo"];
     const message = await buildChannelMessage({
       feePayer: extra["feePayer"] as string,

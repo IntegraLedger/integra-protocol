@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit). ES5's expected status answers are the ones the profile read-status (read-status.md) gives for its fixtures, read for the act payment at finalized: an error read at finalized, a transaction with no channel instruction, and a lookup that finds nothing are pending, search-incomplete, since this read is no search for H (rules 17, 23 and 24). EB7's plants, each a transaction that is not this deposit, answer pending search-incomplete where they answered failed: no search for H is defined yet, and at coverage full failed comes only from a search read whole (read-status rule 24).",
+ "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit). ES5's and transactionV1's expected status answers are the ones the profile read-status (read-status.md) gives for their fixtures, read for the act payment at the finality each row's query names: an error read at finalized, a transaction with no channel instruction, a message the payer did not sign, and a lookup that finds nothing are pending, search-incomplete, since this read is no search for H (rules 17, 23 and 24). EB7's plants, each a transaction that is not this deposit, answer pending search-incomplete where they answered failed: no search for H is defined yet, and at coverage full failed comes only from a search read whole (read-status rule 24). transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "Hprime": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
@@ -1161,6 +1161,345 @@
   "withoutExtensions": "x402/no-legal-context",
   "expectPairing": "x402/batch-settlement/cloudflare",
   "case": "the Cloudflare payment. payload is the decoded PAYMENT-SIGNATURE of x402's batch-settlement Cloudflare scheme (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_cloudflare.md L143-160: x402Version, payload {amount, asset}, accepted), with the extensions echoed at the top level (L168-170), written by hand; payloadLength is the length of its compact JSON text. build writes the same members in the same order from the chosen option, its extensions the document's."
+ },
+ "transactionV1": {
+  "case": "A version-1 transaction as the stock client writes it: @x402/svm 2.31.0 (npm, the devDependency this package pins), run offline: the payer's key from Ed25519 seed 01x32 (@solana/kit 8.4.0 createKeyPairSignerFromPrivateKeyBytes), the clock at now, the option's extra.recentBlockhash as the lifetime and transactionVersions [0, 1] as a stock facilitator advertises them (scheme_exact_svm.md \u00a71.5 at x402-foundation/x402 88b66dd4), so the client builds version 1, the highest version both sides admit; the client's one RPC read, getAccountInfo of the asset, answered with an initialized SPL Token mint of 6 decimals owned by the Token program, and no other read made, the client configured with fixed.svm's salt and deposit and no channel discovery, so its first payload is the deposit that opens fixed.svm.config's channel. bound gives H from the one memo, extra.memo; reference gives the message's digest, the fee payer and the blockhash. landedWireBase64 is the stock wire with the fee payer's Ed25519 signature (seed 02x32, @noble/curves 2.4.0) of the message in signature slot 0; txid is that signature in base58. The message is every byte before the signatures (SIMD-0385, Transaction V1 Specification, at solana-foundation/solana-improvement-documents ae7b00f3), and messageSha256 is SHA-256 over it (node:crypto). status of the landed wire's reference, its transaction the txid, read at each row's commitment, answers the row's expect, and recover gives H. changed holds the stock wire with one member changed, each refused by bound with its code; landedChanged is the landed wire with the memo changed as changed's first row, read under the same txid, which status answers failed not-this-instrument, since its message digest is not the reference's",
+  "now": 1790000000,
+  "expectAsked": [
+   "getAccountInfo"
+  ],
+  "presented": {
+   "x402Version": 2,
+   "accepted": {
+    "scheme": "batch-settlement",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 300,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+     "withdrawDelay": 3600,
+     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+     "recentSlot": "341000000",
+     "transactionVersions": [
+      0,
+      1
+     ]
+    }
+   },
+   "payload": {
+    "channelConfig": {
+     "openSlot": 341000000,
+     "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "payerAuthorizer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "receiver": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+     "salt": "42",
+     "token": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "withdrawDelay": 3600
+    },
+    "deposit": {
+     "amount": "100000",
+     "transaction": "gQIACA8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMNgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXHOArmTpXrRSc8gjnPWVcJbmkMYHWkU7/ZNh5WCrbsT57cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IIQOuzF+e0tsdRsZ6pcvRK9yvgdnYqME3t203o6FHe+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4FSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAAEANAwAAAEAACQ5DAAoATQAKAFEAAQAABgECAwQMBQsIBwkBKgAAAAAAAACghgEAAAAAABAOAABAP1MUAAAAAAEAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQARAnbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWR4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAquBxfpWWnWcm7HlAHGODsVo22+oBwwqGYrZnrHWCSQPQqa1l2YqZexPxJbPebfEoWyzcqSzlap0xEZnadoGSAQ=="
+    },
+    "type": "deposit",
+    "voucher": {
+     "channelId": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8",
+     "expiresAt": 0,
+     "maxClaimableAmount": "1000",
+     "signature": "2mEKnRJ7JgTKU4eJ87553TjywtujWzpFX4kveXdiYDSXF2eAQnx263dzoKs7DDzSWrnesBacMo9gvKvW8vs7csvX"
+    }
+   }
+  },
+  "expectVersionByte": 129,
+  "messageLength": 725,
+  "messageSha256": "0xc4444d474ecbdf968a6be511b3b162df9e24029483dca77dc7ba6957fcee8ccc",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "digest": "0xc4444d474ecbdf968a6be511b3b162df9e24029483dca77dc7ba6957fcee8ccc",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+  },
+  "landedWireBase64": "gQIACA8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMNgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXHOArmTpXrRSc8gjnPWVcJbmkMYHWkU7/ZNh5WCrbsT57cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IIQOuzF+e0tsdRsZ6pcvRK9yvgdnYqME3t203o6FHe+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4FSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAAEANAwAAAEAACQ5DAAoATQAKAFEAAQAABgECAwQMBQsIBwkBKgAAAAAAAACghgEAAAAAABAOAABAP1MUAAAAAAEAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQARAnbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWR4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2WiC6tbzdicQOFKkkEZXEwbg3CZCN5XqdubKeAKd4tlJkYhte5CrhYcN4GTODYgCFwlMFSr3kYRl8+xZlyyCAcFquBxfpWWnWcm7HlAHGODsVo22+oBwwqGYrZnrHWCSQPQqa1l2YqZexPxJbPebfEoWyzcqSzlap0xEZnadoGSAQ==",
+  "txid": "4EuircEmWcoP14hzw9p8vaunXT25vKnYUDLouXMJMaB4acvxVx28UoB9k8Q149bkPhfHh49tDcguC6bVV2QgRqR6",
+  "statusRows": [
+   {
+    "at": "finalized",
+    "err": null,
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "4EuircEmWcoP14hzw9p8vaunXT25vKnYUDLouXMJMaB4acvxVx28UoB9k8Q149bkPhfHh49tDcguC6bVV2QgRqR6",
+     "finality": "finalized",
+     "foreign": []
+    }
+   },
+   {
+    "at": "confirmed",
+    "err": null,
+    "query": {
+     "act": "payment",
+     "finality": "confirmed"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "4EuircEmWcoP14hzw9p8vaunXT25vKnYUDLouXMJMaB4acvxVx28UoB9k8Q149bkPhfHh49tDcguC6bVV2QgRqR6",
+     "finality": "confirmed",
+     "foreign": []
+    }
+   },
+   {
+    "at": "finalized",
+    "err": {
+     "InstructionError": [
+      0,
+      {
+       "Custom": 1
+      }
+     ]
+    },
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   }
+  ],
+  "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "changed": [
+   {
+    "case": "the memo's last character, d, changed to e inside the signed message: the memo carries another hash than extra.memo's",
+    "wireBase64": "gQIACA8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMNgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXHOArmTpXrRSc8gjnPWVcJbmkMYHWkU7/ZNh5WCrbsT57cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IIQOuzF+e0tsdRsZ6pcvRK9yvgdnYqME3t203o6FHe+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4FSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAAEANAwAAAEAACQ5DAAoATQAKAFEAAQAABgECAwQMBQsIBwkBKgAAAAAAAACghgEAAAAAABAOAABAP1MUAAAAAAEAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQARAnbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWV4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAquBxfpWWnWcm7HlAHGODsVo22+oBwwqGYrZnrHWCSQPQqa1l2YqZexPxJbPebfEoWyzcqSzlap0xEZnadoGSAQ==",
+    "expect": {
+     "refused": true,
+     "code": "svm/carrier-mismatch"
+    }
+   },
+   {
+    "case": "the version byte 129 changed to 130, a message version SIMD-0385 does not define",
+    "wireBase64": "ggIACA8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMNgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXHOArmTpXrRSc8gjnPWVcJbmkMYHWkU7/ZNh5WCrbsT57cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IIQOuzF+e0tsdRsZ6pcvRK9yvgdnYqME3t203o6FHe+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4FSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAAEANAwAAAEAACQ5DAAoATQAKAFEAAQAABgECAwQMBQsIBwkBKgAAAAAAAACghgEAAAAAABAOAABAP1MUAAAAAAEAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQARAnbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWR4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAquBxfpWWnWcm7HlAHGODsVo22+oBwwqGYrZnrHWCSQPQqa1l2YqZexPxJbPebfEoWyzcqSzlap0xEZnadoGSAQ==",
+    "expect": {
+     "refused": true,
+     "code": "svm/tx-malformed"
+    }
+   },
+   {
+    "case": "one byte appended after the signatures, where SIMD-0385 admits none",
+    "wireBase64": "gQIACA8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMNgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXHOArmTpXrRSc8gjnPWVcJbmkMYHWkU7/ZNh5WCrbsT57cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IIQOuzF+e0tsdRsZ6pcvRK9yvgdnYqME3t203o6FHe+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4FSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAAEANAwAAAEAACQ5DAAoATQAKAFEAAQAABgECAwQMBQsIBwkBKgAAAAAAAACghgEAAAAAABAOAABAP1MUAAAAAAEAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQARAnbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWR4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAquBxfpWWnWcm7HlAHGODsVo22+oBwwqGYrZnrHWCSQPQqa1l2YqZexPxJbPebfEoWyzcqSzlap0xEZnadoGSAQA=",
+    "expect": {
+     "refused": true,
+     "code": "svm/tx-malformed"
+    }
+   }
+  ],
+  "landedChanged": {
+   "landedWireBase64": "gQIACA8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMNgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXHOArmTpXrRSc8gjnPWVcJbmkMYHWkU7/ZNh5WCrbsT57cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IIQOuzF+e0tsdRsZ6pcvRK9yvgdnYqME3t203o6FHe+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4FSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAAEANAwAAAEAACQ5DAAoATQAKAFEAAQAABgECAwQMBQsIBwkBKgAAAAAAAACghgEAAAAAABAOAABAP1MUAAAAAAEAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQARAnbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWV4NDAyOmJhdGNoLXNldHRsZW1lbnQ6c3ZtOnJjdmF1dGg6djE6R3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2WiC6tbzdicQOFKkkEZXEwbg3CZCN5XqdubKeAKd4tlJkYhte5CrhYcN4GTODYgCFwlMFSr3kYRl8+xZlyyCAcFquBxfpWWnWcm7HlAHGODsVo22+oBwwqGYrZnrHWCSQPQqa1l2YqZexPxJbPebfEoWyzcqSzlap0xEZnadoGSAQ==",
+   "expect": {
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   }
+  }
+ },
+ "transactionVersions": {
+  "case": "build of ES2's opening input, and buildWithin of ES6.withMemo's refund with recentBlockhash (refundRows), each under ES4's option with extra.transactionVersions set to each row's value, both in the document and as the chosen option. scheme_exact_svm.md \u00a71.5 at x402-foundation/x402 88b66dd4: extra.transactionVersions holds the transaction message versions the sponsor accepts, the JSON integers 0 and 1; when it is absent the accepted set is [0]; a field holding any other entry is invalid. This package's builders write version-0 messages only, so a row whose field admits 0 is built as the file's version-0 message, its first byte 128 and its SHA-256 the build's buildMessageSha256 as the input's own vector records it, and a row whose field does not is refused svm/version-not-built, with no request to sign (ES2.buildMessageSha256; ES6.withMemo.buildMessageSha256). A refund without recentBlockhash builds no transaction and carries the voucher alone, whatever the field holds.",
+  "rows": [
+   {
+    "transactionVersions": [
+     0,
+     1
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "1a983a58b3d086619c90892b35f16acc05bd62487316a133d3e0e013cc42b7d2"
+    }
+   },
+   {
+    "transactionVersions": [
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "1a983a58b3d086619c90892b35f16acc05bd62487316a133d3e0e013cc42b7d2"
+    }
+   },
+   {
+    "transactionVersions": [
+     1,
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "1a983a58b3d086619c90892b35f16acc05bd62487316a133d3e0e013cc42b7d2"
+    }
+   },
+   {
+    "transactionVersions": [
+     1
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     "0"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     2
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     "legacy"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": null,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": 0,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   }
+  ],
+  "refundRows": [
+   {
+    "transactionVersions": [
+     0,
+     1
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de"
+    }
+   },
+   {
+    "transactionVersions": [
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de"
+    }
+   },
+   {
+    "transactionVersions": [
+     1,
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de"
+    }
+   },
+   {
+    "transactionVersions": [
+     1
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     "0"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     2
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     "legacy"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": null,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": 0,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   }
+  ]
  },
  "agreedRefusals": {
   "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h; with zeroMembers, the EVM build of EB2 and EB3's opening once per member named, with that member the zero address: from in its choice, or payTo or asset in fixed.evm.option. A row with pairing and calls runs each of those functions of that pairing on an opening. On the EVM pairing it is EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies; buildWithin takes the advertised option and EB2's maxClaimableAmount. On the Solana pairing it is ES2's opening as ES4 presents it: ES4's config, a voucher for ES1's PDA, and ES2's wire as deposit.transaction; buildWithin takes the advertised Solana option and maxClaimableAmount 1000. With depositAmount, deposit.amount is replaced by it. With validBeforeOrDeadline, the ERC-3009 authorization's validBefore, or the Permit2 authorization's deadline, is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set; voucher.channelId is the channel id of the configuration that results, and buildWithin takes that configuration, under H. With refundAmounts, each value is the amount of a refund payload that carries the opening's channelConfig and voucher, one run per value.",
