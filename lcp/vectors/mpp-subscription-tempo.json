@@ -135,7 +135,9 @@
   "expectTransferDigest": "0xc706a87c68af6d1f57426e23e5d66c2f3c121be5299dac94f043267397c903c0",
   "expectSettled": {
    "state": "settled",
-   "finality": "finalized"
+   "transaction": "0x6c1cdc57bf5a4a98961b7897cac3212636eea551540ab3b32038c45f9d3d8d1c",
+   "finality": "finalized",
+   "foreign": []
   }
  },
  "plant2": {

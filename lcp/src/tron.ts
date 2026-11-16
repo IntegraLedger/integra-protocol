@@ -20,6 +20,7 @@ import {
   type OptionFilter,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow, hexDigits } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -31,6 +32,10 @@ import {
 } from "./x402.js";
 import { TRON } from "./internal/data/tron.js";
 import type { Entry } from "./internal/registry.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, tron:2494104990 Shasta. */
@@ -90,19 +95,32 @@ export interface TronReader {
 
 /**
  * The read keys `reference` returns, JSON-serialisable. `asset` is the contract's 21-byte address; `expiration` is
- * decimal milliseconds.
+ * decimal milliseconds; `payee` is the `payTo` of the option the payment answers.
  */
 export interface TronRef {
   network: TronNetwork;
+  payee: string;
   txid: Hex;
   asset: Hex;
   expiration: string;
 }
 
-export type TronStatus =
-  | { state: "settled"; finality: "solidified" | "head"; blockNumber: bigint }
-  | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "contract-failed" | "no-transfer" | "expired"; result?: string };
+/**
+ * The answer of `tronStatus`, as the profile `read-status` gives it. Its marks are `head` and `solidified`, in that
+ * order, and its position the block number.
+ */
+export type TronStatus = StatusAnswer<bigint, TronMark>;
+
+type TronMark = "head" | "solidified";
+const MARKS: readonly TronMark[] = ["head", "solidified"];
+
+/** What the read of the transaction by id found, with the mark of the lookup that found it. */
+type TronRead =
+  | { state: "settled"; finality: TronMark; blockNumber: bigint }
+  | { state: "pending"; why: "not-found" }
+  | { state: "failed"; why: "contract-failed" | "no-transfer"; finality: TronMark; blockNumber: bigint }
+  | { state: "failed"; why: "expired" }
+  | { state: "unreadable"; reason: UnreadableReason };
 
 interface TronChoice {
   required: PaymentRequired;
@@ -401,26 +419,38 @@ function memoHash(data: Uint8Array): AtrHash | null {
 // ── Settlement.
 
 /**
- * Reads the latest solidified block first, then the transaction by id: through the FullNode's `/walletsolidity` API for
- * solidified data, then its `/wallet` API at the head. Settled when its receipt result is `SUCCESS` and it holds a
- * `Transfer` log from `ref.asset`; otherwise failed, at whichever lookup finds the transaction first, the head's
- * included, and a failed answer names no level. Failed as `expired` only when that earlier solidified block is two
- * slots past the expiration and neither lookup finds the transaction, each naming a block time at or past that earlier
- * block's: a lookup whose node lags the block read first, or that names no time, is pending `not-found`. A failed read,
- * an answer of neither documented shape, or a reader for another network is pending `unreadable`. A ref whose `txid` is
- * not `0x` and 64 hex digits, or whose `asset` is not the token's 21-byte address in hex (`41` and 20 bytes, `0x`
- * optional), is pending `unreadable`, with nothing read; the reader is given the txid in lowercase. At most three
- * calls.
+ * Answers the read of the transaction by id as the profile `read-status` gives it. The id is the single-use value: Tron
+ * derives it from the signed raw data alone, so a transaction with it that was included, succeeded or not, consumed it.
+ * The read takes the latest solidified block first, then the transaction by id: through the FullNode's
+ * `/walletsolidity` API for solidified data, at the mark `solidified`, then its `/wallet` API at the head, at the mark
+ * `head`, and at its block number. A transaction whose receipt result is `SUCCESS` and that holds a `Transfer` log from
+ * `ref.asset` is the payer's act; one whose result is not `SUCCESS` is the act included with a failed result; one that
+ * holds no such log carries no act of the payer's. The id's validity has passed once that earlier solidified block is
+ * two slots past the expiration and neither lookup finds the transaction, each naming a block time at or past that
+ * earlier block's; a lookup whose node lags the block read first, or that names no time, names no included act. The
+ * read holds no search for H, so none of these answers `failed`. A read that rejects is unreadable `transport`; an
+ * answer of neither documented shape, or a ref whose expiration is not decimal milliseconds where the read needs it,
+ * `unparseable`; and a reader for another network than the ref's `chain-mismatch`. A ref, a reader or a query that is
+ * not one, a reader that names no network, or a ref whose `txid` is not `0x` and 64 hex digits, or whose `asset` is
+ * not the token's 21-byte address in hex (`41` and 20 bytes, `0x` optional), is unreadable `unparseable`, with nothing
+ * read; the reader is given the txid in lowercase, and the answer names it so. At most three calls.
  */
-export async function tronStatus(ref: TronRef, reader: TronReader): Promise<TronStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
-  }
+export async function tronStatus(ref: TronRef, reader: TronReader, query: StatusQuery<TronRef, bigint, TronMark>): Promise<TronStatus> {
+  if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;
+  return decide(factsOf(await readTron(ref, reader), ref), query, LEDGER);
+}
+
+const LEDGER = ledgerOf<bigint, TronMark>(TRON[ID].coverage, MARKS, bigintOrder);
+
+async function readTron(ref: TronRef, reader: TronReader): Promise<TronRead> {
+  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
+  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") return unparseable;
   const txid = normalHash(ref.txid);
   const asset: unknown = ref.asset;
-  if (txid === null || typeof asset !== "string" || !/^41[0-9a-f]{40}$/.test(bare(asset))) {
-    return { state: "pending", why: "unreadable" };
+  if (typeof ref.network !== "string" || txid === null || typeof asset !== "string" || !/^41[0-9a-f]{40}$/.test(bare(asset))) {
+    return unparseable;
   }
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
   const head = await solidTimestamp(reader);
   let covered = true;
   for (const level of ["solid", "head"] as const) {
@@ -428,47 +458,85 @@ export async function tronStatus(ref: TronRef, reader: TronReader): Promise<Tron
     try {
       info = await reader.info(txid, level);
     } catch {
-      return { state: "pending", why: "unreadable" };
+      return { state: "unreadable", reason: "transport" };
     }
     const readTo = notFoundPoint(info, "timestamp");
     if (readTo !== undefined) {
-      covered &&= readTo !== null && head !== null && readTo >= head;
+      covered &&= readTo !== null && typeof head === "bigint" && readTo >= head;
       continue;
     }
-    if (!isInfo(info)) return { state: "pending", why: "unreadable" };
-    if (info.result !== "SUCCESS") return { state: "failed", why: "contract-failed", result: info.result };
-    if (!info.logs.some((log) => isAssetTransfer(log, ref.asset))) return { state: "failed", why: "no-transfer" };
-    return { state: "settled", finality: level === "solid" ? "solidified" : "head", blockNumber: info.blockNumber };
+    if (!isInfo(info)) return unparseable;
+    const at = { finality: level === "solid" ? "solidified" : "head", blockNumber: info.blockNumber } as const;
+    if (info.result !== "SUCCESS") return { state: "failed", why: "contract-failed", ...at };
+    if (!info.logs.some((log) => isAssetTransfer(log, ref.asset))) return { state: "failed", why: "no-transfer", ...at };
+    return { state: "settled", ...at };
   }
   const expiration = typeof ref.expiration === "string" && /^[0-9]{1,19}$/.test(ref.expiration) ? BigInt(ref.expiration) : null;
-  if (head === null || expiration === null) return { state: "pending", why: "unreadable" };
+  if (typeof head === "string") return { state: "unreadable", reason: head };
+  if (expiration === null) return unparseable;
   if (head >= expiration + EXPIRY_SLOTS_MS && covered) return { state: "failed", why: "expired" };
   return { state: "pending", why: "not-found" };
 }
 
-/** The latest solidified block's timestamp in milliseconds, or null when the read fails or its answer is malformed. */
-async function solidTimestamp(reader: TronReader): Promise<bigint | null> {
+/**
+ * The read's facts: the act at its mark and block where it succeeded, or included with a failed result, which
+ * consumed the id, read so where the solidified lookup found it; the id read unconsumed with its validity passed where
+ * it expired; and nothing for a transaction that carries no transfer, nor for one not found. The lookup by id is never
+ * a search read whole.
+ */
+function factsOf(read: TronRead, ref: TronRef): Facts<bigint, TronMark> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  const txid = (): Hex => normalHash(ref.txid) as Hex;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.reason };
+    case "pending":
+      return none;
+    case "settled":
+      return { ...none, seen: [actSeen(txid(), read.finality, read.blockNumber)] };
+    case "failed":
+      if (read.why === "expired") return { ...none, value: { consumed: false, lapsed: true, mark: "solidified" } };
+      if (read.why === "no-transfer") return none;
+      return {
+        ...none,
+        seen: [actSeen(txid(), read.finality, read.blockNumber, "failed")],
+        ...(read.finality === "solidified" ? { value: { consumed: true, lapsed: false, mark: "solidified" } } : {}),
+      };
+  }
+}
+
+/**
+ * The latest solidified block's timestamp in milliseconds; `transport` when the read fails, and `unparseable` when its
+ * answer is malformed.
+ */
+async function solidTimestamp(reader: TronReader): Promise<bigint | "transport" | "unparseable"> {
   let head: unknown;
   try {
     head = await reader.solidHead();
   } catch {
-    return null;
+    return "transport";
   }
-  return isObject(head) && typeof head["timestamp"] === "bigint" ? head["timestamp"] : null;
+  return isObject(head) && typeof head["timestamp"] === "bigint" ? head["timestamp"] : "unparseable";
 }
 
 /**
  * Recovers the hash from the transaction id alone: the memo of the transaction whose raw bytes hash to the id. A ref
  * whose `txid` is not a 32-byte hash is `tron/wrong-reader`, with nothing read. Raw data longer than the size bound
  * `decodeTronTx` reads is `tron/tx-too-large`, the code that function gives such a transaction. Raw data whose SHA-256
- * is not the id is not the transaction it names, and is `tron/unreadable`, as a failed read is. One call.
+ * is not the id is not the transaction it names, and is `tron/unreadable`, as a failed read is. The input's `tx` is the
+ * id, and its `option` the option the payment answers, an object, of which the read needs no member; an input whose
+ * `tx` is not a 32-byte hash, or whose option is not an object, is `tron/wrong-reader`, with nothing read. One call.
  */
-export async function tronRecover(ref: { network: TronNetwork; txid: Hex }, reader: TronReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tron/wrong-reader");
-  if (normalHash(ref.txid) === null) return refusal("tron/wrong-reader");
+export async function tronRecover(
+  input: RecoverInput<TronNetwork, PaymentRequirements | MppChallenge>,
+  reader: TronReader,
+): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("tron/wrong-reader");
+  if (normalHash(input.tx) === null || !isObject(input.option)) return refusal("tron/wrong-reader");
+  const txid = input.tx as Hex;
   let tx: { rawDataHex: string } | null;
   try {
-    tx = await reader.transaction(ref.txid);
+    tx = await reader.transaction(txid);
   } catch {
     return refusal("tron/unreadable");
   }
@@ -477,7 +545,7 @@ export async function tronRecover(ref: { network: TronNetwork; txid: Hex }, read
   if (tx.rawDataHex.length > MAX_TX_HEX) return refusal("tron/tx-too-large");
   const rawBytes = bytesOfHexDigits(tx.rawDataHex);
   if (rawBytes === null) return refusal("tron/unreadable");
-  if (!hashEquals(await hash(rawBytes), ref.txid)) return refusal("tron/unreadable");
+  if (!hashEquals(await hash(rawBytes), txid)) return refusal("tron/unreadable");
   const raw = decodeRaw(rawBytes);
   if (isRefusal(raw)) return raw;
   return memoHash(raw.data) ?? refusal("tron/memo-not-lcp");
@@ -631,12 +699,18 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(c) ? c : c.h;
 }
 
-/** The read keys, computed from the signed bytes: the transaction id, the token contract and the expiration. */
-async function reference(presented: unknown): Promise<TronRef | Refusal> {
+/**
+ * The read keys, computed from the signed bytes: the transaction id, the token contract and the expiration; and the
+ * payee, the `payTo` of the option the payment answers.
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<TronRef | Refusal> {
   const c = await carried(presented);
   if (isRefusal(c)) return c;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   return {
     network: c.accepted.network as TronNetwork,
+    payee,
     txid: c.txid,
     asset: `0x${hexDigits(c.raw.contractAddress)}`,
     expiration: c.raw.expiration.toString(),
@@ -679,7 +753,20 @@ export const exactTronMemo = Object.freeze({
   reference,
   status: tronStatus,
   recover: tronRecover,
-}) satisfies Entry<typeof ID, TronPayment, TronRef, TronReader>;
+}) satisfies Entry<
+  typeof ID,
+  TronPayment,
+  TronRef,
+  TronReader,
+  X402Forms & {
+    choice: TronChoice;
+    unsigned: TronUnsigned;
+    landed: unknown;
+    network: TronNetwork;
+    query: StatusQuery<TronRef, bigint, TronMark>;
+    answer: TronStatus;
+  }
+>;
 
 function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;

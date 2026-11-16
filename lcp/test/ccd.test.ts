@@ -29,6 +29,10 @@ type Payment = Exclude<ReturnType<CcdUnsigned["complete"]>, Refusal>;
 const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const bytes = (h: string) => Uint8Array.from(Buffer.from(h, "hex"));
 const required = (o: PaymentRequirements = O): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
+/** status's query: the act payment at the final mark. */
+const ASKED = { act: "payment", finality: "finalized" } as const;
+/** recover's input: the network, D5's block item hash and the option the payment answers. */
+const recoverInput = { network: V.D5.ref.network, tx: V.D5.transaction, option: O };
 
 function pathValue(base: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((at, k) => (at as Record<string, unknown>)[k], base);
@@ -140,7 +144,7 @@ describe("x402/exact/ccd", () => {
       it(row.case, async () => {
         const payment = presented(row);
         expect(await exactCcd.bound(payment)).toEqual(row.expect);
-        expect(await exactCcd.reference(payment)).toEqual(row.expect);
+        expect(await exactCcd.reference(payment, O)).toEqual(row.expect);
       });
     }
     it("complete refuses the SDK's object before serialization", async () => {
@@ -151,8 +155,9 @@ describe("x402/exact/ccd", () => {
   });
 
   it("D4: reference", async () => {
-    expect(await exactCcd.reference(V.D3.ccd.payment)).toEqual(V.D4.ccd.expect);
-    expect(await exactCcd.reference(V.D3.plt.payment)).toEqual(V.D4.plt.expect);
+    expect(await exactCcd.reference(V.D3.ccd.payment, O)).toEqual(V.D4.ccd.expect);
+    expect(await exactCcd.reference(V.D3.plt.payment, V.fixed.OPlt)).toEqual(V.D4.plt.expect);
+    expect(await exactCcd.reference(V.D3.ccd.payment, {} as PaymentRequirements)).toEqual({ refused: true, code: "x402/option-malformed" });
   });
 
   describe("D4: a receiver or amount bound does not read gives H from bound and a refusal from reference", () => {
@@ -162,7 +167,7 @@ describe("x402/exact/ccd", () => {
       it(row.case, async () => {
         const payment = set(V.D3[row.base].payment, row.set);
         expect(await exactCcd.bound(payment)).toBe(row.expectBound);
-        expect(await exactCcd.reference(payment)).toEqual(row.expectReference);
+        expect(await exactCcd.reference(payment, O)).toEqual(row.expectReference);
       });
     }
 
@@ -199,18 +204,32 @@ describe("x402/exact/ccd", () => {
     for (const row of rowsOf(V.D5.rows, "x402-exact-ccd.json D5.rows")) {
       it(row.case, async () => {
         const reader = readerFor(row.item);
-        expect(await exactCcd.status(V.D5[row.ref], reader)).toEqual(row.expectStatus);
-        expect(await exactCcd.recover({ network: V.D5.ref.network, transaction: V.D5.transaction }, reader)).toEqual(
-          row.expectRecover,
-        );
+        expect(await exactCcd.status(V.D5[row.ref], reader, row.query ?? ASKED)).toEqual(row.expectStatus);
+        expect(await exactCcd.recover(recoverInput, reader)).toEqual(row.expectRecover);
       });
     }
     it("a reader for another network", async () => {
       const reader = readerFor(V.D5.rows[0].item, V.D5.wrongReader.network);
-      expect(await exactCcd.status(V.D5.ref, reader)).toEqual(V.D5.wrongReader.expectStatus);
-      expect(await exactCcd.recover({ network: V.D5.ref.network, transaction: V.D5.transaction }, reader)).toEqual(
-        V.D5.wrongReader.expectRecover,
-      );
+      expect(await exactCcd.status(V.D5.ref, reader, ASKED)).toEqual(V.D5.wrongReader.expectStatus);
+      expect(await exactCcd.recover(recoverInput, reader)).toEqual(V.D5.wrongReader.expectRecover);
+    });
+    it("a reader that rejects reads by the ReaderError's kind, and any other rejection as transport", async () => {
+      for (const [error, reason] of [
+        [new ReaderError("timeout"), "transport"],
+        [new ReaderError("too-large"), "too-large"],
+        [new ReaderError("malformed"), "unparseable"],
+        [new Error("x"), "transport"],
+      ] as const) {
+        const reader: CcdReader = { network: V.D5.reader.network, item: async () => { throw error; } };
+        expect(await exactCcd.status(V.D5.ref, reader, ASKED)).toEqual({ state: "unreadable", reason, foreign: [] });
+      }
+    });
+    it("recover refuses an input whose tx is not 64 hex digits or whose option is not an object, with nothing read", async () => {
+      for (const input of [{ ...recoverInput, tx: "x" }, { ...recoverInput, option: null }, null]) {
+        const { reader, calls } = counting(readerFor(V.D5.rows[0].item));
+        expect(await exactCcd.recover(input as never, reader)).toEqual({ refused: true, code: "ccd/wrong-reader" });
+        expect(calls).toEqual([]);
+      }
     });
     // One block item can hold several transfers, as a PLT TokenUpdate holds a list of operations. status settles on the
     // one transfer whose memo carries ref.h, and recover gives H from the one transfer whose memo memoCarrier reads,
@@ -237,21 +256,19 @@ describe("x402/exact/ccd", () => {
           settled,
           noCarrier,
         ],
-        ['one transfer, whose memo is "IETF"', "ref", [ietf], { state: "failed", why: "not-this-instrument" }, noCarrier],
+        ['one transfer, whose memo is "IETF"', "ref", [ietf], { state: "pending", reason: "search-incomplete", foreign: [] }, noCarrier],
       ];
       for (const [name, ref, transfers, status, recovered] of cases) {
         it(name, async () => {
           const reader = readerFor({ state: "finalized", success: true, sender: V.fixed.payerBytes, transfers });
-          expect(await exactCcd.status(V.D5[ref], reader)).toEqual(status);
-          expect(await exactCcd.recover({ network: V.D5.ref.network, transaction: V.D5.transaction }, reader)).toEqual(
-            recovered,
-          );
+          expect(await exactCcd.status(V.D5[ref], reader, ASKED)).toEqual(status);
+          expect(await exactCcd.recover(recoverInput, reader)).toEqual(recovered);
         });
       }
     });
-    // A missing or malformed ref field cannot name the landed transfer, so the read is pending, never
-    // failed (docs/guides/rails.md, "Reading settlement"); a hash in either case is the same 32 bytes.
-    it("a ref whose h or idDigest is malformed is pending unreadable, with nothing read", async () => {
+    // A missing or malformed ref field cannot name the landed transfer, so the read is unreadable unparseable, never
+    // failed; a hash in either case is the same 32 bytes.
+    it("a ref whose h or idDigest is malformed is unreadable unparseable, with nothing read", async () => {
       const ref = V.D5.ref;
       const landed = V.D5.rows[0];
       const malformed = [
@@ -260,18 +277,18 @@ describe("x402/exact/ccd", () => {
       ];
       for (const change of malformed) {
         const { reader, calls } = counting(readerFor(landed.item));
-        expect(await exactCcd.status({ ...ref, ...change }, reader)).toEqual({ state: "pending", why: "unreadable" });
+        expect(await exactCcd.status({ ...ref, ...change }, reader, ASKED)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
         expect(calls).toEqual([]);
       }
       const upper = (s: string) => `0x${s.slice(2).toUpperCase()}`;
       for (const change of [{ h: upper(ref.h) }, { idDigest: upper(ref.idDigest) }]) {
-        expect(await exactCcd.status({ ...ref, ...change }, readerFor(landed.item))).toEqual(landed.expectStatus);
+        expect(await exactCcd.status({ ...ref, ...change }, readerFor(landed.item), ASKED)).toEqual(landed.expectStatus);
       }
     });
   });
 
   it("plant: a self-transfer carrying the same memo is never the settlement", async () => {
-    expect(await exactCcd.status(V.D5.ref, readerFor(V.plant.item))).toEqual(V.plant.expectStatus);
+    expect(await exactCcd.status(V.D5.ref, readerFor(V.plant.item), ASKED)).toEqual(V.plant.expectStatus);
   });
 
   it("build: the transfer the wallet signs, and complete wraps what it returns", async () => {
@@ -319,7 +336,7 @@ describe("x402/exact/ccd", () => {
       it(name, async () => {
         const payment = set(V.D3.ccd.payment, { "payload.signedTransaction.payload.memo": blob(memo) });
         const b = await exactCcd.bound(payment);
-        const s = await exactCcd.status(V.D5.ref, landed(memo));
+        const s = await exactCcd.status(V.D5.ref, landed(memo), ASKED);
         expect(b === H).toBe(s.state === "settled");
       });
     }

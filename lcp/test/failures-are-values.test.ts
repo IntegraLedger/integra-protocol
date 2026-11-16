@@ -127,7 +127,7 @@ function quietReader(network: string): { network: string; reads(): number } {
 }
 
 type Read = (ref: never, reader: never, ...rest: never[]) => Promise<unknown>;
-const UNREADABLE = { state: "pending", why: "unreadable" };
+const UNREADABLE_REASONS = ["history-gap", "transport", "unparseable", "too-large", "chain-mismatch"];
 const refused = (code: string) => ({ refused: true, code });
 
 /**
@@ -144,6 +144,48 @@ function reads(rows: readonly [string, Read, string, unknown, ...unknown[]][]): 
         expect(await call(bad, reader, ...rest), String(bad)).toEqual(expected);
         expect(reader.reads(), String(bad)).toBe(0);
         expect(await call(structuredClone(ref), bad, ...rest), String(bad)).toEqual(expected);
+      }
+    });
+  }
+}
+
+/** What an EVM `status` takes beside the reference and the reader: the act payment at the final mark. */
+const Q = { act: "payment", finality: "finalized" } as const;
+/** The pairings whose status reads an EVM or Tempo transaction and answers as the profile read-status does. */
+const EVM_STATUS = /^(x402\/(exact|upto|auth-capture|batch-settlement)\/eip155\/|x402\/batch-settlement\/eip155$|mpp\/(charge\/evm\/|charge\/usdc\/evm$|session\/(evm|tempo)$|subscription\/tempo$))/;
+/** An EVM status's unreadable answer for `reason`. */
+const unreadable = (reason: string) => ({ state: "unreadable", reason, foreign: [] });
+/** An EVM status's answer for a transaction it did not read as the act, with no search for H yet. */
+const SEARCH_INCOMPLETE = { state: "pending", reason: "search-incomplete", foreign: [] };
+/** The reason an EVM status gives for `bad` in place of the ref or the reader. */
+type Reason = (bad: unknown, at: "ref" | "reader") => string;
+const isObjectValue = (v: unknown): boolean => typeof v === "object" && v !== null;
+/** A ref or reader that is not an object is unparseable or transport; one with no members names no network. */
+const byNetwork: Reason = (bad, at) => (isObjectValue(bad) ? "chain-mismatch" : at === "ref" ? "unparseable" : "transport");
+
+/**
+ * Each EVM status, given a ref or reader that is not an object (or an object with no members), answers unreadable for
+ * the reason `reason` gives, and asks the reader for nothing; given a query that is not one `status` takes, it answers
+ * unreadable `unparseable`, and asks the reader for nothing.
+ */
+function evmStatusReads(rows: readonly [string, Read, string, Reason][]): void {
+  for (const [name, read, file, reason] of rows) {
+    it(`${name}: a ref, reader or query that is not an object answers unreadable, with nothing read`, async () => {
+      const ref = refIn(file);
+      const call = read as (...a: unknown[]) => Promise<unknown>;
+      for (const bad of MALFORMED) {
+        const reader = quietReader(ref.network);
+        expect(await call(bad, reader, Q), String(bad)).toEqual(unreadable(reason(bad, "ref")));
+        expect(reader.reads(), String(bad)).toBe(0);
+        expect(await call(structuredClone(ref), bad, Q), String(bad)).toEqual(unreadable(reason(bad, "reader")));
+        const quiet = quietReader(ref.network);
+        expect(await call(structuredClone(ref), quiet, bad), `query ${String(bad)}`).toEqual(unreadable("unparseable"));
+        expect(quiet.reads(), `query ${String(bad)}`).toBe(0);
+      }
+      for (const bad of [{ act: "payment" }, { ...Q, finality: "final" }, { ...Q, act: "charge" }, { ...Q, after: 100 }]) {
+        const quiet = quietReader(ref.network);
+        expect(await call(structuredClone(ref), quiet, bad), JSON.stringify(bad)).toEqual(unreadable("unparseable"));
+        expect(quiet.reads(), JSON.stringify(bad)).toBe(0);
       }
     });
   }
@@ -206,10 +248,13 @@ const notReceipts = (receipt: Record<string, unknown>): [string, unknown][] => [
 
 describe("evm", () => {
   const evm = "x402-exact-eip155-eip3009.json";
+  // The vector file's ref is EIP-3009's, which names no Permit2 authorization: permit2Status reads it as unparseable.
+  evmStatusReads([
+    ["eip3009Status", eip3009Status, evm, byNetwork],
+    ["evmStatus", evmStatus, evm, byNetwork],
+    ["permit2Status", permit2Status("full"), evm, () => "unparseable"],
+  ]);
   reads([
-    ["eip3009Status", eip3009Status, evm, UNREADABLE],
-    ["evmStatus", evmStatus, evm, UNREADABLE],
-    ["permit2Status", permit2Status, evm, UNREADABLE],
     ["eip3009Recover", eip3009Recover, evm, refused("evm/wrong-reader")],
     ["redeemedLeafRecover", redeemedLeafRecover, evm, refused("evm/wrong-reader")],
   ]);
@@ -306,21 +351,21 @@ describe("evm", () => {
       });
     }
   });
-  it("the EVM statuses read a malformed transaction, h, asset, binding log or transfer log as pending unreadable, with nothing read", async () => {
+  it("the EVM statuses read a malformed transaction, h, asset, binding log or transfer log as unreadable unparseable, with nothing read", async () => {
     const ref = load(evm).V6.ref;
     for (const [name, read, members] of [
       ["evmStatus", evmStatus, ["transaction", "bindingLog", "transferLog"]],
       ["eip3009Status", eip3009Status, ["transaction", "h", "asset", "transferLog"]],
     ] as const) {
       const quiet = quietReader(ref.network);
-      expect(await read(ref, quiet as never), name).toEqual({ state: "pending", why: "not-found" });
+      expect(await read(ref, quiet as never, Q), name).toEqual(SEARCH_INCOMPLETE);
       expect(quiet.reads(), name).toBe(1);
       for (const member of rowsOf(members, `${name}: the members it reads`)) {
         const bads = member === "transaction" || member === "h" ? [null, undefined, 1, H.slice(0, 64), `${H}00`] : [null, "0x1234", 1, {}];
         for (const bad of bads) {
           const reader = quietReader(ref.network);
           const label = `${name} ${member} ${String(bad)}`;
-          expect(await read({ ...ref, [member]: bad }, reader as never), label).toEqual(UNREADABLE);
+          expect(await read({ ...ref, [member]: bad }, reader as never, Q), label).toEqual(unreadable("unparseable"));
           expect(reader.reads(), label).toBe(0);
         }
       }
@@ -336,24 +381,25 @@ describe("evm", () => {
       receipt: async () => ({ status: receipt.status, blockNumber: BigInt(receipt.blockNumber), logs }),
       blockNumber: async (tag: "safe" | "finalized") => BigInt(v.reader[tag]!),
     });
-  it("eip3009Status reads a receipt holding a log that is not an object with a string address, an array of string topics and a string data as pending unreadable, as evmStatus does", async () => {
+  it("eip3009Status reads a receipt holding a log that is not an object with a string address, an array of string topics and a string data as unreadable unparseable, as evmStatus does", async () => {
     const v = load(evm).V6;
     const row = v.status[1];
     const reader = receiptReader(v, row.receipt);
     const evmRef = { network: v.ref.network, transaction: v.ref.transaction, transferLog: v.ref.transferLog };
-    const settled = { ...row.expect, blockNumber: BigInt(row.expect.blockNumber) };
-    expect(await eip3009Status(v.ref, reader(row.receipt.logs) as never)).toEqual(settled);
-    expect(await evmStatus(evmRef as never, reader(row.receipt.logs) as never)).toEqual(settled);
+    const plain = (a: unknown) => JSON.parse(JSON.stringify(a, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
+    const query = { ...Q, finality: row.expect.finality };
+    expect(plain(await eip3009Status(v.ref, reader(row.receipt.logs) as never, query))).toEqual(row.expect);
+    expect(plain(await evmStatus(evmRef as never, reader(row.receipt.logs) as never, query))).toEqual(row.expect);
     for (const [label, logs] of misshapen(row.receipt.logs, useOf(row.receipt.logs, v.ref.h))) {
-      expect(await eip3009Status(v.ref, reader(logs) as never), label).toEqual(UNREADABLE);
-      expect(await evmStatus(evmRef as never, reader(logs) as never), label).toEqual(UNREADABLE);
+      expect(await eip3009Status(v.ref, reader(logs) as never, Q), label).toEqual(unreadable("unparseable"));
+      expect(await evmStatus(evmRef as never, reader(logs) as never, Q), label).toEqual(unreadable("unparseable"));
     }
   });
   it("eip3009Recover reads a receipt holding a log that is not an object with a string address, an array of string topics and a string data as evm/unreadable, as redeemedLeafRecover does", async () => {
     const v = load(evm).V6;
     const row = v.recover[0];
     const reader = receiptReader(v, row.receipt);
-    const tx = { network: v.ref.network, asset: v.ref.asset, transaction: v.ref.transaction };
+    const tx = { network: v.ref.network, tx: v.ref.transaction, option: { ...load(evm).fixed.O, asset: v.ref.asset } };
     expect(await eip3009Recover(tx, reader(row.receipt.logs) as never)).toBe(row.expect);
     for (const [label, logs] of misshapen(row.receipt.logs, useOf(row.receipt.logs, v.ref.h))) {
       expect(await eip3009Recover(tx, reader(logs) as never), label).toEqual(refused("evm/unreadable"));
@@ -383,11 +429,37 @@ describe("x402 over Solana and XRPL", () => {
   ]);
 });
 
+const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
+const CHAIN_MISMATCH = { state: "unreadable", reason: "chain-mismatch", foreign: [] };
+
+/**
+ * Each `status` of the profile read-status, given a ref that is not an object (or an object with no members), answers
+ * unreadable `unparseable` and asks the reader for nothing; given a reader that is not an object, or one that names no
+ * network, it answers unreadable `chain-mismatch`. `query` is the query each call takes, and `ref`, where given, the
+ * well-formed ref, in place of the vector file's first.
+ */
+function statusReads(rows: readonly [string, Read, string, unknown, { network: string }?][]): void {
+  for (const [name, read, file, query, given] of rows) {
+    it(`${name}: a ref that is not an object is unparseable and a reader that is not one chain-mismatch, with nothing read`, async () => {
+      const ref = given ?? refIn(file);
+      const call = read as (...a: unknown[]) => Promise<unknown>;
+      for (const bad of MALFORMED) {
+        const reader = quietReader(ref.network);
+        expect(await call(bad, reader, query), String(bad)).toEqual(UNPARSEABLE);
+        expect(reader.reads(), String(bad)).toBe(0);
+        expect(await call(structuredClone(ref), bad, query), String(bad)).toEqual(CHAIN_MISMATCH);
+      }
+    });
+  }
+}
+
 describe("casper and ccd", () => {
+  statusReads([
+    ["casperStatus", casperStatus, "x402-exact-casper.json", { act: "payment", finality: "finalized" }],
+    ["ccdStatus", ccdStatus, "x402-exact-ccd.json", { act: "payment", finality: "finalized" }],
+  ]);
   reads([
-    ["casperStatus", casperStatus, "x402-exact-casper.json", UNREADABLE],
     ["casperRecover", casperRecover, "x402-exact-casper.json", refused("casper/wrong-reader")],
-    ["ccdStatus", ccdStatus, "x402-exact-ccd.json", UNREADABLE],
     ["ccdRecover", ccdRecover, "x402-exact-ccd.json", refused("ccd/wrong-reader")],
   ]);
   answers([
@@ -398,7 +470,7 @@ describe("casper and ccd", () => {
 });
 
 describe("aptos", () => {
-  reads([["aptosStatus", aptosStatus, "x402-exact-aptos.json", UNREADABLE]]);
+  statusReads([["aptosStatus", aptosStatus, "x402-exact-aptos.json", { act: "payment", finality: "committed" }]]);
   answers([["aptosIdDigest", aptosIdDigest, [undefined], 0, refused("aptos/tx-malformed")]]);
   it("aptosIdDigest: an instrument whose sequence number is not a bigint is aptos/tx-malformed", async () => {
     const i = { sender: "0x1", sequenceNumber: "7", function: "0x1::f::g", typeArguments: [], arguments: [] };
@@ -407,54 +479,52 @@ describe("aptos", () => {
 });
 
 describe("avm", () => {
-  reads([
-    ["avmStatus", avmStatus, "x402-exact-algorand.json", UNREADABLE],
-    ["avmRecover", avmRecover, "x402-exact-algorand.json", refused("avm/wrong-reader")],
-  ]);
+  statusReads([["avmStatus", avmStatus, "x402-exact-algorand.json", { act: "payment", finality: "final" }]]);
+  reads([["avmRecover", avmRecover, "x402-exact-algorand.json", refused("avm/wrong-reader")]]);
 });
 
 describe("cardano", () => {
-  reads([
-    ["cardanoStatus", cardanoStatus, "x402-exact-cardano.json", UNREADABLE, 0n],
-    ["cardanoRecover", cardanoRecover, "x402-exact-cardano.json", refused("cardano/wrong-reader")],
-  ]);
-  it("cardanoRecover: a ref whose txId is not a 32-byte hash is cardano/wrong-reader, with nothing read", async () => {
+  statusReads([["cardanoStatus", cardanoStatus, "x402-exact-cardano.json", { act: "payment", finality: 0n }]]);
+  reads([["cardanoRecover", cardanoRecover, "x402-exact-cardano.json", refused("cardano/wrong-reader")]]);
+  it("cardanoRecover: an input whose tx is not a 32-byte hash is cardano/wrong-reader, with nothing read", async () => {
     const V = load("x402-exact-cardano.json");
     const cbor = Uint8Array.from(Buffer.from(V.V2.transactionBase64, "base64"));
     const reader = { network: V.V5.ref.network, transaction: async () => ({ blockHeight: 1n, slot: 1n, valid: true, cbor }) };
-    expect(await cardanoRecover(V.V5.ref, reader as never)).toBe(V.V5.recover[0].expect);
-    for (const txId of [undefined, null, 5]) {
+    const input = { network: V.V5.ref.network, tx: V.V5.ref.txId, option: V.fixed.O };
+    expect(await cardanoRecover(input, reader as never)).toBe(V.V5.recover[0].expect);
+    for (const tx of [undefined, null, 5]) {
       const { reader: r, calls } = counting(reader);
-      expect(await cardanoRecover({ ...V.V5.ref, txId } as never, r as never), String(txId)).toEqual(refused("cardano/wrong-reader"));
+      expect(await cardanoRecover({ ...input, tx } as never, r as never), String(tx)).toEqual(refused("cardano/wrong-reader"));
       expect(calls).toEqual([]);
     }
   });
 });
 
 describe("hedera", () => {
-  reads([
-    ["hederaStatus", hederaStatus, "x402-exact-hedera.json", UNREADABLE],
-    ["executorStatus", executorStatus, "x402-exact-hedera-transfer-executor.json", UNREADABLE],
-    ["exactHedera.recover", exactHedera.recover, "x402-exact-hedera.json", refused("hedera/wrong-reader")],
+  const consensus = { act: "payment", finality: "consensus" };
+  statusReads([
+    ["hederaStatus", hederaStatus, "x402-exact-hedera.json", consensus],
+    ["executorStatus", executorStatus, "x402-exact-hedera-transfer-executor.json", consensus],
   ]);
+  reads([["exactHedera.recover", exactHedera.recover, "x402-exact-hedera.json", refused("hedera/wrong-reader")]]);
 
-  it("hederaStatus: a ref whose expectMemo is not a string is pending unreadable, with nothing read", async () => {
+  it("hederaStatus: a ref whose expectMemo is not a string is unreadable unparseable, with nothing read", async () => {
     const V = load("x402-exact-hedera.json").V5;
     let reads = 0;
     const reader = { network: V.readerNetwork, transactions: async () => (reads++, V.rows[0].entries) };
-    expect(await hederaStatus(V.reference, reader as never)).toEqual(V.rows[0].expect);
+    expect(await hederaStatus(V.reference, reader as never, consensus as never)).toEqual(V.rows[0].expect);
     for (const v of [undefined, null, 1, {}]) {
       reads = 0;
-      expect(await hederaStatus({ ...V.reference, expectMemo: v }, reader as never), String(v)).toEqual(UNREADABLE);
+      expect(await hederaStatus({ ...V.reference, expectMemo: v }, reader as never, consensus as never), String(v)).toEqual(UNPARSEABLE);
       expect(reads, String(v)).toBe(0);
     }
   });
 
-  it("executorStatus: a ref whose asset or idDigest is not of the form reference writes is pending unreadable, with nothing read", async () => {
+  it("executorStatus: a ref whose asset or idDigest is not of the form reference writes is unreadable unparseable, with nothing read", async () => {
     const V = load("x402-exact-hedera-transfer-executor.json").status;
     let reads = 0;
     const reader = { network: V.readerNetwork, transactions: async () => (reads++, V.rows[0].entries) };
-    expect(await executorStatus(V.reference, reader as never)).toEqual(V.rows[0].expect);
+    expect(await executorStatus(V.reference, reader as never, consensus as never)).toEqual(V.rows[0].expect);
     const bad: readonly [string, unknown][] = [
       ["idDigest", undefined],
       ["idDigest", null],
@@ -466,7 +536,7 @@ describe("hedera", () => {
     ];
     for (const [k, v] of bad) {
       reads = 0;
-      expect(await executorStatus({ ...V.reference, [k]: v }, reader as never), `${k} ${String(v)}`).toEqual(UNREADABLE);
+      expect(await executorStatus({ ...V.reference, [k]: v }, reader as never, consensus as never), `${k} ${String(v)}`).toEqual(UNPARSEABLE);
       expect(reads, `${k} ${String(v)}`).toBe(0);
     }
   });
@@ -529,7 +599,7 @@ describe("hedera", () => {
 
 describe("near", () => {
   reads([
-    ["nearStatus", nearStatus, "x402-exact-near.json", UNREADABLE],
+    ["nearStatus", nearStatus, "x402-exact-near.json", { state: "unreadable", reason: "unparseable", foreign: [] }, { act: "payment", finality: "final" }],
     ["nearRecover", nearRecover, "x402-exact-near.json", refused("near/wrong-reader")],
     ["nearLapsed", nearLapsed, "x402-exact-near.json", false],
   ]);
@@ -538,7 +608,7 @@ describe("near", () => {
 describe("polkadot", () => {
   const file = "x402-exact-polkadot-lcp-assets-remark.json";
   reads([
-    ["polkadotStatus", polkadotStatus, file, UNREADABLE],
+    ["polkadotStatus", polkadotStatus, file, { state: "unreadable", reason: "unparseable", foreign: [] }, { act: "payment", finality: "finalized" }],
     ["polkadotRecover", polkadotRecover, file, refused("polkadot/wrong-reader")],
     ["polkadotLocate", polkadotLocate, file, refused("polkadot/wrong-reader"), 0n, 1n],
   ]);
@@ -546,7 +616,7 @@ describe("polkadot", () => {
 
 describe("starknet", () => {
   reads([
-    ["starknetStatus", starknetStatus, "x402-exact-starknet.json", UNREADABLE],
+    ["starknetStatus", starknetStatus, "x402-exact-starknet.json", { state: "unreadable", reason: "unparseable", foreign: [] }, { act: "payment", finality: "ACCEPTED_ON_L1" }],
     ["starknetLandedNonce", starknetLandedNonce, "x402-exact-starknet.json", refused("starknet/wrong-reader")],
   ]);
   answers([["outsideExecution", outsideExecution, [undefined], 0, refused("starknet/network-malformed")]]);
@@ -559,16 +629,14 @@ describe("starknet", () => {
 });
 
 describe("stellar", () => {
-  reads([
-    ["stellarStatus", stellarStatus, "x402-exact-stellar.json", UNREADABLE],
-    ["stellarLocate", stellarLocate, "x402-exact-stellar.json", { complete: false }],
-  ]);
+  statusReads([["stellarStatus", stellarStatus, "x402-exact-stellar.json", { act: "payment", finality: "closed" }, load("x402-exact-stellar.json").V5.ref]]);
+  reads([["stellarLocate", stellarLocate, "x402-exact-stellar.json", { complete: false }]]);
   it("stellarStatus and stellarLocate: a ref whose authDigest is not a string reads nothing", async () => {
     const ref = refIn("x402-exact-stellar.json");
     for (const authDigest of [null, 1, {}]) {
       const reader = quietReader(ref.network);
       const bad = { ...ref, authDigest } as never;
-      expect(await stellarStatus(bad, reader as never), String(authDigest)).toEqual(UNREADABLE);
+      expect(await stellarStatus(bad, reader as never, { act: "payment", finality: "closed" }), String(authDigest)).toEqual(UNPARSEABLE);
       expect(await stellarLocate(bad, reader as never), String(authDigest)).toEqual({ complete: false });
       expect(reader.reads(), String(authDigest)).toBe(0);
     }
@@ -590,7 +658,7 @@ describe("stellar", () => {
 
 describe("tron", () => {
   reads([
-    ["tronStatus", tronStatus, "x402-exact-tron-lcp-trc20-memo.json", UNREADABLE],
+    ["tronStatus", tronStatus, "x402-exact-tron-lcp-trc20-memo.json", { state: "unreadable", reason: "unparseable", foreign: [] }, { act: "payment", finality: "solidified" }],
     ["tronRecover", tronRecover, "x402-exact-tron-lcp-trc20-memo.json", refused("tron/wrong-reader")],
   ]);
   answers([["tronCarrier", tronCarrier, [undefined], 0, refused("tron/tx-malformed")]]);
@@ -637,19 +705,22 @@ describe("tvm", () => {
   });
 });
 
+const XRPL_QUERY = { act: "payment", finality: "validated" };
+const SVM_QUERY = { act: "payment", finality: "finalized" };
+
 describe("xrpl", () => {
   reads([
-    ["xrplStatus", xrplStatus, "x402-exact-xrpl.json", UNREADABLE],
-    ["xrplOpenStatus", xrplOpenStatus, "x402-exact-xrpl.json", UNREADABLE],
-    ["xrplCloseStatus", xrplCloseStatus, "x402-exact-xrpl.json", UNREADABLE],
+    ["xrplStatus", xrplStatus, "x402-exact-xrpl.json", UNPARSEABLE, XRPL_QUERY],
+    ["xrplOpenStatus", xrplOpenStatus, "x402-exact-xrpl.json", UNPARSEABLE, XRPL_QUERY],
+    ["xrplCloseStatus", xrplCloseStatus, "x402-exact-xrpl.json", UNPARSEABLE, XRPL_QUERY],
   ]);
 });
 
 describe("svm", () => {
   const file = "x402-exact-solana.json";
   reads([
-    ["svmStatus", svmStatus, file, UNREADABLE],
-    ["svmChannelStatus", svmChannelStatus, file, UNREADABLE],
+    ["svmStatus", svmStatus, file, UNPARSEABLE, SVM_QUERY],
+    ["svmChannelStatus", svmChannelStatus, file, UNPARSEABLE, SVM_QUERY],
     ["svmRecover", svmRecover, file, refused("svm/wrong-reader")],
     ["svmNonceMoved", svmNonceMoved, file, null],
     ["svmLocate", svmLocate, file, { complete: false }, H],
@@ -663,7 +734,9 @@ describe("svm", () => {
     const ref = refIn(file);
     for (const digest of [null, 1, {}]) {
       const reader = quietReader(ref.network);
-      expect(await svmStatus({ ...ref, digest } as never, reader as never), String(digest)).toEqual(UNREADABLE);
+      expect(await svmStatus({ ...ref, transaction: "x", digest } as never, reader as never, SVM_QUERY as never), String(digest)).toEqual(
+        UNPARSEABLE,
+      );
       expect(reader.reads(), String(digest)).toBe(0);
     }
   });
@@ -696,11 +769,13 @@ describe("svm", () => {
 });
 
 describe("x402 batch settlement", () => {
-  reads([
-    ["batchEvm.status", batchEvm.status, "x402-exact-eip155-eip3009.json", UNREADABLE],
-    ["batchEvm.recover", batchEvm.recover, "x402-exact-eip155-eip3009.json", refused("evm/wrong-reader")],
+  // The vector file's ref names no Deposited binding log: batchEvm.status reads it as unparseable once the reader is an
+  // object.
+  evmStatusReads([
+    ["batchEvm.status", batchEvm.status, "x402-exact-eip155-eip3009.json", (bad, at) => (at === "reader" && !isObjectValue(bad) ? "transport" : "unparseable")],
   ]);
-  it("batchEvm.status: a reader that is not an object, beside the reference its reference writes, answers pending unreadable", async () => {
+  reads([["batchEvm.recover", batchEvm.recover, "x402-exact-eip155-eip3009.json", refused("evm/wrong-reader")]]);
+  it("batchEvm.status: a reader that is not an object, beside the reference its reference writes, answers unreadable transport, and one with no members chain-mismatch", async () => {
     const V = load("x402-batch-settlement.json");
     const ref = {
       network: `eip155:${V.fixed.evm.chainId}`,
@@ -709,9 +784,11 @@ describe("x402 batch settlement", () => {
       transferLog: { address: V.fixed.evm.token, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: V.EB7.transferDigest },
     };
     const quiet = quietReader(ref.network);
-    expect(await batchEvm.status(ref as never, quiet as never)).toEqual({ state: "pending", why: "not-found" });
+    expect(await batchEvm.status(ref as never, quiet as never, Q)).toEqual(SEARCH_INCOMPLETE);
     expect(quiet.reads()).toBe(1);
-    for (const bad of MALFORMED) expect(await batchEvm.status(ref as never, bad as never), String(bad)).toEqual(UNREADABLE);
+    for (const bad of MALFORMED) {
+      expect(await batchEvm.status(ref as never, bad as never, Q), String(bad)).toEqual(unreadable(byNetwork(bad, "reader")));
+    }
   });
   // EB8's receipt holds its one ChannelCreated log, and EB7's full deposit call the same log fourth of five, beside the
   // token's AuthorizationUsed and Transfers and the channel contract's Deposited (x402-batch-settlement.json): recover
@@ -720,7 +797,7 @@ describe("x402 batch settlement", () => {
     const V = load("x402-batch-settlement.json");
     const full = V.EB7.fullCall.receipt;
     const network = `eip155:${V.fixed.evm.chainId}`;
-    const tx = { network, transaction: `0x${"cd".repeat(32)}` };
+    const tx = { network, tx: `0x${"cd".repeat(32)}`, option: V.fixed.evm.option };
     const answering = (receipt: unknown) => ({ network, receipt: async () => receipt });
     const holding = (logs: unknown[]) => answering({ status: full.status, blockNumber: BigInt(full.blockNumber), logs });
     expect(await batchEvm.recover(tx as never, holding([V.EB8.log]) as never)).toBe(V.EB8.expect);
@@ -766,7 +843,7 @@ describe("x402 batch settlement", () => {
 describe("mpp", () => {
   reads([
     ["chargeSolana.recover", chargeSolana.recover, "mpp-charge-solana.json", refused("svm/wrong-reader")],
-    ["sessionXrpl.status", sessionXrpl.status, "x402-exact-xrpl.json", UNREADABLE],
+    ["sessionXrpl.status", sessionXrpl.status, "x402-exact-xrpl.json", UNPARSEABLE, XRPL_QUERY],
     ["sessionXrpl.recover", sessionXrpl.recover, "x402-exact-xrpl.json", refused("xrpl/wrong-reader")],
   ]);
 
@@ -789,7 +866,7 @@ describe("mpp", () => {
     });
   }
 
-  it("sessionStatus reads a malformed opened, closes or accessKey as pending unreadable, with nothing read", async () => {
+  it("sessionStatus reads a malformed opened, closes or accessKey as unreadable unparseable, with nothing read", async () => {
     const E = load("mpp-session-evm.json");
     const f = E.fixed;
     const ref = { network: `eip155:${f.chainId}`, transaction: E.ES9.hash };
@@ -801,14 +878,14 @@ describe("mpp", () => {
     };
     for (const [member, value] of rowsOf(Object.entries(written), "written: opened, closes and accessKey", { exact: 3 })) {
       const quiet = quietReader(ref.network);
-      const control = await sessionStatus({ ...ref, [member]: value } as never, quiet as never);
-      expect(control, member).toEqual({ state: "pending", why: "not-found" });
+      const control = await sessionStatus({ ...ref, [member]: value } as never, quiet as never, Q);
+      expect(control, member).toEqual(SEARCH_INCOMPLETE);
       expect(quiet.reads(), member).toBe(1);
       const first = Object.keys(value)[0]!;
       for (const bad of [null, "0x1234", 1, {}, { ...value, [first]: 5 }]) {
         const reader = quietReader(ref.network);
-        const answer = await sessionStatus({ ...ref, [member]: bad } as never, reader as never);
-        expect(answer, `${member} ${JSON.stringify(bad)}`).toEqual(UNREADABLE);
+        const answer = await sessionStatus({ ...ref, [member]: bad } as never, reader as never, Q);
+        expect(answer, `${member} ${JSON.stringify(bad)}`).toEqual(unreadable("unparseable"));
         expect(reader.reads(), `${member} ${JSON.stringify(bad)}`).toBe(0);
       }
     }
@@ -830,7 +907,7 @@ describe("lightning", () => {
 
 describe("sui", () => {
   reads([
-    ["suiStatus", suiStatus, "x402-exact-sui.json", UNREADABLE, 0n],
+    ["suiStatus", suiStatus, "x402-exact-sui.json", { state: "unreadable", reason: "unparseable", foreign: [] }, { act: "payment", finality: "final", after: 0n }],
     ["suiRecover", suiRecover, "x402-exact-sui.json", refused("sui/wrong-reader")],
   ]);
   answers([["suiCarrier", suiCarrier, [undefined], 0, refused("sui/tx-malformed")]]);
@@ -882,7 +959,7 @@ describe("every pairing", () => {
 
   // Each pairing's own B6 credential (and the same credential as a push, its payload type "signature" or "hash"), the
   // ref its reference writes and the close ref its closeRef writes, with a reader that is not an object: fetchPresented
-  // answers what it answers a reader "x", and status is pending unreadable.
+  // answers what it answers a reader "x", and status is unreadable, with a reason of the profile read-status.
   const b6 = readdirSync(new URL("../vectors/", import.meta.url))
     .flatMap((name) => (load(name).buyer?.rows ?? []) as { name: string; pairing: string; input: { presented?: unknown } }[])
     .filter((r) => r.name === "B6");
@@ -905,16 +982,24 @@ describe("every pairing", () => {
       }
       if (typeof p.status !== "function") continue;
       const refs: unknown[] = [];
-      const opened = await p.reference?.(structuredClone(presented));
+      const option = "challenge" in presented ? presented.challenge : (presented as { accepted?: unknown }).accepted;
+      const opened = await p.reference?.(structuredClone(presented), structuredClone(option));
       if (opened !== null && typeof opened === "object" && !("refused" in opened)) refs.push({ transaction: "x", ...opened });
       const channel = (await p.channel?.ref(structuredClone(presented))) as { channel?: unknown } | undefined;
       if (typeof p.closeRef === "function" && typeof channel?.channel === "string") {
         refs.push({ ...(p.closeRef as unknown as (...a: unknown[]) => object)(presented.challenge, channel.channel), transaction: "x" });
       }
+      // The EVM and Tempo pairings' status takes a query, and answers a reader that is not an object unreadable
+      // transport; a close ref that closeRef refused names no key the pairing writes, and is unparseable before any read.
+      const evm = EVM_STATUS.test(b.id);
       for (const ref of refs) {
+        const expected = unreadable("refused" in (ref as object) ? "unparseable" : "transport");
         for (const bad of NOT_OBJECTS) {
           calls++;
-          expect(await p.status(structuredClone(ref), bad), `${b.id} status ${JSON.stringify(ref).slice(0, 40)} ${String(bad)}`).toEqual(UNREADABLE);
+          const answer = (await p.status(structuredClone(ref), bad, evm ? Q : { act: "payment" })) as { state?: unknown; reason?: unknown };
+          const where = `${b.id} status ${JSON.stringify(ref).slice(0, 40)} ${String(bad)}`;
+          if (evm) expect(answer, where).toEqual(expected);
+          else expect([answer.state, UNREADABLE_REASONS.includes(answer.reason as string)], where).toEqual(["unreadable", true]);
         }
       }
     }

@@ -282,7 +282,7 @@ describe("what a node answers, with a pad bit set", () => {
     expect(await build(raised(gh))).toEqual(refused("avm/network-mismatch"));
   });
 
-  it("a Hedera Mirror Node memo: status is pending unreadable and recover hedera/unreadable, as for any other", async () => {
+  it("a Hedera Mirror Node memo: status is unreadable unparseable and recover hedera/unreadable, as for any other", async () => {
     const V = load("x402-exact-hedera.json");
     const reader = (entries: MirrorEntry[]): HederaReader => ({
       network: V.V5.readerNetwork,
@@ -292,17 +292,20 @@ describe("what a node answers, with a pad bit set", () => {
       entries.map((e) => ({ ...e, memo_base64: m(e.memo_base64!) }));
     const settled: MirrorEntry[] = V.V5.rows[0].entries;
     expect(settled[0]!.memo_base64!.endsWith("=")).toBe(true);
-    expect(await hederaStatus(V.V5.reference, reader(settled))).toEqual(V.V5.rows[0].expect);
-    expect(await hederaStatus(V.V5.reference, reader(memo(settled, () => NOT_BASE64)))).toEqual(unreadable);
-    expect(await hederaStatus(V.V5.reference, reader(memo(settled, raised)))).toEqual(unreadable);
+    const query = { act: "payment", finality: "consensus" } as const;
+    const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };
+    expect(await hederaStatus(V.V5.reference, reader(settled), query)).toEqual(V.V5.rows[0].expect);
+    expect(await hederaStatus(V.V5.reference, reader(memo(settled, () => NOT_BASE64)), query)).toEqual(unparseable);
+    expect(await hederaStatus(V.V5.reference, reader(memo(settled, raised)), query)).toEqual(unparseable);
     const landed: MirrorEntry[] = V.V5.recover.entries;
-    const recover = (entries: MirrorEntry[]) => exactHedera.recover(V.V5.reference, reader(entries));
+    const input = { network: V.V5.reference.network, tx: V.V5.reference.transactionId, option: V.fixed.O };
+    const recover = (entries: MirrorEntry[]) => exactHedera.recover(input, reader(entries));
     expect(await recover(landed)).toBe(V.V5.recover.expect);
     expect(await recover(memo(landed, () => NOT_BASE64))).toEqual(refused("hedera/unreadable"));
     expect(await recover(memo(landed, raised))).toEqual(refused("hedera/unreadable"));
   });
 
-  it("NEAR function-call arguments: status is pending unreadable and recover near/unreadable, as for others", async () => {
+  it("NEAR function-call arguments: status is unreadable unparseable and recover near/unreadable, as for others", async () => {
     const V = load("x402-exact-near.json");
     type Outcome = { delegate: { argsBase64: string; nonce: string } };
     const reader = (o: Outcome): NearReader => ({
@@ -317,12 +320,14 @@ describe("what a node answers, with a pad bit set", () => {
       delegate: { ...o.delegate, argsBase64: m(o.delegate.argsBase64) },
     });
     const settled = V.V3.status[0];
+    const q = { act: "payment", finality: "final" } as const;
+    const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };
     expect(settled.outcome.delegate.argsBase64.endsWith("=")).toBe(true);
-    expect(await exactNear.status(V.V3.ref, reader(settled.outcome))).toEqual(settled.expect);
-    expect(await exactNear.status(V.V3.ref, reader(args(settled.outcome, () => NOT_BASE64)))).toEqual(unreadable);
-    expect(await exactNear.status(V.V3.ref, reader(args(settled.outcome, raised)))).toEqual(unreadable);
+    expect(await exactNear.status(V.V3.ref, reader(settled.outcome), q)).toEqual(settled.expect);
+    expect(await exactNear.status(V.V3.ref, reader(args(settled.outcome, () => NOT_BASE64)), q)).toEqual(unparseable);
+    expect(await exactNear.status(V.V3.ref, reader(args(settled.outcome, raised)), q)).toEqual(unparseable);
     const landed = V.V3.recover[0];
-    const recover = (o: Outcome) => exactNear.recover(V.V3.ref, reader(o));
+    const recover = (o: Outcome) => exactNear.recover({ network: V.V3.ref.network, tx: V.V3.ref.transaction, option: V.fixed.O }, reader(o));
     expect(await recover(landed.outcome)).toBe(landed.expect);
     expect(await recover(args(landed.outcome, () => NOT_BASE64))).toEqual(refused("near/unreadable"));
     expect(await recover(args(landed.outcome, raised))).toEqual(refused("near/unreadable"));

@@ -245,8 +245,8 @@ describe("x402-upto-solana.json", () => {
     expect(b64(V.EU3.wireBase64).length).toBe(V.EU3.wireLength);
     const p = payment(V.EU3.wireBase64, V.EU4.accepted);
     expect(await uptoSvm.bound(p)).toBe(V.EU4.expectBound);
-    expect(await uptoSvm.reference(p)).toEqual(V.EU4.expectReference);
-    const ref = await uptoSvm.reference(p);
+    expect(await uptoSvm.reference(p, V.EU4.accepted)).toEqual(V.EU4.expectReference);
+    const ref = await uptoSvm.reference(p, V.EU4.accepted);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
     const o: PaymentRequirements = V.EU4.noFlowOption;
     const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [o] };
@@ -259,14 +259,15 @@ describe("x402-upto-solana.json", () => {
     const wire = b64(V.EU5.landedWireBase64);
     const ref = { ...V.EU5.ref, fromSlot: "0" } as SvmRef & { transaction: string };
     for (const row of rowsOf(V.EU5.rows, "x402-upto-solana.json EU5.rows")) {
-      expect(await uptoSvm.status(ref, readerFor(row.at, landed(wire, row.err ?? null), V.EU5.txid)), JSON.stringify(row)).toEqual(
-        row.expect,
-      );
+      const answer = await uptoSvm.status(ref, readerFor(row.at, landed(wire, row.err ?? null), V.EU5.txid), row.query);
+      expect(answer, JSON.stringify(row)).toEqual(row.expect);
     }
-    expect(await uptoSvm.recover(ref, readerFor("finalized", landed(wire), V.EU5.txid))).toBe(V.EU5.expectRecover);
+    const input = { network: ref.network, tx: ref.transaction, option: V.EU4.accepted as PaymentRequirements };
+    expect(await uptoSvm.recover(input, readerFor("finalized", landed(wire), V.EU5.txid))).toBe(V.EU5.expectRecover);
     const nc = V.EU5.noChannel;
     const r = readerFor("finalized", landed(b64(nc.landedWireBase64)), "nc");
-    expect(await uptoSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r)).toEqual(nc.expect);
+    const query = { act: "payment", finality: "finalized" } as const;
+    expect(await uptoSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r, query)).toEqual(nc.expect);
   });
 
   it("EU3's opening made durable: a sysvar from a lookup table is bound and recorded; a nonce account from one is refused", async () => {
@@ -275,7 +276,7 @@ describe("x402-upto-solana.json", () => {
     expect(sysvar.instruction0Accounts[1]).toBeGreaterThanOrEqual(sysvar.staticKeys);
     const p = payment(sysvar.wireBase64, V.EU4.accepted);
     expect(await uptoSvm.bound(p)).toBe(V.EU4.expectBound);
-    expect(await uptoSvm.reference(p)).toEqual({
+    expect(await uptoSvm.reference(p, V.EU4.accepted)).toEqual({
       ...V.EU4.expectReference,
       digest: sysvar.digest,
       blockhash: "",
@@ -285,7 +286,7 @@ describe("x402-upto-solana.json", () => {
     expect(both.instruction0Accounts[0]).toBeGreaterThanOrEqual(both.staticKeys);
     const q = payment(both.wireBase64, V.EU4.accepted);
     expect(await uptoSvm.bound(q)).toEqual(refused("svm/nonce-account-not-static"));
-    expect(await uptoSvm.reference(q)).toEqual(refused("svm/nonce-account-not-static"));
+    expect(await uptoSvm.reference(q, V.EU4.accepted)).toEqual(refused("svm/nonce-account-not-static"));
   });
 
   it("plant: an opening whose carrier is not this ATR's hash is never bound", async () => {

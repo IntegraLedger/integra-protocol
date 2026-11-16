@@ -22,7 +22,6 @@ import {
   AUTHORIZATION_USED_TOPIC,
   PERMIT2,
   TRANSFER_TOPIC,
-  evmStatus,
   permit2TypedData,
   transferDigest,
   type EvmBreadthStatus,
@@ -63,17 +62,29 @@ import {
   type MppChallenge,
   type MppChoice,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import {
+  evmAnswer,
   failedAt,
   failedIfFinal,
   finalAt,
+  isEvmQuery,
   isLog,
   isReceipt,
+  readEvm,
   receiveTypedData,
+  rejected,
   transferParts,
+  unreadable,
+  withPayee,
+  type EvmQuery,
+  type EvmRead,
+  type EvmWhy,
   type ReceiveTypedData,
 } from "./internal/evm.js";
+import { mppPayee } from "./internal/payee.js";
+import type { RecoverInput } from "./internal/read.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readKeyAuthorization, type KeyAuthorizationRead } from "./internal/key-authorization.js";
@@ -185,10 +196,11 @@ export interface SessionRef extends EvmRef {
   revokes?: { account: Hex; keyId: Hex };
 }
 
-export type SessionStatus =
-  | EvmBreadthStatus
-  | { state: "pending"; why: "not-a-close" | "open-call-not-found" }
-  | { state: "failed"; why: "open-call-not-found" };
+/** What these pairings' `status` answers, in the terms of `EvmBreadthStatus`. */
+export type SessionStatus = EvmBreadthStatus;
+
+/** What a read of an opening or a close observed, before the profile's rules choose the answer. */
+type SessionRead = EvmRead<EvmWhy | "not-a-close" | "open-call-not-found">;
 
 /**
  * The buyer's inputs to an in-channel payment: the within 402's challenge, which the in-channel credential echoes as
@@ -499,47 +511,58 @@ function words(selector: string, parts: readonly Uint8Array[]): Hex {
 }
 
 /**
- * `evmStatus` on the named logs, then, where `ref.opened` is present, one `ChannelOpened` log from `opened.address`
- * naming the channel: on v2 its data word 3 (the salt) is `h`; on v1 the channel id recomputed from the event with
- * salt `h` is the channel. Where `ref.opens` is present, the succeeded transaction, read by `eth_getTransactionByHash`,
- * must be sent to the escrow and hold its open call for the channel: `open` from the payer, or `openWithPermit2` with
- * the payer as its `from`. An open call sent to the escrow that opens another channel is failed `open-call-not-found`
- * where `ref.settleBy` is absent and the receipt's block is at or below the `finalized` mark, and pending otherwise;
- * any other transaction, one sent through an ERC-4337 EntryPoint included, is pending `open-call-not-found`. Where
- * `ref.closes` is present, the
- * succeeded transaction must be a call to that escrow whose calldata starts with one of `EVM_CLOSE_SELECTORS` and
- * whose first argument is that channel, else pending `not-a-close`. Where `ref.accessKey.account` is present, the
- * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token, else
- * failed `binding-log-not-found`. Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's
- * `KeyRevoked` log naming that account and key, else failed `binding-log-not-found`. Each failed answer, `evmStatus`'s
- * and these, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where
- * that mark cannot be read, the same reason is pending. An `opens` that is not an object
- * whose `escrow` is an address, `channel` and `h` 32-byte hashes and `chainId` a positive integer, an `opened` that is
- * not one whose `address` is an address, `version` `v1` or `v2`, `channel` and `h` 32-byte hashes and `chainId` a
- * positive integer, a `closes` that is not an object whose `escrow` is an address and `channel` a 32-byte hash, an
- * `accessKey` that is not an object whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when
- * present, an address, or a `revokes` that is not an object whose `account` and `keyId` are addresses, is pending
- * `unreadable`, with no call made; so is a ref that names none of the keys the three pairings' `reference`, `closeRef`
- * and `keySearch` write for the opening or the close (`opens`, `opened`, `closes`, `revokes`, an `accessKey` with
- * `account`, or a binding log under `AuthorizationUsed`, `ChannelClosed` or `KeyAuthorizationWitness`), and what
- * `evmStatus` reads as `unreadable`. At most four calls.
+ * The status of an opening or a close of any of the three pairings, answered as the profile `read-status` does at the
+ * coverage of the pairing whose keys the ref names. The read is `evmStatus`'s on the named logs, then, where
+ * `ref.opened` is present, one `ChannelOpened` log from `opened.address` naming the channel: on v2 its data word 3 (the
+ * salt) is `h`; on v1 the channel id recomputed from the event with salt `h` is the channel. Where `ref.opens` is
+ * present, the succeeded transaction, read by `eth_getTransactionByHash`, must be sent to the escrow and hold its open
+ * call for the channel: `open` from the payer, or `openWithPermit2` with the payer as its `from`. Where `ref.closes`
+ * is present, the succeeded transaction must be a call to that escrow whose calldata starts with one of
+ * `EVM_CLOSE_SELECTORS` and whose first argument is that channel. Where `ref.accessKey.account` is present, the
+ * succeeded receipt must also hold the account keychain's `AccessKeySpend` log naming that account, key and token.
+ * Where `ref.revokes` is present, the succeeded receipt must hold the account keychain's `KeyRevoked` log naming that
+ * account and key. A transaction that fails one of these checks (an open call for another channel, any other
+ * transaction, one sent through an ERC-4337 EntryPoint included, a call that is not the close, a missing log) is no
+ * act, and with no search for H yet answers `pending` `search-incomplete`, as `evmStatus`'s reasons do. Settled carries
+ * the highest mark reached and the receipt's block. An `opens` that is not an object whose `escrow` is an address,
+ * `channel` and `h` 32-byte hashes and `chainId` a positive integer, an `opened` that is not one whose `address` is an
+ * address, `version` `v1` or `v2`, `channel` and `h` 32-byte hashes and `chainId` a positive integer, a `closes` that
+ * is not an object whose `escrow` is an address and `channel` a 32-byte hash, an `accessKey` that is not an object
+ * whose `keyId` and `token` are addresses, `to` a 32-byte hash and `account`, when present, an address, or a `revokes`
+ * that is not an object whose `account` and `keyId` are addresses, is unreadable `unparseable`, with no call made; so
+ * is a ref that names none of the keys the three pairings' `reference`, `closeRef` and `keySearch` write for the
+ * opening or the close (`opens`, `opened`, `closes`, `revokes`, an `accessKey` with `account`, or a binding log under
+ * `AuthorizationUsed`, `ChannelClosed` or `KeyAuthorizationWitness`), and a query that is not one `status` takes. A
+ * reader that is not an object is unreadable `transport`; what `evmStatus` reads as unreadable is unreadable for the
+ * same reason. At most four calls.
  *
  * This function accepts a key of any of the three pairings. Each pairing's own `status` reads a ref only when it names
  * one of the keys that pairing writes and none of the other two pairings' keys: on `mpp/session/evm` `opens`, `closes`
  * or a binding log under `AuthorizationUsed`; on `mpp/session/tempo` `opened` or a binding log under `ChannelClosed`;
  * on `mpp/subscription/tempo` `revokes`, an `accessKey` with `account` or a binding log under
- * `KeyAuthorizationWitness`. Any other ref is pending `unreadable` there, with no call made.
+ * `KeyAuthorizationWitness`. Any other ref is unreadable `unparseable` there, with no call made.
  */
-export async function sessionStatus(ref: SessionRef & { transaction: Hex }, reader: EvmReader): Promise<SessionStatus> {
-  if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (!names(ref, ALL_READ_KEYS)) return { state: "pending", why: "unreadable" };
-  if (ref.revokes !== undefined && !readableRevokes(ref.revokes)) return { state: "pending", why: "unreadable" };
-  if (ref.opens !== undefined && !readableOpens(ref.opens)) return { state: "pending", why: "unreadable" };
-  if (ref.opened !== undefined && !readableOpened(ref.opened)) return { state: "pending", why: "unreadable" };
-  if (ref.closes !== undefined && !readableCloses(ref.closes)) return { state: "pending", why: "unreadable" };
-  if (ref.accessKey !== undefined && !readableAccessKey(ref.accessKey)) return { state: "pending", why: "unreadable" };
+export async function sessionStatus(
+  ref: SessionRef & { transaction: Hex },
+  reader: EvmReader,
+  query: EvmQuery<SessionRef & { transaction: Hex }>,
+): Promise<SessionStatus> {
+  if (!isEvmQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
+  const pairing = isObject(ref) ? PAIRINGS.find((p) => names(ref, READ_KEYS[p])) : undefined;
+  const coverage = EIP155_TEMPO_MPP[pairing ?? SESSION_EVM].coverage;
+  return evmAnswer(await readSession(ref, reader), ref, query, coverage);
+}
+
+/** What `sessionStatus` reads of the named transaction. */
+async function readSession(ref: SessionRef & { transaction: Hex }, reader: EvmReader): Promise<SessionRead> {
+  if (typeof ref !== "object" || ref === null) return unreadable("unparseable");
+  if (typeof reader !== "object" || reader === null) return unreadable("transport");
+  if (!names(ref, ALL_READ_KEYS)) return unreadable("unparseable");
+  if (ref.revokes !== undefined && !readableRevokes(ref.revokes)) return unreadable("unparseable");
+  if (ref.opens !== undefined && !readableOpens(ref.opens)) return unreadable("unparseable");
+  if (ref.opened !== undefined && !readableOpened(ref.opened)) return unreadable("unparseable");
+  if (ref.closes !== undefined && !readableCloses(ref.closes)) return unreadable("unparseable");
+  if (ref.accessKey !== undefined && !readableAccessKey(ref.accessKey)) return unreadable("unparseable");
   let seen: EvmReceipt | null = null;
   const watching: EvmReader = {
     network: reader.network,
@@ -548,7 +571,7 @@ export async function sessionStatus(ref: SessionRef & { transaction: Hex }, read
     transaction: (tx) => reader.transaction(tx),
     call: (to, data, block) => reader.call(to, data, block),
   };
-  const s = await evmStatus(ref, watching);
+  const s = await readEvm(ref, watching);
   if (s.state === "settled" && ref.opens !== undefined) return openRead(s, ref, ref.opens, reader);
   if (s.state === "settled" && ref.closes !== undefined) return closeRead(s, ref.transaction, ref.closes, reader);
   if (s.state === "settled" && ref.accessKey?.account !== undefined) {
@@ -625,16 +648,24 @@ function names(ref: SessionRef, keys: readonly ReadKey[]): boolean {
   return keys.some((k) => k(ref));
 }
 
+/** The three pairings, in the order `sessionStatus` tries their keys. */
+const PAIRINGS: readonly (keyof typeof READ_KEYS)[] = [SESSION_EVM, SESSION_TEMPO, SUBSCRIPTION];
+
 /**
- * `status` of one pairing: `sessionStatus` on a ref that names one of the keys the pairing writes (`READ_KEYS`) and
- * none of the other two pairings' keys, since `sessionStatus` reads by whichever key the ref names; any other ref is
- * pending `unreadable`, with no call made.
+ * `status` of one pairing: `sessionStatus`'s read of a ref that names one of the keys the pairing writes (`READ_KEYS`)
+ * and none of the other two pairings' keys, since `sessionStatus` reads by whichever key the ref names, answered at the
+ * pairing's coverage; any other ref, and a query that is not one `status` takes, is unreadable `unparseable`, with no
+ * call made.
  */
 function pairingStatus(pairing: keyof typeof READ_KEYS): typeof sessionStatus {
   const own = READ_KEYS[pairing];
   const others = Object.entries(READ_KEYS).flatMap(([p, keys]) => (p === pairing ? [] : keys));
-  return async (ref, reader) =>
-    isObject(ref) && names(ref, own) && !names(ref, others) ? sessionStatus(ref, reader) : { state: "pending", why: "unreadable" };
+  const coverage = EIP155_TEMPO_MPP[pairing].coverage;
+  return async (ref, reader, query) => {
+    if (!isEvmQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
+    const read = isObject(ref) && names(ref, own) && !names(ref, others) ? await readSession(ref, reader) : unreadable("unparseable");
+    return evmAnswer(read, ref, query, coverage);
+  };
 }
 
 /**
@@ -724,6 +755,7 @@ export function keySearch(ref: SessionRef, receipt: EvmReceipt, h: AtrHash): Ses
   const word = (a: Hex) => hexOf(addressWord(a));
   return {
     network: ref.network,
+    payee: ref.payee,
     accessKey: { keyId: k.keyId, token: k.token, to: k.to, account },
     transferLog: { address: k.token, topic0: TRANSFER_TOPIC, identity: "to", digest: k.to },
     search: { address: ACCOUNT_KEYCHAIN, topics: [ACCESS_KEY_SPEND_TOPIC, word(account), word(k.keyId), word(k.token)] },
@@ -862,7 +894,15 @@ async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(o) ? o : o.h;
 }
 
-async function evmReference(input: unknown): Promise<SessionRef | Refusal> {
+/**
+ * The opening's read keys, with the payee of `option`, the issued challenge the payment answers (`mppPayee`), whose
+ * refusal comes after the payment's.
+ */
+async function evmReference(input: unknown, option: MppChallenge): Promise<SessionRef | Refusal> {
+  return withPayee(await evmKeys(input), mppPayee(option));
+}
+
+async function evmKeys(input: unknown): Promise<Omit<SessionRef, "payee"> | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const o = evmOpened(presented);
@@ -1056,25 +1096,25 @@ function evmCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refusa
   if (isRefusal(p)) return p;
   const c = normalHash(channel);
   if (c === null) return refusal("mpp/credential-malformed");
-  return { network: p.network, closes: { escrow: p.escrow.toLowerCase() as Hex, channel: c as Hex } };
+  return withPayee({ network: p.network, closes: { escrow: p.escrow.toLowerCase() as Hex, channel: c as Hex } }, mppPayee(chosen));
 }
 
 /** A succeeded transaction read as an EVM session's close: its recipient and calldata, by `eth_getTransactionByHash`. */
 async function closeRead(
-  settled: SessionStatus,
+  settled: SessionRead,
   transaction: Hex,
   closes: { escrow: Hex; channel: Hex },
   reader: EvmReader,
-): Promise<SessionStatus> {
+): Promise<SessionRead> {
   let tx: Awaited<ReturnType<EvmReader["transaction"]>>;
   try {
     tx = await reader.transaction(transaction);
-  } catch {
-    return { state: "pending", why: "unreadable" };
+  } catch (e) {
+    return unreadable(rejected(e));
   }
   if (tx === null) return { state: "pending", why: "not-found" };
   const input = isObject(tx) && typeof tx.input === "string" ? bytesOf(tx.input) : undefined;
-  if (input === undefined) return { state: "pending", why: "unreadable" };
+  if (input === undefined) return unreadable("unparseable");
   const selector = input.length >= 36 ? hexOf(input.subarray(0, 4)) : undefined;
   const closing =
     tx.to !== null &&
@@ -1107,23 +1147,24 @@ function isTransactionRead(tx: unknown): boolean {
  *
  * Any other transaction is pending `open-call-not-found`, never failed. A transaction sent through an ERC-4337
  * EntryPoint is one of them: the account's calldata does not show which contract the account called; so is one whose
- * calldata is longer than `MAX_CALLDATA`, which the read does not decode. A failed read, or a transaction that is not
- * well formed (`isTransactionRead`), is pending `unreadable`. The deposit is not read.
+ * calldata is longer than `MAX_CALLDATA`, which the read does not decode. A rejected read is unreadable by its error
+ * (`rejected`), and a transaction that is not well formed (`isTransactionRead`) unreadable `unparseable`. The deposit
+ * is not read.
  */
 async function openRead(
-  settled: EvmBreadthStatus & { state: "settled" },
+  settled: SessionRead & { state: "settled" },
   ref: SessionRef & { transaction: Hex },
   opens: NonNullable<SessionRef["opens"]>,
   reader: EvmReader,
-): Promise<SessionStatus> {
+): Promise<SessionRead> {
   let tx: Awaited<ReturnType<EvmReader["transaction"]>>;
   try {
     tx = await reader.transaction(ref.transaction);
-  } catch {
-    return { state: "pending", why: "unreadable" };
+  } catch (e) {
+    return unreadable(rejected(e));
   }
   if (tx === null) return { state: "pending", why: "not-found" };
-  if (!isTransactionRead(tx)) return { state: "pending", why: "unreadable" };
+  if (!isTransactionRead(tx)) return unreadable("unparseable");
   if (!isHexBytes(tx.input, 0, MAX_CALLDATA)) return { state: "pending", why: "open-call-not-found" };
   const input = bytesOf(tx.input)!;
   const selector = input.length >= 4 ? hexOf(input.subarray(0, 4)) : undefined;
@@ -1146,19 +1187,20 @@ async function openRead(
  * `Transfer` of the call's token, of any value, from its payer (the transaction's sender for `open`, else `from`) into
  * the called contract; else `evm/no-open-call`. A transaction sent through an ERC-4337 EntryPoint is refused so: the
  * account's calldata does not show which contract the account called. A reader for another network, a ref or reader
- * that is not an object, or a ref whose `transaction` is not a 32-byte hash (with nothing read), is `evm/wrong-reader`;
+ * that is not an object, or an input whose `tx` is not a 32-byte hash (with nothing read), is `evm/wrong-reader`;
  * no receipt or no transaction is `evm/not-found`; a reverted one is `evm/reverted`; a failed read, or a malformed
  * receipt or transaction (`isTransactionRead`), is `evm/unreadable`. A transaction whose own call is not the open call,
  * or whose calldata is longer than `MAX_CALLDATA`, is `evm/no-open-call` on every read, since its calldata is its own:
  * an opening the read does not decode is refused so, as an ERC-4337 one is. A revert, and a receipt without the
  * payer's `Transfer`, are given only where the receipt's block is at or below the reader's `finalized` mark: above it,
  * or where that mark cannot be read, each is `evm/not-final`, a read to repeat, since a block above the mark can be
- * replaced by one in which the transaction succeeds or holds other logs. The mark is read only for those. At most three
- * calls.
+ * replaced by one in which the transaction succeeds or holds other logs. The mark is read only for those. The challenge
+ * is not read. At most three calls.
  */
-async function evmRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
-  if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
+async function evmRecover(input: RecoverInput<string, MppChallenge>, reader: EvmReader): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("evm/wrong-reader");
+  if (normalHash(input.tx) === null) return refusal("evm/wrong-reader");
+  const ref = { network: input.network, transaction: input.tx as Hex };
   let receipt: EvmReceipt | null;
   let tx: Awaited<ReturnType<EvmReader["transaction"]>>;
   try {
@@ -1180,10 +1222,10 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
   if (tx === null) return refusal("evm/not-found");
   if (!isTransactionRead(tx)) return refusal("evm/unreadable");
   if (!isHexBytes(tx.input, 0, MAX_CALLDATA)) return refusal("evm/no-open-call");
-  const input = bytesOf(tx.input)!;
-  const selector = input.length >= OPEN_CALL_BYTES ? hexOf(input.subarray(0, 4)) : undefined;
+  const calldata = bytesOf(tx.input)!;
+  const selector = calldata.length >= OPEN_CALL_BYTES ? hexOf(calldata.subarray(0, 4)) : undefined;
   if (tx.to === null || selector === undefined) return refusal("evm/no-open-call");
-  const args = input.subarray(4);
+  const args = calldata.subarray(4);
   const relayed = selector === OPEN_WITH_AUTHORIZATION_SELECTOR || selector === OPEN_WITH_PERMIT2_SELECTOR;
   if (selector !== OPEN_V1_SELECTOR && !relayed) return refusal("evm/no-open-call");
   const payer = relayed ? addressAt(args, 5) : (tx.from.toLowerCase() as Hex);
@@ -1203,17 +1245,17 @@ async function evmRecover(ref: { network: string; transaction: Hex }, reader: Ev
  * the TIP-20 channel reserve (TIP-1034, `TIP20_CHANNEL_RESERVE`) emits in the receipt. A v1 escrow's `ChannelOpened`
  * carries no salt, and its open call sits among the Tempo transaction's calls, which the reader does not show: a v1
  * opening, like a receipt with no such log, is `tempo/open-not-found`. Logs giving more than one salt are
- * `tempo/ambiguous`. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash (with
- * nothing read), or a reader for another network than the ref names, is `tempo/wrong-reader`; a failed read is
+ * `tempo/ambiguous`. An input or reader that is not an object, an input whose `tx` is not a 32-byte hash (with
+ * nothing read), or a reader for another network than the input names, is `tempo/wrong-reader`; a failed read is
  * `tempo/unreadable`, no receipt `tempo/not-found` and a revert `tempo/reverted`, as `readReceiptAtMark` answers. A
  * revert, `tempo/open-not-found` and `tempo/ambiguous` are given only where the receipt's block is at or below the
  * reader's `finalized` mark: above it, or where that mark cannot be read, each is `tempo/not-final`, a read to repeat,
  * since a block above the mark can be replaced by one in which the transaction succeeds or holds other logs. The mark
- * is read only for those. At most two calls.
+ * is read only for those. The challenge is not read. At most two calls.
  */
-async function tempoRecover(ref: { network: string; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || normalHash(ref.transaction) === null) return refusal("tempo/wrong-reader");
-  const receipt = await readReceiptAtMark(ref.network, ref.transaction, reader);
+async function tempoRecover(input: RecoverInput<string, MppChallenge>, reader: EvmReader): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || normalHash(input.tx) === null) return refusal("tempo/wrong-reader");
+  const receipt = await readReceiptAtMark(input.network, input.tx as Hex, reader);
   if (isRefusal(receipt)) return receipt;
   const salts = new Set<string>();
   for (const l of receipt.logs) {
@@ -1436,7 +1478,11 @@ async function tempoBound(input: unknown): Promise<AtrHash | Refusal> {
  * The read keys of the session's opening: the escrow's `ChannelOpened` naming the channel. `settleBy` is the opening
  * transaction's `validBefore`, else the challenge's `expires`, a date the pairing's filter requires.
  */
-async function tempoReference(input: unknown): Promise<SessionRef | Refusal> {
+async function tempoReference(input: unknown, option: MppChallenge): Promise<SessionRef | Refusal> {
+  return withPayee(await tempoKeys(input), mppPayee(option));
+}
+
+async function tempoKeys(input: unknown): Promise<Omit<SessionRef, "payee"> | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const o = tempoOpened(presented);
@@ -1567,11 +1613,12 @@ function tempoCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refu
   const c = normalHash(channel);
   if (c === null) return refusal("mpp/credential-malformed");
   const topic0 = p.version === "v2" ? CHANNEL_CLOSED_V2_TOPIC : CHANNEL_CLOSED_V1_TOPIC;
-  return {
+  const keys = {
     network: p.network,
-    bindingLog: { address: p.escrow, topic0, index: 1, value: c },
+    bindingLog: { address: p.escrow, topic0, index: 1 as const, value: c },
     search: { address: p.escrow, topics: [topic0, c] },
   };
+  return withPayee(keys, mppPayee(chosen));
 }
 
 /**
@@ -1704,7 +1751,11 @@ async function subscriptionBound(input: unknown): Promise<AtrHash | Refusal> {
  * `accessKey` records the key, the challenge's issued key that the key authorization authorizes (`authorizedKey`), with
  * that token and recipient for `keySearch`. Of the request it reads only the chain.
  */
-async function subscriptionReference(input: unknown): Promise<SessionRef | Refusal> {
+async function subscriptionReference(input: unknown, option: MppChallenge): Promise<SessionRef | Refusal> {
+  return withPayee(await subscriptionKeys(input), mppPayee(option));
+}
+
+async function subscriptionKeys(input: unknown): Promise<Omit<SessionRef, "payee"> | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const w = subscriptionWitness(presented);
@@ -1811,7 +1862,7 @@ function subscriptionCloseRef(chosen: MppChallenge, _channel: string, account?: 
   const key = issuedKey(p.details);
   if (isRefusal(key)) return key;
   if (!isAddress(account)) return refusal("mpp/input-malformed");
-  return { network: p.network, revokes: { account: account.toLowerCase() as Hex, keyId: key.keyId } };
+  return withPayee({ network: p.network, revokes: { account: account.toLowerCase() as Hex, keyId: key.keyId } }, mppPayee(chosen));
 }
 
 // ── The records.
@@ -1887,7 +1938,20 @@ export const sessionEvm = Object.freeze({
     boundWithin: measuringAsync(notBoundWithin),
     until: noEnd,
   }),
-}) satisfies Entry<typeof SESSION_EVM, MppCredential, SessionRef & { transaction: Hex }, EvmReader>;
+}) satisfies Entry<
+  typeof SESSION_EVM,
+  MppCredential,
+  SessionRef,
+  EvmReader,
+  MppForms & {
+    choice: SessionChoice;
+    unsigned: SessionUnsigned;
+    landed: { transaction: Hex };
+    network: string;
+    query: EvmQuery<SessionRef & { transaction: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 /**
  * Who broadcasts a Tempo session payment: the seller's server, every payment the session takes, as
@@ -1929,7 +1993,20 @@ export const sessionTempo = Object.freeze({
     boundWithin: measuringAsync(tempoBoundWithin),
     until: noEnd,
   }),
-}) satisfies Entry<typeof SESSION_TEMPO, MppCredential, SessionRef & { transaction: Hex }, EvmReader>;
+}) satisfies Entry<
+  typeof SESSION_TEMPO,
+  MppCredential,
+  SessionRef,
+  EvmReader,
+  MppForms & {
+    choice: SessionChoice;
+    unsigned: SessionUnsigned;
+    landed: { transaction: Hex };
+    network: string;
+    query: EvmQuery<SessionRef & { transaction: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 /**
  * `mpp/subscription/tempo`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
@@ -1978,4 +2055,18 @@ export const subscriptionTempo = Object.freeze({
     "transfer, <transaction>, made under that key: the account keychain's AccessKeySpend event in it names the payer's " +
     "account, the key and the token. This does not show that amount, period, payee, asset or timing match the ATR's " +
     "content.",
-}) satisfies Entry<typeof SUBSCRIPTION, MppCredential, SessionRef & { transaction: Hex }, EvmReader>;
+}) satisfies Entry<
+  typeof SUBSCRIPTION,
+  MppCredential,
+  SessionRef,
+  EvmReader,
+  MppForms & {
+    choice: SessionChoice;
+    unsigned: KeyAuthorizationUnsigned;
+    landed: { transaction: Hex };
+    network: string;
+    query: EvmQuery<SessionRef & { transaction: Hex }>;
+    answer: EvmBreadthStatus;
+    receipt: EvmReceipt;
+  }
+>;

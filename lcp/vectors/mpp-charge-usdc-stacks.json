@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK. A credential's transaction is read as a Stacks node (stacks-core 4.0.5) decodes it; agreedRefusals gives the refusals that reading answers. The status read takes the origin's confirmed nonce before the transaction, so nonce-used is answered only from a nonce already at or above the reference's before the lookup found nothing (SIP-005: a transaction is valid only at its origin's next nonce). The confirmed nonce read answers the nonce with the height of the API's chain tip read after it (GET /extended's chain_tip.block_height), so the nonce read is at or below that height, and a transaction read that finds nothing answers notFound, and one that finds it unmined answers its status, each with the height read before it, so an empty or dropped lookup shows the transaction unmined only up to its own height: nonce-used needs it at or above the nonce read's. An unmined row that names no height reads as null, which is never nonce-used. Rows with txAnswer give the transaction read's answer as is: values of none of its documented shapes, which status reads as pending unreadable and recover refuses stacks/unreadable. recover reads a failed transaction's tenure and the tip's as status does: it refuses stacks/not-success where status gives the failure bitcoin finality, the tip's tenure at least 256358, two above block 9021832's, and stacks/not-final below that or where a tenure read rejects.",
+ "about": "Vectors for mpp/charge/usdc/stacks. R_S is the usdc draft's A.3 request (draft-usdc-charge-00, blob ec7fc1868b) without description, externalId, feePayer and feePayerAddress. The transaction is built at test time with @stacks/transactions 7.6.0 from these inputs, signed by the private key whose scalar is 1 (compressed); its length, bytes and txid were computed with stacks.js txid(), noble sha512_256, Python hashlib and OpenSSL, which agreed. The fixture transaction L's argument hexes are those of that transaction (Clarity serialization: uint, the sender and recipient standard principals, (some H)); block 9021832 at tenure 256356 is a Stacks mainnet block. The reference's nonce is a decimal string (references are JSON). Integers in L are decimal strings, read as bigints. M4's wireHex is that transaction's bytes, whose SHA-512/256 is the txid, for buyer-side tests without the SDK. A credential's transaction is read as a Stacks node (stacks-core 4.0.5) decodes it; agreedRefusals gives the refusals that reading answers. The status read takes the origin's confirmed nonce before the transaction, so nonce-used is answered only from a nonce already at or above the reference's before the lookup found nothing (SIP-005: a transaction is valid only at its origin's next nonce). The confirmed nonce read answers the nonce with the height of the API's chain tip read after it (GET /extended's chain_tip.block_height), so the nonce read is at or below that height, and a transaction read that finds nothing answers notFound, and one that finds it unmined answers its status, each with the height read before it, so an empty or dropped lookup shows the transaction unmined only up to its own height: nonce-used needs it at or above the nonce read's. An unmined row that names no height reads as null, which is never nonce-used. Rows with txAnswer give the transaction read's answer as is: values of none of its documented shapes, which status reads as pending unreadable and recover refuses stacks/unreadable. recover reads a failed transaction's tenure and the tip's as status does: it refuses stacks/not-success where status gives the failure bitcoin finality, the tip's tenure at least 256358, two above block 9021832's, and stacks/not-final below that or where a tenure read rejects. The status rows of M4b and the plant are read with the act payment at the finality the row gives, bitcoin where it gives none, and answer as the profile read-status gives them: since the read holds no search for H, an aborted, skipped or other transaction at the final mark, a nonce taken by another act, and an unmined, dropped or unknown transaction answer pending search-incomplete, not failed or not-found, and an aborted transaction below the final mark pending below-mark (rules 17, 23, 24 and 26).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "realm": "api.seller.example",
@@ -93,36 +93,46 @@
     "tip": "256358",
     "expect": {
      "state": "settled",
+     "transaction": "0x4621fc1b170fb322aa8572f6ee51c44981596188c2b0f2f31753d96fffad6baa",
+     "position": "9021832",
      "finality": "bitcoin",
-     "blockHeight": "9021832"
+     "foreign": []
     }
    },
    {
     "case": "L, tip tenure 256357",
+    "finality": "block",
     "tip": "256357",
     "expect": {
      "state": "settled",
+     "transaction": "0x4621fc1b170fb322aa8572f6ee51c44981596188c2b0f2f31753d96fffad6baa",
+     "position": "9021832",
      "finality": "block",
-     "blockHeight": "9021832"
+     "foreign": []
     }
    },
    {
     "case": "L, tip tenure read rejects",
+    "finality": "block",
     "tip": "reader-error",
     "expect": {
      "state": "settled",
+     "transaction": "0x4621fc1b170fb322aa8572f6ee51c44981596188c2b0f2f31753d96fffad6baa",
+     "position": "9021832",
      "finality": "block",
-     "blockHeight": "9021832"
+     "foreign": []
     }
    },
    {
     "case": "L with abort_by_response",
     "status": "abort_by_response",
     "expect": {
-     "state": "failed",
-     "why": "abort-by-response",
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "0x4621fc1b170fb322aa8572f6ee51c44981596188c2b0f2f31753d96fffad6baa",
+     "position": "9021832",
      "finality": "block",
-     "blockHeight": "9021832"
+     "foreign": []
     }
    },
    {
@@ -130,40 +140,36 @@
     "status": "abort_by_response",
     "tip": "256358",
     "expect": {
-     "state": "failed",
-     "why": "abort-by-response",
-     "finality": "bitcoin",
-     "blockHeight": "9021832"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "L with problematic_skipped",
     "status": "problematic_skipped",
     "expect": {
-     "state": "failed",
-     "why": "skipped",
-     "finality": "block",
-     "blockHeight": "9021832"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "L with sender nonce 1",
     "senderNonce": "1",
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument",
-     "finality": "block",
-     "blockHeight": "9021832"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "L with memo SHA-256(abd)",
     "memo": "0x0a0200000020a52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument",
-     "finality": "block",
-     "blockHeight": "9021832"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -174,7 +180,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "mempool"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -189,7 +196,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "dropped"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -203,9 +211,9 @@
      "height": "9021840"
     },
     "expect": {
-     "state": "failed",
-     "why": "nonce-used",
-     "finality": "block"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -220,7 +228,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -231,8 +240,9 @@
     },
     "confirmedNonce": "reader-error",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -243,8 +253,9 @@
     },
     "confirmedNonce": "number",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    },
    {
@@ -253,16 +264,19 @@
     "tip": "256358",
     "expect": {
      "state": "settled",
+     "transaction": "0x4621fc1b170fb322aa8572f6ee51c44981596188c2b0f2f31753d96fffad6baa",
+     "position": "9021832",
      "finality": "bitcoin",
-     "blockHeight": "9021832"
+     "foreign": []
     }
    },
    {
     "case": "an answer that is a bare string",
     "txAnswer": "success",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    },
    {
@@ -283,8 +297,9 @@
      }
     },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    },
    {
@@ -308,8 +323,9 @@
      }
     },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    },
    {
@@ -328,8 +344,9 @@
      }
     },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    },
    {
@@ -338,24 +355,27 @@
      "mined": false
     },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    },
    {
     "case": "the transaction read rejects with ReaderError",
     "tx": "reader-error",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
     "case": "a reader for stacks:1",
     "readerNetwork": "stacks:1",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "chain-mismatch",
+     "foreign": []
     }
    },
    {
@@ -370,7 +390,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -386,7 +407,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "dropped"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -401,9 +423,9 @@
      "height": "9021840"
     },
     "expect": {
-     "state": "failed",
-     "why": "nonce-used",
-     "finality": "block"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ],
@@ -504,10 +526,9 @@
   "status": "abort_by_post_condition",
   "tip": "256358",
   "expectStatus": {
-   "state": "failed",
-   "why": "abort-by-post-condition",
-   "finality": "bitcoin",
-   "blockHeight": "9021832"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   },
   "expectRecover": {
    "refused": true,

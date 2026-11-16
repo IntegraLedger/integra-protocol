@@ -33,7 +33,7 @@ describe("NEAR with borsh and without near-api-js", () => {
     if ("refused" in p) throw new Error(p.code);
     expect(p.payload.signedDelegateAction).toBe(V.V2.expectSignedDelegateAction);
     expect(await exactNear.bound(p)).toBe(V.V2.expectBound);
-    expect(await exactNear.reference(p)).toEqual(V.V2.expectReference);
+    expect(await exactNear.reference(p, V.fixed.O)).toEqual(V.V2.expectReference);
     const c = nearCarrier(V.V2.expectSignedDelegateAction);
     if ("refused" in c) throw new Error(c.code);
     expect([c.h, c.payer, c.publicKey]).toEqual([V.fixed.H, V.fixed.payer, V.fixed.publicKey]);

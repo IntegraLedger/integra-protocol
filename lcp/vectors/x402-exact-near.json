@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; row 28, V1's with two parts changed, the receiver's first bytes and the count of actions; row 29, V1's with two parts changed, the sender, written as 64 A's, and the count of actions; and row 30, V1's with two parts changed, the receiver, written as -usdc.testnet, and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. A lapsed row with a ref member is read with V3's ref, each member it names in place of the ref's own. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64.",
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; row 28, V1's with two parts changed, the receiver's first bytes and the count of actions; row 29, V1's with two parts changed, the sender, written as 64 A's, and the count of actions; and row 30, V1's with two parts changed, the receiver, written as -usdc.testnet, and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. A lapsed row with a ref member is read with V3's ref, each member it names in place of the ref's own. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64. Status rows are read with the act payment at the finality the row gives, final where it gives none, and answer as the profile read-status gives them: since the read holds no search for H and does not read the access key's nonce, a failed token receipt, a delegate that is not the instrument and a transaction no relayer knows answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -36,6 +36,7 @@
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "near:testnet",
+   "payee": "merchant.testnet",
    "asset": "usdc.testnet",
    "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
    "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
@@ -90,6 +91,7 @@
   ],
   "ref": {
    "network": "near:testnet",
+   "payee": "merchant.testnet",
    "asset": "usdc.testnet",
    "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
    "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
@@ -124,11 +126,14 @@
     },
     "expect": {
      "state": "settled",
-     "finality": "final"
+     "transaction": "7XsZtC4Hj3Y1k2v3",
+     "finality": "final",
+     "foreign": []
     }
    },
    {
     "case": "receipts succeed, status EXECUTED_OPTIMISTIC",
+    "finality": "optimistic",
     "outcome": {
      "status": "EXECUTED_OPTIMISTIC",
      "delegate": {
@@ -152,11 +157,14 @@
     },
     "expect": {
      "state": "settled",
-     "finality": "optimistic"
+     "transaction": "7XsZtC4Hj3Y1k2v3",
+     "finality": "optimistic",
+     "foreign": []
     }
    },
    {
     "case": "receipts succeed, status EXECUTED",
+    "finality": "optimistic",
     "outcome": {
      "status": "EXECUTED",
      "delegate": {
@@ -180,7 +188,9 @@
     },
     "expect": {
      "state": "settled",
-     "finality": "optimistic"
+     "transaction": "7XsZtC4Hj3Y1k2v3",
+     "finality": "optimistic",
+     "foreign": []
     }
    },
    {
@@ -203,8 +213,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "transfer-failed"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -231,8 +242,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -240,15 +252,17 @@
     "outcome": null,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "a ReaderError",
     "outcome": "reader-error",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -275,8 +289,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; its arguments' SHA-256 is 0x1eb14eb8f48e1e3f6bda1de1e8e80716189ca8ea1e8faab7e35878f4a60f6491"
    },
@@ -304,8 +319,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action"
    },
@@ -333,8 +349,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action"
    },
@@ -366,8 +383,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; NEP-366: the delegate action's receiver_id is the contract its actions call"
    },
@@ -395,8 +413,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; NEP-141's ft_transfer_call is another method, which calls the receiver's ft_on_transfer"
    },
@@ -424,8 +443,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; the arguments differ, so their SHA-256 differs from the ref's argsDigest"
    }
@@ -600,8 +620,9 @@
    ]
   },
   "expect": {
-   "state": "failed",
-   "why": "transfer-failed"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "agreedRefusals": {

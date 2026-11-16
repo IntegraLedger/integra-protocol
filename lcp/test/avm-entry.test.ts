@@ -107,14 +107,14 @@ async function check(rows: Case[], source: string) {
     if (row.expect.startsWith("avm/")) {
       const refused = { refused: true, code: row.expect };
       expect(await exactAvm.bound(p), row.case).toEqual(refused);
-      expect(await exactAvm.reference(p), row.case).toEqual(refused);
+      expect(await exactAvm.reference(p, O), row.case).toEqual(refused);
       continue;
     }
     expect(await exactAvm.bound(p), row.case).toBe(H);
-    const ref = await exactAvm.reference(p);
-    expect(ref, row.case).toEqual({ network: O.network, txid: row.expect, lastValid: V.V3.expectReference.lastValid });
+    const ref = await exactAvm.reference(p, O);
+    expect(ref, row.case).toEqual({ network: O.network, txid: row.expect, lastValid: V.V3.expectReference.lastValid, payee: O.payTo });
     if ("refused" in ref) continue;
-    expect(await exactAvm.recover({ network: ref.network, txid: ref.txid }, readerHolding(row.expect)), row.case).toBe(H);
+    expect(await exactAvm.recover({ network: ref.network, tx: ref.txid, option: O }, readerHolding(row.expect)), row.case).toBe(H);
   }
 }
 async function completedPayment() {
@@ -449,7 +449,7 @@ describe("a genesis id that begins with the byte-order mark", () => {
     const entry = Buffer.from(payment.payload.paymentGroup[1]!, "base64");
     expect(entry.includes(Buffer.from([0xd9, 201, 0xef, 0xbb, 0xbf]))).toBe(true);
     expect(await exactAvm.bound(payment)).toBe(H);
-    expect(await exactAvm.reference(payment)).toEqual({ network: O.network, txid, lastValid: V.V3.expectReference.lastValid });
-    expect(await exactAvm.recover({ network: O.network, txid }, readerHolding(txid))).toBe(H);
+    expect(await exactAvm.reference(payment, O)).toEqual({ network: O.network, txid, lastValid: V.V3.expectReference.lastValid, payee: O.payTo });
+    expect(await exactAvm.recover({ network: O.network, tx: txid, option: O }, readerHolding(txid))).toBe(H);
   });
 });

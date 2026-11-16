@@ -1,9 +1,11 @@
 // The registry's type test. Every pairing in BINDINGS is a registry entry: its data, plain values under PairingData,
-// read here with no cast, and its codec, typed per family. The compile-time half is the `satisfies` lines below, which
-// `tsc -p tsconfig.test.json` checks: each codec satisfies Entry with its own family's reader, no codec satisfies it
-// with another family's reader, and no removed id is a PairingId. The run-time half holds each datum to its member's
-// values, the data to its own rules, CARRIER to the entries' carrier datum, `broadcasts` to the broadcaster vectors,
-// and the root's bounds to their values.
+// read here with no cast, and its codec, typed per family. The compile-time half is checked by
+// `tsc -p tsconfig.test.json`: each codec satisfies Entry with its own family's types, and every pairing in BINDINGS
+// is named once; no codec satisfies it with another family's reader; no removed id is a PairingId; a floor admits no
+// negative; and a function generic over Entry calls every member with no cast. The run-time half holds OWN to
+// BINDINGS, runs that function on three entries, and holds each datum to its member's values, the data to its own
+// rules, CARRIER to the entries' carrier datum, `broadcasts` to the broadcaster vectors, and the root's bounds to their
+// values.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { paymentRequest } from "../src/ack.js";
@@ -16,16 +18,29 @@ import { exactCardano, type CardanoReader, type CardanoRef } from "../src/cardan
 import { exactCasper, type CasperReader, type CasperRef } from "../src/casper.js";
 import { exactCcd, type CcdReader, type CcdRef } from "../src/ccd.js";
 import type { AtrHash, Json } from "../src/core.js";
-import type { EvmReader, EvmRef, Hex } from "../src/evm.js";
+import type { Broadcaster } from "../src/internal/broadcaster.js";
+import type { RecoverInput } from "../src/internal/read.js";
+import type { ChannelKind } from "../src/internal/registry.js";
+import type { Eip3009Ref, EvmReader, EvmRef, Hex } from "../src/evm.js";
 import { exactHedera, exactHederaExecutor, type ExecutorRef, type HederaReader, type HederaRef } from "../src/hedera.js";
 import * as root from "../src/index.js";
-import { BINDINGS, type Coverage, type EndpointKind, type Entry, type PairingData, type PairingId } from "../src/index.js";
+import {
+  BINDINGS,
+  isRefusal,
+  type AgreementData,
+  type Coverage,
+  type EndpointKind,
+  type Entry,
+  type Family,
+  type PairingData,
+  type PairingId,
+  type Refusal,
+} from "../src/index.js";
 import type { AptosPaymentPayload } from "../src/internal/aptos.js";
 import type { AvmPaymentPayload } from "../src/internal/avm.js";
 import type { CardanoPaymentPayload } from "../src/internal/cardano.js";
 import type { CasperPaymentPayload } from "../src/internal/casper.js";
 import type { CcdPaymentPayload } from "../src/internal/ccd.js";
-import type { eip3009Status } from "../src/internal/evm.js";
 import type { ExecutorPaymentPayload, HederaPaymentPayload } from "../src/internal/hedera.js";
 import type { NearPayment } from "../src/internal/near.js";
 import type { PolkadotPaymentPayload } from "../src/internal/polkadot.js";
@@ -36,7 +51,7 @@ import type { TronPayment } from "../src/internal/tron.js";
 import type { TvmPayment } from "../src/internal/tvm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "../src/internal/x402-batch-settlement.js";
 import type { XrplCloseRef } from "../src/internal/xrpl-session.js";
-import type { XrplPaymentPayload, XrplReader, XrplRef } from "../src/internal/xrpl.js";
+import type { XrplNetwork, XrplPaymentPayload, XrplQuery, XrplReader, XrplRef, XrplStatus } from "../src/internal/xrpl.js";
 import { chargeLightning, sessionLightning, type LnRef } from "../src/lightning.js";
 import {
   CARRIER,
@@ -58,13 +73,16 @@ import {
   sessionXrpl,
   subscriptionStripe,
   subscriptionTempo,
+  type MppChallenge,
   type MppCredential,
 } from "../src/mpp.js";
-import { carrierOf } from "../src/mpp-challenge.js";
+import { carrierOf, type MppForms } from "../src/mpp-challenge.js";
+import type { XrplChargeChoice, XrplChargeUnsigned } from "../src/mpp-xrpl.js";
+import type { RailSessionChoice, XrplSessionUnsigned } from "../src/mpp-session-rails.js";
 import type { SessionRef } from "../src/mpp-session.js";
 import { exactNear, type NearReader, type NearRef } from "../src/near.js";
 import { exactPolkadotRemark, type PolkadotReader, type PolkadotRef } from "../src/polkadot.js";
-import { exactStarknet, type Felt, type StarknetReader, type StarknetRef } from "../src/starknet.js";
+import { exactStarknet, type StarknetReader, type StarknetRef } from "../src/starknet.js";
 import { exactSui, type SuiReader, type SuiRef } from "../src/sui.js";
 import { exactTronMemo, type TronReader, type TronRef } from "../src/tron.js";
 import { exactTvm, type TvmReader, type TvmRef } from "../src/tvm.js";
@@ -79,78 +97,126 @@ import { rowsOf } from "./rows.js";
 
 // ── Compile time: each codec satisfies Entry with its own family's types.
 
-type BreadthRef = EvmRef & { transaction: Hex };
-void (exactEip3009 satisfies Entry<"x402/exact/eip155/eip3009", Eip3009Payment, Parameters<typeof eip3009Status>[0], EvmReader>);
-void (exactPermit2 satisfies Entry<"x402/exact/eip155/permit2", PaymentPayload, BreadthRef, EvmReader>);
-void (uptoPermit2 satisfies Entry<"x402/upto/eip155/permit2", PaymentPayload, BreadthRef, EvmReader>);
-void (exactErc7710 satisfies Entry<"x402/exact/eip155/erc7710", PaymentPayload, EvmRef, never>);
-void (exactErc7710Salt satisfies Entry<"x402/exact/eip155/erc7710-salt", PaymentPayload, BreadthRef, EvmReader>);
-void (authCaptureEip3009 satisfies Entry<"x402/auth-capture/eip155/eip3009", PaymentPayload, BreadthRef, EvmReader>);
-void (authCapturePermit2 satisfies Entry<"x402/auth-capture/eip155/permit2", PaymentPayload, BreadthRef, EvmReader>);
-void (batchEvm satisfies Entry<"x402/batch-settlement/eip155", BatchPaymentPayload, BreadthRef, EvmReader>);
-void (batchSvm satisfies Entry<"x402/batch-settlement/solana", BatchPaymentPayload, SvmRef & { transaction: string }, SvmReader>);
-void (batchCloudflare satisfies Entry<"x402/batch-settlement/cloudflare", CloudflarePaymentPayload, never, never>);
-void (exactAvm satisfies Entry<"x402/exact/algorand", AvmPaymentPayload, AvmRef, AvmReader>);
-void (exactAptos satisfies Entry<"x402/exact/aptos", AptosPaymentPayload, AptosRef, AptosReader>);
-void (exactCardano satisfies Entry<"x402/exact/cardano", CardanoPaymentPayload, CardanoRef, CardanoReader>);
-void (exactCasper satisfies Entry<"x402/exact/casper", CasperPaymentPayload, CasperRef & { transaction: string; h: AtrHash }, CasperReader>);
-void (exactCcd satisfies Entry<"x402/exact/ccd", CcdPaymentPayload, CcdRef & { transaction: string; h: AtrHash }, CcdReader>);
-void (exactHedera satisfies Entry<"x402/exact/hedera", HederaPaymentPayload, HederaRef, HederaReader>);
-void (exactHederaExecutor satisfies Entry<"x402/exact/hedera/transfer-executor", ExecutorPaymentPayload, ExecutorRef & { transaction: string }, HederaReader>);
-void (exactNear satisfies Entry<"x402/exact/near", NearPayment, NearRef & { transaction: string }, NearReader>);
-void (exactPolkadotRemark satisfies Entry<"x402/exact/polkadot/lcp-assets-remark", PolkadotPaymentPayload, PolkadotRef & { h: AtrHash; transaction: string }, PolkadotReader>);
-void (exactSvm satisfies Entry<"x402/exact/solana", SvmPaymentPayload, SvmRef & { transaction: string }, SvmReader>);
-void (uptoSvm satisfies Entry<"x402/upto/solana", UptoSvmPaymentPayload, SvmRef & { transaction: string }, SvmReader>);
-void (exactStarknet satisfies Entry<"x402/exact/starknet", StarknetPayment, StarknetRef & { transaction: Felt }, StarknetReader>);
-void (exactSui satisfies Entry<"x402/exact/sui", SuiPaymentPayload, SuiRef & { h: AtrHash }, SuiReader>);
-void (exactTronMemo satisfies Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TronReader>);
-void (exactTvm satisfies Entry<"x402/exact/tvm", TvmPayment, TvmRef, TvmReader>);
-void (exactXrpl satisfies Entry<"x402/exact/xrpl", XrplPaymentPayload, XrplRef, XrplReader>);
-void (evmAuthorization satisfies Entry<"mpp/charge/evm/authorization", MppCredential, BreadthRef, EvmReader>);
-void (evmPermit2 satisfies Entry<"mpp/charge/evm/permit2", MppCredential, BreadthRef, EvmReader>);
-void (evmTransaction satisfies Entry<"mpp/charge/evm/transaction", MppCredential, EvmRef & { transaction: Hex; asset: Hex }, EvmReader>);
-void (evmHash satisfies Entry<"mpp/charge/evm/hash", MppCredential, EvmRef & { transaction: Hex; asset: Hex }, EvmReader>);
-void (sessionEvm satisfies Entry<"mpp/session/evm", MppCredential, SessionRef & { transaction: Hex }, EvmReader>);
-void (sessionTempo satisfies Entry<"mpp/session/tempo", MppCredential, SessionRef & { transaction: Hex }, EvmReader>);
-void (subscriptionTempo satisfies Entry<"mpp/subscription/tempo", MppCredential, SessionRef & { transaction: Hex }, EvmReader>);
-void (chargeLightning satisfies Entry<"mpp/charge/lightning", MppCredential, LnRef, never>);
-void (sessionLightning satisfies Entry<"mpp/session/lightning", MppCredential, LnRef, never>);
-void (chargeSolana satisfies Entry<"mpp/charge/solana", MppCredential, SvmRef & { transaction: string }, SvmReader>);
-void (chargeXrpl satisfies Entry<"mpp/charge/xrpl", MppCredential, XrplRef, XrplReader>);
-void (chargeNearIntents satisfies Entry<"mpp/charge/nearintents", MppCredential, never, never>);
-void (sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "expect"> | XrplCloseRef, XrplReader>);
-void (chargeCard satisfies Entry<"mpp/charge/card", MppCredential, never, never>);
-void (chargeStripe satisfies Entry<"mpp/charge/stripe", MppCredential, never, never>);
-void (subscriptionStripe satisfies Entry<"mpp/subscription/stripe", MppCredential, never, never>);
-void (chargeUsdcEvm satisfies Entry<"mpp/charge/usdc/evm", MppCredential, BreadthRef, EvmReader>);
-void (chargeUsdcSolana satisfies Entry<"mpp/charge/usdc/solana", MppCredential, SvmRef & { transaction: string }, SvmReader>);
-void (chargeUsdcStacks satisfies Entry<"mpp/charge/usdc/stacks", MppCredential, StacksRef & { transaction: Hex; h: AtrHash }, StacksReader>);
-void (chargeUsdcGateway satisfies Entry<"mpp/charge/usdc/gateway", MppCredential, never, never>);
-void (paymentRequest satisfies Entry<"ack/payment-request", Json, never, never>);
-void (delegated satisfies Entry<"acp/checkout/delegated", AcpPresented, never, never>);
-void (undelegated satisfies Entry<"acp/checkout/undelegated", AcpPresented, never, never>);
-void (checkoutMandate satisfies Entry<"ap2/checkout-mandate", Ap2Presented, never, never>);
-void (visaTap satisfies Entry<"card/visa-tap", TapPresented, never, never>);
-void (viImmediate satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never>);
-void (viAutonomous satisfies Entry<"card/mastercard-vi/autonomous", ViAutonomous, never, never>);
-void (sellerReference satisfies Entry<"card/seller-reference", never, never, never>);
-void (ap2Mandate satisfies Entry<"ucp/checkout/ap2-mandate", Ap2Presented, never, never>);
-void (unsigned satisfies Entry<"ucp/checkout/unsigned", Ap2Presented, never, never>);
-void (bookingAp2Mandate satisfies Entry<"ucp/booking/ap2-mandate", Ap2Presented, never, never>);
-void (bookingUnsigned satisfies Entry<"ucp/booking/unsigned", Ap2Presented, never, never>);
+/** A member's function type, where the entry has the member. */
+type Member<E, K extends string> = E extends { readonly [k in K]?: infer M } ? NonNullable<M> : never;
+/** A member's parameters, where the entry has the member; never where it has none. */
+type ParamsOf<E, K extends string> = Member<E, K> extends (...a: infer A) => unknown ? A : never;
+/** What a member gives, awaited, with its refusal left out. */
+type GivesOf<E, K extends string> = Member<E, K> extends (...a: never[]) => infer R ? Exclude<Awaited<R>, Refusal> : never;
 
-// ── Compile time: no codec satisfies Entry with another family's reader.
+/** The family descriptor an entry's own members state, so that each line below names only Presented, Ref and Reader. */
+type Own<E> = {
+  doc: ParamsOf<E, "read">[0];
+  offered: GivesOf<E, "read">;
+  placedIn: ParamsOf<E, "advertise">[0];
+  offer: ParamsOf<E, "advertise">[3];
+  rest: ParamsOf<E, "advertise"> extends [unknown, unknown, unknown, unknown, ...infer R] ? R : never;
+  advertised: GivesOf<E, "advertise">;
+  choice: ParamsOf<E, "build"> extends [infer C, ...unknown[]] ? C : never;
+  unsigned: GivesOf<E, "build">;
+  option: ParamsOf<E, "reference"> extends [unknown, infer O, ...unknown[]] ? O : never;
+  landed: ParamsOf<E, "status"> extends [infer L, ...unknown[]] ? L : never;
+  network: ParamsOf<E, "recover"> extends [RecoverInput<infer N, unknown>, ...unknown[]] ? N : never;
+  query: ParamsOf<E, "status"> extends [unknown, unknown, infer Q] ? Q : never;
+  answer: Member<E, "status"> extends (...a: never[]) => Promise<infer A> ? A : never;
+  receipt: ParamsOf<E, "keySearch"> extends [unknown, infer T, ...unknown[]] ? T : never;
+};
 
+/**
+ * Every pairing in BINDINGS, by its id, with the Presented, Ref and Reader of its family: `Ref` is what its `reference`
+ * gives, and only a pairing with no `status` takes `never` for `Reader`, and for `Ref` where it has no `reference`. A
+ * pairing missing here, or one named twice, does not compile; the run below holds these to BINDINGS.
+ */
+const OWN = {
+  "x402/exact/eip155/eip3009": exactEip3009 satisfies Entry<"x402/exact/eip155/eip3009", Eip3009Payment, Eip3009Ref, EvmReader, Own<typeof exactEip3009>>,
+  "x402/exact/eip155/permit2": exactPermit2 satisfies Entry<"x402/exact/eip155/permit2", PaymentPayload, EvmRef, EvmReader, Own<typeof exactPermit2>>,
+  "x402/upto/eip155/permit2": uptoPermit2 satisfies Entry<"x402/upto/eip155/permit2", PaymentPayload, EvmRef, EvmReader, Own<typeof uptoPermit2>>,
+  "x402/exact/eip155/erc7710": exactErc7710 satisfies Entry<"x402/exact/eip155/erc7710", PaymentPayload, EvmRef, never, Own<typeof exactErc7710>>,
+  "x402/exact/eip155/erc7710-salt": exactErc7710Salt satisfies Entry<"x402/exact/eip155/erc7710-salt", PaymentPayload, EvmRef, EvmReader, Own<typeof exactErc7710Salt>>,
+  "x402/auth-capture/eip155/eip3009": authCaptureEip3009 satisfies Entry<"x402/auth-capture/eip155/eip3009", PaymentPayload, EvmRef, EvmReader, Own<typeof authCaptureEip3009>>,
+  "x402/auth-capture/eip155/permit2": authCapturePermit2 satisfies Entry<"x402/auth-capture/eip155/permit2", PaymentPayload, EvmRef, EvmReader, Own<typeof authCapturePermit2>>,
+  "x402/batch-settlement/eip155": batchEvm satisfies Entry<"x402/batch-settlement/eip155", BatchPaymentPayload, EvmRef, EvmReader, Own<typeof batchEvm>>,
+  "x402/batch-settlement/solana": batchSvm satisfies Entry<"x402/batch-settlement/solana", BatchPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof batchSvm>>,
+  "x402/batch-settlement/cloudflare": batchCloudflare satisfies Entry<"x402/batch-settlement/cloudflare", CloudflarePaymentPayload, never, never, Own<typeof batchCloudflare>>,
+  "x402/exact/algorand": exactAvm satisfies Entry<"x402/exact/algorand", AvmPaymentPayload, AvmRef, AvmReader, Own<typeof exactAvm>>,
+  "x402/exact/aptos": exactAptos satisfies Entry<"x402/exact/aptos", AptosPaymentPayload, AptosRef, AptosReader, Own<typeof exactAptos>>,
+  "x402/exact/cardano": exactCardano satisfies Entry<"x402/exact/cardano", CardanoPaymentPayload, CardanoRef, CardanoReader, Own<typeof exactCardano>>,
+  "x402/exact/casper": exactCasper satisfies Entry<"x402/exact/casper", CasperPaymentPayload, CasperRef, CasperReader, Own<typeof exactCasper>>,
+  "x402/exact/ccd": exactCcd satisfies Entry<"x402/exact/ccd", CcdPaymentPayload, CcdRef, CcdReader, Own<typeof exactCcd>>,
+  "x402/exact/hedera": exactHedera satisfies Entry<"x402/exact/hedera", HederaPaymentPayload, HederaRef, HederaReader, Own<typeof exactHedera>>,
+  "x402/exact/hedera/transfer-executor": exactHederaExecutor satisfies Entry<"x402/exact/hedera/transfer-executor", ExecutorPaymentPayload, ExecutorRef, HederaReader, Own<typeof exactHederaExecutor>>,
+  "x402/exact/near": exactNear satisfies Entry<"x402/exact/near", NearPayment, NearRef, NearReader, Own<typeof exactNear>>,
+  "x402/exact/polkadot/lcp-assets-remark": exactPolkadotRemark satisfies Entry<"x402/exact/polkadot/lcp-assets-remark", PolkadotPaymentPayload, PolkadotRef, PolkadotReader, Own<typeof exactPolkadotRemark>>,
+  "x402/exact/solana": exactSvm satisfies Entry<"x402/exact/solana", SvmPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof exactSvm>>,
+  "x402/upto/solana": uptoSvm satisfies Entry<"x402/upto/solana", UptoSvmPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof uptoSvm>>,
+  "x402/exact/starknet": exactStarknet satisfies Entry<"x402/exact/starknet", StarknetPayment, StarknetRef, StarknetReader, Own<typeof exactStarknet>>,
+  "x402/exact/sui": exactSui satisfies Entry<"x402/exact/sui", SuiPaymentPayload, SuiRef, SuiReader, Own<typeof exactSui>>,
+  "x402/exact/tron/lcp-trc20-memo": exactTronMemo satisfies Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TronReader, Own<typeof exactTronMemo>>,
+  "x402/exact/tvm": exactTvm satisfies Entry<"x402/exact/tvm", TvmPayment, TvmRef, TvmReader, Own<typeof exactTvm>>,
+  "x402/exact/xrpl": exactXrpl satisfies Entry<"x402/exact/xrpl", XrplPaymentPayload, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof exactXrpl>>,
+  "mpp/charge/evm/authorization": evmAuthorization satisfies Entry<"mpp/charge/evm/authorization", MppCredential, EvmRef, EvmReader, Own<typeof evmAuthorization>>,
+  "mpp/charge/evm/permit2": evmPermit2 satisfies Entry<"mpp/charge/evm/permit2", MppCredential, EvmRef, EvmReader, Own<typeof evmPermit2>>,
+  "mpp/charge/evm/transaction": evmTransaction satisfies Entry<"mpp/charge/evm/transaction", MppCredential, EvmRef & { asset: Hex }, EvmReader, Own<typeof evmTransaction>>,
+  "mpp/charge/evm/hash": evmHash satisfies Entry<"mpp/charge/evm/hash", MppCredential, EvmRef & { asset: Hex }, EvmReader, Own<typeof evmHash>>,
+  "mpp/session/evm": sessionEvm satisfies Entry<"mpp/session/evm", MppCredential, SessionRef, EvmReader, Own<typeof sessionEvm>>,
+  "mpp/session/tempo": sessionTempo satisfies Entry<"mpp/session/tempo", MppCredential, SessionRef, EvmReader, Own<typeof sessionTempo>>,
+  "mpp/subscription/tempo": subscriptionTempo satisfies Entry<"mpp/subscription/tempo", MppCredential, SessionRef, EvmReader, Own<typeof subscriptionTempo>>,
+  "mpp/charge/lightning": chargeLightning satisfies Entry<"mpp/charge/lightning", MppCredential, LnRef, never, Own<typeof chargeLightning>>,
+  "mpp/session/lightning": sessionLightning satisfies Entry<"mpp/session/lightning", MppCredential, LnRef, never, Own<typeof sessionLightning>>,
+  "mpp/charge/solana": chargeSolana satisfies Entry<"mpp/charge/solana", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof chargeSolana>>,
+  "mpp/charge/xrpl": chargeXrpl satisfies Entry<"mpp/charge/xrpl", MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof chargeXrpl>>,
+  "mpp/charge/nearintents": chargeNearIntents satisfies Entry<"mpp/charge/nearintents", MppCredential, never, never, Own<typeof chargeNearIntents>>,
+  "mpp/session/xrpl": sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "expect" | "fromLedger">, XrplReader, Own<typeof sessionXrpl>>,
+  "mpp/charge/card": chargeCard satisfies Entry<"mpp/charge/card", MppCredential, never, never, Own<typeof chargeCard>>,
+  "mpp/charge/stripe": chargeStripe satisfies Entry<"mpp/charge/stripe", MppCredential, never, never, Own<typeof chargeStripe>>,
+  "mpp/subscription/stripe": subscriptionStripe satisfies Entry<"mpp/subscription/stripe", MppCredential, never, never, Own<typeof subscriptionStripe>>,
+  "mpp/charge/usdc/evm": chargeUsdcEvm satisfies Entry<"mpp/charge/usdc/evm", MppCredential, EvmRef, EvmReader, Own<typeof chargeUsdcEvm>>,
+  "mpp/charge/usdc/solana": chargeUsdcSolana satisfies Entry<"mpp/charge/usdc/solana", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof chargeUsdcSolana>>,
+  "mpp/charge/usdc/stacks": chargeUsdcStacks satisfies Entry<"mpp/charge/usdc/stacks", MppCredential, StacksRef, StacksReader, Own<typeof chargeUsdcStacks>>,
+  "mpp/charge/usdc/gateway": chargeUsdcGateway satisfies Entry<"mpp/charge/usdc/gateway", MppCredential, never, never, Own<typeof chargeUsdcGateway>>,
+  "ack/payment-request": paymentRequest satisfies Entry<"ack/payment-request", Json, never, never, Own<typeof paymentRequest>>,
+  "acp/checkout/delegated": delegated satisfies Entry<"acp/checkout/delegated", AcpPresented, never, never, Own<typeof delegated>>,
+  "acp/checkout/undelegated": undelegated satisfies Entry<"acp/checkout/undelegated", AcpPresented, never, never, Own<typeof undelegated>>,
+  "ap2/checkout-mandate": checkoutMandate satisfies Entry<"ap2/checkout-mandate", Ap2Presented, never, never, Own<typeof checkoutMandate>>,
+  "card/visa-tap": visaTap satisfies Entry<"card/visa-tap", TapPresented, never, never, Own<typeof visaTap>>,
+  "card/mastercard-vi/immediate": viImmediate satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never, Own<typeof viImmediate>>,
+  "card/mastercard-vi/autonomous": viAutonomous satisfies Entry<"card/mastercard-vi/autonomous", ViAutonomous, never, never, Own<typeof viAutonomous>>,
+  "card/seller-reference": sellerReference satisfies Entry<"card/seller-reference", unknown, never, never, Own<typeof sellerReference>>,
+  "ucp/checkout/ap2-mandate": ap2Mandate satisfies Entry<"ucp/checkout/ap2-mandate", Ap2Presented, never, never, Own<typeof ap2Mandate>>,
+  "ucp/checkout/unsigned": unsigned satisfies Entry<"ucp/checkout/unsigned", Ap2Presented, never, never, Own<typeof unsigned>>,
+  "ucp/booking/ap2-mandate": bookingAp2Mandate satisfies Entry<"ucp/booking/ap2-mandate", Ap2Presented, never, never, Own<typeof bookingAp2Mandate>>,
+  "ucp/booking/unsigned": bookingUnsigned satisfies Entry<"ucp/booking/unsigned", Ap2Presented, never, never, Own<typeof bookingUnsigned>>,
+} satisfies { readonly [I in PairingId]: { readonly id: I } };
+
+// ── Compile time: no codec satisfies Entry with another family's reader. Each alias differs from the line above only
+// in its reader, so the one statement under each `@ts-expect-error` can fail only on that reader.
+
+type AvmWithSui = Entry<"x402/exact/algorand", AvmPaymentPayload, AvmRef, SuiReader, Own<typeof exactAvm>>;
 // @ts-expect-error -- an Algorand codec's `status` and `recover` take an Algorand reader, not a Sui one.
-void (exactAvm satisfies Entry<"x402/exact/algorand", AvmPaymentPayload, AvmRef, SuiReader>);
+void (exactAvm satisfies AvmWithSui);
+type SvmWithXrpl = Entry<"x402/exact/solana", SvmPaymentPayload, Omit<SvmRef, "fromSlot">, XrplReader, Own<typeof exactSvm>>;
 // @ts-expect-error -- a Solana codec's `status` and `recover` take a Solana reader, not an XRPL one.
-void (exactSvm satisfies Entry<"x402/exact/solana", SvmPaymentPayload, SvmRef & { transaction: string }, XrplReader>);
+void (exactSvm satisfies SvmWithXrpl);
+type UsdcEvmWithStacks = Entry<"mpp/charge/usdc/evm", MppCredential, EvmRef, StacksReader, Own<typeof chargeUsdcEvm>>;
 // @ts-expect-error -- an EVM codec's `status` takes an EVM reader, not a Stacks one.
-void (chargeUsdcEvm satisfies Entry<"mpp/charge/usdc/evm", MppCredential, BreadthRef, StacksReader>);
+void (chargeUsdcEvm satisfies UsdcEvmWithStacks);
+type TronWithTvm = Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TvmReader, Own<typeof exactTronMemo>>;
 // @ts-expect-error -- a TRON codec's `status` takes a TRON reader, not a TON one.
-void (exactTronMemo satisfies Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TvmReader>);
+void (exactTronMemo satisfies TronWithTvm);
 
-// ── Compile time: a removed id is no PairingId.
+// ── Compile time: Entry takes `never` for Reader, Ref or Presented only where the codec has no member that takes it.
+
+type AptosWithNoReader = Entry<"x402/exact/aptos", AptosPaymentPayload, AptosRef, never, Own<typeof exactAptos>>;
+// @ts-expect-error -- an entry with a `status` takes its reader.
+void (exactAptos satisfies AptosWithNoReader);
+type AptosWithNoRef = Entry<"x402/exact/aptos", AptosPaymentPayload, never, AptosReader, Own<typeof exactAptos>>;
+// @ts-expect-error -- an entry with a `reference` takes its reference type.
+void (exactAptos satisfies AptosWithNoRef);
+type SellerReferenceWithNothing = Entry<"card/seller-reference", never, never, never, Own<typeof sellerReference>>;
+// @ts-expect-error -- every entry's `bound` takes what is presented.
+void (sellerReference satisfies SellerReferenceWithNothing);
+
+// ── Compile time: a removed id is no PairingId. Each line is one declaration, which fails only on its id.
 
 // @ts-expect-error -- removed
 export const removed1: PairingId = "mpp/charge/tempo/memo";
@@ -170,6 +236,109 @@ export const removed7: PairingId = "mpp/session/hedera";
 export const removed8: PairingId = "x402/exact/lnbtc";
 // @ts-expect-error -- removed
 export const removed9: PairingId = "x402/exact/lnbtc/invoice-named";
+
+// ── Compile time: the data's own types.
+
+// @ts-expect-error -- a floor admits no negative.
+export const negativeFloor: AgreementData["floor"] = "-1";
+// @ts-expect-error -- a floor admits no leading zero.
+export const zeroLedFloor: AgreementData["floor"] = "01";
+// @ts-expect-error -- agreementOn names a pairing by an x402 or MPP id.
+export const otherAgreement: PairingData["agreementOn"] = "card/visa-tap";
+
+// ── Compile time and run time: a function generic over Entry calls every member, with no cast.
+
+const H: AtrHash = `0x${"11".repeat(32)}`;
+const HTTPS_LINK = "https://example.com/atr";
+
+/** What `callEvery` passes to the members every entry has, and to `build`, each typed by the entry's own types. */
+interface Forms<Presented, F extends Family> {
+  readonly doc: F["doc"];
+  readonly placedIn: F["placedIn"];
+  readonly offer: F["offer"];
+  readonly rest: F["rest"];
+  readonly choice: F["choice"];
+  readonly presented: Presented;
+}
+
+/** What `callEvery` passes to the members of a read: given only for an entry with one. */
+interface Reads<Reader, F extends Family> {
+  readonly option: F["option"];
+  readonly landed: F["landed"];
+  readonly reader: Reader;
+  readonly query: F["query"];
+  readonly network: F["network"];
+  readonly tx: string;
+  readonly receipt?: F extends { readonly receipt: infer T } ? T : never;
+}
+
+/** Calls each member the entry has, through Entry's type alone, and names each one it called. */
+async function callEvery<Id extends string, Presented, Ref, Reader, F extends Family>(
+  e: Entry<Id, Presented, Ref, Reader, F>,
+  a: Forms<Presented, F>,
+  r?: Reads<Reader, F>,
+): Promise<string[]> {
+  const called: string[] = [];
+  const offered: F["offered"] | Refusal = e.read(a.doc);
+  const advertised: F["advertised"] | Refusal = e.advertise(a.placedIn, H, HTTPS_LINK, a.offer, ...a.rest);
+  called.push("read", "advertise");
+  void [offered, advertised];
+  if (e.advertiseBeforeCarrier !== undefined) {
+    const before: F["advertised"] | Refusal = e.advertiseBeforeCarrier(a.placedIn, H, HTTPS_LINK, a.offer, ...a.rest);
+    called.push("advertiseBeforeCarrier");
+    void before;
+  }
+  if (e.build !== undefined) {
+    const unsigned: F["unsigned"] | Refusal = await e.build(a.choice, H);
+    called.push("build");
+    void unsigned;
+  }
+  const bound: AtrHash | Refusal = await e.bound(a.presented);
+  const broadcaster: Broadcaster | Refusal = await e.broadcaster(a.presented);
+  called.push("bound", "broadcaster");
+  void [bound, broadcaster];
+  if (e.channel !== undefined) {
+    const kind: ChannelKind | Refusal = e.channel.kind(a.presented);
+    const channel: { network: string; channel: string } | Refusal = await e.channel.ref(a.presented);
+    const within: AtrHash | Refusal = await e.channel.boundWithin(a.presented);
+    const until: number | undefined = e.channel.until(a.presented);
+    called.push("channel");
+    void [kind, channel, within, until];
+  }
+  if (e.landedTx !== undefined) {
+    const landed: string | undefined = e.landedTx(a.presented);
+    called.push("landedTx");
+    void landed;
+  }
+  if (r === undefined) return called;
+  if (e.reference !== undefined) {
+    const ref: Ref | Refusal = await e.reference(a.presented, r.option);
+    called.push("reference");
+    if (!isRefusal(ref)) {
+      if (e.status !== undefined) {
+        const answer: F["answer"] = await e.status(Object.assign({}, ref, r.landed), r.reader, r.query);
+        called.push("status");
+        void answer;
+      }
+      if (e.keySearch !== undefined && r.receipt !== undefined) {
+        const keyed: Ref | Refusal = e.keySearch(ref, r.receipt, H);
+        called.push("keySearch");
+        void keyed;
+      }
+    }
+  }
+  if (e.recover !== undefined) {
+    const recovered: AtrHash | Refusal = await e.recover({ network: r.network, tx: r.tx, option: r.option }, r.reader);
+    called.push("recover");
+    void recovered;
+  }
+  if (e.fetchPresented !== undefined) {
+    const fetched: Presented | Refusal = await e.fetchPresented(a.presented, r.reader);
+    called.push("fetchPresented");
+    void fetched;
+  }
+  return called;
+}
 
 // ── Run time.
 
@@ -195,6 +364,88 @@ const ENDPOINT: { readonly [v in EndpointKind]: true } = {
   "stacks-api-rest": true,
   "toncenter-v3": true,
 };
+
+const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
+
+/** The XRPL charge's family descriptor, as its entry states it. */
+type XrplChargeFamily = MppForms & {
+  choice: XrplChargeChoice;
+  unsigned: XrplChargeUnsigned;
+  landed: Pick<XrplRef, "fromLedger">;
+  network: XrplNetwork;
+  query: XrplQuery<XrplRef>;
+  answer: XrplStatus;
+};
+
+/** The XRPL session's family descriptor, as its entry states it. */
+type XrplSessionFamily = MppForms & {
+  choice: RailSessionChoice;
+  unsigned: XrplSessionUnsigned;
+  landed: Pick<XrplRef, "fromLedger">;
+  network: XrplNetwork;
+  query: XrplQuery<Omit<XrplRef, "expect"> | XrplCloseRef>;
+  answer: XrplStatus;
+};
+
+/** An XRPL reader that holds no transaction, at a validated ledger of 1000. */
+const XRPL_READER: XrplReader = {
+  network: "xrpl:0",
+  tx: async () => ({ notFound: true, searchedAll: true }),
+  txBlob: async () => null,
+  validatedLedger: async () => 1000,
+};
+
+describe("the registry's codec type", () => {
+  it("OWN names every pairing in BINDINGS once, each under its own id", () => {
+    const own = rowsOf(Object.entries(OWN), "OWN", { exact: ENTRIES.length });
+    for (const [id, entry] of own) expect(entry.id).toBe(id);
+    expect(new Set(own.map(([, entry]) => entry))).toEqual(new Set(ENTRIES));
+  });
+
+  it("a function generic over Entry calls each member an entry has, read keys first, with no cast", async () => {
+    const M = load("mpp-charge-xrpl.json");
+    const S = load("mpp-session-hedera-solana-xrpl.json");
+    const query = { act: "payment", finality: "validated" } as const;
+    const tx = "AB".repeat(32);
+
+    const charge: MppChallenge & { id: string } = M.place.expect;
+    const chargeForms: Forms<MppCredential, XrplChargeFamily> = {
+      doc: [charge],
+      placedIn: [],
+      offer: charge,
+      rest: [null],
+      choice: { challenge: charge, account: "", fee: "", sequence: 0, lastLedgerSequence: 0 },
+      presented: { challenge: charge, payload: { type: "transaction", blob: M.V3.blob } },
+    };
+    const xrplReads = { landed: { fromLedger: 1 }, reader: XRPL_READER, query, network: "xrpl:0", tx } as const;
+    expect(await callEvery<typeof chargeXrpl.id, MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, XrplChargeFamily>(chargeXrpl, chargeForms, { ...xrplReads, option: charge })).toEqual([
+      "read", "advertise", "build", "bound", "broadcaster", "landedTx", "reference", "status", "recover", "fetchPresented",
+    ]);
+
+    const session: MppChallenge & { id: string } = S.SS1.xrpl.placed;
+    const sessionForms: Forms<MppCredential, XrplSessionFamily> = {
+      doc: [session],
+      placedIn: [],
+      offer: session,
+      rest: [null],
+      choice: S.SS1.xrpl.choice,
+      presented: { challenge: session, payload: { action: "open", transaction: S.XS2.blob, amount: "100", signature: "00" } },
+    };
+    expect(await callEvery<typeof sessionXrpl.id, MppCredential, Omit<XrplRef, "expect" | "fromLedger">, XrplReader, XrplSessionFamily>(sessionXrpl, sessionForms, { ...xrplReads, option: session })).toEqual([
+      "read", "advertise", "build", "bound", "broadcaster", "channel", "reference", "status", "recover",
+    ]);
+
+    const ackForms: Forms<Json, Own<typeof paymentRequest>> = {
+      doc: { paymentRequestToken: "", legalContext: {} },
+      placedIn: {},
+      offer: { id: "o" },
+      rest: [],
+      choice: {},
+      presented: {},
+    };
+    expect(await callEvery<typeof paymentRequest.id, Json, never, never, Own<typeof paymentRequest>>(paymentRequest, ackForms)).toEqual(["read", "advertise", "build", "bound", "broadcaster"]);
+  });
+});
 
 describe("the registry's type test", () => {
   it("every entry's coverage, carrier, nonce, broadcasts, confirmed and proves is one of its member's values", () => {
@@ -238,8 +489,11 @@ describe("the registry's type test", () => {
   });
 
   it("an agreementOn naming a pairing names one in BINDINGS", () => {
-    const named = ENTRIES.map((b) => b.data.agreementOn).filter((a) => a !== undefined && a !== "any" && a !== "same-network");
-    for (const a of named) expect(IDS.has(a!), a).toBe(true);
+    const named = ENTRIES.flatMap((b) => {
+      const a = b.data.agreementOn;
+      return a === undefined || a === "any" || a === "same-network" ? [] : [a];
+    });
+    for (const a of named) expect(IDS.has(a), a).toBe(true);
   });
 
   it("life is a member of read alone, a positive count with its unit and chain rule", () => {

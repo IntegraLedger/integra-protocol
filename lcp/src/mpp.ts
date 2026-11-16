@@ -11,7 +11,6 @@ import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
   eip3009TypedData,
-  evmStatus,
   permit2TypedData,
   transferDigest,
   PERMIT2,
@@ -55,6 +54,7 @@ import {
   type MppChallenge,
   type MppChoice,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 import { stacksNetworkOf, usdcProfile } from "./mpp-method-checks.js";
@@ -68,8 +68,20 @@ import { chargeSolana } from "./mpp-solana.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpDecode, rlpUint } from "./rlp.js";
-import { failedIfFinal, isGuardTransfer, permit2Status, transferParts } from "./internal/evm.js";
+import {
+  evmStatusOf,
+  failedIfFinal,
+  isGuardTransfer,
+  permit2Status,
+  readEvm,
+  transferParts,
+  unreadable,
+  withPayee,
+  type EvmQuery,
+  type EvmRead,
+} from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
+import { mppPayee } from "./internal/payee.js";
 import type { LcpPattern } from "./x402.js";
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
@@ -184,25 +196,34 @@ const PAYMENT_WITNESS = [
 // ── Settlement for the pairings whose payment carries nothing signed.
 
 /**
- * `evmStatus` on the reported transaction with no named log; settled also requires one log from `ref.asset` with three
- * topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies and whose recipient is not
- * `RECEIVE_POLICY_GUARD`. `ref.asset` and `ref.transferLog.address` must be addresses naming the same token, and
- * `ref.transferLog` must identify a `Transfer` from it by its sender alone (identity `from`), as the pairing's
- * `reference` records it; any other ref is pending `unreadable`, with nothing read. Without such a log, a `Transfer`
- * from that sender to the guard is failed `receive-policy-blocked`, and anything else failed `transfer-not-found`:
- * another account's `Transfer` in the same transaction is not this payment. Each failed answer, `evmStatus`'s and
- * these, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
- * mark cannot be read, the same reason is pending. At most three calls.
+ * The `status` of the EVM `transaction` and `hash` charges, whose data both give coverage `none`: `evmStatus`'s read of
+ * the reported transaction with no named log, answered as the profile `read-status` does at that coverage, where the
+ * act is the transaction the reference names. The read is settled where the receipt also holds one log from
+ * `ref.asset` with three topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies and whose
+ * recipient is not `RECEIVE_POLICY_GUARD`. `ref.asset` and `ref.transferLog.address` must be addresses naming the same
+ * token, and `ref.transferLog` must identify a `Transfer` from it by its sender alone (identity `from`), as the
+ * pairing's `reference` records it; any other ref is unreadable `unparseable`, with nothing read. Without such a log,
+ * a `Transfer` from that sender to the guard, or none (another account's `Transfer` in the same transaction is not this
+ * payment), the transaction is no act. A receipt the reader does not hold is a lookup read whole that found nothing,
+ * which with no history shown answers unreadable `history-gap`. A reader that is not an object is unreadable
+ * `transport`, and a query that is not one `status` takes unreadable `unparseable`, with nothing read. At most three
+ * calls.
  */
 export async function transferPresent(
   ref: EvmRef & { transaction: Hex; asset: Hex },
   reader: EvmReader,
+  query: EvmQuery<EvmRef & { transaction: Hex; asset: Hex }>,
 ): Promise<EvmBreadthStatus> {
-  if (typeof reader !== "object" || reader === null || typeof ref !== "object" || ref === null) {
-    return { state: "pending", why: "unreadable" };
-  }
+  return transferAnswer(ref, reader, query);
+}
+
+const transferAnswer = evmStatusOf(readTransfer, EIP155_TEMPO_MPP["mpp/charge/evm/transaction"].coverage);
+
+async function readTransfer(ref: EvmRef & { transaction: Hex; asset: Hex }, reader: EvmReader): Promise<EvmRead> {
+  if (typeof ref !== "object" || ref === null) return unreadable("unparseable");
+  if (typeof reader !== "object" || reader === null) return unreadable("transport");
   const sender = ref.transferLog;
-  if (!identifiesSender(sender, ref.asset)) return { state: "pending", why: "unreadable" };
+  if (!identifiesSender(sender, ref.asset)) return unreadable("unparseable");
   let seen: EvmReceipt | null = null;
   const watching: EvmReader = {
     network: reader.network,
@@ -211,7 +232,7 @@ export async function transferPresent(
     transaction: (tx) => reader.transaction(tx),
     call: (to, data, block) => reader.call(to, data, block),
   };
-  const s = await evmStatus({ network: ref.network, transaction: ref.transaction }, watching);
+  const s = await readEvm({ network: ref.network, transaction: ref.transaction, payee: ref.payee }, watching);
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
   const sent: EvmLog[] = [];
@@ -435,7 +456,15 @@ async function authorizationBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(b) ? b : b.h;
 }
 
-async function authorizationReference(input: unknown): Promise<EvmRef | Refusal> {
+/**
+ * The read keys of an EIP-3009 charge, with the payee of `option`, the issued challenge the payment answers
+ * (`mppPayee`): a refusal of the payment first, then the challenge's.
+ */
+async function authorizationReference(input: unknown, option: MppChallenge): Promise<EvmRef | Refusal> {
+  return withPayee(await authorizationKeys(input), mppPayee(option));
+}
+
+async function authorizationKeys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const b = authorizationBinding(presented);
@@ -550,7 +579,15 @@ async function permit2Bound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(b) ? b : b.h;
 }
 
-async function permit2Reference(input: unknown): Promise<EvmRef | Refusal> {
+/**
+ * The read keys of a Permit2 charge, with the payee of `option`, the issued challenge the payment answers
+ * (`mppPayee`): a refusal of the payment first, then the challenge's.
+ */
+async function permit2Reference(input: unknown, option: MppChallenge): Promise<EvmRef | Refusal> {
+  return withPayee(await permit2Keys(input), mppPayee(option));
+}
+
+async function permit2Keys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const b = permit2Binding(presented);
@@ -688,13 +725,19 @@ function noSignedPlace(pairing: typeof TRANSACTION | typeof HASH) {
  * the challenge's `currency`, the token whose transfer `transferPresent` reads, and `transferLog`, which identifies
  * that transfer by its sender alone (identity `from`): the payer, the address of the credential's `did:pkh` `source`,
  * else `mpp/source-required`. Nothing the payer signed carries H. The challenge is held to `pairing`'s filter
- * (`checkedFor`), whose refusal it gives; of the request it reads only `currency` and `methodDetails.chainId`.
+ * (`checkedFor`), whose refusal it gives; of the request it reads only `currency` and `methodDetails.chainId`. The
+ * reference also takes the payee of `option`, the issued challenge the payment answers (`mppPayee`), whose refusal
+ * comes after the payment's.
  */
 function networkReference(pairing: typeof TRANSACTION | typeof HASH) {
-  return (presented: unknown) => referenceFor(presented, pairing);
+  return async (presented: unknown, option: MppChallenge): Promise<(EvmRef & { asset: Hex }) | Refusal> =>
+    withPayee(await referenceFor(presented, pairing), mppPayee(option));
 }
 
-async function referenceFor(presented: unknown, pairing: typeof TRANSACTION | typeof HASH): Promise<(EvmRef & { asset: Hex }) | Refusal> {
+async function referenceFor(
+  presented: unknown,
+  pairing: typeof TRANSACTION | typeof HASH,
+): Promise<(Omit<EvmRef, "payee"> & { asset: Hex }) | Refusal> {
   if (!isObject(presented) || !isChallengeShape(presented["challenge"])) return refusal("mpp/credential-malformed");
   const c = presented["challenge"];
   if (c.method !== "evm" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
@@ -753,8 +796,21 @@ export const evmAuthorization = Object.freeze({
   broadcaster: mppBroadcaster(byType({ authorization: "payee" })),
   reference: authorizationReference,
   authorizer: authorizationAuthorizer,
-  status: boundStatus([AUTHORIZATION_USED_TOPIC]),
-}) satisfies Entry<typeof AUTHORIZATION, MppCredential, EvmRef & { transaction: Hex }, EvmReader>;
+  status: boundStatus([AUTHORIZATION_USED_TOPIC], EIP155_TEMPO_MPP[AUTHORIZATION].coverage),
+}) satisfies Entry<
+  typeof AUTHORIZATION,
+  MppCredential,
+  EvmRef,
+  EvmReader,
+  MppForms & {
+    choice: MppChoice;
+    unsigned: MppUnsigned;
+    landed: { transaction: Hex };
+    network: never;
+    query: EvmQuery<EvmRef & { transaction: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 /**
  * `mpp/charge/evm/permit2`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type` `permit2`):
@@ -778,8 +834,21 @@ export const evmPermit2 = Object.freeze({
   broadcaster: mppBroadcaster(byType({ permit2: "payee" })),
   reference: permit2Reference,
   authorizer: permit2Authorizer,
-  status: permit2Status,
-}) satisfies Entry<typeof PERMIT2_ID, MppCredential, EvmRef & { transaction: Hex }, EvmReader>;
+  status: permit2Status(EIP155_TEMPO_MPP[PERMIT2_ID].coverage),
+}) satisfies Entry<
+  typeof PERMIT2_ID,
+  MppCredential,
+  EvmRef,
+  EvmReader,
+  MppForms & {
+    choice: MppChoice;
+    unsigned: MppUnsigned;
+    landed: { transaction: Hex };
+    network: never;
+    query: EvmQuery<EvmRef & { transaction: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 /**
  * `mpp/charge/evm/transaction`, whose `build` writes `broadcast: false`. `broadcaster` answers by the credential's
@@ -805,7 +874,20 @@ export const evmTransaction = Object.freeze({
   broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES, () => refusal("mpp/no-signed-place"))),
   reference: networkReference(TRANSACTION),
   status: transferPresent,
-}) satisfies Entry<typeof TRANSACTION, MppCredential, EvmRef & { transaction: Hex; asset: Hex }, EvmReader>;
+}) satisfies Entry<
+  typeof TRANSACTION,
+  MppCredential,
+  EvmRef & { asset: Hex },
+  EvmReader,
+  MppForms & {
+    choice: MppChoice;
+    unsigned: MppUnsigned;
+    landed: { transaction: Hex };
+    network: never;
+    query: EvmQuery<EvmRef & { transaction: Hex; asset: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 /**
  * `mpp/charge/evm/hash`, whose `build` writes `broadcast: true`. `broadcaster` answers by the credential's `type`, as
@@ -831,7 +913,20 @@ export const evmHash = Object.freeze({
   broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES, () => refusal("mpp/no-signed-place"))),
   reference: networkReference(HASH),
   status: transferPresent,
-}) satisfies Entry<typeof HASH, MppCredential, EvmRef & { transaction: Hex; asset: Hex }, EvmReader>;
+}) satisfies Entry<
+  typeof HASH,
+  MppCredential,
+  EvmRef & { asset: Hex },
+  EvmReader,
+  MppForms & {
+    choice: MppChoice;
+    unsigned: MppUnsigned;
+    landed: { transaction: Hex };
+    network: never;
+    query: EvmQuery<EvmRef & { transaction: Hex; asset: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 /** Every MPP pairing this entry point implements. */
 export const MPP_BINDINGS = Object.freeze([

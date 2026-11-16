@@ -22,13 +22,14 @@ import {
   type MppChoice,
   type MppCredential,
   type MppPairingId,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { stripeMetadataValid } from "./mpp-method-checks.js";
 import { broadcastsWithin } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { CARD } from "./internal/data/card.js";
-import type { Entry } from "./internal/registry.js";
+import type { Entry, NoRead } from "./internal/registry.js";
 
 /** The Stripe metadata key the seller places H under: at most 40 characters, no square brackets. */
 export const LEGAL_CONTEXT_METADATA_KEY = "legal_context";
@@ -127,12 +128,24 @@ function pairingOf<Id extends ConfirmOnly>(id: Id) {
  * `mpp/charge/card`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment the
  * payer's credential authorizes to its processor; nothing here reads it.
  */
-export const chargeCard = pairingOf("mpp/charge/card") satisfies Entry<"mpp/charge/card", MppCredential, never, never>;
+export const chargeCard = pairingOf("mpp/charge/card") satisfies Entry<
+  "mpp/charge/card",
+  MppCredential,
+  never,
+  never,
+  MppForms & NoRead & { choice: MppChoice; unsigned: never }
+>;
 /**
  * `mpp/charge/stripe`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's server creates the Stripe
  * payment with the payer's shared payment token; nothing here reads it.
  */
-export const chargeStripe = pairingOf("mpp/charge/stripe") satisfies Entry<"mpp/charge/stripe", MppCredential, never, never>;
+export const chargeStripe = pairingOf("mpp/charge/stripe") satisfies Entry<
+  "mpp/charge/stripe",
+  MppCredential,
+  never,
+  never,
+  MppForms & NoRead & { choice: MppChoice; unsigned: never }
+>;
 /**
  * The Stripe subscription's activation receipt: the `Payment-Receipt` payload the seller's server answered the opening
  * with, decoded from its base64url JSON (or the MCP transport's receipt object as given). `channel.ref` takes it with
@@ -193,4 +206,10 @@ export const subscriptionStripe = Object.freeze({
     /** The subscription request carries no expiry: the draft refuses `subscriptionExpires`. */
     until: (_presented: unknown): number | undefined => undefined,
   }),
-}) satisfies Entry<"mpp/subscription/stripe", MppCredential, never, never>;
+}) satisfies Entry<
+  "mpp/subscription/stripe",
+  MppCredential,
+  never,
+  never,
+  MppForms & NoRead & { choice: MppChoice; unsigned: never }
+>;

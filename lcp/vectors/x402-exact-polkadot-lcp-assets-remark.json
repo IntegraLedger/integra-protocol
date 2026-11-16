@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's call_index, and recompute the length prefix; the signature is V3's and does not cover that call, which recover does not verify.",
+ "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's call_index, and recompute the length prefix; the signature is V3's and does not cover that call, which recover does not verify. Status rows are read with the act payment at the finality the row gives, finalized where it gives none, and answer as the profile read-status gives them: since the read holds no search for H and does not read the account's nonce, a dispatch that failed, an extrinsic that is not the payment, one not located and a block the reader does not have answer pending search-incomplete, not failed or not-found, and a dispatch that failed above the finalized height pending below-mark (rules 17, 23, 24 and 26).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -41,6 +41,7 @@
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+   "payee": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
    "extrinsicHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
    "assetId": 1337
   },
@@ -111,6 +112,7 @@
   "readerNetwork": "polkadot:68d56f15f85d3136970ec16946040bc1",
   "reference": {
    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+   "payee": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
    "extrinsicHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
    "assetId": 1337
   },
@@ -170,20 +172,23 @@
     "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "expect": {
      "state": "settled",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
      "finality": "finalized",
-     "height": "100",
-     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+     "foreign": []
     }
    },
    {
     "case": "finalized 99",
+    "finality": "head",
     "finalized": "99",
     "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "expect": {
      "state": "settled",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
      "finality": "head",
-     "height": "100",
-     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+     "foreign": []
     }
    },
    {
@@ -192,9 +197,10 @@
     "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "expect": {
      "state": "settled",
+     "transaction": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-2",
+     "position": "100",
      "finality": "finalized",
-     "height": "100",
-     "transaction": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-2"
+     "foreign": []
     }
    },
    {
@@ -204,7 +210,8 @@
     "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "expect": {
      "state": "pending",
-     "why": "not-located"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -214,7 +221,8 @@
     "canonicalMissing": true,
     "expect": {
      "state": "pending",
-     "why": "not-located"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -223,11 +231,9 @@
     "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "refHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6aa",
     "expect": {
-     "state": "failed",
-     "why": "not-this-extrinsic",
-     "finality": "finalized",
-     "height": "100",
-     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -238,11 +244,9 @@
      "success": false
     },
     "expect": {
-     "state": "failed",
-     "why": "dispatch-failed",
-     "finality": "finalized",
-     "height": "100",
-     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -253,11 +257,12 @@
      "success": false
     },
     "expect": {
-     "state": "failed",
-     "why": "dispatch-failed",
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
      "finality": "head",
-     "height": "100",
-     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+     "foreign": []
     }
    },
    {
@@ -268,11 +273,9 @@
      "success": false
     },
     "expect": {
-     "state": "failed",
-     "why": "dispatch-failed",
-     "finality": "finalized",
-     "height": "100",
-     "transaction": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-2"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -308,11 +311,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "no-remark",
-     "finality": "finalized",
-     "height": "100",
-     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -320,15 +321,17 @@
     "transaction": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
     "expect": {
      "state": "pending",
-     "why": "not-located"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "a malformed index",
     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-x",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    },
    {
@@ -338,15 +341,17 @@
     "missing": true,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "a reader error",
     "readerError": true,
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    }
   ],
@@ -687,11 +692,9 @@
    ]
   },
   "expect": {
-   "state": "failed",
-   "why": "no-transfer",
-   "finality": "finalized",
-   "height": "100",
-   "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "options": [

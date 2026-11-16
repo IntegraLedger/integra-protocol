@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit).",
+ "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit). ES5's expected status answers are the ones the profile read-status (read-status.md) gives for its fixtures, read for the act payment at finalized: an error read at finalized, a transaction with no channel instruction, and a lookup that finds nothing are pending, search-incomplete, since this read is no search for H (rules 17, 23 and 24). EB7's plants, each a transaction that is not this deposit, answer pending search-incomplete where they answered failed: no search for H is defined yet, and at coverage full failed comes only from a search read whole (read-status rule 24).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "Hprime": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
@@ -475,8 +475,10 @@
   },
   "expect": {
    "state": "settled",
+   "transaction": "0xabababababababababababababababababababababababababababababababab",
+   "position": "100",
    "finality": "finalized",
-   "blockNumber": "100"
+   "foreign": []
   },
   "fullCall": {
    "case": "the deposit call as the ERC-3009 collector makes it: USDC's AuthorizationUsed for the payer's deposit authorization (EB3's deposit nonce), the payer's transfer to the collector, the collector's to the channel contract, ChannelCreated (EB8's log) and Deposited with its amount and the channel's new balance",
@@ -532,8 +534,10 @@
    },
    "expect": {
     "state": "settled",
+    "transaction": "0xabababababababababababababababababababababababababababababababab",
+    "position": "100",
     "finality": "finalized",
-    "blockNumber": "100"
+    "foreign": []
    }
   },
   "plantGift": {
@@ -562,8 +566,9 @@
     ]
    },
    "expect": {
-    "state": "failed",
-    "why": "transfer-not-found"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "plantGiftBesideDeposit": {
@@ -629,8 +634,9 @@
     ]
    },
    "expect": {
-    "state": "failed",
-    "why": "transfer-not-found"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "plantShortBesideDeposit": {
@@ -696,8 +702,9 @@
     ]
    },
    "expect": {
-    "state": "failed",
-    "why": "transfer-not-found"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "plantOtherContract": {
@@ -726,8 +733,9 @@
     ]
    },
    "expect": {
-    "state": "failed",
-    "why": "binding-log-not-found"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   }
  },
@@ -881,9 +889,15 @@
    {
     "at": "finalized",
     "err": null,
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
      "state": "settled",
-     "commitment": "finalized"
+     "transaction": "AaKMyA6BEk32ysK2pRZ5mzYf5gvXyZF5eW8RLGUriHh6vu5zU3JR5aPkfaLKLUq9YWGC1A5ub6bQnmtjMGXB7nf",
+     "finality": "finalized",
+     "foreign": []
     }
    },
    {
@@ -896,16 +910,26 @@
       }
      ]
     },
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
-     "state": "failed",
-     "why": "err"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "at": null,
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ],
@@ -913,8 +937,9 @@
    "landedWireBase64": "ApdCzdWrOy/W+1VybpEY68cXZkN+5IcfGO9ore6UXm/vvG4oBgB7QMejWmqXPmqokuHuiq56n0kPzmL7qUvTBQTPW1kHKSkU4CIhivYFbg9e/zdrpIYej8/2guOdFmXp8TwTd5M7ub7ophcxF/tq6ozm7q+W2tbJ50Ptw5ecyHMIgAIBAgSBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAwIABQJADQMAAgAJAwEAAAAAAAAAAwEBTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
    "digest": "0xd4e6becc2ad3543f47353380bde577aecb1cddecc77ed9580d0be2113c2a1c47",
    "expect": {
-    "state": "failed",
-    "why": "no-channel-instruction"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   }
  },

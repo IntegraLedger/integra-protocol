@@ -50,10 +50,17 @@ import {
   receiveTypedData,
   redeemedLeafRecover,
   transferParts,
+  withPayee,
+  type EvmQuery,
   type ReceiveTypedData,
+  type EvmStatus,
+  type EvmTxRef,
+  type TransferLog,
 } from "./internal/evm.js";
+import type { RecoverInput } from "./internal/read.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
 import { boundStatus } from "./internal/evm-status.js";
+import { x402Payee } from "./internal/payee.js";
 import {
   LEGAL_CONTEXT,
   acceptedBy,
@@ -67,11 +74,12 @@ import {
   type X402Advertise,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_X402 } from "./internal/data/eip155-x402.js";
-import type { Entry, PairingData } from "./internal/registry.js";
+import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type { Eip3009TypedData } from "./evm.js";
@@ -364,9 +372,14 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 /**
  * The read keys for finding this payment on chain later: network, token, `validBefore` and the transfer's digest, and
  * the same keys as an `EvmRef`: the `AuthorizationUsed` log carrying H, the transfer's identity, the nonce search, and
- * the authorization as the token records its use (nonce H, deadline `validBefore`).
+ * the authorization as the token records its use (nonce H, deadline `validBefore`); and the payee of `option`, the
+ * issued option the payment answers (`x402Payee`). A refusal of the payment comes first, then the option's.
  */
-async function reference(presented: unknown): Promise<Eip3009Ref | Refusal> {
+async function reference(presented: unknown, option: PaymentRequirements): Promise<Eip3009Ref | Refusal> {
+  return withPayee(await eip3009Keys(presented), x402Payee(option));
+}
+
+async function eip3009Keys(presented: unknown): Promise<Omit<Eip3009Ref, "payee"> | Refusal> {
   const h = await bound(presented);
   if (isRefusal(h)) return h;
   const { accepted, payload } = presented as Eip3009Payment;
@@ -438,7 +451,20 @@ export const exactEip3009 = Object.freeze({
   authorizer,
   status: eip3009Status,
   recover: eip3009Recover,
-}) satisfies Entry<typeof ID, Eip3009Payment, Parameters<typeof eip3009Status>[0], EvmReader>;
+}) satisfies Entry<
+  typeof ID,
+  Eip3009Payment,
+  Eip3009Ref,
+  EvmReader,
+  X402Forms & {
+    choice: X402Choice;
+    unsigned: Unsigned;
+    landed: { transaction: Hex; h: AtrHash };
+    network: Eip155;
+    query: EvmQuery<EvmTxRef & { h: AtrHash; transferLog: TransferLog }>;
+    answer: EvmStatus;
+  }
+>;
 
 /** The payment's shape as this pairing requires it, or the refusal that names what is wrong. */
 function paymentOf(presented: unknown): Eip3009Payment | Refusal {
@@ -777,7 +803,13 @@ function permit2Bound(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
 }
 
 function permit2Reference(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
-  return async (presented: unknown): Promise<EvmRef | Refusal> => {
+  const keys = permit2Keys(id);
+  return async (presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> =>
+    withPayee(await keys(presented), x402Payee(option));
+}
+
+function permit2Keys(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
+  return async (presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> => {
     const r = permit2Presented(id, presented);
     if (isRefusal(r)) return r;
     const { a, p } = r;
@@ -851,8 +883,9 @@ type ProxySettle = { selector: Hex; permit: number; owner: number };
  * or by the owner's `invalidateUnorderedNonces`, not in which transaction: any transaction of that block, the owner's
  * cancelling one included, whose input carries a call with the same nonce and owner, and whose receipt holds a
  * `Transfer` from that owner emitted by the contract that call names as its token, gives H. `status` with the ATR's
- * reference tells which transaction paid. A reader for another network, a ref or reader that is not an object, or a
- * ref whose `transaction` is not a 32-byte hash, is `evm/wrong-reader`, with nothing read; no receipt or no transaction
+ * reference tells which transaction paid. The option is not read. A reader for another network, an input or reader
+ * that is not an object, or an input whose `tx` is not a 32-byte hash, is `evm/wrong-reader`, with nothing read; no
+ * receipt or no transaction
  * is `evm/not-found`; a reverted one is `evm/reverted`; a failed read, a malformed receipt or `nonceBitmap` answer, or
  * an input that is not hex bytes is `evm/unreadable`. A revert, `evm/no-permit2-settle`, `evm/ambiguous` and
  * `evm/nonce-not-used` are given only where the receipt's block is at or below the reader's `finalized` mark: above it,
@@ -862,9 +895,10 @@ type ProxySettle = { selector: Hex; permit: number; owner: number };
  */
 function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
   const settles = PROXY_SETTLES[id];
-  return async (ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> => {
-    if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
-    if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
+  return async (input: RecoverInput<Eip155, PaymentRequirements>, reader: EvmReader): Promise<AtrHash | Refusal> => {
+    if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("evm/wrong-reader");
+    if (normalHash(input.tx) === null) return refusal("evm/wrong-reader");
+    const ref = { network: input.network, transaction: input.tx as Hex };
     let receipt: EvmReceipt | null;
     let tx: EvmTransaction | null;
     try {
@@ -884,10 +918,10 @@ function permit2Recover(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
       return refusal("evm/unreadable");
     }
     if (tx === null) return refusal("evm/not-found");
-    const input = isObject(tx) ? bytesOf(tx.input) : undefined;
-    if (input === undefined) return refusal("evm/unreadable");
+    const calldata = isObject(tx) ? bytesOf(tx.input) : undefined;
+    if (calldata === undefined) return refusal("evm/unreadable");
     const logs = receipt.logs;
-    const anchored = proxySettlesIn(input, settles).filter((c) =>
+    const anchored = proxySettlesIn(calldata, settles).filter((c) =>
       logs.some((l) => {
         const t = transferParts(l, c.token, TRANSFER_TOPIC);
         return t !== undefined && sameBytes(t.from, c.owner);
@@ -1007,14 +1041,20 @@ async function erc7710SaltBound(presented: unknown): Promise<AtrHash | Refusal> 
  * the delegation signs no payee; at the salt level also the manager's `RedeemedDelegation` whose leaf salt is H.
  */
 function erc7710Reference(id: typeof ERC7710 | typeof ERC7710_SALT) {
-  return async (presented: unknown): Promise<EvmRef | Refusal> => {
+  const keys = erc7710Keys(id);
+  return async (presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> =>
+    withPayee(await keys(presented), x402Payee(option));
+}
+
+function erc7710Keys(id: typeof ERC7710 | typeof ERC7710_SALT) {
+  return async (presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> => {
     const h = await (id === ERC7710 ? erc7710Bound(presented) : erc7710SaltBound(presented));
     if (isRefusal(h)) return h;
     const { p, d } = erc7710Presented(id, presented) as { p: PaymentPayload; d: { delegator: string } };
     if (!isAddress(d.delegator)) return refusal("x402/payload-malformed");
     const digest = await transferDigest({ from: d.delegator });
     if (isRefusal(digest)) return refusal("x402/payload-malformed");
-    const ref: EvmRef = {
+    const ref: Omit<EvmRef, "payee"> = {
       network: p.accepted.network as Eip155,
       transferLog: { address: p.accepted.asset as Hex, topic0: TRANSFER_TOPIC, identity: "from", digest },
     };
@@ -1252,7 +1292,13 @@ function authCaptureBound(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
 }
 
 function authCaptureReference(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
-  return async (presented: unknown): Promise<EvmRef | Refusal> => {
+  const keys = authCaptureKeys(id);
+  return async (presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> =>
+    withPayee(await keys(presented), x402Payee(option));
+}
+
+function authCaptureKeys(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
+  return async (presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> => {
     const r = authCapturePresented(id, presented);
     if (isRefusal(r)) return r;
     const { t, p, payer, salt, preApprovalExpiry } = r;
@@ -1262,7 +1308,7 @@ function authCaptureReference(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
     const signatureNonce = paymentHash(t.chainId, t.deployment.escrow, t.info(ZERO_ADDRESS, salt, preApprovalExpiry));
     if (isRefusal(signatureNonce)) return refusal("x402/payload-malformed");
     const asset = p.accepted.asset as Hex;
-    const ref: EvmRef = {
+    const ref: Omit<EvmRef, "payee"> = {
       network: p.accepted.network as Eip155,
       settleBy: preApprovalExpiry.toString(),
       bindingLog: { address: t.deployment.escrow, topic0, index: 1, value: paymentId },
@@ -1326,14 +1372,24 @@ type BreadthBase<Id extends BreadthId> = {
 /** The reference a breadth pairing's `status` reads: the payment's read keys and the transaction that settled it. */
 type BreadthRef = EvmRef & { transaction: Hex };
 
+/** The family descriptor of an x402 EVM breadth pairing that `status` reads. */
+type BreadthFamily = X402Forms & {
+  choice: X402Choice;
+  unsigned: X402Unsigned;
+  landed: { transaction: Hex };
+  network: Eip155;
+  query: EvmQuery<BreadthRef>;
+  answer: EvmBreadthStatus;
+};
+
 /** The members each x402 EVM breadth pairing gives itself. */
 type BreadthMembers = {
   readonly build: (choice: X402Choice, h: AtrHash) => Promise<X402Unsigned | Refusal>;
   readonly bound: (presented: unknown) => Promise<AtrHash | Refusal>;
-  readonly reference: (presented: unknown) => Promise<EvmRef | Refusal>;
+  readonly reference: (presented: unknown, option: PaymentRequirements) => Promise<EvmRef | Refusal>;
   readonly authorizer?: (presented: unknown) => Promise<Hex | Refusal>;
-  readonly status?: (ref: BreadthRef, reader: EvmReader) => Promise<EvmBreadthStatus>;
-  readonly recover?: (ref: { network: Eip155; transaction: Hex }, reader: EvmReader) => Promise<AtrHash | Refusal>;
+  readonly status?: (ref: BreadthRef, reader: EvmReader, query: EvmQuery<BreadthRef>) => Promise<EvmBreadthStatus>;
+  readonly recover?: (input: RecoverInput<Eip155, PaymentRequirements>, reader: EvmReader) => Promise<AtrHash | Refusal>;
 };
 
 function binding<Id extends BreadthId, M extends BreadthMembers>(
@@ -1375,10 +1431,10 @@ export const exactPermit2 = binding(
     bound: permit2Bound(PERMIT2_EXACT),
     reference: permit2Reference(PERMIT2_EXACT),
     authorizer: permit2Authorizer(PERMIT2_EXACT),
-    status: permit2Status,
+    status: permit2Status(EIP155_X402[PERMIT2_EXACT].coverage),
     recover: permit2Recover(PERMIT2_EXACT),
   },
-) satisfies Entry<typeof PERMIT2_EXACT, PaymentPayload, BreadthRef, EvmReader>;
+) satisfies Entry<typeof PERMIT2_EXACT, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
 
 /**
  * `x402/upto/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator,
@@ -1400,10 +1456,10 @@ export const uptoPermit2 = binding(
     bound: permit2Bound(PERMIT2_UPTO),
     reference: permit2Reference(PERMIT2_UPTO),
     authorizer: permit2Authorizer(PERMIT2_UPTO),
-    status: permit2Status,
+    status: permit2Status(EIP155_X402[PERMIT2_UPTO].coverage),
     recover: permit2Recover(PERMIT2_UPTO),
   },
-) satisfies Entry<typeof PERMIT2_UPTO, PaymentPayload, BreadthRef, EvmReader>;
+) satisfies Entry<typeof PERMIT2_UPTO, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
 
 /**
  * `x402/exact/eip155/erc7710`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator redeems
@@ -1421,7 +1477,13 @@ export const exactErc7710 = binding(
   }),
   false,
   { build: erc7710Build, bound: erc7710Bound, reference: erc7710Reference(ERC7710) },
-) satisfies Entry<typeof ERC7710, PaymentPayload, EvmRef, never>;
+) satisfies Entry<
+  typeof ERC7710,
+  PaymentPayload,
+  EvmRef,
+  never,
+  X402Forms & NoRead & { choice: X402Choice; unsigned: X402Unsigned }
+>;
 
 /**
  * `x402/exact/eip155/erc7710-salt`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1442,10 +1504,10 @@ export const exactErc7710Salt = binding(
     bound: erc7710SaltBound,
     reference: erc7710Reference(ERC7710_SALT),
     authorizer: erc7710SaltAuthorizer,
-    status: boundStatus([REDEEMED_DELEGATION_TOPIC]),
+    status: boundStatus([REDEEMED_DELEGATION_TOPIC], EIP155_X402[ERC7710_SALT].coverage),
     recover: redeemedLeafRecover,
   },
-) satisfies Entry<typeof ERC7710_SALT, PaymentPayload, BreadthRef, EvmReader>;
+) satisfies Entry<typeof ERC7710_SALT, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
 
 /**
  * `x402/auth-capture/eip155/eip3009`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1467,9 +1529,9 @@ export const authCaptureEip3009 = binding(
     bound: authCaptureBound(AC_EIP3009),
     reference: authCaptureReference(AC_EIP3009),
     authorizer: authCaptureAuthorizer(AC_EIP3009),
-    status: boundStatus(ESCROW_EVENTS),
+    status: boundStatus(ESCROW_EVENTS, EIP155_X402[AC_EIP3009].coverage),
   },
-) satisfies Entry<typeof AC_EIP3009, PaymentPayload, BreadthRef, EvmReader>;
+) satisfies Entry<typeof AC_EIP3009, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
 
 /**
  * `x402/auth-capture/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1491,9 +1553,9 @@ export const authCapturePermit2 = binding(
     bound: authCaptureBound(AC_PERMIT2),
     reference: authCaptureReference(AC_PERMIT2),
     authorizer: authCaptureAuthorizer(AC_PERMIT2),
-    status: boundStatus(ESCROW_EVENTS),
+    status: boundStatus(ESCROW_EVENTS, EIP155_X402[AC_PERMIT2].coverage),
   },
-) satisfies Entry<typeof AC_PERMIT2, PaymentPayload, BreadthRef, EvmReader>;
+) satisfies Entry<typeof AC_PERMIT2, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
 
 function isNonEmpty(v: unknown): v is string {
   return typeof v === "string" && v !== "";

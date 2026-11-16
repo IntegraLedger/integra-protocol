@@ -89,6 +89,12 @@ function readerFor(a: {
   };
 }
 const REF: TronRef = V.V4.ref;
+const Q = { act: "payment", finality: "solidified" } as const;
+const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
+const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
+const TRANSPORT = { state: "unreadable", reason: "transport", foreign: [] };
+/** The recover input for V4's transaction id. */
+const INPUT = { network: REF.network, tx: REF.txid, option: O };
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
 describe("x402-exact-tron-lcp-trc20-memo.json", () => {
@@ -180,7 +186,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
   it("V3: bound and reference, and each refusal", async () => {
     const p = payment(V.V2.expectTransactionHex);
     expect(await exactTronMemo.bound(p)).toBe(V.V3.expectBound);
-    const ref = await exactTronMemo.reference(p);
+    const ref = await exactTronMemo.reference(p, O);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
     for (const row of rowsOf(V.V3.refusals, "x402-exact-tron-lcp-trc20-memo.json V3.refusals")) {
@@ -193,20 +199,20 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
 
   it("V4: status and recover on reader fixtures", async () => {
     for (const row of rowsOf(V.V4.status, "x402-exact-tron-lcp-trc20-memo.json V4.status")) {
-      const got = await exactTronMemo.status(REF, readerFor(row));
+      const got = await exactTronMemo.status(REF, readerFor(row), { ...Q, finality: row.finality ?? "solidified" });
       expect([row.case, plain(got)]).toEqual([row.case, row.expect]);
     }
     for (const row of rowsOf(V.V4.recover, "x402-exact-tron-lcp-trc20-memo.json V4.recover")) {
-      const got = await exactTronMemo.recover({ network: REF.network, txid: REF.txid }, readerFor(row));
+      const got = await exactTronMemo.recover(INPUT, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
     expect(TRANSFER_TOPIC).toBe(V.fixed.transferTopic);
   });
 
-  // A missing or malformed ref field cannot name the landed transaction, so the read is pending, never
+  // A missing or malformed ref field cannot name the landed transaction, so the read is unreadable, never
   // failed (docs/guides/rails.md, "Reading settlement"). The option names the token in base58check; the log names it by
   // its 20 bytes; reference writes 0x, 41 and those 20 bytes.
-  it("V4: a ref whose txid or asset is malformed is pending unreadable, with nothing read", async () => {
+  it("V4: a ref whose txid or asset is malformed is unreadable unparseable, with nothing read", async () => {
     const landed = V.V4.status[0];
     const malformed = [
       { txid: undefined }, { txid: REF.txid.slice(2) }, { txid: `0x${REF.txid.slice(4)}` },
@@ -214,20 +220,48 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     ];
     for (const change of malformed) {
       const { reader, calls } = counting(readerFor(landed));
-      expect(await exactTronMemo.status({ ...REF, ...change } as TronRef, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await exactTronMemo.status({ ...REF, ...change } as TronRef, reader, Q)).toEqual(UNPARSEABLE);
       expect(calls).toEqual([]);
     }
-    expect(plain(await exactTronMemo.status({ ...REF, asset: REF.asset.slice(2) as never }, readerFor(landed)))).toEqual(landed.expect);
+    expect(plain(await exactTronMemo.status({ ...REF, asset: REF.asset.slice(2) as never }, readerFor(landed), Q))).toEqual(landed.expect);
     const looked: string[] = [];
     const r = readerFor(landed);
     const upper = { ...REF, txid: `0x${REF.txid.slice(2).toUpperCase()}` as TronRef["txid"] };
     const seen: TronReader = { ...r, info: async (txid, level) => (looked.push(txid), r.info(txid, level)) };
-    expect(plain(await exactTronMemo.status(upper, seen))).toEqual(landed.expect);
+    expect(plain(await exactTronMemo.status(upper, seen, Q))).toEqual(landed.expect);
     expect(looked).toEqual([REF.txid]);
   });
 
   it("plant: a Transfer-topic log from another contract is never the settlement", async () => {
-    expect(plain(await exactTronMemo.status(REF, readerFor({ solid: V.plant.solid })))).toEqual(V.plant.expect);
+    expect(plain(await exactTronMemo.status(REF, readerFor({ solid: V.plant.solid }), Q))).toEqual(V.plant.expect);
+  });
+
+  it("status on the act agreement, at a position, and a failed result below the solidified mark", async () => {
+    const [solid, head] = V.V4.status;
+    const agreement = { act: "agreement", finality: "solidified" } as const;
+    expect(plain(await exactTronMemo.status(REF, readerFor(solid), agreement))).toEqual(solid.expect);
+    // Found only at the head, the transaction is below the solidified mark.
+    expect(plain(await exactTronMemo.status(REF, readerFor(head), agreement))).toEqual({ ...head.expect, state: "pending", reason: "below-mark" });
+    // The settled transaction at its own block number is at the position given: before-position (read-status rule 16).
+    const block = BigInt(solid.expect.position);
+    expect(plain(await exactTronMemo.status(REF, readerFor(solid), { ...Q, after: block }))).toEqual({
+      ...solid.expect,
+      state: "failed",
+      reason: "before-position",
+    });
+    expect(plain(await exactTronMemo.status(REF, readerFor(solid), { ...Q, after: block - 1n }))).toEqual(solid.expect);
+    // A failed result found only at the head: below-mark, naming the transaction (read-status rule 17).
+    const reverted = V.V4.status.find((r: { case: string }) => r.case === "solid REVERT");
+    const atHead = readerFor({ solid: head.solid, head: reverted.solid, solidHead: head.solidHead });
+    expect(plain(await exactTronMemo.status(REF, atHead, Q))).toEqual({
+      state: "pending",
+      reason: "below-mark",
+      transaction: REF.txid,
+      position: reverted.solid.blockNumber,
+      finality: "head",
+      foreign: [],
+    });
+    expect(await exactTronMemo.recover({ ...INPUT, option: undefined } as never, readerFor(solid))).toEqual({ refused: true, code: "tron/wrong-reader" });
   });
 
   it("refusal codes left to the implementation", async () => {
@@ -272,13 +306,13 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
         expect(await exactTronMemo.bound(p)).toEqual({ refused: true, code: row.expect });
       } else if (row.case.startsWith("recover when the reader fails")) {
         const r = readerFor({ rawDataHex: "reader-error" });
-        expect(await exactTronMemo.recover({ network: REF.network, txid: REF.txid }, r)).toEqual({
+        expect(await exactTronMemo.recover(INPUT, r)).toEqual({
           refused: true,
           code: row.expect,
         });
       } else if (row.case.startsWith("recover of raw data")) {
         const r = readerFor({ rawDataHex: V.V1.rawHex });
-        expect(await exactTronMemo.recover({ network: REF.network, txid: REF.txid }, r)).toEqual({
+        expect(await exactTronMemo.recover(INPUT, r)).toEqual({
           refused: true,
           code: row.expect,
         });
@@ -347,7 +381,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
             return { number: solid, timestamp: blockTime(solid) };
           },
         };
-        const got = await exactTronMemo.status(REF, reader);
+        const got = await exactTronMemo.status(REF, reader, Q);
         expect(calls[0]).toBe("solidHead");
         expect([start, step, got.state]).not.toEqual([start, step, "failed"]);
       }
@@ -373,7 +407,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
           },
           transaction: async () => null,
         };
-        const got = await exactTronMemo.status(REF, reader);
+        const got = await exactTronMemo.status(REF, reader, { ...Q, finality: "head" });
         const want = solidAt >= txTime || headAt >= txTime ? "settled" : "pending";
         expect([solidAt, headAt, got.state]).toEqual([solidAt, headAt, want]);
       }
@@ -383,27 +417,24 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
   it("a failed or malformed solid-head read leaves a found transaction settled and a missing one unreadable", async () => {
     const solid = V.V4.status[0].solid;
     const nowhere = { notFound: true as const, timestamp: "1790300730000" };
-    expect(plain(await exactTronMemo.status(REF, readerFor({ solid })))).toEqual(V.V4.status[0].expect);
+    expect(plain(await exactTronMemo.status(REF, readerFor({ solid }), Q))).toEqual(V.V4.status[0].expect);
     const missing = readerFor({ solid: nowhere, head: nowhere });
     const malformed = { ...missing, solidHead: async () => ({ number: 1n, timestamp: "1790300730000" }) as never };
-    expect(await exactTronMemo.status(REF, malformed)).toEqual({ state: "pending", why: "unreadable" });
-    expect(await exactTronMemo.status(REF, missing)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactTronMemo.status(REF, malformed, Q)).toEqual(UNPARSEABLE);
+    expect(await exactTronMemo.status(REF, missing, Q)).toEqual(TRANSPORT);
   });
 
-  it("a lookup answer of no documented shape is pending unreadable, and a not-found naming no time pending not-found", async () => {
+  it("a lookup answer of no documented shape is unreadable unparseable, and a not-found naming no time pending", async () => {
     const solidHead = { number: "86542801", timestamp: "1790300730000" };
-    expect(await exactTronMemo.status(REF, readerFor({ solid: null, head: null, solidHead }))).toEqual({
-      state: "pending",
-      why: "unreadable",
-    });
+    expect(await exactTronMemo.status(REF, readerFor({ solid: null, head: null, solidHead }), Q)).toEqual(UNPARSEABLE);
     const unnamed = { ...readerFor({ solidHead }), info: async () => ({ notFound: true }) as never };
-    expect(await exactTronMemo.status(REF, unnamed)).toEqual({ state: "pending", why: "not-found" });
+    expect(await exactTronMemo.status(REF, unnamed, Q)).toEqual(SEARCH);
   });
 
   // java-tron's gettransactioninfobyid answers {} for a transaction the node does not know, naming no block time
   // (GetTransactionInfoByIdServlet), so a reader takes the time from a second call, which a load-balanced endpoint can
   // send to another node. A reader that cannot read the time from the node that answered names none.
-  it("a lookup naming a null block time is pending not-found, never expired", async () => {
+  it("a lookup naming a null block time is pending, never expired", async () => {
     const head = BigInt(REF.expiration) + 9000n;
     const lookup = (timestamp: bigint | null): TronReader => ({
       network: REF.network,
@@ -411,8 +442,9 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
       info: async () => ({ notFound: true, timestamp }),
       transaction: async () => null,
     });
-    expect(await exactTronMemo.status(REF, lookup(null))).toEqual({ state: "pending", why: "not-found" });
-    expect(await exactTronMemo.status(REF, lookup(head))).toEqual({ state: "failed", why: "expired" });
+    expect(await exactTronMemo.status(REF, lookup(null), Q)).toEqual(SEARCH);
+    // Expired, with no search for H: pending search-incomplete (read-status rule 24).
+    expect(await exactTronMemo.status(REF, lookup(head), Q)).toEqual(SEARCH);
   });
 
   // decodeTronTx reads at most 8192 hex characters, counted in UTF-16 code units (agreedRefusals rows "over 8192 hex
@@ -430,14 +462,14 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     for (const row of rows) {
       expect([row.case, decodeTronTx(row.transaction)]).toEqual([row.case, tooLarge]);
       const r = readerFor({ rawDataHex: row.transaction });
-      expect([row.case, await exactTronMemo.recover({ network: REF.network, txid: REF.txid }, r)]).toEqual([row.case, tooLarge]);
+      expect([row.case, await exactTronMemo.recover(INPUT, r)]).toEqual([row.case, tooLarge]);
     }
   });
 
-  it("a network mismatch is pending for status and wrong-reader for recover", async () => {
+  it("a network mismatch is chain-mismatch for status and wrong-reader for recover", async () => {
     const r = { ...readerFor({}), network: "tron:3448148188" as const };
-    expect(await exactTronMemo.status(REF, r)).toEqual({ state: "pending", why: "unreadable" });
-    expect(await exactTronMemo.recover({ network: REF.network, txid: REF.txid }, r)).toEqual({
+    expect(await exactTronMemo.status(REF, r, Q)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
+    expect(await exactTronMemo.recover(INPUT, r)).toEqual({
       refused: true,
       code: "tron/wrong-reader",
     });

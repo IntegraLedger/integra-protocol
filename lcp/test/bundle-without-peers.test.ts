@@ -80,7 +80,8 @@ process.stdout.write(JSON.stringify(loaded));
 
 // The Stacks pairing in the consumer's project: argv[1] is a JSON list of [the vector file, ...files]; prints whether
 // @stacks/transactions resolves there, the count of agreedRefusals rows the file holds, and for each file the count of
-// answers it gave and the pairing's bound and reference of M4 and of each agreedRefusals row.
+// answers it gave and the pairing's bound and reference of M4 and of each agreedRefusals row, the reference under B6's
+// challenge.
 const STACKS = `
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -99,7 +100,7 @@ for (const file of files) {
   ran[file] = 0;
   answers[file] = [];
   for (const w of wires) {
-    answers[file].push([await pairing.bound(credential(w)), await pairing.reference(credential(w))]);
+    answers[file].push([await pairing.bound(credential(w)), await pairing.reference(credential(w), b6.challenge)]);
     ran[file]++;
   }
 }
@@ -229,8 +230,11 @@ describe("each public entry point bundled for a Worker with no optional peer ins
     const V = JSON.parse(readFileSync(join(ROOT, "vectors", "mpp-charge-usdc-stacks.json"), "utf8"));
     // Every agreedRefusals row the file holds runs, and M4: the count is the file's own.
     const rows = rowsOf(V.agreedRefusals.rows as { wireHex: string; expect: string }[], "vectors/mpp-charge-usdc-stacks.json agreedRefusals.rows");
+    // The reference carries the payee of B6's challenge, its request's recipient.
+    const challenge = V.buyer.rows.find((r: { name: string }) => r.name === "B6").input.presented.challenge;
+    const payee = JSON.parse(Buffer.from(challenge.request, "base64url").toString("utf8")).recipient as string;
     const want = [
-      [V.M4.expectBound, V.M4.expectReference],
+      [V.M4.expectBound, { ...V.M4.expectReference, payee }],
       ...rows.map((r) => [{ refused: true, code: r.expect }, { refused: true, code: r.expect }]),
     ];
     const files = [".", "./mpp"].flatMap((key) => [bundleOf(KEYS.indexOf(key)), join(installed, PKG.exports[key]!.default)]);

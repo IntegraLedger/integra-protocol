@@ -36,6 +36,7 @@ import {
 import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
 import {
   carriesBinding,
+  evmStatusOf,
   failedAt,
   failedIfFinal,
   finalAt,
@@ -43,9 +44,15 @@ import {
   isReceipt,
   receiveTypedData,
   transferParts,
+  unreadable,
+  withPayee,
+  type EvmQuery,
+  type EvmRead,
   type ReceiveTypedData,
 } from "./internal/evm.js";
-import { boundStatus } from "./internal/evm-status.js";
+import { boundRead } from "./internal/evm-status.js";
+import { x402Payee } from "./internal/payee.js";
+import type { RecoverInput } from "./internal/read.js";
 import {
   buildChannelMessage,
   channelInstruction,
@@ -72,6 +79,8 @@ import {
   type SvmReader,
   type SvmRef,
   type SvmTx,
+  type SvmQuery,
+  type SvmStatus,
 } from "./internal/svm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
 import {
@@ -92,6 +101,7 @@ import {
   x402Broadcaster,
   type X402Read,
   x402Shape,
+  type X402Forms,
 } from "./internal/x402.js";
 import { decimalBelow, toBase64 } from "./rail-bytes.js";
 import { broadcastsWithin } from "./internal/broadcaster.js";
@@ -106,7 +116,7 @@ import {
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_X402 } from "./internal/data/eip155-x402.js";
 import { SOLANA } from "./internal/data/solana.js";
-import type { Entry } from "./internal/registry.js";
+import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 // ── EVM pieces ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -717,9 +727,14 @@ async function evmBoundWithin(presented: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The opening's read keys: the `Deposited` log, the payer's transfer by digest, and the log filter that finds the
- * opening. `settleBy` is the deposit authorization's `validBefore` or `deadline`, in decimal, below 2^256.
+ * opening. `settleBy` is the deposit authorization's `validBefore` or `deadline`, in decimal, below 2^256. With them,
+ * the payee of `option`, the issued option the payment answers (`x402Payee`), whose refusal comes after the payment's.
  */
-async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
+async function evmReference(presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> {
+  return withPayee(await evmKeys(presented), x402Payee(option));
+}
+
+async function evmKeys(presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
   const h = await evmBound(presented);
   if (isRefusal(h)) return h;
   const x = payloadOf(presented, EVM_ID) as { accepted: PaymentRequirements; payload: Record<string, unknown> };
@@ -748,25 +763,37 @@ async function evmReference(presented: unknown): Promise<EvmRef | Refusal> {
 }
 
 /**
- * The opening's settlement: `evmStatus` on the reference, and then the payer's transfer must be among the logs between
- * the channel contract's previous `Deposited` log and the channel's own `Deposited`. The contract collects a deposit and
- * then emits `ChannelCreated`, on a channel's first deposit, and `Deposited`, and its deposits do not nest, so those
- * logs hold that deposit call's transfers. The transfer counts when its `from`, `to` and `value` hash to the
- * reference's digest. A matching transfer elsewhere in the transaction, such as the payer's deposit into another
- * channel beside a gift into this one, is failed `transfer-not-found`; a matching transfer the transaction makes
- * between the previous deposit call and this one is read as this deposit's. Each failed answer, `evmStatus`'s and this
- * one, is given only where the receipt's block is at or below the reader's `finalized` mark; above it, or where that
- * mark cannot be read, the same reason is pending. A reference without this pairing's well-formed `Deposited` binding
- * log from the channel contract and its `from,to,value` transfer log is pending `unreadable`, and nothing is read. At
- * most three calls.
+ * The opening's settlement, answered as the profile `read-status` does at the pairing's coverage: `evmStatus`'s read of
+ * the reference, and then the payer's transfer must be among the logs between the channel contract's previous
+ * `Deposited` log and the channel's own `Deposited`. The contract collects a deposit and then emits `ChannelCreated`,
+ * on a channel's first deposit, and `Deposited`, and its deposits do not nest, so those logs hold that deposit call's
+ * transfers. The transfer counts when its `from`, `to` and `value` hash to the reference's digest. A matching transfer
+ * elsewhere in the transaction, such as the payer's deposit into another channel beside a gift into this one, makes
+ * the transaction no act of this deposit; a matching transfer the transaction makes between the previous deposit call
+ * and this one is read as this deposit's. With no search for H yet, a transaction that is no act answers `pending`
+ * `search-incomplete`, as `evmStatus`'s reasons do. A reference without this pairing's well-formed `Deposited` binding
+ * log from the channel contract and its `from,to,value` transfer log is unreadable `unparseable`, a reader that is not
+ * an object unreadable `transport`, and a query that is not one `status` takes unreadable `unparseable`, and nothing is
+ * read. At most three calls.
  */
-async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmBreadthStatus> {
-  if (!isObject(ref) || !isObject(reader)) return { state: "pending", why: "unreadable" };
+async function evmDepositStatus(
+  ref: EvmRef & { transaction: Hex },
+  reader: EvmReader,
+  query: EvmQuery<EvmRef & { transaction: Hex }>,
+): Promise<EvmBreadthStatus> {
+  return depositAnswer(ref, reader, query);
+}
+
+const depositAnswer = evmStatusOf(readDeposit, EIP155_X402[EVM_ID].coverage);
+
+async function readDeposit(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmRead> {
+  if (!isObject(ref)) return unreadable("unparseable");
+  if (!isObject(reader)) return unreadable("transport");
   const binding = ref.bindingLog;
   const t = ref.transferLog;
   const fromContract = typeof binding === "object" && binding !== null && sameBytes(binding.address, BATCH_SETTLEMENT);
   if (!fromContract || typeof t !== "object" || t === null || t.identity !== "from,to,value") {
-    return { state: "pending", why: "unreadable" };
+    return unreadable("unparseable");
   }
   let seen: EvmReceipt | null = null;
   const watching: EvmReader = {
@@ -776,7 +803,7 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
     transaction: (tx) => reader.transaction(tx),
     call: (to, data, block) => reader.call(to, data, block),
   };
-  const s = await boundStatus([DEPOSITED_TOPIC])(ref, watching);
+  const s = await boundRead([DEPOSITED_TOPIC])(ref, watching);
   if (s.state !== "settled") return s;
   const logs = (seen as EvmReceipt | null)?.logs ?? [];
   let start = 0;
@@ -803,17 +830,18 @@ async function evmDepositStatus(ref: EvmRef & { transaction: Hex }, reader: EvmR
  * contract's log takes. No receipt (`null`) is `evm/not-found`. A reverted transaction is `evm/reverted`; a receipt
  * with no such log is `evm/no-channel-created`, and one with more than one `evm/ambiguous`. Each of the three is given
  * only at or below the reader's `finalized` mark, and above it, or where that mark cannot be read, is `evm/not-final`,
- * a read to repeat; the mark is read only for them. A ref whose `transaction` is not a 32-byte hash is
- * `evm/wrong-reader`, with nothing read. At most two calls.
+ * a read to repeat; the mark is read only for them. The option is not read. An input or reader that is not an object,
+ * a reader for another network, or a `tx` that is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At
+ * most two calls.
  */
-async function evmRecover(ref: { network: Eip155; transaction: Hex }, reader: EvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("evm/wrong-reader");
-  if (normalHash(ref.transaction) === null) return refusal("evm/wrong-reader");
-  const chainId = chainIdOf(ref.network);
+async function evmRecover(input: RecoverInput<Eip155, PaymentRequirements>, reader: EvmReader): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("evm/wrong-reader");
+  if (normalHash(input.tx) === null) return refusal("evm/wrong-reader");
+  const chainId = chainIdOf(input.network);
   if (chainId === undefined) return refusal("evm/network-malformed");
   let receipt: EvmReceipt | null;
   try {
-    receipt = await reader.receipt(ref.transaction);
+    receipt = await reader.receipt(input.tx as Hex);
   } catch {
     return refusal("evm/unreadable");
   }
@@ -909,7 +937,20 @@ export const batchEvm = Object.freeze({
     boundWithin: evmBoundWithin,
     until: (_p: BatchPaymentPayload): number | undefined => undefined,
   }),
-}) satisfies Entry<typeof EVM_ID, BatchPaymentPayload, EvmRef & { transaction: Hex }, EvmReader>;
+}) satisfies Entry<
+  typeof EVM_ID,
+  BatchPaymentPayload,
+  EvmRef,
+  EvmReader,
+  X402Forms & {
+    choice: BatchEvmOpen;
+    unsigned: BatchUnsigned;
+    landed: { transaction: Hex };
+    network: Eip155;
+    query: EvmQuery<EvmRef & { transaction: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 // ── SVM pairing ──────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1051,13 +1092,15 @@ function openingCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
 
 /**
  * Zero-party recovery: the ATR hash in the landed opening's seller memo, beside its binding memo. An opening that landed
- * with an error is `svm/err` or `svm/not-final`, as `svmRecover` reads it. One or two calls.
+ * with an error is `svm/err` or `svm/not-final`, as `svmRecover` reads it. The option is not read; an input that is not
+ * an object is `svm/wrong-reader`. One or two calls.
  */
 async function svmBatchRecover(
-  ref: { network: SolanaNetwork; transaction: string },
+  input: RecoverInput<SolanaNetwork, PaymentRequirements>,
   reader: SvmReader,
 ): Promise<AtrHash | Refusal> {
-  const tx = await landedTransaction(ref, reader);
+  if (!isObject(input)) return refusal("svm/wrong-reader");
+  const tx = await landedTransaction({ network: input.network, transaction: input.tx }, reader);
   if (isRefusal(tx)) return tx;
   const c = openingCarrier(tx);
   return isRefusal(c) ? c : c.h;
@@ -1089,10 +1132,18 @@ async function svmBound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(o) ? o : o.h;
 }
 
-async function svmReferenceOf(presented: unknown): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
+/**
+ * The opening's read keys (`svmReference`), with the payee of `option`, the issued option the payment answers
+ * (`x402Payee`), whose refusal comes after the payment's.
+ */
+async function svmReferenceOf(
+  presented: unknown,
+  option: PaymentRequirements,
+): Promise<(Omit<SvmRef, "fromSlot" | "payee"> & { payee: string }) | Refusal> {
   const o = await svmOpening(presented);
   if (isRefusal(o)) return o;
-  return svmReference(o.accepted.network as SvmRef["network"], o.tx);
+  const keys: Omit<SvmRef, "fromSlot" | "payee"> | Refusal = await svmReference(o.accepted.network as SvmRef["network"], o.tx);
+  return withPayee(keys, x402Payee(option));
 }
 
 /** The 64 bytes of a base58 Ed25519 signature, or undefined. */
@@ -1349,7 +1400,20 @@ export const batchSvm = Object.freeze({
     boundWithin: async (_p: BatchPaymentPayload): Promise<AtrHash | Refusal> => refusal("x402/not-bound-within"),
     until: (_p: BatchPaymentPayload): number | undefined => undefined,
   }),
-}) satisfies Entry<typeof SVM_ID, BatchPaymentPayload, SvmRef & { transaction: string }, SvmReader>;
+}) satisfies Entry<
+  typeof SVM_ID,
+  BatchPaymentPayload,
+  Omit<SvmRef, "fromSlot">,
+  SvmReader,
+  X402Forms & {
+    choice: BatchSvmOpen;
+    unsigned: BatchUnsigned;
+    landed: { fromSlot: string; transaction: string };
+    network: SolanaNetwork;
+    query: SvmQuery;
+    answer: SvmStatus;
+  }
+>;
 
 // ── Cloudflare pairing ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -1403,4 +1467,13 @@ export const batchCloudflare = Object.freeze({
   build: cfBuild,
   bound: cfBound,
   broadcaster: x402Broadcaster("payee", { payload: null }),
-}) satisfies Entry<typeof CF_ID, CloudflarePaymentPayload, never, never>;
+}) satisfies Entry<
+  typeof CF_ID,
+  CloudflarePaymentPayload,
+  never,
+  never,
+  X402Forms & NoRead & {
+    choice: { required: PaymentRequired; accepted: PaymentRequirements };
+    unsigned: CloudflarePaymentPayload;
+  }
+>;

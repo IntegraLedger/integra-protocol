@@ -19,6 +19,7 @@ import {
   withoutExtra,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import {
   decodePresented,
@@ -34,6 +35,8 @@ import {
   type XrplRef,
   type XrplTxJson,
   type XrplUnsigned,
+  type XrplQuery,
+  type XrplStatus,
 } from "./internal/xrpl.js";
 import { accountIdOf } from "./internal/xrpl-session.js";
 import { isObject, normalHash } from "./fields.js";
@@ -45,6 +48,7 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 import { XRPL } from "./internal/data/xrpl.js";
+import { x402Payee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -254,16 +258,22 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(p) ? p : p.h;
 }
 
-/** The read keys for finding this payment later, all from the single-signed blob. */
-async function reference(presented: unknown): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
+/**
+ * The read keys for finding this payment later, all from the single-signed blob, and the payee of `option`, the option
+ * the payment answers (`x402Payee`).
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const p = await presentedOf(presented);
   if (isRefusal(p)) return p;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const lls = p.blob.tx.LastLedgerSequence;
   return {
     network: p.accepted.network as XrplRef["network"],
     transaction: p.blob.hash,
     expect: p.blob.tx.InvoiceID!.toUpperCase(),
     lastLedgerSequence: Number.isInteger(lls) ? lls! : null,
+    payee,
   };
 }
 
@@ -292,4 +302,17 @@ export const exactXrpl = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference,
   status: xrplStatus,
-}) satisfies Entry<typeof ID, XrplPaymentPayload, XrplRef, XrplReader>;
+}) satisfies Entry<
+  typeof ID,
+  XrplPaymentPayload,
+  Omit<XrplRef, "fromLedger">,
+  XrplReader,
+  X402Forms & {
+    choice: XrplChoice;
+    unsigned: XrplUnsigned<XrplPaymentPayload>;
+    landed: Pick<XrplRef, "fromLedger">;
+    network: never;
+    query: XrplQuery<XrplRef>;
+    answer: XrplStatus;
+  }
+>;

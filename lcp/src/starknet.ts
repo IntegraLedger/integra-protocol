@@ -19,6 +19,7 @@ import {
   type OptionFilter,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -31,6 +32,9 @@ import {
 } from "./x402.js";
 import { STARKNET } from "./internal/data/starknet.js";
 import type { Entry } from "./internal/registry.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type StarknetNetwork = "starknet:SN_MAIN" | "starknet:SN_SEPOLIA";
@@ -101,9 +105,13 @@ export interface StarknetReader {
   trace(tx: Felt): Promise<StarknetInvocation | null>;
 }
 
-/** The read keys `reference` returns; `transaction` is added when the facilitator names it. */
+/**
+ * The read keys `reference` returns, with `payee`, the `payTo` of the option the payment answers; `transaction` is added
+ * when the facilitator names it.
+ */
 export interface StarknetRef {
   network: StarknetNetwork;
+  payee: string;
   transaction?: Felt;
   /** The payer's account: the contract whose outside-execution nonce is `nonce`. */
   from: Felt;
@@ -113,10 +121,22 @@ export interface StarknetRef {
   settleBy: number;
 }
 
-export type StarknetStatus =
-  | { state: "settled"; finality: "ACCEPTED_ON_L2" | "ACCEPTED_ON_L1"; blockNumber: bigint }
-  | { state: "pending"; why: "not-found" | "pre-confirmed" | "unreadable" }
-  | { state: "failed"; why: "reverted" | "not-this-instrument" };
+/**
+ * The answer of `starknetStatus`, as the profile `read-status` gives it. Its marks are `ACCEPTED_ON_L2` and
+ * `ACCEPTED_ON_L1`, in that order, and its position the block number.
+ */
+export type StarknetStatus = StatusAnswer<bigint, StarknetMark>;
+
+type StarknetMark = "ACCEPTED_ON_L2" | "ACCEPTED_ON_L1";
+const MARKS: readonly StarknetMark[] = ["ACCEPTED_ON_L2", "ACCEPTED_ON_L1"];
+
+/** What the read of the named transaction's receipt and trace found. */
+type StarknetRead =
+  | { state: "settled"; finality: StarknetMark; blockNumber: bigint }
+  | { state: "pending"; why: "not-found" | "pre-confirmed" }
+  | { state: "failed"; why: "reverted"; finality: StarknetMark; blockNumber: bigint }
+  | { state: "failed"; why: "not-this-instrument" }
+  | { state: "unreadable"; reason: UnreadableReason };
 
 export interface StarknetUnsigned {
   /** The typed data the account's key signs; SNIP-12 hashes the account in. */
@@ -261,53 +281,93 @@ function word(v: bigint): Uint8Array {
 // ── Settlement.
 
 /**
- * Reads the named transaction's receipt. A receipt that is `PRE_CONFIRMED`, or names no block, is pending
- * `pre-confirmed`: a pre-confirmed block can change. From a receipt accepted on L2 or L1, a `REVERTED` one is failed
- * `reverted`, and a `SUCCEEDED` one must emit exactly one `Transfer` event from `ref.asset` whose sender is `ref.from`,
- * and that transfer must have this payment's identity, else failed `not-this-instrument`. An asset `Transfer` event of
- * neither standard layout, or with an amount limb of 2^128 or more, is the token's own event as the chain holds it,
- * which a re-read gives again, and is failed `not-this-instrument` too. Then its trace must hold exactly one `transfer`
- * call on `ref.asset` with this identity nested, at any depth, below an `execute_from_outside_v2` whose calldata
- * carries this nonce, no invocation on the path to either having reverted. A trace that holds none, or more than one,
- * or that is nested deeper than 16 levels or holds more than 512 invocations, which the walk reads no further, is
- * failed `not-this-instrument`: an accepted transaction's trace does not change, and `starknetLandedNonce` gives
- * `starknet/no-transfer` for none and for a trace beyond those bounds. A call below such a `transfer` is the token's
- * own execution of it (a library call repeats the frame) and is not read as another transfer. A failed read, a
+ * Answers the read of the named transaction as the profile `read-status` gives it. A receipt that is `PRE_CONFIRMED`,
+ * or names no block, names no included act: a pre-confirmed block can change. A receipt accepted on L2 or L1 is read
+ * at that mark and at its block number. A `REVERTED` one is included with a failed result, whose outside execution,
+ * the payer's nonce with it, is rolled back. A `SUCCEEDED` one is the payer's act where it emits exactly one `Transfer`
+ * event from `ref.asset` whose sender is `ref.from`, with this payment's identity, and its trace holds exactly one
+ * `transfer` call on `ref.asset` with this identity nested, at any depth, below an `execute_from_outside_v2` whose
+ * calldata carries this nonce, no invocation on the path to either having reverted. Otherwise it carries no act of the
+ * payer's that binds H: an asset `Transfer` event of neither standard layout, or with an amount limb of 2^128 or more,
+ * is the token's own event as the chain holds it; a trace that holds no such call, or more than one, or that is nested
+ * deeper than 16 levels or holds more than 512 invocations, which the walk reads no further, is the trace an accepted
+ * transaction keeps. A call below such a `transfer` is the token's own execution of it (a library call repeats the
+ * frame) and is not read as another transfer. The read holds no search for H and does not read the payer's
+ * outside-execution nonce, so none of these answers `failed`. A read that rejects is unreadable `transport`; a
  * malformed answer (an asset `Transfer` event with a key or data member that is not `0x` and 1 to 64 hex digits below
- * `FELT_P`, whatever the other events hold, among them), or a reader for another network is pending. A ref whose
- * `from`, `asset` or `nonce` is not `0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64
- * hex digits, is pending `unreadable`, with nothing read; felts compare as numbers and the digest as a hash, in either
- * case. Two calls.
+ * `FELT_P`, whatever the other events hold, or an invocation that is not well formed, among them) is `unparseable`; a
+ * receipt with no trace is `history-gap`; and a reader for another network than the ref's is `chain-mismatch`. A ref,
+ * a reader or a query that is not one, a reader that names no network, or a ref whose `transaction`, `from`, `asset`
+ * or `nonce` is not `0x` and 1 to 64 hex digits below `FELT_P`, or whose `idDigest` is not `0x` and 64 hex digits, is
+ * unreadable `unparseable`, with nothing read; felts compare as numbers and the digest as a hash, in either case. Two
+ * calls.
  */
-export async function starknetStatus(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetStatus> {
+export async function starknetStatus(
+  ref: StarknetRef & { transaction: Felt },
+  reader: StarknetReader,
+  query: StatusQuery<StarknetRef & { transaction: Felt }, bigint, StarknetMark>,
+): Promise<StarknetStatus> {
+  if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;
+  return decide(factsOf(await readStarknet(ref, reader), ref), query, LEDGER);
+}
+
+const LEDGER = ledgerOf<bigint, StarknetMark>(STARKNET[ID].coverage, MARKS, bigintOrder);
+
+async function readStarknet(ref: StarknetRef & { transaction: Felt }, reader: StarknetReader): Promise<StarknetRead> {
+  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
   if (
     !isObject(ref) ||
     !isObject(reader) ||
-    reader.network !== ref.network ||
+    typeof reader.network !== "string" ||
+    !NETWORKS.includes(ref.network) ||
     normalHash(ref.idDigest) === null ||
+    feltValue(ref.transaction) === undefined ||
     feltValue(ref.from) === undefined ||
     feltValue(ref.asset) === undefined ||
     feltValue(ref.nonce) === undefined
   ) {
-    return { state: "pending", why: "unreadable" };
+    return unparseable;
   }
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
   let receipt: StarknetReceipt | null;
   try {
     receipt = await reader.receipt(ref.transaction);
   } catch {
-    return { state: "pending", why: "unreadable" };
+    return { state: "unreadable", reason: "transport" };
   }
   if (receipt === null) return { state: "pending", why: "not-found" };
-  if (!isReceipt(receipt)) return { state: "pending", why: "unreadable" };
+  if (!isReceipt(receipt)) return unparseable;
   if (receipt.finality === "PRE_CONFIRMED" || receipt.blockNumber === null) return { state: "pending", why: "pre-confirmed" };
-  if (receipt.execution === "REVERTED") return { state: "failed", why: "reverted" };
+  const at = { finality: receipt.finality, blockNumber: receipt.blockNumber };
+  if (receipt.execution === "REVERTED") return { state: "failed", why: "reverted", ...at };
   const emitted = await transferEmitted(ref, receipt.events);
-  if (emitted === "unreadable") return { state: "pending", why: "unreadable" };
+  if (emitted === "unreadable") return unparseable;
   if (!emitted) return { state: "failed", why: "not-this-instrument" };
   const found = await matches(ref, reader);
-  if (found === "unreadable") return { state: "pending", why: "unreadable" };
+  if (typeof found === "string" && found !== "beyond-bounds") return { state: "unreadable", reason: found };
   if (found === "beyond-bounds" || found.length !== 1) return { state: "failed", why: "not-this-instrument" };
-  return { state: "settled", finality: receipt.finality, blockNumber: receipt.blockNumber };
+  return { state: "settled", ...at };
+}
+
+/**
+ * The read's facts: the act at its mark and block number where it settled, or where it reverted, a failed result that
+ * took no nonce; nothing for a transaction that carries no act, nor for one not included. The lookup by hash is never
+ * a search read whole.
+ */
+function factsOf(read: StarknetRead, ref: StarknetRef & { transaction: Felt }): Facts<bigint, StarknetMark> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.reason };
+    case "settled":
+      return { ...none, seen: [actSeen(ref.transaction, read.finality, read.blockNumber)] };
+    case "failed":
+      return read.why === "reverted"
+        ? { ...none, seen: [actSeen(ref.transaction, read.finality, read.blockNumber, "failed", false)] }
+        : none;
+    case "pending":
+      return none;
+  }
 }
 
 /**
@@ -380,7 +440,7 @@ export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt
   const accepted = receipt.finality !== "PRE_CONFIRMED" && receipt.blockNumber !== null;
   if (receipt.execution === "REVERTED") return accepted ? refusal("starknet/reverted") : refusal("starknet/not-final");
   const found = await matches({ ...ref, nonce: undefined }, reader);
-  if (found === "unreadable") return refusal("starknet/unreadable");
+  if (found === "transport" || found === "unparseable" || found === "history-gap") return refusal("starknet/unreadable");
   if (found === "beyond-bounds" || found.length === 0) {
     return accepted ? refusal("starknet/no-transfer") : refusal("starknet/not-final");
   }
@@ -395,24 +455,25 @@ export async function starknetLandedNonce(ref: StarknetRef & { transaction: Felt
  * it is given, for which the call's identity digest, with that invocation's contract as the sender, is the
  * reference's. A call below such a `transfer` is the token's own execution of it (a library call repeats the frame)
  * and is not read as another transfer. A reverted invocation's whole subtree is skipped: a failed call's descendants
- * keep `is_reverted: false`, and their effects are rolled back with it. A failed trace read, no trace, or an
- * invocation that is not well formed is "unreadable"; a trace nested deeper than `MAX_DEPTH` levels or holding more
- * than `MAX_INVOCATIONS` invocations is "beyond-bounds", read no further.
+ * keep `is_reverted: false`, and their effects are rolled back with it. A failed trace read is "transport", no trace
+ * "history-gap", and an invocation that is not well formed, or a malformed asset or nonce, "unparseable"; a trace
+ * nested deeper than `MAX_DEPTH` levels or holding more than `MAX_INVOCATIONS` invocations is "beyond-bounds", read no
+ * further.
  */
 async function matches(
   ref: { transaction: Felt; asset: Felt; idDigest: Hex; nonce: Felt | undefined },
   reader: StarknetReader,
-): Promise<bigint[] | "unreadable" | "beyond-bounds"> {
+): Promise<bigint[] | "transport" | "unparseable" | "history-gap" | "beyond-bounds"> {
   let root: StarknetInvocation | null;
   try {
     root = await reader.trace(ref.transaction);
   } catch {
-    return "unreadable";
+    return "transport";
   }
-  if (root === null) return "unreadable";
+  if (root === null) return "history-gap";
   const asset = feltValue(ref.asset);
   const nonce = ref.nonce === undefined ? undefined : feltValue(ref.nonce);
-  if (asset === undefined || (ref.nonce !== undefined && nonce === undefined)) return "unreadable";
+  if (asset === undefined || (ref.nonce !== undefined && nonce === undefined)) return "unparseable";
   const execute = BigInt(SELECTOR_EXECUTE_FROM_OUTSIDE_V2);
   const transfer = BigInt(SELECTOR_TRANSFER);
   const found: bigint[] = [];
@@ -422,7 +483,7 @@ async function matches(
   while (stack.length > 0) {
     const { inv, depth, above } = stack.pop()!;
     if (depth > MAX_DEPTH || ++visited > MAX_INVOCATIONS) return "beyond-bounds";
-    if (!isInvocation(inv)) return "unreadable";
+    if (!isInvocation(inv)) return "unparseable";
     if (inv.reverted) continue;
     const selector = feltValue(inv.selector);
     if (above.length > 0 && selector === transfer && feltValue(inv.contract) === asset) {
@@ -611,10 +672,15 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(s) ? s : s.h;
 }
 
-/** The read keys: the payer's account, the token, the signed nonce, the transfer's identity digest and `Execute Before`. */
-async function reference(presented: unknown): Promise<StarknetRef | Refusal> {
+/**
+ * The read keys: the payer's account, the token, the signed nonce, the transfer's identity digest and `Execute Before`;
+ * and the payee, the `payTo` of the option the payment answers.
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<StarknetRef | Refusal> {
   const s = signed(presented);
   if (isRefusal(s)) return s;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const calls = s.message["Calls"];
   const call = Array.isArray(calls) && calls.length === 1 && isObject(calls[0]) ? calls[0] : undefined;
   const data = call?.["Calldata"];
@@ -630,6 +696,7 @@ async function reference(presented: unknown): Promise<StarknetRef | Refusal> {
   if (isRefusal(idDigest)) return idDigest;
   return {
     network: s.accepted.network as StarknetNetwork,
+    payee,
     from: feltOf(feltValue(s.from)!),
     asset: feltOf(feltValue(s.accepted.asset)!),
     nonce: feltOf(s.nonce),
@@ -673,4 +740,17 @@ export const exactStarknet = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference,
   status: starknetStatus,
-}) satisfies Entry<typeof ID, StarknetPayment, StarknetRef & { transaction: Felt }, StarknetReader>;
+}) satisfies Entry<
+  typeof ID,
+  StarknetPayment,
+  StarknetRef,
+  StarknetReader,
+  X402Forms & {
+    choice: Parameters<typeof build>[0];
+    unsigned: StarknetUnsigned;
+    landed: { transaction: Felt };
+    network: never;
+    query: StatusQuery<StarknetRef & { transaction: Felt }, bigint, StarknetMark>;
+    answer: StarknetStatus;
+  }
+>;

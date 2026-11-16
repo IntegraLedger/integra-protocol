@@ -16,12 +16,13 @@ import {
   unplacedChallenge,
   type MppChallenge,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { isExternalId } from "./mpp-rail-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { NEAR } from "./internal/data/near.js";
-import type { Entry } from "./internal/registry.js";
+import type { Entry, NoRead } from "./internal/registry.js";
 
 const ID = "mpp/charge/nearintents" as const;
 
@@ -97,4 +98,4 @@ export const chargeNearIntents = Object.freeze({
   read,
   bound,
   broadcaster: mppBroadcaster(byType({ hash: "payer" }, () => refusal("near/not-hash-credential"))),
-}) satisfies Entry<typeof ID, MppCredential, never, never>;
+}) satisfies Entry<typeof ID, MppCredential, never, never, MppForms & NoRead & { choice: never; unsigned: never }>;

@@ -63,10 +63,16 @@ async function signedOpening(credentialType: "authorization" | "permit2"): Promi
   return c;
 }
 
-async function statusOf(cred: MppCredential, tx: EvmTransaction | null | "error", receipt?: Receipt) {
-  const ref = (await sessionEvm.reference(cred)) as SessionRef;
+/** The query of a payment read at the final mark. */
+const FINAL = { act: "payment", finality: "finalized" } as const;
+
+/** `sessionEvm.reference` of an opening, with the challenge it echoes as the option the payment answers. */
+const referenceOf = async (cred: MppCredential) => (await sessionEvm.reference(cred, cred.challenge)) as SessionRef;
+
+async function statusOf(cred: MppCredential, tx: EvmTransaction | null | "error", receipt?: Receipt, query: Parameters<typeof sessionEvm.status>[2] = FINAL) {
+  const ref = await referenceOf(cred);
   const transaction = (sessionEvm.landedTx(cred) ?? R.hash) as Hex;
-  return withBigints(await sessionEvm.status({ ...ref, transaction }, reader(tx, receipt)));
+  return withBigints(await sessionEvm.status({ ...ref, transaction }, reader(tx, receipt), query));
 }
 
 describe("ES9: the hash opening's settlement read", () => {
@@ -82,10 +88,22 @@ describe("ES9: the hash opening's settlement read", () => {
 
   it("the reference names the escrow, the channel, H and the chain, beside the payer-to-escrow transfer", async () => {
     const cred = await opening(H);
-    const ref = (await sessionEvm.reference(cred)) as SessionRef;
+    const ref = await referenceOf(cred);
     expect(ref.opens).toEqual({ escrow: f.escrow, channel: E.ES1.expectChannelId, h: H, chainId: f.chainId });
     expect(ref.transferLog?.identity).toBe("from,to");
     expect(ref.transferLog?.digest).toBe(E.ES7.expectFromTo);
+    expect(ref.payee).toBe(f.recipient);
+  });
+
+  it("the opening is before a position at its own block", async () => {
+    expect(await statusOf(await opening(H), R.cases[0].transaction, undefined, { ...FINAL, after: BigInt(R.receipt.blockNumber) })).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: R.hash,
+      position: R.receipt.blockNumber,
+      finality: "finalized",
+      foreign: [],
+    });
   });
 
   for (const row of rowsOf(R.cases, "mpp-session-evm.json ES9.cases")) {
@@ -114,46 +132,43 @@ describe("ES9: the hash opening's settlement read", () => {
 
   // The Ethereum JSON-RPC block tags (ethereum/execution-apis, `BlockTag`): `safe` is safe from reorganization only under
   // honest-majority and synchrony assumptions, and `finalized` cannot be reorganized without manual intervention. A
-  // block above `finalized` can still be replaced, so a failed answer, which names no mark, needs the receipt's block at
-  // or below it; above it the read is pending. The failed rows and their expectation at the finalized mark are ES9's.
-  it("a call that opens another channel is failed only once its block is at or below the finalized mark", async () => {
-    const failed = rowsOf<any>(R.cases, "mpp-session-evm.json ES9.cases", {
-      keep: ["the rows whose expect is failed", (row: { expect: { state: string } }) => row.expect.state === "failed"],
-      leave: [
-        "the rows that settle or stay pending, which the row tests above run",
-        (row: { expect: { state: string } }) => row.expect.state === "settled" || row.expect.state === "pending",
-      ],
+  // block above `finalized` can still be replaced, so a failed answer, which names no mark, comes only at the final mark
+  // (read-status rule 17), and at coverage full only once the search for H is read whole (rule 24): with no search yet,
+  // each row that is no act is pending at every mark. The rows and their expectation are ES9's.
+  it("a transaction that is no act of the opening is pending at every mark while no search for H is read", async () => {
+    const unsettled = rowsOf<any>(R.cases, "mpp-session-evm.json ES9.cases", {
+      keep: ["the rows whose expect is pending", (row: { expect: { state: string } }) => row.expect.state === "pending"],
+      leave: ["the rows that settle, which the row tests above run", (row: { expect: { state: string } }) => row.expect.state === "settled"],
     });
-    expect(failed.length).toBeGreaterThan(0);
+    expect(unsettled.length).toBeGreaterThan(0);
     const block = BigInt(R.receipt.blockNumber);
-    const pending = { state: "pending", why: "open-call-not-found" };
-    for (const row of failed) {
-      for (const [finalized, safe, expected] of [
-        [block, block, row.expect],
-        [block - 1n, block, pending],
-        [block - 1n, block - 1n, pending],
+    for (const row of unsettled) {
+      for (const [finalized, safe] of [
+        [block, block],
+        [block - 1n, block],
+        [block - 1n, block - 1n],
       ] as const) {
         const marked: EvmReader = { ...reader(row.transaction), blockNumber: async (tag) => (tag === "finalized" ? finalized : safe) };
-        const ref = (await sessionEvm.reference(await opening(H))) as SessionRef;
-        const read = withBigints(await sessionEvm.status({ ...ref, transaction: R.hash as Hex }, marked));
-        expect(read, `${row.case}; finalized ${finalized}, safe ${safe}`).toEqual(expected);
+        const ref = await referenceOf(await opening(H));
+        const read = withBigints(await sessionEvm.status({ ...ref, transaction: R.hash as Hex }, marked, FINAL));
+        expect(read, `${row.case}; finalized ${finalized}, safe ${safe}`).toEqual(row.expect);
       }
     }
   });
 
-  it("an unreadable transaction read is pending", async () => {
-    expect(await statusOf(await opening(H), "error")).toEqual({ state: "pending", why: "unreadable" });
+  it("an unreadable transaction read is unreadable: a failed read transport, a malformed transaction unparseable", async () => {
+    expect(await statusOf(await opening(H), "error")).toEqual({ state: "unreadable", reason: "transport", foreign: [] });
     const noSender = { ...R.cases[0].transaction, from: "0x1234" };
-    expect(await statusOf(await opening(H), noSender)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await statusOf(await opening(H), noSender)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
     const oddInput = { ...R.cases[0].transaction, input: `${R.cases[0].transaction.input}1` };
-    expect(await statusOf(await opening(H), oddInput)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await statusOf(await opening(H), oddInput)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
   });
 
-  // CONTRIBUTING.md, "Failures are values": status answers a ref member it cannot read as pending unreadable and makes
+  // CONTRIBUTING.md, "Failures are values": status answers a ref member it cannot read as unreadable and makes
   // no reader call for it. A readable opens is the form reference writes, asserted above: the escrow's address, the
   // channel, H and the chain id.
-  it("an opens that is not of the form reference writes reads as pending unreadable, with no call made", async () => {
-    const ref = (await sessionEvm.reference(await opening(H))) as SessionRef;
+  it("an opens that is not of the form reference writes reads as unreadable unparseable, with no call made", async () => {
+    const ref = await referenceOf(await opening(H));
     const calls = { n: 0 };
     const settled = reader(R.cases[0].transaction);
     const counting: EvmReader = {
@@ -165,14 +180,14 @@ describe("ES9: the hash opening's settlement read", () => {
     };
     for (const opens of [null, {}, { ...ref.opens, escrow: 5 }, { ...ref.opens, chainId: 0 }, "x"]) {
       const malformed = { ...ref, opens, transaction: R.hash } as unknown as SessionRef & { transaction: Hex };
-      expect(await sessionEvm.status(malformed, counting), JSON.stringify(opens)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await sessionEvm.status(malformed, counting, FINAL), JSON.stringify(opens)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
     }
     expect(calls.n).toBe(0);
-    expect(withBigints(await sessionEvm.status({ ...ref, transaction: R.hash as Hex }, counting))).toEqual(R.cases[0].expect);
+    expect(withBigints(await sessionEvm.status({ ...ref, transaction: R.hash as Hex }, counting, FINAL))).toEqual(R.cases[0].expect);
   });
 
   it("the authorization opening's reference names no open call; its AuthorizationUsed nonce commits to H", async () => {
-    const ref = (await sessionEvm.reference(await signedOpening("authorization"))) as SessionRef;
+    const ref = await referenceOf(await signedOpening("authorization"));
     expect(ref.opens).toBeUndefined();
     expect(ref.bindingLog?.value).toBe(E.ES3.expectNonce);
   });
@@ -182,7 +197,7 @@ describe("ES9 entryPoint: the hash opening sent through an ERC-4337 EntryPoint r
   const P = R.entryPoint;
 
   it("the reference names the account's channel", async () => {
-    const ref = (await sessionEvm.reference(await opening(H, P.account))) as SessionRef;
+    const ref = await referenceOf(await opening(H, P.account));
     expect(ref.opens).toEqual({ escrow: f.escrow, channel: P.expectChannelId, h: H, chainId: f.chainId });
   });
 
@@ -200,7 +215,7 @@ describe("ES9 permit2: the Permit2 opening reads the escrow's openWithPermit2", 
   ]);
 
   it("the reference names the escrow, the channel, H and the chain, beside the deadline and the transfer", async () => {
-    const ref = (await sessionEvm.reference(await signedOpening("permit2"))) as SessionRef;
+    const ref = await referenceOf(await signedOpening("permit2"));
     expect(ref.opens).toEqual({ escrow: f.escrow, channel: E.ES1.expectChannelId, h: H, chainId: f.chainId });
     expect(ref.settleBy).toBe("1790000060");
     expect(ref.transferLog?.digest).toBe(E.ES7.expectIdentity);
@@ -246,7 +261,7 @@ describe("ES9 permit2: the Permit2 opening reads the escrow's openWithPermit2", 
 describe("ES9 recover: the salt of the opening's own open call", () => {
   const refused = (code: string) => ({ refused: true, code });
   const recoverOf = (tx: EvmTransaction | null | "error", receipt?: Receipt) =>
-    sessionEvm.recover({ network: `eip155:${f.chainId}`, transaction: R.hash }, reader(tx, receipt));
+    sessionEvm.recover({ network: `eip155:${f.chainId}`, tx: R.hash, option: challenge("evm", "session", f.request) }, reader(tx, receipt));
 
   it("the hash opening's cases: the open call's salt where the escrow pulled the payer's deposit, else evm/no-open-call", async () => {
     const expected = [
@@ -267,7 +282,7 @@ describe("ES9 recover: the salt of the opening's own open call", () => {
   it("an opening sent through an ERC-4337 EntryPoint is refused evm/no-open-call, where status leaves it pending", async () => {
     for (const row of rowsOf(R.entryPoint.cases, "mpp-session-evm.json ES9.entryPoint.cases")) {
       expect(await recoverOf(row.transaction, row.receipt), row.case).toEqual(refused("evm/no-open-call"));
-      expect(row.expect, row.case).toEqual({ state: "pending", why: "open-call-not-found" });
+      expect(row.expect, row.case).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
     }
   });
 
@@ -329,7 +344,7 @@ describe("ES9 recover: the salt of the opening's own open call", () => {
       };
       return { c, seen };
     };
-    const ref = { network: `eip155:${f.chainId}`, transaction: R.hash as Hex };
+    const ref = { network: `eip155:${f.chainId}`, tx: R.hash, option: challenge("evm", "session", f.request) };
     const opened = counted(reader(R.cases[0].transaction));
     expect(await sessionEvm.recover(ref, opened.c)).toBe(H);
     expect(opened.seen).toEqual(["receipt", "transaction"]);
@@ -342,10 +357,12 @@ describe("ES9 recover: the salt of the opening's own open call", () => {
     const tx = R.cases[0].transaction;
     expect(await recoverOf(tx, { ...R.receipt, status: 0 })).toEqual(refused("evm/reverted"));
     expect(await recoverOf("error")).toEqual(refused("evm/unreadable"));
-    expect(await sessionEvm.recover({ network: `eip155:${f.chainId}`, transaction: `0x${"99".repeat(32)}` }, reader(tx))).toEqual(
+    const option = challenge("evm", "session", f.request);
+    expect(await sessionEvm.recover({ network: `eip155:${f.chainId}`, tx: `0x${"99".repeat(32)}`, option }, reader(tx))).toEqual(
       refused("evm/not-found"),
     );
-    expect(await sessionEvm.recover({ network: "eip155:1", transaction: R.hash }, reader(tx))).toEqual(refused("evm/wrong-reader"));
+    expect(await sessionEvm.recover({ network: "eip155:1", tx: R.hash, option }, reader(tx))).toEqual(refused("evm/wrong-reader"));
+    expect(await sessionEvm.recover({ network: `eip155:${f.chainId}`, tx: "0x12", option }, reader(tx))).toEqual(refused("evm/wrong-reader"));
     expect(await sessionEvm.recover(null as never, reader(tx))).toEqual(refused("evm/wrong-reader"));
     expect(await recoverOf({ ...tx, to: null })).toEqual(refused("evm/no-open-call"));
   });

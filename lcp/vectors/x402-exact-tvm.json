@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed, except agreedRefusals' row 22, buyer row B6's settlementBoc with a bit set past the last byte in its last base64 character before the padding, and the agreedRefusals rows whose case says their settlement message is written bit by bit. Status fixtures model TON Center v3 answers: byInBodyRequest answers the lookup by the signed W5 request's body hash, byInMessage the lookups by message hash, keyed by the hash, byInBody a lookup by the Jetton transfer's body hash, which status does not make, and headUtime the masterchain head's gen_utime; each byInBody answer also names the gen_utime of a masterchain block through which its index holds every block, indexedUtime where the row gives it and the row's headUtime where it does not; inBody is a BoC in hex. Status counts only the payer Jetton wallet's transaction that took the message the payer's W5 wallet emitted in a transaction with the request: W5 checks the request's signature before any action runs (wallet_v5.fc). W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal request that aborts leaves its seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before valid_until: a lookup in which no transaction with the request emitted the Jetton transfer shows that the request never sends it only when its index holds every block through the head read first. A W5 transaction runs at its shard block's time, which a masterchain block references only later, so such a request reads failed only once the head read first is more than 60 seconds past valid_until. An internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head.",
+ "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed, except agreedRefusals' row 22, buyer row B6's settlementBoc with a bit set past the last byte in its last base64 character before the padding, and the agreedRefusals rows whose case says their settlement message is written bit by bit. Status fixtures model TON Center v3 answers: byInBodyRequest answers the lookup by the signed W5 request's body hash, byInMessage the lookups by message hash, keyed by the hash, byInBody a lookup by the Jetton transfer's body hash, which status does not make, and headUtime the masterchain head's gen_utime; each byInBody answer also names the gen_utime of a masterchain block through which its index holds every block, indexedUtime where the row gives it and the row's headUtime where it does not; inBody is a BoC in hex. Status counts only the payer Jetton wallet's transaction that took the message the payer's W5 wallet emitted in a transaction with the request: W5 checks the request's signature before any action runs (wallet_v5.fc). W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal request that aborts leaves its seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before valid_until: a lookup in which no transaction with the request emitted the Jetton transfer shows that the request never sends it only when its index holds every block through the head read first. A W5 transaction runs at its shard block's time, which a masterchain block references only later, so such a request reads failed only once the head read first is more than 60 seconds past valid_until. An internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head. V4's status rows and the plant are read with the act payment at the finality the row gives, finalized where it gives none, and answer as the profile read-status gives them, naming the W5 wallet's transaction: since the read holds no search for H, an aborted, bounced or expired request, one that emitted nothing, one in flight or not final, and one not found answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -67,6 +67,7 @@
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "tvm:-239",
+   "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
    "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
    "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
    "requestBodyHash": "0xd2a6d348458c3d5213503704aba9674b8f47dffdcce88950bb0b5c3331f4116f",
@@ -164,6 +165,7 @@
  "V4": {
   "ref": {
    "network": "tvm:-239",
+   "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
    "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
    "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
    "requestBodyHash": "0xd2a6d348458c3d5213503704aba9674b8f47dffdcce88950bb0b5c3331f4116f",
@@ -217,11 +219,14 @@
     },
     "expect": {
      "state": "settled",
-     "finality": "finalized"
+     "transaction": "tx-w5",
+     "finality": "finalized",
+     "foreign": []
     }
    },
    {
     "case": "finality 2 and 1",
+    "finality": "confirmed",
     "byInBodyRequest": [
      {
       "hash": "tx-w5",
@@ -266,7 +271,9 @@
     },
     "expect": {
      "state": "settled",
-     "finality": "confirmed"
+     "transaction": "tx-w5",
+     "finality": "confirmed",
+     "foreign": []
     }
    },
    {
@@ -315,7 +322,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-final"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -353,8 +361,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "aborted"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -402,8 +411,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "bounced"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -413,7 +423,8 @@
     "indexedUtime": 1790000120,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -422,8 +433,9 @@
     "headUtime": 1790000121,
     "indexedUtime": 1790000121,
     "expect": {
-     "state": "failed",
-     "why": "expired"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -449,7 +461,8 @@
     "headUtime": 1790000200,
     "expect": {
      "state": "pending",
-     "why": "in-flight"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -466,8 +479,9 @@
     ],
     "headUtime": 1790000200,
     "expect": {
-     "state": "failed",
-     "why": "no-transfer"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -485,7 +499,8 @@
     "headUtime": 1790000060,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -502,8 +517,9 @@
     ],
     "headUtime": 1790000200,
     "expect": {
-     "state": "failed",
-     "why": "aborted"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -521,15 +537,17 @@
     "headUtime": 1790000060,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "nothing found and the head read fails",
     "byInBodyRequest": [],
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -554,8 +572,9 @@
     },
     "headUtime": 1790000200,
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -563,8 +582,9 @@
     "byInBodyRequest": "reader-error",
     "headUtime": 1790000200,
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -574,7 +594,8 @@
     "indexedUtime": 1790000040,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -593,7 +614,8 @@
     "indexedUtime": 1790000040,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -612,7 +634,8 @@
     "indexedUtime": 1790000040,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ],
@@ -659,8 +682,9 @@
   ],
   "headUtime": 1790000200,
   "expect": {
-   "state": "failed",
-   "why": "expired"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "agreedRefusals": {
@@ -1321,6 +1345,7 @@
     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     "expectReference": {
      "network": "tvm:-239",
+     "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x895cc0c0deeeab7177cb57383492285052c3498e4d423c7c6f543b6e904455b6",
@@ -1334,6 +1359,7 @@
     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     "expectReference": {
      "network": "tvm:-239",
+     "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x0124884d6313a4aea6931c2abb3e84749700216cb1a66a36f32215e9438b075d",
@@ -1347,6 +1373,7 @@
     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     "expectReference": {
      "network": "tvm:-239",
+     "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x2b904ff7a73ad88540e3cb3f45d93599703c3b1f0e7d9509fb0dbc6276b04e44",
@@ -1360,6 +1387,7 @@
     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     "expectReference": {
      "network": "tvm:-239",
+     "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x72376c3d35f817105fa77477e0be4dc48c9bfa80bc4827328947c609f78600ff",
@@ -1373,6 +1401,7 @@
     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     "expectReference": {
      "network": "tvm:-239",
+     "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x72771e3503b1a5f3f1d770430072f5e2760b46f6c4b93d416245b8655ee96fe4",
@@ -1386,6 +1415,7 @@
     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     "expectReference": {
      "network": "tvm:-239",
+     "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x4603931450c677130bd0db6445f5caf90a62a42fb4094749326930c9873209b2",

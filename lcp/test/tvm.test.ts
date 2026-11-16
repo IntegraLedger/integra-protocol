@@ -79,6 +79,11 @@ function readerFor(a: {
   };
 }
 const REF: TvmRef = V.V4.ref;
+const Q = { act: "payment", finality: "finalized" } as const;
+const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
+const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
+/** The W5 wallet's transaction that took the request, settled at `finalized`. */
+const SETTLED = { state: "settled", transaction: "tx-w5", finality: "finalized", foreign: [] };
 
 // A bag of cells written field by field in the layout TON's deserializer reads (ton-blockchain/ton crypto/vm/boc.cpp,
 // BagOfCells::Info::parse_serialized_header and BagOfCells::deserialize), so that a test can give any field a value
@@ -280,7 +285,7 @@ describe("x402-exact-tvm.json", () => {
     expect(hashHex(root)).toBe(W.expectSettlementRootHash);
     expect(hashHex(root.refs[0]!)).toBe(W.expectStateInitHash);
     expect(await exactTvm.bound(p)).toBe(H);
-    const ref = await exactTvm.reference(p);
+    const ref = await exactTvm.reference(p, O);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.transferBodyHash).toBe(`0x${W.expectTransferBodyHash}`);
     expect(ref.requestBodyHash).toBe(`0x${W.expectRequestBodyHash}`);
@@ -327,7 +332,7 @@ describe("x402-exact-tvm.json", () => {
     const carrying = carryingInit(given, R.wallet);
     const b64 = carrying.toBoc({ idx: false, crc32: true }).toString("base64");
     expect(await exactTvm.bound(payment(b64))).toBe(H);
-    const ref = await exactTvm.reference(payment(b64));
+    const ref = await exactTvm.reference(payment(b64), O);
     if ("refused" in ref) throw new Error(ref.code);
     expect([ref.wallet, ref.requestBodyHash]).toEqual([R.wallet, `0x${V.V2b.expectRequestBodyHash}`]);
   });
@@ -426,7 +431,7 @@ describe("x402-exact-tvm.json", () => {
     const moved = beginCell().storeBits(flags).storeAddress(src).storeAddress(Address.parseRaw(other)).storeBits(rest).storeRef(v2b.refs[0]!).storeRef(v2b.refs[1]!).endCell();
     const b64 = moved.toBoc({ idx: false, crc32: true }).toString("base64");
     expect(await exactTvm.bound(payment(b64))).toBe(H);
-    const ref = await exactTvm.reference(payment(b64));
+    const ref = await exactTvm.reference(payment(b64), O);
     if ("refused" in ref) throw new Error(ref.code);
     expect([ref.wallet, ref.requestBodyHash]).toEqual([other, `0x${V.V2b.expectRequestBodyHash}`]);
   });
@@ -543,7 +548,7 @@ describe("x402-exact-tvm.json", () => {
   it("V3: bound and reference, and each refusal", async () => {
     const p = await signed();
     expect(await exactTvm.bound(p)).toBe(V.V3.expectBound);
-    const ref = await exactTvm.reference(p);
+    const ref = await exactTvm.reference(p, O);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
     const c = tvmCarrier(p.payload.settlementBoc, REF.network);
@@ -591,7 +596,7 @@ describe("x402-exact-tvm.json", () => {
   it("V3: bound and reference refuse V2's payment under an option read does not offer", async () => {
     const p = await signed();
     expect(await exactTvm.bound({ ...p, accepted: placed })).toBe(V.V3.expectBound);
-    expect(await exactTvm.reference({ ...p, accepted: placed })).toEqual(V.V3.expectReference);
+    expect(await exactTvm.reference({ ...p, accepted: placed }, O)).toEqual(V.V3.expectReference);
     const doc = exactTvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, V.fixed.link, O);
     if ("refused" in doc) throw new Error(doc.code);
     const { maxTimeoutSeconds: _timeout, ...untimed } = placed;
@@ -603,7 +608,7 @@ describe("x402-exact-tvm.json", () => {
     ];
     for (const accepted of echoed) {
       expect(await exactTvm.bound({ ...p, accepted })).toEqual({ refused: true, code: "tvm/option-malformed" });
-      expect(await exactTvm.reference({ ...p, accepted })).toEqual({ refused: true, code: "tvm/option-malformed" });
+      expect(await exactTvm.reference({ ...p, accepted }, O)).toEqual({ refused: true, code: "tvm/option-malformed" });
       expect(pairingOf(accepted)).toBeUndefined();
       expect(exactTvm.read({ ...doc, accepts: [accepted] })).toEqual({ refused: true, code: "x402/no-payable-option" });
       const built = await exactTvm.build({ ...choice(), required: { ...required, accepts: [accepted] }, accepted }, H);
@@ -611,7 +616,7 @@ describe("x402-exact-tvm.json", () => {
     }
     const unsponsored = { ...placed, extra: { ...placed.extra, areFeesSponsored: false } };
     expect(await exactTvm.bound({ ...p, accepted: unsponsored })).toEqual({ refused: true, code: "tvm/option-malformed" });
-    expect(await exactTvm.reference({ ...p, accepted: unsponsored })).toEqual({ refused: true, code: "tvm/option-malformed" });
+    expect(await exactTvm.reference({ ...p, accepted: unsponsored }, O)).toEqual({ refused: true, code: "tvm/option-malformed" });
   });
 
   // The entry point's interface: "No function throws". An exotic cell (TVM's library cell: type 2, then a 256-bit
@@ -718,7 +723,7 @@ describe("x402-exact-tvm.json", () => {
       const boc = settle(body);
       const c = tvmCarrier(boc, REF.network);
       const requestBodyHash = `0x${hashHex(body)}`;
-      got.push([form, await exactTvm.bound(payment(boc)), await exactTvm.reference(payment(boc)), "refused" in c ? c : [c.h, c.requestBodyHash]]);
+      got.push([form, await exactTvm.bound(payment(boc)), await exactTvm.reference(payment(boc), O), "refused" in c ? c : [c.h, c.requestBodyHash]]);
       want.push([form, H, { ...V.V3.expectReference, requestBodyHash }, [H, requestBodyHash]]);
     }
     for (const [form, body, code] of nothing) {
@@ -733,7 +738,7 @@ describe("x402-exact-tvm.json", () => {
     for (const row of rowsOf(V.V3b.rows, "x402-exact-tvm.json V3b.rows", { exact: 6 })) {
       const pay = payment(row.settlementBoc);
       const c = tvmCarrier(row.settlementBoc, row.expectReference.network);
-      expect([row.case, await exactTvm.bound(pay), await exactTvm.reference(pay)]).toEqual([row.case, row.expectBound, row.expectReference]);
+      expect([row.case, await exactTvm.bound(pay), await exactTvm.reference(pay, O)]).toEqual([row.case, row.expectBound, row.expectReference]);
       expect([row.case, "refused" in c ? c : [c.h, c.requestBodyHash, c.wallet, c.validUntil]]).toEqual([
         row.case,
         [row.expectBound, row.expectReference.requestBodyHash, row.expectReference.wallet, row.expectReference.validUntil],
@@ -822,7 +827,7 @@ describe("x402-exact-tvm.json", () => {
       ["a data size one byte past the cells, with no index", (r) => bagOf(writtenOf(r), { pastCells: [0] })],
     ];
     const recovered = (boc: string) =>
-      exactTvm.recover({ network: REF.network, transaction: "x" }, readerFor({ inBodyHex: Buffer.from(boc, "base64").toString("hex") }));
+      exactTvm.recover({ network: REF.network, tx: "x", option: O }, readerFor({ inBodyHex: Buffer.from(boc, "base64").toString("hex") }));
     expect(await exactTvm.bound(payment(bagOf(writtenOf(settlement))))).toBe(H);
     expect(await recovered(bagOf(writtenOf(body)))).toBe(H);
     const malformed = { refused: true, code: "tvm/boc-malformed" };
@@ -843,13 +848,13 @@ describe("x402-exact-tvm.json", () => {
     const settlement = Cell.fromBase64((await signed()).payload.settlementBoc);
     const boc = bagOf(writtenOf(settlement), { beforeCrc: [0] });
     expect(await exactTvm.bound(payment(boc))).toBe(H);
-    expect(await exactTvm.reference(payment(boc))).toEqual(V.V3.expectReference);
+    expect(await exactTvm.reference(payment(boc), O)).toEqual(V.V3.expectReference);
     const c = tvmCarrier(boc, REF.network);
     if ("refused" in c) throw new Error(c.code);
     expect([c.h, c.requestBodyHash]).toEqual([H, V.V3.expectReference.requestBodyHash]);
     const body = bagOf(writtenOf(cellAt(settlement, [0, 0, 1, 0])), { beforeCrc: [0] });
     const reader = readerFor({ inBodyHex: Buffer.from(body, "base64").toString("hex") });
-    expect(await exactTvm.recover({ network: REF.network, transaction: "x" }, reader)).toBe(H);
+    expect(await exactTvm.recover({ network: REF.network, tx: "x", option: O }, reader)).toBe(H);
   });
 
   // A pruned branch's level mask need not set its bits from the lowest up: under two Merkle proofs, one of mask 2 is a
@@ -861,7 +866,7 @@ describe("x402-exact-tvm.json", () => {
   it("a pruned branch of each level mask is hashed as TON hashes it", async () => {
     const F = JSON.parse(readFileSync(new URL("./fixtures/tvm-pruned-branch-mask-2.json", import.meta.url), "utf8"));
     expect(await exactTvm.bound(payment(F.settlementBoc))).toBe(H);
-    expect(await exactTvm.reference(payment(F.settlementBoc))).toEqual({
+    expect(await exactTvm.reference(payment(F.settlementBoc), O)).toEqual({
       ...V.V3.expectReference,
       requestBodyHash: F.expectRequestBodyHash,
       transferBodyHash: F.expectTransferBodyHash,
@@ -874,9 +879,9 @@ describe("x402-exact-tvm.json", () => {
       const root = paying(settlement, transferAt, provenOf(prunedOf(mask), proofs));
       const transfer = cellAt(root, transferAt);
       const reader = readerFor({ inBodyHex: Buffer.from(bagOf(writtenOf(transfer, true)), "base64").toString("hex") });
-      expect([mask, await exactTvm.recover({ network: REF.network, transaction: "x" }, reader)]).toEqual([mask, H]);
+      expect([mask, await exactTvm.recover({ network: REF.network, tx: "x", option: O }, reader)]).toEqual([mask, H]);
       if (proofs > 2) continue;
-      const ref = await exactTvm.reference(payment(root.toBoc({ idx: false, crc32: true }).toString("base64")));
+      const ref = await exactTvm.reference(payment(root.toBoc({ idx: false, crc32: true }).toString("base64")), O);
       expect([mask, ref]).toEqual([mask, { ...V.V3.expectReference, requestBodyHash: `0x${hashHex(root.refs[0]!)}`, transferBodyHash: `0x${hashHex(transfer)}` }]);
     }
   });
@@ -928,7 +933,7 @@ describe("x402-exact-tvm.json", () => {
       expect([name, exactTvm.advertise(doc(offered(payload)), H, V.fixed.link, offered(payload))]).toEqual([name, { refused: true, code: "tvm/carrier-occupied" }]);
       const mismatch = { refused: true, code: "tvm/carrier-mismatch" };
       expect([name, await exactTvm.bound({ ...p, accepted: accepted(payload) })]).toEqual([name, mismatch]);
-      expect([name, await exactTvm.reference({ ...p, accepted: accepted(payload) })]).toEqual([name, mismatch]);
+      expect([name, await exactTvm.reference({ ...p, accepted: accepted(payload) }, O)]).toEqual([name, mismatch]);
       expect([name, await exactTvm.build({ ...choice(), wallet: V.V2b.wallet, stateInit: form(init) }, H)]).toEqual([name, { refused: true, code: "tvm/boc-malformed" }]);
     }
   });
@@ -996,7 +1001,7 @@ describe("x402-exact-tvm.json", () => {
     ];
     for (const [name, c, keys] of sends) {
       expect([name, await bound(c)]).toEqual([name, H]);
-      const ref = await exactTvm.reference(payment(c.toBoc({ idx: false, crc32: true }).toString("base64")));
+      const ref = await exactTvm.reference(payment(c.toBoc({ idx: false, crc32: true }).toString("base64")), O);
       expect([name, ref]).toEqual([name, { ...V.V3.expectReference, ...keys, requestBodyHash: (ref as TvmRef).requestBodyHash }]);
     }
     const malformed = { refused: true, code: "tvm/boc-malformed" };
@@ -1101,7 +1106,7 @@ describe("x402-exact-tvm.json", () => {
     const notTransfer = { refused: true, code: "tvm/not-jetton-transfer" };
     const read = async (c: Cell) => {
       const p = payment(c.toBoc({ idx: false, crc32: true }).toString("base64"));
-      return [await exactTvm.bound(p), await exactTvm.reference(p)];
+      return [await exactTvm.bound(p), await exactTvm.reference(p, O)];
     };
     for (const [name, c] of [
       ["9 levels of shared forks, by reference", initRef(withLibraries(shared(9)))],
@@ -1170,7 +1175,7 @@ describe("x402-exact-tvm.json", () => {
     ] as const) {
       expect([name, c.depth()]).toEqual([name, 32]);
       const p = payment(c.toBoc({ idx: false, crc32: true }).toString("base64"));
-      expect([name, await exactTvm.bound(p), await exactTvm.reference(p)]).toEqual([name, { refused: true, code }, { refused: true, code }]);
+      expect([name, await exactTvm.bound(p), await exactTvm.reference(p, O)]).toEqual([name, { refused: true, code }, { refused: true, code }]);
     }
     expect(await exactTvm.build({ ...choice(), wallet: `0:${hashHex(init(30))}`, stateInit: init(30) }, H)).toEqual({ refused: true, code: "x402/option-malformed" });
   });
@@ -1202,11 +1207,11 @@ describe("x402-exact-tvm.json", () => {
       if (SENDS.has(mode)) {
         sent++;
         expect([mode, await exactTvm.bound(p)]).toEqual([mode, H]);
-        const ref = await exactTvm.reference(p);
+        const ref = await exactTvm.reference(p, O);
         expect([mode, "refused" in ref ? ref : ref.jettonWallet]).toEqual([mode, V.fixed.jettonWallet]);
       } else {
         refused++;
-        expect([mode, await exactTvm.bound(p), await exactTvm.reference(p), tvmCarrier(boc, REF.network)]).toEqual([mode, notTransfer, notTransfer, notTransfer]);
+        expect([mode, await exactTvm.bound(p), await exactTvm.reference(p, O), tvmCarrier(boc, REF.network)]).toEqual([mode, notTransfer, notTransfer, notTransfer]);
       }
     }
     expect([sent, refused]).toEqual([48, 208]);
@@ -1230,7 +1235,7 @@ describe("x402-exact-tvm.json", () => {
       const read = exactTvm.read({ ...advertised, accepts: advertised.accepts.map((a) => ({ ...a, network })) });
       expect([network, read]).toEqual([network, { refused: true, code: "x402/no-payable-option" }]);
       expect([network, await exactTvm.build({ ...choice(), required: doc, accepted: option }, H)]).toEqual([network, malformed]);
-      expect([network, await exactTvm.bound(payment(boc, option)), await exactTvm.reference(payment(boc, option))]).toEqual([network, malformed, malformed]);
+      expect([network, await exactTvm.bound(payment(boc, option)), await exactTvm.reference(payment(boc, option), O)]).toEqual([network, malformed, malformed]);
       expect([network, tvmCarrier(boc, network as TvmNetwork)]).toEqual([network, malformed]);
     }
     expect(tvmCarrier(boc, "eip155:1" as TvmNetwork)).toEqual(malformed);
@@ -1240,7 +1245,7 @@ describe("x402-exact-tvm.json", () => {
     if ("refused" in u) throw new Error(u.code);
     expect(Buffer.from(u.request.hash).toString("hex")).toBe(V.V2.expectRequestHash);
     expect(await exactTvm.bound(payment(boc, testnet))).toBe(H);
-    expect(await exactTvm.reference(payment(boc, testnet))).toEqual({ ...V.V3.expectReference, network: "tvm:-3" });
+    expect(await exactTvm.reference(payment(boc, testnet), O)).toEqual({ ...V.V3.expectReference, network: "tvm:-3" });
     const carried = (network: TvmNetwork) => {
       const c = tvmCarrier(boc, network);
       if ("refused" in c) throw new Error(c.code);
@@ -1265,16 +1270,16 @@ describe("x402-exact-tvm.json", () => {
       const root = Cell.fromBoc(Buffer.from(p.payload.settlementBoc, "base64"))[0]!;
       expect(root.refs.some((r) => r.refs.some((c) => c.isExotic))).toBe(true);
       expect(await exactTvm.bound(p)).toBe(V.V3.expectBound);
-      expect(await exactTvm.reference(p)).toEqual({ ...V.V3.expectReference, wallet });
+      expect(await exactTvm.reference(p, O)).toEqual({ ...V.V3.expectReference, wallet });
     }
   });
 
   it("V4: status and recover on reader fixtures", async () => {
     for (const row of rowsOf(V.V4.status, "x402-exact-tvm.json V4.status")) {
-      expect([row.case, await exactTvm.status(REF, readerFor(row))]).toEqual([row.case, row.expect]);
+      expect([row.case, await exactTvm.status(REF, readerFor(row), { ...Q, finality: row.finality ?? "finalized" })]).toEqual([row.case, row.expect]);
     }
     for (const row of rowsOf(V.V4.recover, "x402-exact-tvm.json V4.recover")) {
-      const got = await exactTvm.recover({ network: REF.network, transaction: row.transaction }, readerFor(row));
+      const got = await exactTvm.recover({ network: REF.network, tx: row.transaction, option: O }, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
   });
@@ -1288,7 +1293,7 @@ describe("x402-exact-tvm.json", () => {
       ...readerFor(landed),
       byHash: async (h) => ({ hash: h, account: V.fixed.jettonWallet, aborted: false, finality: 2, outMsgs: [], inBody }),
     });
-    const ref = { network: REF.network, transaction: landed.transaction };
+    const ref = { network: REF.network, tx: landed.transaction, option: O };
     expect(await exactTvm.recover(ref, reader(Uint8Array.from(Buffer.from(landed.inBodyHex, "hex"))))).toBe(landed.expect);
     expect(await exactTvm.recover(ref, reader(null))).toEqual({ refused: true, code: "tvm/not-jetton-transfer" });
   });
@@ -1302,7 +1307,7 @@ describe("x402-exact-tvm.json", () => {
       ...readerFor(landed),
       byHash: async (h) => ({ hash: h, account: V.fixed.jettonWallet, aborted: false, finality: 2, outMsgs: [], inBody }),
     });
-    const ref = { network: REF.network, transaction: landed.transaction };
+    const ref = { network: REF.network, tx: landed.transaction, option: O };
     const boc = Buffer.from(landed.inBodyHex, "hex");
     expect(boc.subarray(0, 4).toString("hex")).toBe("b5ee9c72");
     const notBoc = [
@@ -1319,23 +1324,50 @@ describe("x402-exact-tvm.json", () => {
     }
   });
 
-  // A request body hash that is not 0x and 64 hex digits cannot find the signed request, so the read is pending, never
+  // A request body hash that is not 0x and 64 hex digits cannot find the signed request, so the read is unreadable, never
   // expired (docs/guides/rails.md, "Reading settlement"); the hash is the same 32 bytes in either case. This reader
   // answers no transaction for a body hash other than the one reference wrote.
-  it("V4: a ref whose requestBodyHash is malformed is pending unreadable, with nothing read", async () => {
+  it("V4: a ref whose requestBodyHash is malformed is unreadable unparseable, with nothing read", async () => {
     const landed = V.V4.status[0];
     const late = { ...landed, headUtime: REF.validUntil + 600 };
     for (const requestBodyHash of [undefined, REF.requestBodyHash.slice(2), "0x34", `0X${REF.requestBodyHash.slice(2)}`]) {
       const { reader, calls } = counting(readerFor(late));
-      expect(await exactTvm.status({ ...REF, requestBodyHash } as TvmRef, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await exactTvm.status({ ...REF, requestBodyHash } as TvmRef, reader, Q)).toEqual(UNPARSEABLE);
       expect(calls).toEqual([]);
     }
     const upper = { ...REF, requestBodyHash: `0x${REF.requestBodyHash.slice(2).toUpperCase()}` as TvmRef["requestBodyHash"] };
-    expect(await exactTvm.status(upper, readerFor(late))).toEqual(landed.expect);
+    expect(await exactTvm.status(upper, readerFor(late), Q)).toEqual(landed.expect);
   });
 
   it("plant: an equal body executed on another account is never the payment", async () => {
-    expect(await exactTvm.status(REF, readerFor(V.plant))).toEqual(V.plant.expect);
+    expect(await exactTvm.status(REF, readerFor(V.plant), Q)).toEqual(V.plant.expect);
+  });
+
+  it("status on the act agreement, below the mark asked, and against a reader of another network", async () => {
+    const [finalized, confirmed] = V.V4.status;
+    expect(await exactTvm.status(REF, readerFor(finalized), { act: "agreement", finality: "finalized" })).toEqual(finalized.expect);
+    expect(await exactTvm.status(REF, readerFor(confirmed), { act: "agreement", finality: "finalized" })).toEqual({
+      ...confirmed.expect,
+      state: "pending",
+      reason: "below-mark",
+    });
+    // A failed result below the final mark is below-mark too (read-status rule 17): the payee's Jetton wallet bounced it
+    // at state 1.
+    const bounced = V.V4.status.find((r: { case: string }) => r.case === "the payee Jetton wallet's transaction aborted");
+    const internal = bounced.byInMessage["msg-internal"].map((t: Fixture) => ({ ...t, finality: 1 }));
+    expect(await exactTvm.status(REF, readerFor({ ...bounced, byInMessage: { ...bounced.byInMessage, "msg-internal": internal } }), Q)).toEqual({
+      state: "pending",
+      reason: "below-mark",
+      transaction: "tx-w5",
+      finality: "confirmed",
+      foreign: [],
+    });
+    const other = { ...readerFor(finalized), network: "tvm:-3" as const };
+    expect(await exactTvm.status(REF, other, Q)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
+    expect(await exactTvm.recover({ network: REF.network, tx: "x", option: null } as never, readerFor(finalized))).toEqual({
+      refused: true,
+      code: "tvm/wrong-reader",
+    });
   });
 
   // A request completed with 64 zero bytes binds, because bound reads the signature and never verifies it. W5 checks
@@ -1350,14 +1382,14 @@ describe("x402-exact-tvm.json", () => {
     const unsigned = u.complete(new Uint8Array(64));
     if ("refused" in unsigned) throw new Error(unsigned.code);
     expect(await exactTvm.bound(unsigned)).toBe(V.V3.expectBound);
-    const ref = await exactTvm.reference(unsigned);
+    const ref = await exactTvm.reference(unsigned, O);
     if ("refused" in ref) throw new Error(ref.code);
     const landed: Record<string, Fixture[]> = V.V4.status[0].byInMessage;
     const ignored = { hash: "tx-w5", account: ref.wallet, aborted: false, finality: 2 as const, outMsgs: [] };
     for (const [head, w5, want] of [
-      [ref.validUntil, [], { state: "pending", why: "not-found" }],
-      [ref.validUntil + 140, [], { state: "failed", why: "expired" }],
-      [ref.validUntil + 140, [ignored], { state: "failed", why: "no-transfer" }],
+      [ref.validUntil, [], SEARCH],
+      [ref.validUntil + 140, [], SEARCH],
+      [ref.validUntil + 140, [ignored], SEARCH],
     ] as const) {
       const reader: TvmReader = {
         network: ref.network,
@@ -1371,7 +1403,7 @@ describe("x402-exact-tvm.json", () => {
         byInMessage: async (msgHash) => (landed[msgHash] ?? []).map((f) => ({ ...f, inBody: null })),
         byHash: async () => null,
       };
-      expect([head, w5.length, await exactTvm.status(ref, reader)]).toEqual([head, w5.length, want]);
+      expect([head, w5.length, await exactTvm.status(ref, reader, Q)]).toEqual([head, w5.length, want]);
     }
   });
 
@@ -1404,11 +1436,11 @@ describe("x402-exact-tvm.json", () => {
               tick(msgHash, now < executed + delay ? [] : msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
             byHash: async () => null,
           };
-          const got = await exactTvm.status(REF, reader);
+          const got = await exactTvm.status(REF, reader, Q);
           expect(calls[0]).toBe("head");
           expect(calls.length).toBeLessThanOrEqual(4);
           expect([delay, start, step, got.state]).not.toEqual([delay, start, step, "failed"]);
-          if (start >= executed + delay) expect([delay, start, step, got]).toEqual([delay, start, step, { state: "settled", finality: "finalized" }]);
+          if (start >= executed + delay) expect([delay, start, step, got]).toEqual([delay, start, step, SETTLED]);
         }
       }
     }
@@ -1433,18 +1465,18 @@ describe("x402-exact-tvm.json", () => {
         byInMessage: async (msgHash) => (msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
         byHash: async () => null,
       };
-      const want = indexed >= executed ? { state: "settled", finality: "finalized" } : { state: "pending", why: "not-found" };
-      expect([indexed, await exactTvm.status(REF, reader)]).toEqual([indexed, want]);
+      const want = indexed >= executed ? SETTLED : SEARCH;
+      expect([indexed, await exactTvm.status(REF, reader, Q)]).toEqual([indexed, want]);
     }
     const nothing = (indexed: unknown): TvmReader => ({
       ...readerFor({ headUtime: head }),
       byInBody: async () => ({ transactions: [], headUtime: indexed as number }),
     });
-    expect(await exactTvm.status(REF, nothing(head))).toEqual({ state: "failed", why: "expired" });
-    expect(await exactTvm.status(REF, nothing(head - 1))).toEqual({ state: "pending", why: "not-found" });
-    expect(await exactTvm.status(REF, nothing(undefined))).toEqual({ state: "pending", why: "not-found" });
+    expect(await exactTvm.status(REF, nothing(head), Q)).toEqual(SEARCH);
+    expect(await exactTvm.status(REF, nothing(head - 1), Q)).toEqual(SEARCH);
+    expect(await exactTvm.status(REF, nothing(undefined), Q)).toEqual(SEARCH);
     const bare = { ...readerFor({ headUtime: head }), byInBody: async () => [] as never };
-    expect(await exactTvm.status(REF, bare)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactTvm.status(REF, bare, Q)).toEqual(UNPARSEABLE);
   });
 
   // W5 commits the seqno of an external request before its actions run, but an internal request that aborts leaves its
@@ -1467,15 +1499,15 @@ describe("x402-exact-tvm.json", () => {
         byInMessage: async (msgHash) => (msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
         byHash: async () => null,
       };
-      const want = indexed >= executed ? { state: "settled", finality: "finalized" } : { state: "pending", why: "not-found" };
-      expect([indexed, await exactTvm.status(REF, reader)]).toEqual([indexed, want]);
+      const want = indexed >= executed ? SETTLED : SEARCH;
+      expect([indexed, await exactTvm.status(REF, reader, Q)]).toEqual([indexed, want]);
     }
     const onlyAborted = (indexed: number): TvmReader => ({
       ...readerFor({ headUtime: head }),
       byInBody: async () => ({ transactions: [aborted], headUtime: indexed }),
     });
-    expect(await exactTvm.status(REF, onlyAborted(head))).toEqual({ state: "failed", why: "aborted" });
-    expect(await exactTvm.status(REF, onlyAborted(head - 1))).toEqual({ state: "pending", why: "not-found" });
+    expect(await exactTvm.status(REF, onlyAborted(head), Q)).toEqual(SEARCH);
+    expect(await exactTvm.status(REF, onlyAborted(head - 1), Q)).toEqual(SEARCH);
   });
 
   // A lookup shows the W5 wallet's transactions only through the blocks its index holds, so a W5 transaction that ran the
@@ -1490,10 +1522,10 @@ describe("x402-exact-tvm.json", () => {
       byInBody: async () => ({ transactions: [ran], headUtime: indexed }),
     });
     for (const indexed of [REF.validUntil - 20, REF.validUntil, head - 1, null]) {
-      expect([indexed, await exactTvm.status(REF, lookup(indexed))]).toEqual([indexed, { state: "pending", why: "not-found" }]);
+      expect([indexed, await exactTvm.status(REF, lookup(indexed), Q)]).toEqual([indexed, SEARCH]);
     }
     for (const indexed of [head, head + 60]) {
-      expect([indexed, await exactTvm.status(REF, lookup(indexed))]).toEqual([indexed, { state: "failed", why: "no-transfer" }]);
+      expect([indexed, await exactTvm.status(REF, lookup(indexed), Q)]).toEqual([indexed, SEARCH]);
     }
   });
 
@@ -1517,8 +1549,8 @@ describe("x402-exact-tvm.json", () => {
           byInMessage: async (msgHash) => (msgHash === "j" ? [payer] : msgHash === "m" ? [payee] : []),
           byHash: async () => null,
         };
-        const got = await exactTvm.status(REF, reader);
-        const want = head >= executed + lag ? { state: "settled", finality: "finalized" } : { state: "pending", why: "not-found" };
+        const got = await exactTvm.status(REF, reader, Q);
+        const want = head >= executed + lag ? SETTLED : SEARCH;
         expect([lag, head, got]).toEqual([lag, head, want]);
       }
     }
@@ -1526,13 +1558,13 @@ describe("x402-exact-tvm.json", () => {
     const aborted = { ...ran, aborted: true };
     for (const [found, why] of [[[], "expired"], [[ran], "no-transfer"], [[aborted], "aborted"]] as const) {
       for (const [past, want] of [
-        [1, { state: "pending", why: "not-found" }],
-        [60, { state: "pending", why: "not-found" }],
-        [61, { state: "failed", why }],
+        [1, SEARCH],
+        [60, SEARCH],
+        [61, SEARCH],
       ] as const) {
         const head = REF.validUntil + past;
         const reader: TvmReader = { ...readerFor({ headUtime: head }), byInBody: async () => ({ transactions: [...found], headUtime: head }) };
-        expect([why, past, await exactTvm.status(REF, reader)]).toEqual([why, past, want]);
+        expect([why, past, await exactTvm.status(REF, reader, Q)]).toEqual([why, past, want]);
       }
     }
   });
@@ -1546,8 +1578,8 @@ describe("x402-exact-tvm.json", () => {
       ...readerFor({ headUtime: head }),
       byInBody: async () => ({ transactions: [], headUtime }),
     });
-    expect(await exactTvm.status(REF, lookup(null))).toEqual({ state: "pending", why: "not-found" });
-    expect(await exactTvm.status(REF, lookup(head))).toEqual({ state: "failed", why: "expired" });
+    expect(await exactTvm.status(REF, lookup(null), Q)).toEqual(SEARCH);
+    expect(await exactTvm.status(REF, lookup(head), Q)).toEqual(SEARCH);
   });
 
   it("refusal codes left to the implementation", async () => {
@@ -1582,7 +1614,7 @@ describe("x402-exact-tvm.json", () => {
       } else if (row.settlementBoc !== undefined) {
         expect([row.case, await exactTvm.bound(payment(row.settlementBoc))]).toEqual([row.case, want]);
       } else if (row.case.startsWith("recover when the reader fails")) {
-        expect(await exactTvm.recover({ network: REF.network, transaction: "x" }, readerFor({ byHash: "reader-error" }))).toEqual(want);
+        expect(await exactTvm.recover({ network: REF.network, tx: "x", option: O }, readerFor({ byHash: "reader-error" }))).toEqual(want);
       } else {
         throw new Error(`no runner for ${row.case}`);
       }
@@ -1614,14 +1646,14 @@ describe("x402-exact-tvm.json", () => {
         expect([wc, field, built]).toEqual([wc, field, malformed]);
         const p = await signed();
         expect([wc, field, await exactTvm.bound({ ...p, accepted })]).toEqual([wc, field, malformed]);
-        expect([wc, field, await exactTvm.reference({ ...p, accepted })]).toEqual([wc, field, malformed]);
+        expect([wc, field, await exactTvm.reference({ ...p, accepted }, O)]).toEqual([wc, field, malformed]);
       }
       for (const field of ["wallet", "jettonWallet"] as const) {
         const built = await exactTvm.build({ ...choice(), [field]: `${wc}:${hex(V.fixed[field])}` }, H);
         expect([wc, field, built]).toEqual([wc, field, { refused: true, code: "x402/option-malformed" }]);
         const { reader, calls } = counting(readerFor(V.V4.status[0]));
         const ref = { ...REF, [field]: `${wc}:${hex(REF[field])}` };
-        expect([wc, field, await exactTvm.status(ref, reader)]).toEqual([wc, field, { state: "pending", why: "unreadable" }]);
+        expect([wc, field, await exactTvm.status(ref, reader, Q)]).toEqual([wc, field, UNPARSEABLE]);
         expect(calls).toEqual([]);
       }
     }
@@ -1636,7 +1668,7 @@ describe("x402-exact-tvm.json", () => {
       if ("refused" in u) throw new Error(u.code);
       const p = u.complete(new Uint8Array(64));
       if ("refused" in p) throw new Error(p.code);
-      const ref = await exactTvm.reference(p);
+      const ref = await exactTvm.reference(p, O);
       expect(ref).toMatchObject({ wallet: `${wc}:${hex(V.fixed.wallet)}`, jettonWallet: `${wc}:${hex(V.fixed.jettonWallet)}` });
     }
   });

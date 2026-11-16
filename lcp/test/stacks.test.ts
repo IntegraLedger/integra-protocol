@@ -77,6 +77,9 @@ type NetworkRow = {
   fifthArgumentBytes?: number;
 };
 
+/** `chargeUsdcStacks.reference` of a credential, with the challenge it echoes as the option the payment answers. */
+const stacksReference = (c: MppCredential) => chargeUsdcStacks.reference(c, c.challenge);
+
 function credential(wire: Uint8Array, format = "stacks_transaction_v1"): MppCredential {
   return {
     challenge: challenge(),
@@ -153,7 +156,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     const led = Uint8Array.from(Buffer.from(whole.replace(name, `0befbbbf${name.slice(2)}`), "hex"));
     expect(S.deserializeTransaction(led).payload).toMatchObject({ functionName: { content: "transfer" } });
     expect(await chargeUsdcStacks.bound(credential(led))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
-    expect(await chargeUsdcStacks.reference(credential(led))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+    expect(await stacksReference(credential(led))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
   });
 
   // A multisig spending condition's public-key field holds 33 bytes, a compressed secp256k1 point (0x02 or 0x03 and
@@ -205,7 +208,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     const offCurve = Uint8Array.from(multisig);
     offCurve.set(Buffer.from(`02${x.toString(16).padStart(64, "0")}`, "hex"), (at - 2) / 2 + 1);
     expect(await chargeUsdcStacks.bound(credential(offCurve))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
-    expect(await chargeUsdcStacks.reference(credential(offCurve))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
+    expect(await stacksReference(credential(offCurve))).toEqual({ refused: true, code: "mpp/stacks-tx-malformed" });
 
     const start = (at - 2) / 2;
     const word = (v: bigint) => v.toString(16).padStart(64, "0");
@@ -218,7 +221,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     ]);
     const malformed = { refused: true, code: "mpp/stacks-tx-malformed" };
     expect(await chargeUsdcStacks.bound(credential(offCurve65))).toEqual(malformed);
-    expect(await chargeUsdcStacks.reference(credential(offCurve65))).toEqual(malformed);
+    expect(await stacksReference(credential(offCurve65))).toEqual(malformed);
   });
 
   // stacks-core reads a transaction's Clarity values (each function argument, and each non-fungible post-condition's
@@ -275,7 +278,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     for (const levels of [17, 1000, 20_000]) {
       for (const text of [deepArgument(levels), deepAsset(levels)]) {
         expect(await chargeUsdcStacks.bound(credential(wire(text)))).toEqual(malformed);
-        expect(await chargeUsdcStacks.reference(credential(wire(text)))).toEqual(malformed);
+        expect(await stacksReference(credential(wire(text)))).toEqual(malformed);
       }
     }
   });
@@ -682,8 +685,8 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
   });
 
   it("reference gives the read keys, and survives JSON", async () => {
-    const ref = await chargeUsdcStacks.reference(credential(await withMemo()));
-    expect(ref).toEqual(V.M4.expectReference);
+    const ref = await stacksReference(credential(await withMemo()));
+    expect(ref).toEqual({ ...V.M4.expectReference, payee: F.request.recipient });
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
   });
 
@@ -703,7 +706,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
       const wire = Buffer.from(r.wireHex.slice(2), "hex");
       const code = { refused: true, code: r.expect };
       expect([r.case, await chargeUsdcStacks.bound(credential(wire))]).toEqual([r.case, code]);
-      expect([r.case, await chargeUsdcStacks.reference(credential(wire))]).toEqual([r.case, code]);
+      expect([r.case, await stacksReference(credential(wire))]).toEqual([r.case, code]);
       expect([r.case, u.complete(Uint8Array.from(wire))]).toEqual([r.case, code]);
     }
   });
@@ -718,7 +721,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     const onMainnet = (wire: Uint8Array): MppCredential => ({ ...credential(wire), challenge: doc[0] as MppChallenge & { id: string } });
     const mainnet = await withMemo({ transactionVersion: 0x00, chainId: 1 });
     expect(await chargeUsdcStacks.bound(onMainnet(mainnet))).toBe(F.H);
-    expect(await chargeUsdcStacks.reference(onMainnet(mainnet))).toMatchObject({ network: "stacks:1", origin: S.getAddressFromPrivateKey(KEY, "mainnet") });
+    expect(await stacksReference(onMainnet(mainnet))).toMatchObject({ network: "stacks:1", origin: S.getAddressFromPrivateKey(KEY, "mainnet") });
     const u = await chargeUsdcStacks.build({ challenge: doc[0] as MppChallenge & { id: string }, from: F.sender }, F.H);
     if ("refused" in u) throw new Error(u.code);
     expect(u.complete(mainnet)).not.toHaveProperty("refused");
@@ -745,13 +748,13 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     const largest = await transfer(S.someCV(S.bufferCV(Buffer.from(F.H.slice(2), "hex"))), undefined, padded - 1);
     expect(largest.length).toBe(16_384);
     expect(await chargeUsdcStacks.bound(credential(largest))).toBe(F.H);
-    expect(await chargeUsdcStacks.reference(credential(largest))).toMatchObject({ network: F.network, nonce: F.nonce });
+    expect(await stacksReference(credential(largest))).toMatchObject({ network: F.network, nonce: F.nonce });
     expect(u.complete(largest)).toMatchObject({ payload: { transaction: Buffer.from(largest).toString("base64") } });
     for (const r of rows) {
       const wire = Uint8Array.from(Buffer.from(r.wireHex.slice(2), "hex"));
       const code = { refused: true, code: r.expect };
       expect([r.bytes, await chargeUsdcStacks.bound(credential(wire))]).toEqual([r.bytes, code]);
-      expect([r.bytes, await chargeUsdcStacks.reference(credential(wire))]).toEqual([r.bytes, code]);
+      expect([r.bytes, await stacksReference(credential(wire))]).toEqual([r.bytes, code]);
       expect([r.bytes, u.complete(wire)]).toEqual([r.bytes, code]);
     }
   });
@@ -775,6 +778,7 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
 
 type Row = {
   case: string;
+  finality?: "block" | "bitcoin";
   tip?: string;
   status?: string;
   senderNonce?: string;
@@ -851,13 +855,20 @@ function readerFor(row: Partial<Row>): StacksReader & { calls: number; order: st
 
 const ref: StacksRef & { transaction: `0x${string}`; h: `0x${string}` } = {
   ...V.M4.expectReference,
+  payee: F.request.recipient,
   h: F.H,
 };
+const Q = { act: "payment", finality: "bitcoin" } as const;
+/** The recover input: the transaction id, and the challenge whose request names the contract. */
+const R = { network: ref.network, tx: ref.transaction, option: challenge() };
+const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
+const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
+const settledAt = (height: bigint) => ({ state: "settled", transaction: ref.transaction, position: height.toString(), finality: "bitcoin", foreign: [] });
 
 describe("usdc/stacks status and recover (M4b)", () => {
   it.each(rowsOf(V.M4b.rows as Row[], "mpp-charge-usdc-stacks.json M4b.rows"))("$case", async (row) => {
     const reader = readerFor(row);
-    expect(withBigints(await stacksStatus(ref, reader))).toEqual(row.expect);
+    expect(withBigints(await stacksStatus(ref, reader, { ...Q, finality: row.finality ?? "bitcoin" }))).toEqual(row.expect);
     expect(reader.calls).toBeLessThanOrEqual(4);
     if (reader.calls > 0) expect(reader.order[0]).toBe("confirmedNonce");
   });
@@ -866,39 +877,38 @@ describe("usdc/stacks status and recover (M4b)", () => {
   // call for the transaction, and two for a failed one's tenures.
   it.each(rowsOf(V.M4b.recover as Row[], "mpp-charge-usdc-stacks.json M4b.recover"))("recover: $case", async (row) => {
     const reader = readerFor(row);
-    expect(await stacksRecover({ network: ref.network, contract: ref.contract, transaction: ref.transaction }, reader)).toEqual(
-      row.expect,
-    );
+    expect(await stacksRecover(R, reader)).toEqual(row.expect);
     expect(reader.calls).toBe(row.status === undefined ? 1 : 3);
   });
 
   // A Stacks block is final once the tip's tenure height is at least its own plus two (status's `bitcoin` finality, the
-  // vector's M4b.rows "L with abort_by_response, tip tenure 256358"); a block above that can be replaced. A refusal names
-  // no finality, so recover gives a failed transaction's verdict only at that mark, and a read to repeat below it, as
-  // status gives the same failure with finality `block` (M4b.rows "L with abort_by_response").
+  // vector's M4b.rows "L with abort_by_response, tip tenure 256358", tip tenure 256358 over block tenure 256356); a block
+  // above that can be replaced. A refusal names no finality, so recover gives a failed transaction's verdict only at
+  // that mark, and a read to repeat below it, as status answers the same failure below-mark at `block` (M4b.rows "L with
+  // abort_by_response").
   it("recover refuses a failed transaction stacks/not-success only where status reads bitcoin finality", async () => {
-    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    const r = R;
     const rows = rowsOf(V.M4b.rows as Row[], "mpp-charge-usdc-stacks.json M4b.rows", {
       keep: ["the failed rows", (row) => row.status !== undefined],
       leave: ["the rows of a successful or unmined transaction", (row) => row.status === undefined],
       exact: 3,
     });
     for (const row of rows) {
-      const code = (row.expect as { finality: string }).finality === "bitcoin" ? "stacks/not-success" : "stacks/not-final";
+      const code = BigInt(row.tip ?? "0") >= BigInt(V.M4b.blockTenure) + 2n ? "stacks/not-success" : "stacks/not-final";
       expect([row.case, await stacksRecover(r, readerFor(row))]).toEqual([row.case, { refused: true, code }]);
     }
   });
 
   // A mined transaction's status is one of success, abort_by_response, abort_by_post_condition and problematic_skipped
   // (StacksReader's documented answer, `StacksLanded`); another value is an answer out of that form, which status reads
-  // as pending unreadable (docs/reference/refusals.md, `stacks/unreadable`), with no tenure read.
+  // as unreadable unparseable (docs/reference/refusals.md, `stacks/unreadable`), with no tenure read.
   it("recover refuses a mined status of none of the documented values as stacks/unreadable", async () => {
-    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    const r = R;
     for (const status of ["pending", "abort_by_timeout", "Success", ""]) {
       const reader = readerFor({ status, tip: "256358" });
       expect([status, await stacksRecover(r, reader)]).toEqual([status, { refused: true, code: "stacks/unreadable" }]);
       expect(reader.calls).toBe(1);
-      expect(await stacksStatus(ref, readerFor({ status, tip: "256358" }))).toEqual({ state: "pending", why: "unreadable" });
+      expect(await stacksStatus(ref, readerFor({ status, tip: "256358" }), Q)).toEqual(UNPARSEABLE);
     }
   });
 
@@ -930,7 +940,7 @@ describe("usdc/stacks status and recover (M4b)", () => {
           return 0n;
         },
       };
-      const got = await stacksStatus(ref, reader);
+      const got = await stacksStatus(ref, reader, Q);
       expect([minedAt, got.state]).not.toEqual([minedAt, "failed"]);
     }
   });
@@ -947,20 +957,20 @@ describe("usdc/stacks status and recover (M4b)", () => {
       transaction: async () => (ours && lookupAt >= minedAt ? landed({}) : { notFound: true, height: lookupAt }),
     });
     for (const lookupAt of [minedAt - 2n, minedAt - 1n, minedAt, nonceAt - 1n, nonceAt, nonceAt + 1n]) {
-      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true)));
-      const want = lookupAt >= minedAt ? { state: "settled", finality: "bitcoin", blockHeight: minedAt.toString() } : { state: "pending", why: "not-found" };
+      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true), Q));
+      const want = lookupAt >= minedAt ? settledAt(minedAt) : SEARCH;
       expect([lookupAt.toString(), got]).toEqual([lookupAt.toString(), want]);
-      const other = await stacksStatus(ref, readerAt(lookupAt, false));
-      const spent = lookupAt >= nonceAt ? { state: "failed", why: "nonce-used", finality: "block" } : { state: "pending", why: "not-found" };
-      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), spent]);
+      // A nonce taken by another act, or no answer that decides, is pending search-incomplete (read-status rule 23).
+      const other = await stacksStatus(ref, readerAt(lookupAt, false), Q);
+      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), SEARCH]);
     }
     const unnamed = { ...readerAt(nonceAt, false), transaction: async () => ({ notFound: true }) as never };
-    expect(await stacksStatus(ref, unnamed)).toEqual({ state: "pending", why: "not-found" });
+    expect(await stacksStatus(ref, unnamed, Q)).toEqual(SEARCH);
     const bare = { ...readerAt(nonceAt, false), transaction: async () => null as never };
-    expect(await stacksStatus(ref, bare)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await stacksStatus(ref, bare, Q)).toEqual(UNPARSEABLE);
     const oldNonce = { ...readerAt(nonceAt, false), confirmedNonce: async () => 0n as never };
-    expect(await stacksStatus(ref, oldNonce)).toEqual({ state: "pending", why: "unreadable" });
-    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    expect(await stacksStatus(ref, oldNonce, Q)).toEqual(UNPARSEABLE);
+    const r = R;
     expect(await stacksRecover(r, readerAt(nonceAt, false))).toEqual({ refused: true, code: "stacks/not-found" });
     expect(await stacksRecover(r, bare)).toEqual({ refused: true, code: "stacks/unreadable" });
   });
@@ -981,24 +991,23 @@ describe("usdc/stacks status and recover (M4b)", () => {
       transaction: async () => (ours && lookupAt >= minedAt ? landed({}) : dropped(lookupAt)),
     });
     for (const lookupAt of [minedAt - 2n, minedAt - 1n, minedAt, nonceAt - 1n, nonceAt, nonceAt + 1n]) {
-      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true)));
-      const want = lookupAt >= minedAt ? { state: "settled", finality: "bitcoin", blockHeight: minedAt.toString() } : { state: "pending", why: "dropped" };
+      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true), Q));
+      const want = lookupAt >= minedAt ? settledAt(minedAt) : SEARCH;
       expect([lookupAt.toString(), got]).toEqual([lookupAt.toString(), want]);
-      const other = await stacksStatus(ref, readerAt(lookupAt, false));
-      const spent = lookupAt >= nonceAt ? { state: "failed", why: "nonce-used", finality: "block" } : { state: "pending", why: "dropped" };
-      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), spent]);
+      const other = await stacksStatus(ref, readerAt(lookupAt, false), Q);
+      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), SEARCH]);
     }
     for (const status of ["dropped_replace_across_fork", "dropped_too_expensive", "dropped_stale_garbage_collect", "dropped_problematic"]) {
       const at = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status, height: nonceAt }) };
-      expect([status, await stacksStatus(ref, at)]).toEqual([status, { state: "failed", why: "nonce-used", finality: "block" }]);
+      expect([status, await stacksStatus(ref, at, Q)]).toEqual([status, SEARCH]);
       const behind = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status, height: nonceAt - 1n }) };
-      expect([status, await stacksStatus(ref, behind)]).toEqual([status, { state: "pending", why: "dropped" }]);
+      expect([status, await stacksStatus(ref, behind, Q)]).toEqual([status, SEARCH]);
     }
     const unnamed = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false, status: "dropped_replace_by_fee" }) as never };
-    expect(await stacksStatus(ref, unnamed)).toEqual({ state: "pending", why: "dropped" });
+    expect(await stacksStatus(ref, unnamed, Q)).toEqual(SEARCH);
     const pending = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status: "pending", height: minedAt - 1n }) };
-    expect(await stacksStatus(ref, pending)).toEqual({ state: "pending", why: "mempool" });
-    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    expect(await stacksStatus(ref, pending, Q)).toEqual(SEARCH);
+    const r = R;
     expect(await stacksRecover(r, readerAt(nonceAt, false))).toEqual({ refused: true, code: "stacks/not-found" });
   });
 
@@ -1025,7 +1034,7 @@ describe("usdc/stacks status and recover (M4b)", () => {
         },
         transaction: async () => ({ notFound: true, height: minedAt - 1n }),
       };
-      expect([landsAt, await stacksStatus(ref, reader)]).toEqual([landsAt, { state: "pending", why: "not-found" }]);
+      expect([landsAt, await stacksStatus(ref, reader, Q)]).toEqual([landsAt, SEARCH]);
     }
   });
 
@@ -1040,22 +1049,21 @@ describe("usdc/stacks status and recover (M4b)", () => {
       confirmedNonce: async () => ({ nonce: 0n, height: nonceAt }),
       transaction: async () => lookup,
     });
-    const spent = { state: "failed", why: "nonce-used", finality: "block" };
-    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: null }))).toEqual({ state: "pending", why: "not-found" });
-    expect(await stacksStatus(ref, readerWith(null, { notFound: true, height: at }))).toEqual({ state: "pending", why: "not-found" });
-    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: at }))).toEqual(spent);
+    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: null }), Q)).toEqual(SEARCH);
+    expect(await stacksStatus(ref, readerWith(null, { notFound: true, height: at }), Q)).toEqual(SEARCH);
+    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: at }), Q)).toEqual(SEARCH);
     const dropped = (height: bigint | null): StacksMempool => ({ mined: false, status: "dropped_stale_garbage_collect", height });
-    expect(await stacksStatus(ref, readerWith(at, dropped(null)))).toEqual({ state: "pending", why: "dropped" });
-    expect(await stacksStatus(ref, readerWith(null, dropped(at)))).toEqual({ state: "pending", why: "dropped" });
-    expect(await stacksStatus(ref, readerWith(at, dropped(at)))).toEqual(spent);
-    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
+    expect(await stacksStatus(ref, readerWith(at, dropped(null)), Q)).toEqual(SEARCH);
+    expect(await stacksStatus(ref, readerWith(null, dropped(at)), Q)).toEqual(SEARCH);
+    expect(await stacksStatus(ref, readerWith(at, dropped(at)), Q)).toEqual(SEARCH);
+    const r = R;
     expect(await stacksRecover(r, readerWith(at, { notFound: true, height: null }))).toEqual({ refused: true, code: "stacks/not-found" });
   });
 
-  // An origin or contract not in the form reference writes cannot name the landed call, so the read is pending, never
-  // failed (docs/guides/rails.md, "Reading settlement"). c32check writes an address in upper case (c32check 2.0.0's
+  // An origin or contract not in the form reference writes cannot name the landed call, so the read is unreadable,
+  // never failed (docs/guides/rails.md, "Reading settlement"). c32check writes an address in upper case (c32check 2.0.0's
   // c32address); a contract principal is that address, "." and the contract's name.
-  it("a ref whose origin or contract is malformed is pending unreadable, with nothing read", async () => {
+  it("a ref whose origin or contract is malformed is unreadable unparseable, with nothing read", async () => {
     const settled = (V.M4b.rows as Row[]).find((r) => (r.expect as { state: string }).state === "settled")!;
     const [address, name] = ref.contract.split(".") as [string, string];
     const malformed = [
@@ -1064,10 +1072,10 @@ describe("usdc/stacks status and recover (M4b)", () => {
     ];
     for (const change of malformed) {
       const reader = readerFor(settled);
-      expect(await stacksStatus({ ...ref, ...change } as typeof ref, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await stacksStatus({ ...ref, ...change } as typeof ref, reader, Q)).toEqual(UNPARSEABLE);
       expect(reader.calls).toBe(0);
     }
-    expect(withBigints(await stacksStatus(ref, readerFor(settled)))).toEqual(settled.expect);
+    expect(withBigints(await stacksStatus(ref, readerFor(settled), Q))).toEqual(settled.expect);
   });
 
   // Principals at the edges of the forms reference writes settle when the landed call is theirs: an origin of 28
@@ -1090,16 +1098,38 @@ describe("usdc/stacks status and recover (M4b)", () => {
     for (const [origin, contract] of edges) {
       const tx = landed(settled);
       const txAnswer = { ...tx, sender: { ...tx.sender, address: origin }, call: { ...tx.call, contractId: contract } };
-      const got = withBigints(await stacksStatus({ ...ref, origin, contract }, readerFor({ ...settled, txAnswer })));
+      const got = withBigints(await stacksStatus({ ...ref, origin, contract }, readerFor({ ...settled, txAnswer }), Q));
       expect([origin, contract, got]).toEqual([origin, contract, settled.expect]);
     }
   });
 
-  it("plant: a post-condition abort is failed, never settled, and recover refuses it", async () => {
+  it("plant: a post-condition abort is never settled, and recover refuses it", async () => {
     const row = { status: V.plant.status, tip: V.plant.tip };
-    expect(withBigints(await stacksStatus(ref, readerFor(row)))).toEqual(V.plant.expectStatus);
-    const r = { network: ref.network, contract: ref.contract, transaction: ref.transaction };
-    expect(await stacksRecover(r, readerFor(row))).toEqual(V.plant.expectRecover);
+    expect(withBigints(await stacksStatus(ref, readerFor(row), Q))).toEqual(V.plant.expectStatus);
+    expect(await stacksRecover(R, readerFor(row))).toEqual(V.plant.expectRecover);
+  });
+
+  it("status on the act agreement and at a position, and recover with an option that names no contract", async () => {
+    const settled = (V.M4b.rows as Row[]).find((r) => r.case === "L, tip tenure 256358")!;
+    expect(withBigints(await stacksStatus(ref, readerFor(settled), { act: "agreement", finality: "bitcoin" }))).toEqual(settled.expect);
+    const height = BigInt(V.M4b.L.blockHeight);
+    // The settled transaction at its own block height is at the position given: before-position (read-status rule 16).
+    expect(withBigints(await stacksStatus(ref, readerFor(settled), { ...Q, after: height }))).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: ref.transaction,
+      position: height.toString(),
+      finality: "bitcoin",
+      foreign: [],
+    });
+    expect(withBigints(await stacksStatus(ref, readerFor(settled), { ...Q, after: height - 1n }))).toEqual(settled.expect);
+    expect(await stacksStatus(ref, readerFor(settled), { ...Q, finality: "final" } as never)).toEqual(UNPARSEABLE);
+    const noContract = { ...challenge(), request: b64u(JSON.stringify({ ...F.request, methodDetails: { type: "stacks" } })) };
+    for (const option of [undefined, {}, noContract]) {
+      const reader = readerFor(settled);
+      expect(await stacksRecover({ ...R, option } as never, reader)).toEqual({ refused: true, code: "stacks/wrong-reader" });
+      expect(reader.calls).toBe(0);
+    }
   });
 });
 

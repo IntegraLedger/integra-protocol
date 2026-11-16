@@ -14,6 +14,9 @@ import {
   type XrplReader,
   type XrplRef,
   type XrplTxJson,
+  type XrplNetwork,
+  type XrplQuery,
+  type XrplStatus,
 } from "./internal/xrpl.js";
 import {
   byType,
@@ -34,11 +37,13 @@ import {
   type Echoed,
   type MppChallenge,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { isXrplInvoiceId, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { XRPL } from "./internal/data/xrpl.js";
+import { mppPayee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/charge/xrpl" as const;
@@ -123,20 +128,26 @@ async function bound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(b) ? b : b.h;
 }
 
-/** The read keys from the single-signed blob: its hash, its `InvoiceID`, and its `LastLedgerSequence` or null. */
-async function reference(input: unknown): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
+/**
+ * The read keys from the single-signed blob: its hash, its `InvoiceID`, and its `LastLedgerSequence` or null; and the
+ * payee of `option`, the challenge the payment answers (`mppPayee`).
+ */
+async function reference(input: unknown, option: MppChallenge): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
   const b = await bindingOf(credential);
   if (isRefusal(b)) return b;
   const network = xrplNetworkOf(b.checked.details);
   if (typeof network !== "string") return network;
+  const payee = mppPayee(option);
+  if (isRefusal(payee)) return payee;
   const last = b.tx.LastLedgerSequence;
   return {
     network,
     transaction: b.hash,
     expect: (b.tx.InvoiceID as string).toUpperCase(),
     lastLedgerSequence: typeof last === "number" ? last : null,
+    payee,
   };
 }
 
@@ -315,4 +326,17 @@ export const chargeXrpl = Object.freeze({
     const hash = pushedField(presented, "hash", "hash");
     return hash !== undefined && HASH.test(hash) ? hash.toUpperCase() : undefined;
   },
-}) satisfies Entry<typeof ID, MppCredential, XrplRef, XrplReader>;
+}) satisfies Entry<
+  typeof ID,
+  MppCredential,
+  Omit<XrplRef, "fromLedger">,
+  XrplReader,
+  MppForms & {
+    choice: XrplChargeChoice;
+    unsigned: XrplChargeUnsigned;
+    landed: Pick<XrplRef, "fromLedger">;
+    network: XrplNetwork;
+    query: XrplQuery<XrplRef>;
+    answer: XrplStatus;
+  }
+>;

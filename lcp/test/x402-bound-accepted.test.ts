@@ -12,12 +12,15 @@
 // pairing's `bound` refuses the payment with the code its `advertise` gives that option. Under every option its `read`
 // offers, a pairing whose `bound` binds the payment under its own option gives the same H again, and its `reference`
 // gives read keys again, or each refuses with a code that compares what the payer signed with the option (a carrier, a
-// channel id, a nonce or a salt); each such code is listed below with what it compares, and each is seen. Then each
+// channel id, a nonce or a salt); each such code is listed below with what it compares, and each is seen. A
+// `reference` takes the payee from the option the payment answers, so under an offered option with no `payTo` it
+// refuses that option `x402/option-malformed`; the pairings whose `read` offers such an option are listed. Then each
 // vector file's `boundAccepted` rows: the file's payment under an option the pairing's `read` does not offer, refused
 // with the row's code.
 import { beforeAll, describe, expect, it } from "vitest";
 import { isRefusal, type AtrHash } from "../src/index.js";
 import type { PaymentPayload, PaymentRequired, PaymentRequirements } from "../src/x402.js";
+import { x402Payee } from "../src/internal/payee.js";
 import { rowsOf } from "./rows.js";
 import { FILES, OPTIONS, PAYMENTS, X402, docOf, vector, type X402Pairing } from "./x402-presentations.js";
 
@@ -133,7 +136,7 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
 const PRESENTED = 25506;
 const NOT_OFFERED = 655658;
 const OFFERED_OWN_BINDS = 1021;
-const OFFERED_COUNTS = [932, 89, 858];
+const OFFERED_COUNTS = [932, 89, 857];
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>
@@ -154,9 +157,14 @@ interface Answer {
   own: unknown;
   /** Under an option `read` offers: the pairing's `reference`, when it has one and gives read keys under the payment's own option. */
   reference?: unknown;
+  /** Whether the option names no payee `reference` can take. */
+  payeeless: boolean;
   advertised: unknown;
 }
 const answers: Answer[] = [];
+/** A pairing's `reference` of what was presented, given the option the payment answers. */
+const referenceOf = (b: { reference?: unknown }, presented: unknown, option: unknown): Promise<unknown> =>
+  (b.reference as (presented: unknown, option: unknown) => Promise<unknown>)(presented, option);
 
 describe("each x402 pairing's bound holds accepted to the filter its read applies", () => {
   beforeAll(async () => {
@@ -166,7 +174,7 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
       const answered = new Map<string, unknown>();
       const keys = new Map<string, unknown>();
       for (const b of X402) answered.set(b.id, await b.bound(p));
-      for (const b of X402) if (b.reference !== undefined) keys.set(b.id, await b.reference(p));
+      for (const b of X402) if (b.reference !== undefined) keys.set(b.id, await referenceOf(b, p, p.accepted));
       own.set(p, answered);
       ownReference.set(p, keys);
     }
@@ -186,7 +194,8 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
           offered: isOffered,
           bound: await pairing.bound({ ...payment, accepted }),
           own: own.get(payment)!.get(pairing.id),
-          ...(keyed ? { reference: await pairing.reference!({ ...payment, accepted }) } : {}),
+          ...(keyed ? { reference: await referenceOf(pairing, { ...payment, accepted }, accepted) } : {}),
+          payeeless: isRefusal(x402Payee(accepted)),
           advertised: isOffered ? undefined : pairing.advertise(doc, H, LINK, accepted),
         });
       }
@@ -219,18 +228,22 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
     };
     let bindings = 0;
     let keyed = 0;
+    const payeeRefused = new Set<string>();
     for (const a of offered) {
       if (!isRefusal(a.bound)) {
         if (a.bound !== a.own) outside.push(`${a.pairing.id} bound another H`);
         bindings++;
         if (a.reference === undefined) continue;
-        if (isRefusal(a.reference)) compared(a, "reference", a.reference);
+        if (isRefusal(a.reference) && a.payeeless && a.reference.code === "x402/option-malformed") payeeRefused.add(a.pairing.id);
+        else if (isRefusal(a.reference)) compared(a, "reference", a.reference);
         else keyed++;
         continue;
       }
       compared(a, "bound", a.bound);
     }
     expect([...new Set(outside)].sort()).toEqual([]);
+    // Cardano's read offers an option with its `payTo` removed.
+    expect([...payeeRefused].sort()).toEqual(["x402/exact/cardano"]);
     rowsOf(offered, "every pairing's answer under an option its read offers, for a payment its bound binds under its own option", { exact: OFFERED_OWN_BINDS });
     expect([bindings, offered.length - bindings, keyed]).toEqual(OFFERED_COUNTS);
     const listed = Object.entries(SIGNED_AGAINST_THE_OPTION).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
@@ -306,7 +319,7 @@ describe("auth-capture: a bound payment under its option with the receiver autho
     expect(typeof (await pairing.bound(payment))).toBe("string");
     expect(isRefusal(pairing.read(docOf(row.accepted)))).toBe(false);
     expect(await pairing.bound({ ...payment, accepted: row.accepted })).toEqual({ refused: true, code: row.expect });
-    expect(await pairing.reference!({ ...payment, accepted: row.accepted })).toEqual({ refused: true, code: row.expect });
+    expect(await referenceOf(pairing, { ...payment, accepted: row.accepted }, row.accepted)).toEqual({ refused: true, code: row.expect });
   });
 });
 
@@ -338,7 +351,7 @@ describe("a presented payment whose accepted is not an object", () => {
       else presented["accepted"] = accepted;
       expect([what, await pairing.bound(presented)]).toEqual([what, { refused: true, code: "x402/payload-malformed" }]);
       if (pairing.reference !== undefined) {
-        expect([what, await pairing.reference(presented)]).toEqual([what, { refused: true, code: "x402/payload-malformed" }]);
+        expect([what, await referenceOf(pairing, presented, payment!.accepted)]).toEqual([what, { refused: true, code: "x402/payload-malformed" }]);
       }
     }
   });

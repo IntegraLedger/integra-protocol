@@ -10,6 +10,7 @@ import {
   keyString,
   type SolanaNetwork,
   type SvmInstruction,
+  type SvmStatus,
   type SvmTx,
 } from "./svm.js";
 
@@ -21,15 +22,17 @@ const OPEN_MIN_ACCOUNTS = 6;
 const OPEN_SIGNER_ACCOUNT = 4;
 const OPEN_CHANNEL_ACCOUNT = 5;
 
-export type SvmCloseRef = { phase: "close"; network: SolanaNetwork; program: string; channel: string; transaction: string };
-/**
- * A reported close's read. Pending `not-final` is an error seen only at `confirmed`, as `SvmStatus` reads one, or a
- * close whose channel account, named through an address lookup table, is not the channel, seen only at `confirmed`.
- */
-export type SvmCloseStatus =
-  | { state: "settled"; commitment: "confirmed" | "finalized" }
-  | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
-  | { state: "failed"; why: "err" | "not-a-close" };
+export type SvmCloseRef = {
+  phase: "close";
+  network: SolanaNetwork;
+  program: string;
+  channel: string;
+  transaction: string;
+  /** The option's payee. */
+  payee: string;
+};
+/** A reported close's read, as the profile `read-status` answers it: the answer `SvmStatus` names. */
+export type SvmCloseStatus = SvmStatus;
 
 function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
   return a !== undefined && a.length === b.length && a.every((x, i) => x === b[i]);

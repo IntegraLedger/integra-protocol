@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/xrpl pairing: the xrpl and x402/exact/xrpl entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; payer from Ed25519 entropy 01x16, destination from 02x16; 1 000 000 drops, Fee 12, Sequence 7, LastLedgerSequence 1000, computed with xrpl-py 4.1.0 on Python 3.12.3, GNU coreutils 9.4 and OpenSSL 3.0.13. The plant's blob was built with xrpl-py 4.1.0 on Python 3.11; the same script reproduces V2's and V3's blobs and hashes.",
+ "about": "Vectors for the x402/exact/xrpl pairing: the xrpl and x402/exact/xrpl entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; payer from Ed25519 entropy 01x16, destination from 02x16; 1 000 000 drops, Fee 12, Sequence 7, LastLedgerSequence 1000, computed with xrpl-py 4.1.0 on Python 3.12.3, GNU coreutils 9.4 and OpenSSL 3.0.13. The plant's blob was built with xrpl-py 4.1.0 on Python 3.11; the same script reproduces V2's and V3's blobs and hashes. Each status row's expected answer is the one the profile read-status (read-status.md) gives for its fixture, read at the mark validated for the act and position its query names: a validated success that is not the instrument, a tec result, an expiry past LastLedgerSequence, a lookup that finds nothing and a transaction in no validated ledger are pending, search-incomplete, since this read is no search for H (rules 17, 23 and 24); a rejected read is unreadable, transport; and the reference names the option's payee.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -44,7 +44,8 @@
    "network": "xrpl:1",
    "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
    "expect": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73",
-   "lastLedgerSequence": 1000
+   "lastLedgerSequence": 1000,
+   "payee": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
   },
   "build": {
    "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
@@ -87,9 +88,14 @@
     "transactionType": "Payment",
     "invoiceId": "08B1F8BA199231AB7BEF24E5E3AFC3DB0BE5B75095CCCB6EEF0EC077F9F20AC1"
    },
+   "query": {
+    "act": "payment",
+    "finality": "validated"
+   },
    "expect": {
-    "state": "failed",
-    "why": "not-this-instrument"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "v3UnderX402": {
@@ -127,9 +133,16 @@
      "transactionType": "Payment",
      "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
      "state": "settled",
-     "ledgerIndex": 990
+     "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+     "position": 990,
+     "finality": "validated",
+     "foreign": []
     }
    },
    {
@@ -141,9 +154,14 @@
      "transactionType": "Payment",
      "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
      "state": "pending",
-     "why": "not-validated"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -155,9 +173,14 @@
      "transactionType": "Payment",
      "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
-     "state": "failed",
-     "why": "claimed-fee"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -167,9 +190,14 @@
      "searchedAll": true
     },
     "validated": 1001,
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
-     "state": "failed",
-     "why": "expired"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -179,17 +207,71 @@
      "searchedAll": true
     },
     "validated": 1000,
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "reader error",
     "tx": "reader-error",
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
+    }
+   },
+   {
+    "case": "validated tesSUCCESS at ledger 990, read for the act agreement",
+    "tx": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 990,
+     "transactionType": "Payment",
+     "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
+    },
+    "query": {
+     "act": "agreement",
+     "finality": "validated"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+     "position": 990,
+     "finality": "validated",
+     "foreign": []
+    }
+   },
+   {
+    "case": "validated tesSUCCESS at ledger 990, read after ledger 990: at the position given",
+    "tx": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 990,
+     "transactionType": "Payment",
+     "invoiceId": "FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB73"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "validated",
+     "after": 990
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+     "position": 990,
+     "finality": "validated",
+     "foreign": []
     }
    }
   ]
@@ -204,9 +286,14 @@
    "lastLedgerSequence": 1000,
    "fromLedger": 980
   },
+  "query": {
+   "act": "payment",
+   "finality": "validated"
+  },
   "expect": {
    "state": "pending",
-   "why": "not-found"
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "plant": {

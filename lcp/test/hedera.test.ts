@@ -85,9 +85,10 @@ describe("x402-exact-hedera.json", () => {
   it("V2: bound, reference and the two id forms", async () => {
     const p = presentedOf(V.V2.expectTransactionBase64);
     expect(await exactHedera.bound(p)).toBe(V.V2.expectBound);
-    const ref = await exactHedera.reference(p);
+    const ref = await exactHedera.reference(p, O);
     expect(ref).toEqual(V.V2.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
+    expect(await exactHedera.reference(p, {} as PaymentRequirements)).toEqual({ refused: true, code: "x402/option-malformed" });
     const decoded = decodeHederaTx(fromB64(V.V2.expectTransactionBase64));
     if ("refused" in decoded) throw new Error(decoded.code);
     expect(txIdText(decoded.bodies[0]!.id)).toBe(V.V2.expectTxIdText);
@@ -108,10 +109,10 @@ describe("x402-exact-hedera.json", () => {
       expect([row.case, offered]).toEqual([row.case, row.expect === undefined]);
       if (row.expect === undefined) {
         expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, row.expectBound]);
-        expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, row.expectReference]);
+        expect([row.case, await exactHedera.reference(p, row.accepted)]).toEqual([row.case, row.expectReference]);
       } else {
         expect([row.case, await exactHedera.bound(p)]).toEqual([row.case, { refused: true, code: row.expect }]);
-        expect([row.case, await exactHedera.reference(p)]).toEqual([row.case, { refused: true, code: row.expect }]);
+        expect([row.case, await exactHedera.reference(p, row.accepted)]).toEqual([row.case, { refused: true, code: row.expect }]);
       }
     }
     const timeoutZero = V.V2.presentedOptions.find((r: { accepted: PaymentRequirements }) => r.accepted.maxTimeoutSeconds === 0);
@@ -159,52 +160,39 @@ describe("x402-exact-hedera.json", () => {
     });
   });
 
-  it("V5: status for each reader answer, and recover", async () => {
-    for (const row of rowsOf(V.V5.rows, "x402-exact-hedera.json V5.rows")) {
-      expect(await hederaStatus(V.V5.reference, readerOf(row.entries))).toEqual(row.expect);
-    }
-    expect(await exactHedera.recover(V.V5.reference, readerOf(V.V5.recover.entries))).toBe(V.V5.recover.expect);
-  });
+  const asked = { act: "payment", finality: "consensus" } as const;
+  const recoverInput = { network: V.V5.reference.network, tx: V.V5.reference.transactionId, option: O };
 
-  // A Hedera transaction that reaches consensus with a status other than SUCCESS is final: the network charges its fee
-  // and makes none of its transfers (HAPI: the TransactionReceipt's status, a ResponseCodeEnum, and the Mirror Node's
-  // `result`), as the V5 status rows read it, failed with that result. recover refuses such entries hedera/not-success;
-  // a transaction id that no counted user entry uses yet is a read to repeat, hedera/not-found
-  // (docs/reference/refusals.md).
-  it("V5: recover refuses counted user entries with no SUCCESS as hedera/not-success, and none yet as hedera/not-found", async () => {
-    type Row = { entries: MirrorEntry[] | null | "reader-error"; expect: { state: string; why?: string } };
-    const failedRow = (r: Row) => r.expect.state === "failed" && r.expect.why!.startsWith("result:");
-    for (const row of rowsOf(V.V5.rows as Row[], "x402-exact-hedera.json V5.rows", {
-      keep: ["the rows status answers failed with a result", failedRow],
-      leave: ["every other row", (r) => !failedRow(r)],
-    })) {
-      expect(await exactHedera.recover(V.V5.reference, readerOf(row.entries)), JSON.stringify(row.entries)).toEqual({
-        refused: true,
-        code: "hedera/not-success",
-      });
-    }
-    const notFound = (r: Row) => r.expect.state === "pending" && r.expect.why === "not-found";
-    for (const row of rowsOf(V.V5.rows as Row[], "x402-exact-hedera.json V5.rows", {
-      keep: ["the rows status answers pending not-found", notFound],
-      leave: ["every other row", (r) => !notFound(r)],
-    })) {
-      expect(await exactHedera.recover(V.V5.reference, readerOf(row.entries)), JSON.stringify(row.entries)).toEqual({
-        refused: true,
-        code: "hedera/not-found",
-      });
+  // Each V5 row gives status's answer under the profile read-status and recover's for the same reader answer. A Hedera
+  // transaction that reaches consensus with a status other than SUCCESS is final: the network charges its fee and makes
+  // none of its transfers (HAPI: the TransactionReceipt's status, a ResponseCodeEnum, and the Mirror Node's `result`).
+  // recover refuses such entries hedera/not-success; a transaction id that no counted user entry uses yet is a read to
+  // repeat, hedera/not-found (docs/reference/refusals.md).
+  for (const [i, row] of rowsOf(V.V5.rows as { case?: string; query?: object; entries: MirrorEntry[] | null | "reader-error"; expect: unknown; expectRecover: unknown }[], "x402-exact-hedera.json V5.rows").entries()) {
+    it(`V5: status and recover, ${row.case ?? `row ${i}`}`, async () => {
+      expect(await hederaStatus(V.V5.reference, readerOf(row.entries), (row.query ?? asked) as never)).toEqual(row.expect);
+      expect(await exactHedera.recover(recoverInput, readerOf(row.entries))).toEqual(row.expectRecover);
+    });
+  }
+
+  it("recover refuses an input whose tx is not a Mirror Node id or whose option is not an object, with nothing read", async () => {
+    const reader = readerOf(V.V5.rows[0].entries);
+    for (const input of [{ ...recoverInput, tx: "0.0.1235@1700000000.000000000" }, { ...recoverInput, option: null }, null]) {
+      expect(await exactHedera.recover(input as never, reader)).toEqual({ refused: true, code: "hedera/wrong-reader" });
     }
   });
 
-  it("status of a reader for another network is pending unreadable", async () => {
-    expect(await hederaStatus(V.V5.reference, readerOf(V.V5.rows[0].entries, "hedera:mainnet"))).toEqual({
-      state: "pending",
-      why: "unreadable",
+  it("status of a reader for another network is unreadable chain-mismatch", async () => {
+    expect(await hederaStatus(V.V5.reference, readerOf(V.V5.rows[0].entries, "hedera:mainnet"), asked)).toEqual({
+      state: "unreadable",
+      reason: "chain-mismatch",
+      foreign: [],
     });
   });
 
   it("plant 1: a duplicate read first never hides the settled entry", async () => {
     const plant = V.plants.duplicateFirst;
-    expect(await hederaStatus(V.V5.reference, readerOf(plant.entries))).toEqual(plant.expect);
+    expect(await hederaStatus(V.V5.reference, readerOf(plant.entries), asked)).toEqual(plant.expect);
   });
 
   it("plant 2: a transfer with no memo is refused before anything is sent, though it echoes the extension", async () => {
@@ -367,7 +355,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
       if ("refused" in b) throw new Error(b.code);
       const payment = b.complete(X.fixed.payload);
       if ("refused" in payment) throw new Error(payment.code);
-      return exactHederaExecutor.reference(payment);
+      return exactHederaExecutor.reference(payment, OX);
     };
     const clock = vi.spyOn(Date, "now").mockReturnValue(X.fixed.now * 1000);
     try {
@@ -387,22 +375,25 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     expect(await exactHederaExecutor.bound(payment)).toBe(X.bound.expectWithExtension);
     const { extensions: _, ...bare } = payment;
     expect(await exactHederaExecutor.bound(bare)).toEqual({ refused: true, code: X.bound.expectWithoutExtension });
-    const ref = await exactHederaExecutor.reference(payment);
+    const ref = await exactHederaExecutor.reference(payment, OX);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.idDigest).toBe(X.reference.expectIdDigest);
+    expect(ref.payee).toBe(OX.payTo);
+    expect(await exactHederaExecutor.reference(payment, {} as PaymentRequirements)).toEqual({ refused: true, code: "x402/option-malformed" });
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
     expect(await hederaIdDigest(X.fixed.payload.payer)).toBe(X.reference.expectIdDigest);
   });
 
-  for (const [i, row] of rowsOf(X.status.rows as { case?: string; reference?: object; entries: MirrorEntry[] | null; expect: unknown }[], "x402-exact-hedera-transfer-executor.json status.rows").entries()) {
+  const asked = { act: "payment", finality: "consensus" } as const;
+  for (const [i, row] of rowsOf(X.status.rows as { case?: string; reference?: object; query?: object; entries: MirrorEntry[] | null; expect: unknown }[], "x402-exact-hedera-transfer-executor.json status.rows").entries()) {
     it(`executorStatus: ${row.case ?? `row ${i}`}`, async () => {
       const ref = { ...X.status.reference, ...(row.reference ?? {}) };
-      expect(await executorStatus(ref, readerOf(row.entries))).toEqual(row.expect);
+      expect(await executorStatus(ref, readerOf(row.entries), (row.query ?? asked) as never)).toEqual(row.expect);
     });
   }
 
   it("plant: a debit from an account other than the payer settles nothing", async () => {
-    expect(await executorStatus(X.status.reference, readerOf(X.plant.entries))).toEqual(X.plant.expect);
+    expect(await executorStatus(X.status.reference, readerOf(X.plant.entries), asked)).toEqual(X.plant.expect);
   });
 
   it("the record states the agreement step and no public proof", () => {

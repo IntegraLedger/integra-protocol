@@ -41,7 +41,11 @@ const TO_RECIPIENT = "0x08c0f673575156523bbb6d18cced9f717abb843c54a256dc04cfbf0f
 const recorded: SessionRef = {
   network: NETWORK,
   accessKey: { keyId: F.revertedActivation.keyId, token: F.token, to: TO_RECIPIENT },
+  payee: F.recipient,
 };
+/** The query of a payment read at the final mark. */
+const FINAL = { act: "payment", finality: "finalized" } as const;
+const pending = { state: "pending", reason: "search-incomplete", foreign: [] };
 
 describe("the keychain's constants", () => {
   it("AccessKeySpend and KeyAuthorized are the keccak256 of their signatures, and the live logs carry them", () => {
@@ -58,6 +62,7 @@ describe("keySearch: the account the witness names, and the key's read keys", ()
     const k = keySearch(recorded, receiptOf(F.revertedActivation.receipt), F.revertedActivation.witness);
     expect(k).toEqual({
       network: NETWORK,
+      payee: F.recipient,
       accessKey: { keyId: F.revertedActivation.keyId, token: F.token, to: TO_RECIPIENT, account: F.account },
       transferLog: { address: F.token, topic0: TRANSFER_TOPIC, identity: "to", digest: TO_RECIPIENT },
       search: { address: ACCOUNT_KEYCHAIN, topics: [ACCESS_KEY_SPEND_TOPIC, word(F.account), word(F.revertedActivation.keyId), word(F.token)] },
@@ -69,7 +74,7 @@ describe("keySearch: the account the witness names, and the key's read keys", ()
     expect(keySearch(recorded, r, F.otherKeyActivation.witness)).toEqual({ refused: true, code: "tempo/no-witness" });
     const other: SessionRef = { ...recorded, accessKey: { ...recorded.accessKey!, keyId: F.otherKeyActivation.keyId } };
     expect(keySearch(other, r, F.revertedActivation.witness)).toEqual({ refused: true, code: "tempo/key-not-authorized" });
-    expect(keySearch({ network: NETWORK }, r, F.revertedActivation.witness)).toEqual({ refused: true, code: "tempo/no-access-key" });
+    expect(keySearch({ network: NETWORK, payee: F.recipient }, r, F.revertedActivation.witness)).toEqual({ refused: true, code: "tempo/no-access-key" });
   });
 
   // An H is a 32-byte hash, the caller's input: one that is not is mpp/input-malformed (docs/reference/refusals.md), as
@@ -111,28 +116,51 @@ describe("sessionStatus on the key's read keys", () => {
 
   it("a later charge under the key, final: settled at the finalized mark", async () => {
     const r = F.chargeUnderKey.receipt;
-    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r))).toEqual({
+    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r), FINAL)).toEqual({
       state: "settled",
+      transaction: r.transactionHash,
+      position: BigInt(r.blockNumber),
       finality: "finalized",
-      blockNumber: BigInt(r.blockNumber),
+      foreign: [],
     });
   });
 
-  it("the same charge below the finalized mark is settled at `latest` only", async () => {
+  it("the charge is before a position at its own block", async () => {
     const r = F.chargeUnderKey.receipt;
-    const s = await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r, BigInt(r.blockNumber) - 1n));
-    expect(s).toEqual({ state: "settled", finality: "latest", blockNumber: BigInt(r.blockNumber) });
+    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r), { ...FINAL, after: BigInt(r.blockNumber) })).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: r.transactionHash,
+      position: BigInt(r.blockNumber),
+      finality: "finalized",
+      foreign: [],
+    });
   });
 
-  it("the reverted activation, whose only AccessKeySpend is its fee, is failed: reverted", async () => {
+  it("the same charge below the finalized mark is settled at `latest` only: below-mark where the finalized mark is asked", async () => {
+    const r = F.chargeUnderKey.receipt;
+    const below = reader(r, BigInt(r.blockNumber) - 1n);
+    const s = await sessionStatus({ ...key, transaction: r.transactionHash }, below, { act: "payment", finality: "latest" });
+    expect(s).toEqual({ state: "settled", transaction: r.transactionHash, position: BigInt(r.blockNumber), finality: "latest", foreign: [] });
+    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, below, FINAL)).toEqual({
+      state: "pending",
+      reason: "below-mark",
+      transaction: r.transactionHash,
+      position: BigInt(r.blockNumber),
+      finality: "latest",
+      foreign: [],
+    });
+  });
+
+  it("the reverted activation, whose only AccessKeySpend is its fee, is no act: pending while no search for H is read", async () => {
     const r = F.revertedActivation.receipt;
-    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r))).toEqual({ state: "failed", why: "reverted" });
+    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r), FINAL)).toEqual(pending);
   });
 
-  it("a transfer to the recipient under another key of the account is not this key's: binding-log-not-found", async () => {
+  it("a transfer to the recipient under another key of the account is not this key's", async () => {
     const r = F.otherKeyActivation.receipt;
     expect(r.status).toBe(1);
-    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r))).toEqual({ state: "failed", why: "binding-log-not-found" });
+    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(r), FINAL)).toEqual(pending);
   });
 
   it("the plant: the key's spend for another account is not this account's", async () => {
@@ -141,15 +169,15 @@ describe("sessionStatus on the key's read keys", () => {
       l.topics[0] === ACCESS_KEY_SPEND_TOPIC ? { ...l, topics: [l.topics[0]!, word("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"), l.topics[2]!, l.topics[3]!] } : l,
     );
     const planted = { ...r, logs };
-    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(planted))).toEqual({ state: "failed", why: "binding-log-not-found" });
+    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader(planted), FINAL)).toEqual(pending);
   });
 
-  it("a charge under the key whose Transfer goes elsewhere has no transfer to the recipient: transfer-not-found", async () => {
+  it("a charge under the key whose Transfer goes elsewhere has no transfer to the recipient", async () => {
     const r = F.chargeUnderKey.receipt;
     const logs = r.logs.map((l) =>
       l.topics[0] === TRANSFER_TOPIC && l.topics[2] === word(F.recipient) ? { ...l, topics: [l.topics[0]!, l.topics[1]!, word("0x70997970C51812dc3A010C7d01b50e0d17dc79C8")] } : l,
     );
-    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader({ ...r, logs }))).toEqual({ state: "failed", why: "transfer-not-found" });
+    expect(await sessionStatus({ ...key, transaction: r.transactionHash }, reader({ ...r, logs }), FINAL)).toEqual(pending);
   });
 
   it("the binding offers keySearch", () => {

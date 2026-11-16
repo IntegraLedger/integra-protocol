@@ -23,7 +23,8 @@ describe("without ripple-binary-codec", () => {
     const { exactXrpl } = await import("../src/x402-exact-xrpl.js");
     const { sessionXrpl } = await import("../src/mpp.js");
     expect(await exactXrpl.bound(xrplPayment() as never)).toEqual(refused("xrpl/peer-missing"));
-    expect(await exactXrpl.reference(xrplPayment() as never)).toEqual(refused("xrpl/peer-missing"));
+    const payment = xrplPayment() as { accepted: unknown };
+    expect(await exactXrpl.reference(payment as never, payment.accepted as never)).toEqual(refused("xrpl/peer-missing"));
     const { within, h } = xrplWithinValid();
     expect(await sessionXrpl.buildWithin(within as never, h)).toEqual(refused("xrpl/peer-missing"));
   });
@@ -31,7 +32,7 @@ describe("without ripple-binary-codec", () => {
   it("x402/exact/xrpl's bound and reference answer an option whose invoiceId is not an LCP string as they do with the codec", { timeout: IMPORT_MS }, async () => {
     const { exactXrpl } = await import("../src/x402-exact-xrpl.js");
     for (const row of rowsOf(xrplPayments(), "peer-free-inputs.ts", { exact: 2 })) {
-      expect([row.case, await exactXrpl.bound(row.payment as never), await exactXrpl.reference(row.payment as never)]).toEqual([
+      expect([row.case, await exactXrpl.bound(row.payment as never), await exactXrpl.reference(row.payment as never, (row.payment as { accepted: unknown }).accepted as never)]).toEqual([
         row.case,
         refused("xrpl/carrier-not-lcp"),
         refused("xrpl/carrier-not-lcp"),

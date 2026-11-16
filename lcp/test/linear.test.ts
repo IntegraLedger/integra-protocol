@@ -92,8 +92,9 @@ describe("evmStatus: a delegation payment's receipt is read in time linear in it
     transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from", digest: `0x${createHash("sha256").update(Buffer.from(PAYER.slice(2), "hex")).digest("hex")}` },
   };
   const status = (BINDINGS.find((b) => b.id === "x402/exact/eip155/erc7710-salt") as unknown as {
-    status: (ref: object, reader: EvmReader) => Promise<{ state: string }>;
+    status: (ref: object, reader: EvmReader, query: object) => Promise<{ state: string }>;
   }).status;
+  const query = { act: "payment", finality: "finalized" };
   /** A receipt of `k` leaves, of `k` root delegators the payer last, and `k` transfers from the payer. */
   const readerOf = (k: number): EvmReader => {
     const logs = [...Array.from({ length: k - 1 }, (_, j) => leaf(`0x${(j + 1).toString(16)}`)), leaf(PAYER), ...new Array<EvmLog>(k).fill(transfer)];
@@ -108,9 +109,9 @@ describe("evmStatus: a delegation payment's receipt is read in time linear in it
 
   it("many leaves and many transfers: the work at twice the logs is at most two and a half times the work", async () => {
     const [small, large] = [readerOf(500), readerOf(1000)];
-    for (const reader of [small, large]) expect(await status(ref, reader)).toMatchObject({ state: "settled" });
-    const atSmall = await workOfAsync(() => status(ref, small));
-    const atLarge = await workOfAsync(() => status(ref, large));
+    for (const reader of [small, large]) expect(await status(ref, reader, query)).toMatchObject({ state: "settled" });
+    const atSmall = await workOfAsync(() => status(ref, small, query));
+    const atLarge = await workOfAsync(() => status(ref, large, query));
     expect(atSmall).toBeGreaterThan(1000);
     expect(atLarge).toBeLessThanOrEqual(2.5 * atSmall);
   });

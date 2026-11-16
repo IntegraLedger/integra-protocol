@@ -22,7 +22,7 @@ import { decodeJsonSegment, jwsSegments, withinDepth } from "./sd-jwt.js";
 import type { LcpPattern } from "./x402.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { CARD } from "./internal/data/card.js";
-import type { Entry } from "./internal/registry.js";
+import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** An ACK payment option as the seller wrote it. */
@@ -154,6 +154,19 @@ const pattern: LcpPattern = Object.freeze({
   forwardIndexable: false,
 });
 
+/** ACK's family descriptor. ACK defines no payer signature, so `build` refuses and nothing is read back. */
+type AckFamily = NoRead & {
+  doc: AckBody;
+  offered: { h: AtrHash; link: string; agreement?: string; offer: { options: readonly Json[] } };
+  placedIn: Record<string, never>;
+  offer: AckPaymentOption;
+  rest: [agreementUrl?: string];
+  advertised: AckValues;
+  choice: unknown;
+  unsigned: never;
+  option: never;
+};
+
 /**
  * `ack/payment-request`. The payer broadcasts (`broadcaster` answers `"payer"`): it pays the Payment Request through
  * its payment service before presenting the receipt. Settlement is the seller's report: the seller verifies the
@@ -171,7 +184,7 @@ export const paymentRequest = Object.freeze({
   build: async (_doc: unknown, _h: AtrHash): Promise<Refusal> => refusal("ack/no-signed-place"),
   bound: async (_presented: unknown): Promise<Refusal> => refusal("ack/no-signed-place"),
   broadcaster: broadcasts("payer"),
-}) satisfies Entry<typeof ID, Json, never, never>;
+}) satisfies Entry<typeof ID, Json, never, never, AckFamily>;
 
 /**
  * The JSON object in a compact JWS's second segment, decoded as base64url without padding, fatal UTF-8 and JSON, or

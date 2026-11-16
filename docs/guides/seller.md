@@ -164,7 +164,7 @@ if (typeof h !== "string") throw new Error(h.code);
 console.log("bound to the issued H:", hashEquals(h, atr.atrHash), storage.has(link));
 
 // 5. Read the settlement. The facilitator's settle answer names the transaction.
-const ref = await exactEip3009.reference(payment);
+const ref = await exactEip3009.reference(payment, option);
 if (isRefusal(ref)) throw new Error(ref.code);
 const transaction: Hex = `0x${"11".repeat(32)}`;
 const word = (hex: string): Hex => `0x${hex.replace(/^0x/, "").toLowerCase().padStart(64, "0")}`;
@@ -187,12 +187,13 @@ const reader: EvmReader = {
   // The token's authorizationState(authorizer, nonce): true once the authorization is used.
   call: async () => word("1"),
 };
-const status = await exactEip3009.status({ ...ref, transaction, h }, reader);
-console.log("status:", status.state, "finality" in status ? status.finality : status.why);
+// Ask about the act "payment" at the final mark; the answer names the reason where it is not settled.
+const status = await exactEip3009.status({ ...ref, transaction, h }, reader, { act: "payment", finality: "finalized" });
+console.log("status:", status.state, status.state === "settled" ? status.finality : status.reason);
 const authorizer = await exactEip3009.authorizer(payment);
 if (typeof authorizer !== "string") throw new Error(authorizer.code);
 console.log("authorization used by block 100:", await authorizationUsed(ref, authorizer, 100n, reader));
-const recovered = await exactEip3009.recover({ network: ref.network, asset: ref.asset, transaction }, reader);
+const recovered = await exactEip3009.recover({ network: ref.network, tx: transaction, option }, reader);
 console.log("recovered from the chain alone:", typeof recovered === "string" && hashEquals(recovered, atr.atrHash));
 ```
 

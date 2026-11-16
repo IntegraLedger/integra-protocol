@@ -29,7 +29,7 @@ import {
 } from "./sd-jwt.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { CARD } from "./internal/data/card.js";
-import type { Entry, PairingData } from "./internal/registry.js";
+import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export { disclosureDigest } from "./sd-jwt.js";
@@ -473,6 +473,22 @@ const sellerReferencePattern: LcpPattern = deepFreeze({
 });
 
 /**
+ * A card pairing's family descriptor, by what its `build` gives. No public ledger records the payment, so nothing is
+ * read back.
+ */
+type CardFamily<U> = NoRead & {
+  doc: unknown;
+  offered: { h: AtrHash; link: string; agreement?: string };
+  placedIn: Record<string, never>;
+  offer: CardOption;
+  rest: [agreementUrl?: string];
+  advertised: CardValues;
+  choice: unknown;
+  unsigned: U;
+  option: never;
+};
+
+/**
  * `card/visa-tap`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment to its
  * processor; nothing here reads it. A value that is not an object gets `card/tap-signature-input-malformed`, as
  * `bound` refuses it.
@@ -489,7 +505,7 @@ export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze(
   build: tapBuild,
   bound: tapBound,
   broadcaster: broadcastsWithin(tapShape, "payee"),
-}) satisfies Entry<"card/visa-tap", TapPresented, never, never>;
+}) satisfies Entry<"card/visa-tap", TapPresented, never, never, CardFamily<TapUnsigned>>;
 
 /**
  * `card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
@@ -508,7 +524,7 @@ export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned
   build: viBuild,
   bound: viImmediateBound,
   broadcaster: broadcastsWithin(viShape, "payee"),
-}) satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never>;
+}) satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never, CardFamily<ViUnsigned>>;
 
 /**
  * `card/mastercard-vi/autonomous`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
@@ -527,7 +543,7 @@ export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsign
   build: viBuild,
   bound: viAutonomousBound,
   broadcaster: broadcastsWithin(viShape, "payee"),
-}) satisfies Entry<"card/mastercard-vi/autonomous", ViAutonomous, never, never>;
+}) satisfies Entry<"card/mastercard-vi/autonomous", ViAutonomous, never, never, CardFamily<ViUnsigned>>;
 
 /**
  * `card/seller-reference`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment
@@ -545,7 +561,7 @@ export const sellerReference: CardPairing<"card/seller-reference", never> = Obje
   build: noSignedPlace,
   bound: noSignedPlace,
   broadcaster: broadcasts("payee"),
-}) satisfies Entry<"card/seller-reference", never, never, never>;
+}) satisfies Entry<"card/seller-reference", unknown, never, never, CardFamily<never>>;
 
 // ── RFC 9651: the subset TAP's two signature fields need ──
 

@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tron/lcp-trc20-memo pairing: the tron entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is mainnet transaction 40662c9c…, read live from a Solidity node. V2's inputs are the published Anvil development key, USDT-TRC20, the payee bytes of x402's example option under 0x41, and solidified block 86542765. The signature was made with coincurve 21.0.0 (RFC 6979) and recovers to the payer; base58check with base58 2.1.1; the Transfer topic with pycryptodome 3.23.0 keccak; every SHA-256 with hashlib. Negative transactions are V2 with fields changed, written by hand from Tron.proto's field numbers. V4's status fixtures model the nodes' answers: a lookup that finds nothing answers notFound with the time of the latest block at its level on the node that answered, and null marks an answer status does not read. A node includes a transaction only while its expiration is after the head block's time (java-tron Manager.validateCommon), so a lookup names absence through the solid head read first only when its node has reached that head's time. V4's recover fixtures model the transaction read's answers: a transaction id is the SHA-256 of its raw data, so raw data whose SHA-256 is another is not the transaction the id names, an answer recover refuses tron/unreadable as it refuses a failed read. Byte strings are lowercase hex; int64 values are decimal strings.",
+ "about": "Vectors for the x402/exact/tron/lcp-trc20-memo pairing: the tron entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is mainnet transaction 40662c9c…, read live from a Solidity node. V2's inputs are the published Anvil development key, USDT-TRC20, the payee bytes of x402's example option under 0x41, and solidified block 86542765. The signature was made with coincurve 21.0.0 (RFC 6979) and recovers to the payer; base58check with base58 2.1.1; the Transfer topic with pycryptodome 3.23.0 keccak; every SHA-256 with hashlib. Negative transactions are V2 with fields changed, written by hand from Tron.proto's field numbers. V4's status fixtures model the nodes' answers: a lookup that finds nothing answers notFound with the time of the latest block at its level on the node that answered, and null marks an answer status does not read. A node includes a transaction only while its expiration is after the head block's time (java-tron Manager.validateCommon), so a lookup names absence through the solid head read first only when its node has reached that head's time. V4's recover fixtures model the transaction read's answers: a transaction id is the SHA-256 of its raw data, so raw data whose SHA-256 is another is not the transaction the id names, an answer recover refuses tron/unreadable as it refuses a failed read. Byte strings are lowercase hex; int64 values are decimal strings. V4's status rows and the plant are read with the act payment at the finality the row gives, solidified where it gives none, and answer as the profile read-status gives them: since the read holds no search for H, a transaction whose result is not SUCCESS, one with no Transfer log from the asset, an expired one and one not found answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -85,6 +85,7 @@
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "tron:728126428",
+   "payee": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
    "txid": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
    "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
    "expiration": "1790300724000"
@@ -120,6 +121,7 @@
  "V4": {
   "ref": {
    "network": "tron:728126428",
+   "payee": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
    "txid": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
    "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
    "expiration": "1790300724000"
@@ -145,12 +147,15 @@
     "solidHead": null,
     "expect": {
      "state": "settled",
+     "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+     "position": "86542790",
      "finality": "solidified",
-     "blockNumber": "86542790"
+     "foreign": []
     }
    },
    {
     "case": "solid not found, head found",
+    "finality": "head",
     "solid": {
      "notFound": true,
      "timestamp": "1790300724000"
@@ -172,8 +177,10 @@
     "solidHead": null,
     "expect": {
      "state": "settled",
+     "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+     "position": "86542790",
      "finality": "head",
-     "blockNumber": "86542790"
+     "foreign": []
     }
    },
    {
@@ -186,9 +193,9 @@
     "head": null,
     "solidHead": null,
     "expect": {
-     "state": "failed",
-     "why": "contract-failed",
-     "result": "REVERT"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -201,8 +208,9 @@
     "head": null,
     "solidHead": null,
     "expect": {
-     "state": "failed",
-     "why": "no-transfer"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -221,7 +229,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -239,8 +248,9 @@
      "timestamp": "1790300730000"
     },
     "expect": {
-     "state": "failed",
-     "why": "expired"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -249,8 +259,9 @@
     "head": null,
     "solidHead": null,
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -269,7 +280,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -288,7 +300,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ],
@@ -341,8 +354,9 @@
    ]
   },
   "expect": {
-   "state": "failed",
-   "why": "no-transfer"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "agreedRefusals": {

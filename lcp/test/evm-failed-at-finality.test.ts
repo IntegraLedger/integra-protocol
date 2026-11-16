@@ -1,9 +1,10 @@
 // Every EVM pairing with a `status`, given a named transaction whose receipt reads as failed. The Ethereum JSON-RPC
 // block tags (ethereum/execution-apis, `BlockTag`): `safe` is safe from reorganization only under honest-majority and
 // synchrony assumptions, and `finalized` cannot be reorganized without manual intervention, so a block above
-// `finalized` can be replaced by one in which the same transaction succeeds, or carries other logs. A failed answer
-// names no mark, so it is given only where the receipt's block is at or below the reader's `finalized` mark; above
-// it, or where that mark cannot be read, the read is pending with the same reason. The receipts are ERC-20
+// `finalized` can be replaced by one in which the same transaction succeeds, or carries other logs. The read checks
+// the receipt's block against the reader's `finalized` mark; a transaction it reads failed is no act and consumes no
+// single-use value, and with no search for H yet each pairing answers pending search-incomplete, at or below the mark
+// and above it alike (the profile read-status, rule 24). The receipts are ERC-20
 // `Transfer` and EIP-3009 `AuthorizationUsed` logs as those standards define them, with the pairings' own events beside
 // them; the transfer digest is SHA-256 over the named fields, by node:crypto. The published Anvil development accounts
 // 0 and 1 are the payer and the payee; H is SHA-256("abc") (FIPS 180-2).
@@ -357,23 +358,24 @@ function reader(network: string, f: Failure, finalized: bigint | "fails", safe: 
 }
 
 const statusOf = (id: string) =>
-  (BINDINGS.find((b) => b.id === id) as unknown as { status: (ref: object, reader: EvmReader) => Promise<unknown> }).status;
+  (BINDINGS.find((b) => b.id === id) as unknown as {
+    status: (ref: object, reader: EvmReader, query: { act: "payment"; finality: "finalized" }) => Promise<unknown>;
+  }).status;
+const FINAL = { act: "payment", finality: "finalized" } as const;
+const SEARCHING = { state: "pending", reason: "search-incomplete", foreign: [] };
 
-describe("an EVM failed answer is given only at or below the finalized mark", () => {
+describe("an EVM failed read answers pending search-incomplete, at or below the finalized mark and above it", () => {
   for (const [id, what, network, ref, failures] of ROWS) {
     for (const f of rowsOf(failures, `${id}, ${what}: its failed reads`)) {
       it(`${id}, ${what}: ${f.why}`, async () => {
-        const status = statusOf(id);
-        const full = { network, ...ref };
+        const status = (r: object, reader: EvmReader) => statusOf(id)(r, reader, FINAL);
+        const full = { network, payee: PAYEE, ...ref };
         for (const [finalized, safe] of [
           [BLOCK, BLOCK],
           [BLOCK + 5n, BLOCK + 10n],
         ] as const) {
           const marks: string[] = [];
-          expect(await status(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}`).toEqual({
-            state: "failed",
-            why: f.why,
-          });
+          expect(await status(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}`).toEqual(SEARCHING);
           expect(marks).toContain("finalized");
         }
         for (const [finalized, safe] of [
@@ -383,10 +385,9 @@ describe("an EVM failed answer is given only at or below the finalized mark", ()
           ["fails", "fails"],
         ] as const) {
           const marks: string[] = [];
-          expect(await status(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}, safe ${safe}`).toEqual({
-            state: "pending",
-            why: f.why,
-          });
+          expect(await status(full, reader(network, f, finalized, safe, marks)), `finalized ${finalized}, safe ${safe}`).toEqual(
+            SEARCHING,
+          );
           expect(marks).toContain("finalized");
         }
       });
@@ -484,8 +485,8 @@ describe("an EVM or Tempo session recover gives a revert or a verdict read from 
     { why: "evm/nonce-not-used", logs: [transfer(PAYER, PAYEE)], tx: calling(settleOf(PERMIT2_NONCE)), call: () => uint(1n) },
   ];
 
-  /** A pairing with a `recover`, the network and ref it reads, and the reads that give each verdict (`why`). */
-  type Recovered = [id: string, network: string, ref: object, failures: Failure[], notFinal: string];
+  /** A pairing with a `recover`, the network and option it reads, and the reads that give each verdict (`why`). */
+  type Recovered = [id: string, network: string, option: object, failures: Failure[], notFinal: string];
   const RECOVERS: Recovered[] = [
     [
       "x402/exact/eip155/eip3009",
@@ -558,14 +559,14 @@ describe("an EVM or Tempo session recover gives a revert or a verdict read from 
     ],
   ];
   const recoverOf = (id: string) =>
-    (BINDINGS.find((b) => b.id === id) as unknown as { recover: (ref: object, reader: EvmReader) => Promise<unknown> }).recover;
+    (BINDINGS.find((b) => b.id === id) as unknown as { recover: (input: object, reader: EvmReader) => Promise<unknown> }).recover;
 
-  for (const [id, network, ref, failures, notFinal] of RECOVERS) {
+  for (const [id, network, option, failures, notFinal] of RECOVERS) {
     for (const f of rowsOf(failures, `${id}: its verdicts`)) {
       it(`${id}: ${f.why} at or below the mark, ${notFinal} above it or where it cannot be read`, async () => {
         const recover = recoverOf(id);
         const verdict = f.why;
-        const full = { network, transaction: TX, ...ref };
+        const full = { network, tx: TX, option };
         for (const [finalized, safe] of [
           [BLOCK, BLOCK],
           [BLOCK + 5n, BLOCK + 10n],
@@ -605,7 +606,7 @@ describe("an EVM or Tempo session recover gives a revert or a verdict read from 
   it("mpp/session/evm: a transaction whose own call is not an open call is evm/no-open-call above the mark, with no mark read", async () => {
     const marks: string[] = [];
     const f: Failure = { why: "evm/no-open-call", logs: [transfer(PAYER, sessionEscrow)], tx: plainTransfer };
-    expect(await recoverOf("mpp/session/evm")({ network: BASE, transaction: TX }, reader(BASE, f, BLOCK - 1n, BLOCK - 1n, marks))).toEqual({
+    expect(await recoverOf("mpp/session/evm")({ network: BASE, tx: TX, option: {} }, reader(BASE, f, BLOCK - 1n, BLOCK - 1n, marks))).toEqual({
       refused: true,
       code: "evm/no-open-call",
     });

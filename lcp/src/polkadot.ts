@@ -10,7 +10,7 @@ import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from 
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
-import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -20,6 +20,10 @@ import {
 } from "./x402.js";
 import { POLKADOT } from "./internal/data/polkadot.js";
 import type { Entry } from "./internal/registry.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type PolkadotNetwork = "polkadot:68d56f15f85d3136970ec16946040bc1" | "polkadot:67f9723393ef76214df0118c34bbbd3d";
@@ -68,29 +72,42 @@ export interface PolkadotReader {
 }
 
 /**
- * The read keys: the accepted option's network, and the extrinsic's hash and the call's asset from the signed bytes.
+ * The read keys: the accepted option's network, the extrinsic's hash and the call's asset from the signed bytes, and
+ * the payee, the `payTo` of the option the payment answers.
  */
 export interface PolkadotRef {
   network: PolkadotNetwork;
+  payee: string;
   extrinsicHash: Hex;
   assetId: number;
 }
 
 /**
- * A settlement or failure names the timepoint it read, `<block hash>-<index>`: the one given, or the canonical one when
- * the given block left the chain and the canonical block at that height holds the same extrinsic at that index.
- * Pending `not-located` asks for the payment to be located (`polkadotLocate`).
+ * The answer of `polkadotStatus`, as the profile `read-status` gives it. Its marks are `head` and `finalized`, in that
+ * order, and its position the block height. An answer that names a transaction names the timepoint it read,
+ * `<block hash>-<index>`: the one given, or the canonical one when the given block left the chain and the canonical
+ * block at that height holds the same extrinsic at that index.
  */
-export type PolkadotStatus =
-  | { state: "settled"; finality: "finalized" | "head"; height: bigint; transaction: string }
-  | { state: "pending"; why: "not-located" | "not-found" | "unreadable" }
+export type PolkadotStatus = StatusAnswer<bigint, PolkadotMark>;
+
+type PolkadotMark = "head" | "finalized";
+const MARKS: readonly PolkadotMark[] = ["head", "finalized"];
+
+/**
+ * What the read of the extrinsic at its timepoint found. `not-located`: no timepoint was given, or the block it names
+ * left the chain with no copy of the extrinsic at that index of the canonical block.
+ */
+type PolkadotRead =
+  | { state: "settled"; finality: PolkadotMark; height: bigint; transaction: string }
+  | { state: "pending"; why: "not-located" | "not-found" }
   | {
       state: "failed";
       why: "not-this-extrinsic" | "dispatch-failed" | "no-remark" | "no-transfer";
-      finality: "finalized" | "head";
+      finality: PolkadotMark;
       height: bigint;
       transaction: string;
-    };
+    }
+  | { state: "unreadable"; reason: UnreadableReason };
 
 /** The call the payer's signer wraps in an extrinsic, and how that extrinsic completes the payment. */
 export interface PolkadotUnsigned {
@@ -415,11 +432,16 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(c) ? c : c.h;
 }
 
-/** The accepted option's network, and the extrinsic's hash and the call's asset from the signed bytes. */
-async function reference(presented: unknown): Promise<PolkadotRef | Refusal> {
+/**
+ * The accepted option's network, the extrinsic's hash and the call's asset from the signed bytes, and the payee, the
+ * `payTo` of the option the payment answers.
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<PolkadotRef | Refusal> {
   const c = carriedOf(presented);
   if (isRefusal(c)) return c;
-  return { network: c.network, extrinsicHash: extrinsicHash(c.xt), assetId: c.call.assetId };
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
+  return { network: c.network, payee, extrinsicHash: extrinsicHash(c.xt), assetId: c.call.assetId };
 }
 
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -432,6 +454,7 @@ function isExtrinsic(x: unknown): x is PolkadotExtrinsic {
   return typeof at["height"] === "bigint" && typeof at["hash"] === "string" && Array.isArray(x["events"]);
 }
 
+/** A read's answer, or `unreadable` where the read rejected. */
 type Read<T> = { ok: T } | { unreadable: true };
 
 async function readSafely<T>(f: () => Promise<T>): Promise<Read<T>> {
@@ -481,8 +504,8 @@ function failureOf(
  * The record a read answers from, by the finality of the extrinsic found at `block`-`index`. While the finalized
  * height is below its block's, it is the record found, at `head`. Once the finalized chain holds that height, it is the
  * record found when the canonical block there is `block`, or the canonical block's record when that block holds the
- * extrinsic with hash `xtHash` at the same index; either is `finalized`. Otherwise it is `not-located`. A failed read,
- * or an answer that is not a record, is `unreadable`.
+ * extrinsic with hash `xtHash` at the same index; either is `finalized`. Otherwise it is `not-located`. A failed read
+ * is `transport`, and an answer that is not a height or a record `unparseable`.
  */
 async function finalRecord(
   reader: PolkadotReader,
@@ -490,15 +513,16 @@ async function finalRecord(
   block: Hex,
   index: number,
   xtHash: string,
-): Promise<{ read: PolkadotExtrinsic; finality: "finalized" | "head" } | "not-located" | "unreadable"> {
+): Promise<{ read: PolkadotExtrinsic; finality: PolkadotMark } | "not-located" | "transport" | "unparseable"> {
   const height = found.at.height;
   const finalized = await readSafely(() => reader.finalizedHeight());
-  if ("unreadable" in finalized || typeof finalized.ok !== "bigint") return "unreadable";
+  if ("unreadable" in finalized) return "transport";
+  if (typeof finalized.ok !== "bigint") return "unparseable";
   if (finalized.ok < height) return { read: found, finality: "head" };
   const canonical = await readSafely(() => reader.extrinsic(height, index));
-  if ("unreadable" in canonical) return "unreadable";
+  if ("unreadable" in canonical) return "transport";
   if (canonical.ok === null) return "not-located";
-  if (!isExtrinsic(canonical.ok)) return "unreadable";
+  if (!isExtrinsic(canonical.ok)) return "unparseable";
   if (hashEquals(canonical.ok.at.hash, block)) return { read: found, finality: "finalized" };
   if (canonical.ok.at.height === height && hashEquals(canonical.ok.hash, xtHash)) {
     return { read: canonical.ok, finality: "finalized" };
@@ -507,43 +531,79 @@ async function finalRecord(
 }
 
 /**
- * Reads the extrinsic at its timepoint `<block hash>-<index>`. It must have the recorded hash, have dispatched, and
- * carry the `Remarked` event for this hash's remark and a `Transferred` event of the recorded asset. A settlement and a
- * failure alike carry the finality of the read: `finalized` when the finalized chain holds that block, `head` when it
- * is above the finalized height. When the finalized chain holds another block at that height, the extrinsic at the
- * same index of the canonical block is read instead if its hash is the recorded one; otherwise the answer is pending
- * `not-located`. A block the reader does not have is pending `not-found`. A failed read, a bare broadcast hash or a
- * reader for another network is pending. A ref whose `extrinsicHash` is not `0x` and 64 hex digits, or whose `assetId`
- * is not an integer from 0 below 2^32, is pending `unreadable`, with nothing read.
+ * Answers the read of the extrinsic at its timepoint `<block hash>-<index>` as the profile `read-status` gives it. The
+ * extrinsic is the payer's act when it has the recorded hash, dispatched, and carries the `Remarked` event for this
+ * hash's remark and a `Transferred` event of the recorded asset, at the mark of the read: `finalized` when the
+ * finalized chain holds that block, `head` when it is above the finalized height; its position is the block's height.
+ * When the finalized chain holds another block at that height, the extrinsic at the same index of the canonical block
+ * is read instead if its hash is the recorded one. An extrinsic with the recorded hash that did not dispatch is the
+ * payer's act included with a failed result, which took the account's nonce. An extrinsic with another hash, or with
+ * no `Remarked` or `Transferred` event of the payment, carries no act of the payer's that binds H; a bare broadcast
+ * hash, a block the reader does not have, and a block that left the chain with no copy of the extrinsic name no
+ * included act. The read holds no search for H and does not read the account's nonce, so none of these answers
+ * `failed`. A read that rejects is unreadable `transport`, an answer that is not a record or a height `unparseable`,
+ * and a reader for another network than the ref's `chain-mismatch`. A ref, a reader or a query that is not one, a
+ * reader that names no network, or a ref whose network is not a Polkadot network, whose `extrinsicHash` is not `0x`
+ * and 64 hex digits, whose `assetId` is not an integer from 0 below 2^32, whose `h` is not a hash or whose
+ * `transaction` is neither a timepoint nor a bare hash, is unreadable `unparseable`, with nothing read.
  */
 export async function polkadotStatus(
   ref: PolkadotRef & { h: AtrHash; transaction: string },
   reader: PolkadotReader,
+  query: StatusQuery<PolkadotRef & { h: AtrHash; transaction: string }, bigint, PolkadotMark>,
 ): Promise<PolkadotStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (normalHash(ref.extrinsicHash) === null || !isAssetId(ref.assetId)) return { state: "pending", why: "unreadable" };
-  if (typeof ref.transaction !== "string") return { state: "pending", why: "unreadable" };
-  if (BARE_HASH.test(ref.transaction)) return { state: "pending", why: "not-located" };
+  if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;
+  return decide(factsOf(await readPolkadot(ref, reader)), query, LEDGER);
+}
+
+const LEDGER = ledgerOf<bigint, PolkadotMark>(POLKADOT[ID].coverage, MARKS, bigintOrder);
+
+async function readPolkadot(ref: PolkadotRef & { h: AtrHash; transaction: string }, reader: PolkadotReader): Promise<PolkadotRead> {
+  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
+  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") return unparseable;
+  if (!isNetwork(ref.network) || normalHash(ref.extrinsicHash) === null || !isAssetId(ref.assetId)) return unparseable;
+  if (typeof ref.transaction !== "string" || normalHash(ref.h) === null) return unparseable;
   const tp = TIMEPOINT.exec(ref.transaction);
-  if (tp === null) return { state: "pending", why: "unreadable" };
+  if (tp === null && !BARE_HASH.test(ref.transaction)) return unparseable;
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
+  if (tp === null) return { state: "pending", why: "not-located" };
   const block = tp[1]! as Hex;
   const index = Number(tp[2]);
-  const nh = normalHash(ref.h);
-  if (nh === null) return { state: "pending", why: "unreadable" };
+  const nh = normalHash(ref.h)!;
 
   const x = await readSafely(() => reader.extrinsic(block, index));
-  if ("unreadable" in x) return { state: "pending", why: "unreadable" };
+  if ("unreadable" in x) return { state: "unreadable", reason: "transport" };
   if (x.ok === null) return { state: "pending", why: "not-found" };
-  if (!isExtrinsic(x.ok)) return { state: "pending", why: "unreadable" };
+  if (!isExtrinsic(x.ok)) return unparseable;
   const at = await finalRecord(reader, x.ok, block, index, ref.extrinsicHash);
-  if (at === "unreadable" || at === "not-located") return { state: "pending", why: at };
+  if (at === "transport" || at === "unparseable") return { state: "unreadable", reason: at };
+  if (at === "not-located") return { state: "pending", why: at };
   const why = failureOf(at.read, ref, nh);
   const transaction = `${at.read.at.hash}-${index}`;
   return why === undefined
     ? { state: "settled", finality: at.finality, height: at.read.at.height, transaction }
     : { state: "failed", why, finality: at.finality, height: at.read.at.height, transaction };
+}
+
+/**
+ * The read's facts: the act at its mark and height where it settled, or where it did not dispatch, a failed result
+ * that took the nonce; nothing for an extrinsic that is not the act, nor for one not located. The read by timepoint is
+ * never a search read whole.
+ */
+function factsOf(read: PolkadotRead): Facts<bigint, PolkadotMark> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.reason };
+    case "pending":
+      return none;
+    case "settled":
+      return { ...none, seen: [actSeen(read.transaction, read.finality, read.height)] };
+    case "failed":
+      return read.why === "dispatch-failed"
+        ? { ...none, seen: [actSeen(read.transaction, read.finality, read.height, "failed")] }
+        : none;
+  }
 }
 
 /** The profile call an extrinsic ends with, starting at or after `from`: the longest such suffix, or null. */
@@ -567,16 +627,18 @@ function endingProfileCall(xt: Uint8Array, from: number): ProfileCall | null {
  * its height, is `polkadot/not-located`. That record must show the extrinsic dispatched with the `Remarked` event for
  * the remark and a `Transferred` event of the call's asset: one that does not is `polkadot/no-remark` or
  * `polkadot/no-transfer` once the finalized chain holds its block, and `polkadot/not-final` while the block is above the
- * finalized height, since that block can be replaced. A ref whose `transaction` is not a `<block hash>-<index>`
- * timepoint is `polkadot/wrong-reader`, with nothing read. At most four calls.
+ * finalized height, since that block can be replaced. The input's `tx` is the timepoint, and its `option` the option
+ * the payment answers, an object, of which the read needs no member. An input whose `tx` is not a
+ * `<block hash>-<index>` timepoint, or whose option is not an object, is `polkadot/wrong-reader`, with nothing read. At
+ * most four calls.
  */
 export async function polkadotRecover(
-  ref: { network: PolkadotNetwork; transaction: string },
+  input: RecoverInput<PolkadotNetwork, PaymentRequirements | MppChallenge>,
   reader: PolkadotReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("polkadot/wrong-reader");
-  const tp = typeof ref.transaction === "string" ? TIMEPOINT.exec(ref.transaction) : null;
-  if (tp === null) return refusal("polkadot/wrong-reader");
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("polkadot/wrong-reader");
+  const tp = typeof input.tx === "string" ? TIMEPOINT.exec(input.tx) : null;
+  if (tp === null || !isObject(input.option)) return refusal("polkadot/wrong-reader");
   const block = tp[1]! as Hex;
   const index = Number(tp[2]);
   const raws = await readSafely(() => reader.rawExtrinsics(block));
@@ -600,7 +662,7 @@ export async function polkadotRecover(
   const h = remarkCarrier(call.remark);
   if (h === null) return refusal("polkadot/remark-not-lcp");
   const at = await finalRecord(reader, x.ok, block, index, xtHash);
-  if (at === "unreadable") return refusal("polkadot/unreadable");
+  if (at === "transport" || at === "unparseable") return refusal("polkadot/unreadable");
   if (at === "not-located") return refusal("polkadot/not-located");
   const noRemark = !at.read.success || !remarked(at.read, call.remark);
   if (!noRemark && transferred(at.read, call.assetId)) return h;
@@ -681,4 +743,17 @@ export const exactPolkadotRemark = Object.freeze({
   reference,
   status: polkadotStatus,
   recover: polkadotRecover,
-}) satisfies Entry<typeof ID, PolkadotPaymentPayload, PolkadotRef & { h: AtrHash; transaction: string }, PolkadotReader>;
+}) satisfies Entry<
+  typeof ID,
+  PolkadotPaymentPayload,
+  PolkadotRef,
+  PolkadotReader,
+  X402Forms & {
+    choice: { required: PaymentRequired; accepted: PaymentRequirements };
+    unsigned: PolkadotUnsigned;
+    landed: { h: AtrHash; transaction: string };
+    network: PolkadotNetwork;
+    query: StatusQuery<PolkadotRef & { h: AtrHash; transaction: string }, bigint, PolkadotMark>;
+    answer: PolkadotStatus;
+  }
+>;

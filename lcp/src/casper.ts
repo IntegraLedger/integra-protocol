@@ -6,7 +6,7 @@ import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -16,7 +16,10 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 import { CASPER } from "./internal/data/casper.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `casper:` and the chainspec name. */
@@ -71,12 +74,15 @@ export interface CasperRef {
   asset: PackageHash;
   idDigest: Hex;
   settleBy: number;
+  /** The option's `payTo`. */
+  payee: string;
 }
 
-export type CasperStatus =
-  | { state: "settled"; finality: "finalized"; blockHeight: bigint }
-  | { state: "pending"; why: "not-found" | "not-executed" | "unreadable" }
-  | { state: "failed"; why: "reverted" | "not-this-instrument" };
+/**
+ * The answer of `casperStatus`: positions are block heights, and the one mark is `finalized`, since the node serves
+ * only executed transactions of final blocks.
+ */
+export type CasperStatus = StatusAnswer<bigint, "finalized", bigint>;
 
 interface CasperChoice {
   required: PaymentRequired;
@@ -165,36 +171,53 @@ export async function casperIdDigest(from: CasperAddress, to: CasperAddress, val
   return hash(packed);
 }
 
+/** What the read of the named transaction observed, before the profile's rules choose the answer. */
+type CasperRead =
+  | { state: "settled"; blockHeight: bigint }
+  | { state: "pending"; why: "not-found" | "not-executed" }
+  | { state: "failed"; why: "reverted"; blockHeight: bigint | null }
+  | { state: "failed"; why: "not-this-instrument" }
+  | { state: "unreadable"; why: UnreadableReason };
+
+type CasperRefRead = CasperRef & { transaction: string; h: AtrHash };
+
+/**
+ * The reason of a rejected read: a `ReaderError` by its kind (`too-large`, `malformed` as `unparseable`, `timeout` and
+ * `transport` as `transport`), and any other rejection `transport`.
+ */
+function rejected(e: unknown): UnreadableReason {
+  const kind = isObject(e) && e["name"] === "ReaderError" ? e["kind"] : undefined;
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+}
+
 /**
  * Reads the named transaction. Settled, at the height of its block, when it executed without error as a call to
  * `ref.asset`'s `transfer_with_authorization` or `receive_with_authorization` whose `nonce` argument is `h` and whose
- * `from`, `to` and `value` hash to `ref.idDigest`. A failed read, or a reader for another network, is pending. A ref
- * whose `h` or `idDigest` is not `0x` and 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
- * pending `unreadable`, with nothing read; hashes compare in either case. `ref.asset` names the token package whose
- * call carries the payment, which identifies the instrument; nothing is compared with the ATR's content.
+ * `from`, `to` and `value` hash to `ref.idDigest`; any other executed call is no act of the payer's that carries H. A
+ * ref whose `h` or `idDigest` is not `0x` and 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
+ * `unparseable`, with nothing read, and a reader for another network `chain-mismatch`; hashes compare in either case.
+ * `ref.asset` names the token package whose call carries the payment, which identifies the instrument; nothing is
+ * compared with the ATR's content.
  */
-export async function casperStatus(
-  ref: CasperRef & { transaction: string; h: AtrHash },
-  reader: CasperReader,
-): Promise<CasperStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
-  }
+async function readCasper(ref: CasperRefRead, reader: CasperReader): Promise<CasperRead> {
+  const unparseable = { state: "unreadable", why: "unparseable" } as const;
+  if (!isObject(ref)) return unparseable;
   const asset: unknown = ref.asset;
   if (normalHash(ref.h) === null || normalHash(ref.idDigest) === null || typeof asset !== "string" || !PACKAGE.test(asset)) {
-    return { state: "pending", why: "unreadable" };
+    return unparseable;
   }
+  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
   let call: CasperCall | null;
   try {
     call = await reader.transaction(ref.transaction);
-  } catch {
-    return { state: "pending", why: "unreadable" };
+  } catch (e) {
+    return { state: "unreadable", why: rejected(e) };
   }
   if (call === null) return { state: "pending", why: "not-found" };
-  if (!isCall(call)) return { state: "pending", why: "unreadable" };
+  if (!isCall(call)) return unparseable;
   if (!call.executed) return { state: "pending", why: "not-executed" };
-  if (call.error !== null) return { state: "failed", why: "reverted" };
-  if (call.blockHeight === null) return { state: "pending", why: "unreadable" };
+  if (call.error !== null) return { state: "failed", why: "reverted", blockHeight: call.blockHeight };
+  if (call.blockHeight === null) return unparseable;
   const nonce = authorizationNonce(call, ref.asset);
   if (nonce === null || !hashEquals(nonce, ref.h)) return { state: "failed", why: "not-this-instrument" };
   const { from, to, value } = call.args;
@@ -203,25 +226,75 @@ export async function casperStatus(
   }
   const digest = await casperIdDigest(from, to, value);
   if (isRefusal(digest) || !hashEquals(digest, ref.idDigest)) return { state: "failed", why: "not-this-instrument" };
-  return { state: "settled", finality: "finalized", blockHeight: call.blockHeight };
+  return { state: "settled", blockHeight: call.blockHeight };
 }
 
 /**
- * The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on `asset`. A
- * ref whose `transaction` is not 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
- * `casper/wrong-reader`, with nothing read.
+ * The facts of a read of the named transaction: the payer's executed authorization call is the act; a reverted call is
+ * a failed act that leaves the nonce unset (CEP-3009 sets `used_nonces` only on success); a call not yet executed, or
+ * one that is not the payer's authorization carrying H, is no act. The read has no means to read the nonce.
+ */
+function factsOfCasper(read: CasperRead, ref: CasperRefRead): Facts<bigint, "finalized", bigint> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  const own = (result: "succeeded" | "failed", blockHeight: bigint | null) =>
+    ({
+      transaction: ref.transaction,
+      ...(blockHeight === null ? {} : { position: blockHeight }),
+      mark: "finalized",
+      result,
+      consumed: result === "succeeded",
+      carries: true,
+      party: "payer",
+      kind: "same",
+      account: "payee",
+    }) as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.why };
+    case "settled":
+      return { ...none, seen: [own("succeeded", read.blockHeight)] };
+    case "pending":
+      return none;
+    case "failed":
+      return read.why === "reverted" ? { ...none, seen: [own("failed", read.blockHeight)] } : none;
+  }
+}
+
+/**
+ * The read of the payment by the transaction the facilitator named, as the profile `read-status` answers it: the
+ * payer's executed authorization call settles at `finalized`; a reverted call, a call not yet executed, another call
+ * and a transaction the node does not know answer `pending`, `search-incomplete`, since the read has no search for H.
+ * On the act `agreement`, `ref.h` is the agreement's own value, the nonce the payer signed.
+ */
+export async function casperStatus(
+  ref: CasperRefRead,
+  reader: CasperReader,
+  query: StatusQuery<CasperRefRead, bigint, "finalized", bigint>,
+): Promise<CasperStatus> {
+  return decide(factsOfCasper(await readCasper(ref, reader), ref), query, {
+    coverage: CASPER[ID].coverage,
+    final: "finalized",
+    markOrder: () => 0,
+    positionOrder: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
+  });
+}
+
+/**
+ * The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on the token
+ * package the option names, `option.asset`. An input whose `tx` is not 64 hex digits, or whose option names no package
+ * hash of 64 hex digits as its `asset`, is `casper/wrong-reader`, with nothing read.
  */
 export async function casperRecover(
-  ref: { network: CasperNetwork; asset: PackageHash; transaction: string },
+  input: RecoverInput<CasperNetwork, PaymentRequirements | MppChallenge>,
   reader: CasperReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("casper/wrong-reader");
-  if (typeof ref.transaction !== "string" || !PACKAGE.test(ref.transaction)) return refusal("casper/wrong-reader");
-  const asset: unknown = ref.asset;
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("casper/wrong-reader");
+  if (typeof input.tx !== "string" || !PACKAGE.test(input.tx)) return refusal("casper/wrong-reader");
+  const asset: unknown = isObject(input.option) ? input.option["asset"] : undefined;
   if (typeof asset !== "string" || !PACKAGE.test(asset)) return refusal("casper/wrong-reader");
   let call: CasperCall | null;
   try {
-    call = await reader.transaction(ref.transaction);
+    call = await reader.transaction(input.tx);
   } catch {
     return refusal("casper/unreadable");
   }
@@ -229,7 +302,7 @@ export async function casperRecover(
   if (!isCall(call)) return refusal("casper/unreadable");
   if (!call.executed) return refusal("casper/not-executed");
   if (call.error !== null) return refusal("casper/reverted");
-  const nonce = authorizationNonce(call, ref.asset);
+  const nonce = authorizationNonce(call, asset);
   if (nonce === null) return refusal("casper/no-authorization-call");
   return nonce;
 }
@@ -339,10 +412,11 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys for finding this payment later: network, token package, the transfer's digest and `settleBy`, which
- * is `validBefore` up to `Number.MAX_SAFE_INTEGER` and that value for a later one. `validBefore` is a decimal below
- * 2^64, CEP-3009's `valid_before` being a u64 whose largest value never expires; `value` is a decimal uint256.
+ * is `validBefore` up to `Number.MAX_SAFE_INTEGER` and that value for a later one; and the payee, the `payTo` of the
+ * option the payment answers. `validBefore` is a decimal below 2^64, CEP-3009's `valid_before` being a u64 whose
+ * largest value never expires; `value` is a decimal uint256.
  */
-async function reference(presented: unknown): Promise<CasperRef | Refusal> {
+async function reference(presented: unknown, option: PaymentRequirements): Promise<CasperRef | Refusal> {
   const p = paymentOf(presented);
   if (isRefusal(p)) return p;
   const a = p.payload.authorization;
@@ -351,11 +425,14 @@ async function reference(presented: unknown): Promise<CasperRef | Refusal> {
   if (value === undefined || validBefore === undefined) return refusal("casper/payload-malformed");
   const idDigest = await casperIdDigest(a.from, a.to, value);
   if (isRefusal(idDigest)) return refusal("casper/payload-malformed");
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   return {
     network: p.accepted.network as CasperNetwork,
     asset: p.accepted.asset.toLowerCase(),
     idDigest,
     settleBy: Math.min(Number(validBefore), Number.MAX_SAFE_INTEGER),
+    payee,
   };
 }
 
@@ -440,4 +517,17 @@ export const exactCasper = Object.freeze({
   reference,
   status: casperStatus,
   recover: casperRecover,
-}) satisfies Entry<typeof ID, CasperPaymentPayload, CasperRef & { transaction: string; h: AtrHash }, CasperReader>;
+}) satisfies Entry<
+  typeof ID,
+  CasperPaymentPayload,
+  CasperRef,
+  CasperReader,
+  X402Forms & {
+    choice: CasperChoice;
+    unsigned: CasperUnsigned;
+    landed: { transaction: string; h: AtrHash };
+    network: CasperNetwork;
+    query: StatusQuery<CasperRefRead, bigint, "finalized", bigint>;
+    answer: CasperStatus;
+  }
+>;

@@ -48,10 +48,24 @@ export type {
   Coverage,
   EndpointKind,
   Entry,
+  Family,
   Life,
   PairingData,
   ReadData,
 } from "./internal/registry.js";
+export type {
+  Act,
+  FailedReason,
+  ForeignItem,
+  ForeignReason,
+  Moved,
+  OtherAct,
+  PendingReason,
+  RecoverInput,
+  StatusAnswer,
+  StatusQuery,
+  UnreadableReason,
+} from "./internal/read.js";
 export {
   MAX_CHALLENGE_DEPTH,
   MAX_CHALLENGES,
@@ -263,40 +277,17 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   uptoSvm,
 ]))();
 
+/** Whether a pairing is an x402 pairing. */
+function isX402(b: Binding): b is Extract<Binding, { readonly id: PairingOn<"x402"> }> {
+  return b.id.startsWith("x402/");
+}
+
 /**
  * The x402 pairings, in their order in `BINDINGS`, each typed by a `read` that takes the document `pairingOf` builds.
  * Built in a call marked pure, as `BINDINGS` is.
  */
-const X402_BINDINGS: readonly { readonly id: PairingOn<"x402">; read(doc: PaymentRequired): unknown }[] =
-  /* @__PURE__ */ (() =>
-    Object.freeze([
-      exactEip3009,
-      authCaptureEip3009,
-      authCapturePermit2,
-      batchCloudflare,
-      batchEvm,
-      batchSvm,
-      exactAvm,
-      exactAptos,
-      exactCardano,
-      exactCasper,
-      exactCcd,
-      exactErc7710,
-      exactErc7710Salt,
-      exactPermit2,
-      exactHedera,
-      exactHederaExecutor,
-      exactNear,
-      exactPolkadotRemark,
-      exactSvm,
-      exactStarknet,
-      exactSui,
-      exactTronMemo,
-      exactTvm,
-      exactXrpl,
-      uptoPermit2,
-      uptoSvm,
-    ]))();
+const X402_BINDINGS: readonly { readonly id: PairingOn<"x402">; readonly read: (doc: PaymentRequired) => unknown }[] =
+  /* @__PURE__ */ (() => Object.freeze(BINDINGS.filter(isX402)))();
 
 /**
  * The x402 pairing that serves an option: the first x402 pairing in `BINDINGS` whose `read` offers it, on a document

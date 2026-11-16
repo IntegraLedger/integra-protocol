@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/aptos pairing: the aptos entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The committed answer is Aptos mainnet transaction 0xde08191e\u2026ef48ceb5 (version 7351075186) read over REST from api.mainnet.aptoslabs.com on 2026-09-25, trimmed to the members the reader returns. Fixture F's RawTransaction is built with @aptos-labs/ts-sdk 7.5.0 from that answer (max_gas_amount 15000, gas_unit_price 100, chain 1); its SHA-256 is Python's hashlib. idDigest is Python's hashlib.sha256 over json.dumps(sort_keys=True, separators=(',',':')) of the normal form. Other answers are the real one with the named member changed. Ledger times are microseconds. A lookup by sequence number that finds nothing answers notFound with the ledger timestamp of that answer (the REST API's X-Aptos-Ledger-TimestampUsec header), so it shows absence only through that ledger. An absent transaction is expired only once the ledger time read first, in whole seconds, is at or past expiresAt: the Aptos prologue takes a transaction only while timestamp::now_seconds() < txn_expiration_time, and refuses it from that second with PROLOGUE_ETRANSACTION_EXPIRED (aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move).",
+ "about": "Vectors for the x402/exact/aptos pairing: the aptos entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The committed answer is Aptos mainnet transaction 0xde08191e\u2026ef48ceb5 (version 7351075186) read over REST from api.mainnet.aptoslabs.com on 2026-09-25, trimmed to the members the reader returns. Fixture F's RawTransaction is built with @aptos-labs/ts-sdk 7.5.0 from that answer (max_gas_amount 15000, gas_unit_price 100, chain 1); its SHA-256 is Python's hashlib. idDigest is Python's hashlib.sha256 over json.dumps(sort_keys=True, separators=(',',':')) of the normal form. Other answers are the real one with the named member changed. Ledger times are microseconds. A lookup by sequence number that finds nothing answers notFound with the ledger timestamp of that answer (the REST API's X-Aptos-Ledger-TimestampUsec header), so it shows absence only through that ledger. An absent transaction is expired only once the ledger time read first, in whole seconds, is at or past expiresAt: the Aptos prologue takes a transaction only while timestamp::now_seconds() < txn_expiration_time, and refuses it from that second with PROLOGUE_ETRANSACTION_EXPIRED (aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move). The V4 rows give status's answer under the profile read-status at the one mark, committed, asked about the act payment unless a row's query says otherwise; positions are ledger versions. Another transaction at the sequence number answers pending search-incomplete, never failed, since the read has not found the act's own transaction (rule 23); a lookup that finds nothing before the expiry answers unreadable history-gap, since the reader states no history (rule 18).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -80,7 +80,8 @@
    "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
    "sequenceNumber": "218",
    "expiresAt": "1790300895",
-   "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02"
+   "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+   "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
   },
   "chainMismatch": {
    "case": "chain_id 2 on aptos:1",
@@ -111,7 +112,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "byHash": {
@@ -141,8 +143,10 @@
     "bySequence": null,
     "expect": {
      "state": "settled",
-     "version": "7351075186",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": []
     }
    },
    {
@@ -153,7 +157,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "byHash": {
@@ -183,7 +188,11 @@
     "bySequence": null,
     "expect": {
      "state": "failed",
-     "why": "aborted"
+     "reason": "transaction-failed",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": []
     }
    },
    {
@@ -194,7 +203,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "byHash": {
@@ -203,7 +213,8 @@
     "bySequence": null,
     "expect": {
      "state": "pending",
-     "why": "in-mempool"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -214,7 +225,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "byHash": null,
@@ -244,8 +256,10 @@
     },
     "expect": {
      "state": "settled",
-     "version": "7351075186",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": []
     }
    },
    {
@@ -256,7 +270,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "byHash": {
@@ -309,8 +324,10 @@
     },
     "expect": {
      "state": "settled",
-     "version": "7351075186",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": []
     }
    },
    {
@@ -320,7 +337,8 @@
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
-     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02"
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "byHash": null,
@@ -349,8 +367,9 @@
      }
     },
     "expect": {
-     "state": "failed",
-     "why": "superseded"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -360,7 +379,8 @@
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
-     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02"
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "byHash": null,
@@ -389,8 +409,9 @@
      }
     },
     "expect": {
-     "state": "failed",
-     "why": "superseded"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -401,7 +422,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790300895000000",
     "byHash": null,
@@ -411,7 +433,9 @@
     },
     "expect": {
      "state": "failed",
-     "why": "expired"
+     "reason": "instrument-unused",
+     "finality": "committed",
+     "foreign": []
     }
    },
    {
@@ -422,7 +446,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790300896000000",
     "byHash": null,
@@ -432,7 +457,9 @@
     },
     "expect": {
      "state": "failed",
-     "why": "expired"
+     "reason": "instrument-unused",
+     "finality": "committed",
+     "foreign": []
     }
    },
    {
@@ -443,13 +470,15 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790301538000000",
     "readerError": true,
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -460,7 +489,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790300896000000",
     "byHash": null,
@@ -469,8 +499,9 @@
      "timestampUsecs": "1790300865000000"
     },
     "expect": {
-     "state": "pending",
-     "why": "not-found"
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
     }
    },
    {
@@ -481,7 +512,8 @@
      "sequenceNumber": "218",
      "expiresAt": "1790300895",
      "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
     "ledgerUsecs": "1790300894999999",
     "byHash": null,
@@ -490,8 +522,60 @@
      "timestampUsecs": "1790300894999999"
     },
     "expect": {
-     "state": "pending",
-     "why": "not-found"
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the real answer by hash, asked about after its own version: failed before-position",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     }
+    },
+    "bySequence": null,
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": []
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351075186"
     }
    }
   ]
@@ -504,7 +588,8 @@
    "sequenceNumber": "218",
    "expiresAt": "1790300895",
    "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-   "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+   "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+   "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
   },
   "ledgerUsecs": "1790301538000000",
   "byHash": {
@@ -534,8 +619,10 @@
   "bySequence": null,
   "expect": {
    "state": "settled",
-   "version": "7351075186",
-   "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5"
+   "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+   "position": "7351075186",
+   "finality": "committed",
+   "foreign": []
   }
  },
  "agreedRefusals": {
@@ -570,8 +657,8 @@
     "expect": "aptos/not-entry-function"
    },
    {
-    "case": "status: a ledger whose chain id is not the ref's network, or a bySequence answer for another sender or sequence number",
-    "expect": "pending unreadable"
+    "case": "status: a ledger whose chain id is not the ref's network",
+    "expect": "unreadable chain-mismatch"
    },
    {
     "case": "a transaction of 87384 UTF-16 code units and 65538 code points, whose length gives 65538 decoded bytes, over 64 KiB",
@@ -591,6 +678,10 @@
    {
     "case": "reference and build's complete with a transaction signed for a chain other than the option's network: fixture F's RawTransaction with chain id 2, for aptos:1, built with @aptos-labs/ts-sdk 7.5.0, in x402's reference wire form and in the scheme's BCS form",
     "expect": "aptos/chain-mismatch"
+   },
+   {
+    "case": "status: a bySequence answer for another sender or sequence number",
+    "expect": "unreadable unparseable"
    }
   ]
  },

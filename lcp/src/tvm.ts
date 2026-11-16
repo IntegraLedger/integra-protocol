@@ -23,6 +23,7 @@ import {
   type OptionFilter,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { decimalBelow, fromBase64, sameBytes, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -44,6 +45,10 @@ import {
 } from "./x402.js";
 import { TVM } from "./internal/data/tvm.js";
 import type { Entry } from "./internal/registry.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type RecoverInput, type Seen, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
@@ -97,9 +102,10 @@ export interface TvmReader {
   headUtime(): Promise<number>;
 }
 
-/** The read keys a payment's settlement is read by. */
+/** The read keys a payment's settlement is read by, and the payee, the `payTo` of the option the payment answers. */
 export interface TvmRef {
   network: TvmNetwork;
+  payee: string;
   /** The representation hash of the Jetton transfer body the W5 request sends. */
   transferBodyHash: Hex;
   /** The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. */
@@ -114,10 +120,26 @@ export interface TvmRef {
   validUntil: number;
 }
 
-export type TvmStatus =
-  | { state: "settled"; finality: "confirmed" | "finalized" }
-  | { state: "pending"; why: "not-found" | "in-flight" | "not-final" | "unreadable" }
-  | { state: "failed"; why: "aborted" | "no-transfer" | "bounced" | "expired" };
+/**
+ * The answer of `tvmStatus`, as the profile `read-status` gives it. Its marks are `confirmed` and `finalized`, TON
+ * Center v3's finality states 1 and 2, in that order; it reads no ledger position, so a position given as `after`
+ * places nothing.
+ */
+export type TvmStatus = StatusAnswer<bigint, TvmMark>;
+
+type TvmMark = "confirmed" | "finalized";
+const MARKS: readonly TvmMark[] = ["confirmed", "finalized"];
+
+/**
+ * What the read of the request and the transfers it led to found. `transaction` is the W5 wallet's transaction that
+ * took the request, and `finality` the lower TON Center finality state of the transactions the answer rests on.
+ */
+type TvmRead =
+  | { state: "settled"; transaction: string; finality: 0 | 1 | 2 }
+  | { state: "pending"; why: "not-found" | "in-flight" }
+  | { state: "failed"; why: "aborted" | "bounced"; transaction: string; finality: 0 | 1 | 2; consumed: boolean }
+  | { state: "failed"; why: "no-transfer" | "expired" }
+  | { state: "unreadable"; reason: UnreadableReason };
 
 interface TvmChoice {
   required: PaymentRequired;
@@ -875,96 +897,164 @@ function sendsWith(mode: number, config: TonConfiguration): boolean {
 // ── Settlement.
 
 /**
- * Reads the head's time first. Then finds the signed request by its body hash on the payer's W5 wallet: only a W5
- * transaction there that did not abort and emitted the Jetton transfer counts, because W5 checks the request's
- * signature before any action runs, so a request the payer did not sign sends nothing from that wallet. It follows that
- * message to the payer's Jetton wallet, and that wallet's `internal_transfer` to whichever Jetton wallet
- * takes it, which is not compared with `payTo`: settled
- * when both Jetton wallets executed without aborting, at the lower finality of the two. An equal Jetton body executed
- * any other way is never counted. A W5 transaction that emitted the Jetton transfer is pending `in-flight` until the
- * Jetton wallet takes it, because an internal message carries no expiry. When no W5 transaction with the request
- * emitted the Jetton transfer, the head read first decides, because W5 refuses the request once `valid_until <= now()`:
- * pending `not-found` up to 60 seconds past `validUntil`, since a W5 transaction runs at its shard block's time, which
- * a masterchain block references only later; past that, failed `expired` when the W5 wallet holds no transaction with
- * the request, `no-transfer` when one executed and emitted nothing, and `aborted` when every one aborted, each only
- * when the lookup names an indexed time at or past the head read first. The lookup shows the W5 wallet's transactions
- * only through the blocks its index holds, and an internal request that aborts leaves its seqno unused (wallet_v5.fc
- * commits the seqno only for an external request), so the request can run again before `validUntil`: a lookup whose
- * index lags that head, or that names no time, is pending `not-found`. The payer's Jetton wallet's transaction aborted
- * is failed `aborted`, one with no `internal_transfer` failed `no-transfer`, and an aborted delivery failed `bounced`,
- * at any head and at any finality. A transaction on any other account is ignored. A failed or malformed read, a
- * malformed reference (a `requestBodyHash` that is not `0x` and 64 hex digits included), or a reader for another
- * network is pending `unreadable`, a malformed reference with nothing read; the request's body hash is looked up in
- * lowercase. At most four calls. The read decodes no cell, and the accounts are raw addresses, compared without
- * @ton/core (`rawKey`), so every answer is the same with it and without it.
+ * Answers the read of the request as the profile `read-status` gives it. The read takes the head's time first. Then it
+ * finds the signed request by its body hash on the payer's W5 wallet: only a W5 transaction there that did not abort
+ * and emitted the Jetton transfer counts, because W5 checks the request's signature before any action runs, so a
+ * request the payer did not sign sends nothing from that wallet. It follows that message to the payer's Jetton wallet,
+ * and that wallet's `internal_transfer` to whichever Jetton wallet takes it, which is not compared with `payTo`. The
+ * W5 transaction is the payer's act where both Jetton wallets executed without aborting, at the lower finality of the
+ * two, `confirmed` (1) or `finalized` (2); at TON Center's state 0 it names no included act. An equal Jetton body
+ * executed any other way is never counted. A W5 transaction that emitted the Jetton transfer names no included act
+ * until the Jetton wallet takes it, because an internal message carries no expiry. The payer's Jetton wallet's
+ * transaction aborted, or an aborted delivery, is the act included with a failed result, the W5 transaction having
+ * taken the request; one with no `internal_transfer` carries no act that binds H. When no W5 transaction with the
+ * request emitted the Jetton transfer, the head read first decides, because W5 refuses the request once
+ * `valid_until <= now()`: up to 60 seconds past `validUntil` it names no included act, since a W5 transaction runs at
+ * its shard block's time, which a masterchain block references only later; past that, the request's validity has
+ * passed when the W5 wallet holds no transaction with it, a W5 transaction that executed and emitted nothing carries no
+ * act, and one where every W5 transaction aborted is the act included with a failed result that left the seqno
+ * unused, each only when the lookup names an indexed time at or past the head read first. The lookup shows the W5
+ * wallet's transactions only through the blocks its index holds, and an internal request that aborts leaves its seqno
+ * unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before
+ * `validUntil`: a lookup whose index lags that head, or that names no time, names no included act. A transaction on any
+ * other account is ignored. The read holds no search for H, so none of these answers `failed`. A read that rejects is
+ * unreadable `transport`, an answer out of the reader's form `unparseable`, and a reader for another network than the
+ * ref's `chain-mismatch`. A ref, a reader or a query that is not one, a reader that names no network, or a malformed
+ * reference (a `requestBodyHash` that is not `0x` and 64 hex digits included) is unreadable `unparseable`, with nothing
+ * read; the request's body hash is looked up in lowercase. At most four calls. The read decodes no cell, and the
+ * accounts are raw addresses, compared without @ton/core (`rawKey`), so every answer is the same with it and without
+ * it.
  */
-export async function tvmStatus(ref: TvmRef, reader: TvmReader): Promise<TvmStatus> {
-  const unreadable = { state: "pending", why: "unreadable" } as const;
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return unreadable;
+export async function tvmStatus(ref: TvmRef, reader: TvmReader, query: StatusQuery<TvmRef, bigint, TvmMark>): Promise<TvmStatus> {
+  if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;
+  return decide(factsOf(await readTvm(ref, reader)), query, LEDGER);
+}
+
+const LEDGER = ledgerOf<bigint, TvmMark>(TVM[ID].coverage, MARKS, bigintOrder);
+
+async function readTvm(ref: TvmRef, reader: TvmReader): Promise<TvmRead> {
+  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
+  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") return unparseable;
   const request = normalHash(ref.requestBodyHash);
-  if (request === null || rawKey(ref.jettonWallet) === null || rawKey(ref.wallet) === null || !isUint32(ref.validUntil)) {
-    return unreadable;
+  if (
+    typeof ref.network !== "string" ||
+    request === null ||
+    rawKey(ref.jettonWallet) === null ||
+    rawKey(ref.wallet) === null ||
+    !isUint32(ref.validUntil)
+  ) {
+    return unparseable;
   }
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
   const head = await headTime(reader);
   const w5 = await transactionsOn(reader, request, ref.wallet);
-  if (w5 === null) return unreadable;
-  const transfer = w5.transactions
-    .filter((t) => !t.aborted)
-    .flatMap((t) => t.outMsgs)
-    .find((m) => m.opcode === OP.jettonTransfer);
-  if (transfer === undefined) return unsent(ref, w5, head);
+  if (typeof w5 === "string") return { state: "unreadable", reason: w5 };
+  let took: TonTx | undefined;
+  let transfer: TonTx["outMsgs"][number] | undefined;
+  for (const t of w5.transactions) {
+    if (t.aborted) continue;
+    transfer = t.outMsgs.find((m) => m.opcode === OP.jettonTransfer);
+    if (transfer !== undefined) {
+      took = t;
+      break;
+    }
+  }
+  if (took === undefined || transfer === undefined) return unsent(ref, w5, head);
   const taken = await transactionsTaking(reader, transfer.hash);
-  if (taken === null) return unreadable;
+  if (typeof taken === "string") return { state: "unreadable", reason: taken };
   const mine = taken.filter((t) => sameAccount(t.account, ref.jettonWallet));
   if (mine.length === 0) return { state: "pending", why: "in-flight" };
   const first = mine.find((t) => !t.aborted);
-  if (first === undefined) return { state: "failed", why: "aborted" };
+  if (first === undefined) {
+    const finality = Math.min(took.finality, ...mine.map((t) => t.finality)) as 0 | 1 | 2;
+    return { state: "failed", why: "aborted", transaction: took.hash, finality, consumed: true };
+  }
   const internal = first.outMsgs.find((m) => m.opcode === OP.internalTransfer);
   if (internal === undefined) return { state: "failed", why: "no-transfer" };
   const delivered = await transactionsTaking(reader, internal.hash);
-  if (delivered === null) return unreadable;
+  if (typeof delivered === "string") return { state: "unreadable", reason: delivered };
   const second = delivered[0];
   if (second === undefined) return { state: "pending", why: "in-flight" };
-  if (second.aborted) return { state: "failed", why: "bounced" };
-  const finality = Math.min(first.finality, second.finality);
-  if (finality >= 2) return { state: "settled", finality: "finalized" };
-  if (finality >= 1) return { state: "settled", finality: "confirmed" };
-  return { state: "pending", why: "not-final" };
+  const finality = Math.min(first.finality, second.finality) as 0 | 1 | 2;
+  if (second.aborted) return { state: "failed", why: "bounced", transaction: took.hash, finality, consumed: true };
+  return { state: "settled", transaction: took.hash, finality };
 }
 
 /**
- * The status while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides, and
- * the lookup counts only when its index holds every block through that head.
+ * The read while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides, and the
+ * lookup counts only when its index holds every block through that head.
  */
-function unsent(ref: TvmRef, w5: OnAccount, head: number | null): TvmStatus {
-  if (head === null) return { state: "pending", why: "unreadable" };
+function unsent(ref: TvmRef, w5: OnAccount, head: number | "transport" | "unparseable"): TvmRead {
+  if (typeof head === "string") return { state: "unreadable", reason: head };
   if (head <= ref.validUntil + EXPIRY_MARGIN) return { state: "pending", why: "not-found" };
   const covered = w5.headUtime !== null && w5.headUtime >= head;
   if (!covered) return { state: "pending", why: "not-found" };
-  if (w5.transactions.length === 0) return { state: "failed", why: "expired" };
-  return w5.transactions.some((t) => !t.aborted) ? { state: "failed", why: "no-transfer" } : { state: "failed", why: "aborted" };
+  const [first] = w5.transactions;
+  if (first === undefined) return { state: "failed", why: "expired" };
+  if (w5.transactions.some((t) => !t.aborted)) return { state: "failed", why: "no-transfer" };
+  const finality = Math.min(...w5.transactions.map((t) => t.finality)) as 0 | 1 | 2;
+  return { state: "failed", why: "aborted", transaction: first.hash, finality, consumed: false };
 }
 
-/** The transactions that took this message, or null when the read fails or its answer is malformed. */
-async function transactionsTaking(reader: TvmReader, msgHash: string): Promise<readonly TonTx[] | null> {
+/** The mark of a TON Center finality state: 1 `confirmed`, 2 `finalized`, and none for 0. */
+function markOf(finality: 0 | 1 | 2): TvmMark | undefined {
+  return finality >= 2 ? "finalized" : finality >= 1 ? "confirmed" : undefined;
+}
+
+/**
+ * The read's facts: the act at its mark where it settled, or where a Jetton transaction aborted or bounced, or every W5
+ * transaction aborted, a failed result, which took the request where W5 ran it; the request read unconsumed with its
+ * validity passed where it expired; and nothing for a transaction that carries no transfer, one not yet included, or
+ * one not found. The lookup by body hash is never a search read whole.
+ */
+function factsOf(read: TvmRead): Facts<bigint, TvmMark> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  const row = (transaction: string, finality: 0 | 1 | 2, result: "succeeded" | "failed", consumed: boolean): Seen<bigint, TvmMark>[] => {
+    const mark = markOf(finality);
+    return mark === undefined ? [] : [actSeen<bigint, TvmMark>(transaction, mark, undefined, result, consumed)];
+  };
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.reason };
+    case "pending":
+      return none;
+    case "settled":
+      return { ...none, seen: row(read.transaction, read.finality, "succeeded", true) };
+    case "failed":
+      switch (read.why) {
+        case "expired":
+          return { ...none, value: { consumed: false, lapsed: true, mark: "finalized" } };
+        case "no-transfer":
+          return none;
+        default:
+          return { ...none, seen: row(read.transaction, read.finality, "failed", read.consumed) };
+      }
+  }
+}
+
+/**
+ * The transactions that took this message; `transport` when the read fails, and `unparseable` when its answer is
+ * malformed.
+ */
+async function transactionsTaking(reader: TvmReader, msgHash: string): Promise<readonly TonTx[] | "transport" | "unparseable"> {
   let found: readonly TonTx[];
   try {
     found = await reader.byInMessage(msgHash);
   } catch {
-    return null;
+    return "transport";
   }
-  return Array.isArray(found) && found.every(isTonTx) ? found : null;
+  return Array.isArray(found) && found.every(isTonTx) ? found : "unparseable";
 }
 
-/** The head's `gen_utime`, or null when the read fails or its answer is not a safe integer. */
-async function headTime(reader: TvmReader): Promise<number | null> {
+/** The head's `gen_utime`; `transport` when the read fails, and `unparseable` when its answer is not a safe integer. */
+async function headTime(reader: TvmReader): Promise<number | "transport" | "unparseable"> {
   let head: unknown;
   try {
     head = await reader.headUtime();
   } catch {
-    return null;
+    return "transport";
   }
-  return Number.isSafeInteger(head) ? (head as number) : null;
+  return Number.isSafeInteger(head) ? (head as number) : "unparseable";
 }
 
 /** A lookup's transactions on one account, with the time through which its index holds every block (null: none). */
@@ -973,17 +1063,20 @@ interface OnAccount {
   headUtime: number | null;
 }
 
-/** The transactions with this inbound body on `account`, or null when the read fails or its answer is malformed. */
-async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string): Promise<OnAccount | null> {
+/**
+ * The transactions with this inbound body on `account`; `transport` when the read fails, and `unparseable` when its
+ * answer is malformed.
+ */
+async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string): Promise<OnAccount | "transport" | "unparseable"> {
   let found: unknown;
   try {
     found = await reader.byInBody(bodyHash);
   } catch {
-    return null;
+    return "transport";
   }
-  if (!isObject(found)) return null;
+  if (!isObject(found)) return "unparseable";
   const { transactions, headUtime } = found;
-  if (!Array.isArray(transactions) || !transactions.every(isTonTx)) return null;
+  if (!Array.isArray(transactions) || !transactions.every(isTonTx)) return "unparseable";
   return {
     transactions: transactions.filter((t) => sameAccount(t.account, account)),
     headUtime: Number.isSafeInteger(headUtime) ? (headUtime as number) : null,
@@ -997,14 +1090,19 @@ async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string)
  * ref that names no `transaction` string is `tvm/wrong-reader`, with nothing read. Without @ton/core the body's cells
  * cannot be read: a transaction with an inbound message body is `tvm/peer-missing`, after the ref, the reader, the read
  * and the body's size, bag-of-cells layout and CRC32C are checked, which need no peer, so an empty body is
- * `tvm/unreadable` and one over 8 KiB `tvm/boc-too-large` either way. One call.
+ * `tvm/unreadable` and one over 8 KiB `tvm/boc-too-large` either way. The input's `tx` is the transaction's hash, and
+ * its `option` the option the payment answers, an object, of which the read needs no member; an input whose `tx` is
+ * not a non-empty string, or whose option is not an object, is `tvm/wrong-reader`, with nothing read. One call.
  */
-export async function tvmRecover(ref: { network: TvmNetwork; transaction: string }, reader: TvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("tvm/wrong-reader");
-  if (typeof ref.transaction !== "string" || ref.transaction === "") return refusal("tvm/wrong-reader");
+export async function tvmRecover(
+  input: RecoverInput<TvmNetwork, PaymentRequirements | MppChallenge>,
+  reader: TvmReader,
+): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("tvm/wrong-reader");
+  if (typeof input.tx !== "string" || input.tx === "" || !isObject(input.option)) return refusal("tvm/wrong-reader");
   let tx: TonTx | null;
   try {
-    tx = await reader.byHash(ref.transaction);
+    tx = await reader.byHash(input.tx);
   } catch {
     return refusal("tvm/unreadable");
   }
@@ -1441,12 +1539,15 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(r) ? r : r.c.h;
 }
 
-/** The read keys, computed from the signed BoC. */
-async function reference(presented: unknown): Promise<TvmRef | Refusal> {
+/** The read keys, computed from the signed BoC, and the payee, the `payTo` of the option the payment answers. */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<TvmRef | Refusal> {
   const r = carried(presented);
   if (isRefusal(r)) return r;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   return {
     network: r.accepted.network as TvmNetwork,
+    payee,
     transferBodyHash: r.c.transferBodyHash,
     jettonWallet: r.c.jettonWallet,
     requestBodyHash: r.c.requestBodyHash,
@@ -1485,5 +1586,18 @@ export const exactTvm = Object.freeze({
   reference,
   status: tvmStatus,
   recover: tvmRecover,
-}) satisfies Entry<typeof ID, TvmPayment, TvmRef, TvmReader>;
+}) satisfies Entry<
+  typeof ID,
+  TvmPayment,
+  TvmRef,
+  TvmReader,
+  X402Forms & {
+    choice: TvmChoice;
+    unsigned: TvmUnsigned;
+    landed: unknown;
+    network: TvmNetwork;
+    query: StatusQuery<TvmRef, bigint, TvmMark>;
+    answer: TvmStatus;
+  }
+>;
 

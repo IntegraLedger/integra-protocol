@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { BINDINGS, type Binding } from "../src/index.js";
 import { rowsOf } from "./rows.js";
 
-// Every pairing's `bound` and `reference` take `unknown`: a caller holding any Binding calls them with whatever the
-// buyer presented, without a cast. These lines compile only while that holds.
+// Every pairing's `bound` and `reference` take `unknown` as what was presented: a caller holding any Binding calls them
+// with whatever the buyer presented, without a cast; `reference` takes the option the payment answers after it. These
+// lines compile only while that holds.
 type TakesUnknown<F> = F extends (presented: unknown) => unknown ? true : false;
+type TakesUnknownFirst<F> = F extends (presented: unknown, ...rest: never[]) => unknown ? true : false;
 type BoundTakes<B> = B extends { bound: infer F } ? TakesUnknown<F> : false;
-type ReferenceTakes<B> = B extends { reference: infer F } ? TakesUnknown<F> : true;
+type ReferenceTakes<B> = B extends { reference: infer F } ? TakesUnknownFirst<F> : true;
 type All<T extends boolean> = false extends T ? false : true;
 const everyBound: All<BoundTakes<Binding>> = true;
 const everyReference: All<ReferenceTakes<Binding>> = true;
@@ -36,7 +38,7 @@ describe("what a pairing is presented", () => {
         const h = await b.bound(p);
         expect(h, JSON.stringify(p)).toMatchObject({ refused: true });
         if ("reference" in b && typeof b.reference === "function") {
-          const r: unknown = await b.reference(p);
+          const r: unknown = await (b.reference as (presented: unknown, option: unknown) => Promise<unknown>)(p, p);
           expect(r, JSON.stringify(p)).toMatchObject({ refused: true });
         }
       }

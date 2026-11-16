@@ -32,7 +32,7 @@ import {
 } from "./sd-jwt.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { CARD } from "./internal/data/card.js";
-import type { Entry } from "./internal/registry.js";
+import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const CHECKOUT_VCT = "mandate.checkout.1";
@@ -307,6 +307,19 @@ const pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
 });
 
+/** The AP2 pairing's family descriptor. No public ledger records the payment, so nothing is read back. */
+type Ap2Family = NoRead & {
+  doc: Jws;
+  offered: { h: AtrHash; link: string; agreement?: string; offer: Ap2Offer };
+  placedIn: Payload;
+  offer: CheckoutOption;
+  rest: [agreementUrl?: string];
+  advertised: Payload;
+  choice: Ap2Offer;
+  unsigned: Unsigned;
+  option: never;
+};
+
 /**
  * `ap2/checkout-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment processor
  * executes the payment the closed Checkout Mandate authorizes; nothing here reads it. A value that is not a JSON object
@@ -324,7 +337,7 @@ export const checkoutMandate = Object.freeze({
   build,
   bound,
   broadcaster: broadcastsWithin(mandateShape, "payee"),
-}) satisfies Entry<typeof ID, Presented, never, never>;
+}) satisfies Entry<typeof ID, Presented, never, never, Ap2Family>;
 
 function isOption(o: unknown): o is CheckoutOption {
   if (!isJsonObject(o)) return false;

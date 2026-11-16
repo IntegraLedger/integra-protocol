@@ -10,9 +10,12 @@ import { fromLcpString, hash, toLcpString, type AtrHash } from "../core.js";
 import type { Hex } from "../evm.js";
 import { isObject, notFoundPoint } from "../fields.js";
 import { fromBase64 } from "../rail-bytes.js";
+import type { MppChallenge } from "../mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { UptoSvmPayload } from "../x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
+import { SOLANA } from "./data/solana.js";
+import { decide, type Facts, type Ledger, type RecoverInput, type Seen, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./read.js";
 
 /** CAIP-2: `solana:` and 32 base58 characters. */
 export type SolanaNetwork = `solana:${string}`;
@@ -107,7 +110,8 @@ export interface SvmLanded {
  * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
  * `@integraledger/lcp/evm`, and no function in this package reads a rejection as finding nothing. A rejected
  * `transaction` or `account` call, and a rejected `firstAvailableBlock` call in a status read, is unreadable:
- * `svm/unreadable`, a read to repeat, or a status read's pending `unreadable`. In `svmLocate`, a rejected
+ * `svm/unreadable`, a read to repeat, or a status read's `unreadable`, `transport` (`too-large` or `unparseable` for a
+ * `ReaderError` of kind `too-large` or `malformed`). In `svmLocate`, a rejected
  * `firstAvailableBlock` or `signatures` call leaves the search `complete` false. `transaction` answers `notFound` when
  * the node holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`),
  * read from that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it
@@ -182,17 +186,24 @@ export interface SvmRef {
    * signatures instead of the fee payer's, and reads each one as a candidate.
    */
   channel?: string;
+  /** The option's payee, which `reference` takes from the option the payment answers. */
+  payee: string;
 }
 
 /**
- * A Solana settlement read. Pending `not-final` is a failure that rests on how the transaction executed (its `err`, or
- * the inner instructions a check reads), seen only at `confirmed`: a block that is not finalized can be replaced, and
- * the transaction can land in another block and execute otherwise, so only the read at `finalized` gives that failure.
+ * A Solana commitment a read reaches, lowest first: `confirmed`, a block a supermajority of the cluster voted on, then
+ * `finalized`, the final mark, a block at maximum lockout.
  */
-export type SvmStatus =
-  | { state: "settled"; commitment: "confirmed" | "finalized" }
-  | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
-  | { state: "failed"; why: "err" | "not-this-instrument" | "no-transfer" | "nonce-moved" };
+export type SvmMark = "confirmed" | "finalized";
+
+/**
+ * A Solana settlement read, as the profile `read-status` answers it. The position is a slot; the read names none, so
+ * a query that gives `after` is answered `pending`, `search-incomplete`, unless an earlier position decides it.
+ */
+export type SvmStatus = StatusAnswer<bigint, SvmMark>;
+
+/** What a Solana status read takes with the reference and the reader. */
+export type SvmQuery = StatusQuery<SvmRef & { transaction: string }, bigint, SvmMark>;
 
 export interface SvmBuildInput {
   feePayer: string;
@@ -489,7 +500,7 @@ export function wireOf(b64: unknown): Uint8Array | Refusal {
 export async function svmReference(
   network: SolanaNetwork,
   tx: SvmTx,
-): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
+): Promise<Omit<SvmRef, "fromSlot" | "payee"> | Refusal> {
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
   const digest = await svmDigest(tx);
@@ -925,34 +936,48 @@ function keyList(v: unknown, n: number): Uint8Array[] | null {
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** A named transaction's lookup: landed at a commitment, or not found, with the slot the last lookup names. */
-type Lookup = { landed: SvmLanded; commitment: "confirmed" | "finalized" } | { notFound: true; slot: bigint | null };
+type Lookup = { landed: SvmLanded; commitment: SvmMark } | { notFound: true; slot: bigint | null };
+
+/** A read that established nothing, with the reason the profile `read-status` gives it. */
+type Unread = { unreadable: UnreadableReason };
+
+/**
+ * The reason a rejected read gives: a `ReaderError` of kind `too-large` is `too-large`, one of kind `malformed`
+ * `unparseable`, and any other rejection, a timeout among them, `transport`.
+ */
+function rejectedAs(e: unknown): UnreadableReason {
+  if (typeof e !== "object" || e === null || (e as { name?: unknown }).name !== "ReaderError") return "transport";
+  const kind = (e as { kind?: unknown }).kind;
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+}
 
 /**
  * Reads a named transaction at `finalized`, then `confirmed`: the first landed answer, or, when every lookup finds
- * nothing, `notFound` with the slot the last lookup names. Undefined when a read failed or gave an answer of neither
- * documented shape.
+ * nothing, `notFound` with the slot the last lookup names. A rejected read is unreadable by `rejectedAs`, and an
+ * answer of neither documented shape `unparseable`.
  */
 export async function landedAt(
   reader: SvmReader,
   transaction: string,
-  commitments: readonly ("finalized" | "confirmed")[] = ["finalized", "confirmed"],
-): Promise<Lookup | undefined> {
+  commitments: readonly SvmMark[] = ["finalized", "confirmed"],
+): Promise<Lookup | Unread> {
   let slot: bigint | null = null;
-  try {
-    for (const commitment of commitments) {
-      const answer: unknown = await reader.transaction(transaction, commitment);
-      const readTo = notFoundPoint(answer, "slot");
-      if (readTo !== undefined) {
-        slot = readTo;
-        continue;
-      }
-      if (!isLanded(answer)) return undefined;
-      return { landed: answer, commitment };
+  for (const commitment of commitments) {
+    let answer: unknown;
+    try {
+      answer = await reader.transaction(transaction, commitment);
+    } catch (e) {
+      return { unreadable: rejectedAs(e) };
     }
-    return { notFound: true, slot };
-  } catch {
-    return undefined;
+    const readTo = notFoundPoint(answer, "slot");
+    if (readTo !== undefined) {
+      slot = readTo;
+      continue;
+    }
+    if (!isLanded(answer)) return { unreadable: "unparseable" };
+    return { landed: answer, commitment };
   }
+  return { notFound: true, slot };
 }
 
 function isLanded(v: unknown): v is SvmLanded {
@@ -1009,66 +1034,63 @@ function movesValue(tx: SvmTx, landed: SvmLanded, keys: readonly Uint8Array[]): 
 }
 
 /**
- * Reads a named transaction's settlement. It must be the message the payer signed (by digest), must have executed
- * without error, and must carry a token or SOL transfer, a top-level or an inner instruction, whose program is read
- * from the static keys or from the addresses the transaction's lookup tables loaded. A message the payer did not sign
- * is failed `not-this-instrument` from a read at either commitment, since the signature fixes the message. An error, or
- * no transfer, rests on how the transaction executed, so it is failed (`err`, `no-transfer`) only from the read at
- * `finalized`, and pending `not-final` from the read at `confirmed`. A failed read, an answer of neither documented
- * shape (a landed wire that does not decode, `loaded` addresses other than 32-byte keys in the numbers the message's
- * lookups name, or a loaded address that repeats a static key or another loaded address, included), or a reader for
- * another network is pending `unreadable`. A ref whose `digest` is not a string is pending `unreadable`, with nothing
- * read. A durable-nonce transaction that is not found, once `svmNonceMoved` names a slot and the node's first available
- * block is at or before `fromSlot`, is read once more at `finalized`; when that lookup, naming a slot at or past the
- * context slot of the nonce account read, finds nothing, it is failed `nonce-moved`: the message can never land. A
- * lookup from a node behind that read, or naming no slot, is pending `not-found`. At most two calls, or five for a
- * durable-nonce reference.
+ * What a named transaction's read found, before `factsOf` and `decide` answer it: settled at a commitment; not found;
+ * failed below the final mark (`not-final`, with the failure the read at `finalized` would give); failed; or
+ * unreadable with its reason.
  */
-export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmStatus> {
-  return settledBy(ref, reader, { execution: (tx, landed, keys) => (movesValue(tx, landed, keys) ? null : "no-transfer") });
-}
+type SvmRead<W extends string> =
+  | { state: "settled"; commitment: SvmMark }
+  | { state: "pending"; why: "not-found" }
+  | { state: "pending"; why: "not-final"; failure: "err" | W }
+  | { state: "failed"; why: "err" | "not-this-instrument" | "nonce-moved" | W }
+  | { state: "unreadable"; reason: UnreadableReason };
 
 /**
- * The shared settlement read: the digest, then the pairing's check of the signed message (`message`), then `err`, then
- * its check of how the transaction executed (`execution`, given every key the instructions may index, as `decodeLanded`
- * reads them); each check names a failure or returns null. A landed answer `decodeLanded` cannot read is pending
- * `unreadable`. A failure on the signed message, the digest's `not-this-instrument` included, is final from a read at
- * either commitment: the signature fixes the message, so every landing of it carries the same instructions. A failure
- * on execution is failed only from the read at `finalized`, and pending `not-final` from the read at `confirmed`, since
- * a block that is not finalized can be replaced and the transaction can land in another block and execute otherwise. A
- * durable-nonce transaction that is not found is failed `nonce-moved` once its nonce has moved on and a last read at
- * `finalized`, naming a slot at or past the context slot of the nonce account read, still finds nothing.
+ * Reads a named transaction's settlement: the digest, then the pairing's check of the signed message (`message`), then
+ * `err`, then its check of how the transaction executed (`execution`, given every key the instructions may index, as
+ * `decodeLanded` reads them); each check names a failure or returns null. A message the payer did not sign is failed
+ * `not-this-instrument` from a read at either commitment, since the signature fixes the message, and so is a failure
+ * on the signed message. A failure on execution is failed only from the read at `finalized`, and `not-final` from the
+ * read at `confirmed`, since a block that is not finalized can be replaced and the transaction can land in another
+ * block and execute otherwise. A ref that is not one `reference` writes (a `transaction` or `digest` that is not a
+ * string, or a network that is not a Solana network), and a reader that is not an object or names no Solana network,
+ * are `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read. A rejected read is
+ * unreadable by `rejectedAs`; an answer of neither documented shape (a landed wire that does not decode, `loaded`
+ * addresses other than 32-byte keys in the numbers the message's lookups name, or a loaded address that repeats a
+ * static key or another loaded address, included) is `unparseable`. A durable-nonce transaction that is not found,
+ * once `svmNonceMoved` names a slot and the node's first available block is at or before `fromSlot`, is read once more
+ * at `finalized`; when that lookup, naming a slot at or past the context slot of the nonce account read, finds
+ * nothing, it is failed `nonce-moved`: the message can never land. A lookup from a node behind that read, or naming no
+ * slot, is not found. At most two calls, or five for a durable-nonce reference.
  */
-export async function settledBy<W extends string>(
+async function readSettled<W extends string>(
   ref: SvmRef & { transaction: string },
   reader: SvmReader,
   check: {
     message?: (tx: SvmTx) => W | null;
     execution?: (tx: SvmTx, landed: SvmLanded, keys: readonly Uint8Array[]) => W | null;
   },
-): Promise<
-  | { state: "settled"; commitment: "confirmed" | "finalized" }
-  | { state: "pending"; why: "not-found" | "unreadable" | "not-final" }
-  | { state: "failed"; why: "err" | "not-this-instrument" | "nonce-moved" | W }
-> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network || typeof ref.digest !== "string") {
-    return { state: "pending", why: "unreadable" };
+): Promise<SvmRead<W>> {
+  if (!isObject(ref) || !isSolanaNetwork(ref.network) || typeof ref.transaction !== "string" || typeof ref.digest !== "string") {
+    return { state: "unreadable", reason: "unparseable" };
   }
+  if (!isObject(reader) || !isSolanaNetwork(reader.network)) return { state: "unreadable", reason: "unparseable" };
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
   let read = await landedAt(reader, ref.transaction);
-  if (read === undefined) return { state: "pending", why: "unreadable" };
+  if ("unreadable" in read) return { state: "unreadable", reason: read.unreadable };
   if ("notFound" in read && ref.nonce !== undefined) {
     const movedAt = await nonceLapsed(ref, reader);
-    if (isRefusal(movedAt)) return { state: "pending", why: "unreadable" };
+    if (isUnread(movedAt)) return { state: "unreadable", reason: movedAt.unreadable };
     if (movedAt !== null) {
       read = await landedAt(reader, ref.transaction, ["finalized"]);
-      if (read === undefined) return { state: "pending", why: "unreadable" };
+      if ("unreadable" in read) return { state: "unreadable", reason: read.unreadable };
       const covered = "notFound" in read && read.slot !== null && read.slot >= movedAt;
       if (covered) return { state: "failed", why: "nonce-moved" };
     }
   }
   if ("notFound" in read) return { state: "pending", why: "not-found" };
   const decoded = decodeLanded(read.landed);
-  if (decoded === null) return { state: "pending", why: "unreadable" };
+  if (decoded === null) return { state: "unreadable", reason: "unparseable" };
   const { tx, keys } = decoded;
   if ((await svmDigest(tx)) !== ref.digest.toLowerCase()) return { state: "failed", why: "not-this-instrument" };
   const signed = check.message?.(tx) ?? null;
@@ -1076,7 +1098,96 @@ export async function settledBy<W extends string>(
   const executed =
     read.landed.err !== null && read.landed.err !== undefined ? "err" : (check.execution?.(tx, read.landed, keys) ?? null);
   if (executed === null) return { state: "settled", commitment: read.commitment };
-  return read.commitment === "finalized" ? { state: "failed", why: executed } : { state: "pending", why: "not-final" };
+  return read.commitment === "finalized"
+    ? { state: "failed", why: executed }
+    : { state: "pending", why: "not-final", failure: executed };
+}
+
+function isUnread(v: unknown): v is Unread {
+  return typeof v === "object" && v !== null && "unreadable" in v;
+}
+
+/** The transfer read: `readSettled` with the presence test `movesValue`, failed `no-transfer` without it. */
+function readSvm(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmRead<"no-transfer">> {
+  return readSettled(ref, reader, { execution: (tx, landed, keys) => (movesValue(tx, landed, keys) ? null : "no-transfer") });
+}
+
+const MARKS: readonly SvmMark[] = ["confirmed", "finalized"];
+
+function ledgerOf(coverage: Ledger<bigint, SvmMark>["coverage"]): Ledger<bigint, SvmMark> {
+  return {
+    coverage,
+    final: "finalized",
+    markOrder: (a, b) => MARKS.indexOf(a) - MARKS.indexOf(b),
+    positionOrder: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
+  };
+}
+
+/** The ledger of the pairings `svmStatus` reads: `x402/exact/solana`, `mpp/charge/solana` and `mpp/charge/usdc/solana`. */
+const TRANSFER_LEDGER = ledgerOf(SOLANA["x402/exact/solana"].coverage);
+/** The ledger of the pairings `svmChannelStatus` reads: `x402/upto/solana` and `x402/batch-settlement/solana`. */
+const CHANNEL_LEDGER = ledgerOf(SOLANA["x402/upto/solana"].coverage);
+
+/**
+ * What a read observed, in the profile's terms. A transaction read settled is the payer's own act at the commitment
+ * read, with no position. One that failed with `err` is the payer's own, failed, consuming the transaction's
+ * signature, and at `finalized` that read is the read of the value. A message the payer did not sign, and a durable
+ * nonce that moved on, are the value consumed by another transaction at `finalized`. A transaction that fails the
+ * pairing's presence test carries no act, and a lookup that finds nothing sees nothing: no search is read whole, and
+ * no read shows its history.
+ */
+function factsOf(
+  read: SvmRead<string>,
+  ref: SvmRef & { transaction: string },
+  ledger: Ledger<bigint, SvmMark>,
+): Facts<bigint, SvmMark> {
+  const unsearched = { search: { whole: false }, history: false } as const;
+  const own = (mark: SvmMark, result: Seen<bigint, SvmMark>["result"]): Seen<bigint, SvmMark> => ({
+    transaction: ref.transaction,
+    mark,
+    result,
+    consumed: true,
+    carries: true,
+    party: "payer",
+    kind: "same",
+    account: "payee",
+  });
+  const consumed = { consumed: true, lapsed: false, mark: ledger.final };
+  switch (read.state) {
+    case "unreadable":
+      return { unreadable: read.reason, seen: [], ...unsearched };
+    case "settled":
+      return { seen: [own(read.commitment, "succeeded")], ...unsearched };
+    case "pending":
+      if (read.why === "not-found") return { seen: [], search: { whole: ledger.coverage === "none" }, history: false };
+      return read.failure === "err" ? { seen: [own("confirmed", "failed")], ...unsearched } : { seen: [], ...unsearched };
+    case "failed":
+      if (read.why === "err") return { seen: [own("finalized", "failed")], value: consumed, ...unsearched };
+      if (read.why === "not-this-instrument" || read.why === "nonce-moved") return { seen: [], value: consumed, ...unsearched };
+      return { seen: [], ...unsearched };
+  }
+}
+
+/** A query that is not an object of a known act and mark is `unparseable`, with nothing read. */
+function isQuery(query: unknown): query is SvmQuery {
+  if (!isObject(query)) return false;
+  const q = query as { act?: unknown; finality?: unknown };
+  return (q.act === "payment" || q.act === "agreement") && MARKS.includes(q.finality as SvmMark);
+}
+
+/**
+ * The read of a named transaction's settlement, answered by the profile `read-status`: the message the payer signed
+ * (by digest), executed without error, carrying a token or SOL transfer, a top-level or an inner instruction, whose
+ * program is read from the static keys or from the addresses the transaction's lookup tables loaded. Read at
+ * `finalized` or `confirmed`, it is `settled` at the mark asked for or above it, and `pending`, `below-mark`, under it;
+ * an error seen only at `confirmed` is `pending`, `below-mark`. Every other read that is not unreadable answers
+ * `pending`, `search-incomplete`, since this read is no search for H. A ref, reader or query of the wrong form is
+ * `unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read. At most two
+ * calls, or five for a durable-nonce reference.
+ */
+export async function svmStatus(ref: SvmRef & { transaction: string }, reader: SvmReader, query: SvmQuery): Promise<SvmStatus> {
+  if (!isQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
+  return decide(factsOf(await readSvm(ref, reader), ref, TRANSFER_LEDGER), query, TRANSFER_LEDGER);
 }
 
 /**
@@ -1096,6 +1207,12 @@ export async function settledBy<W extends string>(
  * found, shows the message never landed.
  */
 export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<bigint | null | Refusal> {
+  const moved = await nonceMovedAt(ref, reader);
+  return isUnread(moved) ? refusal("svm/unreadable") : moved;
+}
+
+/** `svmNonceMoved`, with a rejected read unreadable by `rejectedAs` and an answer of neither shape `unparseable`. */
+async function nonceMovedAt(ref: SvmRef, reader: SvmReader): Promise<bigint | null | Unread> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return null;
   const nonce: unknown = ref.nonce;
   if (typeof nonce !== "object" || nonce === null) return null;
@@ -1105,11 +1222,11 @@ export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<big
   let answer: unknown;
   try {
     answer = await reader.account(account);
-  } catch {
-    return refusal("svm/unreadable");
+  } catch (e) {
+    return { unreadable: rejectedAs(e) };
   }
   const read = accountRead(answer);
-  if (isRefusal(read)) return read;
+  if (isRefusal(read)) return { unreadable: "unparseable" };
   if (read.slot < BigInt(ref.fromSlot) + NONCE_SETTLED_SLOTS) return null;
   if (read.value === null) return read.slot;
   const { owner, data } = read.value;
@@ -1124,19 +1241,19 @@ export async function svmNonceMoved(ref: SvmRef, reader: SvmReader): Promise<big
 }
 
 /**
- * `svmNonceMoved`'s slot when it names one and the node holds every block from `fromSlot`, else null; `svm/unreadable`
- * when the nonce account read or the first-available-block read is rejected or answers out of its documented shape.
+ * `svmNonceMoved`'s slot when it names one and the node holds every block from `fromSlot`, else null; unreadable when
+ * the nonce account read or the first-available-block read is rejected or answers out of its documented shape.
  */
-async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | null | Refusal> {
-  const movedAt = await svmNonceMoved(ref, reader);
-  if (movedAt === null || isRefusal(movedAt)) return movedAt;
+async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | null | Unread> {
+  const movedAt = await nonceMovedAt(ref, reader);
+  if (movedAt === null || isUnread(movedAt)) return movedAt;
   let first: unknown;
   try {
     first = await reader.firstAvailableBlock();
-  } catch {
-    return refusal("svm/unreadable");
+  } catch (e) {
+    return { unreadable: rejectedAs(e) };
   }
-  if (typeof first !== "bigint") return refusal("svm/unreadable");
+  if (typeof first !== "bigint") return { unreadable: "unparseable" };
   return first <= BigInt(ref.fromSlot) ? movedAt : null;
 }
 
@@ -1145,11 +1262,14 @@ async function nonceLapsed(ref: SvmRef, reader: SvmReader): Promise<bigint | nul
  * `fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form,
  * matched without regard to case. With `channel` in the reference, it pages that account's signatures instead, and
  * every signature is a candidate. Each candidate is read through `status`, the pairing's own (`svmStatus` when none
- * is given), at most 50 per pass.
+ * is given), at most 50 per pass: `svmStatus` and `svmChannelStatus` read it with their presence tests, a candidate
+ * read settled at either commitment is found, and one read failed (a message the payer did not sign, an error or no
+ * transfer at `finalized`) is passed; any other function is called with the ref and the reader, and its answer's
+ * `state` read the same way.
  * `complete` is true only when the node's first available block is at or before `fromSlot`, the pages reached
- * `fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending
- * leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is `complete`
- * false, with nothing read.
+ * `fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending or
+ * unreadable leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is
+ * `complete` false, with nothing read.
  *
  * `minContextSlot` places the search no earlier than a read the caller made first, such as the nonce account read whose
  * context slot `svmNonceMoved` gives, or the `blockhashValid` read's `slot`: every page names it, so a node that has not
@@ -1160,13 +1280,15 @@ export async function svmLocate(
   ref: SvmRef,
   reader: SvmReader,
   h: AtrHash,
-  status: (ref: SvmRef & { transaction: string }, reader: SvmReader) => Promise<{ state: string; why?: string }> = svmStatus,
+  status: (ref: SvmRef & { transaction: string }, reader: SvmReader, ...rest: never[]) => Promise<{ readonly state: string }> = svmStatus,
   minContextSlot?: bigint,
 ): Promise<{ found?: string; complete: boolean }> {
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return { complete: false };
   if (typeof ref.fromSlot !== "string" || !SLOT.test(ref.fromSlot)) return { complete: false };
   if (minContextSlot !== undefined && !isU64(minContextSlot)) return { complete: false };
   if (ref.channel !== undefined && !isKey(ref.channel)) return { complete: false };
+  if (typeof status !== "function") return { complete: false };
+  const read = CANDIDATE_READS.get(status) ?? status;
   const address = ref.channel ?? ref.feePayer;
   let carrier: string;
   try {
@@ -1202,9 +1324,9 @@ export async function svmLocate(
       if (entry.slot < fromSlot) return { complete: true };
       if (ref.channel === undefined && (entry.memo === null || !entry.memo.toLowerCase().includes(carrier))) continue;
       if (++candidates > MAX_CANDIDATES) return { complete: false };
-      const s = await status({ ...ref, transaction: entry.signature }, reader);
+      const s = await read({ ...ref, transaction: entry.signature }, reader);
       if (s.state === "settled") return { found: entry.signature, complete: true };
-      if (s.state === "pending") return { complete: false };
+      if (s.state === "pending" || s.state === "unreadable") return { complete: false };
     }
     if (list.length < LOCATE_PAGE) return { complete: true };
     before = list[list.length - 1]!.signature;
@@ -1212,17 +1334,27 @@ export async function svmLocate(
   return { complete: false };
 }
 
+/** The read `svmLocate` gives a candidate for each status function of this module: its presence test, unanswered. */
+const CANDIDATE_READS: ReadonlyMap<unknown, (ref: SvmRef & { transaction: string }, reader: SvmReader) => Promise<{ readonly state: string }>> =
+  new Map<unknown, (ref: SvmRef & { transaction: string }, reader: SvmReader) => Promise<{ readonly state: string }>>([
+    [svmStatus, readSvm],
+    [svmChannelStatus, (ref, reader) => readChannel(ref, reader)],
+  ]);
+
 /**
- * Zero-party recovery: the ATR hash in the landed transaction's one memo. A transaction that landed with an error is
- * `svm/err` when the read at `finalized` holds it, and `svm/not-final` when only the read at `confirmed` holds it, since
- * a block that is not finalized can be replaced. A landed wire that does not decode is `svm/unreadable`. A ref whose
- * `transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One or two calls.
+ * Zero-party recovery: the ATR hash in the landed transaction's one memo, read by `tx`, the transaction's signature;
+ * `option`, the x402 option or MPP challenge the ATR's binding slot holds, must be an object, and no member of it is
+ * read. A transaction that landed with an error is `svm/err` when the read at `finalized` holds it, and `svm/not-final`
+ * when only the read at `confirmed` holds it, since a block that is not finalized can be replaced. A landed wire that
+ * does not decode is `svm/unreadable`. An input that is not an object, an option that is not an object, and a `tx` that
+ * is not a signature, base58 of 64 bytes, are `svm/wrong-reader`, with nothing read. One or two calls.
  */
 export async function svmRecover(
-  ref: { network: SolanaNetwork; transaction: string },
+  input: RecoverInput<SolanaNetwork, PaymentRequirements | MppChallenge>,
   reader: SvmReader,
 ): Promise<AtrHash | Refusal> {
-  const tx = await landedTransaction(ref, reader);
+  if (!isObject(input) || !isObject(input.option)) return refusal("svm/wrong-reader");
+  const tx = await landedTransaction({ network: input.network, transaction: input.tx }, reader);
   if (isRefusal(tx)) return tx;
   const c = svmCarrier(tx);
   return isRefusal(c) ? c : c.h;
@@ -1241,7 +1373,7 @@ export async function landedTransaction(
   if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
   if (!isSignature(ref.transaction)) return refusal("svm/wrong-reader");
   const read = await landedAt(reader, ref.transaction);
-  if (read === undefined) return refusal("svm/unreadable");
+  if ("unreadable" in read) return refusal("svm/unreadable");
   if ("notFound" in read) return refusal("svm/not-found");
   if (read.landed.err !== null && read.landed.err !== undefined) {
     return read.commitment === "finalized" ? refusal("svm/err") : refusal("svm/not-final");
@@ -1404,22 +1536,34 @@ export function channelInstruction(tx: SvmTx): ChannelIx | Refusal {
   return { kind: shape[0], channel: keyString(channel), data: copyOf(ix.data) };
 }
 
-export type ChannelStatus = SvmStatus | { state: "failed"; why: "no-channel-instruction" };
+/** A channel opening's read, as the profile `read-status` answers it: the answer `svmStatus` gives. */
+export type ChannelStatus = SvmStatus;
 
-/**
- * `svmStatus` with the presence test replaced: exactly one top-level payment-channels instruction whose
- * discriminator is `open` (1) or `top_up` (3). The test reads only the signed message, so a transaction without it is
- * failed `no-channel-instruction` from a read at either commitment; an error is failed `err` only from the read at
- * `finalized`, and pending `not-final` from the read at `confirmed`. At most two calls, or five for a durable-nonce
- * reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at `finalized`.
- */
-export async function svmChannelStatus(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<ChannelStatus> {
-  return settledBy(ref, reader, {
+/** The channel read: `readSettled` with the presence test of `svmChannelStatus`. */
+function readChannel(ref: SvmRef & { transaction: string }, reader: SvmReader): Promise<SvmRead<"no-channel-instruction">> {
+  return readSettled(ref, reader, {
     message: (tx) => {
       const found = tx.instructions.filter((ix) => sameBytes(tx.keys[ix.program], PAYMENT_CHANNELS_BYTES));
       return found.length === 1 && (found[0]!.data[0] === 1 || found[0]!.data[0] === 3) ? null : "no-channel-instruction";
     },
   });
+}
+
+/**
+ * `svmStatus` with the presence test replaced: exactly one top-level payment-channels instruction whose
+ * discriminator is `open` (1) or `top_up` (3). The test reads only the signed message, so a transaction without it is
+ * no act at either commitment, `pending`, `search-incomplete`; an error is `pending`, `below-mark`, from the read at
+ * `confirmed`, and `pending`, `search-incomplete`, from the read at `finalized`. At most two calls, or five for a
+ * durable-nonce reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at
+ * `finalized`.
+ */
+export async function svmChannelStatus(
+  ref: SvmRef & { transaction: string },
+  reader: SvmReader,
+  query: SvmQuery,
+): Promise<ChannelStatus> {
+  if (!isQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
+  return decide(factsOf(await readChannel(ref, reader), ref, CHANNEL_LEDGER), query, CHANNEL_LEDGER);
 }
 
 export interface ChannelBuildInput {

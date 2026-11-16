@@ -22,7 +22,8 @@ import { isAddress, isObject, normalHash } from "./fields.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpBytes, rlpList, rlpUint, rlpUintBytes, type RlpItem } from "./rlp.js";
 import type { AtrHash } from "./core.js";
-import type { MppCredential } from "./mpp-challenge.js";
+import type { MppChallenge, MppCredential } from "./mpp-challenge.js";
+import type { RecoverInput } from "./internal/read.js";
 
 export { RECEIVE_POLICY_GUARD } from "./internal/evm.js";
 
@@ -248,15 +249,16 @@ export function decodeKeyAuthorization(signed: Hex): {
  * `tempo/no-witness` and `tempo/ambiguous` are given only where the receipt's block is at or below the reader's
  * `finalized` mark: above it, or where that mark cannot be read, each is `tempo/not-final`, a read to repeat, since a
  * block above the mark can be replaced by one in which the transaction succeeds or holds other logs. The mark is read
- * only for those. A ref or reader that is not an object, a ref whose `transaction` is not a 32-byte hash, or a reader
- * for another network than the ref names, is `tempo/wrong-reader`, with nothing read. At most two calls.
+ * only for those. The challenge is not read. An input or reader that is not an object, an input whose `tx` is not a
+ * 32-byte hash, or a reader for another network than the input names, is `tempo/wrong-reader`, with nothing read. At
+ * most two calls.
  */
 export async function witnessRecover(
-  ref: { network: string; transaction: Hex },
+  input: RecoverInput<string, MppChallenge>,
   reader: EvmReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || normalHash(ref.transaction) === null) return refusal("tempo/wrong-reader");
-  const receipt = await readReceiptAtMark(ref.network, ref.transaction, reader);
+  if (!isObject(input) || normalHash(input.tx) === null) return refusal("tempo/wrong-reader");
+  const receipt = await readReceiptAtMark(input.network, input.tx as Hex, reader);
   if (isRefusal(receipt)) return receipt;
   const witnesses: Hex[] = [];
   for (const log of receipt.logs) {

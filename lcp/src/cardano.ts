@@ -19,6 +19,7 @@ import {
   type OptionFilter,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { base64Bytes, hexOf, sameBytes } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -29,7 +30,10 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 import { CARDANO } from "./internal/data/cardano.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type Ledger, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type CardanoNetwork = "cardano:mainnet" | "cardano:preprod" | "cardano:preview";
@@ -72,12 +76,15 @@ export interface CardanoRef {
   txId: Hex;
   /** The slot from which the transaction cannot land (body key 3, `invalid_hereafter`), as a decimal string. */
   ttlSlot: string;
+  /** The option's `payTo`. */
+  payee: string;
 }
 
-export type CardanoStatus =
-  | { state: "settled"; confirmations: bigint; blockHeight: bigint }
-  | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "phase-2-invalid" | "expired" };
+/**
+ * The answer of `cardanoStatus`: positions are block heights, and marks are counts of confirmations, the newer blocks
+ * above the transaction's; the final mark is the count the query asks for.
+ */
+export type CardanoStatus = StatusAnswer<bigint, bigint, bigint>;
 
 /** The payload x402's Cardano scheme defines. */
 export interface CardanoPayload {
@@ -138,30 +145,51 @@ export async function decodeCardanoTx(base64: string): Promise<CardanoTx | Refus
   return decodeBytes(bytes);
 }
 
+/** What the read of the transaction id observed, before the profile's rules choose the answer. */
+type CardanoRead =
+  | { state: "settled"; confirmations: bigint; blockHeight: bigint }
+  | { state: "pending"; why: "not-found" }
+  | { state: "failed"; why: "phase-2-invalid"; confirmations: bigint; blockHeight: bigint }
+  | { state: "failed"; why: "expired" }
+  | { state: "unreadable"; why: UnreadableReason };
+
+type CardanoQuery = StatusQuery<CardanoRef, bigint, bigint, bigint>;
+
 /**
- * Reads the tip first, then the recorded id. A failed read, or a reader for another network, is pending. `depth` is
- * the number of newer blocks at which the caller takes a settlement as final. The ledger takes a transaction only in a
- * slot below its TTL (cardano-ledger's Allegra `inInterval`: `slot < top`, the check Babbage and Conway run), so an
- * absent transaction is expired once the slot of the block `depth` below the tip is at or past `ttlSlot` and the lookup
- * names a slot at or past the tip's: a rollback of fewer than `depth` blocks, or a lookup that lags the tip read first,
- * never turns a payment that landed into a failed one. While that block's slot is below `ttlSlot`, the tip is fewer
- * than `depth` blocks high, the reader holds no block at that height, or the lookup names an earlier slot or none, it
- * is pending `not-found`. A present one fails only when the ledger marks it invalid. A `depth` that is not a
- * non-negative bigint is pending `unreadable`, and so is a ref whose `txId` is not `0x` and 64 hex digits, with nothing
- * read; the id is looked up in lowercase. At most three calls: `slotAt` only for an absent transaction once the tip's
- * slot is at or past `ttlSlot` and the lookup covers the tip, and not at `depth` 0, where the tip is that block.
+ * The reason of a rejected read: a `ReaderError` by its kind (`too-large`, `malformed` as `unparseable`, `timeout` and
+ * `transport` as `transport`), and any other rejection `transport`.
  */
-export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, depth: bigint): Promise<CardanoStatus> {
-  const unreadable = { state: "pending", why: "unreadable" } as const;
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return unreadable;
+function rejected(e: unknown): UnreadableReason {
+  const kind = isObject(e) && e["name"] === "ReaderError" ? e["kind"] : undefined;
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+}
+
+/**
+ * Reads the tip first, then the recorded id. `depth` is the number of newer blocks at which the caller takes a
+ * settlement as final. The ledger takes a transaction only in a slot below its TTL (cardano-ledger's Allegra
+ * `inInterval`: `slot < top`, the check Babbage and Conway run), so an absent transaction is expired once the slot of
+ * the block `depth` below the tip is at or past `ttlSlot` and the lookup names a slot at or past the tip's: a rollback
+ * of fewer than `depth` blocks, or a lookup that lags the tip read first, never turns a payment that landed into a
+ * failed one. While that block's slot is below `ttlSlot`, the tip is fewer than `depth` blocks high, the reader holds
+ * no block at that height, or the lookup names an earlier slot or none, it is `not-found`. A present one fails only
+ * when the ledger marks it invalid. A reader for another network is `chain-mismatch`; a `depth` that is not a
+ * non-negative bigint, a ref whose `txId` is not `0x` and 64 hex digits or whose `ttlSlot` is not a decimal is
+ * `unparseable`, with nothing read; so is an answer outside the reader's types. The id is looked up in lowercase. At
+ * most three calls: `slotAt` only for an absent transaction once the tip's slot is at or past `ttlSlot` and the lookup
+ * covers the tip, and not at `depth` 0, where the tip is that block.
+ */
+async function readCardano(ref: CardanoRef, reader: CardanoReader, depth: bigint): Promise<CardanoRead> {
+  const unparseable = { state: "unreadable", why: "unparseable" } as const;
+  if (!isObject(ref)) return unparseable;
   const txId = normalHash(ref.txId);
   const ttlSlot = typeof ref.ttlSlot === "string" && DECIMAL.test(ref.ttlSlot) ? BigInt(ref.ttlSlot) : undefined;
-  if (txId === null || ttlSlot === undefined) return unreadable;
-  if (typeof depth !== "bigint" || depth < 0n) return unreadable;
+  if (txId === null || ttlSlot === undefined) return unparseable;
+  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
+  if (typeof depth !== "bigint" || depth < 0n) return unparseable;
   const notFound = { state: "pending", why: "not-found" } as const;
   try {
     const tip = await reader.tip();
-    if (!isObject(tip) || typeof tip.blockHeight !== "bigint" || typeof tip.slot !== "bigint") return unreadable;
+    if (!isObject(tip) || typeof tip.blockHeight !== "bigint" || typeof tip.slot !== "bigint") return unparseable;
     const tx: unknown = await reader.transaction(txId, false);
     const readTo = notFoundPoint(tx, "slot");
     if (readTo !== undefined) {
@@ -169,34 +197,90 @@ export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, dept
       if (readTo === null || readTo < tip.slot) return notFound;
       const slot = depth === 0n ? tip.slot : await reader.slotAt(tip.blockHeight - depth);
       if (slot === null) return notFound;
-      if (typeof slot !== "bigint") return unreadable;
+      if (typeof slot !== "bigint") return unparseable;
       return slot >= ttlSlot ? { state: "failed", why: "expired" } : notFound;
     }
-    if (!isOnChain(tx)) return unreadable;
-    if (!tx.valid) return { state: "failed", why: "phase-2-invalid" };
-    const confirmations = tip.blockHeight - tx.blockHeight;
-    return { state: "settled", confirmations: confirmations > 0n ? confirmations : 0n, blockHeight: tx.blockHeight };
-  } catch {
-    return unreadable;
+    if (!isOnChain(tx)) return unparseable;
+    const above = tip.blockHeight - tx.blockHeight;
+    const confirmations = above > 0n ? above : 0n;
+    if (!tx.valid) return { state: "failed", why: "phase-2-invalid", confirmations, blockHeight: tx.blockHeight };
+    return { state: "settled", confirmations, blockHeight: tx.blockHeight };
+  } catch (e) {
+    return { state: "unreadable", why: rejected(e) };
   }
 }
 
 /**
- * Reads the hash back from the included transaction alone, by its id. A ref whose `txId` is not a 32-byte hash is
- * `cardano/wrong-reader`, with nothing read. Bytes that are not one CBOR array whose first item, the body, has the id
+ * The facts of a read of the transaction id: an included valid transaction is the act at its confirmations; one the
+ * ledger marked invalid is a failed act that leaves the input its body spends unconsumed (only its collateral is
+ * taken); an expired TTL read at the block `depth` below the tip is the value's validity passed at the final mark.
+ */
+function factsOfCardano(read: CardanoRead, ref: CardanoRef, depth: bigint): Facts<bigint, bigint, bigint> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  const own = (r: { confirmations: bigint; blockHeight: bigint }, result: "succeeded" | "failed") =>
+    ({
+      transaction: normalHash(ref.txId)!,
+      position: r.blockHeight,
+      mark: r.confirmations,
+      result,
+      consumed: result === "succeeded",
+      carries: true,
+      party: "payer",
+      kind: "same",
+      account: "payee",
+    }) as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.why };
+    case "settled":
+      return { ...none, seen: [own(read, "succeeded")] };
+    case "pending":
+      return none;
+    case "failed":
+      if (read.why === "expired") return { ...none, value: { consumed: false, lapsed: true, mark: depth } };
+      return { ...none, seen: [own(read, "failed")] };
+  }
+}
+
+/**
+ * The read of the payment by its transaction id, as the profile `read-status` answers it, with `query.finality` the
+ * count of confirmations the caller takes as final, which is also the depth expiry is read at. A valid transaction
+ * settles at that count or above it and is `below-mark` under it; an invalid one, an expired TTL and a transaction
+ * not found answer `pending`, `search-incomplete`, since the read has no search for H.
+ */
+export async function cardanoStatus(ref: CardanoRef, reader: CardanoReader, query: CardanoQuery): Promise<CardanoStatus> {
+  const depth = isObject(query) ? query.finality : undefined;
+  const read = await readCardano(ref, reader, depth as bigint);
+  if (read.state === "unreadable") return { state: "unreadable", reason: read.why, foreign: [] };
+  const ledger: Ledger<bigint, bigint> = {
+    coverage: CARDANO[ID].coverage,
+    final: depth as bigint,
+    markOrder: order,
+    positionOrder: order,
+  };
+  return decide(factsOfCardano(read, ref, depth as bigint), query, ledger);
+}
+
+function order(a: bigint, b: bigint): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Reads the hash back from the included transaction alone, by its id, `input.tx`. An input whose `tx` is not a 32-byte
+ * hash, or whose option is not an object, is `cardano/wrong-reader`, with nothing read; the option is not read further. Bytes that are not one CBOR array whose first item, the body, has the id
  * as its Blake2b-256 are not the transaction the id names, and are `cardano/unreadable`, as a failed read is, whatever
  * the decoder answers for them; its refusals answer only for bytes whose body has the id. One call.
  */
 export async function cardanoRecover(
-  ref: { network: CardanoNetwork; txId: Hex },
+  input: RecoverInput<CardanoNetwork, PaymentRequirements | MppChallenge>,
   reader: CardanoReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("cardano/wrong-reader");
-  const txId = normalHash(ref.txId);
-  if (txId === null) return refusal("cardano/wrong-reader");
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("cardano/wrong-reader");
+  const txId = normalHash(input.tx);
+  if (txId === null || !isObject(input.option)) return refusal("cardano/wrong-reader");
   let tx: unknown;
   try {
-    tx = await reader.transaction(ref.txId, true);
+    tx = await reader.transaction(input.tx as Hex, true);
   } catch {
     return refusal("cardano/unreadable");
   }
@@ -265,7 +349,7 @@ async function build(
     async complete(signed: CardanoPayload): Promise<CardanoPaymentPayload | Refusal> {
       const payment = paymentWith(required, accepted, signed);
       const got = await bound(payment);
-      if (isRefusal(got) || got !== expected || isRefusal(await reference(payment))) {
+      if (isRefusal(got) || got !== expected || isRefusal(await reference(payment, accepted))) {
         return refusal("x402/signed-not-bound");
       }
       return payment;
@@ -279,12 +363,14 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(tx) ? tx : tx.tx.h;
 }
 
-/** The read keys for this payment: network, transaction id and TTL. */
-async function reference(presented: unknown): Promise<CardanoRef | Refusal> {
+/** The read keys for this payment: network, transaction id and TTL; and the payee, the `payTo` of the option it answers. */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<CardanoRef | Refusal> {
   const tx = await presentedTx(presented);
   if (isRefusal(tx)) return tx;
   if (tx.tx.ttlSlot === null) return refusal("cardano/ttl-missing");
-  return { network: tx.network, txId: tx.tx.txId, ttlSlot: tx.tx.ttlSlot.toString() };
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
+  return { network: tx.network, txId: tx.tx.txId, ttlSlot: tx.tx.ttlSlot.toString(), payee };
 }
 
 async function presentedTx(presented: unknown): Promise<{ network: CardanoNetwork; tx: CardanoTx } | Refusal> {
@@ -334,7 +420,20 @@ export const exactCardano = Object.freeze({
   reference,
   status: cardanoStatus,
   recover: cardanoRecover,
-}) satisfies Entry<typeof ID, CardanoPaymentPayload, CardanoRef, CardanoReader>;
+}) satisfies Entry<
+  typeof ID,
+  CardanoPaymentPayload,
+  CardanoRef,
+  CardanoReader,
+  X402Forms & {
+    choice: { required: PaymentRequired; accepted: PaymentRequirements };
+    unsigned: CardanoUnsigned;
+    landed: unknown;
+    network: CardanoNetwork;
+    query: CardanoQuery;
+    answer: CardanoStatus;
+  }
+>;
 
 function decodeBytes(bytes: Uint8Array): CardanoTx | Refusal {
   const top = oneItem(bytes);

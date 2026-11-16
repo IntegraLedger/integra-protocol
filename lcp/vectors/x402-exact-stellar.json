@@ -76,7 +76,8 @@
    "toBase": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
    "toId": "13436514500253700074",
    "expiration": 1000,
-   "fromLedger": 0
+   "fromLedger": 0,
+   "payee": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP"
   }
  },
  "V4": [
@@ -409,7 +410,7 @@
   }
  ],
  "V5": {
-  "about": "stellarStatus reads the transaction the ref names, then the latest ledger and, past the entry's expiration ledger (1000), stellarLocate's search. The payer's signed authorization entry is not tied to the transaction that carries it (CAP-0046-11: \"The specification described above is not associated with transaction in any way\"), its nonce is consumed only when a transaction applies it, and a failed transaction is rolled back apart from its fee and sequence number (the Stellar documentation's transaction lifecycle). The entry's signature is valid through its expiration ledger (Soroban authorization: \"Nonce can't be reused until the signature expires\"). So a named transaction that is not found, failed, or succeeded with another entry is pending while the entry can still be used, and the read is failed (expired) only past the expiration ledger with a complete search that finds no transaction that used it. getEvents answers with the latest ledger the RPC held (Stellar RPC getEvents: latestLedger), so a search shows the entry unused only through that ledger: it counts as complete for status only when each events answer names a latestLedger at or above the one getLatestLedger gave first, and for stellarLocate at or above the expiration ledger (locateLatestBelowExpiration: 999). A listed transaction that used the entry is on the chain whatever ledger the events answer names, so it settles the read on any page; a row's expectLocate is stellarLocate's answer over the same reader. Each row gives the named transaction's getTransaction answer, getLatestLedger, and the transfer events the search lists with their latestLedger; a listed transaction bbbb… reads as candidate. The Soroban host tries a transaction's authorization entries in order, skips one whose address or root invocation does not match, and authenticates the first that matches (rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing), so a landed transaction is read by the payer's first address-credential entry whose rootInvocation is the operation's transfer with no sub-invocations, and another entry of the payer in the same transaction is not read.",
+  "about": "stellarStatus reads the transaction the ref names, then the latest ledger and, past the entry's expiration ledger (1000), stellarLocate's search. The payer's signed authorization entry is not tied to the transaction that carries it (CAP-0046-11: \"The specification described above is not associated with transaction in any way\"), its nonce is consumed only when a transaction applies it, and a failed transaction is rolled back apart from its fee and sequence number (the Stellar documentation's transaction lifecycle). The entry's signature is valid through its expiration ledger (Soroban authorization: \"Nonce can't be reused until the signature expires\"). So a named transaction that is not found, failed, or succeeded with another entry is pending while the entry can still be used, and the read is failed (expired) only past the expiration ledger with a complete search that finds no transaction that used it. getEvents answers with the latest ledger the RPC held (Stellar RPC getEvents: latestLedger), so a search shows the entry unused only through that ledger: it counts as complete for status only when each events answer names a latestLedger at or above the one getLatestLedger gave first, and for stellarLocate at or above the expiration ledger (locateLatestBelowExpiration: 999). A listed transaction that used the entry is on the chain whatever ledger the events answer names, so it settles the read on any page; a row's expectLocate is stellarLocate's answer over the same reader. Each row gives the named transaction's getTransaction answer, getLatestLedger, and the transfer events the search lists with their latestLedger; a listed transaction bbbb… reads as candidate. The Soroban host tries a transaction's authorization entries in order, skips one whose address or root invocation does not match, and authenticates the first that matches (rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing), so a landed transaction is read by the payer's first address-credential entry whose rootInvocation is the operation's transfer with no sub-invocations, and another entry of the payer in the same transaction is not read. Each row's expect is stellarStatus's answer under the profile read-status at the one mark, closed, asked about the act payment unless the row's query says otherwise, its position a ledger sequence number. The rows the read answered pending (not found, failed, another entry) or failed expired answer pending search-incomplete: at coverage full, failed comes only once the search for H is read whole, and status reads no search whole (rules 23 and 24).",
   "ref": {
    "network": "stellar:testnet",
    "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -418,7 +419,8 @@
    "toBase": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
    "toId": "13436514500253700074",
    "expiration": 1000,
-   "fromLedger": 900
+   "fromLedger": 900,
+   "payee": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP"
   },
   "rows": [
    {
@@ -429,7 +431,10 @@
     "latestLedger": 995,
     "expect": {
      "state": "settled",
-     "ledger": 990
+     "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "position": 990,
+     "finality": "closed",
+     "foreign": []
     }
    },
    {
@@ -438,7 +443,8 @@
     "latestLedger": 1000,
     "expect": {
      "state": "pending",
-     "why": "transaction-failed"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -451,8 +457,9 @@
      "latestLedger": 1001
     },
     "expect": {
-     "state": "failed",
-     "why": "expired"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -466,7 +473,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "transaction-failed"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -489,7 +497,10 @@
     },
     "expect": {
      "state": "settled",
-     "ledger": 995
+     "transaction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "position": 995,
+     "finality": "closed",
+     "foreign": []
     }
    },
    {
@@ -500,7 +511,8 @@
     "latestLedger": 995,
     "expect": {
      "state": "pending",
-     "why": "not-this-instrument"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -515,8 +527,9 @@
      "latestLedger": 1001
     },
     "expect": {
-     "state": "failed",
-     "why": "expired"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -525,7 +538,8 @@
     "latestLedger": 995,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -538,16 +552,18 @@
      "latestLedger": 1001
     },
     "expect": {
-     "state": "failed",
-     "why": "expired"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "getTransaction fails",
     "status": "reader-error",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -558,7 +574,10 @@
     "latestLedger": 995,
     "expect": {
      "state": "settled",
-     "ledger": 990
+     "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "position": 990,
+     "finality": "closed",
+     "foreign": []
     }
    },
    {
@@ -572,7 +591,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -595,11 +615,34 @@
     },
     "expect": {
      "state": "settled",
-     "ledger": 995
+     "transaction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "position": 995,
+     "finality": "closed",
+     "foreign": []
     },
     "expectLocate": {
      "found": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
      "complete": true
+    }
+   },
+   {
+    "case": "the named transaction succeeded with V3's envelope at ledger 990, asked about after ledger 990: failed before-position",
+    "status": "SUCCESS",
+    "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAACungWv48Bz+rKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQADTgs6FkXZhrRlJ+G5Z7N7+pHMs9JZhcP4t83O/l7sk2akgEFOlZ+QfcNpnQV/Q5hIEQnzK/srtdp3FZCj/mQsAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAK6eBa/jwHP6sqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
+    "ledger": 990,
+    "latestLedger": 995,
+    "query": {
+     "act": "payment",
+     "finality": "closed",
+     "after": 990
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "position": 990,
+     "finality": "closed",
+     "foreign": []
     }
    }
   ],
@@ -644,7 +687,8 @@
   "otherPreimageSha256": "38f2818003b0ee30a711cb5b59464b0fec2c01426bdd938acc66a307b2f77c8a",
   "expect": {
    "state": "pending",
-   "why": "not-this-instrument"
+   "reason": "search-incomplete",
+   "foreign": []
   },
   "latestLedger": 995
  },
@@ -704,11 +748,15 @@
    "toBase": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
    "toId": "13436514500253700074",
    "expiration": 1000,
-   "fromLedger": 0
+   "fromLedger": 0,
+   "payee": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP"
   },
   "expectStatus": {
    "state": "settled",
-   "ledger": 990
+   "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "position": 990,
+   "finality": "closed",
+   "foreign": []
   }
  },
  "events": {

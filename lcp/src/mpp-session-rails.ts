@@ -17,11 +17,14 @@ import {
   type XrplCloseRef,
   type XrplCloseStatus,
 } from "./internal/xrpl-session.js";
+import { mppPayee } from "./internal/payee.js";
+import type { RecoverInput } from "./internal/read.js";
 import {
   decodeBlob,
   decodePresented,
   networkIdHeld,
   type XrplNetwork,
+  type XrplQuery,
   type XrplReader,
   type XrplRef,
   type XrplStatus,
@@ -46,6 +49,7 @@ import {
   type Echoed,
   type MppChallenge,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { xrplNetworkOf } from "./mpp-rail-checks.js";
 import { withinChecks, type SessionWithin, type SessionWithinUnsigned, type WithinChallenge } from "./mpp-session.js";
@@ -265,15 +269,21 @@ async function xrplBound(input: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(o) ? o : o.h;
 }
 
-async function xrplReference(input: unknown): Promise<Omit<XrplRef, "fromLedger" | "expect"> | Refusal> {
+/**
+ * The opening's read keys: the network, the hash of its signed blob and its `LastLedgerSequence` or null; and the
+ * payee of `option`, the challenge the payment answers (`mppPayee`).
+ */
+async function xrplReference(input: unknown, option: MppChallenge): Promise<Omit<XrplRef, "fromLedger" | "expect"> | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const o = await xrplOpening(presented);
   if (isRefusal(o)) return o;
   const network = xrplNetworkOf(o.checked.details);
   if (isRefusal(network)) return network;
+  const payee = mppPayee(option);
+  if (isRefusal(payee)) return payee;
   const last = o.tx.LastLedgerSequence;
-  return { network, transaction: o.hash, lastLedgerSequence: typeof last === "number" ? last : null };
+  return { network, transaction: o.hash, lastLedgerSequence: typeof last === "number" ? last : null, payee };
 }
 
 /**
@@ -328,26 +338,33 @@ function xrplUntil(presented: MppCredential): number | undefined {
   return c === undefined ? undefined : c + RIPPLE_EPOCH;
 }
 
+/** The opening's read, or, for a ref with `phase: "close"`, the reported close's. */
 async function xrplStatusOf(
   ref: Omit<XrplRef, "expect"> | XrplCloseRef,
   reader: XrplReader,
+  query: XrplQuery<Omit<XrplRef, "expect"> | XrplCloseRef>,
 ): Promise<XrplStatus | XrplCloseStatus> {
-  return isObject(ref) && "phase" in ref ? xrplCloseStatus(ref, reader) : xrplOpenStatus(ref, reader);
+  return isObject(ref) && "phase" in ref
+    ? xrplCloseStatus(ref, reader, query as XrplQuery<XrplCloseRef>)
+    : xrplOpenStatus(ref, reader, query as XrplQuery<Omit<XrplRef, "expect">>);
 }
 
 /**
  * Zero-party: the one LCP memo of the opening, read by its signed blob, when a validated ledger holds the transaction
- * with `tesSUCCESS` as a `PaymentChannelCreate`, as `status` settles it. Not found is `xrpl/not-found`; not yet
- * validated is `xrpl/not-validated`; another result is `xrpl/not-success`; another type is `xrpl/not-channel-create`.
- * The blob must be that transaction's: a blob that does not decode, whose hash is not the transaction's, or whose
+ * `tx` names with `tesSUCCESS` as a `PaymentChannelCreate`, as `status` settles it; `option`, the challenge the ATR's
+ * binding slot holds, must be an object, and no member of it is read. Not found is `xrpl/not-found`; not yet validated
+ * is `xrpl/not-validated`; another result is `xrpl/not-success`; another type is `xrpl/not-channel-create`. The blob
+ * must be that transaction's: a blob that does not decode, whose hash is not the transaction's, or whose
  * `TransactionType` is not the one the validated answer gives is `xrpl/unreadable`, an answer out of the reader's
- * documented form; a codec that cannot be loaded is `xrpl/peer-missing`. A ref whose `transaction` is not 64 hex digits is `xrpl/wrong-reader`, with nothing read; the
- * transaction and its blob are looked up in upper case, as `status` looks the transaction up. Two calls.
+ * documented form; a codec that cannot be loaded is `xrpl/peer-missing`. An input or option that is not an object, and
+ * a `tx` that is not 64 hex digits, are `xrpl/wrong-reader`, with nothing read; the transaction and its blob are looked
+ * up in upper case, as `status` looks the transaction up. Two calls.
  */
-async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, reader: XrplReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("xrpl/wrong-reader");
-  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return refusal("xrpl/wrong-reader");
-  const transaction = ref.transaction.toUpperCase();
+async function xrplRecover(input: RecoverInput<XrplNetwork, MppChallenge>, reader: XrplReader): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(input.option)) return refusal("xrpl/wrong-reader");
+  if (!isObject(reader) || reader.network !== input.network) return refusal("xrpl/wrong-reader");
+  if (typeof input.tx !== "string" || !HASH256.test(input.tx)) return refusal("xrpl/wrong-reader");
+  const transaction = input.tx.toUpperCase();
   let landed: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
     landed = await reader.tx(transaction, null);
@@ -373,17 +390,20 @@ async function xrplRecover(ref: { network: XrplNetwork; transaction: string }, r
 }
 
 /**
- * The read keys of a close, from the issued challenge and the channel: the network and the channel, in upper case. The
- * issued challenge is held as `bound` holds an echoed one (`issuedFor`), with its code for each fault: the challenge's
- * shape and size, its intent and method, which must be the pairing's, and the pairing's filter.
+ * The read keys of a close, from the issued challenge and the channel: the network, the channel, in upper case, and
+ * the challenge's payee (`mppPayee`). The issued challenge is held as `bound` holds an echoed one (`issuedFor`), with
+ * its code for each fault: the challenge's shape and size, its intent and method, which must be the pairing's, and the
+ * pairing's filter.
  */
 function xrplCloseRef(chosen: MppChallenge, channel: string): Omit<XrplCloseRef, "transaction"> | Refusal {
   const checked = issuedFor(chosen, XRPL);
   if (isRefusal(checked)) return checked;
   const network = xrplNetworkOf(checked.details);
   if (isRefusal(network)) return network;
+  const payee = mppPayee(chosen);
+  if (isRefusal(payee)) return payee;
   return typeof channel === "string" && HASH256.test(channel)
-    ? { phase: "close", network, channel: channel.toUpperCase() }
+    ? { phase: "close", network, channel: channel.toUpperCase(), payee }
     : refusal("mpp/credential-malformed");
 }
 
@@ -554,4 +574,17 @@ export const sessionXrpl = Object.freeze({
     boundWithin: measuringAsync(notBoundWithin),
     until: xrplUntil,
   }),
-}) satisfies Entry<typeof XRPL, MppCredential, Omit<XrplRef, "expect"> | XrplCloseRef, XrplReader>;
+}) satisfies Entry<
+  typeof XRPL,
+  MppCredential,
+  Omit<XrplRef, "expect" | "fromLedger">,
+  XrplReader,
+  MppForms & {
+    choice: RailSessionChoice;
+    unsigned: XrplSessionUnsigned;
+    landed: Pick<XrplRef, "fromLedger">;
+    network: XrplNetwork;
+    query: XrplQuery<Omit<XrplRef, "expect"> | XrplCloseRef>;
+    answer: XrplStatus;
+  }
+>;

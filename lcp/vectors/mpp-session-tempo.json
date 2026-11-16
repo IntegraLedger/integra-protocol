@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/session/tempo and the tempo entry point's channel pieces. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and its ox 0.14.54 on Node 26.10.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. L1 is a live v2 open on Tempo Moderato (eip155:42431), transaction 0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-09-25 at 08:01Z; the receipt keeps status, block and logs.",
+ "about": "Vectors for mpp/session/tempo and the tempo entry point's channel pieces. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and its ox 0.14.54 on Node 26.10.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. L1 is a live v2 open on Tempo Moderato (eip155:42431), transaction 0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-09-25 at 08:01Z; the receipt keeps status, block and logs. Under the profile read-status, TS6's settled answer names the transaction, its block as the position and its mark, and TS6.expectNotFound, failed binding-log-not-found before (a ChannelOpened of another salt or from another contract), is pending search-incomplete: at coverage full no failed is answered until the search for H is read whole (rule 24). A close reference names the challenge's recipient as the payee.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0x88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589",
@@ -56,7 +56,8 @@
      "0x5613aed96d5bf39f928408dbe1d4143490b9bb5957eac2dd8e69b5dc4b2206e6",
      "0xe2f1917fc8ce8e37f178a1af084fe81a9e26212c968af355bd22ce04bb250035"
     ]
-   }
+   },
+   "payee": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00"
   }
  },
  "TS4": {
@@ -100,18 +101,22 @@
      "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
      "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84"
     ]
-   }
+   },
+   "payee": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00"
   }
  },
  "TS6": {
   "expectSettled": {
    "state": "settled",
+   "transaction": "0x7777777777777777777777777777777777777777777777777777777777777777",
+   "position": "100",
    "finality": "finalized",
-   "blockNumber": "100"
+   "foreign": []
   },
   "expectNotFound": {
-   "state": "failed",
-   "why": "binding-log-not-found"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "L1": {

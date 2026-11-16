@@ -13,7 +13,7 @@ import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
 import type { CcdPaymentPayload } from "./internal/ccd.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -22,7 +22,10 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 import { CCD } from "./internal/data/ccd.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type Ledger, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash. */
@@ -43,7 +46,8 @@ export type CcdItem =
 
 /**
  * Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
- * `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ * `@integraledger/lcp/evm`: a `ReaderError` reads by its kind (`too-large` as `too-large`, `malformed` as
+ * `unparseable`), and any other rejection as `transport`.
  */
 export interface CcdReader {
   readonly network: CcdNetwork;
@@ -58,12 +62,18 @@ export interface CcdRef {
   asset: string;
   idDigest: Hex;
   settleBy: number;
+  /** The option's `payTo`. */
+  payee: string;
 }
 
-export type CcdStatus =
-  | { state: "settled"; finality: "finalized" }
-  | { state: "pending"; why: "not-found" | "received" | "committed" | "unreadable" }
-  | { state: "failed"; why: "rejected" | "not-this-instrument" };
+/** The marks of a block item that is in a block, ascending: `committed`, then `finalized`, the final one. */
+type CcdMark = "committed" | "finalized";
+
+/**
+ * The answer of `ccdStatus`. Its marks are `committed` and `finalized`, the final one; the read gives no ledger
+ * position, so the answer names none and the query takes no `after`.
+ */
+export type CcdStatus = StatusAnswer<never, CcdMark, never>;
 
 interface CcdChoice {
   required: PaymentRequired;
@@ -159,30 +169,42 @@ export async function ccdIdDigest(sender: Uint8Array, receiver: Uint8Array, amou
   return hash(packed);
 }
 
+/** What the read of a block item observed, before the profile's rules choose the answer. */
+type CcdRead =
+  | { state: "settled" }
+  | { state: "pending"; why: "not-found" | "received" | "committed" }
+  | { state: "failed"; why: "rejected" | "not-this-instrument" }
+  | { state: "unreadable"; why: UnreadableReason };
+
+/** The reason a rejected read gives: a `ReaderError` by its kind, any other rejection `transport`. */
+function rejected(e: unknown): UnreadableReason {
+  const kind = e instanceof Error && e.name === "ReaderError" ? (e as { kind?: unknown }).kind : undefined;
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+}
+
 /**
  * Reads the named block item. Settled when it is finalized and successful, with exactly one transfer whose memo
  * `memoCarrier` reads as `ref.h` (a PLT memo with tag 24 unwrapped) and whose sender, receiver and amount hash to
- * `ref.idDigest`. Not final, unknown or unreadable is pending; a reader for another network is pending. A ref whose `h`
- * or `idDigest` is not `0x` and 64 hex digits is pending `unreadable`, with nothing read; hashes compare in either case.
- * `ref.asset` is not read, and the transfer's kind (which decides only whether a PLT memo's tag 24 is unwrapped) and
- * token id are compared with nothing: a transfer of another token, or of CCD, with the same sender, receiver, amount
- * and memo reads as settled.
+ * `ref.idDigest`; a finalized item that does not is not this act, and a finalized rejected item is its own failed
+ * result. A ref that is not an object, or whose `h` or `idDigest` is not `0x` and 64 hex digits, is `unparseable`,
+ * with nothing read; hashes compare in either case. Then a reader for another network is `chain-mismatch`, and an
+ * answer that is not a block item `unparseable`. `ref.asset` is not read, and the transfer's kind (which decides only
+ * whether a PLT memo's tag 24 is unwrapped) and token id are compared with nothing: a transfer of another token, or
+ * of CCD, with the same sender, receiver, amount and memo reads as settled.
  */
-export async function ccdStatus(ref: CcdRef & { transaction: string; h: AtrHash }, reader: CcdReader): Promise<CcdStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
+async function readCcd(ref: CcdRef & { transaction: string; h: AtrHash }, reader: CcdReader): Promise<CcdRead> {
+  if (!isObject(ref) || normalHash(ref.h) === null || normalHash(ref.idDigest) === null) {
+    return { state: "unreadable", why: "unparseable" };
   }
-  if (normalHash(ref.h) === null || normalHash(ref.idDigest) === null) {
-    return { state: "pending", why: "unreadable" };
-  }
+  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
   let it: CcdItem | null;
   try {
     it = await reader.item(ref.transaction);
-  } catch {
-    return { state: "pending", why: "unreadable" };
+  } catch (e) {
+    return { state: "unreadable", why: rejected(e) };
   }
   if (it === null) return { state: "pending", why: "not-found" };
-  if (!isItem(it)) return { state: "pending", why: "unreadable" };
+  if (!isItem(it)) return { state: "unreadable", why: "unparseable" };
   if (it.state === "received" || it.state === "committed") return { state: "pending", why: it.state };
   if (!it.success) return { state: "failed", why: "rejected" };
   const carrying = it.transfers.filter((t) => t.memo !== null && carries(innerMemo(t), ref.h));
@@ -190,22 +212,67 @@ export async function ccdStatus(ref: CcdRef & { transaction: string; h: AtrHash 
   const t = carrying[0]!;
   const digest = await ccdIdDigest(it.sender, t.receiver, t.amount);
   if (isRefusal(digest) || !hashEquals(digest, ref.idDigest)) return { state: "failed", why: "not-this-instrument" };
-  return { state: "settled", finality: "finalized" };
+  return { state: "settled" };
+}
+
+/**
+ * The facts of a read of the named block item. A settled item is the payer's act at `finalized`; a rejected one is
+ * a failed transaction that consumed the sender's sequence number, though the read names no value, since the item is
+ * not tied to the payer's own signed sequence number; an item that is not this act, one only received or committed,
+ * and one the node does not know are no act the read identified.
+ */
+function factsOfCcd(read: CcdRead, ref: CcdRef & { transaction: string }): Facts<never, CcdMark, never> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  if (read.state === "unreadable") return { ...none, unreadable: read.why };
+  const row = { transaction: ref.transaction, mark: "finalized", consumed: true, carries: true, party: "payer", kind: "same", account: "payee" } as const;
+  switch (read.state) {
+    case "settled":
+      return { ...none, seen: [{ ...row, result: "succeeded" }] };
+    case "pending":
+      return none;
+    case "failed":
+      return read.why === "rejected" ? { ...none, seen: [{ ...row, result: "failed" }] } : none;
+  }
+}
+
+const CCD_MARKS: readonly CcdMark[] = ["committed", "finalized"];
+const CCD_LEDGER: Ledger<never, CcdMark> = {
+  coverage: CCD[ID].coverage,
+  final: "finalized",
+  markOrder: (a, b) => CCD_MARKS.indexOf(a) - CCD_MARKS.indexOf(b),
+  positionOrder: () => 0,
+};
+
+/**
+ * The read of the payment by its block item, as the profile `read-status` answers it: the finalized transfer that
+ * carries `ref.h` under the recorded digest is the act, settled at `finalized`. A rejected item, an item that is not
+ * this act, one not yet finalized and one the node does not know answer `pending`, `search-incomplete`, since the read
+ * has no search for H.
+ */
+export async function ccdStatus(
+  ref: CcdRef & { transaction: string; h: AtrHash },
+  reader: CcdReader,
+  query: StatusQuery<CcdRef & { transaction: string; h: AtrHash }, never, CcdMark, never>,
+): Promise<CcdStatus> {
+  return decide(factsOfCcd(await readCcd(ref, reader), ref), query, CCD_LEDGER);
 }
 
 /**
  * The hash from a settlement block item alone, when it is finalized and successful: the memo of its one transfer whose
  * memo `memoCarrier` reads (a PLT memo with tag 24 unwrapped), as `status` counts the transfers whose memo carries
  * `ref.h`. A transfer without a memo, or whose memo `memoCarrier` refuses, is passed over; no such transfer, or more
- * than one, is `ccd/no-carrier`. A ref whose `transaction` is not 64 hex digits is `ccd/wrong-reader`, with nothing
- * read.
+ * than one, is `ccd/no-carrier`. An input whose `tx` is not 64 hex digits, or whose option is not an object, is
+ * `ccd/wrong-reader`, with nothing read; the option is not read further.
  */
-export async function ccdRecover(ref: { network: CcdNetwork; transaction: string }, reader: CcdReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("ccd/wrong-reader");
-  if (typeof ref.transaction !== "string" || !ITEM_HASH.test(ref.transaction)) return refusal("ccd/wrong-reader");
+export async function ccdRecover(
+  input: RecoverInput<CcdNetwork, PaymentRequirements | MppChallenge>,
+  reader: CcdReader,
+): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("ccd/wrong-reader");
+  if (typeof input.tx !== "string" || !ITEM_HASH.test(input.tx) || !isObject(input.option)) return refusal("ccd/wrong-reader");
   let it: CcdItem | null;
   try {
-    it = await reader.item(ref.transaction);
+    it = await reader.item(input.tx);
   } catch {
     return refusal("ccd/unreadable");
   }
@@ -340,17 +407,20 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys for finding this payment later: network, asset, the expiry and the transfer's digest over the sender,
- * the receiver and the amount. A receiver or amount that cannot be read is refused here, and not by `bound`.
+ * the receiver and the amount; and the payee, the `payTo` of the option the payment answers. A receiver or amount
+ * that cannot be read is refused here, and not by `bound`.
  */
-async function reference(presented: unknown): Promise<CcdRef | Refusal> {
+async function reference(presented: unknown, option: PaymentRequirements): Promise<CcdRef | Refusal> {
   const s = await signed(presented);
   if (isRefusal(s)) return s;
   const t = transferOf(s.transfer);
   if (isRefusal(t)) return t;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const idDigest = await ccdIdDigest(s.sender, t.receiver, t.amount);
   if (isRefusal(idDigest)) return idDigest;
   const { accepted } = presented as CcdPaymentPayload;
-  return { network: accepted.network as CcdNetwork, asset: accepted.asset, idDigest, settleBy: s.expiry };
+  return { network: accepted.network as CcdNetwork, asset: accepted.asset, idDigest, settleBy: s.expiry, payee };
 }
 
 async function signed(presented: unknown): Promise<Signed | Refusal> {
@@ -548,4 +618,17 @@ export const exactCcd = Object.freeze({
   reference,
   status: ccdStatus,
   recover: ccdRecover,
-}) satisfies Entry<typeof ID, CcdPaymentPayload, CcdRef & { transaction: string; h: AtrHash }, CcdReader>;
+}) satisfies Entry<
+  typeof ID,
+  CcdPaymentPayload,
+  CcdRef,
+  CcdReader,
+  X402Forms & {
+    choice: CcdChoice;
+    unsigned: CcdUnsigned;
+    landed: { transaction: string; h: AtrHash };
+    network: CcdNetwork;
+    query: StatusQuery<CcdRef & { transaction: string; h: AtrHash }, never, CcdMark, never>;
+    answer: CcdStatus;
+  }
+>;

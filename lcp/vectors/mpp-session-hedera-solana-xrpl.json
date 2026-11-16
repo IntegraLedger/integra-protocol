@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/session/hedera, mpp/session/solana and mpp/session/xrpl. Where a value is shortened, the row holds its prefix and suffix. HS4's receipts are live testnet reads from testnet.hashio.io (eth_getTransactionReceipt) at 2026-09-25T09:02Z. The placed challenges are computed with Python 3 json and base64url.",
+ "about": "Vectors for mpp/session/hedera, mpp/session/solana and mpp/session/xrpl. Where a value is shortened, the row holds its prefix and suffix. HS4's receipts are live testnet reads from testnet.hashio.io (eth_getTransactionReceipt) at 2026-09-25T09:02Z. The placed challenges are computed with Python 3 json and base64url. XS4's rows read XS2's opening, and its closeRows a close named by closeTransaction; each expected answer is the one the profile read-status (read-status.md) gives for its fixture, read at the mark validated for the act payment: a tec result, a validated success of another type and a validated transaction that deleted no such channel are pending, search-incomplete, since this read is no search for H (rules 23 and 24).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -545,6 +545,7 @@
   "expect": "434C4D007FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F1670000000000000064"
  },
  "XS4": {
+  "closeTransaction": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
   "rows": [
    {
     "case": "validated tesSUCCESS PaymentChannelCreate at 990",
@@ -554,9 +555,16 @@
      "ledgerIndex": 990,
      "transactionType": "PaymentChannelCreate"
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
      "state": "settled",
-     "ledgerIndex": 990
+     "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
+     "position": 990,
+     "finality": "validated",
+     "foreign": []
     }
    },
    {
@@ -567,9 +575,14 @@
      "ledgerIndex": 990,
      "transactionType": "PaymentChannelCreate"
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
-     "state": "failed",
-     "why": "claimed-fee"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -580,9 +593,14 @@
      "ledgerIndex": 990,
      "transactionType": "Payment"
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ],
@@ -598,9 +616,16 @@
       "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167"
      ]
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
      "state": "settled",
-     "ledgerIndex": 995
+     "transaction": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+     "position": 995,
+     "finality": "validated",
+     "foreign": []
     }
    },
    {
@@ -612,9 +637,14 @@
      "transactionType": "PaymentChannelClaim",
      "deletedChannels": []
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
     "expect": {
-     "state": "failed",
-     "why": "not-a-close"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ]

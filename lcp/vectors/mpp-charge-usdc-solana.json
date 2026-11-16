@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/solana: the Solana charge with method usdc, its details read from methodDetails.solana, whose network is required (draft-usdc-charge-00, Solana profile). The request, the wire and the expected reference are mpp-charge-solana.json's, so the expected values are that file's. The usdc profile rule is the draft's: methodDetails.type names exactly one profile details object.",
+ "about": "Vectors for mpp/charge/usdc/solana: the Solana charge with method usdc, its details read from methodDetails.solana, whose network is required (draft-usdc-charge-00, Solana profile). The request, the wire and the expected reference are mpp-charge-solana.json's, so the expected values are that file's. The usdc profile rule is the draft's: methodDetails.type names exactly one profile details object. Each reference names the payee of the challenge the payment answers, its request's recipient.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -34,7 +34,8 @@
    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
    "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
   }
  },
  "refusals": {

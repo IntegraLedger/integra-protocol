@@ -3,8 +3,8 @@
 // and needs the XDR refuses `stellar/peer-missing` (the vectors' refusal), never throwing, after every check that needs
 // none, each of which gives the code it gives with the peer. Strkeys (`G…`, `C…` and `M…`) are read and written
 // without the SDK, so isAccount, isContract and muxedFor give every input the answer they give with it;
-// stellarStatus and stellarLocate read as they do with the SDK, pending unreadable or incomplete only where they must
-// decode a transaction.
+// stellarStatus and stellarLocate read as they do with the SDK, unreadable or incomplete only where they must decode a
+// transaction.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
@@ -85,13 +85,13 @@ describe("without @stellar/stellar-sdk", () => {
   });
 
   // peer-free-inputs.test.ts gives V5's reads with the SDK. Only a transaction that succeeded is decoded: a named one is
-  // pending unreadable after its one read, and a search's candidate leaves the search incomplete, pending with the
-  // named transaction's reason, after the same reads.
+  // unreadable unparseable after its one read, and a search's candidate leaves the search incomplete, pending
+  // search-incomplete, after the same reads.
   it("stellarStatus reads as it does with the peer, pending only where it must decode a transaction", { timeout: IMPORT_MS }, async () => {
     const { stellarStatus } = await import("../src/stellar.js");
-    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
+    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 14 })) {
       const c = row.reader();
-      const got = await stellarStatus(row.ref as never, c.reader as never);
+      const got = await stellarStatus(row.ref as never, c.reader as never, row.query as never);
       const want = row.without ?? { expect: row.expect, reads: row.reads };
       expect([row.case, got, c.reads()]).toEqual([row.case, want.expect, want.reads]);
     }

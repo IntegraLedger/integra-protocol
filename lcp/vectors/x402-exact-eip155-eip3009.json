@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/eip155/eip3009 pairing: the x402 and evm entry points of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2; O is the x402 specification's example option (section 5.2.1); the payer is the published Anvil development key. The EIP-712 values were computed with eth-account 0.14.0, eth-abi 6.0.0 and eth-utils 6.0.0 on Python 3.12.3; every SHA-256 with GNU coreutils sha256sum. The ERC-20 Transfer topic is keccak256(\"Transfer(address,address,uint256)\"). Byte strings are hex; uint256 values are decimal strings.",
+ "about": "Vectors for the x402/exact/eip155/eip3009 pairing: the x402 and evm entry points of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2; O is the x402 specification's example option (section 5.2.1); the payer is the published Anvil development key. The EIP-712 values were computed with eth-account 0.14.0, eth-abi 6.0.0 and eth-utils 6.0.0 on Python 3.12.3; every SHA-256 with GNU coreutils sha256sum. The ERC-20 Transfer topic is keccak256(\"Transfer(address,address,uint256)\"). Byte strings are hex; uint256 values are decimal strings. Under the profile read-status, a row that read failed (a revert, no use of H, no paired transfer) now reads pending search-incomplete: at coverage full a failed answer waits for a search for H that this pairing does not have yet (rule 24).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -377,7 +377,8 @@
     "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
     "identity": "from,to,value",
     "digest": "0xc2396ede68ae6fe8e354ddf13ddb355932d97ac8cdeff1467f9307e47bf0d42f"
-   }
+   },
+   "payee": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
   },
   "status": [
    {
@@ -386,9 +387,14 @@
      "blockNumber": "100",
      "logs": []
     },
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
-     "state": "failed",
-     "why": "reverted"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -437,10 +443,16 @@
       }
      ]
     },
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
      "state": "settled",
+     "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+     "position": "100",
      "finality": "finalized",
-     "blockNumber": "100"
+     "foreign": []
     }
    },
    {
@@ -489,10 +501,16 @@
       }
      ]
     },
+    "query": {
+     "act": "payment",
+     "finality": "safe"
+    },
     "expect": {
      "state": "settled",
+     "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+     "position": "104",
      "finality": "safe",
-     "blockNumber": "104"
+     "foreign": []
     }
    },
    {
@@ -541,24 +559,40 @@
       }
      ]
     },
+    "query": {
+     "act": "payment",
+     "finality": "latest"
+    },
     "expect": {
      "state": "settled",
+     "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+     "position": "110",
      "finality": "latest",
-     "blockNumber": "110"
+     "foreign": []
     }
    },
    {
     "receipt": null,
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "receipt": "reader-error",
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    }
   ],
@@ -662,9 +696,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "transfer-not-found"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -693,9 +732,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "transfer-not-found"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -724,9 +768,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "transfer-not-found"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -746,9 +795,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "authorization-not-used"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     }
    ]
@@ -803,9 +857,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "transfer-not-found"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -844,9 +903,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "transfer-not-found"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -894,10 +958,16 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
       "state": "settled",
+      "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "position": "100",
       "finality": "finalized",
-      "blockNumber": "100"
+      "foreign": []
      }
     },
     {
@@ -927,10 +997,16 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
       "state": "settled",
+      "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "position": "100",
       "finality": "finalized",
-      "blockNumber": "100"
+      "foreign": []
      }
     },
     {
@@ -978,9 +1054,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "transfer-not-found"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -1046,10 +1127,16 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
       "state": "settled",
+      "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+      "position": "100",
       "finality": "finalized",
-      "blockNumber": "100"
+      "foreign": []
      }
     },
     {
@@ -1088,9 +1175,14 @@
        }
       ]
      },
+     "query": {
+      "act": "payment",
+      "finality": "finalized"
+     },
      "expect": {
-      "state": "failed",
-      "why": "transfer-not-found"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      }
     }
    ]
@@ -1113,9 +1205,14 @@
     }
    ]
   },
+  "query": {
+   "act": "payment",
+   "finality": "finalized"
+  },
   "expect": {
-   "state": "failed",
-   "why": "authorization-not-used"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "MX": {

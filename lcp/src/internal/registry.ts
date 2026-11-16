@@ -1,10 +1,12 @@
 /**
  * The registry's types: a pairing's data, plain values under one interface, and its codec, typed per family by what
- * the payer presents, the reference a read takes and the reader the caller supplies.
+ * the payer presents, the reference a read takes, the reader the caller supplies, and one descriptor of the family's
+ * other types.
  */
 import type { AtrHash } from "./core.js";
 import type { Refusal } from "../refusal.js";
 import type { Broadcaster } from "./broadcaster.js";
+import type { RecoverInput } from "./read.js";
 
 /**
  * `full`: the payer's own signed act, on a public ledger, binds all of H, a 256-bit digest over a preimage that holds H,
@@ -67,10 +69,16 @@ export interface ReadData {
   readonly life?: Life;
 }
 
+/** A decimal digit other than zero. */
+type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+
 /** Present where the pairing's payment can itself be an agreement. */
 export interface AgreementData {
-  /** The smallest amount the scheme and token admit, in base units, or `rule`, which `advertise` evaluates. */
-  readonly floor: `${bigint}` | "rule";
+  /**
+   * The smallest amount the scheme and token admit, in base units: `"0"`, or a decimal with no sign and no leading
+   * zero; or `rule`, which `advertise` evaluates.
+   */
+  readonly floor: "0" | `${NonZeroDigit}${string}` | "rule";
   /** Who can pay the fee, by the chain and the published scheme. */
   readonly fee: string;
   /** The fields that show the transaction succeeded. */
@@ -121,34 +129,135 @@ export type PairingData = DataMembers &
          * field that is no public proof.
          */
         readonly link: "h" | "pointer" | "none";
-        /** Which agreement the charge can follow: any, one on the same network, or one pairing's. */
-        readonly agreementOn?: "any" | "same-network" | `${string}/${string}`;
+        /** Which agreement the charge can follow: any, one on the same network, or one x402 or MPP pairing's, by its id. */
+        readonly agreementOn?: "any" | "same-network" | `x402/${string}` | `mpp/${string}`;
         readonly agreement?: never;
       }
   );
 
 /**
- * A pairing's codec. `Presented` is what the payer presents, `Ref` the reference `reference` gives and `status` takes,
- * and `Reader` the reader the caller supplies to `status` and `recover`. A pairing with no read takes `never` for
- * both.
+ * A family's own types, as one descriptor: what `read` and `advertise` take and give, what `build` takes and gives,
+ * the option a payment answers, and what `status` and `recover` take and answer.
  */
-export interface Codec<Presented, Ref, Reader> {
-  readonly read: (doc: never) => unknown;
-  /** On MPP, the arguments after `offer` are the challenge's position and the agreement URL; elsewhere, the agreement URL. */
-  readonly advertise: (doc: never, h: AtrHash, link: string, offer: never, ...rest: never[]) => unknown;
-  readonly bound: (presented: Presented, ...rest: never[]) => Promise<AtrHash | Refusal> | AtrHash | Refusal;
-  readonly broadcaster: (presented: Presented) => Promise<Broadcaster | Refusal>;
+export interface Family {
+  /** The advertised document `read` reads. */
+  readonly doc: unknown;
+  /** What `read` gives: the hash, the link, the agreement URL where the document carries one, and the offer. */
+  readonly offered: unknown;
+  /** What `advertise` places H in: the document, or nothing where H goes into values the seller places itself. */
+  readonly placedIn: unknown;
+  /** The offer `advertise` places H on: the x402 option, the MPP challenge, or the protocol's own option. */
+  readonly offer: unknown;
+  /** The arguments `advertise` takes after `offer`: on MPP the challenge's position, then the agreement URL. */
+  readonly rest: readonly unknown[];
+  /** What `advertise` gives. */
+  readonly advertised: unknown;
+  /** The buyer's inputs `build` takes. */
+  readonly choice: unknown;
+  /** What `build` gives the payer to sign. */
+  readonly unsigned: unknown;
+  /** The x402 option or MPP challenge a payment answers, which `reference` and `recover` take. */
+  readonly option: unknown;
   /**
-   * The read keys of a presented payment: the members of `Ref` that what was presented holds. The caller adds the
-   * members only a landed transaction names before it calls `status`.
+   * The members of `status`'s reference that `reference` does not give, which the caller adds: the landed transaction,
+   * and where the read takes them, H and the position its search starts from; `unknown` where there are none.
    */
-  readonly reference?: (presented: Presented, ...rest: never[]) => Promise<Partial<Ref> | Refusal> | Partial<Ref> | Refusal;
-  readonly status?: (ref: Ref, reader: Reader, ...rest: never[]) => Promise<unknown>;
-  readonly recover?: (ref: never, reader: Reader, ...rest: never[]) => Promise<unknown>;
+  readonly landed: unknown;
+  /** The network `recover` takes. */
+  readonly network: unknown;
+  /** What `status` takes beside the reference and the reader. */
+  readonly query: unknown;
+  /** What `status` answers. */
+  readonly answer: unknown;
+  /** The receipt `keySearch` reads; absent where the pairing has no `keySearch`. */
+  readonly receipt?: unknown;
 }
 
-/** A registry entry: its id, its data and its codec. */
-export type Entry<Id extends string, Presented, Ref, Reader> = Codec<Presented, Ref, Reader> & {
-  readonly id: Id;
-  readonly data: PairingData;
-};
+/** The types of `status` and `recover` of a pairing with no read, which has neither member. */
+export interface NoRead {
+  readonly landed: never;
+  readonly network: never;
+  readonly query: never;
+  readonly answer: never;
+}
+
+/** What a channel's `kind` names a payment: its opening, a payment within it, or its close. */
+export type ChannelKind = "open" | "within" | "close";
+
+/**
+ * A pairing's codec. `Presented` is what the payer presents, `Ref` the reference `reference` gives, `Reader` the
+ * reader the caller supplies to `status`, `recover` and `fetchPresented`, and `F` the family's other types. A pairing
+ * with no read has no `status` and no `recover`, and takes `never` for `Reader`, and for `Ref` where it has no
+ * `reference`.
+ */
+export interface Codec<Presented, Ref, Reader, F extends Family> {
+  readonly read: (doc: F["doc"]) => F["offered"] | Refusal;
+  readonly advertise: (
+    doc: F["placedIn"],
+    h: AtrHash,
+    link: string,
+    offer: F["offer"],
+    ...rest: F["rest"]
+  ) => F["advertised"] | Refusal;
+  /** `advertise` without the checks on a carrier the seller writes after H. */
+  readonly advertiseBeforeCarrier?: (
+    doc: F["placedIn"],
+    h: AtrHash,
+    link: string,
+    offer: F["offer"],
+    ...rest: F["rest"]
+  ) => F["advertised"] | Refusal;
+  /** Absent where lcp builds no payment for the pairing: the payer's own client builds it. */
+  readonly build?: (choice: F["choice"], h: AtrHash) => Promise<F["unsigned"] | Refusal>;
+  readonly bound: (presented: Presented) => Promise<AtrHash | Refusal>;
+  readonly broadcaster: (presented: Presented) => Promise<Broadcaster | Refusal>;
+  /** The read keys of a presented payment, with the payee of the option it answers. */
+  readonly reference?: (presented: Presented, option: F["option"]) => Promise<Ref | Refusal>;
+  /** The read of the act the query asks about, from the reference and what the landed transaction adds to it. */
+  readonly status?: (ref: Ref & F["landed"], reader: Reader, query: F["query"]) => Promise<F["answer"]>;
+  /** H, or the value an agreement's transaction carries, read back from a landed transaction. */
+  readonly recover?: (input: RecoverInput<F["network"], F["option"]>, reader: Reader) => Promise<AtrHash | Refusal>;
+  /** For a channel, a session or a subscription. */
+  readonly channel?: {
+    readonly kind: (presented: Presented) => ChannelKind | Refusal;
+    readonly ref: (presented: Presented) => Promise<{ network: string; channel: string } | Refusal>;
+    readonly boundWithin: (presented: Presented) => Promise<AtrHash | Refusal>;
+    readonly until: (presented: Presented) => number | undefined;
+  };
+  /** For a form its payer broadcasts: the presented payment completed with the landed transaction it names. */
+  readonly fetchPresented?: (presented: Presented, reader: Reader) => Promise<Presented | Refusal>;
+  /** For a form its payer broadcasts: the transaction the presented payment names, or undefined. */
+  readonly landedTx?: (presented: Presented) => string | undefined;
+  /** The read keys of a transfer made under a key the payer authorised over H, from the receipt that registered it. */
+  readonly keySearch?: (
+    ref: Ref,
+    receipt: F extends { readonly receipt: infer R } ? R : never,
+    h: AtrHash,
+  ) => Ref | Refusal;
+  /** What the record proves for a transfer `keySearch` finds. */
+  readonly keyProves?: string;
+}
+
+/** True where `T` is `never`. */
+type IsNever<T> = [T] extends [never] ? true : false;
+
+/**
+ * The members a codec may not have where its entry takes `never`: none where `Presented` is `never`, since `bound`
+ * takes what is presented; no member that takes the reader where `Reader` is; none that gives or takes the reference
+ * where `Ref` is.
+ */
+type NoneWhereNever<Presented, Ref, Reader> = (IsNever<Presented> extends true ? never : unknown) &
+  (IsNever<Reader> extends true
+    ? { readonly status?: undefined; readonly recover?: undefined; readonly fetchPresented?: undefined }
+    : unknown) &
+  (IsNever<Ref> extends true ? { readonly reference?: undefined; readonly keySearch?: undefined } : unknown);
+
+/**
+ * A registry entry: its id, its data and its codec. It takes `never` for `Reader` only where the codec has no member
+ * that takes a reader, for `Ref` only where it has no `reference`, and never for `Presented`.
+ */
+export type Entry<Id extends string, Presented, Ref, Reader, F extends Family> = Codec<Presented, Ref, Reader, F> &
+  NoneWhereNever<Presented, Ref, Reader> & {
+    readonly id: Id;
+    readonly data: PairingData;
+  };

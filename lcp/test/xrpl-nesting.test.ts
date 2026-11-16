@@ -61,20 +61,20 @@ describe("x402/exact/xrpl: bound and reference", () => {
   it("XC10: x402-exact-xrpl.json V2's H, and the reference by XC10's hash", async () => {
     const r = row("XC10");
     expect(await exactXrpl.bound(paid(r.blob))).toBe(X.V2.expectBound);
-    expect(await exactXrpl.reference(paid(r.blob))).toEqual({ ...X.V2.expectReference, transaction: r.hash });
+    expect(await exactXrpl.reference(paid(r.blob), X.V2.accepted)).toEqual({ ...X.V2.expectReference, transaction: r.hash });
   });
 
   it("XC11: refused", async () => {
     const r = row("XC11");
     expect(await exactXrpl.bound(paid(r.blob))).toEqual(malformed);
-    expect(await exactXrpl.reference(paid(r.blob))).toEqual(malformed);
+    expect(await exactXrpl.reference(paid(r.blob), X.V2.accepted)).toEqual(malformed);
   });
 
   it("XC16, V2's blob with an array end marker in the transaction's object: refused", async () => {
     const r = row("XC16");
     expect(r.blob).toBe(`${X.V2.blob}F1F1`);
     expect(await exactXrpl.bound(paid(r.blob))).toEqual(malformed);
-    expect(await exactXrpl.reference(paid(r.blob))).toEqual(malformed);
+    expect(await exactXrpl.reference(paid(r.blob), X.V2.accepted)).toEqual(malformed);
   });
 });
 
@@ -95,13 +95,13 @@ describe("mpp/charge/xrpl: bound and reference", () => {
   it("XC12: mpp-charge-xrpl.json V3's H, and the reference by XC12's hash", async () => {
     const r = row("XC12");
     expect(await chargeXrpl.bound(presented(r.blob))).toBe(M.V3.expectBound);
-    expect(await chargeXrpl.reference(presented(r.blob))).toEqual({ ...M.V3.expectReference, transaction: r.hash });
+    expect(await chargeXrpl.reference(presented(r.blob), challenge)).toEqual({ ...M.V3.expectReference, transaction: r.hash });
   });
 
   it("XC13: refused", async () => {
     const r = row("XC13");
     expect(await chargeXrpl.bound(presented(r.blob))).toEqual(malformed);
-    expect(await chargeXrpl.reference(presented(r.blob))).toEqual(malformed);
+    expect(await chargeXrpl.reference(presented(r.blob), challenge)).toEqual(malformed);
   });
 });
 
@@ -135,9 +135,14 @@ describe("mpp/session/xrpl: bound, reference, channel.ref, recover, build's comp
     const r = row("XC14");
     expect(landed).toMatchObject({ validated: true, result: "tesSUCCESS", transactionType: "PaymentChannelCreate" });
     expect(await sessionXrpl.bound(open(r.blob))).toBe(S.XS2.expectBound);
-    expect(await sessionXrpl.reference(open(r.blob))).toEqual({ network: "xrpl:1", transaction: r.hash, lastLedgerSequence: S.XS2.lastLedgerSequence });
+    expect(await sessionXrpl.reference(open(r.blob), challenge)).toEqual({
+      network: "xrpl:1",
+      transaction: r.hash,
+      lastLedgerSequence: S.XS2.lastLedgerSequence,
+      payee: S.XS2.expectTxJson.Destination,
+    });
     expect(await sessionXrpl.channel.ref(open(r.blob))).toEqual({ network: "xrpl:1", channel: S.XS2.expectChannel });
-    expect(await sessionXrpl.recover({ network: "xrpl:1", transaction: r.hash }, reader(r))).toBe(S.XS2.expectBound);
+    expect(await sessionXrpl.recover({ network: "xrpl:1", tx: r.hash, option: challenge }, reader(r))).toBe(S.XS2.expectBound);
     expect(await completed(r.blob)).toMatchObject({ payload: { action: "open", transaction: r.blob } });
     expect(await within(r.blob)).toMatchObject({ requests: [{ kind: "xrpl-claim", channelId: S.XS2.expectChannel, drops: 100n }] });
   });
@@ -145,9 +150,9 @@ describe("mpp/session/xrpl: bound, reference, channel.ref, recover, build's comp
   it("XC15: refused, and recover reads the blob as unreadable", async () => {
     const r = row("XC15");
     expect(await sessionXrpl.bound(open(r.blob))).toEqual(malformed);
-    expect(await sessionXrpl.reference(open(r.blob))).toEqual(malformed);
+    expect(await sessionXrpl.reference(open(r.blob), challenge)).toEqual(malformed);
     expect(await sessionXrpl.channel.ref(open(r.blob))).toEqual(malformed);
-    expect(await sessionXrpl.recover({ network: "xrpl:1", transaction: r.hash }, reader(r))).toEqual(refused("xrpl/unreadable"));
+    expect(await sessionXrpl.recover({ network: "xrpl:1", tx: r.hash, option: challenge }, reader(r))).toEqual(refused("xrpl/unreadable"));
     expect(await completed(r.blob)).toEqual(malformed);
     expect(await within(r.blob)).toEqual(malformed);
   });

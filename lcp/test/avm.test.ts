@@ -51,6 +51,13 @@ function readerOf(byTxid: Record<string, Answer>, fallback: Answer, note = V.V4.
     searchNote: async () => ({ txid: V.plant.otherTxid, ...toAnswer(V.plant.otherAnswer) }),
   };
 }
+/** The query a row asks: the act payment at the one mark unless the row's query says otherwise, its position a round. */
+const paymentAct = { act: "payment", finality: "final" } as const;
+function queryOf(q?: { act: "payment" | "agreement"; finality: "final"; after?: string }) {
+  if (q === undefined) return paymentAct;
+  return q.after === undefined ? { act: q.act, finality: q.finality } : { act: q.act, finality: q.finality, after: BigInt(q.after) };
+}
+const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };
 const withStrings = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
 /** How V3.refusals ends the case of each row that writes a string that is not UTF-8. */
@@ -124,9 +131,10 @@ describe("x402-exact-algorand.json", () => {
   it("V3: bound and reference, and the refusals", async () => {
     const payment = await completed();
     expect(await exactAvm.bound(payment)).toBe(V.V3.expectBound);
-    const ref = await exactAvm.reference(payment);
+    const ref = await exactAvm.reference(payment, O);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
+    expect(await exactAvm.reference(payment, {} as PaymentRequirements)).toEqual({ refused: true, code: "x402/option-malformed" });
     for (const row of rowsOf(V.V3.refusals, "x402-exact-algorand.json V3.refusals")) {
       expect(avmCarrier({ paymentIndex: row.paymentIndex, paymentGroup: row.paymentGroup })).toEqual({
         refused: true,
@@ -212,7 +220,7 @@ describe("x402-exact-algorand.json", () => {
     const answers: unknown[] = [];
     for (const entry of [e1, e2, f2, f1, e2, e1, f1, f2]) {
       const presented = { ...payment, payload: { paymentIndex: 1, paymentGroup: [V.V2.expectPaymentGroup[0], entry!.toString("base64")] } };
-      answers.push([await exactAvm.bound(presented), await exactAvm.reference(presented)]);
+      answers.push([await exactAvm.bound(presented), await exactAvm.reference(presented, O)]);
     }
     expect(answers).toEqual(Array.from({ length: 8 }, () => [refused, refused]));
   });
@@ -241,7 +249,7 @@ describe("x402-exact-algorand.json", () => {
         const presented = presentedWith(at(msgpackStr(text)));
         const label = `${place}: ${text.slice(0, 16)}`;
         expect(await exactAvm.bound(presented), label).toEqual({ refused: true, code: "avm/txn-malformed" });
-        expect(await exactAvm.reference(presented), label).toEqual({ refused: true, code: "avm/txn-malformed" });
+        expect(await exactAvm.reference(presented, O), label).toEqual({ refused: true, code: "avm/txn-malformed" });
       }
     }
     for (const text of wellFormed) {
@@ -269,7 +277,7 @@ describe("x402-exact-algorand.json", () => {
       const accepted: PaymentRequirements = row.accepted;
       const presented = { ...payment, accepted };
       expect(await exactAvm.bound(presented)).toEqual({ refused: true, code: row.expect });
-      expect(await exactAvm.reference(presented)).toEqual({ refused: true, code: row.expect });
+      expect(await exactAvm.reference(presented, O)).toEqual({ refused: true, code: row.expect });
       expect(pairingOf(accepted)).toBeUndefined();
       expect(exactAvm.advertise(required(accepted), H, V.fixed.link, accepted)).toEqual({ refused: true, code: row.expect });
       expect(exactAvm.read({ ...doc, accepts: [accepted] })).toEqual({ refused: true, code: "x402/no-payable-option" });
@@ -282,24 +290,33 @@ describe("x402-exact-algorand.json", () => {
     for (const row of rowsOf(V.options, "x402-exact-algorand.json options", { exact: 3 })) {
       const presented = { ...payment, accepted: row.option };
       expect(await exactAvm.bound(presented)).toEqual({ refused: true, code: row.expect });
-      expect(await exactAvm.reference(presented)).toEqual({ refused: true, code: row.expect });
+      expect(await exactAvm.reference(presented, O)).toEqual({ refused: true, code: row.expect });
     }
   });
 
   it("V4: status and recover", async () => {
     const ref = V.V4.reference;
     for (const row of rowsOf(V.V4.rows, "x402-exact-algorand.json V4.rows")) {
-      expect(withStrings(await avmStatus(ref, readerOf({}, row.answer)))).toEqual(row.expect);
+      expect(withStrings(await avmStatus(ref, readerOf({}, row.answer), queryOf(row.query))), row.case).toEqual(row.expect);
     }
-    expect(await exactAvm.recover(ref, readerOf({}, V.V4.recover.answer))).toBe(V.V4.recover.expect);
+    const input = { network: ref.network, tx: ref.txid, option: O };
+    expect(await exactAvm.recover(input, readerOf({}, V.V4.recover.answer))).toBe(V.V4.recover.expect);
+  });
+
+  it("V4: status of a reader for another network is unreadable chain-mismatch", async () => {
+    const reader = { ...readerOf({}, V.V4.rows[0].answer), network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k" as const };
+    expect(await avmStatus(V.V4.reference, reader, paymentAct)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
   });
 
   // An Algorand transaction id is the base32 of its SHA-512/256 hash, without padding: 52 characters (the file's
   // txids, from py-algorand-sdk). Each ref below holds V4's id or last valid round in another form, beside a reader
   // that answers V4's expired row for any id; none is read.
-  it("V4: a ref whose txid or lastValid is not in the form reference writes is unreadable, with nothing read", async () => {
+  it("V4: a ref whose txid or lastValid is not in the form reference writes is unreadable unparseable, with nothing read", async () => {
     const ref = V.V4.reference;
-    const expired = V.V4.rows.find((r: { expect: { why: string } }) => r.expect.why === "expired");
+    type Row = { answer: Answer; expect: unknown };
+    const expired = (V.V4.rows as Row[]).find(
+      (r) => r.answer !== "reader-error" && r.answer.found === null && BigInt(r.answer.currentRound) > BigInt(ref.lastValid),
+    )!;
     const searched: unknown[] = [];
     const reader: AvmReader = {
       network: V.V4.readerNetwork,
@@ -310,7 +327,7 @@ describe("x402-exact-algorand.json", () => {
     };
     // Ids in the written form are read: V4's, and the fee payer's, whose last character is Q.
     for (const txid of [ref.txid, V.V2.expectFeePayerTxid]) {
-      expect(withStrings(await avmStatus({ ...ref, txid }, reader))).toEqual(expired.expect);
+      expect(withStrings(await avmStatus({ ...ref, txid }, reader, paymentAct))).toEqual(expired.expect);
     }
     expect(searched).toEqual([ref.txid, V.V2.expectFeePayerTxid]);
     searched.length = 0;
@@ -328,17 +345,17 @@ describe("x402-exact-algorand.json", () => {
       1,
     ];
     for (const txid of txids) {
-      expect(await avmStatus({ ...ref, txid }, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await avmStatus({ ...ref, txid }, reader, paymentAct)).toEqual(unparseable);
     }
     for (const lastValid of ["18446744073709551616", "99999999999999999999", "067634796", "-1", 67634796, null]) {
-      expect(await avmStatus({ ...ref, lastValid }, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await avmStatus({ ...ref, lastValid }, reader, paymentAct)).toEqual(unparseable);
     }
     expect(searched).toEqual([]);
   });
 
   // As above for recover, beside a reader that answers V4's recover fixture, whose note gives the file's H, for any id.
-  it("V4: recover is avm/wrong-reader for a ref whose txid is not as reference writes it, with nothing read", async () => {
-    const ref = { network: V.V4.reference.network, txid: V.V4.reference.txid };
+  it("V4: recover is avm/wrong-reader for an input whose tx is not as reference writes it, or whose option is not an object, with nothing read", async () => {
+    const ref = { network: V.V4.reference.network, tx: V.V4.reference.txid, option: O };
     const searched: unknown[] = [];
     const reader: AvmReader = {
       network: V.V4.readerNetwork,
@@ -347,28 +364,29 @@ describe("x402-exact-algorand.json", () => {
         return readerOf({}, V.V4.recover.answer).search(txid);
       },
     };
-    for (const txid of [ref.txid, V.V2.expectFeePayerTxid]) {
-      expect(await exactAvm.recover({ ...ref, txid }, reader)).toBe(V.V4.recover.expect);
+    for (const tx of [ref.tx, V.V2.expectFeePayerTxid]) {
+      expect(await exactAvm.recover({ ...ref, tx }, reader)).toBe(V.V4.recover.expect);
     }
-    expect(searched).toEqual([ref.txid, V.V2.expectFeePayerTxid]);
+    expect(searched).toEqual([ref.tx, V.V2.expectFeePayerTxid]);
     searched.length = 0;
-    const digest = base32.decode(ref.txid + "====");
+    const digest = base32.decode(ref.tx + "====");
     const txids = [
-      ref.txid.toLowerCase(),
-      ref.txid.slice(0, 51),
-      ref.txid + "====",
-      ref.txid.slice(0, 51) + "B",
+      ref.tx.toLowerCase(),
+      ref.tx.slice(0, 51),
+      ref.tx + "====",
+      ref.tx.slice(0, 51) + "B",
       Buffer.from(digest).toString("hex"),
       "",
       null,
       1,
     ];
-    for (const txid of txids) {
-      expect(await exactAvm.recover({ ...ref, txid }, reader)).toEqual({ refused: true, code: "avm/wrong-reader" });
+    for (const tx of txids) {
+      expect(await exactAvm.recover({ ...ref, tx } as never, reader)).toEqual({ refused: true, code: "avm/wrong-reader" });
     }
+    expect(await exactAvm.recover({ ...ref, option: null } as never, reader)).toEqual({ refused: true, code: "avm/wrong-reader" });
     expect(searched).toEqual([]);
-    // A ref on another network than the reader's is avm/wrong-reader, whatever its txid.
-    const otherNetwork = { network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k", txid: null };
+    // An input on another network than the reader's is avm/wrong-reader, whatever its tx.
+    const otherNetwork = { network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k", tx: null, option: O };
     expect(await exactAvm.recover(otherNetwork as never, reader)).toEqual({ refused: true, code: "avm/wrong-reader" });
   });
 
@@ -390,7 +408,7 @@ describe("x402-exact-algorand.json", () => {
       const entry = Buffer.from(encodeMsgpack(authorized)).toString("base64");
       const presented = { ...payment, payload: { paymentIndex: 1, paymentGroup: [feePayerEntry!, entry] } };
       expect(await exactAvm.bound(presented)).toBe(V.V3.expectBound);
-      expect(await exactAvm.reference(presented)).toEqual(V.V3.expectReference);
+      expect(await exactAvm.reference(presented, O)).toEqual(V.V3.expectReference);
     }
     expect(exactAvm.data.proves).toContain("with a signature, a multisignature or a logic signature");
     expect(exactAvm.data.proves).not.toContain("payer signed");
@@ -399,7 +417,7 @@ describe("x402-exact-algorand.json", () => {
   it("plant: a note search is never a settlement", async () => {
     const ref = V.V4.reference;
     const reader = readerOf({ [V.plant.otherTxid]: V.plant.otherAnswer, [ref.txid]: V.plant.claimedAnswer }, V.plant.claimedAnswer);
-    expect(withStrings(await avmStatus(ref, reader))).toEqual(V.plant.expect);
+    expect(withStrings(await avmStatus(ref, reader, paymentAct))).toEqual(V.plant.expect);
   });
 
   it("the option filter, advertise and read", () => {
@@ -466,10 +484,11 @@ describe("x402-exact-algorand.json", () => {
       const entry = decodeSignedTransaction(Buffer.from(payment.payload.paymentGroup[1]!, "base64"));
       expect(Buffer.from(entry.txn.group!).toString("base64"), row.case).toBe(row.expectGroupId);
       expect(await exactAvm.bound(payment), row.case).toBe(row.expectBound);
-      expect(await exactAvm.reference(payment), row.case).toEqual({
+      expect(await exactAvm.reference(payment, O), row.case).toEqual({
         network: O.network,
         txid: row.expectPaymentTxid,
         lastValid: V.V3.expectReference.lastValid,
+        payee: O.payTo,
       });
     }
     expect([V.build.rows[0].genesisId.isWellFormed(), V.build.rows[2].genesisId.isWellFormed()]).toEqual([false, false]);

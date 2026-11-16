@@ -21,6 +21,8 @@ import {
   type SvmReader,
   type SvmRef,
   type SvmTx,
+  type SvmQuery,
+  type SvmStatus,
 } from "./internal/svm.js";
 import { isObject, normalHash } from "./fields.js";
 import {
@@ -38,6 +40,7 @@ import {
   withoutExtra,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -48,6 +51,7 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 import { SOLANA } from "./internal/data/solana.js";
+import { x402Payee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -210,13 +214,19 @@ function boundOf(accepted: PaymentRequirements, tx: SvmTx): AtrHash | Refusal {
   return carrier.h;
 }
 
-/** The read keys for finding this payment later: digest, fee payer, blockhash, and the transaction id once signed. */
-async function reference(presented: unknown): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
+/**
+ * The read keys for finding this payment later: digest, fee payer, blockhash, and the transaction id once signed; and
+ * the payee of `option`, the option the payment answers (`x402Payee`).
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
   const p = presentedTx(presented);
   if (isRefusal(p)) return p;
   const h = boundOf(p.accepted, p.tx);
   if (typeof h !== "string") return h;
-  return svmReference(p.accepted.network as SolanaNetwork, p.tx);
+  const ref = await svmReference(p.accepted.network as SolanaNetwork, p.tx);
+  if (isRefusal(ref)) return ref;
+  const payee = x402Payee(option);
+  return isRefusal(payee) ? payee : { ...ref, payee };
 }
 
 const pattern: LcpPattern = Object.freeze({
@@ -245,4 +255,17 @@ export const exactSvm = Object.freeze({
   reference,
   status: svmStatus,
   recover: svmRecover,
-}) satisfies Entry<typeof ID, SvmPaymentPayload, SvmRef & { transaction: string }, SvmReader>;
+}) satisfies Entry<
+  typeof ID,
+  SvmPaymentPayload,
+  Omit<SvmRef, "fromSlot">,
+  SvmReader,
+  X402Forms & {
+    choice: SvmChoice;
+    unsigned: SvmUnsigned<SvmPaymentPayload>;
+    landed: { fromSlot: string; transaction: string };
+    network: SolanaNetwork;
+    query: SvmQuery;
+    answer: SvmStatus;
+  }
+>;

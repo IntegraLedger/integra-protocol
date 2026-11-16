@@ -91,9 +91,9 @@ export interface RecoverDecode {
 const answerOf = (e: string) => (e.startsWith("0x") ? e : { refused: true, code: e });
 
 const TON_NETWORK: string = TVM.V4.ref.network;
-const TON_REF = { network: TON_NETWORK, transaction: TVM.V4.recover[0].transaction as string };
+const TON_REF = { network: TON_NETWORK, tx: TVM.V4.recover[0].transaction as string, option: TVM.fixed.O as unknown };
 const tonTx = (inBody: Uint8Array | null) => ({
-  hash: TON_REF.transaction,
+  hash: TON_REF.tx,
   account: TVM.fixed.jettonWallet,
   aborted: false,
   finality: 2,
@@ -105,10 +105,10 @@ export function tvmRecoverReads(): RecoverRead[] {
   const read = (answer: unknown) => () => counted(TON_NETWORK, "byHash", answer);
   return [
     { case: "a reader for another network", ref: TON_REF, reader: () => counted("tvm:-3", "byHash", null), expect: "tvm/wrong-reader", reads: 0 },
-    { case: "a ref whose transaction is empty", ref: { ...TON_REF, transaction: "" }, reader: read(null), expect: "tvm/wrong-reader", reads: 0 },
+    { case: "a ref whose transaction is empty", ref: { ...TON_REF, tx: "" }, reader: read(null), expect: "tvm/wrong-reader", reads: 0 },
     { case: "a read that fails", ref: TON_REF, reader: read("error"), expect: "tvm/unreadable", reads: 1 },
     { case: "no transaction", ref: TON_REF, reader: read(null), expect: "tvm/not-found", reads: 1 },
-    { case: "an answer that is not a transaction", ref: TON_REF, reader: read({ hash: TON_REF.transaction }), expect: "tvm/unreadable", reads: 1 },
+    { case: "an answer that is not a transaction", ref: TON_REF, reader: read({ hash: TON_REF.tx }), expect: "tvm/unreadable", reads: 1 },
     { case: "a transaction with no inbound message body", ref: TON_REF, reader: read(tonTx(null)), expect: "tvm/not-jetton-transfer", reads: 1 },
     { case: "an empty inbound message body", ref: TON_REF, reader: read(tonTx(new Uint8Array(0))), expect: "tvm/unreadable", reads: 1 },
     { case: "an inbound message body over 8 KiB", ref: TON_REF, reader: read(tonTx(new Uint8Array(8193))), expect: "tvm/boc-too-large", reads: 1 },
@@ -142,7 +142,7 @@ export function tvmCarrierInputs(): { case: string; boc: unknown; network: unkno
 export function tvmRecoverDecodes(): RecoverDecode[] {
   return (TVM.V4.recover as { case: string; transaction: string; inBodyHex: string; expect: string }[]).map((row) => ({
     case: row.case,
-    ref: { network: TON_NETWORK, transaction: row.transaction },
+    ref: { ...TON_REF, tx: row.transaction },
     reader: () => counted(TON_NETWORK, "byHash", tonTx(Uint8Array.from(Buffer.from(row.inBodyHex, "hex")))),
     expect: answerOf(row.expect),
   }));
@@ -150,7 +150,7 @@ export function tvmRecoverDecodes(): RecoverDecode[] {
 
 const SUI_NETWORK: string = SUI.V4.ref.network;
 const SUI_TX: Record<string, Uint8Array> = { V1: bytes(SUI.V1.tx.transactionBase64), V2: bytes(SUI.V2.tx.transactionBase64) };
-const SUI_REF = { network: SUI_NETWORK, digest: SUI.V2.tx.digest as string };
+const SUI_REF = { network: SUI_NETWORK, tx: SUI.V2.tx.digest as string, option: SUI.fixed.O as unknown };
 /** Sui's digest of transaction bytes: base58 of BLAKE2b-256 over "TransactionData::" and the bytes. */
 const suiDigestOf = (b: Uint8Array) => base58.encode(blake2b(Uint8Array.from([...Buffer.from("TransactionData::"), ...b]), { dkLen: 32 }));
 /** V2's bytes with the version tag (byte 0) or the kind tag (byte 1) replaced. */
@@ -165,9 +165,9 @@ export function suiRecoverReads(): RecoverRead[] {
   const read = (answer: unknown) => () => counted(SUI_NETWORK, "read", answer);
   return [
     { case: "a reader for another network", ref: SUI_REF, reader: () => counted("sui:mainnet", "read", null), expect: "sui/wrong-reader", reads: 0 },
-    { case: "a digest of one byte", ref: { ...SUI_REF, digest: "x" }, reader: read(null), expect: "sui/wrong-reader", reads: 0 },
-    { case: "a digest outside base58", ref: { ...SUI_REF, digest: "0".repeat(44) }, reader: read(null), expect: "sui/wrong-reader", reads: 0 },
-    { case: "a digest of 45 characters", ref: { ...SUI_REF, digest: `1${SUI_REF.digest}` }, reader: read(null), expect: "sui/wrong-reader", reads: 0 },
+    { case: "a digest of one byte", ref: { ...SUI_REF, tx: "x" }, reader: read(null), expect: "sui/wrong-reader", reads: 0 },
+    { case: "a digest outside base58", ref: { ...SUI_REF, tx: "0".repeat(44) }, reader: read(null), expect: "sui/wrong-reader", reads: 0 },
+    { case: "a digest of 45 characters", ref: { ...SUI_REF, tx: `1${SUI_REF.tx}` }, reader: read(null), expect: "sui/wrong-reader", reads: 0 },
     { case: "a read that fails", ref: SUI_REF, reader: read("error"), expect: "sui/unreadable", reads: 1 },
     { case: "no transaction", ref: SUI_REF, reader: read(suiAnswer(null)), expect: "sui/not-found", reads: 1 },
     { case: "an answer out of the reader's form", ref: SUI_REF, reader: read({ epoch: "1234" }), expect: "sui/unreadable", reads: 1 },
@@ -178,7 +178,7 @@ export function suiRecoverReads(): RecoverRead[] {
       { case: "a transaction whose kind is not programmable", tx: suiTagged(1, 1), expect: "sui/not-programmable" },
     ].map((r) => ({
       case: r.case,
-      ref: { network: SUI_NETWORK, digest: suiDigestOf(r.tx) },
+      ref: { ...SUI_REF, tx: suiDigestOf(r.tx) },
       reader: () => counted(SUI_NETWORK, "read", suiAnswer({ bcs: r.tx, status: "SUCCESS" })),
       expect: r.expect,
       reads: 1,
@@ -204,7 +204,7 @@ export function suiDecodeInputs(): { case: string; base64: unknown; expect: stri
 export function suiRecoverDecodes(): RecoverDecode[] {
   return (SUI.V4.recover as { case: string; digest: string; answer: { tx: string; status: string }; expect: string }[]).map((row) => ({
     case: row.case,
-    ref: { network: SUI_NETWORK, digest: row.digest },
+    ref: { ...SUI_REF, tx: row.digest },
     reader: () => counted(SUI_NETWORK, "read", suiAnswer({ bcs: SUI_TX[row.answer.tx]!, status: row.answer.status })),
     expect: answerOf(row.expect),
   }));
@@ -799,6 +799,8 @@ export interface StatusRow {
   expect: unknown;
   reads: number;
   without?: { expect: unknown; reads: number };
+  /** The query the read is asked, where the rail's status takes one. */
+  query?: unknown;
 }
 
 /** A reader whose calls are counted, each answering through `answer(method, ...args)`, which throws to fail the read. */
@@ -820,6 +822,8 @@ function countedBy(network: string, answer: (method: string, args: unknown[]) =>
 const SUI_STATUS_REF = SUI.V4.ref as { network: string; digest: string; untilEpoch: string; h: string };
 /** The position x402-exact-sui.json's V4 reads from. */
 export const SUI_STATUS_POSITION = BigInt(SUI.V4.position);
+/** The query of x402-exact-sui.json's V4 reads: the act payment at Sui's one mark, after its position. */
+export const SUI_STATUS_QUERY = { act: "payment", finality: "final", after: SUI_STATUS_POSITION } as const;
 const suiStatusAnswer = (tx: { bcs: Uint8Array; status: string } | null, epoch: bigint, firstCheckpoint: bigint | null) => ({
   tx: tx === null ? null : { transactionBcs: tx.bcs, status: tx.status, checkpoint: 7n },
   epoch,
@@ -827,29 +831,32 @@ const suiStatusAnswer = (tx: { bcs: Uint8Array; status: string } | null, epoch: 
 });
 
 /**
- * `suiStatus` reads of x402-exact-sui.json's V4 ref from its position. Only bytes that hash to the digest and pass
- * `decodeSuiTx`'s tags are decoded with @mysten/sui: without it those are pending `unreadable` after the one read.
+ * `suiStatus` reads of x402-exact-sui.json's V4 ref after its position. Only bytes that hash to the digest and pass
+ * `decodeSuiTx`'s tags are decoded with @mysten/sui: without it those are unreadable `unparseable` after the one read.
+ * With no search for H, an aborted, expired or absent transaction, and one that carries no act, are pending
+ * `search-incomplete` (read-status rule 24).
  */
 export function suiStatusRows(): StatusRow[] {
   const ref = SUI_STATUS_REF;
   const read = (answer: unknown) => () => counted(SUI_NETWORK, "read", answer);
-  const unreadable = { state: "pending", why: "unreadable" };
-  const decoded = { expect: unreadable, reads: 1 };
+  const unreadable = (reason: string) => ({ state: "unreadable", reason, foreign: [] });
+  const search = { state: "pending", reason: "search-incomplete", foreign: [] };
+  const decoded = { expect: unreadable("unparseable"), reads: 1 };
   const tagged = (at: 0 | 1, tag: number) => ({ ref: { ...ref, digest: suiDigestOf(suiTagged(at, tag)) }, reader: read(suiStatusAnswer({ bcs: suiTagged(at, tag), status: "SUCCESS" }, 1234n, null)) });
   return [
-    { case: "V2's transaction, executed at checkpoint 7", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "SUCCESS" }, 1234n, null)), expect: { state: "settled", checkpoint: 7n }, reads: 1, without: decoded },
-    { case: "V2's transaction, aborted", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "FAILURE" }, 1234n, null)), expect: { state: "failed", why: "aborted" }, reads: 1, without: decoded },
-    { case: "no transaction, at its bound", ref, reader: read(suiStatusAnswer(null, 1234n, 0n)), expect: { state: "pending", why: "not-found" }, reads: 1 },
-    { case: "no transaction past its bound, the history held from the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION)), expect: { state: "failed", why: "expired" }, reads: 1 },
-    { case: "no transaction past its bound, the history held only after the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION + 1n)), expect: { state: "pending", why: "not-found" }, reads: 1 },
-    { case: "no transaction past its bound, no history named", ref, reader: read(suiStatusAnswer(null, 1235n, null)), expect: { state: "pending", why: "not-found" }, reads: 1 },
-    { case: "a read that fails", ref, reader: read("error"), expect: unreadable, reads: 1 },
-    { case: "an answer out of the reader's form", ref, reader: read({ epoch: "1234" }), expect: unreadable, reads: 1 },
-    { case: "V1's bytes under V2's digest", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V1!, status: "SUCCESS" }, 1234n, null)), expect: unreadable, reads: 1 },
-    { case: "bytes whose version tag is not V1's", ...tagged(0, 1), expect: { state: "failed", why: "not-this-instrument" }, reads: 1 },
-    { case: "a transaction whose kind is not programmable", ...tagged(1, 1), expect: { state: "failed", why: "not-this-instrument" }, reads: 1 },
-    { case: "a reader for another network", ref, reader: () => counted("sui:mainnet", "read", null), expect: unreadable, reads: 0 },
-    { case: "a ref whose h is not a hash", ref: { ...ref, h: "0x12" }, reader: read(null), expect: unreadable, reads: 0 },
+    { case: "V2's transaction, executed at checkpoint 7", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "SUCCESS" }, 1234n, null)), expect: { state: "settled", transaction: ref.digest, position: 7n, finality: "final", foreign: [] }, reads: 1, without: decoded },
+    { case: "V2's transaction, aborted", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "FAILURE" }, 1234n, null)), expect: search, reads: 1, without: decoded },
+    { case: "no transaction, at its bound", ref, reader: read(suiStatusAnswer(null, 1234n, 0n)), expect: search, reads: 1 },
+    { case: "no transaction past its bound, the history held from the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION)), expect: search, reads: 1 },
+    { case: "no transaction past its bound, the history held only after the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION + 1n)), expect: search, reads: 1 },
+    { case: "no transaction past its bound, no history named", ref, reader: read(suiStatusAnswer(null, 1235n, null)), expect: search, reads: 1 },
+    { case: "a read that fails", ref, reader: read("error"), expect: unreadable("transport"), reads: 1 },
+    { case: "an answer out of the reader's form", ref, reader: read({ epoch: "1234" }), expect: unreadable("unparseable"), reads: 1 },
+    { case: "V1's bytes under V2's digest", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V1!, status: "SUCCESS" }, 1234n, null)), expect: unreadable("unparseable"), reads: 1 },
+    { case: "bytes whose version tag is not V1's", ...tagged(0, 1), expect: search, reads: 1 },
+    { case: "a transaction whose kind is not programmable", ...tagged(1, 1), expect: search, reads: 1 },
+    { case: "a reader for another network", ref, reader: () => counted("sui:mainnet", "read", null), expect: unreadable("chain-mismatch"), reads: 0 },
+    { case: "a ref whose h is not a hash", ref: { ...ref, h: "0x12" }, reader: read(null), expect: unreadable("unparseable"), reads: 0 },
   ];
 }
 
@@ -888,20 +895,21 @@ function tonStatusReader(row: TonStatusRow): Counted {
 
 /**
  * `tvmStatus` reads: x402-exact-tvm.json's V4 status rows and the ref with its accounts written in another raw
- * spelling. The read decodes no cell and compares raw addresses itself, so each gives its answer, after the same reads,
- * without @ton/core.
+ * spelling, each with the act payment at the finality the row gives, finalized where it gives none. The read decodes no
+ * cell and compares raw addresses itself, so each gives its answer, after the same reads, without @ton/core.
  */
 export function tvmStatusRows(): StatusRow[] {
   const ref = TVM.V4.ref as { wallet: string; jettonWallet: string };
-  const rows = TVM.V4.status as TonStatusRow[];
+  const rows = TVM.V4.status as (TonStatusRow & { finality?: string })[];
+  const query = (finality = "finalized") => ({ act: "payment", finality });
   // The head and the request's lookup, then the lookup of each message the read follows.
   const reads = [4, 4, 4, 3, 4, 2, 2, 3, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2];
   const settled = rows[0]!;
   const respelled = (s: string, wc: string) => `${wc}:${s.slice(s.indexOf(":") + 1).toUpperCase()}`;
   return [
-    ...rows.map((row, i) => ({ case: row.case, ref, reader: () => tonStatusReader(row), expect: row.expect, reads: reads[i]! })),
-    { case: "the ref's accounts in uppercase hex, workchain 00 and -0", ref: { ...ref, wallet: respelled(ref.wallet, "00"), jettonWallet: respelled(ref.jettonWallet, "-0") }, reader: () => tonStatusReader(settled), expect: settled.expect, reads: 4 },
-    { case: "a ref whose wallet is not a raw address", ref: { ...ref, wallet: "x" }, reader: () => tonStatusReader(settled), expect: { state: "pending", why: "unreadable" }, reads: 0 },
+    ...rows.map((row, i) => ({ case: row.case, ref, reader: () => tonStatusReader(row), expect: row.expect, reads: reads[i]!, query: query(row.finality) })),
+    { case: "the ref's accounts in uppercase hex, workchain 00 and -0", ref: { ...ref, wallet: respelled(ref.wallet, "00"), jettonWallet: respelled(ref.jettonWallet, "-0") }, reader: () => tonStatusReader(settled), expect: settled.expect, reads: 4, query: query() },
+    { case: "a ref whose wallet is not a raw address", ref: { ...ref, wallet: "x" }, reader: () => tonStatusReader(settled), expect: { state: "unreadable", reason: "unparseable", foreign: [] }, reads: 0, query: query() },
   ];
 }
 
@@ -911,6 +919,7 @@ type StellarStatusRow = StellarStatusFixture & {
   latestLedger?: number;
   transfers?: { events: { txHash: string }[]; complete: boolean; latestLedger?: number };
   candidate?: StellarStatusFixture;
+  query?: object;
   expect: unknown;
 };
 /** A Stellar reader answering a V5 row as stellar.test.ts's does, its calls counted. */
@@ -939,33 +948,37 @@ function stellarStatusReader(row: StellarStatusRow): Counted {
 }
 
 /**
- * `stellarStatus` reads of x402-exact-stellar.json's V5 rows. Only a transaction that succeeded is decoded with the
- * SDK: without it a named one is pending `unreadable` after its one read, and a search's candidate leaves the search
- * incomplete, pending with the named transaction's reason, after the same reads.
+ * `stellarStatus` reads of x402-exact-stellar.json's V5 rows, each with the query it takes (the act payment at the mark
+ * `closed` where the row gives none). Only a transaction that succeeded is decoded with the SDK: without it a named one
+ * is unreadable `unparseable` after its one read, and a search's candidate leaves the search incomplete, pending
+ * `search-incomplete`, after the same reads.
  */
-export function stellarStatusRows(): StatusRow[] {
+export function stellarStatusRows(): (StatusRow & { query: object })[] {
   const ref = STELLAR.V5.ref;
   const rows = STELLAR.V5.rows as StellarStatusRow[];
-  const reads = [1, 2, 3, 3, 4, 2, 3, 2, 3, 1, 1, 3, 4];
-  const unreadable = { expect: { state: "pending", why: "unreadable" }, reads: 1 };
+  const reads = [1, 2, 3, 3, 4, 2, 3, 2, 3, 1, 1, 3, 4, 1];
+  const unparseable = { expect: { state: "unreadable", reason: "unparseable", foreign: [] }, reads: 1 };
+  const incomplete = { expect: { state: "pending", reason: "search-incomplete", foreign: [] }, reads: 4 };
   const without: (StatusRow["without"] | undefined)[] = [
-    unreadable,
+    unparseable,
     undefined,
     undefined,
     undefined,
-    { expect: { state: "pending", why: "transaction-failed" }, reads: 4 },
-    unreadable,
-    unreadable,
+    incomplete,
+    unparseable,
+    unparseable,
     undefined,
     undefined,
     undefined,
-    unreadable,
+    unparseable,
     undefined,
-    { expect: { state: "pending", why: "not-found" }, reads: 4 },
+    incomplete,
+    unparseable,
   ];
   return rows.map((row, i) => ({
     case: row.case,
     ref,
+    query: row.query ?? { act: "payment", finality: "closed" },
     reader: () => stellarStatusReader(row),
     expect: row.expect,
     reads: reads[i]!,
@@ -1106,9 +1119,9 @@ export function tvmPeerStepRows(): PeerStepRow<TvmFns>[] {
     },
     { case: "advertise of an option whose forwardPayload is not base64", call: async (f) => tonAdvertise(f, tonWith({ forwardPayload: "AA=A" })), expect: "tvm/carrier-occupied" },
     { case: "bound of V2's payment", call: async (f) => codeOr(await f.bound(tonPayment(V2) as never), (h) => h), expect: TVM.V3.expectBound, without: missing },
-    { case: "reference of V2's payment", call: async (f) => codeOr(await f.reference(tonPayment(V2) as never), (r) => r), expect: TVM.V3.expectReference, without: missing },
+    { case: "reference of V2's payment", call: async (f) => codeOr(await f.reference(tonPayment(V2) as never, TVM.fixed.O as never), (r) => r), expect: TVM.V3.expectReference, without: missing },
     { case: "bound of V2's payment with its CRC32C changed", call: async (f) => codeOr(await f.bound(tonPayment(crcChanged(V2)) as never), (h) => h), expect: "tvm/boc-malformed" },
-    { case: "reference of a settlementBoc that is not base64", call: async (f) => codeOr(await f.reference(tonPayment("AA=A") as never), (r) => r), expect: "tvm/boc-malformed" },
+    { case: "reference of a settlementBoc that is not base64", call: async (f) => codeOr(await f.reference(tonPayment("AA=A") as never, TVM.fixed.O as never), (r) => r), expect: "tvm/boc-malformed" },
     {
       case: "bound of V2's payment under the vectors' option, which carries no forwardPayload",
       call: async (f) => codeOr(await f.bound(tonPayment(V2, TON_O) as never), (h) => h),

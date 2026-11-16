@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. V3's row 4 is V2's wire with a bit set past the last byte in its last base64 character before the padding. Byte strings are hex unless named base64. carrierSpelling and durableNonce were built with solders 0.26.0 on Python 3.12.3 from the same seeds and inputs (the nonce account from seed 04x32, its authority the payer); durableNonce's messages were sent to the LiteSVM bundled with solders 0.26.0, whose outcomes and nonce account bytes the section records.",
+ "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. V3's row 4 is V2's wire with a bit set past the last byte in its last base64 character before the padding. Byte strings are hex unless named base64. carrierSpelling and durableNonce were built with solders 0.26.0 on Python 3.12.3 from the same seeds and inputs (the nonce account from seed 04x32, its authority the payer); durableNonce's messages were sent to the LiteSVM bundled with solders 0.26.0, whose outcomes and nonce account bytes the section records. Each status row's expected answer is the one the profile read-status (read-status.md) gives for its fixture, read for the act payment at the finality its query names, or at finalized: a failure read at finalized (an error, no transfer, a message the payer did not sign, a durable nonce moved on), and a lookup that finds nothing, are pending, search-incomplete, since this read is no search for H (rules 17, 23 and 24); a rejected read is unreadable, transport; and each reference names the option's payee.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -127,7 +127,8 @@
    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
    "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
   }
  },
  "V3": [
@@ -233,17 +234,29 @@
    {
     "at": "finalized",
     "err": null,
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
      "state": "settled",
-     "commitment": "finalized"
+     "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
+     "finality": "finalized",
+     "foreign": []
     }
    },
    {
     "at": "confirmed",
     "err": null,
+    "query": {
+     "act": "payment",
+     "finality": "confirmed"
+    },
     "expect": {
      "state": "settled",
-     "commitment": "confirmed"
+     "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
+     "finality": "confirmed",
+     "foreign": []
     }
    },
    {
@@ -256,23 +269,38 @@
       }
      ]
     },
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
-     "state": "failed",
-     "why": "err"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "at": null,
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "at": "reader-error",
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -285,9 +313,16 @@
       }
      ]
     },
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expect": {
      "state": "pending",
-     "why": "not-final"
+     "reason": "below-mark",
+     "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
+     "finality": "confirmed",
+     "foreign": []
     }
    }
   ],
@@ -360,15 +395,17 @@
   "ownDigest": {
    "digest": "0xce7789809f357d49a63a4934b253d62020b8232566b7d3b32a76c62192a75fe1",
    "expect": {
-    "state": "failed",
-    "why": "no-transfer"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "v1Digest": {
    "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
    "expect": {
-    "state": "failed",
-    "why": "not-this-instrument"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   }
  },
@@ -628,7 +665,8 @@
      "nonce": {
       "account": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
       "value": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
-     }
+     },
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
     }
    },
    {
@@ -638,7 +676,8 @@
      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
      "digest": "0x9023a2a648e89f303eb0ed4a4375a4c3525a7dbea27eabc1490771b740f64101",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-     "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+     "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
     }
    },
    {
@@ -648,7 +687,8 @@
      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
      "digest": "0x1d7bf5a15b5350a098154a3d2ab6f9469b82a0b82e17a33cd5affd1e88fd6db2",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
+     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H",
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
     }
    },
    {
@@ -658,7 +698,8 @@
      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
      "digest": "0x73f46794ce2826940ed7848386abdbcaf438f63a83c5bd90ec3dbc06aeb91222",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
+     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H",
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
     }
    },
    {
@@ -668,7 +709,8 @@
      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
      "digest": "0xd8cf63bbcaf537c7955dbe3c7c8da1fb8f07d735f618ea64a170916582718f73",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
+     "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H",
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
     }
    }
   ],
@@ -756,7 +798,7 @@
    ]
   },
   "status": {
-   "case": "svmStatus on the durable message named by its txid, fromSlot 1000, with the nonce account read at context slot 1150. transactions lists what each successive transaction read answers: finalized, then confirmed, then, once the nonce has moved on and the node holds fromSlot, one more read at finalized. A read that finds nothing answers notFound with the node's slot at that commitment, read from that node before the lookup (Solana's getSlot), or null when the reader cannot read it there: the lookup shows the transaction absent only up to that slot, so nonce-moved needs the last read's slot at or past the nonce read's",
+   "case": "svmStatus on the durable message named by its txid, fromSlot 1000, with the nonce account read at context slot 1150. transactions lists what each successive transaction read answers: finalized, then confirmed, then, once the nonce has moved on and the node holds fromSlot, one more read at finalized. A read that finds nothing answers notFound with the node's slot at that commitment, read from that node before the lookup (Solana's getSlot), or null when the reader cannot read it there: the lookup shows the transaction absent only up to that slot, so the read shows the value consumed by another transaction (the nonce moved on) only from a last read at or past the nonce read's slot. Every answer but settled and unreadable is pending, search-incomplete, since this read is no search for H",
    "landedWireBase64": "AmCpPBBBtnFMI++0DBLZfF7rh3680NkTB81bqxAAyn+7HRPZtuJScQ+plM+UazCw3Gr76TmuONmkQlWrK0f4pQsMrGN8VMSgl/vPLzXkROdAdKiOoZivjX+TSZ+Joq0l79ids9qA9EVBXZox1/iWiufU3lWmDKg5LyMkvcS3HXQOgAIBBguBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksVo7gioRfc9KXiM8DXDFFshqzRNgGLqlAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nShjpdfDyAE4QiGG9GKEaInHzKXf8J5228z7ICgtgyOAFBQMDCAEEBAAAAAYABQJAnAAABgAJAwEAAAAAAAAACQQECgIBCgzoAwAAAAAAAAYHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
    "fromSlot": "1000",
    "rows": [
@@ -769,12 +811,14 @@
      "firstAvailableBlock": "0",
      "expect": {
       "state": "settled",
-      "commitment": "finalized"
+      "transaction": "2w69WpPiw3ZzMRTC814avWjxu8CjYJP8n1KpHBZnvjLj4fWuFB1eYsayskL5rvY8D8MqSKXZrTQRPM33XbB8vDJA",
+      "finality": "finalized",
+      "foreign": []
      },
      "accountReads": 0
     },
     {
-     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1150, the nonce read's: failed nonce-moved",
+     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1150, the nonce read's: the value read consumed: pending, search-incomplete",
      "transactions": [
       {
        "notFound": true,
@@ -792,13 +836,14 @@
      "account": "moved",
      "firstAvailableBlock": "0",
      "expect": {
-      "state": "failed",
-      "why": "nonce-moved"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      },
      "accountReads": 1
     },
     {
-     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1151, past the nonce read: failed nonce-moved",
+     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1151, past the nonce read: the value read consumed: pending, search-incomplete",
      "transactions": [
       {
        "notFound": true,
@@ -816,13 +861,14 @@
      "account": "moved",
      "firstAvailableBlock": "0",
      "expect": {
-      "state": "failed",
-      "why": "nonce-moved"
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
      },
      "accountReads": 1
     },
     {
-     "case": "never found, and the nonce has moved on, but the last read comes from a node at slot 1149, behind the nonce read: pending",
+     "case": "never found, and the nonce has moved on, but the last read comes from a node at slot 1149, behind the nonce read: pending, search-incomplete",
      "transactions": [
       {
        "notFound": true,
@@ -841,12 +887,13 @@
      "firstAvailableBlock": "0",
      "expect": {
       "state": "pending",
-      "why": "not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      },
      "accountReads": 1
     },
     {
-     "case": "never found, and the nonce has moved on, but the last read names no slot: pending",
+     "case": "never found, and the nonce has moved on, but the last read names no slot: pending, search-incomplete",
      "transactions": [
       {
        "notFound": true,
@@ -865,12 +912,13 @@
      "firstAvailableBlock": "0",
      "expect": {
       "state": "pending",
-      "why": "not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      },
      "accountReads": 1
     },
     {
-     "case": "never found, and the account holds the recorded value: pending",
+     "case": "never found, and the account holds the recorded value: pending, search-incomplete",
      "transactions": [
       {
        "notFound": true,
@@ -885,12 +933,13 @@
      "firstAvailableBlock": "0",
      "expect": {
       "state": "pending",
-      "why": "not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      },
      "accountReads": 1
     },
     {
-     "case": "never found, the nonce has moved on, but the node's first available block is above fromSlot: pending",
+     "case": "never found, the nonce has moved on, but the node's first available block is above fromSlot: pending, search-incomplete",
      "transactions": [
       {
        "notFound": true,
@@ -905,7 +954,8 @@
      "firstAvailableBlock": "1001",
      "expect": {
       "state": "pending",
-      "why": "not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      },
      "accountReads": 1
     },
@@ -926,12 +976,14 @@
      "firstAvailableBlock": "0",
      "expect": {
       "state": "settled",
-      "commitment": "finalized"
+      "transaction": "2w69WpPiw3ZzMRTC814avWjxu8CjYJP8n1KpHBZnvjLj4fWuFB1eYsayskL5rvY8D8MqSKXZrTQRPM33XbB8vDJA",
+      "finality": "finalized",
+      "foreign": []
      },
      "accountReads": 1
     },
     {
-     "case": "never found, and the nonce account read fails: pending unreadable",
+     "case": "never found, and the nonce account read fails: unreadable, transport",
      "transactions": [
       {
        "notFound": true,
@@ -945,13 +997,14 @@
      "account": "reader-error",
      "firstAvailableBlock": "0",
      "expect": {
-      "state": "pending",
-      "why": "unreadable"
+      "state": "unreadable",
+      "reason": "transport",
+      "foreign": []
      },
      "accountReads": 1
     },
     {
-     "case": "never found, the nonce has moved on, and the first-available-block read fails: pending unreadable",
+     "case": "never found, the nonce has moved on, and the first-available-block read fails: unreadable, transport",
      "transactions": [
       {
        "notFound": true,
@@ -965,8 +1018,9 @@
      "account": "moved",
      "firstAvailableBlock": "reader-error",
      "expect": {
-      "state": "pending",
-      "why": "unreadable"
+      "state": "unreadable",
+      "reason": "transport",
+      "foreign": []
      },
      "accountReads": 1
     }
@@ -1016,7 +1070,8 @@
       "nonce": {
        "account": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
        "value": "C4y3jiWhA9SkgWTWFK5QzPfJeo3e1hTuKmKovhVzmpp"
-      }
+      },
+      "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
      }
     }
    ]

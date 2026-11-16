@@ -72,8 +72,8 @@ async function answer(text: string): Promise<string> {
   const sda = sdaWithArgs(text);
   const b = await exactNear.bound(payment(sda));
   const c = nearCarrier(sda);
-  const r = await exactNear.reference(payment(sda));
-  const v = await exactNear.recover({ network: V.V3.ref.network, transaction: V.V3.ref.transaction }, readerWithArgs(text));
+  const r = await exactNear.reference(payment(sda), V.fixed.O);
+  const v = await exactNear.recover({ network: V.V3.ref.network, tx: V.V3.ref.transaction, option: V.fixed.O }, readerWithArgs(text));
   const of = (x: unknown, ok: (v: unknown) => boolean) =>
     typeof x === "object" && x !== null && "refused" in x ? String((x as { code?: unknown }).code) : ok(x) ? "H" : JSON.stringify(x);
   const each = [

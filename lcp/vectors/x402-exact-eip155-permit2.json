@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/exact/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's.",
+ "about": "Vectors for x402/exact/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. Under the profile read-status, a status row that read failed now reads pending search-incomplete: at coverage full a failed answer waits for a search for H that this pairing does not have yet (rule 24).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -91,10 +91,16 @@
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "nonceBitmapBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
    "calls": 2,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
     "state": "settled",
+    "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "position": "100",
     "finality": "finalized",
-    "blockNumber": "100"
+    "foreign": []
    }
   },
   "batched": {
@@ -118,10 +124,16 @@
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "nonceBitmapBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
    "calls": 2,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
     "state": "settled",
+    "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "position": "100",
     "finality": "finalized",
-    "blockNumber": "100"
+    "foreign": []
    }
   },
   "nonceUnused": {
@@ -144,9 +156,14 @@
    "input": "settle",
    "nonceBitmap": "0xffffffffffffffffffffdfffffffffffffffffffffffffffffffffffffffffff",
    "calls": 1,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
-    "state": "failed",
-    "why": "nonce-not-used"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "usedBefore": {
@@ -170,9 +187,14 @@
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "nonceBitmapBefore": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "calls": 2,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
-    "state": "failed",
-    "why": "nonce-not-used"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "plainTransfer": {
@@ -195,9 +217,14 @@
    "input": "plainTransfer",
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "calls": 0,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
-    "state": "failed",
-    "why": "nonce-not-used"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "callFails": {
@@ -220,9 +247,14 @@
    "input": "settle",
    "nonceBitmap": "reader-error",
    "calls": 1,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
-    "state": "pending",
-    "why": "unreadable"
+    "state": "unreadable",
+    "reason": "transport",
+    "foreign": []
    }
   },
   "transactionNone": {
@@ -244,9 +276,14 @@
    },
    "input": null,
    "calls": 0,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
     "state": "pending",
-    "why": "not-found"
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "transactionFails": {
@@ -268,9 +305,14 @@
    },
    "input": "reader-error",
    "calls": 0,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
-    "state": "pending",
-    "why": "unreadable"
+    "state": "unreadable",
+    "reason": "transport",
+    "foreign": []
    }
   },
   "value9999": {
@@ -289,9 +331,14 @@
      }
     ]
    },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
-    "state": "failed",
-    "why": "transfer-not-found"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    },
    "calls": 0
   },
@@ -301,17 +348,27 @@
     "blockNumber": "100",
     "logs": []
    },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
-    "state": "failed",
-    "why": "reverted"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    },
    "calls": 0
   },
   "none": {
    "receipt": null,
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
    "expect": {
     "state": "pending",
-    "why": "not-found"
+    "reason": "search-incomplete",
+    "foreign": []
    },
    "calls": 0
   },
@@ -343,9 +400,14 @@
     }
    ]
   },
+  "query": {
+   "act": "payment",
+   "finality": "finalized"
+  },
   "expect": {
-   "state": "failed",
-   "why": "transfer-not-found"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   },
   "calls": 0
  },

@@ -19,10 +19,12 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { c32Address } from "./internal/c32.js";
+import { withPayee, type EvmBreadthStatus, type EvmQuery } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
+import { mppPayee } from "./internal/payee.js";
 import { memoArgument } from "./internal/stacks.js";
 import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
-import { keyString, type SvmReader, type SvmRef } from "./internal/svm.js";
+import { keyString, type SvmReader, type SvmRef, type SolanaNetwork, type SvmQuery, type SvmStatus } from "./internal/svm.js";
 import {
   byType,
   chosenFor,
@@ -44,16 +46,17 @@ import {
   type MppChallenge,
   type MppChoice,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { isJcsRequest, stacksNetworkOf } from "./mpp-method-checks.js";
-import { solanaChargePairing } from "./mpp-solana.js";
+import { solanaChargePairing, type SolanaChargeChoice, type SolanaChargeUnsigned } from "./mpp-solana.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import { stacksRecover, stacksStatus, stacksTxid, type StacksReader, type StacksRef } from "./stacks.js";
+import { stacksRecover, stacksStatus, stacksTxid, type StacksReader, type StacksRef, type StacksNetwork, type StacksStatus } from "./stacks.js";
 import type { LcpPattern } from "./x402.js";
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
 import { STACKS as STACKS_DATA } from "./internal/data/stacks.js";
-import type { Entry } from "./internal/registry.js";
+import type { Entry, NoRead } from "./internal/registry.js";
 
 const EVM = "mpp/charge/usdc/evm" as const;
 const SOLANA = "mpp/charge/usdc/solana" as const;
@@ -278,9 +281,14 @@ async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The authorization's read keys: its `AuthorizationUsed` nonce, its transfer's digest, `validBefore`, and the
- * authorization as the token records its use.
+ * authorization as the token records its use; and the payee of `option`, the issued challenge the payment answers
+ * (`mppPayee`), whose refusal comes after the payment's.
  */
-async function evmReference(input: unknown): Promise<EvmRef | Refusal> {
+async function evmReference(input: unknown, option: MppChallenge): Promise<EvmRef | Refusal> {
+  return withPayee(await evmKeys(input), mppPayee(option));
+}
+
+async function evmKeys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
   const b = await evmBinding(input);
   if (isRefusal(b)) return b;
   const p = (input as MppCredential).payload;
@@ -337,8 +345,21 @@ export const chargeUsdcEvm = Object.freeze({
   broadcaster: mppBroadcaster(byType({ authorization: "payee" })),
   reference: evmReference,
   authorizer: evmAuthorizer,
-  status: boundStatus([AUTHORIZATION_USED_TOPIC]),
-}) satisfies Entry<typeof EVM, MppCredential, EvmRef & { transaction: Hex }, EvmReader>;
+  status: boundStatus([AUTHORIZATION_USED_TOPIC], EIP155_TEMPO_MPP[EVM].coverage),
+}) satisfies Entry<
+  typeof EVM,
+  MppCredential,
+  EvmRef,
+  EvmReader,
+  MppForms & {
+    choice: MppChoice;
+    unsigned: UsdcUnsigned;
+    landed: { transaction: Hex };
+    network: never;
+    query: EvmQuery<EvmRef & { transaction: Hex }>;
+    answer: EvmBreadthStatus;
+  }
+>;
 
 // ── mpp/charge/usdc/solana.
 
@@ -352,7 +373,20 @@ export const chargeUsdcSolana = solanaChargePairing({
   details: (c: Checked | Echoed) => profileOf(c),
   networkRequired: true,
   occupied: () => refusal("mpp/carrier-occupied"),
-}) satisfies Entry<typeof SOLANA, MppCredential, SvmRef & { transaction: string }, SvmReader>;
+}) satisfies Entry<
+  typeof SOLANA,
+  MppCredential,
+  Omit<SvmRef, "fromSlot">,
+  SvmReader,
+  MppForms & {
+    choice: SolanaChargeChoice;
+    unsigned: SolanaChargeUnsigned;
+    landed: { fromSlot: string; transaction: string };
+    network: SolanaNetwork;
+    query: SvmQuery;
+    answer: SvmStatus;
+  }
+>;
 
 // ── mpp/charge/usdc/stacks.
 
@@ -509,9 +543,17 @@ async function stacksBound(input: unknown): Promise<AtrHash | Refusal> {
  * its signer's hash160 at its hash mode's version on the transaction's network, as stacks-core 4.0.5 gives a
  * transaction's origin address (stacks-codec/src/transaction.rs:3441-3458): P2PKH's single-signature version, 22 on
  * mainnet and 26 on testnet, and every other hash mode's multisig version, 20 and 21 (transaction.rs:897-905,
- * :1087-1095, :1245-1261; stacks-common/src/address/mod.rs:31-34).
+ * :1087-1095, :1245-1261; stacks-common/src/address/mod.rs:31-34). With them, the payee of `option`, the issued
+ * challenge the payment answers (`mppPayee`), whose refusal comes after the payment's.
  */
-async function stacksReference(input: unknown): Promise<StacksRef | Refusal> {
+async function stacksReference(
+  input: unknown,
+  option: MppChallenge,
+): Promise<(Omit<StacksRef, "payee"> & { payee: string }) | Refusal> {
+  return withPayee(await stacksKeys(input), mppPayee(option));
+}
+
+async function stacksKeys(input: unknown): Promise<Omit<StacksRef, "payee"> | Refusal> {
   const b = await stacksBinding(input);
   if (isRefusal(b)) return b;
   const network = stacksNetworkOf(b.checked.details);
@@ -521,7 +563,7 @@ async function stacksReference(input: unknown): Promise<StacksRef | Refusal> {
   const version = tx.version === 0x00 ? (single ? 22 : 20) : single ? 26 : 21;
   const origin = c32Address(version, tx.origin.signer);
   const contract = `${c32Address(call.version, call.hash160)}.${call.contract}`;
-  const ref: StacksRef = { network, contract, origin, nonce: tx.origin.nonce.toString() };
+  const ref: Omit<StacksRef, "payee"> = { network, contract, origin, nonce: tx.origin.nonce.toString() };
   return tx.standard ? { ...ref, transaction: stacksTxid(b.wire) } : ref;
 }
 
@@ -551,7 +593,20 @@ export const chargeUsdcStacks = Object.freeze({
   reference: stacksReference,
   status: stacksStatus,
   recover: stacksRecover,
-}) satisfies Entry<typeof STACKS, MppCredential, StacksRef & { transaction: Hex; h: AtrHash }, StacksReader>;
+}) satisfies Entry<
+  typeof STACKS,
+  MppCredential,
+  StacksRef,
+  StacksReader,
+  MppForms & {
+    choice: StacksChargeChoice;
+    unsigned: UsdcUnsigned;
+    landed: { transaction: Hex; h: AtrHash };
+    network: StacksNetwork;
+    query: Parameters<typeof stacksStatus>[2];
+    answer: StacksStatus;
+  }
+>;
 
 // ── mpp/charge/usdc/gateway.
 
@@ -707,4 +762,10 @@ export const chargeUsdcGateway = Object.freeze({
   build: gatewayBuild,
   bound: gatewayBound,
   broadcaster: mppBroadcaster(byType({ transfer: "payee" })),
-}) satisfies Entry<typeof GATEWAY, MppCredential, never, never>;
+}) satisfies Entry<
+  typeof GATEWAY,
+  MppCredential,
+  never,
+  never,
+  MppForms & NoRead & { choice: MppChoice; unsigned: UsdcUnsigned }
+>;

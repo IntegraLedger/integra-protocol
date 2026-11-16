@@ -57,9 +57,14 @@ describe("the EVM session's close read", () => {
   const ES = challenge("evm", "session", f.request);
   const ref = sessionEvm.closeRef(ES, CHANNEL) as SessionRef;
   // The sender is the payer; the close read does not read it.
-  const read = (tx: Omit<EvmTransaction, "from"> | null | "error", status: 0 | 1 = 1) =>
-    sessionStatus({ ...ref, transaction: TX }, reader({ status, tx: tx === null || tx === "error" ? tx : { from: f.payer, ...tx } }));
+  const read = (tx: Omit<EvmTransaction, "from"> | null | "error", status: 0 | 1 = 1, after?: bigint) =>
+    sessionStatus(
+      { ...ref, transaction: TX },
+      reader({ status, tx: tx === null || tx === "error" ? tx : { from: f.payer, ...tx } }),
+      { act: "payment", finality: "finalized", ...(after === undefined ? {} : { after }) },
+    );
   const escrow = f.escrow as Hex;
+  const pending = { state: "pending", reason: "search-incomplete", foreign: [] };
 
   it("the three selectors are the draft's function signatures", () => {
     expect([...EVM_CLOSE_SELECTORS]).toEqual(SIGNATURES.map((s) => toFunctionSelector(s)));
@@ -67,21 +72,33 @@ describe("the EVM session's close read", () => {
 
   it("close, closeWithAuthorization and withdraw on the escrow naming the channel are the close, at the block's finality", async () => {
     for (const data of [call.close(CHANNEL), call.closeWithAuthorization(CHANNEL), call.withdraw(CHANNEL)]) {
-      expect(await read({ to: escrow, input: data })).toEqual({ state: "settled", finality: "finalized", blockNumber: 90n });
+      expect(await read({ to: escrow, input: data })).toEqual({ state: "settled", transaction: TX, position: 90n, finality: "finalized", foreign: [] });
     }
   });
 
-  it("another channel, another contract, or another escrow function is not a close", async () => {
-    expect(await read({ to: escrow, input: call.withdraw(OTHER) })).toEqual({ state: "pending", why: "not-a-close" });
-    expect(await read({ to: `0x${"33".repeat(20)}`, input: call.close(CHANNEL) })).toEqual({ state: "pending", why: "not-a-close" });
-    expect(await read({ to: null, input: call.close(CHANNEL) })).toEqual({ state: "pending", why: "not-a-close" });
-    expect(await read({ to: escrow, input: call.settle(CHANNEL) })).toEqual({ state: "pending", why: "not-a-close" });
-    expect(await read({ to: escrow, input: call.withdraw(CHANNEL).slice(0, 40) as Hex })).toEqual({ state: "pending", why: "not-a-close" });
+  it("the close names the challenge's recipient as the payee, and is before a position at its own block", async () => {
+    expect(ref.payee).toBe(JSON.parse(f.request).recipient);
+    expect(await read({ to: escrow, input: call.close(CHANNEL) }, 1, 90n)).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: TX,
+      position: 90n,
+      finality: "finalized",
+      foreign: [],
+    });
   });
 
-  it("a reverted close is failed; an unread or absent transaction is pending", async () => {
-    expect(await read({ to: escrow, input: call.close(CHANNEL) }, 0)).toEqual({ state: "failed", why: "reverted" });
-    expect(await read("error")).toEqual({ state: "pending", why: "unreadable" });
-    expect(await read(null)).toEqual({ state: "pending", why: "not-found" });
+  it("another channel, another contract, or another escrow function is not a close", async () => {
+    expect(await read({ to: escrow, input: call.withdraw(OTHER) })).toEqual(pending);
+    expect(await read({ to: `0x${"33".repeat(20)}`, input: call.close(CHANNEL) })).toEqual(pending);
+    expect(await read({ to: null, input: call.close(CHANNEL) })).toEqual(pending);
+    expect(await read({ to: escrow, input: call.settle(CHANNEL) })).toEqual(pending);
+    expect(await read({ to: escrow, input: call.withdraw(CHANNEL).slice(0, 40) as Hex })).toEqual(pending);
+  });
+
+  it("a reverted close and an absent transaction are no close, pending while no search for H is read; an unread transaction is unreadable", async () => {
+    expect(await read({ to: escrow, input: call.close(CHANNEL) }, 0)).toEqual(pending);
+    expect(await read("error")).toEqual({ state: "unreadable", reason: "transport", foreign: [] });
+    expect(await read(null)).toEqual(pending);
   });
 });

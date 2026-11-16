@@ -29,6 +29,7 @@ import {
   type OptionFilter,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { bytesOfHexDigits, decimalBelow, fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -40,6 +41,10 @@ import {
 } from "./x402.js";
 import { NEAR } from "./internal/data/near.js";
 import type { Entry } from "./internal/registry.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
@@ -94,11 +99,12 @@ export interface NearReader {
 }
 
 /**
- * The read keys `reference` returns, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings. `transaction`
- * is added when the facilitator names it.
+ * The read keys `reference` returns, JSON-serialisable: `nonce` and `maxBlockHeight` are decimal strings, and `payee`
+ * is the option's `payTo`. `transaction` is added when the facilitator names it.
  */
 export interface NearRef {
   network: NearNetwork;
+  payee: string;
   asset: string;
   payer: string;
   publicKey: string;
@@ -109,10 +115,26 @@ export interface NearRef {
   transaction?: string;
 }
 
-export type NearStatus =
-  | { state: "settled"; finality: "final" | "optimistic" }
-  | { state: "pending"; why: "not-found" | "in-flight" | "unreadable" }
-  | { state: "failed"; why: "not-this-instrument" | "transfer-failed" };
+/**
+ * The answer of `nearStatus`, as the profile `read-status` gives it. Its marks are `optimistic` and `final`, in that
+ * order; it reads no ledger position, so a position given as `after` places nothing.
+ */
+export type NearStatus = StatusAnswer<bigint, NearMark>;
+
+type NearMark = "optimistic" | "final";
+const MARKS: readonly NearMark[] = ["optimistic", "final"];
+
+/**
+ * What the read of the relayed transaction found. `not-this-instrument`: a delegate of the ref's payer on its key with
+ * the ref's nonce or another, which is not the instrument the ref names; `not-a-delegate`: a transaction that carries
+ * no delegate of that payer and key.
+ */
+type NearRead =
+  | { state: "settled"; finality: NearMark }
+  | { state: "pending"; why: "not-found" | "in-flight" }
+  | { state: "failed"; why: "not-this-instrument" | "not-a-delegate" }
+  | { state: "failed"; why: "transfer-failed"; finality: NearMark }
+  | { state: "unreadable"; reason: UnreadableReason };
 
 interface NearChoice {
   required: PaymentRequired;
@@ -299,61 +321,98 @@ function memoIn(parsed: Record<string, unknown>): AtrHash | Refusal {
 // ── Settlement.
 
 /**
- * Finds the relayed transaction under each relayer the reader lists (at most four), then requires its delegate to be
- * the instrument the ref names, and reads the receipts the token contract executed: a failure is failed, a success
- * is settled. The delegate is that instrument when its sender, key and nonce are the ref's, it calls `ft_transfer` on
- * `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; any other delegate, a second one the payer signed
- * on the same nonce included, is failed `not-this-instrument`. The digest identifies the signed instrument; nothing in
- * the arguments is compared with the ATR's content. Settled is `final` only when `final_execution_status` is `FINAL`,
- * every receipt's block then being final; any other status, `EXECUTED` included, is `optimistic`. A failed read, a
- * reader for another network, an outcome that is not well formed (a delegate sender or receiver, or a receipt's
- * executor, that is not a NEAR account id among them), or a delegate whose arguments are not base64 in its canonical
- * form (RFC 4648 §3.5) is pending. A ref whose nonce, asset, payer, public key or digest is malformed, or a relayer list
- * that is empty or whose first four are not each a NEAR account id, is pending `unreadable`, with nothing read: the
- * asset and the payer must be NEAR account ids, and the public key `ed25519:` and the base58 of 32 bytes or
- * `secp256k1:` and of 64. A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or
- * `.`, where a separator (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's
- * `AccountId`).
+ * Answers the read of the relayed transaction as the profile `read-status` gives it. The read finds the transaction
+ * under each relayer the reader lists (at most four), then requires its delegate to be the instrument the ref names,
+ * and reads the receipts the token contract executed. The delegate is that instrument when its sender, key and nonce
+ * are the ref's, it calls `ft_transfer` on `ref.asset`, and the SHA-256 of its arguments is `ref.argsDigest`; nothing
+ * in the arguments is compared with the ATR's content. A succeeded token receipt is the payer's act, at `final` when
+ * `final_execution_status` is `FINAL`, every receipt's block then being final, and at `optimistic` otherwise, `EXECUTED`
+ * included; a failed one is the payer's act included with a failed result, which consumed the access key's nonce. A
+ * delegate of the ref's payer and key, at the ref's nonce or above it, that is not that instrument, a second one the
+ * payer signed on the same nonce included, means the nonce is taken by another act; a transaction with no such delegate carries no act of the
+ * payer's; a transaction no relayer knows, or whose token receipt has not run, names no included act. The read holds
+ * no search for H and does not read the access key's nonce, so none of these answers `failed`. A read that rejects is
+ * unreadable `transport`; an outcome that is not well formed (a delegate sender or receiver, or a receipt's executor,
+ * that is not a NEAR account id among them), or a delegate whose arguments are not base64 in its canonical form
+ * (RFC 4648 §3.5), is `unparseable`. A ref, a reader or a query that is not one, a reader that names no network, a
+ * ref whose network, nonce, asset, payer, public key or digest is malformed, or a relayer list that is empty or whose
+ * first four are not each a NEAR account id, is unreadable `unparseable`, and a reader for another network than the
+ * ref's `chain-mismatch`, each with nothing read: the asset and the
+ * payer must be NEAR account ids, and the public key `ed25519:` and the base58 of 32 bytes or `secp256k1:` and of 64.
+ * A NEAR account id is 2 to 64 characters, each a lowercase ASCII letter, a digit, `-`, `_` or `.`, where a separator
+ * (`-`, `_` or `.`) is never first, never last, and never follows another (near-account-id's `AccountId`).
  */
-export async function nearStatus(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
+export async function nearStatus(
+  ref: NearRef & { transaction: string },
+  reader: NearReader,
+  query: StatusQuery<NearRef & { transaction: string }, bigint, NearMark>,
+): Promise<NearStatus> {
+  if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;
+  return decide(factsOf(await readNear(ref, reader), ref), query, LEDGER);
+}
+
+const LEDGER = ledgerOf<bigint, NearMark>(NEAR[ID].coverage, MARKS, bigintOrder);
+
+async function readNear(ref: NearRef & { transaction: string }, reader: NearReader): Promise<NearRead> {
+  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") {
+    return { state: "unreadable", reason: "unparseable" };
   }
-  const relayers = relayersOf(reader);
-  if (relayers === null) return { state: "pending", why: "unreadable" };
   const nonce = u64Of(ref.nonce);
   if (
+    (ref.network !== "near:mainnet" && ref.network !== "near:testnet") ||
     nonce === null ||
+    typeof ref.transaction !== "string" ||
     !isNearAccountId(ref.asset) ||
     !isNearAccountId(ref.payer) ||
     !isPublicKey(ref.publicKey) ||
     normalHash(ref.argsDigest) === null
   ) {
-    return { state: "pending", why: "unreadable" };
+    return { state: "unreadable", reason: "unparseable" };
   }
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
+  const relayers = relayersOf(reader);
+  if (relayers === null) return { state: "unreadable", reason: "unparseable" };
   const outcome = await findOutcome(ref.transaction, reader, relayers);
-  if (outcome === "unreadable") return { state: "pending", why: "unreadable" };
+  if (typeof outcome === "string") return { state: "unreadable", reason: outcome };
   if (outcome === null) return { state: "pending", why: "not-found" };
   const dg = outcome.delegate;
-  if (
-    dg === null ||
-    dg.senderId !== ref.payer ||
-    dg.publicKey !== ref.publicKey ||
-    dg.nonce !== nonce ||
-    dg.receiverId !== ref.asset ||
-    dg.methodName !== "ft_transfer"
-  ) {
+  if (dg === null || dg.senderId !== ref.payer || dg.publicKey !== ref.publicKey || dg.nonce < nonce) {
+    return { state: "failed", why: "not-a-delegate" };
+  }
+  if (dg.nonce !== nonce || dg.receiverId !== ref.asset || dg.methodName !== "ft_transfer") {
     return { state: "failed", why: "not-this-instrument" };
   }
   const args = fromBase64(dg.argsBase64);
-  if (args === null) return { state: "pending", why: "unreadable" };
+  if (args === null) return { state: "unreadable", reason: "unparseable" };
   if (!hashEquals(await hash(args), ref.argsDigest)) {
     return { state: "failed", why: "not-this-instrument" };
   }
+  const finality: NearMark = outcome.status === "FINAL" ? "final" : "optimistic";
   const byToken = outcome.receipts.filter((r) => r.executor === ref.asset);
-  if (byToken.some((r) => r.outcome === "failure")) return { state: "failed", why: "transfer-failed" };
+  if (byToken.some((r) => r.outcome === "failure")) return { state: "failed", why: "transfer-failed", finality };
   if (!byToken.some((r) => r.outcome === "success")) return { state: "pending", why: "in-flight" };
-  return { state: "settled", finality: outcome.status === "FINAL" ? "final" : "optimistic" };
+  return { state: "settled", finality };
+}
+
+/**
+ * The read's facts: the act at its mark where it succeeded or failed; a taken nonce, read through a delegate that is
+ * not the instrument, as the single-use value consumed; and nothing else. The lookup is never a search read whole.
+ */
+function factsOf(read: NearRead, ref: NearRef & { transaction: string }): Facts<bigint, NearMark> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.reason };
+    case "settled":
+      return { ...none, seen: [actSeen<bigint, NearMark>(ref.transaction, read.finality)] };
+    case "pending":
+      return none;
+    case "failed":
+      if (read.why === "transfer-failed") {
+        return { ...none, seen: [actSeen<bigint, NearMark>(ref.transaction, read.finality, undefined, "failed")] };
+      }
+      return read.why === "not-this-instrument" ? { ...none, value: { consumed: true, lapsed: false, mark: "final" } } : none;
+  }
 }
 
 /**
@@ -398,15 +457,20 @@ export async function nearLapsed(ref: NearRef, reader: NearReader): Promise<bool
  * `receiver_id` that is not a NEAR account id, or an `amount` that is not a string of an optional `+` and ASCII digits
  * below 2^128) are `near/args-malformed`, since the contract makes no transfer with them; then a `memo` that is not a
  * string is `near/memo-missing`, and one that is not an LCP string `near/memo-not-lcp`. Otherwise the hash is recovered
- * whatever the transfer's outcome, and nothing else in the arguments is compared with the ATR's content.
+ * whatever the transfer's outcome, and nothing else in the arguments is compared with the ATR's content. The input's
+ * `tx` is the transaction's hash, and its `option` the option the payment answers, an object, of which the read needs
+ * no member; an input whose `tx` is not a non-empty string, or whose option is not an object, is `near/wrong-reader`.
  */
-export async function nearRecover(ref: { network: NearNetwork; transaction: string }, reader: NearReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("near/wrong-reader");
-  if (typeof ref.transaction !== "string" || ref.transaction === "") return refusal("near/wrong-reader");
+export async function nearRecover(
+  input: RecoverInput<NearNetwork, PaymentRequirements | MppChallenge>,
+  reader: NearReader,
+): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("near/wrong-reader");
+  if (typeof input.tx !== "string" || input.tx === "" || !isObject(input.option)) return refusal("near/wrong-reader");
   const relayers = relayersOf(reader);
   if (relayers === null) return refusal("near/no-relayer");
-  const outcome = await findOutcome(ref.transaction, reader, relayers);
-  if (outcome === "unreadable") return refusal("near/unreadable");
+  const outcome = await findOutcome(input.tx, reader, relayers);
+  if (typeof outcome === "string") return refusal("near/unreadable");
   if (outcome === null) return refusal("near/not-found");
   if (outcome.delegate === null || outcome.delegate.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = fromBase64(outcome.delegate.argsBase64);
@@ -422,16 +486,21 @@ function relayersOf(reader: NearReader): readonly string[] | null {
   return relayers.every(isNearAccountId) ? (relayers as readonly string[]) : null;
 }
 
-async function findOutcome(txHash: string, reader: NearReader, relayers: readonly string[]): Promise<NearOutcome | null | "unreadable"> {
+/** The outcome under the first relayer that knows it, or null; `transport` where a read rejects, `unparseable` where an answer is not an outcome. */
+async function findOutcome(
+  txHash: string,
+  reader: NearReader,
+  relayers: readonly string[],
+): Promise<NearOutcome | null | "transport" | "unparseable"> {
   for (const relayer of relayers) {
     let o: NearOutcome | null;
     try {
       o = await reader.txStatus(txHash, relayer);
     } catch {
-      return "unreadable";
+      return "transport";
     }
     if (o === null) continue;
-    return isOutcome(o) ? o : "unreadable";
+    return isOutcome(o) ? o : "unparseable";
   }
   return null;
 }
@@ -555,14 +624,17 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys, from the signed delegate action: the token, the payer, its key and the nonce, the window, and the
- * SHA-256 of the signed `ft_transfer` arguments.
+ * SHA-256 of the signed `ft_transfer` arguments; and the payee, the `payTo` of the option the payment answers.
  */
-async function reference(presented: unknown): Promise<NearRef | Refusal> {
+async function reference(presented: unknown, option: PaymentRequirements): Promise<NearRef | Refusal> {
   const r = carried(presented);
   if (isRefusal(r)) return r;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const { asset, payer, publicKey, nonce, maxBlockHeight, args } = r.c;
   return {
     network: r.accepted.network as NearNetwork,
+    payee,
     asset,
     payer,
     publicKey,
@@ -627,6 +699,19 @@ export const exactNear = Object.freeze({
   reference,
   status: nearStatus,
   recover: nearRecover,
-}) satisfies Entry<typeof ID, NearPayment, NearRef & { transaction: string }, NearReader>;
+}) satisfies Entry<
+  typeof ID,
+  NearPayment,
+  NearRef,
+  NearReader,
+  X402Forms & {
+    choice: NearChoice;
+    unsigned: NearUnsigned;
+    landed: { transaction: string };
+    network: NearNetwork;
+    query: StatusQuery<NearRef & { transaction: string }, bigint, NearMark>;
+    answer: NearStatus;
+  }
+>;
 
 

@@ -69,6 +69,9 @@ function readerFor(a: { receipt?: Rec; trace?: StarknetInvocation }): StarknetRe
   };
 }
 const REF: StarknetRef & { transaction: Felt } = V.S5.ref;
+const Q = { act: "payment", finality: "ACCEPTED_ON_L2" } as const;
+const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
+const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
 describe("x402-exact-starknet.json", () => {
@@ -127,7 +130,7 @@ describe("x402-exact-starknet.json", () => {
   it("S4: bound and reference", async () => {
     const p = await pay();
     expect(await exactStarknet.bound(p)).toBe(V.S4.expectBound);
-    const ref = await exactStarknet.reference(p);
+    const ref = await exactStarknet.reference(p, O);
     expect(ref).toEqual(V.S4.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
     const other = await pay(doc({ legalContext: { info: { type: "sha256", value: V.S4.boundWithEmptyHash.value, legalContextUrl: V.fixed.link }, schema: {} } }));
@@ -141,15 +144,15 @@ describe("x402-exact-starknet.json", () => {
 
   it("S5: status on receipt and trace fixtures, and the landed nonce", async () => {
     for (const row of rowsOf(V.S5.status, "x402-exact-starknet.json S5.status")) {
-      expect([row.case, plain(await exactStarknet.status(REF, readerFor(row)))]).toEqual([row.case, row.expect]);
+      expect([row.case, plain(await exactStarknet.status(REF, readerFor(row), { ...Q, finality: row.finality ?? "ACCEPTED_ON_L1" }))]).toEqual([row.case, row.expect]);
     }
     expect(await starknetLandedNonce(REF, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
     const underReverted = V.S5.status.find((r: { case: string }) => r.case.endsWith("the receipt still listing the transfer"));
     expect(await starknetLandedNonce(REF, readerFor(underReverted))).toEqual({ refused: true, code: "starknet/no-transfer" });
     const below = V.S5.status.filter((r: { case: string }) => r.case.startsWith("the payer's transfer one call below the execute"));
     expect(below.map((r: { expect: unknown }) => r.expect)).toEqual([
-      { state: "settled", finality: "ACCEPTED_ON_L2", blockNumber: "900" },
-      { state: "failed", why: "not-this-instrument" },
+      { state: "settled", transaction: REF.transaction, position: "900", finality: "ACCEPTED_ON_L2", foreign: [] },
+      SEARCH,
     ]);
     expect(await starknetLandedNonce(REF, readerFor(below[0]))).toBe(V.S5.landedNonce.expect);
     expect(await starknetLandedNonce(REF, readerFor(below[1]))).toEqual({ refused: true, code: "starknet/no-transfer" });
@@ -253,7 +256,7 @@ describe("x402-exact-starknet.json", () => {
     const within = [deep(13), wide(509)];
     const beyond = [deep(14), wide(510)];
     const noMatch = V.S5.status.find((r: { case: string }) => r.case.endsWith("the receipt still listing the transfer"));
-    expect(noMatch.expect).toEqual({ state: "failed", why: "not-this-instrument" });
+    expect(noMatch.expect).toEqual(SEARCH);
     for (const trace of rowsOf(within, "traces at the bounds", { exact: 2 })) {
       expect(await starknetLandedNonce(REF, readerFor({ receipt: landed.receipt, trace }))).toBe(landed.expect);
     }
@@ -263,8 +266,8 @@ describe("x402-exact-starknet.json", () => {
         code: "starknet/no-transfer",
       });
       expect(await starknetLandedNonce(REF, readerFor({ receipt: pre, trace }))).toEqual({ refused: true, code: "starknet/not-final" });
-      expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace }))).toEqual(noMatch.expect);
-      expect(await exactStarknet.status(REF, readerFor({ receipt: pre, trace }))).toEqual({ state: "pending", why: "pre-confirmed" });
+      expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace }), Q)).toEqual(noMatch.expect);
+      expect(await exactStarknet.status(REF, readerFor({ receipt: pre, trace }), Q)).toEqual(SEARCH);
     }
     const malformed = { ...landed.trace, calls: [{ ...execute, calls: [{ ...transfer, calldata: "0x1" }] }] } as never;
     for (const receipt of [landed.receipt, pre]) {
@@ -274,32 +277,34 @@ describe("x402-exact-starknet.json", () => {
 
   // The signed OutsideExecution carries one call (`OutsideExecutionTypedData`'s one-member `Calls`), so a trace holding the
   // matching transfer twice under this nonce is not the signed execution, whatever the receipt's events show. An
-  // accepted receipt's trace does not change: status answers it failed not-this-instrument, as the file's S5 row for
-  // two Transfers from the payer, where starknetLandedNonce gives the one nonce both carry.
-  it("status answers a trace holding the matching transfer twice under the nonce failed not-this-instrument", async () => {
+  // accepted receipt's trace does not change: status reads no act of the payer's in it and, with no search for H,
+  // answers pending search-incomplete, as the file's S5 row for two Transfers from the payer, where
+  // starknetLandedNonce gives the one nonce both carry.
+  it("status answers a trace holding the matching transfer twice under the nonce pending search-incomplete", async () => {
     const landed = V.S5.landedNonce;
     const execute: StarknetInvocation = landed.trace.calls[0];
     const transfer: StarknetInvocation = execute.calls[0]!;
     const twice = { ...landed.trace, calls: [{ ...execute, calls: [transfer, transfer] }] };
     const two = V.S5.status.find((r: { case: string }) => r.case === "two Transfers from the payer on the asset");
-    expect(two.expect).toEqual({ state: "failed", why: "not-this-instrument" });
-    expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: twice }))).toEqual(two.expect);
+    expect(two.expect).toEqual(SEARCH);
+    expect(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: twice }), Q)).toEqual(two.expect);
     expect(await starknetLandedNonce(REF, readerFor({ receipt: landed.receipt, trace: twice }))).toBe(landed.expect);
-    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: landed.trace })))).toEqual(V.S5.status[0].expect);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: landed.receipt, trace: landed.trace }), Q))).toEqual(V.S5.status[0].expect);
   });
 
   // A Transfer's amount is Cairo's u256, two u128 limbs, low then high (the file's two layouts end in them), and
   // starknet_getTransactionReceipt gives each event key and data member as a FELT (Starknet JSON-RPC specification,
   // EVENT_CONTENT). An asset Transfer event of neither layout, or with a limb of 2^128 or more, is the token's own event
-  // as the chain holds it, and a re-read of an accepted receipt gives it again: status answers it failed
-  // not-this-instrument, as the file's S5 row for that layout, wherever it stands beside the payer's transfer. A member
-  // that is not a felt is a reader answer out of its documented form: pending unreadable, whichever event comes first.
-  it("status answers an asset Transfer of neither layout or with a limb of 2^128 or more failed not-this-instrument, and one with a member that is not a felt pending unreadable", async () => {
+  // as the chain holds it, and a re-read of an accepted receipt gives it again: status reads no act of the payer's and
+  // answers pending search-incomplete, as the file's S5 row for that layout, wherever it stands next to the payer's
+  // transfer. A member that is not a felt is a reader answer out of its documented form: unreadable unparseable,
+  // whichever event comes first.
+  it("status answers an asset Transfer of neither layout or with a limb of 2^128 or more pending search-incomplete, and one with a member that is not a felt unreadable unparseable", async () => {
     const row = V.S5.status[0];
     const transfer = row.receipt.events[0];
     const byCase = (c: string) => V.S5.status.find((r: { case: string }) => r.case === c);
     const neither = byCase("an asset Transfer event of neither layout");
-    expect(neither.expect).toEqual({ state: "failed", why: "not-this-instrument" });
+    expect(neither.expect).toEqual(SEARCH);
     const fee = byCase("the fee payer's Transfer on the same asset beside the payer's").receipt.events[0];
     const limb = `0x${(2n ** 128n).toString(16)}`;
     const maxLimb = `0x${(2n ** 128n - 1n).toString(16)}`;
@@ -317,7 +322,7 @@ describe("x402-exact-starknet.json", () => {
     ];
     const receipt = (events: unknown[], finality = "ACCEPTED_ON_L2") => ({ ...row.receipt, finality, events });
     const status = async (events: unknown[], finality?: string) =>
-      plain(await exactStarknet.status(REF, readerFor({ receipt: receipt(events, finality), trace: row.trace })));
+      plain(await exactStarknet.status(REF, readerFor({ receipt: receipt(events, finality), trace: row.trace }), Q));
     expect(await status([transfer])).toEqual(row.expect);
     expect(await status([{ ...fee, data: [maxLimb, maxLimb] }, transfer])).toEqual(row.expect);
     for (const e of rowsOf(unstandard, "asset Transfer events of neither layout or with a limb of 2^128", { exact: 5 })) {
@@ -326,48 +331,48 @@ describe("x402-exact-starknet.json", () => {
         expect(await status([transfer, e], finality)).toEqual(neither.expect);
         expect(await status([e, transfer], finality)).toEqual(neither.expect);
       }
-      expect(await status([e], "PRE_CONFIRMED")).toEqual({ state: "pending", why: "pre-confirmed" });
+      expect(await status([e], "PRE_CONFIRMED")).toEqual(SEARCH);
     }
     for (const e of rowsOf(notFelt, "asset Transfer events with a member that is not a felt", { exact: 3 })) {
-      expect(await status([e])).toEqual({ state: "pending", why: "unreadable" });
-      expect(await status([unstandard[0], e])).toEqual({ state: "pending", why: "unreadable" });
-      expect(await status([e, unstandard[0]])).toEqual({ state: "pending", why: "unreadable" });
+      expect(await status([e])).toEqual(UNPARSEABLE);
+      expect(await status([unstandard[0], e])).toEqual(UNPARSEABLE);
+      expect(await status([e, unstandard[0]])).toEqual(UNPARSEABLE);
     }
   });
 
-  // A missing or malformed idDigest cannot name the landed transfer, so the read is pending, never failed
+  // A missing or malformed idDigest cannot name the landed transfer, so the read is unreadable, never failed
   // (docs/guides/rails.md, "Reading settlement"); the digest is a 32-byte hash, the same in either case.
-  it("S5: a ref whose idDigest is malformed is pending unreadable, with nothing read", async () => {
+  it("S5: a ref whose idDigest is malformed is unreadable unparseable, with nothing read", async () => {
     const landed = V.S5.status[0];
     for (const idDigest of [undefined, REF.idDigest.slice(2), `0X${REF.idDigest.slice(2)}`, `0x${REF.idDigest.slice(4)}`]) {
       const { reader, calls } = counting(readerFor(landed));
-      expect(await exactStarknet.status({ ...REF, idDigest } as typeof REF, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await exactStarknet.status({ ...REF, idDigest } as typeof REF, reader, Q)).toEqual(UNPARSEABLE);
       expect(calls).toEqual([]);
     }
     const upper = { ...REF, idDigest: `0x${REF.idDigest.slice(2).toUpperCase()}` } as typeof REF;
-    expect(plain(await exactStarknet.status(upper, readerFor(landed)))).toEqual(landed.expect);
+    expect(plain(await exactStarknet.status(upper, readerFor(landed), Q))).toEqual(landed.expect);
     expect(await starknetLandedNonce(upper, readerFor(V.S5.landedNonce))).toBe(V.S5.landedNonce.expect);
   });
 
   // A felt is an element of the field of the STARK prime 2^251 + 17·2^192 + 1 (Starknet's felt252, docs.starknet.io
   // "Cryptography"), written as reference writes it, 0x and hex digits. A from, asset or nonce outside that form cannot
-  // name the payer, the token or the signed nonce, so the read is pending, never settled or failed
+  // name the payer, the token or the signed nonce, so the read is unreadable, never settled or failed
   // (docs/guides/rails.md, "Reading settlement"); a felt reads the same in either case.
-  it("S5: a ref whose from, asset or nonce is not a felt is pending unreadable, with nothing read", async () => {
+  it("S5: a ref whose from, asset or nonce is not a felt is unreadable unparseable, with nothing read", async () => {
     const landed = V.S5.status[0];
     const prime = "0x800000000000011000000000000000000000000000000000000000000000001";
     for (const key of ["from", "asset", "nonce"] as const) {
       for (const value of [undefined, REF[key].slice(2), prime]) {
         const { reader, calls } = counting(readerFor(landed));
-        expect([key, value, await exactStarknet.status({ ...REF, [key]: value } as typeof REF, reader)]).toEqual([
+        expect([key, value, await exactStarknet.status({ ...REF, [key]: value } as typeof REF, reader, Q)]).toEqual([
           key,
           value,
-          { state: "pending", why: "unreadable" },
+          UNPARSEABLE,
         ]);
         expect(calls).toEqual([]);
       }
       const upper = { ...REF, [key]: `0x${REF[key].slice(2).toUpperCase()}` } as typeof REF;
-      expect(plain(await exactStarknet.status(upper, readerFor(landed)))).toEqual(landed.expect);
+      expect(plain(await exactStarknet.status(upper, readerFor(landed), Q))).toEqual(landed.expect);
     }
   });
 
@@ -388,31 +393,28 @@ describe("x402-exact-starknet.json", () => {
     // An account that runs its outside execution as a library call into its implementation class (a proxy account): two
     // frames, both on the payer's account, carry the selector and the nonce, and the transfer below them is one payment.
     const twoFrames = under([frame(REF.from, SELECTOR_EXECUTE_FROM_OUTSIDE_V2, [transfer])]);
-    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: twoFrames })))).toEqual(row.expect);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: twoFrames }), Q))).toEqual(row.expect);
     expect(await starknetLandedNonce(REF, readerFor({ receipt: row.receipt, trace: twoFrames }))).toBe(V.S5.landedNonce.expect);
     // A proxy token: its transfer runs as a library call into its implementation, a frame below the transfer with the
     // same contract, selector and calldata (blockifier's library_call keeps the caller's storage address; Pathfinder's
     // from_call_info lists the frame in the caller's calls). It is the token's own execution of the one transfer.
     const proxyToken = under([{ ...transfer, calls: [{ ...transfer, calls: [] }] }]);
-    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: proxyToken })))).toEqual(row.expect);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: proxyToken }), Q))).toEqual(row.expect);
     expect(await starknetLandedNonce(REF, readerFor({ receipt: row.receipt, trace: proxyToken }))).toBe(V.S5.landedNonce.expect);
     const proxyTokenBelow = under([frame(REF.from, row.trace.selector, [{ ...transfer, calls: [{ ...transfer, calls: [] }] }])]);
-    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: proxyTokenBelow })))).toEqual(row.expect);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: proxyTokenBelow }), Q))).toEqual(row.expect);
     // Two levels down, through two intermediate calls on the payer's account.
     const deeper = under([frame(REF.from, row.trace.selector, [frame(REF.from, row.trace.selector, [transfer])])]);
-    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: deeper })))).toEqual(row.expect);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: deeper }), Q))).toEqual(row.expect);
     // The plant one call down: the nested transfer is on another contract.
     const elsewhere = under([frame(REF.from, row.trace.selector, [{ ...transfer, contract: V.plant.trace.calls[0].calls[0].contract }])]);
-    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: elsewhere })))).toEqual(V.plant.expect);
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt: row.receipt, trace: elsewhere }), Q))).toEqual(V.plant.expect);
     // Another contract in the middle makes the transfer from its own balance: the receipt's Transfer is not the payer's.
     const stranger: Felt = "0x777";
     const fromStranger = under([frame(stranger, row.trace.selector, [transfer])]);
     const event = row.receipt.events[0];
     const receipt = { ...row.receipt, events: [{ ...event, keys: [event.keys[0], stranger, event.keys[2]] }] };
-    expect(plain(await exactStarknet.status(REF, readerFor({ receipt, trace: fromStranger })))).toEqual({
-      state: "failed",
-      why: "not-this-instrument",
-    });
+    expect(plain(await exactStarknet.status(REF, readerFor({ receipt, trace: fromStranger }), Q))).toEqual(SEARCH);
   });
 
   it("S1: the Transfer event's first key is sn_keccak(\"Transfer\")", () => {
@@ -421,7 +423,36 @@ describe("x402-exact-starknet.json", () => {
   });
 
   it("plant: a transfer on another contract with the same calldata is never the payment", async () => {
-    expect(plain(await exactStarknet.status(REF, readerFor(V.plant)))).toEqual(V.plant.expect);
+    expect(plain(await exactStarknet.status(REF, readerFor(V.plant), Q))).toEqual(V.plant.expect);
+  });
+
+  it("status on the act agreement, at a position, against a reader of another network, and a receipt with no trace", async () => {
+    const row = V.S5.status[0];
+    expect(plain(await exactStarknet.status(REF, readerFor(row), { ...Q, act: "agreement" }))).toEqual(row.expect);
+    // Read at ACCEPTED_ON_L1, a transaction accepted on L2 only is below the mark asked.
+    expect(plain(await exactStarknet.status(REF, readerFor(row), { act: "agreement", finality: "ACCEPTED_ON_L1" }))).toEqual({
+      state: "pending",
+      reason: "below-mark",
+      transaction: REF.transaction,
+      position: row.expect.position,
+      finality: "ACCEPTED_ON_L2",
+      foreign: [],
+    });
+    // The settled transaction at its own block number is at the position given: before-position (read-status rule 16).
+    const block = BigInt(row.expect.position);
+    expect(plain(await exactStarknet.status(REF, readerFor(row), { ...Q, after: block }))).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: REF.transaction,
+      position: row.expect.position,
+      finality: "ACCEPTED_ON_L2",
+      foreign: [],
+    });
+    expect(plain(await exactStarknet.status(REF, readerFor(row), { ...Q, after: block - 1n }))).toEqual(row.expect);
+    const other = { ...readerFor(row), network: "starknet:SN_MAIN" as const };
+    expect(await exactStarknet.status(REF, other, Q)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
+    expect(await exactStarknet.status(REF, readerFor({ receipt: row.receipt }), Q)).toEqual({ state: "unreadable", reason: "history-gap", foreign: [] });
+    expect(await exactStarknet.status(REF, readerFor(row), { ...Q, after: 900 } as never)).toEqual(UNPARSEABLE);
   });
 
   // The typed data is measured as JSON within the package's one nesting bound, 64 levels (vectors/core-vectors.json
@@ -465,7 +496,7 @@ describe("x402-exact-starknet.json", () => {
       } else if (row.twoMatches) {
         const root = V.S5.status[0].trace;
         const twice = { ...root, calls: [...root.calls, ...root.calls] };
-        expect(plain(await exactStarknet.status(REF, readerFor({ receipt: V.S5.status[0].receipt, trace: twice })))).toEqual(row.expect);
+        expect(plain(await exactStarknet.status(REF, readerFor({ receipt: V.S5.status[0].receipt, trace: twice }), Q))).toEqual(row.expect);
       } else {
         throw new Error(`no runner for ${row.case}`);
       }

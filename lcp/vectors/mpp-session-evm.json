@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/session/evm. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and its ox 0.14.54 on Node 26.10.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. The session request's amount is a price per unit and enters no expected value.",
+ "about": "Vectors for mpp/session/evm. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and its ox 0.14.54 on Node 26.10.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. The session request's amount is a price per unit and enters no expected value. Under the profile read-status, ES9's rows that were failed open-call-not-found (the open calls of another channel, presentedForH2) are pending search-incomplete: at coverage full no failed is answered until the search for H is read whole (rule 24).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0x88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589",
@@ -92,7 +92,7 @@
   }
  },
  "ES9": {
-  "about": "The opening's settlement read, on the hash opening (ES7's credential, whose transaction the payer broadcast before presenting it) and the Permit2 opening (ES6's credential, whose transaction a relayer sends). status reads the receipt, then the transaction by eth_getTransactionByHash, and settles only when the transaction is sent to the escrow and holds its open call for the credential's channel: draft-evm-session-00's open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner) sent by the payer, or its openWithPermit2(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner, address from, uint256 nonce, uint256 deadline, bytes signature) with the payer as from. In each the salt is H, and the payer, payee, token and authorized signer give the channel id. An open call sent to the escrow that opens another channel is failed open-call-not-found on the hash opening, whose named transaction is the payment, and pending on the Permit2 opening, which can land until its deadline. Any other transaction is pending open-call-not-found, never failed. The entryPoint cases are hash openings sent through an ERC-4337 EntryPoint (the draft's \"either directly or through an ERC-4337 EntryPoint-mediated UserOperation\"): each is pending open-call-not-found, as the account's calldata does not show which contract the account called, and the draft defines no opening event. Each input is viem 2.57.4's encodeFunctionData of those signatures, of ERC-20 transfer(address,uint256), of eth-infinitism SimpleAccount's executeBatch(address[],uint256[],bytes[]) (v0.7) and execute(address,uint256,bytes) (v0.6), or of handleOps under viem's entryPoint07Abi and entryPoint06Abi; the EntryPoint addresses are viem's entryPoint07Address and entryPoint06Address. Each log is viem's encodeEventTopics and encodeAbiParameters of ERC-20 Transfer or of the EntryPoint's UserOperationEvent. openH is ES2's call (164 bytes, selector 0xc79ea485, deposit 0x4c4b40, H once). The open call is read in the first 164 bytes of its calldata: a Solidity function's ABI decoder refuses calldata shorter than its arguments and does not read past them, and a wallet may append a data suffix, such as ERC-8021's, which ends in the 16-byte marker 0x80218021802180218021802180218021 (ox 0.14.45's erc8021 ercSuffix). Calldata longer than 131,072 bytes, go-ethereum's transaction pool maximum for a whole transaction (core/txpool/legacypool/legacypool.go, txMaxSize = 4 * txSlotSize, 128 KiB), is not decoded: such a transaction is pending open-call-not-found, as any other transaction is; the last permit2 case gives no input, and its input is the first permit2 case's openWithPermit2 with its signature replaced by signatureBytes bytes of 0x11, which the runner encodes with viem's encodeFunctionData. The receipt holds the token's Transfer of the deposit from the payer to the escrow, at block 90, with the safe and finalized marks at 100; each entryPoint and permit2 case holds its own receipt at block 90. entryPoint.account is a placeholder smart account address, and entryPoint.expectChannelId is ES1's channel id with that account as the payer, viem's keccak256 of encodeAbiParameters.",
+  "about": "The opening's settlement read, on the hash opening (ES7's credential, whose transaction the payer broadcast before presenting the credential) and the Permit2 opening (ES6's credential, whose transaction a relayer sends). status reads the receipt, then the transaction by eth_getTransactionByHash, and settles, with the transaction, its block 90 as the position and the mark it reached, only when the transaction is sent to the escrow and holds its open call for the credential's channel: draft-evm-session-00's open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner) sent by the payer, or its openWithPermit2(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner, address from, uint256 nonce, uint256 deadline, bytes signature) with the payer as from. In each the salt is H, and the payer, payee, token and authorized signer give the channel id. An open call sent to the escrow that opens another channel, any other transaction, and a transaction the node does not hold are no act of this opening: with no search for H yet, each answers pending search-incomplete. The entryPoint cases are hash openings sent through an ERC-4337 EntryPoint (the draft's \"either directly or through an ERC-4337 EntryPoint-mediated UserOperation\"): each is no act, pending search-incomplete, as the account's calldata does not show which contract the account called, and the draft defines no opening event. Each input is viem 2.57.4's encodeFunctionData of those signatures, of ERC-20 transfer(address,uint256), of eth-infinitism SimpleAccount's executeBatch(address[],uint256[],bytes[]) (v0.7) and execute(address,uint256,bytes) (v0.6), or of handleOps under viem's entryPoint07Abi and entryPoint06Abi; the EntryPoint addresses are viem's entryPoint07Address and entryPoint06Address. Each log is viem's encodeEventTopics and encodeAbiParameters of ERC-20 Transfer or of the EntryPoint's UserOperationEvent. openH is ES2's call (164 bytes, selector 0xc79ea485, deposit 0x4c4b40, H once). The open call is read in the first 164 bytes of its calldata: a Solidity function's ABI decoder refuses calldata shorter than its arguments and does not read past them, and a wallet may append a data suffix, such as ERC-8021's, which ends in the 16-byte marker 0x80218021802180218021802180218021 (ox 0.14.45's erc8021 ercSuffix). Calldata longer than 131,072 bytes, go-ethereum's transaction pool maximum for a whole transaction (core/txpool/legacypool/legacypool.go, txMaxSize = 4 * txSlotSize, 128 KiB), is not decoded: such a transaction is no act, as any other transaction is; the last permit2 case gives no input, and its input is the first permit2 case's openWithPermit2 with its signature replaced by signatureBytes bytes of 0x11, which the runner encodes with viem's encodeFunctionData. The receipt holds the token's Transfer of the deposit from the payer to the escrow, at block 90, with the safe and finalized marks at 100; each entryPoint and permit2 case holds its own receipt at block 90. entryPoint.account is a placeholder smart account address, and entryPoint.expectChannelId is ES1's channel id with that account as the payer, viem's keccak256 of encodeAbiParameters.",
   "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
   "receipt": {
    "status": 1,
@@ -120,8 +120,10 @@
     },
     "expect": {
      "state": "settled",
+     "transaction": "0x5555555555555555555555555555555555555555555555555555555555555555",
+     "position": "90",
      "finality": "finalized",
-     "blockNumber": "90"
+     "foreign": []
     }
    },
    {
@@ -133,7 +135,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "open-call-not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -144,8 +147,9 @@
      "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b4088d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f0315890000000000000000000000000000000000000000000000000000000000000000"
     },
     "expect": {
-     "state": "failed",
-     "why": "open-call-not-found"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -156,8 +160,9 @@
      "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
     },
     "expect": {
-     "state": "failed",
-     "why": "open-call-not-found"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -168,8 +173,9 @@
      "input": "0xc79ea4850000000000000000000000007777777777777777777777777777777777777777000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
     },
     "expect": {
-     "state": "failed",
-     "why": "open-call-not-found"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -181,7 +187,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "open-call-not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -192,8 +199,9 @@
      "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad00000000000000000000000000000000000000000000000000000000000000"
     },
     "expect": {
-     "state": "failed",
-     "why": "open-call-not-found"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -205,8 +213,10 @@
     },
     "expect": {
      "state": "settled",
+     "transaction": "0x5555555555555555555555555555555555555555555555555555555555555555",
+     "position": "90",
      "finality": "finalized",
-     "blockNumber": "90"
+     "foreign": []
     }
    },
    {
@@ -214,7 +224,8 @@
     "transaction": null,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ],
@@ -226,8 +237,9 @@
     "input": "0xc79ea485000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000004c4b40ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
    },
    "expect": {
-    "state": "failed",
-    "why": "open-call-not-found"
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": []
    }
   },
   "entryPoint": {
@@ -268,7 +280,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -305,7 +318,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -342,7 +356,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -379,7 +394,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -416,7 +432,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -463,7 +480,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -500,7 +518,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     }
    ]
@@ -531,8 +550,10 @@
      },
      "expect": {
       "state": "settled",
+      "transaction": "0x5555555555555555555555555555555555555555555555555555555555555555",
+      "position": "90",
       "finality": "finalized",
-      "blockNumber": "90"
+      "foreign": []
      }
     },
     {
@@ -559,7 +580,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -595,7 +617,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -622,7 +645,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     },
     {
@@ -649,7 +673,8 @@
      },
      "expect": {
       "state": "pending",
-      "why": "open-call-not-found"
+      "reason": "search-incomplete",
+      "foreign": []
      }
     }
    ]

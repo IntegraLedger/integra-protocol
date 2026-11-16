@@ -668,7 +668,7 @@ describe("the caller's bytes are read by index, never through their iterator", (
           slotAt: async () => null,
           transaction: async () => ({ blockHeight: 5216518n, slot: 134617000n, valid: true, cbor }),
         };
-        return exactCardano.recover({ network: "cardano:preprod", txId: cardanoRow.txId }, reader as never);
+        return exactCardano.recover({ network: "cardano:preprod", tx: cardanoRow.txId, option: CA.fixed.O }, reader as never);
       },
       "AvmUnsigned.complete": (wrap) => avm.complete(wrap(signature(64, 0x1f))),
       "HederaUnsigned.complete, key and signature": (wrap) =>

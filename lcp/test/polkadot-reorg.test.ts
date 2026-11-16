@@ -1,7 +1,7 @@
 // A timepoint whose block left the canonical chain, read from recorded Westend Asset Hub Sidecar answers
 // (test/fixtures/westend-reorg.json). "moved": the canonical block at the named height holds the same extrinsic at the
 // named index, so it counts, at the canonical timepoint. "gone": nothing is at that index on the canonical chain, so
-// the answer asks for the payment to be located again (polkadotLocate).
+// the read names no included act and, with no search for H, answers pending search-incomplete (read-status rule 24).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AtrHash, Json } from "../src/core.js";
@@ -38,20 +38,23 @@ function readerOf(c: Case): PolkadotReader {
   };
 }
 
-const refOf = (c: Case) => ({ network: NETWORK, extrinsicHash: c.extrinsicHash, assetId: c.assetId, h: c.h, transaction: c.transaction });
+const refOf = (c: Case) => ({ network: NETWORK, payee: "payee", extrinsicHash: c.extrinsicHash, assetId: c.assetId, h: c.h, transaction: c.transaction });
+const Q = { act: "payment", finality: "finalized" } as const;
+const LOCATE = { state: "pending", reason: "search-incomplete", foreign: [] };
 
 describe("polkadotStatus on a named block that left the canonical chain (Westend, recorded)", () => {
   it("moved: the canonical extrinsic at the named height and index has the recorded hash, so it settles there", async () => {
-    expect(await polkadotStatus(refOf(F.moved), readerOf(F.moved))).toEqual({
+    expect(await polkadotStatus(refOf(F.moved), readerOf(F.moved), Q)).toEqual({
       state: "settled",
       finality: "finalized",
-      height: 17735701n,
+      position: 17735701n,
+      foreign: [],
       transaction: "0x669e1f8d67457055c7d4516aeebec824922c1829001ed5264f4061a9ddef529f-2",
     });
   });
 
   it("gone: nothing at the named index on the canonical chain; the payment is to be located again (polkadotLocate)", async () => {
-    expect(await polkadotStatus(refOf(F.gone), readerOf(F.gone))).toEqual({ state: "pending", why: "not-located" });
+    expect(await polkadotStatus(refOf(F.gone), readerOf(F.gone), Q)).toEqual(LOCATE);
   });
 
   it("a named block the finalized chain holds answers at the timepoint it was given", async () => {
@@ -63,10 +66,11 @@ describe("polkadotStatus on a named block that left the canonical chain (Westend
         "/blocks/0x669e1f8d67457055c7d4516aeebec824922c1829001ed5264f4061a9ddef529f/extrinsics/2": F.moved.reads["/blocks/17735701/extrinsics/2"],
       },
     };
-    expect(await polkadotStatus(refOf(c), readerOf(c))).toEqual({
+    expect(await polkadotStatus(refOf(c), readerOf(c), Q)).toEqual({
       state: "settled",
       finality: "finalized",
-      height: 17735701n,
+      position: 17735701n,
+      foreign: [],
       transaction: "0x669e1f8d67457055c7d4516aeebec824922c1829001ed5264f4061a9ddef529f-2",
     });
   });
@@ -75,6 +79,6 @@ describe("polkadotStatus on a named block that left the canonical chain (Westend
     const other = structuredClone(F.moved.reads["/blocks/17735701/extrinsics/2"]) as { extrinsics: { hash: string } };
     other.extrinsics.hash = "0x448c648dec59ba592b8e26230a72caa98e670b8b39b7f57e95a1f35a399a1030";
     const c: Case = { ...F.moved, reads: { ...F.moved.reads, "/blocks/17735701/extrinsics/2": other } };
-    expect(await polkadotStatus(refOf(c), readerOf(c))).toEqual({ state: "pending", why: "not-located" });
+    expect(await polkadotStatus(refOf(c), readerOf(c), Q)).toEqual(LOCATE);
   });
 });

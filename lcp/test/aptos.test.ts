@@ -122,8 +122,18 @@ function refOf(v: Record<string, string>): AptosRef {
     expiresAt: v["expiresAt"]!,
     idDigest: v["idDigest"] as `0x${string}`,
     ...(v["transaction"] !== undefined ? { transaction: v["transaction"] as `0x${string}` } : {}),
+    payee: v["payee"]!,
   };
 }
+
+/** The query a row asks: the act payment at the one mark unless the row's query says otherwise, its position a version. */
+const paymentAct = { act: "payment", finality: "committed" } as const;
+function queryOf(q?: { act: "payment" | "agreement"; finality: "committed"; after?: string }) {
+  if (q === undefined) return paymentAct;
+  return q.after === undefined ? { act: q.act, finality: q.finality } : { act: q.act, finality: q.finality, after: BigInt(q.after) };
+}
+const unreadable = (reason: string) => ({ state: "unreadable", reason, foreign: [] });
+const expired = { state: "failed", reason: "instrument-unused", finality: "committed", foreign: [] };
 
 type Row = { ledgerUsecs: string; byHash?: unknown; bySequence?: unknown; readerError?: boolean };
 
@@ -184,11 +194,18 @@ describe("V1 · idDigest from the rail", () => {
 describe("V2 · reference from the wire", () => {
   it("both wire forms give the rail's idDigest", async () => {
     for (const wire of [referenceWire(raw()), signedWire(raw())]) {
-      expect(throughJson(await exactAptos.reference(payment(wire)))).toEqual(V.V2.expectReference);
+      expect(throughJson(await exactAptos.reference(payment(wire), O))).toEqual(V.V2.expectReference);
     }
   });
+  it("the payee is the payTo of the option the payment answers, and an option with none is refused", async () => {
+    expect(await exactAptos.reference(payment(signedWire(raw())), O)).toMatchObject({ payee: O.payTo });
+    expect(await exactAptos.reference(payment(signedWire(raw())), {} as PaymentRequirements)).toEqual({
+      refused: true,
+      code: "x402/option-malformed",
+    });
+  });
   it("chain_id 2 on aptos:1", async () => {
-    expect(await exactAptos.reference(payment(referenceWire(raw(transferPayload(), 2))))).toEqual({
+    expect(await exactAptos.reference(payment(referenceWire(raw(transferPayload(), 2))), O)).toEqual({
       refused: true,
       code: V.V2.chainMismatch.expect,
     });
@@ -196,7 +213,7 @@ describe("V2 · reference from the wire", () => {
   it("a script payload", async () => {
     const script = new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], []));
     expect(decodeAptosTx(referenceWire(raw(script)))).toEqual({ refused: true, code: V.V2.script.expect });
-    expect(await exactAptos.reference(payment(signedWire(raw(script))))).toEqual({ refused: true, code: V.V2.script.expect });
+    expect(await exactAptos.reference(payment(signedWire(raw(script))), O)).toEqual({ refused: true, code: V.V2.script.expect });
   });
   it("a module, function or struct name with a leading U+FEFF, a leading digit or over 255 characters is not a Move identifier", async () => {
     // Move identifiers are ASCII letters, digits and underscores that do not start with a digit (aptos-core,
@@ -227,7 +244,7 @@ describe("V2 · reference from the wire", () => {
     for (const payload of payloads) {
       for (const wire of [referenceWire(raw(payload)), signedWire(raw(payload))]) {
         expect(decodeAptosTx(wire)).toEqual({ refused: true, code: row.expect });
-        expect(await exactAptos.reference(payment(wire))).toEqual({ refused: true, code: row.expect });
+        expect(await exactAptos.reference(payment(wire), O)).toEqual({ refused: true, code: row.expect });
       }
     }
   });
@@ -250,7 +267,7 @@ describe("V4 · status", () => {
   for (const row of rowsOf(V.V4.status, "x402-exact-aptos.json V4.status")) {
     it(row.case, async () => {
       const r = reader(row);
-      expect(plain(await exactAptos.status(refOf(row.ref), r))).toEqual(row.expect);
+      expect(plain(await exactAptos.status(refOf(row.ref), r, queryOf(row.query)))).toEqual(row.expect);
       expect(r.calls).toBeLessThanOrEqual(3);
     });
   }
@@ -259,22 +276,25 @@ describe("V4 · status", () => {
     // the vector's retry row.
     const retry = V.V4.status.find((r: { case: string }) => r.case.includes("a retry"));
     const committed = retry.bySequence as AptosCommitted;
-    const first = await exactAptos.reference(payment(signedWire(raw())));
+    const first = await exactAptos.reference(payment(signedWire(raw())), O);
     const second = await exactAptos.reference(
       payment(signedWire(raw(transferPayload(), F.chainId, BigInt(committed.expiration_timestamp_secs)))),
+      O,
     );
     if ("refused" in first) throw new Error(first.code);
     if ("refused" in second) throw new Error(second.code);
     expect(first).toEqual(V.V2.expectReference);
     expect(second).toEqual({ ...V.V2.expectReference, expiresAt: committed.expiration_timestamp_secs });
     const at: Row = { ledgerUsecs: retry.ledgerUsecs, bySequence: committed };
-    expect(plain(await exactAptos.status(first, reader(at)))).toEqual(retry.expect);
+    expect(plain(await exactAptos.status(first, reader(at), paymentAct))).toEqual(retry.expect);
     const named = { ...first, transaction: committed.hash as `0x${string}` };
-    expect(plain(await exactAptos.status(named, reader({ ...at, byHash: committed })))).toEqual(retry.expect);
-    expect(plain(await exactAptos.status(second, reader(at)))).toEqual({
+    expect(plain(await exactAptos.status(named, reader({ ...at, byHash: committed }), paymentAct))).toEqual(retry.expect);
+    expect(plain(await exactAptos.status(second, reader(at), paymentAct))).toEqual({
       state: "settled",
-      version: committed.version,
       transaction: committed.hash,
+      position: committed.version,
+      finality: "committed",
+      foreign: [],
     });
   });
   // Every successful Aptos REST response carries X-Aptos-Ledger-TimestampUsec, the ledger timestamp of that answer, and a
@@ -285,13 +305,13 @@ describe("V4 · status", () => {
     const ledgerUsecs = 1790300896000000n;
     for (const at of [1790300865000000n, 1790300895000000n, 1790300895999999n, ledgerUsecs, ledgerUsecs + 1n]) {
       const r = reader({ ...row, bySequence: { notFound: true, timestampUsecs: at.toString() } });
-      const want = at >= ledgerUsecs ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
-      expect([at, await exactAptos.status(refOf(row.ref), r)]).toEqual([at, want]);
+      const want = at >= ledgerUsecs ? expired : unreadable("history-gap");
+      expect([at, await exactAptos.status(refOf(row.ref), r, paymentAct)]).toEqual([at, want]);
     }
     const unnamed = { ...reader(row), bySequence: async () => ({ notFound: true }) as never };
-    expect(await exactAptos.status(refOf(row.ref), unnamed)).toEqual({ state: "pending", why: "not-found" });
+    expect(await exactAptos.status(refOf(row.ref), unnamed, paymentAct)).toEqual(unreadable("history-gap"));
     const bare = { ...reader(row), bySequence: async () => null as never };
-    expect(await exactAptos.status(refOf(row.ref), bare)).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactAptos.status(refOf(row.ref), bare, paymentAct)).toEqual(unreadable("unparseable"));
   });
   // aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move:134-137: the
   // prologue asserts `timestamp::now_seconds() < txn_expiration_time` and refuses with PROLOGUE_ETRANSACTION_EXPIRED
@@ -304,20 +324,20 @@ describe("V4 · status", () => {
     for (const at of [second - 1_000_000n, second - 1n, second, second + 1n, second + 999_999n, second + 1_000_000n]) {
       const covering = { notFound: true, timestampUsecs: at.toString() };
       const r = reader({ ...row, ledgerUsecs: at.toString(), bySequence: covering });
-      const want = at >= second ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
-      expect([at, await exactAptos.status(refOf(row.ref), r)]).toEqual([at, want]);
+      const want = at >= second ? expired : unreadable("history-gap");
+      expect([at, await exactAptos.status(refOf(row.ref), r, paymentAct)]).toEqual([at, want]);
     }
   });
-  it("a reader for another network, or a ledger for another chain, is unreadable", async () => {
+  it("a reader for another network, or a ledger for another chain, is unreadable chain-mismatch", async () => {
     const row = V.V4.status[0];
-    expect(await exactAptos.status(refOf(row.ref), reader(row, "aptos:2"))).toEqual({ state: "pending", why: "unreadable" });
-    expect(await exactAptos.status(refOf(row.ref), reader(row, "aptos:1", 2))).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactAptos.status(refOf(row.ref), reader(row, "aptos:2"), paymentAct)).toEqual(unreadable("chain-mismatch"));
+    expect(await exactAptos.status(refOf(row.ref), reader(row, "aptos:1", 2), paymentAct)).toEqual(unreadable("chain-mismatch"));
   });
   // docs/guides/rails.md, "Reading settlement": a reference that lacks a field status reads the payment by, or holds it
-  // malformed, is pending unreadable with nothing read, and hex digits read the same in either case. reference() writes
+  // malformed, is unreadable unparseable with nothing read, and hex digits read the same in either case. reference() writes
   // the sender and the idDigest as 0x and 64 lowercase hex digits (V2), and a named transaction is an Aptos hash in the
   // same form (V4). Each row's reader would otherwise answer the row's expect.
-  it("a ref whose sender, idDigest or named transaction is not 0x and 64 hex digits is unreadable, with nothing read", async () => {
+  it("a ref whose sender, idDigest or named transaction is not 0x and 64 hex digits is unreadable unparseable, with nothing read", async () => {
     const named: string = V.V4.status[0].ref.transaction;
     for (const row of rowsOf(V.V4.status, "x402-exact-aptos.json V4.status")) {
       for (const key of ["sender", "idDigest", "transaction"] as const) {
@@ -329,8 +349,8 @@ describe("V4 · status", () => {
         for (const v of forms) {
           const r = reader(row);
           const ref = { ...refOf(row.ref), [key]: v } as AptosRef;
-          const got = await exactAptos.status(ref, r);
-          expect([row.case, key, v, got, r.calls]).toEqual([row.case, key, v, { state: "pending", why: "unreadable" }, 0]);
+          const got = await exactAptos.status(ref, r, paymentAct);
+          expect([row.case, key, v, got, r.calls]).toEqual([row.case, key, v, unreadable("unparseable"), 0]);
         }
       }
     }
@@ -342,7 +362,7 @@ describe("V4 · status", () => {
       const shouted: AptosRef = { ...ref, sender: upper(ref.sender), idDigest: upper(ref.idDigest) };
       if (ref.transaction !== undefined) shouted.transaction = upper(ref.transaction);
       const r = reader(row);
-      expect(plain(await exactAptos.status(shouted, r))).toEqual(row.expect);
+      expect(plain(await exactAptos.status(shouted, r, queryOf(row.query)))).toEqual(row.expect);
       expect(r.asked).toEqual(r.asked.map((a) => String(a).toLowerCase()));
     }
   });
@@ -350,7 +370,7 @@ describe("V4 · status", () => {
 
 describe("plant", () => {
   it("an undocumented vm_status string on a successful commit is settled, never refused", async () => {
-    expect(plain(await exactAptos.status(refOf(V.plant.ref), reader(V.plant)))).toEqual(V.plant.expect);
+    expect(plain(await exactAptos.status(refOf(V.plant.ref), reader(V.plant), paymentAct))).toEqual(V.plant.expect);
   });
 });
 
@@ -449,13 +469,13 @@ describe("x402-exact-aptos.json agreedRefusals: build's complete gives each tran
   const rows = rowsOf(V.agreedRefusals.rows as RefusalRow[], "x402-exact-aptos.json agreedRefusals.rows", {
     exact: inputs.length,
     keep: ["the rows whose fault is in the transaction", (r) => inputOf(r) !== undefined],
-    leave: ["the option's network row and the status row, whose fault is not in the transaction", (r) => inputOf(r) === undefined],
+    leave: ["the option's network row and the status rows, whose fault is not in the transaction", (r) => inputOf(r) === undefined],
   });
   for (const r of rows) {
     it(`${r.case.slice(0, 80)}: ${r.expect}`, async () => {
       const u = await built();
       for (const transaction of inputOf(r)![1]()) {
-        expect([transaction, await exactAptos.reference(payment(transaction as string))]).toEqual([transaction, { refused: true, code: r.expect }]);
+        expect([transaction, await exactAptos.reference(payment(transaction as string), O)]).toEqual([transaction, { refused: true, code: r.expect }]);
         expect([transaction, u.complete({ transaction } as { transaction: string })]).toEqual([transaction, { refused: true, code: r.expect }]);
       }
     });
@@ -503,7 +523,7 @@ describe("x402-exact-aptos.json agreedRefusals: a transaction given as text", ()
   for (const r of rows) {
     it(`${r.case}: ${r.expect}`, async () => {
       expect(decodeAptosTx(r.transaction)).toEqual({ refused: true, code: r.expect });
-      expect(await exactAptos.reference(payment(r.transaction))).toEqual({ refused: true, code: r.expect });
+      expect(await exactAptos.reference(payment(r.transaction), O)).toEqual({ refused: true, code: r.expect });
     });
   }
 });
@@ -537,9 +557,9 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
     expect(b[40]).toBe(2);
     return Uint8Array.from([...b.subarray(0, 40), ...uleb, ...b.subarray(41)]);
   };
-  /** What a row's expect states: a refusal code, or, for the status row, the status pending unreadable. */
+  /** What a row's expect states: a refusal code, or, for the status rows, the status unreadable with its reason. */
   const wanted = (code: string) =>
-    code === "pending unreadable" ? { state: "pending", why: "unreadable" } : { refused: true, code };
+    code.startsWith("unreadable ") ? unreadable(code.slice("unreadable ".length)) : { refused: true, code };
 
   const cases: Record<string, () => Promise<unknown[]>> = {
     // Cut inside the sequence number and before the chain id; the payload's variant as 2^32 (five bytes) and 2^35 (six
@@ -555,7 +575,7 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
         withVariant([0x80, 0x80, 0x80, 0x80, 0x80, 0x01]),
         withVariant([0x82, 0x00]),
       ]) {
-        for (const wire of wires(bytes)) out.push(decodeAptosTx(wire), await exactAptos.reference(payment(wire)));
+        for (const wire of wires(bytes)) out.push(decodeAptosTx(wire), await exactAptos.reference(payment(wire), O));
       }
       return out;
     },
@@ -567,7 +587,7 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
       for (const typeArgument of [parseTypeTag("u64"), parseTypeTag("vector<u8>"), generic]) {
         const r = raw(transferPayload("primary_fungible_store", "transfer", typeArgument));
         for (const wire of [referenceWire(r), signedWire(r)]) {
-          out.push(decodeAptosTx(wire), await exactAptos.reference(payment(wire)));
+          out.push(decodeAptosTx(wire), await exactAptos.reference(payment(wire), O));
         }
       }
       return out;
@@ -580,7 +600,7 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
         const doc: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [o] };
         out.push(
           await exactAptos.bound(payment(wire, undefined, o)),
-          await exactAptos.reference(payment(wire, undefined, o)),
+          await exactAptos.reference(payment(wire, undefined, o), O),
           await exactAptos.build({ required: doc, accepted: o }, H),
           exactAptos.advertise(doc, H, LINK, o),
         );
@@ -591,7 +611,7 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
       const out: unknown[] = [];
       for (const transaction of [7, null, undefined, Array.from(raw().bcsToBytes())]) {
         const p = { ...payment(""), payload: { transaction } };
-        out.push(await exactAptos.bound(p), await exactAptos.reference(p));
+        out.push(await exactAptos.bound(p), await exactAptos.reference(p, O));
       }
       return out;
     },
@@ -602,7 +622,7 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
         const script = raw(new TransactionPayloadScript(new Script(new Uint8Array([0xa1, 0x1c, 0xeb, 0x0b]), [], [])));
         const out: unknown[] = [];
         for (const transaction of [referenceWire(script), signedWire(script)]) {
-          out.push(await exactAptos.reference(payment(transaction)), u.complete({ transaction }));
+          out.push(await exactAptos.reference(payment(transaction), O), u.complete({ transaction }));
         }
         return out;
       },
@@ -612,30 +632,33 @@ describe("x402-exact-aptos.json agreedRefusals: every row that gives no transact
       async () => {
         const u = await built();
         for (const transaction of [referenceWire(raw()), signedWire(raw())]) {
-          expect(await exactAptos.reference(payment(transaction))).not.toHaveProperty("refused");
+          expect(await exactAptos.reference(payment(transaction), O)).not.toHaveProperty("refused");
           expect(u.complete({ transaction })).not.toHaveProperty("refused");
         }
         const out: unknown[] = [];
         for (const transaction of [referenceWire(raw(transferPayload(), 2)), signedWire(raw(transferPayload(), 2))]) {
-          out.push(await exactAptos.reference(payment(transaction)), u.complete({ transaction }));
+          out.push(await exactAptos.reference(payment(transaction), O), u.complete({ transaction }));
         }
         return out;
       },
-    // V4's row whose bySequence lookup is the real answer, which settles; then a ledger for chain 2, and that answer
-    // for another sender (fixture F's fee payer) and for the next sequence number.
-    "status: a ledger whose chain id is not the ref's network, or a bySequence answer for another sender or sequence number":
-      async () => {
-        const row = V.V4.status.find((r: { case: string }) => r.case === "byHash null, bySequence the real answer");
-        const ref = refOf(row.ref);
-        expect(plain(await exactAptos.status(ref, reader(row)))).toEqual(row.expect);
-        expect(row.expect.state).toBe("settled");
-        const next = (BigInt(F.sequenceNumber) + 1n).toString();
-        return [
-          await exactAptos.status(ref, reader(row, "aptos:1", 2)),
-          await exactAptos.status(ref, reader({ ...row, bySequence: { ...row.bySequence, sender: F.feePayer } })),
-          await exactAptos.status(ref, reader({ ...row, bySequence: { ...row.bySequence, sequence_number: next } })),
-        ];
-      },
+    // V4's row whose bySequence lookup is the real answer, which settles; then a ledger for chain 2.
+    "status: a ledger whose chain id is not the ref's network": async () => {
+      const row = V.V4.status.find((r: { case: string }) => r.case === "byHash null, bySequence the real answer");
+      const ref = refOf(row.ref);
+      expect(plain(await exactAptos.status(ref, reader(row), paymentAct))).toEqual(row.expect);
+      expect(row.expect.state).toBe("settled");
+      return [await exactAptos.status(ref, reader(row, "aptos:1", 2), paymentAct)];
+    },
+    // The same row, its bySequence answer for another sender (fixture F's fee payer) and for the next sequence number.
+    "status: a bySequence answer for another sender or sequence number": async () => {
+      const row = V.V4.status.find((r: { case: string }) => r.case === "byHash null, bySequence the real answer");
+      const ref = refOf(row.ref);
+      const next = (BigInt(F.sequenceNumber) + 1n).toString();
+      return [
+        await exactAptos.status(ref, reader({ ...row, bySequence: { ...row.bySequence, sender: F.feePayer } }), paymentAct),
+        await exactAptos.status(ref, reader({ ...row, bySequence: { ...row.bySequence, sequence_number: next } }), paymentAct),
+      ];
+    },
   };
 
   it("names a case for every row it runs, and no other", () => {

@@ -129,12 +129,12 @@ describe("without algosdk", () => {
     expect("refused" in placed ? placed : placed.accepts).toEqual([O, EVM.fixed.O]);
     expect(avm.exactAvm.advertise(issued, V.fixed.H, V.fixed.link, EVM.fixed.O)).toEqual(NOT_THIS);
     expect(await avm.exactAvm.bound(PRESENTED)).toBe(V.V3.expectBound);
-    expect(await avm.exactAvm.reference(PRESENTED)).toEqual(V.V3.expectReference);
+    expect(await avm.exactAvm.reference(PRESENTED, O)).toEqual(V.V3.expectReference);
     expect(await avm.exactAvm.bound({ ...PRESENTED, accepted: EVM.fixed.O })).toEqual(NOT_THIS);
-    expect(await avm.exactAvm.reference({ ...PRESENTED, accepted: EVM.fixed.O })).toEqual(NOT_THIS);
+    expect(await avm.exactAvm.reference({ ...PRESENTED, accepted: EVM.fixed.O }, O)).toEqual(NOT_THIS);
     const notV2 = { refused: true, code: "x402/not-v2" };
     expect(await avm.exactAvm.bound({ ...PRESENTED, x402Version: 1 })).toEqual(notV2);
-    expect(await avm.exactAvm.reference({ ...PRESENTED, x402Version: 1 })).toEqual(notV2);
+    expect(await avm.exactAvm.reference({ ...PRESENTED, x402Version: 1 }, O)).toEqual(notV2);
   });
 
   it("read of a document holding no Algorand option gives the answer it gives with algosdk", () => {

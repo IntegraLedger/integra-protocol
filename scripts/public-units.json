@@ -51,10 +51,18 @@
     {
       "unit": "The registry entry as data and its codec",
       "exports": {
-        ".": ["Codec", "Entry", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData"]
+        ".": ["Codec", "Entry", "Family", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData"]
       },
-      "use": "The registry entry as data and its codec, typed per family as Codec<Presented, Ref, Reader>: any caller reads a pairing's facts (which signed field carries H, whether a payment through it is itself a public proof of H, what reading it back needs and how long a signed payment can stay payable, and the agreement payment it admits) and calls its members with no cast.",
+      "use": "The registry entry as data and its codec, typed per family as Codec<Presented, Ref, Reader, F>, F being one descriptor of the family's documents, offers, inputs and read types: any caller reads a pairing's facts (which signed field carries H, whether a payment through it is itself a public proof of H, what reading it back needs and how long a signed payment can stay payable, and the agreement payment it admits) and calls its members with no cast.",
       "fixedBy": "Each pairing's profile; the Legal Context Protocol's binding patterns."
+    },
+    {
+      "unit": "The read of a landed payment or agreement",
+      "exports": {
+        ".": ["Act", "StatusQuery", "OtherAct", "StatusAnswer", "PendingReason", "FailedReason", "UnreadableReason", "ForeignItem", "ForeignReason", "Moved", "RecoverInput"]
+      },
+      "use": "What every pairing's status takes and answers, and what its recover takes: any seller, buyer or auditor holding an ATR reads a payment or an agreement back through its own reader, learns whether the act asked about landed, can still land, or can no longer land, and why a transaction that carries H is not that act; and reads H back from a transaction id with the option the ATR's binding slot holds.",
+      "fixedBy": "read-status.md; read-status.json."
     },
     {
       "unit": "Who broadcasts a payment",

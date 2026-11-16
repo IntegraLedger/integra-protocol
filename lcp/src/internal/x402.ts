@@ -86,6 +86,17 @@ export interface X402Read {
   offer: X402Offer;
 }
 
+/** The members of an x402 pairing's family descriptor that the x402 surface fixes. */
+export interface X402Forms {
+  readonly doc: PaymentRequired;
+  readonly offered: X402Read;
+  readonly placedIn: PaymentRequired;
+  readonly offer: PaymentRequirements;
+  readonly rest: [agreementUrl?: string];
+  readonly advertised: PaymentRequired;
+  readonly option: PaymentRequirements;
+}
+
 /**
  * The seller's placement over a pairing's filter: a copy of `doc` whose `extensions.legalContext` carries the hash, the link and, when
  * given, the agreement URL after the link. The legal context is one per document, so each pairing placing the same

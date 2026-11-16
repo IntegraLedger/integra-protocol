@@ -99,6 +99,14 @@ const typeHash = (s: string) => keccak256(toBytes(s));
 const compact = (s: ViemHex) => serializeCompactSignature(signatureToCompactSignature(parseSignature(s)));
 const BAD_SIGNATURES = ["0x", `0x${"11".repeat(8193)}`] as const;
 const malformed = { refused: true, code: "mpp/credential-malformed" };
+/** A pairing's `reference` of a credential, with the challenge it echoes as the option the payment answers. */
+const echoedRef =
+  (reference: (c: MppCredential, option: MppChallenge) => Promise<unknown>) =>
+  (c: MppCredential): Promise<unknown> =>
+    reference(c, c.challenge);
+/** The query of a payment read at the final mark. */
+const FINAL = { act: "payment", finality: "finalized" } as const;
+const PENDING = { state: "pending", reason: "search-incomplete", foreign: [] };
 /** A 65-byte secp256k1 signature, r ‖ s ‖ v with v 27 or 28. */
 async function sig65(hash: ViemHex): Promise<ViemHex> {
   const s = await sign({ hash, privateKey: E.fixed.payerKey });
@@ -188,7 +196,7 @@ describe("mpp-session-evm.json", () => {
     expect(await sessionEvm.bound(cred)).toBe(H);
     expect(sessionEvm.channel.kind(cred)).toBe("open");
     expect(await sessionEvm.channel.ref(cred)).toEqual({ network: "eip155:84532", channel: E.ES1.expectChannelId });
-    const ref = (await sessionEvm.reference(cred)) as SessionRef;
+    const ref = (await echoedRef(sessionEvm.reference)(cred)) as SessionRef;
     expect(ref.transferLog?.digest).toBe(E.ES7.expectIdentity);
     expect(JSON.parse(JSON.stringify(ref))).toMatchObject({
       network: "eip155:84532",
@@ -216,7 +224,7 @@ describe("mpp-session-evm.json", () => {
     const signature = await payer.signTypedData(forViem(td));
     const cred = u.complete(signature, await voucherSig(u, signature)) as MppCredential;
     expect(await sessionEvm.bound(cred)).toBe(H);
-    const ref = (await sessionEvm.reference(cred)) as SessionRef;
+    const ref = (await echoedRef(sessionEvm.reference)(cred)) as SessionRef;
     expect(ref.transferLog?.digest).toBe(E.ES7.expectIdentity);
     expect(ref.settleBy).toBe("1790000060");
   });
@@ -229,7 +237,7 @@ describe("mpp-session-evm.json", () => {
     expect(await sessionEvm.bound(cred)).toBe(H);
     // The payer broadcast the opening before presenting it; the reference names the transaction the credential presents,
     // so the opening is read without the seller's report.
-    const ref = (await sessionEvm.reference(cred)) as SessionRef;
+    const ref = (await echoedRef(sessionEvm.reference)(cred)) as SessionRef;
     expect(ref.transferLog).toEqual({ address: f.usdc, topic0: TRANSFER_TOPIC, identity: "from,to", digest: E.ES7.expectFromTo });
     expect(ref.transaction).toBe(hash);
     expect(ref.settleBy).toBeUndefined();
@@ -301,6 +309,7 @@ describe("mpp-session-evm.json", () => {
     expect(sessionEvm.closeRef(ES, E.ES1.expectChannelId)).toEqual({
       network: "eip155:84532",
       closes: { escrow: f.escrow.toLowerCase(), channel: E.ES1.expectChannelId.toLowerCase() },
+      payee: JSON.parse(f.request).recipient,
     });
   });
 
@@ -487,12 +496,13 @@ describe("mpp-session-tempo.json", () => {
     expect(sessionTempo.channel.kind(cred)).toBe("open");
     // The resource server broadcasts the opening once it is presented, so the reference carries the escrow's ChannelOpened filter
     // naming the channel in topic 1, and the opening is found without the seller's report.
-    const ref = (await sessionTempo.reference(cred)) as SessionRef;
+    const ref = (await echoedRef(sessionTempo.reference)(cred)) as SessionRef;
     expect(JSON.parse(JSON.stringify(ref))).toEqual({
       network: "eip155:42431",
       settleBy: "1790000060",
       search: { address: f.escrowV2, topics: [typeHash(T.constants.CHANNEL_OPENED_V2), T.TS3.expectChannelId] },
       opened: { address: f.escrowV2, version: "v2", channel: T.TS3.expectChannelId, h: H, chainId: 42431 },
+      payee: JSON.parse(f.requestV2).recipient,
     });
 
     const within = JSON.parse(f.requestV2);
@@ -575,9 +585,10 @@ describe("mpp-session-tempo.json", () => {
       network: "eip155:42431" as const,
       transaction: `0x${"77".repeat(32)}` as `0x${string}`,
       opened: { address: f.escrowV2, version: "v2" as const, channel: T.TS3.expectChannelId, h: H, chainId: 42431 },
+      payee: f.recipient,
     };
-    const run = async (r: SessionRef & { transaction: `0x${string}` }, logs: EvmLog[]) =>
-      withBigints(await sessionStatus(r, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs })));
+    const run = async (r: SessionRef & { transaction: `0x${string}` }, logs: EvmLog[], query: Parameters<typeof sessionStatus>[2] = FINAL) =>
+      withBigints(await sessionStatus(r, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs }), query));
     expect(await run(ref, [opened(f.escrowV2, H)])).toEqual(T.TS6.expectSettled);
     expect(await run(ref, [opened(f.escrowV2, H2)])).toEqual(T.TS6.expectNotFound);
     expect(await run(ref, [opened("0x20c0000000000000000000000000000000000001", H)])).toEqual(T.TS6.expectNotFound);
@@ -589,6 +600,11 @@ describe("mpp-session-tempo.json", () => {
     const refV1 = { ...ref, opened: { address: f.escrowV1, version: "v1" as const, channel: T.TS5.expectChannelId, h: H, chainId: 42431 } };
     expect(await run(refV1, [v1])).toEqual(T.TS6.expectSettled);
     expect(await run({ ...refV1, opened: { ...refV1.opened, h: H2 } }, [v1])).toEqual(T.TS6.expectNotFound);
+    // The opening is before a position at its own block, through sessionStatus and through the pairing's status.
+    const before = { ...T.TS6.expectSettled, state: "failed", reason: "before-position" };
+    expect(await run(ref, [opened(f.escrowV2, H)], { ...FINAL, after: 100n })).toEqual(before);
+    const own = await sessionTempo.status(ref, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs: [opened(f.escrowV2, H)] }), { ...FINAL, after: 100n });
+    expect(withBigints(own)).toEqual(before);
   });
 
   it("L1: a live v2 open on Moderato", async () => {
@@ -626,15 +642,17 @@ describe("mpp-session-tempo.json", () => {
         network: "eip155:42431",
         transaction: "0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1",
         opened: { address: T.fixed.escrowV2, version: "v2", channel: id as `0x${string}`, h: salt as `0x${string}`, chainId: 42431 },
+        payee: f.recipient,
       },
       readerFor("eip155:42431", T.L1.receipt, block, block),
+      FINAL,
     );
     expect(status.state).toBe("settled");
   });
 
   it("recover: the salt of the live v2 opening's ChannelOpened, the salt its signed open call carries", async () => {
     const block = BigInt(T.L1.receipt.blockNumber);
-    const ref = { network: "eip155:42431", transaction: "0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1" as `0x${string}` };
+    const ref = { network: "eip155:42431", tx: "0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1", option: V2 };
     const salt = (await sessionTempo.recover(ref, readerFor("eip155:42431", T.L1.receipt, block, block))) as string;
     affix(salt, T.L1.expectSalt);
     const tx = decodeTempoTx(toBytes(T.L1.raw));
@@ -645,7 +663,7 @@ describe("mpp-session-tempo.json", () => {
 
   it("recover reads only the receipt: one call", async () => {
     const block = BigInt(T.L1.receipt.blockNumber);
-    const ref = { network: "eip155:42431", transaction: "0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1" as `0x${string}` };
+    const ref = { network: "eip155:42431", tx: "0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1", option: V2 };
     const live = readerFor("eip155:42431", T.L1.receipt, block, block);
     const seen: string[] = [];
     const counting: EvmReader = {
@@ -672,7 +690,7 @@ describe("mpp-session-tempo.json", () => {
       topics: [CHANNEL_OPENED_V1_TOPIC, T.TS5.expectChannelId, topicOf(f.payer), topicOf(f.recipient)],
       data: concat([topicOf(f.pathUSD), wordOf(0n), wordOf(deposit)]),
     };
-    const ref = { network: "eip155:42431", transaction: `0x${"77".repeat(32)}` as `0x${string}` };
+    const ref = { network: "eip155:42431", tx: `0x${"77".repeat(32)}`, option: V2 };
     const run = (logs: EvmLog[], status: 0 | 1 = 1) => sessionTempo.recover(ref, readerFor("eip155:42431", { status, blockNumber: "100", logs }));
     expect(TIP20_CHANNEL_RESERVE.toLowerCase()).toBe(f.escrowV2.toLowerCase());
     expect(await run([opened(f.escrowV2, H)])).toBe(H);
@@ -738,7 +756,7 @@ describe("mpp-session-tempo.json", () => {
     for (const [c, other, name] of [[named, ZERO, "the zero operator under a named one"], [V2, operator, "an operator under none"]] as const) {
       const cred = await opened(c, other);
       expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
-      expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
+      expect(await echoedRef(sessionTempo.reference)(cred), name).toEqual(mismatch);
       const voucher = { ...cred, payload: { ...cred.payload, action: "voucher" } };
       expect(await sessionTempo.channel.boundWithin(voucher), name).toEqual(mismatch);
     }
@@ -815,7 +833,7 @@ describe("mpp-session-tempo.json", () => {
       const planted = { ...cred, payload: { ...cred.payload, descriptor: d, channelId } };
       const refused = { refused: true, code: row.expect };
       expect(await sessionTempo.bound(planted), row.case).toEqual(refused);
-      expect(await sessionTempo.reference(planted), row.case).toEqual(refused);
+      expect(await echoedRef(sessionTempo.reference)(planted), row.case).toEqual(refused);
       const within = { challenge: { ...V2, id: "seller-own-id" }, opening: planted, cumulativeAmount: 1n, action: "voucher" };
       expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
       expect(await sessionTempo.channel.boundWithin({ ...planted, payload: { ...planted.payload, action: "voucher" } }), row.case).toBe(H);
@@ -959,7 +977,7 @@ describe("mpp-session-tempo.json", () => {
       const planted = { ...cred, payload: { ...cred.payload, channelId: row.channelId } };
       const refused = { refused: true, code: row.expect };
       expect(await sessionTempo.bound(planted), row.case).toEqual(refused);
-      expect(await sessionTempo.reference(planted), row.case).toEqual(refused);
+      expect(await echoedRef(sessionTempo.reference)(planted), row.case).toEqual(refused);
       const within = { challenge: { ...V1, id: "seller-own-id" }, opening: planted, cumulativeAmount: 1n, action: "voucher" };
       expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
     }
@@ -1010,7 +1028,7 @@ describe("mpp-session-tempo.json", () => {
       expect(u.complete(toHex(t.wire), voucherSignature), name).toEqual(mismatch);
       const cred = completedFor(own, t, from);
       expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
-      expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
+      expect(await echoedRef(sessionTempo.reference)(cred), name).toEqual(mismatch);
     }
     // A signature that gives no sender, a secp256k1 v outside 0, 1, 27, 28 and 35 up, is refused as on v2: by build's
     // voucher and complete, and by bound in the credential complete gives for the transaction fixed.payer signs, carrying
@@ -1059,7 +1077,7 @@ describe("mpp-session-tempo.json", () => {
       const cred = completedFor(own, t);
       expect((cred.payload["descriptor"] as Record<string, string>)[name]!.toLowerCase(), name).toBe(String(args[i]).toLowerCase());
       expect(await sessionTempo.bound(cred), name).toEqual(mismatch);
-      expect(await sessionTempo.reference(cred), name).toEqual(mismatch);
+      expect(await echoedRef(sessionTempo.reference)(cred), name).toEqual(mismatch);
       const within = { challenge: { ...V2, id: "seller-own-id" }, opening: cred, cumulativeAmount: 1n, action: "voucher" };
       expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), name).toEqual(mismatch);
     }
@@ -1117,7 +1135,7 @@ describe("mpp-session-tempo.json", () => {
       expect(other.u.complete(other.wire, voucherSignature), row.case).toEqual(refused);
       const cred = carrying(own, other.wire);
       expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
-      expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
+      expect(await echoedRef(sessionTempo.reference)(cred), row.case).toEqual(refused);
       const within = { challenge: { ...(v1 ? V1 : V2), id: "seller-own-id" }, opening: cred, cumulativeAmount: 1n, action: "voucher" };
       expect(await sessionTempo.buildWithin(within as Parameters<typeof sessionTempo.buildWithin>[0], H), row.case).toEqual(refused);
       // viem's tempo Transaction.deserialize reads neither "0x76", the type byte with no RLP list after it, nor "0x", no
@@ -1234,7 +1252,7 @@ describe("mpp-session-tempo.json", () => {
       const both = await opening(v1, faults);
       const refused = { refused: true, code: row.expect };
       expect(await sessionTempo.bound(both), row.case).toEqual(refused);
-      expect(await sessionTempo.reference(both), row.case).toEqual(refused);
+      expect(await echoedRef(sessionTempo.reference)(both), row.case).toEqual(refused);
       const wire = both.payload["transaction"] as `0x${string}`;
       expect(u.voucher(wire), row.case).toEqual(refused);
       expect(u.complete(wire, voucherSignature), row.case).toEqual(refused);
@@ -1335,7 +1353,7 @@ describe("mpp-session-tempo.json", () => {
       expect(carrying(control), row.case).toEqual(completed);
       expect(u.voucher(toHex(control.wire)), row.case).not.toHaveProperty("refused");
       expect(await sessionTempo.bound(completed), row.case).toBe(H);
-      expect(await sessionTempo.reference(completed), row.case).toHaveProperty("search");
+      expect(await echoedRef(sessionTempo.reference)(completed), row.case).toHaveProperty("search");
       expect(Object.keys(await sessionTempo.buildWithin(within(completed), H)).sort(), row.case).toEqual(["complete", "requests"]);
       const t = await transaction((form) => form);
       expect(sha256(t.wire), row.case).toBe(row.expectSha256);
@@ -1347,7 +1365,7 @@ describe("mpp-session-tempo.json", () => {
       expect(u.complete(toHex(t.wire), voucherSignature), row.case).toEqual(refused);
       const cred = carrying(t);
       expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
-      expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
+      expect(await echoedRef(sessionTempo.reference)(cred), row.case).toEqual(refused);
       expect(await sessionTempo.buildWithin(within(cred), H), row.case).toEqual(refused);
     }
     // An entry is read for its signature's form alone. One that is not a list of four items whose fourth is a byte string
@@ -1410,7 +1428,7 @@ describe("mpp-session-tempo.json", () => {
       expect(u.complete(toHex(t.wire), voucherSignature), row.case).toEqual(refused);
       const cred = completedFor(own, t, from);
       expect(await sessionTempo.bound(cred), row.case).toEqual(refused);
-      expect(await sessionTempo.reference(cred), row.case).toEqual(refused);
+      expect(await echoedRef(sessionTempo.reference)(cred), row.case).toEqual(refused);
       if (row.from !== undefined) expect(await sessionTempo.bound(byPayer.complete(toHex(t.wire), voucherSignature) as MppCredential), row.case).toBe(H);
     }
   });
@@ -1536,7 +1554,7 @@ describe("mpp-subscription-tempo.json", () => {
     expect(await subscriptionTempo.channel.ref(cred)).toEqual({ network: "eip155:42431", channel: U.SUB2.expectRefChannel });
     expect(await subscriptionTempo.channel.boundWithin(cred)).toEqual({ refused: true, code: "mpp/not-bound-within" });
     expect(subscriptionTempo.channel.until(cred)).toBe(1797724800);
-    const ref = (await subscriptionTempo.reference(cred)) as SessionRef;
+    const ref = (await echoedRef(subscriptionTempo.reference)(cred)) as SessionRef;
     expect(ref).toEqual({
       network: "eip155:42431",
       bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: H },
@@ -1544,10 +1562,12 @@ describe("mpp-subscription-tempo.json", () => {
       search: { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, H] },
       // The key's read keys: the signed authorization's key id, its token and its recipient's digest.
       accessKey: { keyId: f.accessKey.toLowerCase(), token: U.SUB3.expectToken, to: U.SUB3.expectTransferDigest },
+      payee: JSON.parse(f.request).recipient,
     });
     expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer)).toEqual({
       network: "eip155:42431",
       revokes: { account: f.payer.toLowerCase(), keyId: f.accessKey.toLowerCase() },
+      payee: JSON.parse(f.request).recipient,
     });
     expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel)).toEqual({ refused: true, code: "mpp/input-malformed" });
     // Profile mpp/session rule 1: "a Tempo `subscription` challenge's id is exactly the base64url (no padding) of H".
@@ -1588,7 +1608,7 @@ describe("mpp-subscription-tempo.json", () => {
     expect(lower({ limits: k.limits, allowedCalls: k.allowedCalls })).toEqual(lower({ limits: base.limits, allowedCalls: base.allowedCalls }));
     // A recipient the payer signed other than the request's: the read keys follow the signature.
     const toOther = { ...base, allowedCalls: [{ target: f.pathUSD, selectorRules: [{ selector: "0x95777d59" as const, recipients: [other] }] }] };
-    const ref = (await subscriptionTempo.reference(await credentialOf(toOther))) as SessionRef;
+    const ref = (await echoedRef(subscriptionTempo.reference)(await credentialOf(toOther))) as SessionRef;
     const digest = await transferDigest({ to: other });
     expect(ref.transferLog).toEqual({ address: f.pathUSD, topic0: TRANSFER_TOPIC, identity: "to", digest });
     expect(ref.accessKey).toEqual({ keyId: f.accessKey.toLowerCase(), token: f.pathUSD, to: digest });
@@ -1598,6 +1618,7 @@ describe("mpp-subscription-tempo.json", () => {
     const status = await sessionStatus(
       { ...ref, transaction: `0x${"77".repeat(32)}` },
       readerFor("eip155:42431", { status: 1, blockNumber: "90", logs: [witness, transfer] as EvmLog[] }),
+      FINAL,
     );
     expect(status).toMatchObject({ state: "settled" });
     // An authorization naming no single token, as its limit and its target, and no single recipient is not read.
@@ -1622,7 +1643,7 @@ describe("mpp-subscription-tempo.json", () => {
     for (const a of [twoRecipients, otherTarget, twoTokens, anyRecipient, { ...base, limits: [] }, { ...base, allowedCalls: [] }]) {
       const c = await credentialOf(a);
       expect(await subscriptionTempo.bound(c)).toBe(H);
-      expect(await subscriptionTempo.reference(c)).toEqual(malformed);
+      expect(await echoedRef(subscriptionTempo.reference)(c)).toEqual(malformed);
     }
   });
 
@@ -1652,7 +1673,7 @@ describe("mpp-subscription-tempo.json", () => {
     for (const [rules, expected] of cases) {
       const c = await credentialOf(rules);
       expect(await subscriptionTempo.bound(c)).toBe(H);
-      const ref = (await subscriptionTempo.reference(c)) as SessionRef | { refused: true };
+      const ref = (await echoedRef(subscriptionTempo.reference)(c)) as SessionRef | { refused: true };
       const read = "refused" in ref ? ref : ref.transferLog;
       expect(read, JSON.stringify(rules)).toEqual(expected);
     }
@@ -1673,27 +1694,37 @@ describe("mpp-subscription-tempo.json", () => {
       ],
     };
     const u = (await subscriptionTempo.build({ challenge: ch, from: f.payer, now: f.now }, H)) as KeyAuthorizationUnsigned;
-    const ref = (await subscriptionTempo.reference(u.complete(await sig65(u.request.digest)) as MppCredential)) as SessionRef;
+    const ref = (await echoedRef(subscriptionTempo.reference)(u.complete(await sig65(u.request.digest)) as MppCredential)) as SessionRef;
     const found = subscriptionTempo.keySearch(ref, activation, H) as SessionRef;
     expect(found.accessKey?.account).toBe(f.payer.toLowerCase());
     const close = subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, found.accessKey!.account) as SessionRef;
     const statusOf = (...logs: EvmLog[]) =>
-      sessionStatus({ ...close, transaction: `0x${"77".repeat(32)}` }, readerFor("eip155:42431", { status: 1, blockNumber: "90", logs }));
+      sessionStatus({ ...close, transaction: `0x${"77".repeat(32)}` }, readerFor("eip155:42431", { status: 1, blockNumber: "90", logs }), FINAL);
     expect(await statusOf(log(KEY_REVOKED_TOPIC, topicOf(f.payer), topicOf(f.accessKey)))).toMatchObject({ state: "settled" });
+    // Through the pairing's own status, the close is before a position at its own block.
+    const revoked = readerFor("eip155:42431", { status: 1, blockNumber: "90", logs: [log(KEY_REVOKED_TOPIC, topicOf(f.payer), topicOf(f.accessKey))] });
+    expect(await subscriptionTempo.status({ ...close, transaction: `0x${"77".repeat(32)}` }, revoked, { ...FINAL, after: 90n })).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: `0x${"77".repeat(32)}`,
+      position: 90n,
+      finality: "finalized",
+      foreign: [],
+    });
     for (const logs of [
       [log(KEY_REVOKED_TOPIC, topicOf(other), topicOf(f.accessKey))],
       [log(KEY_REVOKED_TOPIC, topicOf(f.payer), topicOf(other))],
       [{ ...log(KEY_REVOKED_TOPIC, topicOf(f.payer), topicOf(f.accessKey)), address: other }],
       [],
     ]) {
-      expect(await statusOf(...logs)).toEqual({ state: "failed", why: "binding-log-not-found" });
+      expect(await statusOf(...logs)).toEqual(PENDING);
     }
     expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, "0x1234" as `0x${string}`)).toEqual({ refused: true, code: "mpp/input-malformed" });
   });
 
-  // CONTRIBUTING.md, "Failures are values": status answers a caller's ref it cannot read as pending unreadable, as it
-  // answers a ref that is not an object, and makes no reader call for it.
-  it("a close ref whose revokes is not an account and a key address reads as pending unreadable, with no call made", async () => {
+  // CONTRIBUTING.md, "Failures are values": status answers a caller's ref it cannot read as unreadable unparseable, as
+  // it answers a ref that is not an object, and makes no reader call for it.
+  it("a close ref whose revokes is not an account and a key address reads as unreadable unparseable, with no call made", async () => {
     const close = subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer) as SessionRef;
     const calls = { n: 0 };
     const settled = readerFor("eip155:42431", { status: 1, blockNumber: "90", logs: [] });
@@ -1711,7 +1742,7 @@ describe("mpp-subscription-tempo.json", () => {
       { keyId: "0x7777777777777777777777777777777777777777" },
     ]) {
       const ref = { ...close, revokes, transaction: `0x${"77".repeat(32)}` } as unknown as SessionRef & { transaction: `0x${string}` };
-      expect(await sessionStatus(ref, counting), JSON.stringify(revokes)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await sessionStatus(ref, counting, FINAL), JSON.stringify(revokes)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
     }
     expect(calls.n).toBe(0);
   });
@@ -1729,11 +1760,12 @@ describe("mpp-subscription-tempo.json", () => {
     const block = BigInt(U.L2.receipt.blockNumber);
     const reader = readerFor("eip155:42431", U.L2.receipt, block, block);
     const tx = "0x6c1cdc57bf5a4a98961b7897cac3212636eea551540ab3b32038c45f9d3d8d1c" as const;
-    expect(await witnessRecover({ network: "eip155:42431", transaction: tx }, reader)).toBe(k.witness);
-    expect(await subscriptionTempo.recover({ network: "eip155:42431", transaction: tx }, reader)).toBe(k.witness);
+    const input = { network: "eip155:42431", tx, option: SUB };
+    expect(await witnessRecover(input, reader)).toBe(k.witness);
+    expect(await subscriptionTempo.recover(input, reader)).toBe(k.witness);
     // The same receipt from a reader of another network (Ethereum mainnet) is not read: tempo/wrong-reader.
     const elsewhere = readerFor("eip155:1", U.L2.receipt, block, block);
-    expect(await witnessRecover({ network: "eip155:42431", transaction: tx }, elsewhere)).toEqual({
+    expect(await witnessRecover(input, elsewhere)).toEqual({
       refused: true,
       code: "tempo/wrong-reader",
     });
@@ -1749,8 +1781,10 @@ describe("mpp-subscription-tempo.json", () => {
         transaction: tx,
         bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: k.witness! },
         transferLog: { address: U.L2.transferToken, topic0: TRANSFER_TOPIC, identity: "to", digest: digest as `0x${string}` },
+        payee: JSON.parse(f.request).recipient,
       },
       reader,
+      FINAL,
     );
     expect(status).toMatchObject(U.L2.expectSettled);
   });
@@ -1791,7 +1825,7 @@ describe("mpp-subscription-tempo.json", () => {
     // The challenge's own key: bound gives H, and the payment and the close read under that one key.
     const own = await presented(ch, a.keyType, a.keyId);
     expect(await subscriptionTempo.bound(own)).toBe(H);
-    const paid = (await subscriptionTempo.reference(own)) as SessionRef;
+    const paid = (await echoedRef(subscriptionTempo.reference)(own)) as SessionRef;
     const closed = subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer) as SessionRef;
     expect(paid.accessKey?.keyId).toBe(f.accessKey.toLowerCase());
     expect(closed.revokes?.keyId).toBe(f.accessKey.toLowerCase());
@@ -1799,7 +1833,7 @@ describe("mpp-subscription-tempo.json", () => {
       const c = await presented(ch, row.keyType ?? a.keyType, row.keyId ?? a.keyId, BigInt(row.chainId ?? a.chainId));
       const refused = { refused: true, code: row.expect };
       expect(await subscriptionTempo.bound(c), row.case).toEqual(refused);
-      expect(await subscriptionTempo.reference(c), row.case).toEqual(refused);
+      expect(await echoedRef(subscriptionTempo.reference)(c), row.case).toEqual(refused);
       expect(await subscriptionTempo.channel.ref(c), row.case).toEqual(refused);
     }
     // A challenge that issues a P256 or a WebAuthn key takes a key authorization of that type, 1 or 2, and no other.

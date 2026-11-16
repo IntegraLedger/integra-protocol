@@ -27,6 +27,7 @@ import { isObject, normalHash } from "../fields.js";
 import type { Hex } from "../evm.js";
 import { fromBase64, toBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
+import { decide, type Facts, type Ledger, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./read.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 import { accountKey, contractId, isAccount, isContract, muxedOf, unmux } from "./stellar-strkey.js";
 
@@ -90,7 +91,8 @@ export interface StellarPayment {
 
 /**
  * Bounded, read-only calls against one network's RPC. Every failure rejects, for example with `ReaderError` from
- * `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ * `@integraledger/lcp/evm`: a `ReaderError` reads by its kind (`too-large` as `too-large`, `malformed` as
+ * `unparseable`), and any other rejection as `transport`.
  */
 export interface StellarReader {
   readonly network: StellarNetwork;
@@ -148,19 +150,15 @@ export interface StellarRef {
   /** The entry's expiration ledger. Absent with `authDigest`. */
   expiration?: number;
   fromLedger: number;
+  /** The option's `payTo`. */
+  payee: string;
 }
 
 /**
- * What a read of the instrument shows. `settled`: a transaction that used this authorization entry succeeded, or, for a
- * ref without `authDigest`, the named transaction succeeded as the transfer the payer authorized as its source account.
- * `pending`: nothing final yet; `why` names what the named transaction read as (`not-found`, `transaction-failed`, a
- * successful transaction that is `not-this-instrument`) or that a read failed (`unreadable`). `failed` is final:
- * `expired`, the ledger is past the entry's expiration and a complete search finds no transaction that used it.
+ * The answer of `stellarStatus`: positions are ledger sequence numbers, and the one mark is `closed`, a transaction in
+ * a closed ledger, which is final.
  */
-export type StellarStatus =
-  | { state: "settled"; ledger: number }
-  | { state: "pending"; why: "not-found" | "transaction-failed" | "not-this-instrument" | "unreadable" }
-  | { state: "failed"; why: "expired" };
+export type StellarStatus = StatusAnswer<number, "closed", number>;
 
 /** What the payer signs (the signer signs SHA-256 of `preimage`), and how the signature completes the transaction. */
 export interface StellarUnsigned {
@@ -741,8 +739,16 @@ export function transferEventOf(topic: readonly string[], value: string): { toBa
 /** One transaction read by hash: settled on this instrument, not final, or a transaction that is not this one's use. */
 type Named =
   | { state: "settled"; ledger: number }
-  | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "other"; why: "transaction-failed" | "not-this-instrument" };
+  | { state: "pending"; why: "not-found" }
+  | { state: "unreadable"; why: UnreadableReason }
+  | { state: "other"; why: "transaction-failed"; ledger?: number }
+  | { state: "other"; why: "not-this-instrument" };
+
+/** The reason a rejected read gives: a `ReaderError` by its kind, any other rejection `transport`. */
+function rejected(e: unknown): UnreadableReason {
+  const kind = e instanceof Error && e.name === "ReaderError" ? (e as { kind?: unknown }).kind : undefined;
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+}
 
 const TX_HASH = /^[0-9a-fA-F]{64}$/;
 const AUTH_DIGEST = /^0x[0-9a-fA-F]{64}$/;
@@ -778,34 +784,35 @@ function refWellFormed(ref: StellarRef): boolean {
  * `transfer` has the preimage digest and `to` id the ref records. A transaction that failed, or succeeded with another
  * entry, is `other`: the entry was not used there. For a ref without `authDigest`, settled when it succeeded as a
  * transfer the payer authorized as its source account (`readSourceTransfer`) whose `to` carries the ref's `toId`. One
- * call. Only a transaction that succeeded is decoded: without @stellar/stellar-sdk the decode refuses
- * `stellar/peer-missing` and such a transaction is pending `unreadable`, while one not found or failed reads as it does
- * with the SDK.
+ * call. A rejected read is `transport` or the `ReaderError`'s kind, and an answer that is not one of the forms
+ * `getTransaction` documents `unparseable`. Only a transaction that succeeded is decoded: without @stellar/stellar-sdk
+ * the decode refuses `stellar/peer-missing` and such a transaction is `unparseable`, while one not found or failed
+ * reads as it does with the SDK.
  */
 async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): Promise<Named> {
   let r: Awaited<ReturnType<StellarReader["transaction"]>>;
   try {
     r = await reader.transaction(hash);
-  } catch {
-    return { state: "pending", why: "unreadable" };
+  } catch (e) {
+    return { state: "unreadable", why: rejected(e) };
   }
-  if (typeof r !== "object" || r === null) return { state: "pending", why: "unreadable" };
+  if (typeof r !== "object" || r === null) return { state: "unreadable", why: "unparseable" };
   if (r.status === "NOT_FOUND") return { state: "pending", why: "not-found" };
-  if (r.status === "FAILED") return { state: "other", why: "transaction-failed" };
+  if (r.status === "FAILED") return isLedger(r.ledger) ? { state: "other", why: "transaction-failed", ledger: r.ledger } : { state: "other", why: "transaction-failed" };
   if (r.status !== "SUCCESS" || typeof r.envelopeXdr !== "string" || !Number.isInteger(r.ledger)) {
-    return { state: "pending", why: "unreadable" };
+    return { state: "unreadable", why: "unparseable" };
   }
   const digest = ref.authDigest;
   if (digest === undefined) {
     const s = readSourceTransfer(r.envelopeXdr, ref.network);
-    if (isRefusal(s) && s.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
+    if (isRefusal(s) && s.code === "stellar/peer-missing") return { state: "unreadable", why: "unparseable" };
     if (isRefusal(s) || s.toId === null || s.toId.toString() !== ref.toId) {
       return { state: "other", why: "not-this-instrument" };
     }
     return { state: "settled", ledger: r.ledger! };
   }
   const t = readSignedTransfer(r.envelopeXdr, ref.network, true);
-  if (isRefusal(t) && t.code === "stellar/peer-missing") return { state: "pending", why: "unreadable" };
+  if (isRefusal(t) && t.code === "stellar/peer-missing") return { state: "unreadable", why: "unparseable" };
   if (isRefusal(t) || !t.agrees) return { state: "other", why: "not-this-instrument" };
   const p = t.payment;
   if (p.auth.preimageHash !== digest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
@@ -814,60 +821,117 @@ async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): 
   return { state: "settled", ledger: r.ledger! };
 }
 
+/** What the read of the instrument observed, before the profile's rules choose the answer. */
+type StellarRead =
+  | { state: "settled"; transaction: string; ledger: number }
+  | Exclude<Named, { state: "settled" }>
+  | { state: "failed"; why: "expired" };
+
 /**
  * Reads the instrument through a named transaction. Settled when that transaction succeeded and used the authorization
  * entry `ref.authDigest` names. A landed transaction is read by the payer's first address-credential entry whose
  * `rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations; other entries of the payer in
  * it are not read. Otherwise the entry can still be used by another transaction until its expiration ledger, so a named
- * transaction that is not found, failed, or succeeded with another entry is pending. The read is final only past that
- * ledger (`latestLedger()` above `expiration`): then `stellarLocate`'s search decides, settled when it finds a
- * transaction that used the entry, failed `expired` when it is complete, finds none, and each events page names a
- * `latestLedger` at or above the one read first, and pending otherwise: an events index that lags the ledger read first
- * is never read as absence. A failed read, or a reader for another network, is pending. A ref that lacks a field the
- * read uses, or holds one in another form than `reference` writes, is pending `unreadable`, with nothing read: a
- * `transaction` other than 64 hex digits (looked up in lower case), an `authDigest` other than `0x` and 64 hex digits,
- * an `authDigest` without an `expiration` or an `expiration` without an `authDigest`, an `asset` that is not a contract
- * strkey, a `toBase` that is not an account or contract strkey, a `toId` that is not a u64 in decimal, or an
- * `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1. The read needs no @stellar/stellar-sdk but to
- * decode a transaction that succeeded: without it a named transaction that succeeded is pending `unreadable` after its
- * one call, a search's candidate that succeeded leaves the search incomplete (pending with the named transaction's
- * reason), and every other answer is the one with the SDK, after the same calls. One call when the named transaction
- * settles or a read fails, two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref without `authDigest` (an MPP push payment the payer authorized as
- * the transaction's source account, with no `expiration` either) is settled when the named transaction succeeded as
- * that transfer, and is otherwise pending: there is no expiration ledger to pass.
+ * transaction that is not found, failed, or succeeded with another entry is read as such. Past that ledger
+ * (`latestLedger()` above `expiration`) `stellarLocate`'s search decides: settled on a transaction it finds that used
+ * the entry, `expired` when it is complete, finds none, and each events page names a `latestLedger` at or above the
+ * one read first, and otherwise what the named transaction read as: an events index that lags the ledger read first is
+ * never read as absence. A ref that lacks a field the read uses, or holds one in another form than `reference` writes,
+ * is `unparseable`, with nothing read: a `transaction` other than 64 hex digits (looked up in lower case), an
+ * `authDigest` other than `0x` and 64 hex digits, an `authDigest` without an `expiration` or an `expiration` without an
+ * `authDigest`, an `asset` that is not a contract strkey, a `toBase` that is not an account or contract strkey, a
+ * `toId` that is not a u64 in decimal, or an `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1.
+ * Then a reader that is not an object or answers for another network is `chain-mismatch`. The read needs no
+ * @stellar/stellar-sdk but to decode a transaction that succeeded: without it a named transaction that succeeded is
+ * `unparseable` after its one call, a search's candidate that succeeded leaves the search incomplete, and every other
+ * answer is the one with the SDK, after the same calls. One call when the named transaction settles or a read fails,
+ * two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref without
+ * `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no `expiration`
+ * either) is settled when the named transaction succeeded as that transfer: there is no expiration ledger to pass.
+ */
+async function readStellar(ref: StellarRef & { transaction: string }, reader: StellarReader): Promise<StellarRead> {
+  if (!isObject(ref) || typeof ref.transaction !== "string" || !TX_HASH.test(ref.transaction) || !refWellFormed(ref)) {
+    return { state: "unreadable", why: "unparseable" };
+  }
+  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
+  const hash = ref.transaction.toLowerCase();
+  const named = await readNamed(ref, hash, reader);
+  if (named.state === "settled") return { state: "settled", transaction: hash, ledger: named.ledger };
+  if (named.state === "unreadable") return named;
+  const expiration = ref.expiration;
+  if (ref.authDigest === undefined || expiration === undefined) return named;
+  let latest: number;
+  try {
+    latest = await reader.latestLedger();
+  } catch (e) {
+    return { state: "unreadable", why: rejected(e) };
+  }
+  if (!Number.isSafeInteger(latest)) return { state: "unreadable", why: "unparseable" };
+  if (latest <= expiration) return named;
+  const l = await locate(ref, expiration, reader, latest);
+  if (l.found !== undefined) return { state: "settled", transaction: l.found.hash, ledger: l.found.ledger };
+  return l.complete ? { state: "failed", why: "expired" } : named;
+}
+
+/**
+ * The facts of a read of the instrument. A transaction that used the entry is the act, at `closed`; a named
+ * transaction that failed is a failed act that left the entry's nonce unconsumed, since a failed transaction is
+ * rolled back; the entry expired with no transaction found is a value read unconsumed past its validity; and a
+ * transaction not found, or one that succeeded with another entry, is no act the read identified.
+ */
+function factsOfStellar(read: StellarRead, ref: StellarRef & { transaction: string }): Facts<number, "closed", number> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  const row = { mark: "closed", carries: true, party: "payer", kind: "same", account: "payee" } as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.why };
+    case "settled":
+      return { ...none, seen: [{ ...row, transaction: read.transaction, position: read.ledger, result: "succeeded", consumed: true }] };
+    case "failed":
+      return { ...none, value: { consumed: false, lapsed: true, mark: "closed" } };
+    case "pending":
+      return none;
+    case "other":
+      if (read.why !== "transaction-failed") return none;
+      return {
+        ...none,
+        seen: [
+          {
+            ...row,
+            transaction: ref.transaction.toLowerCase(),
+            ...(read.ledger === undefined ? {} : { position: read.ledger }),
+            result: "failed",
+            consumed: false,
+          },
+        ],
+      };
+  }
+}
+
+/**
+ * The read's ledger: one mark, `closed`, and positions that are ledger sequence numbers. Its coverage is `full`: the
+ * payer's signed authorization entry carries H's first 8 bytes in its `to`. No registry entry holds the pairing.
+ */
+const STELLAR_LEDGER: Ledger<number, "closed"> = {
+  coverage: "full",
+  final: "closed",
+  markOrder: () => 0,
+  positionOrder: (a, b) => a - b,
+};
+
+/**
+ * The read of the instrument, as the profile `read-status` answers it: a transaction that used the authorization
+ * entry is the act, settled at `closed` at its ledger. A named transaction that failed, one not found or one that
+ * succeeded with another entry, and an entry expired with no transaction found answer `pending`, `search-incomplete`,
+ * since the read's search for H is not read whole.
  */
 export async function stellarStatus(
   ref: StellarRef & { transaction: string },
   reader: StellarReader,
+  query: StatusQuery<StellarRef & { transaction: string }, number, "closed", number>,
 ): Promise<StellarStatus> {
-  if (
-    !isObject(ref) ||
-    !isObject(reader) ||
-    reader.network !== ref.network ||
-    typeof ref.transaction !== "string" ||
-    !TX_HASH.test(ref.transaction) ||
-    !refWellFormed(ref)
-  ) {
-    return { state: "pending", why: "unreadable" };
-  }
-  const named = await readNamed(ref, ref.transaction.toLowerCase(), reader);
-  if (named.state === "settled") return named;
-  if (named.why === "unreadable") return { state: "pending", why: "unreadable" };
-  const expiration = ref.expiration;
-  if (ref.authDigest === undefined || expiration === undefined) return { state: "pending", why: named.why };
-  let latest: number;
-  try {
-    latest = await reader.latestLedger();
-  } catch {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (!Number.isSafeInteger(latest)) return { state: "pending", why: "unreadable" };
-  if (latest <= expiration) return { state: "pending", why: named.why };
-  const l = await locate(ref, expiration, reader, latest);
-  if (l.found !== undefined) return { state: "settled", ledger: l.found.ledger };
-  return l.complete ? { state: "failed", why: "expired" } : { state: "pending", why: named.why };
+  return decide(factsOfStellar(await readStellar(ref, reader), ref), query, STELLAR_LEDGER);
 }
-
 /**
  * Finds the instrument when no transaction was named: the asset's transfer events to `toBase` from `fromLedger` through
  * the entry's expiration ledger, both inclusive, keeping those whose muxed id is `toId`, each read as `stellarStatus`
@@ -929,7 +993,7 @@ async function locate(
       if (++candidates > MAX_CANDIDATES) return { complete: false };
       const s = await readNamed(ref, e.txHash, reader);
       if (s.state === "settled") return { found: { hash: e.txHash, ledger: s.ledger }, complete: true };
-      if (s.state === "pending") return { complete: false };
+      if (s.state === "pending" || s.state === "unreadable") return { complete: false };
     }
     if (r.cursor === undefined) return { complete: !behind };
     cursor = r.cursor;

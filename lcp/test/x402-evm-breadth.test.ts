@@ -133,6 +133,13 @@ function readerFor(
   };
 }
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
+/** A pairing's reference of a presented payment, for the option the payment answers, its `accepted`. */
+const referenceOf = (b: { reference: (p: any, option: any) => Promise<unknown> }, p: any) => b.reference(p, p.accepted);
+const FINAL = { act: "payment", finality: "finalized" } as const;
+/** The lowest mark: a status at this finality settles wherever the act is read, at whatever mark it reached. */
+const ANY_MARK = { act: "payment", finality: "latest" } as const;
+// No search for H is defined yet, so a read that finds no act answers pending search-incomplete (read-status rule 24).
+const SEARCHING = { state: "pending", reason: "search-incomplete", foreign: [] };
 
 type Permit2Row = {
   receipt: FixtureReceipt;
@@ -286,14 +293,15 @@ describe("x402-exact-eip155-permit2.json", () => {
     const bad = structuredClone(p) as any;
     bad.payload.permit2Authorization.nonce = P2.EV1.nonceMalformed.nonce;
     expect(await exactPermit2.bound(bad)).toEqual(P2.EV1.nonceMalformed.expect);
-    const ref = (await exactPermit2.reference(p)) as EvmRef;
+    const ref = (await referenceOf(exactPermit2, p)) as EvmRef;
     expect(ref.transferLog?.digest).toBe(P2.EV1.expectReferenceDigest);
+    expect(ref.payee).toBe(f.option.payTo);
     expect(ref.bindingLog).toBeUndefined();
     expect(ref.search).toBeUndefined();
   });
   it("EV1: the reference names Permit2's record of the nonce, and authorizer the payer", async () => {
     const p = await signed(exactPermit2, f);
-    const ref = (await exactPermit2.reference(p)) as EvmRef;
+    const ref = (await referenceOf(exactPermit2, p)) as EvmRef;
     expect(ref.authorization).toEqual({
       scheme: "permit2",
       at: P2.EV6.expectCall.to,
@@ -337,7 +345,7 @@ describe("x402-exact-eip155-permit2.json", () => {
     expect(offsetsOf(P2.EV6.inputs.plainTransfer, H)).toEqual([]);
   });
   it("EV6 and the emitter plant: status of EV1's reference reads the transaction carrying the permit's nonce and Permit2's record of it", async () => {
-    const ref = (await exactPermit2.reference(await signed(exactPermit2, f))) as EvmRef;
+    const ref = (await referenceOf(exactPermit2, await signed(exactPermit2, f))) as EvmRef;
     const tx = P2.EV6.transaction as Hex;
     const names = [
       "transferAt100",
@@ -355,7 +363,7 @@ describe("x402-exact-eip155-permit2.json", () => {
     for (const row of [...names.map((n) => P2.EV6[n]), P2.plantEmitter]) {
       const calls: { to: string; data: string; block: string }[] = [];
       const reader = permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, calls);
-      expect(plain(await exactPermit2.status({ ...ref, transaction: tx }, reader)), row.case).toEqual(row.expect);
+      expect(plain(await exactPermit2.status({ ...ref, transaction: tx }, reader, row.query)), row.case).toEqual(row.expect);
       expect(calls, row.case).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore].slice(0, row.calls));
     }
     const selector = toFunctionSelector("function nonceBitmap(address owner, uint256 wordPos)");
@@ -363,17 +371,26 @@ describe("x402-exact-eip155-permit2.json", () => {
     expect(P2.EV6.expectCallBefore.data).toBe(P2.EV6.expectCall.data);
     expect(NONCE_BITMAP_SELECTOR).toBe(selector);
   });
-  it("status is pending unreadable for a ref without Permit2's record or a transfer naming from", async () => {
-    const ref = (await exactPermit2.reference(await signed(exactPermit2, f))) as EvmRef;
+  it("EV6 transferAt100: the act agreement settles as the act payment does, and an act at the position given is failed before-position", async () => {
+    const ref = (await referenceOf(exactPermit2, await signed(exactPermit2, f))) as EvmRef;
+    const row = P2.EV6.transferAt100;
+    const read = (query: object) =>
+      exactPermit2.status({ ...ref, transaction: P2.EV6.transaction as Hex }, permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, []), query as never);
+    expect(plain(await read({ act: "agreement", finality: "finalized" }))).toEqual(row.expect);
+    const { state: _, ...named } = row.expect;
+    expect(plain(await read({ ...FINAL, after: BigInt(row.expect.position) }))).toEqual({ ...named, state: "failed", reason: "before-position" });
+  });
+  it("status is unreadable unparseable for a ref without Permit2's record or a transfer naming from", async () => {
+    const ref = (await referenceOf(exactPermit2, await signed(exactPermit2, f))) as EvmRef;
     const tx = P2.EV6.transaction as Hex;
     const reader = readerFor(P2.EV6.transferAt100.receipt, P2.EV6.reader, P2.EV6.transferAt100.nonceBitmap);
-    const unreadable = { state: "pending", why: "unreadable" };
+    const unreadable = { state: "unreadable", reason: "unparseable", foreign: [] };
     const { authorization: _, ...bare } = ref;
-    expect(await exactPermit2.status({ ...bare, transaction: tx }, reader)).toEqual(unreadable);
+    expect(await exactPermit2.status({ ...bare, transaction: tx }, reader, FINAL)).toEqual(unreadable);
     const eip3009 = { ...ref, authorization: { ...ref.authorization!, scheme: "eip3009" as const } };
-    expect(await exactPermit2.status({ ...eip3009, transaction: tx }, reader)).toEqual(unreadable);
+    expect(await exactPermit2.status({ ...eip3009, transaction: tx }, reader, FINAL)).toEqual(unreadable);
     const toOnly = { ...ref, transferLog: { ...ref.transferLog!, identity: "to,value" as const } };
-    expect(await exactPermit2.status({ ...toOnly, transaction: tx }, reader)).toEqual(unreadable);
+    expect(await exactPermit2.status({ ...toOnly, transaction: tx }, reader, FINAL)).toEqual(unreadable);
   });
 });
 
@@ -419,10 +436,11 @@ describe("x402-upto-eip155-permit2.json", () => {
     expect(a.nonce).toBe(UP.EV2.expectNonceHex);
     expect(a.deadline).toBe(UP.EV2.expectDeadline);
     expect(await uptoPermit2.bound(p)).toBe(UP.EV2.expectBound);
-    const ref = plain(await uptoPermit2.reference(p));
+    const ref = plain(await referenceOf(uptoPermit2, p));
     expect(ref.transferLog.identity).toBe(UP.EV2.expectReference.identity);
     expect(ref.transferLog.digest).toBe(UP.EV2.expectReference.digest);
     expect(ref.settleBy).toBe(UP.EV2.expectReference.settleBy);
+    expect(ref.payee).toBe(UP.EV2.expectReference.payee);
     expect(ref.authorization).toEqual({
       scheme: "permit2",
       at: UP.EV6.expectCall.to,
@@ -454,13 +472,22 @@ describe("x402-upto-eip155-permit2.json", () => {
     expect(offsetsOf(UP.EV6.inputs.plainAboveCap, H)).toEqual([]);
   });
   it("EV6: a transfer of any amount is this payment's only in the transaction that spends the permit carrying nonce H", async () => {
-    const ref = (await uptoPermit2.reference(await signed(uptoPermit2, f))) as EvmRef;
+    const ref = (await referenceOf(uptoPermit2, await signed(uptoPermit2, f))) as EvmRef;
     for (const row of [UP.EV6.oneUnitUsed, UP.EV6.oneUnitUnused, UP.EV6.aboveCapPlain]) {
       const calls: { to: string; data: string; block: string }[] = [];
       const reader = permit2Reader(row, UP.EV6, UPTO_PERMIT2_PROXY, calls);
-      expect(plain(await uptoPermit2.status({ ...ref, transaction: UP.EV6.transaction }, reader)), row.case).toEqual(row.expect);
+      expect(plain(await uptoPermit2.status({ ...ref, transaction: UP.EV6.transaction }, reader, row.query)), row.case).toEqual(row.expect);
       expect(calls, row.case).toEqual([UP.EV6.expectCall, UP.EV6.expectCallBefore].slice(0, row.calls));
     }
+    const used = UP.EV6.oneUnitUsed;
+    const { state: _, ...named } = used.expect;
+    const at = { ...FINAL, after: BigInt(used.expect.position) };
+    const reader = permit2Reader(used, UP.EV6, UPTO_PERMIT2_PROXY, []);
+    expect(plain(await uptoPermit2.status({ ...ref, transaction: UP.EV6.transaction }, reader, at))).toEqual({
+      ...named,
+      state: "failed",
+      reason: "before-position",
+    });
   });
   it("an upto option without facilitatorAddress is refused", async () => {
     const o = structuredClone(f.option) as any;
@@ -501,15 +528,15 @@ const SETTLE_WITH_PERMIT_UPTO = [
 ] as const;
 
 describe("recover on the Permit2 pairings", () => {
-  const ref = { network: P2.EV6.reader.network as `eip155:${string}`, transaction: P2.EV6.transaction as Hex };
+  const ref = { network: P2.EV6.reader.network as `eip155:${string}`, tx: P2.EV6.transaction as Hex, option: P2.fixed.option };
   const recoverRow = async (b: typeof exactPermit2 | typeof uptoPermit2, row: Permit2Row, ev: any, to: Hex) => {
     const calls: { to: string; data: string; block: string }[] = [];
-    const got = await b.recover({ ...ref, network: ev.reader.network, transaction: ev.transaction }, permit2Reader(row, ev, to, calls));
+    const got = await b.recover({ ...ref, network: ev.reader.network, tx: ev.transaction }, permit2Reader(row, ev, to, calls));
     return { got, calls };
   };
 
   it("EV6: H from the settle call in the transaction, directly or in a batch, where status settles; a refusal that names why where it does not", async () => {
-    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const statusRef = (await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed))) as EvmRef;
     const expectations: [string, string | { refused: true; code: string }, number][] = [
       ["transferAt100", H, 2],
       ["batched", H, 2],
@@ -528,7 +555,7 @@ describe("recover on the Permit2 pairings", () => {
       expect(got, row.case ?? name).toEqual(expected);
       expect(calls, row.case ?? name).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore].slice(0, n));
       if (["transferAt100", "batched", "nonceUnused", "usedBefore", "plainTransfer"].includes(name)) {
-        const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, []));
+        const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, []), ANY_MARK);
         expect(s.state === "settled", name).toBe(got === H);
       }
     }
@@ -642,7 +669,7 @@ describe("recover on the Permit2 pairings", () => {
   const withLogs = (logs: EvmReceipt["logs"], input: string) => ({ ...used, receipt: { ...used.receipt, logs }, input });
 
   it("a copy of the settle call whose receipt holds no Transfer of its token from its owner is evm/no-permit2-settle, where status finds no transfer", async () => {
-    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const statusRef = (await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed))) as EvmRef;
     const payerTransfer = used.receipt.logs[0];
     const anything = encodeFunctionData({ abi: parseAbi(["function anything(bytes blob)"]), functionName: "anything", args: [P2.EV6.inputs.settle] });
     const settled = { address: EXACT_PERMIT2_PROXY, topics: [keccak256(toBytes("Settled()"))], data: "0x" as Hex };
@@ -661,8 +688,8 @@ describe("recover on the Permit2 pairings", () => {
         got: { refused: true, code: "evm/no-permit2-settle" },
         calls: [],
       });
-      const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []));
-      expect(s, name).toEqual({ state: "failed", why: "transfer-not-found" });
+      const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []), FINAL);
+      expect(s, name).toEqual(SEARCHING);
     }
   });
 
@@ -692,22 +719,22 @@ describe("recover on the Permit2 pairings", () => {
   // Multicall3's `aggregate3` with `allowFailure` catches a failing call (mds1/multicall src/Multicall3.sol), so a
   // batch can carry a settle-shaped call that spent nothing.
   it("a settle call of another owner beside the settlement, with no Transfer from that owner, is not read: H, where status settles", async () => {
-    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const statusRef = (await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed))) as EvmRef;
     const decoy = await settleWith(BigInt(H) ^ 1n, `0x${"dd".repeat(20)}`);
     const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, decoy: batch([[await settleWith(BigInt(H)), false], [decoy, true]]) } };
     const row = { ...used, input: "decoy" };
     expect(await recoverRow(exactPermit2, row, ev, EXACT_PERMIT2_PROXY)).toEqual({ got: H, calls: [P2.EV6.expectCall, P2.EV6.expectCallBefore] });
-    const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []));
+    const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []), ANY_MARK);
     expect(s.state).toBe("settled");
   });
 
   it("a call with the settlement's nonce and owner but another token word, after the settlement in a batch, does not hide it: H, where status settles", async () => {
-    const statusRef = (await exactPermit2.reference(await signed(exactPermit2, P2.fixed))) as EvmRef;
+    const statusRef = (await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed))) as EvmRef;
     const otherToken = await settleWith(BigInt(H), undefined, `0x${"ee".repeat(20)}`);
     const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, after: batch([[await settleWith(BigInt(H)), false], [otherToken, true]]) } };
     const row = { ...used, input: "after" };
     expect(await recoverRow(exactPermit2, row, ev, EXACT_PERMIT2_PROXY)).toEqual({ got: H, calls: [P2.EV6.expectCall, P2.EV6.expectCallBefore] });
-    const s = await exactPermit2.status({ ...statusRef, transaction: ref.transaction }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []));
+    const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []), ANY_MARK);
     expect(s.state).toBe("settled");
   });
 
@@ -736,7 +763,7 @@ describe("recover on the Permit2 pairings", () => {
     expect(seen).toEqual(["receipt", "transaction", "call", "call"]);
   });
 
-  it("a reader for another network, or a ref or reader that is not an object, is evm/wrong-reader, with nothing read", async () => {
+  it("a reader for another network, or an input or reader that is not an object, is evm/wrong-reader, with nothing read", async () => {
     const reader = permit2Reader(P2.EV6.transferAt100, P2.EV6, EXACT_PERMIT2_PROXY, []);
     const wrong = { refused: true, code: "evm/wrong-reader" };
     expect(await exactPermit2.recover({ ...ref, network: "eip155:1" }, reader)).toEqual(wrong);
@@ -851,16 +878,17 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     const bare = structuredClone(p);
     delete bare.extensions;
     expect(await exactErc7710.bound(bare)).toEqual(ERC7710.EV7.withoutExtension.expect);
-    const ref = (await exactErc7710.reference(p)) as EvmRef;
+    const ref = (await referenceOf(exactErc7710, p)) as EvmRef;
     expect(ref.transferLog?.identity).toBe(ERC7710.EV7.expectReference.identity);
     expect(ref.transferLog?.digest).toBe(ERC7710.EV7.expectReference.digest);
+    expect(ref.payee).toBe(ERC7710.EV7.expectReference.payee);
     expect(exactErc7710.claims).toBe(ERC7710.EV7.claims);
     expect(exactErc7710.data.coverage).toBe("none");
   });
   it("EV7: the unsigned level has no status and no authorizer, since no read of the chain alone ties a transfer to it", async () => {
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
     const p = await payment(ctx, ERC7710.EV7.otherManager);
-    const ref = (await exactErc7710.reference(p)) as EvmRef;
+    const ref = (await referenceOf(exactErc7710, p)) as EvmRef;
     expect("status" in exactErc7710).toBe(ERC7710.EV7.expectMembers.status);
     expect("authorizer" in exactErc7710).toBe(ERC7710.EV7.expectMembers.authorizer);
     expect(ref.search).toBeUndefined();
@@ -874,7 +902,7 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     const root = { ...L, delegate: L.delegator, delegator: "0x2096" + "00".repeat(18), caveats: [], salt: "1", signature: "0x" };
     expect(await exactErc7710Salt.authorizer(await payment(encode([{ ...L, signature: ES.EV8.expectSignature }, root]), ES.fixed.delegationManager))).toBe(root.delegator);
     expect(await exactErc7710Salt.authorizer(await payment(ctx, ES.EV8.otherManager.manager))).toEqual(ES.EV8.otherManager.expectSaltBound);
-    expect(((await exactErc7710Salt.reference(p)) as EvmRef).authorization).toBeUndefined();
+    expect(((await referenceOf(exactErc7710Salt, p)) as EvmRef).authorization).toBeUndefined();
   });
   it("EV9: the event topic, its data words, the settlement read and recover", async () => {
     expect(keccak256(toBytes(ES.EV9.eventSignature))).toBe(ES.EV9.expectTopic);
@@ -885,7 +913,7 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     const words = Array.from({ length: 6 }, (_, i) => "0x" + data.slice(2 + 64 * i, 66 + 64 * i));
     expect(words).toEqual(ES.EV9.expectDataWords);
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
-    const ref = (await exactErc7710Salt.reference(await payment(ctx, ES.fixed.delegationManager))) as EvmRef;
+    const ref = (await referenceOf(exactErc7710Salt, await payment(ctx, ES.fixed.delegationManager))) as EvmRef;
     const topic = (a: string) => ("0x" + "00".repeat(12) + a.slice(2).toLowerCase()) as Hex;
     const receipt: FixtureReceipt = {
       status: 1,
@@ -897,12 +925,15 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     };
     const reader = readerFor(receipt, { network: "eip155:84532", finalized: "100", safe: "105" });
     const tx = ("0x" + "33".repeat(32)) as Hex;
-    expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader))).toEqual(ES.EV9.expectStatus);
-    expect(await exactErc7710Salt.recover!({ network: "eip155:84532", transaction: tx }, reader)).toBe(ES.EV9.expectRecover);
+    expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader, ES.EV9.query))).toEqual(ES.EV9.expectStatus);
+    expect(await exactErc7710Salt.recover!({ network: "eip155:84532", tx, option: f.option }, reader)).toBe(ES.EV9.expectRecover);
+    const { state: _, ...named } = ES.EV9.expectStatus;
+    const at = { ...FINAL, after: BigInt(ES.EV9.expectStatus.position) };
+    expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader, at))).toEqual({ ...named, state: "failed", reason: "before-position" });
   });
   it("EV9 plants: status binds only a leaf carrying H and counts a transfer from that leaf's root delegator, as recover reads leaves", async () => {
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
-    const ref = (await exactErc7710Salt.reference(await payment(ctx, ES.fixed.delegationManager))) as EvmRef;
+    const ref = (await referenceOf(exactErc7710Salt, await payment(ctx, ES.fixed.delegationManager))) as EvmRef;
     expect(ref.transferLog?.identity).toBe("from");
     const T = ES.plantsEV9;
     const account = (name: string): Hex =>
@@ -922,8 +953,8 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
         return { address: f.option.asset as Hex, topics: [TRANSFER_TOPIC, topic(account(t.from)), topic(account(t.to))], data: ("0x" + (10000).toString(16).padStart(64, "0")) as Hex };
       });
       const reader = readerFor({ status: 1, blockNumber: "100", logs }, { network: "eip155:84532", finalized: "100", safe: "105" });
-      expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader)), row.name).toEqual(row.expectStatus);
-      expect(await exactErc7710Salt.recover!({ network: "eip155:84532", transaction: tx }, reader), row.name).toBe(row.expectRecover);
+      expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader, row.query)), row.name).toEqual(row.expectStatus);
+      expect(await exactErc7710Salt.recover!({ network: "eip155:84532", tx, option: f.option }, reader), row.name).toBe(row.expectRecover);
     }
     expect(T.rows.map((r: any) => r.name)).toEqual(["nonLeaf", "otherRoot", "anyPayee", "wildcard"]);
   });
@@ -1078,7 +1109,7 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     expect((p.payload as any).saltNonce).toBe(H);
     expect((p.payload as any).salt).toBe(A3.EV3.expectBindSalt);
     expect(await authCaptureEip3009.bound(p)).toBe(A3.EV4.expectBound);
-    const ref = (await authCaptureEip3009.reference(p)) as EvmRef;
+    const ref = (await referenceOf(authCaptureEip3009, p)) as EvmRef;
     expect(ref.transferLog?.digest).toBe(A3.EV4.expectTransferDigest);
     expect(ref.bindingLog).toEqual({ address: A3.EV3.escrow, topic0: PAYMENT_AUTHORIZED_TOPIC, index: 1, value: A3.EV3.bound.expectPaymentHash });
     expect(ref.search?.topics[2]).toBe(A3.EV3.bound.expectSignatureNonce);
@@ -1126,7 +1157,7 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     expect(hashTypedData(u.request.typedData as TypedDataDefinition)).toBe(AP.EV4.expectDigest);
     const p = await signed(authCapturePermit2, g);
     expect(await authCapturePermit2.bound(p)).toBe(AP.EV4.expectBound);
-    const ref = (await authCapturePermit2.reference(p)) as EvmRef;
+    const ref = (await referenceOf(authCapturePermit2, p)) as EvmRef;
     expect(ref.search).toEqual(AP.EV4.expectSearch);
     expect(ref.transferLog).toBeUndefined();
     // The option's PaymentInfo terms are the eip3009 file's, so the signed nonce is that file's signatureNonce.
@@ -1149,18 +1180,27 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
   });
   it("EV6: the first collection's event and the transfer settle; the charge flow needs PaymentCharged", async () => {
     const p = await signed(authCaptureEip3009, f);
-    const ref = (await authCaptureEip3009.reference(p)) as EvmRef;
+    const ref = (await referenceOf(authCaptureEip3009, p)) as EvmRef;
     const tx = A3.EV6.transaction as Hex;
     const receipt: FixtureReceipt = { status: 1, blockNumber: "100", logs: A3.EV6.authorizedAndTransfer.logs };
-    expect(plain(await evmStatus({ ...ref, transaction: tx }, readerFor(receipt, A3.EV6.reader)))).toEqual(
+    expect(plain(await evmStatus({ ...ref, transaction: tx }, readerFor(receipt, A3.EV6.reader), A3.EV6.authorizedAndTransfer.query))).toEqual(
       A3.EV6.authorizedAndTransfer.expect,
     );
+    const statusOf = (b: typeof authCaptureEip3009, q: object) =>
+      b.status({ ...ref, transaction: tx }, readerFor(receipt, A3.EV6.reader), q as never);
+    expect(plain(await statusOf(authCaptureEip3009, FINAL))).toEqual(A3.EV6.authorizedAndTransfer.expect);
+    const { state: _, ...named } = A3.EV6.authorizedAndTransfer.expect;
+    expect(plain(await statusOf(authCaptureEip3009, { ...FINAL, after: BigInt(named.position) }))).toEqual({
+      ...named,
+      state: "failed",
+      reason: "before-position",
+    });
     const charge = structuredClone(f.option) as any;
     charge.extra.paymentFlow = A3.EV6.authorizationFlowOnlyAuthorized.paymentFlow;
     const pc = await signed(authCaptureEip3009, f, charge);
-    const refc = (await authCaptureEip3009.reference(pc)) as EvmRef;
+    const refc = (await referenceOf(authCaptureEip3009, pc)) as EvmRef;
     const only: FixtureReceipt = { status: 1, blockNumber: "100", logs: [A3.EV6.authorizedAndTransfer.logs[0]] };
-    expect(plain(await evmStatus({ ...refc, transaction: tx }, readerFor(only, A3.EV6.reader)))).toEqual(
+    expect(plain(await evmStatus({ ...refc, transaction: tx }, readerFor(only, A3.EV6.reader), A3.EV6.authorizationFlowOnlyAuthorized.query))).toEqual(
       A3.EV6.authorizationFlowOnlyAuthorized.expect,
     );
   });
@@ -1198,13 +1238,13 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
 describe("every reference is JSON", () => {
   it("round-trips each breadth pairing's reference through JSON unchanged", async () => {
     const refs = [
-      await exactPermit2.reference(await signed(exactPermit2, P2.fixed)),
-      await uptoPermit2.reference(await signed(uptoPermit2, UP.fixed)),
-      await authCaptureEip3009.reference(await signed(authCaptureEip3009, A3.fixed)),
-      await authCapturePermit2.reference(await signed(authCapturePermit2, AP.fixed)),
+      await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed)),
+      await referenceOf(uptoPermit2, await signed(uptoPermit2, UP.fixed)),
+      await referenceOf(authCaptureEip3009, await signed(authCaptureEip3009, A3.fixed)),
+      await referenceOf(authCapturePermit2, await signed(authCapturePermit2, AP.fixed)),
     ];
     for (const r of refs) {
-      expect("refused" in r).toBe(false);
+      expect("refused" in (r as object)).toBe(false);
       expect(JSON.parse(JSON.stringify(r))).toEqual(r);
     }
   });

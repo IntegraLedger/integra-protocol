@@ -1,7 +1,7 @@
 // The EVM pairings whose reference always names the log carrying H or its commitment, given a ref without that log, and
 // the MPP EVM and Tempo session and Tempo subscription pairings, given a ref without the key their own writers name for
-// the opening or the close. A read that cannot check H, or the close, is pending `unreadable`, never failed or settled
-// (docs/guides/rails.md, "Reading settlement": failed means the rail itself says so). The transfer digest is SHA-256
+// the opening or the close. A read that cannot check H, or the close, is unreadable `unparseable`, never failed or
+// settled: the ref is not one the pairing's writers give (the profile read-status, the reasons of `unreadable`). The transfer digest is SHA-256
 // over from, to and the uint256 value, by node:crypto.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -56,6 +56,11 @@ const PAIRINGS: [string, NonNullable<EvmRef["bindingLog"]>][] = [
   ["mpp/charge/usdc/evm", { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H }],
 ];
 
+const FINAL = { act: "payment", finality: "finalized" } as const;
+const unreadable = { state: "unreadable", reason: "unparseable", foreign: [] };
+/** The read keys of a ref, which the calls below give the option's payee. */
+type Keys = Omit<SessionRef, "payee">;
+
 /** A reader holding one successful receipt with the payer's transfer and `logs`; it counts its calls. */
 function reader(calls: string[], logs: EvmLog[] = []): EvmReader {
   return {
@@ -68,27 +73,27 @@ function reader(calls: string[], logs: EvmLog[] = []): EvmReader {
 }
 
 describe("a ref without its pairing's binding log", () => {
-  const unreadable = { state: "pending", why: "unreadable" };
   for (const [id, own] of PAIRINGS) {
-    it(`${id}: pending unreadable, with nothing read; its own binding log is read`, async () => {
+    it(`${id}: unreadable unparseable, with nothing read; its own binding log is read`, async () => {
       const b = BINDINGS.find((x) => x.id === id) as unknown as {
-        status: (ref: EvmRef & { transaction: Hex }, reader: EvmReader) => Promise<unknown>;
+        status: (ref: EvmRef & { transaction: Hex }, reader: EvmReader, query: typeof FINAL) => Promise<unknown>;
       };
       const tx = ("0x" + "ab".repeat(32)) as Hex;
       const refs = [
-        { network: NET, transaction: tx, transferLog },
-        { network: NET, transaction: tx, transferLog, bindingLog: { ...own, topic0: ("0x" + "22".repeat(32)) as Hex } },
-        { network: NET, transaction: tx, transferLog, bindingLog: { ...own, value: "0x12" as Hex } },
-        { network: NET, transaction: tx, transferLog, bindingLog: { address: own.address, topic0: own.topic0, value: H } },
+        { network: NET, payee: PAYEE, transaction: tx, transferLog },
+        { network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: { ...own, topic0: ("0x" + "22".repeat(32)) as Hex } },
+        { network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: { ...own, value: "0x12" as Hex } },
+        { network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: { address: own.address, topic0: own.topic0, value: H } },
       ];
       for (const ref of refs) {
         const calls: string[] = [];
-        expect(await b.status(ref as EvmRef & { transaction: Hex }, reader(calls))).toEqual(unreadable);
+        expect(await b.status(ref as EvmRef & { transaction: Hex }, reader(calls), FINAL)).toEqual(unreadable);
         expect(calls).toEqual([]);
       }
       const calls: string[] = [];
-      const read = await b.status({ network: NET, transaction: tx, transferLog, bindingLog: own }, reader(calls));
-      expect(read).toEqual({ state: "failed", why: "binding-log-not-found" });
+      const read = await b.status({ network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: own }, reader(calls), FINAL);
+      // A receipt without the binding log is no act; with no search for H yet, pending search-incomplete (rule 24).
+      expect(read).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
       expect(calls).toEqual(["receipt", "blockNumber"]);
     });
   }
@@ -103,15 +108,14 @@ describe("a ref without its pairing's binding log", () => {
 // log); `closeRef` of each (`closes`, `ChannelClosed`'s binding log, `revokes`); and `keySearch` (`accessKey.account`).
 // Without that key, the reader's receipt holds the payer's transfer and nothing else, and nothing is read.
 describe("a session or subscription ref without the key its writer names", () => {
-  const unreadable = { state: "pending", why: "unreadable" };
   const tx = ("0x" + "ab".repeat(32)) as Hex;
   const ESCROW = "0x1111111111111111111111111111111111111111" as Hex;
   const channel = ("0x" + "cd".repeat(32)) as Hex;
   const fromTo = { ...transferLog, identity: "from,to" as const };
   const opens = { escrow: ESCROW, channel, h: H, chainId: 84532 };
   const accessKey = { keyId: PAYEE as Hex, token: TOKEN, to: digest };
-  type Status = (ref: SessionRef & { transaction: Hex }, reader: EvmReader) => Promise<unknown>;
-  const CASES: [string, Status, SessionRef, keyof SessionRef | "accessKey.account"][] = [
+  type Status = (ref: SessionRef & { transaction: Hex }, reader: EvmReader, query: typeof FINAL) => Promise<unknown>;
+  const CASES: [string, Status, Keys, keyof Keys | "accessKey.account"][] = [
     ["mpp/session/evm hash opening", sessionEvm.status, { network: NET, transferLog: fromTo, opens }, "opens"],
     ["mpp/session/evm permit2 opening", sessionEvm.status, { network: NET, settleBy: "1790000060", transferLog, opens }, "opens"],
     [
@@ -143,22 +147,22 @@ describe("a session or subscription ref without the key its writer names", () =>
     ["mpp/subscription/tempo close", subscriptionTempo.status, { network: NET, revokes: { account: PAYER as Hex, keyId: PAYEE as Hex } }, "revokes"],
   ];
   for (const [label, status, ref, key] of CASES) {
-    it(`${label}: without its ${key}, pending unreadable with nothing read; with it, the receipt is read`, async () => {
-      const without: SessionRef =
-        key === "accessKey.account" ? { ...ref, accessKey } : (Object.fromEntries(Object.entries(ref).filter(([k]) => k !== key)) as SessionRef);
+    it(`${label}: without its ${key}, unreadable unparseable with nothing read; with it, the receipt is read`, async () => {
+      const without: Keys =
+        key === "accessKey.account" ? { ...ref, accessKey } : (Object.fromEntries(Object.entries(ref).filter(([k]) => k !== key)) as Keys);
       const none: string[] = [];
-      expect(await status({ ...without, transaction: tx }, reader(none))).toEqual(unreadable);
+      expect(await status({ ...without, payee: PAYEE, transaction: tx }, reader(none), FINAL)).toEqual(unreadable);
       expect(none).toEqual([]);
       const calls: string[] = [];
-      expect(await status({ ...ref, transaction: tx }, reader(calls))).not.toEqual(unreadable);
+      expect(await status({ ...ref, payee: PAYEE, transaction: tx }, reader(calls), FINAL)).not.toEqual(unreadable);
       expect(calls[0]).toBe("receipt");
     });
   }
   it("a binding log under an event none of these pairings writes is not their key", async () => {
     const calls: string[] = [];
-    const ref = { network: NET, transaction: tx, transferLog, bindingLog: { address: TOKEN, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: H } };
+    const ref = { network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: { address: TOKEN, topic0: TRANSFER_WITH_MEMO_TOPIC, index: 3, value: H } };
     for (const status of [sessionEvm.status, sessionTempo.status, subscriptionTempo.status]) {
-      expect(await status(ref as SessionRef & { transaction: Hex }, reader(calls))).toEqual(unreadable);
+      expect(await status(ref as SessionRef & { transaction: Hex }, reader(calls), FINAL)).toEqual(unreadable);
     }
     expect(calls).toEqual([]);
   });
@@ -168,7 +172,7 @@ describe("a session or subscription ref without the key its writer names", () =>
   // names in the receipt, and its own key beside another pairing's key is not read either.
   const topic = (a: string) => ("0x" + word(a)) as Hex;
   const KEY = PAYEE as Hex;
-  const KEYS: [string, string, SessionRef, EvmLog[]][] = [
+  const KEYS: [string, string, Keys, EvmLog[]][] = [
     ["opens", "mpp/session/evm", { network: NET, opens }, []],
     ["closes", "mpp/session/evm", { network: NET, closes: { escrow: ESCROW, channel } }, []],
     [
@@ -215,7 +219,7 @@ describe("a session or subscription ref without the key its writer names", () =>
     "mpp/subscription/tempo": subscriptionTempo.status,
   };
   for (const [id, status] of rowsOf(Object.entries(THREE), "THREE, the three session and subscription pairings", { exact: 3 })) {
-    it(`${id}: a ref whose one key another of these pairings writes is pending unreadable with nothing read; that pairing reads it`, async () => {
+    it(`${id}: a ref whose one key another of these pairings writes is unreadable unparseable with nothing read; that pairing reads it`, async () => {
       const foreign = rowsOf(KEYS, "KEYS", {
         exact: 6,
         keep: ["the keys another of the three pairings writes", ([, writer]) => writer !== id],
@@ -225,17 +229,17 @@ describe("a session or subscription ref without the key its writer names", () =>
       const got: unknown[] = [];
       const read: unknown[] = [];
       for (const [key, writer, member, logs] of foreign) {
-        const ref = { ...member, transferLog, transaction: tx };
+        const ref = { ...member, payee: PAYEE, transferLog, transaction: tx };
         const none: string[] = [];
-        got.push([key, await status(ref, reader(none, logs)), none]);
+        got.push([key, await status(ref, reader(none, logs), FINAL), none]);
         const calls: string[] = [];
-        const answer = (await THREE[writer]!(ref, reader(calls, logs))) as { why?: string };
-        read.push([key, answer.why === "unreadable" ? "unreadable" : "read", calls[0]]);
+        const answer = (await THREE[writer]!(ref, reader(calls, logs), FINAL)) as { state: string };
+        read.push([key, answer.state === "unreadable" ? "unreadable" : "read", calls[0]]);
       }
       expect(got).toEqual(foreign.map(([key]) => [key, unreadable, []]));
       expect(read).toEqual(foreign.map(([key]) => [key, "read", "receipt"]));
     });
-    it(`${id}: its own key beside a key another of these pairings writes is pending unreadable, with nothing read`, async () => {
+    it(`${id}: its own key beside a key another of these pairings writes is unreadable unparseable, with nothing read`, async () => {
       const own = rowsOf(KEYS, "KEYS", {
         keep: [`the keys ${id} writes`, ([, writer]) => writer === id],
         leave: ["the keys another of the three pairings writes, set beside each of these below", ([, writer]) => writer !== id],
@@ -251,9 +255,9 @@ describe("a session or subscription ref without the key its writer names", () =>
         for (const [key, , member, logs] of foreign) {
           if (ownMember.bindingLog !== undefined && member.bindingLog !== undefined) continue;
           const none: string[] = [];
-          const ref = { ...ownMember, ...member, transferLog, transaction: tx };
+          const ref = { ...ownMember, ...member, payee: PAYEE, transferLog, transaction: tx };
           labels.push(`${ownKey} with ${key}`);
-          got.push([`${ownKey} with ${key}`, await status(ref, reader(none, [...ownLogs, ...logs])), none]);
+          got.push([`${ownKey} with ${key}`, await status(ref, reader(none, [...ownLogs, ...logs]), FINAL), none]);
         }
       }
       expect(labels.length).toBeGreaterThanOrEqual(14);

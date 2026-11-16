@@ -26,6 +26,8 @@ import {
   type SvmReader,
   type SvmRef,
   type SvmTx,
+  type SvmQuery,
+  type SvmStatus,
 } from "./internal/svm.js";
 import {
   byType,
@@ -47,12 +49,15 @@ import {
   type Echoed,
   type MppChallenge,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { isSolanaExternalId, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { SOLANA as SOLANA_DATA } from "./internal/data/solana.js";
+import { mppPayee } from "./internal/payee.js";
+import type { RecoverInput } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/charge/solana" as const;
@@ -186,10 +191,14 @@ async function bound(spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">, i
   return isRefusal(b) ? b : b.h;
 }
 
-/** The read keys of the signed transaction (for a bundle, its last), on the request's network. */
+/**
+ * The read keys of the signed transaction (for a bundle, its last), on the request's network, and the payee of
+ * `option`, the challenge the payment answers (`mppPayee`).
+ */
 async function reference(
   spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
   input: unknown,
+  option: MppChallenge,
 ): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
@@ -200,8 +209,12 @@ async function reference(
   if (typeof network !== "string") return network;
   const ref = await svmReference(network, b.tx);
   if (isRefusal(ref)) return ref;
+  const payee = mppPayee(option);
+  if (isRefusal(payee)) return payee;
   const signature = credential.payload["signature"];
-  return credential.payload["type"] === "signature" && typeof signature === "string" ? { ...ref, transaction: signature } : ref;
+  return credential.payload["type"] === "signature" && typeof signature === "string"
+    ? { ...ref, transaction: signature, payee }
+    : { ...ref, payee };
 }
 
 /**
@@ -270,20 +283,22 @@ function isSignatureText(s: unknown): s is string {
 }
 
 /**
- * Zero-party: the one LCP memo of the landed transaction, read at `finalized`, then `confirmed`. A transaction that
- * landed with an error is `svm/err` when the read at `finalized` holds it, and `svm/not-final` when only the read at
- * `confirmed` holds it. A landed wire that does not decode is `svm/unreadable`, an answer out of the reader's documented
- * form. A ref whose `transaction` is not a signature, base58 of 64 bytes, is `svm/wrong-reader`, with nothing read. One
- * or two calls.
+ * Zero-party: the one LCP memo of the landed transaction, read by `tx`, its signature, at `finalized`, then
+ * `confirmed`; `option`, the challenge the ATR's binding slot holds, must be an object, and no member of it is read. A
+ * transaction that landed with an error is `svm/err` when the read at `finalized` holds it, and `svm/not-final` when
+ * only the read at `confirmed` holds it. A landed wire that does not decode is `svm/unreadable`, an answer out of the
+ * reader's documented form. An input or option that is not an object, and a `tx` that is not a signature, base58 of 64
+ * bytes, are `svm/wrong-reader`, with nothing read. One or two calls.
  */
-async function recover(ref: { network: SolanaNetwork; transaction: string }, reader: SvmReader): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("svm/wrong-reader");
-  if (!isSignature(ref.transaction)) return refusal("svm/wrong-reader");
+async function recover(input: RecoverInput<SolanaNetwork, MppChallenge>, reader: SvmReader): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isObject(input.option)) return refusal("svm/wrong-reader");
+  if (!isObject(reader) || reader.network !== input.network) return refusal("svm/wrong-reader");
+  if (!isSignature(input.tx)) return refusal("svm/wrong-reader");
   let finalized = true;
-  let read = await readLanded(reader, ref.transaction, "finalized");
+  let read = await readLanded(reader, input.tx, "finalized");
   if (read === "not-found") {
     finalized = false;
-    read = await readLanded(reader, ref.transaction, "confirmed");
+    read = await readLanded(reader, input.tx, "confirmed");
   }
   if (read === "unreadable") return refusal("svm/unreadable");
   if (read === "not-found") return refusal("svm/not-found");
@@ -478,7 +493,7 @@ function pullPairing<Id extends typeof ID | "mpp/charge/usdc/solana">(spec: Sola
     build: (choice: SolanaChargeChoice, h: AtrHash) => build(spec, choice, h),
     bound: (input: unknown) => bound(spec, input),
     broadcaster: mppBroadcaster(byType({ transaction: "payee" })),
-    reference: (input: unknown) => reference(spec, input),
+    reference: (input: unknown, option: MppChallenge) => reference(spec, input, option),
     status: svmStatus,
     recover,
   };
@@ -503,4 +518,17 @@ export const chargeSolana = Object.freeze({
     const signature = pushedField(presented, "signature", "signature");
     return isSignatureText(signature) ? signature : undefined;
   },
-}) satisfies Entry<typeof ID, MppCredential, SvmRef & { transaction: string }, SvmReader>;
+}) satisfies Entry<
+  typeof ID,
+  MppCredential,
+  Omit<SvmRef, "fromSlot">,
+  SvmReader,
+  MppForms & {
+    choice: SolanaChargeChoice;
+    unsigned: SolanaChargeUnsigned;
+    landed: { fromSlot: string; transaction: string };
+    network: SolanaNetwork;
+    query: SvmQuery;
+    answer: SvmStatus;
+  }
+>;

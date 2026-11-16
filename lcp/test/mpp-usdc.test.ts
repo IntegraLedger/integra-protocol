@@ -30,7 +30,8 @@ import {
   type MppChallenge,
   type MppCredential,
 } from "../src/mpp.js";
-import { b64u, fromB64u, load, withBigints } from "./mpp-fixtures.js";
+import { TRANSFER_TOPIC, type EvmLog, type EvmRef } from "../src/evm.js";
+import { b64u, fromB64u, load, readerFor, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const EVM = load("mpp-charge-usdc-evm.json");
@@ -139,7 +140,7 @@ describe("mpp/charge/usdc/evm (M3)", () => {
 
   it("reference names the AuthorizationUsed nonce and validBefore, and survives JSON", async () => {
     const cred = await signed();
-    const ref = await chargeUsdcEvm.reference(cred);
+    const ref = await chargeUsdcEvm.reference(cred, cred.challenge);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(withBigints(ref));
     expect(ref).toMatchObject({
       network: "eip155:84532",
@@ -150,8 +151,37 @@ describe("mpp/charge/usdc/evm (M3)", () => {
     const currency = JSON.parse(EVM.M3.requestJson).currency;
     expect(ref).toMatchObject({
       authorization: { scheme: "eip3009", at: currency, nonce: EVM.M3.expectNonce, deadline: EVM.M3.expectValidBefore, asset: currency },
+      payee: JSON.parse(EVM.M3.requestJson).recipient,
     });
     expect(await chargeUsdcEvm.authorizer(cred)).toBe(F.payer.toLowerCase());
+  });
+
+  // A receipt at block 100, finalized 100, holding the authorization's AuthorizationUsed and the Transfer it produced.
+  it("status settles on the authorization's use and transfer, on the act payment and on the act agreement, and is before a position at its own block", async () => {
+    const cred = await signed();
+    const ref = (await chargeUsdcEvm.reference(cred, cred.challenge)) as EvmRef;
+    const p = cred.payload as { from: string; to: string; value: string };
+    const currency = JSON.parse(EVM.M3.requestJson).currency as `0x${string}`;
+    const logs: EvmLog[] = [
+      { address: currency, topics: [ref.bindingLog!.topic0, topicOf(p.from), EVM.M3.expectNonce], data: "0x" },
+      { address: currency, topics: [TRANSFER_TOPIC, topicOf(p.from), topicOf(p.to)], data: wordOf(BigInt(p.value)) },
+    ];
+    const tx = `0x${"22".repeat(32)}` as const;
+    const status = async (query: Parameters<typeof chargeUsdcEvm.status>[2]) =>
+      withBigints(await chargeUsdcEvm.status({ ...ref, transaction: tx }, readerFor(ref.network, { status: 1, blockNumber: "100", logs }), query));
+    const settled = { state: "settled", transaction: tx, position: "100", finality: "finalized", foreign: [] };
+    expect(await status({ act: "payment", finality: "finalized" })).toEqual(settled);
+    expect(chargeUsdcEvm.data.agreement).toBeDefined();
+    expect(await status({ act: "agreement", finality: "finalized" })).toEqual(settled);
+    expect(await status({ act: "payment", finality: "finalized", after: 100n })).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: tx,
+      position: "100",
+      finality: "finalized",
+      foreign: [],
+    });
+    expect(await status({ act: "payment", finality: "finalized", after: 99n })).toEqual(settled);
   });
 
   it("A.1: the draft's request, id and realm give the nonce the draft prints", async () => {
@@ -244,7 +274,7 @@ describe("mpp/charge/usdc/solana", () => {
     const p = placedWith(chargeUsdcSolana, c);
     const cred = { challenge: p, payload: { type: "transaction", transaction: SOL.V2.wireBase64 } };
     expect(await chargeUsdcSolana.bound(cred)).toBe(SOL.V2.expectBound);
-    expect(await chargeUsdcSolana.reference(cred)).toEqual(SOL.V2.expectReference);
+    expect(await chargeUsdcSolana.reference(cred, p)).toEqual(SOL.V2.expectReference);
   });
 
   it.each(rowsOf(SOL.refusals.rows as { case: string; externalId?: string; extra?: object; type?: string; dropNetwork?: boolean; expect: unknown }[], "mpp-charge-usdc-solana.json refusals.rows"))(
@@ -263,7 +293,7 @@ describe("mpp/charge/usdc/solana", () => {
     async (row) => {
       const cred = { challenge: placedWith(chargeUsdcSolana, c), payload: row.payload };
       expect(await chargeUsdcSolana.bound(cred)).toEqual(row.expect);
-      expect(await chargeUsdcSolana.reference(cred)).toEqual(row.expect);
+      expect(await chargeUsdcSolana.reference(cred, cred.challenge)).toEqual(row.expect);
     },
   );
 

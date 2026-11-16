@@ -135,27 +135,43 @@ describe("x402-exact-eip155-eip3009.json", () => {
   it("V6", async () => {
     const ref = P.V6.ref;
     for (const row of rowsOf(P.V6.status, "x402-exact-eip155-eip3009.json V6.status")) {
-      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt)))).toEqual(row.expect);
+      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt), row.query))).toEqual(row.expect);
     }
     for (const row of rowsOf(P.V6.recover, "x402-exact-eip155-eip3009.json V6.recover")) {
-      const tx = { network: ref.network, asset: ref.asset, transaction: ref.transaction };
+      const tx = { network: ref.network, tx: ref.transaction, option: O };
       expect(await exactEip3009.recover(tx, readerFor(row.receipt))).toEqual(row.expect);
     }
   });
 
-  it("V6: a named transaction that is not this payment is failed", async () => {
+  it("V6: the settled row answers the same for the act agreement, and failed before-position at its own block", async () => {
+    const row = rowsOf(P.V6.status, "x402-exact-eip155-eip3009.json V6.status").find(
+      (r: { expect: { state: string; finality?: string } }) => r.expect.state === "settled" && r.expect.finality === "finalized",
+    );
+    const reader = readerFor(row.receipt);
+    const agreement = { act: "agreement" as const, finality: "finalized" as const };
+    expect(withBigints(await exactEip3009.status(P.V6.ref, reader, agreement))).toEqual(row.expect);
+    const at = BigInt(row.expect.position);
+    const { state: _, ...named } = row.expect;
+    expect(withBigints(await exactEip3009.status(P.V6.ref, reader, { ...agreement, act: "payment", after: at }))).toEqual({
+      ...named,
+      state: "failed",
+      reason: "before-position",
+    });
+  });
+
+  it("V6: a named transaction that is not this payment is no act", async () => {
     for (const row of rowsOf(P.V6.notThisPayment.rows, "x402-exact-eip155-eip3009.json V6.notThisPayment.rows")) {
-      expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(row.receipt))), row.case).toEqual(row.expect);
+      expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(row.receipt), row.query)), row.case).toEqual(row.expect);
     }
   });
 
   it("V6: each use of H pairs with the transfer the token emits for it", async () => {
     const ref = P.V6.ref;
     const bindingLog = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
-    const asEvmRef = { network: ref.network, transaction: ref.transaction, bindingLog, transferLog: ref.transferLog };
+    const asEvmRef = { network: ref.network, transaction: ref.transaction, bindingLog, transferLog: ref.transferLog, payee: ref.payee };
     for (const row of rowsOf(P.V6.pairing.rows, "x402-exact-eip155-eip3009.json V6.pairing.rows", { exact: 7 })) {
-      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt))), row.name).toEqual(row.expect);
-      expect(withBigints(await evmStatus(asEvmRef, readerFor(row.receipt))), row.name).toEqual(row.expect);
+      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt), row.query)), row.name).toEqual(row.expect);
+      expect(withBigints(await evmStatus(asEvmRef, readerFor(row.receipt), row.query)), row.name).toEqual(row.expect);
     }
     expect(P.V6.pairing.rows.map((r: { name: string }) => r.name)).toEqual([
       "secondSignature",
@@ -169,7 +185,7 @@ describe("x402-exact-eip155-eip3009.json", () => {
   });
 
   it("plant", async () => {
-    expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(P.plant.receipt)))).toEqual(P.plant.expect);
+    expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(P.plant.receipt), P.plant.query))).toEqual(P.plant.expect);
   });
 
   // The rows that carry their input, as the agreedRefusals about states: build's choice; read of V5's document with its

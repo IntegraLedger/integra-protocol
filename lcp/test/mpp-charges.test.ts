@@ -98,7 +98,7 @@ describe("mpp-charge-solana.json", () => {
   it("V2: bound and reference of the vector's wire", async () => {
     const cr = credential(placed, { type: "transaction", transaction: V.V2.wireBase64 });
     expect(await chargeSolana.bound(cr)).toBe(V.V2.expectBound);
-    const ref = await chargeSolana.reference(cr);
+    const ref = await chargeSolana.reference(cr, placed);
     expect(ref).toEqual(V.V2.expectReference);
     expect(roundTrip(ref)).toEqual(ref);
   });
@@ -188,7 +188,7 @@ describe("mpp-charge-solana.json", () => {
     const row = XS.durableNonce.lookupTable.rows.find((r: { expectReference?: unknown }) => r.expectReference !== undefined);
     const cr = credential(placed, { type: "transaction", transaction: row.wireBase64 });
     expect(await chargeSolana.bound(cr)).toBe(row.expectBound);
-    expect(await chargeSolana.reference(cr)).toEqual(row.expectReference);
+    expect(await chargeSolana.reference(cr, placed)).toEqual(row.expectReference);
   });
 
   it("a split memo that is not an LCP string is not read", async () => {
@@ -233,14 +233,14 @@ describe("mpp-charge-solana.json", () => {
     const fetched = await chargeSolana.fetchPresented(cr, reader);
     if ("refused" in fetched) throw new Error(fetched.code);
     expect(await chargeSolana.bound(fetched)).toBe(V.push.expectBound);
-    const ref = await chargeSolana.reference(fetched);
+    const ref = await chargeSolana.reference(fetched, placed);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.transaction).toBe(V.push.expectReferenceTransaction);
     const failing: SvmReader = { ...reader, transaction: async () => { throw new ReaderError("transport"); } };
     expect(await chargeSolana.fetchPresented(cr, failing)).toEqual(refused("svm/unreadable"));
     // SvmReader.transaction answers a landed transaction, or notFound with the node's slot; a bare null is neither.
     const answering = (a: unknown): SvmReader => ({ ...reader, transaction: async () => a as never });
-    const named = { network: V.push.network, transaction: V.push.txid };
+    const named = { network: V.push.network, tx: V.push.txid, option: placed };
     expect(await chargeSolana.fetchPresented(cr, answering({ notFound: true, slot: 1150n }))).toEqual(refused("svm/not-found"));
     expect(await chargeSolana.recover(named, answering({ notFound: true, slot: null }))).toEqual(refused("svm/not-found"));
     expect(await chargeSolana.fetchPresented(cr, answering(null))).toEqual(refused("svm/unreadable"));
@@ -249,7 +249,7 @@ describe("mpp-charge-solana.json", () => {
     // within Solana's 1232-byte packet (PACKET_DATA_SIZE), so a landed wire that does not decode is the reader's.
     const short = { ...landed, wire: landed.wire.subarray(0, landed.wire.length - 1) };
     expect(await chargeSolana.recover(named, answering(short))).toEqual(refused("svm/unreadable"));
-    expect(await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader)).toBe(V.recover.expect);
+    expect(await chargeSolana.recover(named, reader)).toBe(V.recover.expect);
   });
 
   // The landed wire is read only from the member FETCHED keys, which fetchPresented writes and no wire form carries: a
@@ -271,7 +271,8 @@ describe("mpp-charge-solana.json", () => {
     const carrying = (c: unknown, read: unknown) =>
       ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, transaction: (read as { transaction: string }).transaction } });
     const forged = { transaction: V.push.landedWireBase64 };
-    await readsOnlyFetched(chargeSolana, sent, fetched, V.push.expectBound, forged, { transaction: V.plant.wireBase64 }, carrying, "svm/read-first");
+    const reads = { bound: chargeSolana.bound, reference: (c: unknown) => chargeSolana.reference(c, placed) };
+    await readsOnlyFetched(reads, sent, fetched, V.push.expectBound, forged, { transaction: V.plant.wireBase64 }, carrying, "svm/read-first");
     const row = V.refusals[6];
     expect(row.payload).toEqual({ ...sent.payload, transaction: V.push.landedWireBase64 });
   });
@@ -296,7 +297,7 @@ describe("mpp-charge-solana.json", () => {
     };
     const cr = credential(placed, { type: "signature", signature: V.push.txid });
     expect(await chargeSolana.fetchPresented(cr, reader)).toEqual(refused(row.expect));
-    expect(await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader)).toEqual(refused(row.expect));
+    expect(await chargeSolana.recover({ network: V.push.network, tx: V.push.txid, option: placed }, reader)).toEqual(refused(row.expect));
   });
 });
 
@@ -350,7 +351,7 @@ describe("mpp-charge-xrpl.json", () => {
   it("V3: bound and reference of the vector's MPP blob; V4: the x402 blob is refused", async () => {
     const cr = credential(placed, { type: "transaction", blob: V.V3.blob });
     expect(await chargeXrpl.bound(cr)).toBe(V.V3.expectBound);
-    const ref = await chargeXrpl.reference(cr);
+    const ref = await chargeXrpl.reference(cr, placed);
     expect(ref).toEqual(V.V3.expectReference);
     expect(roundTrip(ref)).toEqual(ref);
     expect(await chargeXrpl.bound(credential(placed, { type: "transaction", blob: V.V4.blob }))).toEqual(refused(V.V4.expect));
@@ -427,11 +428,12 @@ describe("mpp-charge-xrpl.json", () => {
     const fetched = await chargeXrpl.fetchPresented(sent, reader);
     const carrying = (c: unknown, read: unknown) =>
       ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, blob: (read as { blob: string }).blob } });
-    await readsOnlyFetched(chargeXrpl, sent, fetched, H, { blob: V.V3.blob }, { blob: V.plant.blob }, carrying, "xrpl/read-first");
+    const reads = { bound: chargeXrpl.bound, reference: (c: unknown) => chargeXrpl.reference(c, placed) };
+    await readsOnlyFetched(reads, sent, fetched, H, { blob: V.V3.blob }, { blob: V.plant.blob }, carrying, "xrpl/read-first");
     const row = V.refusals[3];
     expect(row.payload).toEqual({ ...V.refusals[0].payload, blob: V.V3.blob });
     expect(await chargeXrpl.bound(credential(placed, row.payload))).toEqual(refused(row.expect));
-    expect(await chargeXrpl.reference(credential(placed, row.payload))).toEqual(refused(row.expect));
+    expect(await chargeXrpl.reference(credential(placed, row.payload), placed)).toEqual(refused(row.expect));
   });
 
   it("push: fetchPresented refuses a transaction not yet validated, and a validated result other than tesSUCCESS", async () => {
@@ -468,13 +470,15 @@ describe("mpp-charge-xrpl.json", () => {
       txBlob: async () => null,
       validatedLedger: async () => 1001,
     };
+    const settled = { state: "settled", transaction: ref.transaction, position: 990, finality: "validated", foreign: [] };
+    const query = { act: "payment", finality: "validated" } as const;
     for (const transaction of [ref.transaction, ref.transaction.toLowerCase()]) {
-      expect(await chargeXrpl.status({ ...ref, fromLedger: 980, transaction }, holding)).toEqual({ state: "settled", ledgerIndex: 990 });
-      expect(await chargeXrpl.recover({ network: ref.network, transaction }, holding)).toBe(V.V3.expectBound);
+      expect(await chargeXrpl.status({ ...ref, fromLedger: 980, transaction }, holding, query)).toEqual(settled);
+      expect(await chargeXrpl.recover({ network: ref.network, tx: transaction, option: placed }, holding)).toBe(V.V3.expectBound);
     }
     for (const transaction of [undefined, 7, `0x${ref.transaction}`, ref.transaction.slice(2)]) {
       const { reader, calls } = counting(holding);
-      const malformed = { network: ref.network, transaction } as { network: "xrpl:1"; transaction: string };
+      const malformed = { network: ref.network, tx: transaction, option: placed } as { network: "xrpl:1"; tx: string; option: MppChallenge };
       expect([transaction, await chargeXrpl.recover(malformed, reader)]).toEqual([transaction, refused("xrpl/wrong-reader")]);
       expect(calls).toEqual([]);
     }
@@ -484,7 +488,7 @@ describe("mpp-charge-xrpl.json", () => {
     for (const row of rowsOf(V.multisigned.rows, "mpp-charge-xrpl.json multisigned.rows")) {
       const cr = credential(placed, { type: "transaction", blob: row.blob });
       expect(await chargeXrpl.bound(cr), row.case).toEqual(refused(row.expect));
-      expect(await chargeXrpl.reference(cr), row.case).toEqual(refused(row.expect));
+      expect(await chargeXrpl.reference(cr, placed), row.case).toEqual(refused(row.expect));
       expect((decodeXrpl(row.blob) as { InvoiceID: string }).InvoiceID, row.case).toBe(V.fixed.invoiceId);
     }
   });
@@ -664,7 +668,10 @@ describe("mpp-charge-solana.json agreedRefusals: every row runs", () => {
       await chargeSolana.bound(credential(placed, transaction(await twoMemoWire(V.fixed.L, toLcpString(V.fixed.H2))))),
     ],
     "reference on localnet, which has no CAIP-2 network here": async () => [
-      await chargeSolana.reference(credential(editedRequest(placed, (_, d) => (d["network"] = "localnet")), transaction(V.V2.wireBase64))),
+      await chargeSolana.reference(
+        credential(editedRequest(placed, (_, d) => (d["network"] = "localnet")), transaction(V.V2.wireBase64)),
+        editedRequest(placed, (_, d) => (d["network"] = "localnet")),
+      ),
     ],
     // The reader throws; then it holds the landed wire at finalized and nothing at confirmed, the commitment read.
     "fetchPresented when the reader fails, or finds nothing at confirmed": async () => [
@@ -682,7 +689,7 @@ describe("mpp-charge-solana.json agreedRefusals: every row runs", () => {
       const reader = readerOf(async (_, at) => (at === "finalized" ? { notFound: true, slot: null } : { ...landed, err }));
       return [
         await chargeSolana.fetchPresented(push, reader),
-        await chargeSolana.recover({ network: V.push.network, transaction: V.push.txid }, reader),
+        await chargeSolana.recover({ network: V.push.network, tx: V.push.txid, option: placed }, reader),
       ];
     },
     "build with splits or confidential in the request, a malformed payer, or no decimals and tokenProgram for a mint": async () => [
@@ -698,7 +705,7 @@ describe("mpp-charge-solana.json agreedRefusals: every row runs", () => {
     ],
     "a payload type other than transaction, signature or bundle": async () => [
       await chargeSolana.bound(credential(placed, { type: "hash", transaction: V.V2.wireBase64 })),
-      await chargeSolana.reference(credential(placed, { type: "hash", transaction: V.V2.wireBase64 })),
+      await chargeSolana.reference(credential(placed, { type: "hash", transaction: V.V2.wireBase64 }), placed),
     ],
   };
 
@@ -752,7 +759,7 @@ describe("mpp-charge-xrpl.json agreedRefusals: every row runs", () => {
       const out: unknown[] = [];
       for (const blob of networkRow.blobs!) {
         const cr = credential(placed, { type: "transaction", blob });
-        out.push(await chargeXrpl.bound(cr), await chargeXrpl.reference(cr), await u.complete(blob));
+        out.push(await chargeXrpl.bound(cr), await chargeXrpl.reference(cr, placed), await u.complete(blob));
       }
       return out;
     },
@@ -786,7 +793,7 @@ describe("mpp-charge-xrpl.json agreedRefusals: every row runs", () => {
       if (!Array.isArray(underH2)) throw new Error(underH2.code);
       const c = editedRequest(underH2[0]!, (_, d) => (d["invoiceId"] = V.fixed.invoiceId));
       const cr = credential(c as never, { type: "transaction", blob: V.V3.blob });
-      return [await chargeXrpl.bound(cr), await chargeXrpl.reference(cr)];
+      return [await chargeXrpl.bound(cr), await chargeXrpl.reference(cr, c as never)];
     },
     "build with an account that is not a string, or a malformed fee, sequence or lastLedgerSequence": async () => [
       await chargeXrpl.build({ ...choice, account: 7 as unknown as string }, H),

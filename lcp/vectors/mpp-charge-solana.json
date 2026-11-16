@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/solana. Fixtures are seeds 01 and 02, devnet USDC, x402's payTo and blockhash, and x402-exact-solana.json's V2 and V3 wires. The placed request is computed with Python 3 json.dumps(sort_keys=True, separators=(',',':')) and base64url without padding. Exactly one memo whose data parses as an LCP string, spelled as L and equal to the carrier; other memos are not read.",
+ "about": "Vectors for mpp/charge/solana. Fixtures are seeds 01 and 02, devnet USDC, x402's payTo and blockhash, and x402-exact-solana.json's V2 and V3 wires. The placed request is computed with Python 3 json.dumps(sort_keys=True, separators=(',',':')) and base64url without padding. Exactly one memo whose data parses as an LCP string, spelled as L and equal to the carrier; other memos are not read. Each reference names the payee of the challenge the payment answers, its request's recipient.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -70,7 +70,8 @@
    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
    "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
   }
  },
  "build": {

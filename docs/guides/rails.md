@@ -138,7 +138,7 @@ size, layout and CRC32C before `@ton/core` decodes its cells; Sui's `build` writ
 and its `complete` decodes the signed transaction; and the Solana `build`s check every input, a blockhash the choice
 gives included, before `@solana/kit` writes the message. A `status` or a locate reads as it does with the peer and gives
 the same answer, after the same calls, wherever it decodes nothing with the peer; a step that must decode with the peer
-makes a `status` pending `unreadable`, or a locate's search incomplete, when it is reached, after the reads before it.
+makes a `status` `unreadable`, or a locate's search incomplete, when it is reached, after the reads before it.
 Of the reads, Stellar's `status` and `stellarLocate` decode only a transaction that succeeded (a search that lists no
 candidate decodes none), Sui's `status` only a present transaction's bytes that hash to the digest, and TON's `status`
 nothing: it compares raw addresses without `@ton/core`. Every other rail needs nothing more than the package.
@@ -150,17 +150,32 @@ Which read comes first depends on who broadcast the payment. Each pairing's `bro
 seller sends or executes what the payer presents, then reads its settlement; the [pairings page](../concepts/pairings.md#who-broadcasts)
 lists the pairings that answer by the kind of payment.
 
-`status(ref, reader)` reads a payment's settlement through a **reader** you supply: an object with a few read-only
-calls against one network's endpoint. The package makes those calls and nothing else, so the endpoint, the
-credentials, the timeouts and the retries are yours. Each `status` makes a bounded number of calls.
+`status(ref, reader, query)` reads a payment, or an agreement, through a **reader** you supply: an object with a few
+read-only calls against one network's endpoint. The package makes those calls and nothing else, so the endpoint, the
+credentials, the timeouts and the retries are yours. Each `status` makes a bounded number of calls. `query` names the act
+asked about (`payment` or `agreement`) and the finality asked for, one of the rail's marks below, and, where you have
+them, a final ledger position the transaction must come after (`after`), the search position an earlier `pending`
+answer returned (`search`), and other acts under the same H (`others`), which `status` never settles on.
+
+`status` answers `settled`, `pending`, `failed` or `unreadable`, with one reason of the closed list the
+[read-status profile](../../lcp/profiles/read-status.md) states, the transaction it names with its ledger position and
+the mark it read, and the foreign items it met: transactions that carry H and are not the act asked about, each with its
+reason. The profile's rules choose the answer from what the rail's read observes, which the paragraphs below describe
+rail by rail. Two of them shape every rail's answers today. `failed`, for any reason but `before-position`, comes only
+from a read at the rail's final mark and, where the payer's own signed act carries H, only once the search for H is read
+whole; no rail's read is yet that search, so where the paragraphs below say a read finds a payment expired, failed or
+not this payment, `status` answers `pending`, `search-incomplete`, and a later read with that search gives the verdict.
+And an absence is `not-found` only where the reader shows it holds the history the payment would be in; otherwise it is
+`unreadable`, `history-gap`.
 
 A reader that throws or times out never makes a payment failed: a rejected read of the transaction makes `status` answer
-pending, with the reason `unreadable`, and a later read can settle it; a rejected read of a finality mark counts as that
-mark not reached. On EVM chains and Tempo, a reader answer that is not a receipt (a
-`status` of 0 or 1, a bigint `blockNumber` and a list of logs), or a receipt holding a log that is not an object with a
-string `address`, an array of string `topics` and a string `data`, makes `status` answer pending `unreadable` as well,
-and `recover` refuses it as `evm/unreadable` or `tempo/unreadable`, the code its rail gives a failed read.
-A reader that declares a network other than the reference's makes `status` answer the same way, with nothing read,
+`unreadable`, with the reason `transport` (or `too-large` where the reader says its answer exceeded its bound), and a
+later read can settle it; a rejected read of a finality mark counts as that mark not reached. On EVM chains and Tempo,
+a reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a list of logs), or a receipt
+holding a log that is not an object with a string `address`, an array of string `topics` and a string `data`, makes
+`status` answer `unreadable`, `unparseable`, and `recover` refuses it as `evm/unreadable` or `tempo/unreadable`, the
+code its rail gives a failed read.
+A reader that declares a network other than the reference's makes `status` answer `unreadable`, `chain-mismatch`, with nothing read,
 so no later read through it settles the payment. The package compares only the `network` a reader declares and never
 asks its endpoint which network it serves, so a reader declares its endpoint's own: one that declares the payment's
 network over another network's endpoint finds nothing, and where a verdict rests on a point it reads, such as a head,
@@ -168,7 +183,7 @@ ledger, slot or round, it can answer failed `expired` for a payment that landed.
 `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
 `mpp/charge/evm/authorization` and `mpp/charge/usdc/evm`, whose
 `reference` always names the log carrying H or its commitment, a reference without a well-formed log of that event is
-pending `unreadable` too: the hash cannot be checked, nothing is read, and no later read settles it. On Casper,
+`unreadable` too: the hash cannot be checked, nothing is read, and no later read settles it. On Casper,
 Concordium, Starknet, Tron, TON, the XRP Ledger, NEAR, Stacks, Cardano, Aptos, Sui and Stellar, and in the XRP Ledger
 session close read, a reference that lacks a field `status` compares the landed payment with, or holds it
 malformed, such as a hash without the `0x` its pairing writes or an address in another encoding, is pending
@@ -176,7 +191,7 @@ malformed, such as a hash without the `0x` its pairing writes or an address in a
 the XRP Ledger, last valid round on Algorand, sender on Aptos, digest on Sui, request body hash on TON, or asset,
 recipient, expiration ledger or starting ledger on Stellar, is
 malformed. On the EVM rails, a reference whose transaction is not a 32-byte hash, or whose binding log or transfer log
-is not of the form its pairing writes, is pending `unreadable` too, with nothing read; `x402/exact/eip155/eip3009`
+is not of the form its pairing writes, is `unreadable` too, with nothing read; `x402/exact/eip155/eip3009`
 reads H and the token from the reference's `h` and `asset` rather than its binding log, and an `h` that is not a
 32-byte hash or an `asset` that is not an address reads the same; `mpp/charge/evm/transaction` and
 `mpp/charge/evm/hash` read the token from the reference's `asset`, which their transfer log names, and an `asset` that
@@ -222,7 +237,7 @@ account a transaction takes from an address lookup table, such as an inner instr
 addresses the landed transaction's tables loaded (`SvmLanded.loaded`, `getTransaction`'s `meta.loadedAddresses`), so no
 table is read; a landed answer whose loaded addresses are not 32-byte keys in exactly the numbers the message's lookups
 name, or repeat a static key or each other (the runtime refuses a transaction that loads one account twice), reads as
-pending `unreadable`. The Solana `recover`s and `fetchPresented` read an error by the same rule: `svm/err` from the read
+`unreadable`. The Solana `recover`s and `fetchPresented` read an error by the same rule: `svm/err` from the read
 at `finalized`, and `svm/not-final`, a read to repeat, from the read at `confirmed` alone.
 
 On Stellar the payer signs an authorization entry for the transfer, not the transaction that carries it, and a
@@ -323,7 +338,7 @@ account from a lookup table with `svm/nonce-account-not-static`. `svmNonceMoved(
 read at least 150 slots past `fromSlot`; `svm/unreadable`, a read to repeat, when the read is rejected or answers out
 of its documented shape; and null otherwise. A named transaction then not found, by a lookup whose node
 had reached that slot, is failed, with the reason `nonce-moved`; a lookup from a node behind it, or naming no slot,
-leaves it pending, and a nonce account read or first-available-block read that fails leaves it pending `unreadable`.
+leaves it pending, and a nonce account read or first-available-block read that fails leaves it `unreadable`.
 With no transaction named, pass that slot to `svmLocate` as `minContextSlot`: every
 `getSignaturesForAddress` page carries it as the RPC's `minContextSlot`, "the minimum slot that the request can be
 evaluated at", so a node behind the nonce read fails the call and the search is incomplete. A search given that slot
@@ -348,8 +363,9 @@ node.
 ## Recovering H from the chain alone
 
 On some pairings anyone can read H back from the settled transaction alone, without either party. Those pairings have
-`recover(ref, reader)` and `pattern.zeroPartyRecoverable` set; `ref` names the network and the settlement transaction,
-in the shape each rail's API page gives. This example lists them from the registry:
+`recover({ network, tx, option }, reader)` and `pattern.zeroPartyRecoverable` set: the network, the settlement
+transaction's id, and the x402 option or MPP challenge the ATR's binding slot holds, from which each rail's read takes
+what it needs, as its profile states. This example lists them from the registry:
 
 ```ts
 import { BINDINGS } from "@integraledger/lcp";

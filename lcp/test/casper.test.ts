@@ -59,6 +59,13 @@ function readerFor(c: FixtureCall, network: string = V.C4.reader.network): Caspe
     },
   };
 }
+/** The query of the act payment at the one mark. */
+const PAYMENT = { act: "payment", finality: "finalized" } as const;
+/** A vector row's query, its position a bigint. */
+const queryOf = (q?: { act: "payment" | "agreement"; finality: "finalized"; after?: string }) =>
+  q === undefined ? PAYMENT : { act: q.act, finality: q.finality, ...(q.after === undefined ? {} : { after: BigInt(q.after) }) };
+/** recover's input for the named transaction, under the vector's option. */
+const recoverInput = { network: V.C4.ref.network, tx: V.C4.transaction, option: O };
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
 function mutate(base: unknown, changes: Record<string, unknown>): unknown {
@@ -131,7 +138,8 @@ describe("x402/exact/casper", () => {
 
   it("C3: reference", async () => {
     const payment = completed(await unsigned());
-    expect(await exactCasper.reference(payment)).toEqual(V.C3.expect);
+    expect(await exactCasper.reference(payment, O)).toEqual(V.C3.expect);
+    expect(await exactCasper.reference(payment, {} as PaymentRequirements)).toEqual({ refused: true, code: "x402/option-malformed" });
   });
 
   describe("C3: settleBy for a validBefore past Number.MAX_SAFE_INTEGER", () => {
@@ -139,7 +147,7 @@ describe("x402/exact/casper", () => {
     for (const row of rowsOf(V.C3.rows as Row[], "x402-exact-casper.json C3.rows", { exact: 4 })) {
       it(row.case, async () => {
         const payment = mutate(V.C2.expectPayload, row.mutate);
-        expect(await exactCasper.reference(payment)).toEqual(row.expect);
+        expect(await exactCasper.reference(payment, O)).toEqual(row.expect);
       });
     }
 
@@ -158,7 +166,7 @@ describe("x402/exact/casper", () => {
       const u = await exactCasper.build({ required: required(o), accepted: o, from: V.fixed.from, now: V.fixed.now }, H);
       const payment = completed(u as CasperUnsigned);
       expect(BigInt(payment.payload.authorization.validBefore)).toBe(BigInt(V.fixed.now) + BigInt(Number.MAX_SAFE_INTEGER));
-      expect(await exactCasper.reference(payment)).toEqual({ ...V.C3.expect, settleBy: Number.MAX_SAFE_INTEGER });
+      expect(await exactCasper.reference(payment, O)).toEqual({ ...V.C3.expect, settleBy: Number.MAX_SAFE_INTEGER });
     });
   });
 
@@ -166,24 +174,19 @@ describe("x402/exact/casper", () => {
     for (const row of rowsOf(V.C4.rows, "x402-exact-casper.json C4.rows")) {
       it(row.case, async () => {
         const reader = readerFor(row.call);
-        expect(plain(await exactCasper.status(V.C4.ref, reader))).toEqual(row.expectStatus);
-        const recovered = await exactCasper.recover(
-          { network: V.C4.ref.network, asset: V.C4.ref.asset, transaction: V.C4.transaction },
-          reader,
-        );
+        expect(plain(await exactCasper.status(V.C4.ref, reader, queryOf(row.query)))).toEqual(row.expectStatus);
+        const recovered = await exactCasper.recover(recoverInput, reader);
         expect(recovered).toEqual(row.expectRecover);
       });
     }
     it("a reader for another network", async () => {
       const reader = readerFor(V.C4.rows[0].call, V.C4.wrongReader.network);
-      expect(await exactCasper.status(V.C4.ref, reader)).toEqual(V.C4.wrongReader.expectStatus);
-      expect(
-        await exactCasper.recover({ network: V.C4.ref.network, asset: V.C4.ref.asset, transaction: V.C4.transaction }, reader),
-      ).toEqual(V.C4.wrongReader.expectRecover);
+      expect(await exactCasper.status(V.C4.ref, reader, PAYMENT)).toEqual(V.C4.wrongReader.expectStatus);
+      expect(await exactCasper.recover(recoverInput, reader)).toEqual(V.C4.wrongReader.expectRecover);
     });
-    // A missing or malformed ref field cannot name the landed call, so the read is pending, never failed
+    // A missing or malformed ref field cannot name the landed call, so the read is unreadable, never failed
     // (docs/guides/rails.md, "Reading settlement"); a hash in either case is the same 32 bytes.
-    it("a ref whose h, idDigest or asset is malformed is pending unreadable, with nothing read", async () => {
+    it("a ref whose h, idDigest or asset is malformed is unreadable unparseable, with nothing read", async () => {
       const ref = V.C4.ref;
       const landed = V.C4.rows[0];
       const malformed = [
@@ -193,35 +196,41 @@ describe("x402/exact/casper", () => {
       ];
       for (const change of malformed) {
         const { reader, calls } = counting(readerFor(landed.call));
-        expect(await exactCasper.status({ ...ref, ...change }, reader)).toEqual({ state: "pending", why: "unreadable" });
+        expect(await exactCasper.status({ ...ref, ...change }, reader, PAYMENT)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
         expect(calls).toEqual([]);
       }
       const upper = (s: string) => `0x${s.slice(2).toUpperCase()}`;
       for (const change of [{ h: upper(ref.h) }, { idDigest: upper(ref.idDigest) }, { asset: ref.asset.toUpperCase() }]) {
-        expect(plain(await exactCasper.status({ ...ref, ...change }, readerFor(landed.call)))).toEqual(landed.expectStatus);
+        expect(plain(await exactCasper.status({ ...ref, ...change }, readerFor(landed.call), PAYMENT))).toEqual(landed.expectStatus);
       }
     });
-    // A contract package hash is 32 bytes (casper-types' PackageHash), which the option and the reference write as 64
-    // hex digits. recover reads the authorization call on that package, so a ref naming no package hash is a ref the
-    // rail cannot read: casper/wrong-reader, with nothing read, as for a transaction that is not 64 hex digits
+    // A contract package hash is 32 bytes (casper-types' PackageHash), which the option writes as 64 hex digits.
+    // recover reads the authorization call on the option's package, so an option naming no package hash is one the
+    // rail cannot read: casper/wrong-reader, with nothing read, as for a tx that is not 64 hex digits
     // (docs/reference/refusals.md). A hash in either case is the same 32 bytes.
-    it("recover refuses a ref whose asset is not a package hash as casper/wrong-reader, with nothing read", async () => {
-      const ref = { network: V.C4.ref.network, asset: V.C4.ref.asset, transaction: V.C4.transaction };
+    it("recover refuses an option whose asset is not a package hash as casper/wrong-reader, with nothing read", async () => {
       const landed = V.C4.rows[0];
-      for (const asset of [undefined, null, 7, `0x${ref.asset}`, ref.asset.slice(2), `hash-${ref.asset}`]) {
+      for (const asset of [undefined, null, 7, `0x${O.asset}`, O.asset.slice(2), `hash-${O.asset}`]) {
         const { reader, calls } = counting(readerFor(landed.call));
-        expect([asset, await exactCasper.recover({ ...ref, asset } as never, reader)]).toEqual([
+        const input = { ...recoverInput, option: { ...O, asset } };
+        expect([asset, await exactCasper.recover(input as never, reader)]).toEqual([
           asset,
           { refused: true, code: "casper/wrong-reader" },
         ]);
         expect([asset, calls]).toEqual([asset, []]);
       }
-      expect(await exactCasper.recover({ ...ref, asset: ref.asset.toUpperCase() }, readerFor(landed.call))).toEqual(landed.expectRecover);
+      for (const input of [{ ...recoverInput, option: null }, { ...recoverInput, tx: "0x12" }, null]) {
+        const { reader, calls } = counting(readerFor(landed.call));
+        expect(await exactCasper.recover(input as never, reader)).toEqual({ refused: true, code: "casper/wrong-reader" });
+        expect(calls).toEqual([]);
+      }
+      const upper = { ...recoverInput, option: { ...O, asset: O.asset.toUpperCase() } };
+      expect(await exactCasper.recover(upper, readerFor(landed.call))).toEqual(landed.expectRecover);
     });
   });
 
   it("plant: an authorization call on another package is never the settlement", async () => {
-    expect(await exactCasper.status(V.C4.ref, readerFor(V.plant.call))).toEqual(V.plant.expectStatus);
+    expect(await exactCasper.status(V.C4.ref, readerFor(V.plant.call), PAYMENT)).toEqual(V.plant.expectStatus);
   });
 
   describe("refusal codes left to the implementation", () => {
@@ -229,7 +238,7 @@ describe("x402/exact/casper", () => {
       it(row.case, async () => {
         if (row.fn === "bound" || row.fn === "reference") {
           const payment = mutate(V.C2.expectPayload, row.mutate);
-          expect(await exactCasper[row.fn as "bound" | "reference"](payment)).toEqual(row.expect);
+          expect(await (row.fn === "bound" ? exactCasper.bound(payment) : exactCasper.reference(payment, O))).toEqual(row.expect);
         } else if (row.fn === "build" && "choice" in row) {
           expect(await exactCasper.build(row.choice, H)).toEqual(row.expect);
         } else if (row.fn === "build") {

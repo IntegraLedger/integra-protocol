@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/xrpl. Fixtures are payer r3sN…6dTC, destination rpjf…EyN, and x402-exact-xrpl.json's V2 x402 blob, V3 MPP blob and the plant's memo blob. The placed request is computed with Python 3 json and base64url.",
+ "about": "Vectors for mpp/charge/xrpl. Fixtures are payer r3sN…6dTC, destination rpjf…EyN, and x402-exact-xrpl.json's V2 x402 blob, V3 MPP blob and the plant's memo blob. The placed request is computed with Python 3 json and base64url. Each reference names the payee of the challenge the payment answers, its request's recipient.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -60,7 +60,8 @@
    "network": "xrpl:1",
    "transaction": "49FBB1A497E694900A368096BC7F136EC37B870D81EDD9D1D667F91F3794CFFA",
    "expect": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
-   "lastLedgerSequence": 1000
+   "lastLedgerSequence": 1000,
+   "payee": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
   }
  },
  "V4": {

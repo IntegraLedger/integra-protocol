@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/cardano pairing: the cardano entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is cbor2 5.7.1's encoding of the auxiliary data (pycardano 0.19.2's AuxiliaryData(AlonzoMetadata(...)).to_cbor() is equal). V2 and V4 are built with pycardano 0.19.2 on Python 3.11; the one vkey witness is from a key generated when the fixture was built, which does not change the body or the id. V3 is Cardano preprod transaction 628eca29\u2026c73ef4be, its CBOR read through Koios /tx_cbor on 2026-09-25; V4's row 14 is V3's transaction with a bit set past the last byte in its last base64 character before the padding. Every Blake2b-256 is Python's hashlib.blake2b(digest_size=32) over the item's bytes as located by cbor2's decoder. The V4 rows that carry auxiliaryDataHex were built with cbor2 5.7.1 and hashlib on Python 3.12.3: V2's body with key 7 set to the Blake2b-256 of the hand-assembled auxiliary data given, signed by the Ed25519 key of seed 00x32 (pycardano 0.19.2). CIP-20 lines are compared as their UTF-8 bytes: a repeated key in label 674's map, a repeated label 674, more than one line that reads as the marker when case and a leading byte-order mark (U+FEFF) are ignored, and a marker line not in lower case are each refused, because readers that keep the last of repeated keys (cborg 6.1.3's default decode) or strip a leading byte-order mark would read those messages another way; cborg 6.1.3 with rejectDuplicateMapKeys refuses each repeated-key row. V5's lookups that find nothing answer notFound with the slot of the latest block the indexer that answered held, so they show the transaction absent only through that slot, and status reads expiry only from a lookup at or past the tip read first. V5's status rows read at depth 20, the newer blocks at which the caller takes a settlement as final (x402's Cardano scheme: \"`1..20` means that at least that many newer canonical blocks exist\"; \"A transaction that appears in the mempool or even in a recent block can be rolled back\"). An absent transaction is expired only once the block that depth below the tip, whose slot the reader answers by height (deep), is at or past the TTL slot: the ledger takes a transaction only in a slot below its TTL (cardano-ledger's Allegra inInterval, \"slot < top\"; x402's Cardano scheme: \"Once the transaction's validity window has closed without the ledger recording it, it can no longer land\").",
+ "about": "Vectors for the x402/exact/cardano pairing: the cardano entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is cbor2 5.7.1's encoding of the auxiliary data (pycardano 0.19.2's AuxiliaryData(AlonzoMetadata(...)).to_cbor() is equal). V2 and V4 are built with pycardano 0.19.2 on Python 3.11; the one vkey witness is from a key generated when the fixture was built, which does not change the body or the id. V3 is Cardano preprod transaction 628eca29\u2026c73ef4be, its CBOR read through Koios /tx_cbor on 2026-09-25; V4's row 14 is V3's transaction with a bit set past the last byte in its last base64 character before the padding. Every Blake2b-256 is Python's hashlib.blake2b(digest_size=32) over the item's bytes as located by cbor2's decoder. The V4 rows that carry auxiliaryDataHex were built with cbor2 5.7.1 and hashlib on Python 3.12.3: V2's body with key 7 set to the Blake2b-256 of the hand-assembled auxiliary data given, signed by the Ed25519 key of seed 00x32 (pycardano 0.19.2). CIP-20 lines are compared as their UTF-8 bytes: a repeated key in label 674's map, a repeated label 674, more than one line that reads as the marker when case and a leading byte-order mark (U+FEFF) are ignored, and a marker line not in lower case are each refused, because readers that keep the last of repeated keys (cborg 6.1.3's default decode) or strip a leading byte-order mark would read those messages another way; cborg 6.1.3 with rejectDuplicateMapKeys refuses each repeated-key row. V5's lookups that find nothing answer notFound with the slot of the latest block the indexer that answered held, so they show the transaction absent only through that slot, and status reads expiry only from a lookup at or past the tip read first. V5's status rows read at depth 20, the newer blocks at which the caller takes a settlement as final (x402's Cardano scheme: \"`1..20` means that at least that many newer canonical blocks exist\"; \"A transaction that appears in the mempool or even in a recent block can be rolled back\"). An absent transaction is expired only once the block that depth below the tip, whose slot the reader answers by height (deep), is at or past the TTL slot: the ledger takes a transaction only in a slot below its TTL (cardano-ledger's Allegra inInterval, \"slot < top\"; x402's Cardano scheme: \"Once the transaction's validity window has closed without the ledger recording it, it can no longer land\"). V5's status rows give status's answer under the profile read-status, asked about the act payment at 20 confirmations unless a row's query says otherwise: positions are block heights, marks counts of confirmations, and the final mark the count asked for, at which expiry is also read. The rows read failed (valid false, expired) and pending not-found answer pending search-incomplete: at coverage full, failed comes only once the search for H is read whole, and the read has no search (rules 18, 23 and 24). The agreedRefusals row for an inclusion above the tip reads 0 confirmations, below the 20 asked for: pending below-mark (rule 17).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -28,7 +28,8 @@
   "expectReference": {
    "network": "cardano:preprod",
    "txId": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
-   "ttlSlot": "134620000"
+   "ttlSlot": "134620000",
+   "payee": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0"
   }
  },
  "V3": {
@@ -130,7 +131,8 @@
   "ref": {
    "network": "cardano:preprod",
    "txId": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
-   "ttlSlot": "134620000"
+   "ttlSlot": "134620000",
+   "payee": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0"
   },
   "tip": {
    "blockHeight": "5216538",
@@ -147,8 +149,10 @@
     },
     "expect": {
      "state": "settled",
-     "confirmations": "20",
-     "blockHeight": "5216518"
+     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
+     "position": "5216518",
+     "finality": "20",
+     "foreign": []
     }
    },
    {
@@ -159,8 +163,9 @@
      "valid": false
     },
     "expect": {
-     "state": "failed",
-     "why": "phase-2-invalid"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -171,7 +176,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -190,7 +196,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -208,16 +215,18 @@
      "slot": "134620400"
     },
     "expect": {
-     "state": "failed",
-     "why": "expired"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "a ReaderError",
     "readerError": true,
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -236,7 +245,68 @@
     },
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "in block 5216518, valid, asked about on the act agreement: an agreement is held to no account, and the same transaction settles it",
+    "query": {
+     "act": "agreement",
+     "finality": "20"
+    },
+    "tx": {
+     "blockHeight": "5216518",
+     "slot": "134617000",
+     "valid": true
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
+     "position": "5216518",
+     "finality": "20",
+     "foreign": []
+    }
+   },
+   {
+    "case": "in block 5216518, valid, asked about after block 5216518: failed before-position",
+    "query": {
+     "act": "payment",
+     "finality": "20",
+     "after": "5216518"
+    },
+    "tx": {
+     "blockHeight": "5216518",
+     "slot": "134617000",
+     "valid": true
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
+     "position": "5216518",
+     "finality": "20",
+     "foreign": []
+    }
+   },
+   {
+    "case": "in block 5216518, valid, asked about at 21 confirmations: below-mark",
+    "query": {
+     "act": "payment",
+     "finality": "21"
+    },
+    "tx": {
+     "blockHeight": "5216518",
+     "slot": "134617000",
+     "valid": true
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
+     "position": "5216518",
+     "finality": "20",
+     "foreign": []
     }
    }
   ],
@@ -298,7 +368,7 @@
    },
    {
     "case": "status: an inclusion read above the tip read before it",
-    "expect": "settled with 0 confirmations"
+    "expect": "below-mark with 0 confirmations"
    },
    {
     "case": "complete with a payload whose bound is not the built hash, or whose reference refuses",

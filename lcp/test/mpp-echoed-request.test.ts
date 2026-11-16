@@ -27,6 +27,7 @@ import {
   subscriptionTempo,
   usdcGatewaySalt,
   usdcRequestHash,
+  type MppChallenge,
   type MppCredential,
 } from "../src/mpp.js";
 import { sessionLightning } from "../src/lightning.js";
@@ -50,6 +51,11 @@ const noExpires: Edit = (_r, c) => {
 };
 const details = (r: { [k: string]: Json }) => r["methodDetails"] as { [k: string]: Json };
 const refused = (code: string) => ({ refused: true, code });
+/** A pairing's `reference` of a credential, with the challenge it echoes as the option the payment answers. */
+const issued =
+  (reference: (c: MppCredential, option: MppChallenge) => Promise<unknown>) =>
+  (c: MppCredential): Promise<unknown> =>
+    reference(c, c.challenge);
 /** The challenge as the seller issued it, before `place`: no id and no opaque. */
 const offerOf = (c: MppCredential) => {
   const { id: _id, opaque: _opaque, ...offer } = c.challenge;
@@ -105,21 +111,21 @@ describe("bound holds the echoed challenge to the pairing's filter, and reads no
 describe("reference reads its read keys, and refuses one that is malformed, never throwing or defaulting", () => {
   it("charge/evm/authorization: the currency and the chain", async () => {
     const file = "mpp-charge-evm-authorization.json";
-    expect(await evmAuthorization.reference(presented(file, 1))).toMatchObject({ network: "eip155:84532" });
-    expect(await evmAuthorization.reference(presented(file, 1, noExpires))).toEqual(refused("mpp/expires-required"));
-    expect(await evmAuthorization.reference(presented(file, 1, (r) => (r["currency"] = "usdc")))).toEqual(refused("mpp/request-malformed"));
-    expect(await evmAuthorization.reference(presented(file, 1, (r) => delete details(r)["chainId"]))).toEqual(refused("mpp/request-malformed"));
+    expect(await issued(evmAuthorization.reference)(presented(file, 1))).toMatchObject({ network: "eip155:84532" });
+    expect(await issued(evmAuthorization.reference)(presented(file, 1, noExpires))).toEqual(refused("mpp/expires-required"));
+    expect(await issued(evmAuthorization.reference)(presented(file, 1, (r) => (r["currency"] = "usdc")))).toEqual(refused("mpp/request-malformed"));
+    expect(await issued(evmAuthorization.reference)(presented(file, 1, (r) => delete details(r)["chainId"]))).toEqual(refused("mpp/request-malformed"));
   });
 
   // A request's methodDetails is an object (draft-payment-intent-charge-00, Table 3: "methodDetails | object |
   // Method-specific extension data"); advertise refuses one that is not with mpp/request-malformed (pairingsOf).
   it("a methodDetails that is not an object is mpp/request-malformed, never read as empty", async () => {
     const rows: [string, string, number, (c: MppCredential) => Promise<unknown>][] = [
-      ["charge/solana reference", "mpp-charge-solana.json", 1, chargeSolana.reference],
-      ["charge/evm/hash reference", "mpp-charge-evm-authorization.json", 1, evmHash.reference],
-      ["session/evm reference", "mpp-session-evm.json", 1, sessionEvm.reference],
-      ["session/tempo reference", "mpp-session-tempo.json", 1, sessionTempo.reference],
-      ["subscription/tempo reference", "mpp-subscription-tempo.json", 1, subscriptionTempo.reference],
+      ["charge/solana reference", "mpp-charge-solana.json", 1, (c) => chargeSolana.reference(c, c.challenge)],
+      ["charge/evm/hash reference", "mpp-charge-evm-authorization.json", 1, issued(evmHash.reference)],
+      ["session/evm reference", "mpp-session-evm.json", 1, issued(sessionEvm.reference)],
+      ["session/tempo reference", "mpp-session-tempo.json", 1, issued(sessionTempo.reference)],
+      ["subscription/tempo reference", "mpp-subscription-tempo.json", 1, issued(subscriptionTempo.reference)],
     ];
     for (const [name, file, row, read] of rows) {
       const c = presented(file, row, (r) => (r["methodDetails"] = 5));
@@ -140,13 +146,13 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
     const inv = (v: Json): Edit => (r) => (details(r)["invoiceId"] = v);
     const rows: [string, string, (c: MppCredential) => Promise<unknown>, Edit][] = [
       ["charge/solana bound, externalId 5", "mpp-charge-solana.json", chargeSolana.bound, ext(5)],
-      ["charge/solana reference, externalId 5", "mpp-charge-solana.json", chargeSolana.reference, ext(5)],
+      ["charge/solana reference, externalId 5", "mpp-charge-solana.json", (c) => chargeSolana.reference(c, c.challenge), ext(5)],
       ["charge/solana bound, externalId of 567 bytes", "mpp-charge-solana.json", chargeSolana.bound, ext(long)],
       ["charge/usdc/solana bound, externalId 5", "mpp-charge-usdc-solana.json", chargeUsdcSolana.bound, ext(5)],
       ["charge/usdc/solana bound, externalId of 567 bytes", "mpp-charge-usdc-solana.json", chargeUsdcSolana.bound, ext(long)],
       ["charge/nearintents bound, externalId 5", "mpp-charge-nearintents.json", chargeNearIntents.bound, ext(5)],
       ["charge/xrpl bound, invoiceId 5", "mpp-charge-xrpl.json", chargeXrpl.bound, inv(5)],
-      ["charge/xrpl reference, invoiceId \"0x12\"", "mpp-charge-xrpl.json", chargeXrpl.reference, inv("0x12")],
+      ["charge/xrpl reference, invoiceId \"0x12\"", "mpp-charge-xrpl.json", (c) => chargeXrpl.reference(c, c.challenge), inv("0x12")],
     ];
     for (const [name, file, read, edit] of rows) {
       const c = presented(file, 1, edit);
@@ -162,8 +168,8 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
 
   it("session/evm: the escrow and the chain", async () => {
     const file = "mpp-session-evm.json";
-    expect(await sessionEvm.reference(presented(file, 1, (r) => (details(r)["escrowContract"] = "0x12")))).toEqual(refused("mpp/escrow-malformed"));
-    expect(await sessionEvm.reference(presented(file, 1, (r) => delete details(r)["chainId"]))).toEqual(refused("mpp/chain-id-required"));
+    expect(await issued(sessionEvm.reference)(presented(file, 1, (r) => (details(r)["escrowContract"] = "0x12")))).toEqual(refused("mpp/escrow-malformed"));
+    expect(await issued(sessionEvm.reference)(presented(file, 1, (r) => delete details(r)["chainId"]))).toEqual(refused("mpp/chain-id-required"));
   });
 
   // The codes advertise gives the same request (pairingsOf): a Tempo session's sessionProtocol is absent, "v1" or "v2",
@@ -179,7 +185,7 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
     for (const [c, code] of rows) {
       expect(pairingsOf(offerOf(c))).toEqual(refused(code));
       expect(await sessionTempo.bound(c)).toEqual(refused(code));
-      expect(await sessionTempo.reference(c)).toEqual(refused(code));
+      expect(await issued(sessionTempo.reference)(c)).toEqual(refused(code));
       expect(await sessionTempo.channel.ref(c)).toEqual(refused(code));
     }
   });
@@ -221,9 +227,9 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
       Object.assign(r, { amount: "abc", periodUnit: "month", currency: "pathUSD", recipient: "nobody" });
       noExpires(r, c);
     };
-    expect(await subscriptionTempo.reference(presented(file, 1, noExpires))).toEqual(await subscriptionTempo.reference(presented(file, 1)));
-    expect(await subscriptionTempo.reference(presented(file, 1, unread))).toEqual(refused("mpp/request-malformed"));
-    expect(await subscriptionTempo.reference(presented(file, 1, (r) => delete details(r)["chainId"]))).toEqual(refused("mpp/chain-id-required"));
+    expect(await issued(subscriptionTempo.reference)(presented(file, 1, noExpires))).toEqual(await issued(subscriptionTempo.reference)(presented(file, 1)));
+    expect(await issued(subscriptionTempo.reference)(presented(file, 1, unread))).toEqual(refused("mpp/request-malformed"));
+    expect(await issued(subscriptionTempo.reference)(presented(file, 1, (r) => delete details(r)["chainId"]))).toEqual(refused("mpp/chain-id-required"));
   });
 
   // A Tempo transaction (type 0x76) is 0x76 || rlp([chainId, maxPriorityFeePerGas, maxFeePerGas, gas, calls, accessList,
@@ -245,12 +251,12 @@ describe("reference reads its read keys, and refuses one that is malformed, neve
     };
 
     it("session/tempo: with neither, the reference is refused mpp/expires-required", async () => {
-      expect(await sessionTempo.reference(session(noExpires))).toEqual(refused("mpp/expires-required"));
+      expect(await issued(sessionTempo.reference)(session(noExpires))).toEqual(refused("mpp/expires-required"));
     });
 
     it("an expires that is not a date is mpp/expires-required, whatever the transaction sets", async () => {
-      expect(await sessionTempo.reference(session(notADate))).toEqual(refused("mpp/expires-required"));
-      expect(await sessionTempo.reference(presented("mpp-session-tempo.json", 1, notADate))).toEqual(refused("mpp/expires-required"));
+      expect(await issued(sessionTempo.reference)(session(notADate))).toEqual(refused("mpp/expires-required"));
+      expect(await issued(sessionTempo.reference)(presented("mpp-session-tempo.json", 1, notADate))).toEqual(refused("mpp/expires-required"));
     });
   });
 });

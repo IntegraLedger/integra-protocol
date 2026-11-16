@@ -37,7 +37,7 @@ describe("the nesting cap is checked before the codec decodes", () => {
     expect(XC5.blob.length).toBe(4096);
     expect(await decodeBlob(XC5.blob)).toEqual(refused("xrpl/blob-malformed"));
     const p = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: XC5.blob } };
-    expect(await exactXrpl.reference(p)).toEqual(refused("xrpl/blob-malformed"));
+    expect(await exactXrpl.reference(p, p.accepted)).toEqual(refused("xrpl/blob-malformed"));
     expect(await exactXrpl.bound(p)).toEqual(refused("xrpl/blob-malformed"));
     expect(calls.decode).toBe(0);
   });
@@ -52,9 +52,9 @@ describe("the nesting cap is checked before the codec decodes", () => {
 describe("one decode per presented payment", () => {
   it("x402/exact/xrpl: reference, then bound, then reference again on one payment", async () => {
     const p = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: X.V2.blob } };
-    expect(await exactXrpl.reference(p)).toEqual(X.V2.expectReference);
+    expect(await exactXrpl.reference(p, p.accepted)).toEqual(X.V2.expectReference);
     expect(await exactXrpl.bound(p)).toBe(X.V2.expectBound);
-    expect(await exactXrpl.reference(p)).toEqual(X.V2.expectReference);
+    expect(await exactXrpl.reference(p, p.accepted)).toEqual(X.V2.expectReference);
     expect(calls.decode).toBe(1);
   });
 
@@ -70,7 +70,7 @@ describe("one decode per presented payment", () => {
     const challenge = M.place.expect as MppChallenge & { id: string };
     const cr: MppCredential = { challenge, payload: { type: "transaction", blob: M.V3.blob } };
     expect(await chargeXrpl.bound(cr)).toBe(M.V3.expectBound);
-    expect(await chargeXrpl.reference(cr)).toEqual(M.V3.expectReference);
+    expect(await chargeXrpl.reference(cr, challenge)).toEqual(M.V3.expectReference);
     expect(calls.decode).toBe(1);
   });
 
@@ -78,7 +78,12 @@ describe("one decode per presented payment", () => {
     const challenge = S.SS1.xrpl.placed as MppChallenge & { id: string };
     const cr: MppCredential = { challenge, payload: { action: "open", transaction: S.XS2.blob, amount: "100", signature: "00" } };
     expect(await sessionXrpl.bound(cr)).toBe(S.XS2.expectBound);
-    expect(await sessionXrpl.reference(cr)).toEqual({ network: "xrpl:1", transaction: S.XS2.expectHash, lastLedgerSequence: 1000 });
+    expect(await sessionXrpl.reference(cr, challenge)).toEqual({
+      network: "xrpl:1",
+      transaction: S.XS2.expectHash,
+      lastLedgerSequence: 1000,
+      payee: S.XS2.expectTxJson.Destination,
+    });
     expect(await sessionXrpl.channel.ref(cr)).toEqual({ network: "xrpl:1", channel: S.XS2.expectChannel });
     expect(calls.decode).toBe(1);
   });
@@ -86,7 +91,7 @@ describe("one decode per presented payment", () => {
   it("a multi-signed blob is refused on every read, from one decode", async () => {
     const row = X.multisigned.rows[0];
     const p = { x402Version: 2, accepted: X.V2.accepted, payload: { signedTxBlob: row.blob } };
-    expect(await exactXrpl.reference(p)).toEqual(refused(row.expect));
+    expect(await exactXrpl.reference(p, p.accepted)).toEqual(refused(row.expect));
     expect(await exactXrpl.bound(p)).toEqual(refused(row.expect));
     expect(calls.decode).toBe(1);
   });

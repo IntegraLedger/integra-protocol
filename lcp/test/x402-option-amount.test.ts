@@ -191,7 +191,7 @@ describe("x402/exact/xrpl: an issued-currency option's amount is the canonical d
     const payment = V.buyer.rows[1].input.presented;
     const presented = { ...payment, accepted: { ...payment.accepted, asset: IOU.asset, amount, extra: { ...payment.accepted.extra, issuer: IOU.extra!["issuer"] } } };
     expect(await exactXrpl.bound(presented)).toEqual(MALFORMED);
-    expect(await exactXrpl.reference(presented)).toEqual(MALFORMED);
+    expect(await exactXrpl.reference(presented, presented.accepted)).toEqual(MALFORMED);
   });
 });
 

@@ -1,12 +1,12 @@
 {
- "about": "Vectors for mpp/charge/evm/hash. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges.",
+ "about": "Vectors for mpp/charge/evm/hash. Expected values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0; the Permit2 spender is Anvil account 1. C_E and C_T are mpp-challenge.json's fixed challenges. Under the profile read-status, MV12's rows that were failed (another sender, another emitter, a revert, the guard) are pending search-incomplete (rule 23: a read with no means to read the single-use value never answers failed), and a lookup that finds no receipt is unreadable history-gap (rule 18).",
  "fixed": {
   "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
   "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "now": 1790000000
  },
  "MV12": {
-  "case": "the hash credential, reference(credential), and transferPresent on fixture receipts with finalized 100. The reference identifies the payment's Transfer by its sender alone (identity from): the address of the credential's did:pkh source, whose digest is the SHA-256 of its 20 bytes. A receipt whose only Transfer of the currency is from another account is failed transfer-not-found, and the payer's own Transfer to another account, of another value, is settled. A credential with no source is refused mpp/source-required. A receipt whose only Transfer from the payer goes to the receive-policy guard, which a Tempo TIP-20 transfer blocked by the recipient's receive policy emits instead of paying the recipient, is failed receive-policy-blocked; another account's Transfer to the guard is failed transfer-not-found. build's request is the ERC-20 transfer call to the challenge's currency, broadcast by the payer, the challenge being mpp-charge-evm-transaction.json's fixed.R_ENoTypes: expectCalldata is transfer(address,uint256) of the request's recipient and amount, computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of that signature followed by encode(['address','uint256'], [recipient, amount]), the same bytes as that file's MV11.expectCalldata",
+  "case": "the hash credential, reference(credential), and transferPresent on fixture receipts with finalized 100. The reference identifies the payment's Transfer by its sender alone (identity from): the address of the credential's did:pkh source, whose digest is the SHA-256 of its 20 bytes. The payer's own Transfer to another account, of another value, is settled, with the transaction, its block as the position and the mark it reached. A receipt whose only Transfer of the currency is from another account, a reverted receipt, and a receipt whose only Transfer from the payer goes to the receive-policy guard are no act: the pairing has coverage none and no search, so each answers pending search-incomplete; no receipt is a lookup with no history shown, unreadable history-gap. A credential with no source is refused mpp/source-required. The receive-policy guard is the account a Tempo TIP-20 transfer blocked by the recipient's receive policy emits a Transfer to instead of paying the recipient; another account's Transfer to the guard is no act either. build's request is the ERC-20 transfer call to the challenge's currency, broadcast by the payer, the challenge being mpp-charge-evm-transaction.json's fixed.R_ENoTypes: expectCalldata is transfer(address,uint256) of the request's recipient and amount, computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of that signature followed by encode(['address','uint256'], [recipient, amount]), the same bytes as that file's MV11.expectCalldata",
   "hash": "0xbd39ed4f289dde35adf490855f950b9ea337d5eeb4c1cf941c76c228e36ee29d",
   "expectCalldata": "0xa9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c0000000000000000000000000000000000000000000000000000000000002710",
   "expectReference": {
@@ -17,34 +17,46 @@
     "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
     "identity": "from",
     "digest": "0x96e6760225b23fdf7760696e50f3d53a79bc982b586e9bab53737a0d0a032c6b"
-   }
+   },
+   "payee": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
   },
   "expectSettled": {
    "state": "settled",
+   "transaction": "0xbd39ed4f289dde35adf490855f950b9ea337d5eeb4c1cf941c76c228e36ee29d",
+   "position": "100",
    "finality": "finalized",
-   "blockNumber": "100"
+   "foreign": []
   },
   "expectOtherEmitter": {
-   "state": "failed",
-   "why": "transfer-not-found"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   },
   "otherSender": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
   "expectOtherSender": {
-   "state": "failed",
-   "why": "transfer-not-found"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   },
   "expectNoSource": {
    "refused": true,
    "code": "mpp/source-required"
   },
   "expectReverted": {
-   "state": "failed",
-   "why": "reverted"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
+  },
+  "expectNotFound": {
+   "state": "unreadable",
+   "reason": "history-gap",
+   "foreign": []
   },
   "guard": "0xb10c000000000000000000000000000000000000",
   "expectBlocked": {
-   "state": "failed",
-   "why": "receive-policy-blocked"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "pattern": {

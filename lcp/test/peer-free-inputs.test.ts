@@ -28,7 +28,7 @@ import {
   stellarStatusRows,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
-  SUI_STATUS_POSITION,
+  SUI_STATUS_QUERY,
   suiDecodeInputs,
   suiRecoverDecodes,
   suiPeerStepRows,
@@ -102,7 +102,7 @@ describe("status with each rail's optional peer", () => {
   it("suiStatus: each read's answer, after the reads stated", async () => {
     for (const row of rowsOf(suiStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
       const c = row.reader();
-      const got = await suiStatus(row.ref as never, c.reader as never, SUI_STATUS_POSITION);
+      const got = await suiStatus(row.ref as never, c.reader as never, SUI_STATUS_QUERY);
       expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
     }
   });
@@ -110,15 +110,15 @@ describe("status with each rail's optional peer", () => {
   it("tvmStatus: each read's answer, after the reads stated", async () => {
     for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 20 })) {
       const c = row.reader();
-      const got = await tvmStatus(row.ref as never, c.reader as never);
+      const got = await tvmStatus(row.ref as never, c.reader as never, row.query as never);
       expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
     }
   });
 
   it("stellarStatus: each read's answer, after the reads stated", async () => {
-    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
+    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 14 })) {
       const c = row.reader();
-      const got = await stellarStatus(row.ref as never, c.reader as never);
+      const got = await stellarStatus(row.ref as never, c.reader as never, row.query as never);
       expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
     }
   });
@@ -186,7 +186,7 @@ describe("builds and reads that check what needs no peer first, with the peer", 
 
   it("x402/exact/xrpl's bound and reference: an option whose invoiceId is not an LCP string", async () => {
     for (const row of rowsOf(xrplPayments(), "peer-free-inputs.ts", { exact: 2 })) {
-      expect([row.case, await exactXrpl.bound(row.payment as never), await exactXrpl.reference(row.payment as never)]).toEqual([
+      expect([row.case, await exactXrpl.bound(row.payment as never), await exactXrpl.reference(row.payment as never, (row.payment as { accepted: unknown }).accepted as never)]).toEqual([
         row.case,
         refused("xrpl/carrier-not-lcp"),
         refused("xrpl/carrier-not-lcp"),

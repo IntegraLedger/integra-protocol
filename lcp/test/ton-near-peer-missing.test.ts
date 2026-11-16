@@ -64,7 +64,7 @@ describe("without the TON and NEAR peers", () => {
     expect(tvmCarrier("te6ccgEBAQEAAgAAAA==", "tvm:-239")).toEqual(refused);
     const payment = { x402Version: 2, accepted: placed, payload: { settlementBoc: "te6ccgEBAQEAAgAAAA==", asset: placed.asset } };
     expect(await exactTvm.bound(payment)).toEqual(refused);
-    expect(await exactTvm.reference(payment)).toEqual(refused);
+    expect(await exactTvm.reference(payment, TVM.fixed.O)).toEqual(refused);
     expect(await exactTvm.build({ ...membersOf(exactTvm.id), required: doc, accepted: placed } as never, TVM.fixed.H)).toEqual(refused);
   });
 
@@ -86,7 +86,7 @@ describe("without the TON and NEAR peers", () => {
     const { exactTvm } = await import("../src/tvm.js");
     for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 20 })) {
       const c = row.reader();
-      const got = await exactTvm.status(row.ref as never, c.reader as never);
+      const got = await exactTvm.status(row.ref as never, c.reader as never, row.query as never);
       expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
     }
     expect(tvmStatusRows().every((row) => row.without === undefined)).toBe(true);
@@ -213,7 +213,7 @@ describe("without the TON and NEAR peers", () => {
     expect(nearCarrier(sda)).toEqual(refused);
     const payment = { x402Version: 2, accepted: O, payload: { signedDelegateAction: sda } };
     expect(await exactNear.bound(payment)).toEqual(refused);
-    expect(await exactNear.reference(payment)).toEqual(refused);
+    expect(await exactNear.reference(payment, O)).toEqual(refused);
     const { choice, h } = nearChoice();
     expect(await exactNear.build(choice as never, h)).toEqual(refused);
   });

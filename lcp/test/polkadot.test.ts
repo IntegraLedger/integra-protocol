@@ -24,6 +24,8 @@ const H: AtrHash = V.fixed.H;
 const O: PaymentRequirements = V.fixed.O;
 const toHex = (b: Uint8Array) => "0x" + Buffer.from(b).toString("hex");
 const fromHex = (h: string) => Uint8Array.from(Buffer.from(h.slice(2), "hex"));
+const Q = { act: "payment", finality: "finalized" } as const;
+const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
 const withStrings = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
 type Row = {
@@ -139,7 +141,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     if ("refused" in payment) throw new Error(payment.code);
     expect(payment.payload).toEqual({ extrinsic: V.V3.extrinsic, call: V.V2.expectCall });
     expect(await exactPolkadotRemark.bound(payment)).toBe(V.V3.expectBound);
-    const ref = await exactPolkadotRemark.reference(payment);
+    const ref = await exactPolkadotRemark.reference(payment, O);
     expect(ref).toEqual(V.V3.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
     for (const row of rowsOf(V.V3.refusals, "x402-exact-polkadot-lcp-assets-remark.json V3.refusals")) {
@@ -178,7 +180,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const tooLarge = { refused: true, code: "polkadot/extrinsic-too-large" };
     const malformed = { refused: true, code: "polkadot/extrinsic-malformed" };
     expect(await exactPolkadotRemark.bound(presentedOf(toHex(over), V.V2.expectCall))).toEqual(tooLarge);
-    expect(await exactPolkadotRemark.reference(presentedOf(toHex(over), V.V2.expectCall))).toEqual(tooLarge);
+    expect(await exactPolkadotRemark.reference(presentedOf(toHex(over), V.V2.expectCall), O)).toEqual(tooLarge);
     expect((await unsigned()).complete(over)).toEqual(tooLarge);
     expect(await exactPolkadotRemark.bound(presentedOf(toHex(over).toUpperCase().replace("0X", "0x"), V.V2.expectCall))).toEqual(
       malformed,
@@ -190,7 +192,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
       raws[V.V4.index] = raw;
       const change = recordHash === undefined ? {} : { change: { hash: recordHash as `0x${string}` } };
       const reader: PolkadotReader = { ...readerOf({ finalized: "100", ...change }), rawExtrinsics: async () => raws };
-      return exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
+      return exactPolkadotRemark.recover({ network: V.V4.readerNetwork, tx: transaction, option: O }, reader);
     };
     const unreadable = { refused: true, code: "polkadot/unreadable" };
     const b2 = (b: Uint8Array) => toHex(blake2b(b, { dkLen: 32 }));
@@ -208,7 +210,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
   it("V3: reference takes the network from the accepted option, and the hash and asset from the signed bytes", async () => {
     const westend = { ...O, network: "polkadot:67f9723393ef76214df0118c34bbbd3d" };
     const presented = { x402Version: 2 as const, accepted: westend, payload: { extrinsic: V.V3.extrinsic, call: V.V2.expectCall } };
-    expect(await exactPolkadotRemark.reference(presented as never)).toEqual({ ...V.V3.expectReference, network: westend.network });
+    expect(await exactPolkadotRemark.reference(presented as never, westend)).toEqual({ ...V.V3.expectReference, network: westend.network });
   });
 
   // The pairing's proves states that the extrinsic's bytes end with the profile call, not that its call is the profile
@@ -233,7 +235,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const body = [...v3.subarray(2, v3.length - call.length), ...nested, ...call];
     const xt = toHex(Uint8Array.from([...compact(body.length), ...body]));
     expect(await exactPolkadotRemark.bound(presentedOf(xt, V.V2.expectCall))).toBe(V.V3.expectBound);
-    const ref = await exactPolkadotRemark.reference(presentedOf(xt, V.V2.expectCall));
+    const ref = await exactPolkadotRemark.reference(presentedOf(xt, V.V2.expectCall), O);
     expect(ref).toEqual({ ...V.V3.expectReference, extrinsicHash: extrinsicHash(fromHex(xt)) });
   });
 
@@ -250,19 +252,19 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
         h: H,
         transaction: row.transaction ?? `${V.V4.block}-${V.V4.index}`,
       };
-      expect(withStrings(await polkadotStatus(ref, readerOf(row))), row.case).toEqual(row.expect);
+      expect(withStrings(await polkadotStatus(ref, readerOf(row), { ...Q, finality: row.finality ?? "finalized" })), row.case).toEqual(row.expect);
     }
   });
 
-  it("V4: a ref whose extrinsic hash or asset id is not of the form reference writes is pending unreadable, with nothing read", async () => {
+  it("V4: a ref whose extrinsic hash or asset id is not of the form reference writes is unreadable unparseable, with nothing read", async () => {
     const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
-    expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100" })))).toEqual(V.V4.status[0].expect);
+    expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100" }), Q))).toEqual(V.V4.status[0].expect);
     for (const [k, v] of [["extrinsicHash", null], ["extrinsicHash", "0x12"], ["assetId", null], ["assetId", "1337"], ["assetId", -1]] as const) {
       let reads = 0;
       const counted = new Proxy(readerOf({ finalized: "100" }), {
         get: (t, p) => (p === "network" ? t.network : (...a: never[]) => (reads++, (t as never as Record<string, (...x: never[]) => unknown>)[p as string]!(...a))),
       });
-      expect(await polkadotStatus({ ...ref, [k]: v } as never, counted), `${k} ${String(v)}`).toEqual({ state: "pending", why: "unreadable" });
+      expect(await polkadotStatus({ ...ref, [k]: v } as never, counted, Q), `${k} ${String(v)}`).toEqual(UNPARSEABLE);
       expect(reads, `${k} ${String(v)}`).toBe(0);
     }
   });
@@ -285,7 +287,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
   it("V4: recover and locate", async () => {
     const reader = readerOf({ finalized: "100" });
     const transaction = `${V.V4.block}-${V.V4.index}`;
-    expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader)).toBe(V.V4.recover.expect);
+    expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, tx: transaction, option: O }, reader)).toBe(V.V4.recover.expect);
     for (const row of rowsOf(V.V4.locate, "x402-exact-polkadot-lcp-assets-remark.json V4.locate")) {
       const got = await polkadotLocate(V.V4.reference, readerOf({ finalized: "100", ...row }), BigInt(row.from), BigInt(row.to));
       expect(got === null || typeof got === "string" ? got : got.code, row.case).toBe(row.expect);
@@ -294,7 +296,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
       const raw = [...V.V4.raw];
       raw[V.V4.index] = row.raw;
       const upper: PolkadotReader = { ...readerOf({ finalized: "100", ...row }), rawExtrinsics: async () => raw };
-      expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, upper), row.case).toEqual({
+      expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, tx: transaction, option: O }, upper), row.case).toEqual({
         refused: true,
         code: row.expect,
       });
@@ -308,7 +310,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
       const raw = [...(row.raws ?? V.V4.raw)];
       if (row.raw !== undefined) raw[V.V4.index] = row.raw;
       const reader: PolkadotReader = { ...readerOf(row), rawExtrinsics: async () => raw };
-      const got = await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
+      const got = await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, tx: transaction, option: O }, reader);
       expect(typeof got === "string" ? got : got.code, row.case).toBe(row.expect);
     }
   });
@@ -323,7 +325,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const recoverWith = (raws: unknown, record: (r: PolkadotReader) => PolkadotReader["extrinsic"] = (r) => r.extrinsic) => {
       const base = readerOf({ finalized: "100" });
       const reader: PolkadotReader = { ...base, rawExtrinsics: async () => raws as readonly `0x${string}`[] | null, extrinsic: record(base) };
-      return exactPolkadotRemark.recover({ network: V.V4.readerNetwork, transaction }, reader);
+      return exactPolkadotRemark.recover({ network: V.V4.readerNetwork, tx: transaction, option: O }, reader);
     };
     const withRaw = (raw: unknown) => V.V4.raw.map((r: string, i: number) => (i === V.V4.index ? raw : r));
     const unreadable = { refused: true, code: "polkadot/unreadable" };
@@ -342,7 +344,27 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
 
   it("plant: a transfer of another asset at the named position is never the settlement", async () => {
     const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
-    expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100", change: V.plant.change })))).toEqual(V.plant.expect);
+    expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100", change: V.plant.change }), Q))).toEqual(V.plant.expect);
+  });
+
+  it("status on the act agreement, at a position, and against a reader of another network", async () => {
+    const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
+    const settled = V.V4.status[0].expect;
+    const reader = readerOf({ finalized: "100" });
+    expect(withStrings(await polkadotStatus(ref, reader, { act: "agreement", finality: "finalized" }))).toEqual(settled);
+    // The settled extrinsic at its own height is at the position given: before-position (read-status rule 16).
+    expect(withStrings(await polkadotStatus(ref, reader, { ...Q, after: 100n }))).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: settled.transaction,
+      position: "100",
+      finality: "finalized",
+      foreign: [],
+    });
+    expect(withStrings(await polkadotStatus(ref, reader, { ...Q, after: 99n }))).toEqual(settled);
+    const other = { ...reader, network: "polkadot:67f9723393ef76214df0118c34bbbd3d" as const };
+    expect(await polkadotStatus(ref, other, Q)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
+    expect(await polkadotStatus(ref, reader, { ...Q, finality: "final" } as never)).toEqual(UNPARSEABLE);
   });
 
   it("the option filter, advertise and read", () => {

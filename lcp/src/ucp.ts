@@ -23,7 +23,7 @@ import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broad
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { CARD } from "./internal/data/card.js";
-import type { Entry, PairingData } from "./internal/registry.js";
+import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const LINK_TYPE = "legal_context";
@@ -288,6 +288,22 @@ function unsignedPattern(noun: "checkout" | "booking"): LcpPattern {
 }
 
 /**
+ * A UCP pairing's family descriptor, by the option it is offered on. No public ledger records the payment, so nothing
+ * is read back.
+ */
+type UcpFamily<O extends Option> = NoRead & {
+  doc: Checkout;
+  offered: { h: AtrHash; link: string; agreement?: string; offer: UcpOffer };
+  placedIn: Checkout;
+  offer: O;
+  rest: [agreementUrl?: string];
+  advertised: Checkout;
+  choice: UcpOffer;
+  unsigned: Unsigned;
+  option: never;
+};
+
+/**
  * `ucp/checkout/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
  * executes the payment the buyer's checkout mandate authorizes; nothing here reads it. A value that is not a JSON
  * object gets `ap2/mandate-malformed`, as `bound` refuses it.
@@ -304,7 +320,7 @@ export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> 
   build: buildAp2,
   bound: boundAp2,
   broadcaster: broadcastsWithin(mandateShape, "payee"),
-}) satisfies Entry<"ucp/checkout/ap2-mandate", Presented, never, never>;
+}) satisfies Entry<"ucp/checkout/ap2-mandate", Presented, never, never, UcpFamily<CheckoutOption>>;
 
 /**
  * `ucp/checkout/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
@@ -322,7 +338,7 @@ export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Obj
   build: buildUnsigned,
   bound: boundUnsigned,
   broadcaster: broadcasts("payee"),
-}) satisfies Entry<"ucp/checkout/unsigned", Presented, never, never>;
+}) satisfies Entry<"ucp/checkout/unsigned", Presented, never, never, UcpFamily<CheckoutOption>>;
 
 /**
  * `ucp/booking/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
@@ -341,7 +357,7 @@ export const bookingAp2Mandate: UcpBinding<"ucp/booking/ap2-mandate", BookingOpt
   build: buildAp2,
   bound: boundAp2,
   broadcaster: broadcastsWithin(mandateShape, "payee"),
-}) satisfies Entry<"ucp/booking/ap2-mandate", Presented, never, never>;
+}) satisfies Entry<"ucp/booking/ap2-mandate", Presented, never, never, UcpFamily<BookingOption>>;
 
 /**
  * `ucp/booking/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
@@ -359,7 +375,7 @@ export const bookingUnsigned: UcpBinding<"ucp/booking/unsigned", BookingOption> 
   build: buildUnsigned,
   bound: boundUnsigned,
   broadcaster: broadcasts("payee"),
-}) satisfies Entry<"ucp/booking/unsigned", Presented, never, never>;
+}) satisfies Entry<"ucp/booking/unsigned", Presented, never, never, UcpFamily<BookingOption>>;
 
 function isOption(o: unknown, key: "checkout" | "booking"): boolean {
   if (!isObject(o)) return false;

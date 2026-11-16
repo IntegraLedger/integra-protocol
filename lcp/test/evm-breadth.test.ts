@@ -113,16 +113,25 @@ describe("evmStatus", () => {
   const ref = {
     network: "eip155:84532" as const,
     transferLog: { address: USDC, topic0: TRANSFER_TOPIC as Hex, identity: "from,to" as const, digest: word(0n) },
+    payee: PAYTO,
   };
-  it("a failed read, a reader for another network, and no receipt are pending", async () => {
-    expect(await evmStatus({ ...ref, transaction: TX }, reader("error"))).toEqual({ state: "pending", why: "unreadable" });
-    expect(await evmStatus({ ...ref, transaction: TX }, reader(null, "eip155:8453"))).toEqual({
-      state: "pending",
-      why: "unreadable",
+  const final = { act: "payment" as const, finality: "finalized" as const };
+  // No search for H is defined yet, so a read that finds no act answers pending search-incomplete (read-status rule 24).
+  const searching = { state: "pending", reason: "search-incomplete", foreign: [] };
+  it("a failed read and a reader for another network are unreadable, and no receipt is pending search-incomplete", async () => {
+    expect(await evmStatus({ ...ref, transaction: TX }, reader("error"), final)).toEqual({
+      state: "unreadable",
+      reason: "transport",
+      foreign: [],
     });
-    expect(await evmStatus({ ...ref, transaction: TX }, reader(null))).toEqual({ state: "pending", why: "not-found" });
+    expect(await evmStatus({ ...ref, transaction: TX }, reader(null, "eip155:8453"), final)).toEqual({
+      state: "unreadable",
+      reason: "chain-mismatch",
+      foreign: [],
+    });
+    expect(await evmStatus({ ...ref, transaction: TX }, reader(null), final)).toEqual(searching);
   });
-  it("a Transfer from the token to the receive-policy guard, and no named log, is receive-policy-blocked", async () => {
+  it("a Transfer from the token to the receive-policy guard, and no named log, is no act", async () => {
     const digest = (await transferDigest({ from: PAYER, to: PAYTO })) as Hex;
     const blocked: EvmReceipt = {
       status: 1,
@@ -130,8 +139,8 @@ describe("evmStatus", () => {
       logs: [{ address: USDC, topics: [TRANSFER_TOPIC, topic(PAYER), topic(RECEIVE_POLICY_GUARD)], data: word(5n) }],
     };
     expect(
-      await evmStatus({ ...ref, transferLog: { ...ref.transferLog, digest }, transaction: TX }, reader(blocked)),
-    ).toEqual({ state: "failed", why: "receive-policy-blocked" });
+      await evmStatus({ ...ref, transferLog: { ...ref.transferLog, digest }, transaction: TX }, reader(blocked), final),
+    ).toEqual(searching);
   });
   it("an ERC-721 Transfer (four topics) is not the token's transfer", async () => {
     const digest = (await transferDigest({ from: PAYER, to: PAYTO })) as Hex;
@@ -140,9 +149,24 @@ describe("evmStatus", () => {
       blockNumber: 100n,
       logs: [{ address: USDC, topics: [TRANSFER_TOPIC, topic(PAYER), topic(PAYTO), word(1n)], data: "0x" }],
     };
-    expect(await evmStatus({ ...ref, transferLog: { ...ref.transferLog, digest }, transaction: TX }, reader(nft))).toEqual({
+    expect(await evmStatus({ ...ref, transferLog: { ...ref.transferLog, digest }, transaction: TX }, reader(nft), final)).toEqual(
+      searching,
+    );
+  });
+  it("the token's transfer settles at its block, and is failed before-position at that block", async () => {
+    const digest = (await transferDigest({ from: PAYER, to: PAYTO })) as Hex;
+    const paid: EvmReceipt = {
+      status: 1,
+      blockNumber: 100n,
+      logs: [{ address: USDC, topics: [TRANSFER_TOPIC, topic(PAYER), topic(PAYTO)], data: word(5n) }],
+    };
+    const r = { ...ref, transferLog: { ...ref.transferLog, digest }, transaction: TX };
+    const named = { transaction: TX, position: 100n, finality: "finalized", foreign: [] };
+    expect(await evmStatus(r, reader(paid), final)).toEqual({ state: "settled", ...named });
+    expect(await evmStatus(r, reader(paid), { ...final, after: 100n })).toEqual({
       state: "failed",
-      why: "transfer-not-found",
+      reason: "before-position",
+      ...named,
     });
   });
 });

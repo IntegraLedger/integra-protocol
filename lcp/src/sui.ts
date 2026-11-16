@@ -25,6 +25,7 @@ import {
   type OptionFilter,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, sameBytes, toBase64, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -36,6 +37,10 @@ import {
 } from "./x402.js";
 import { SUI } from "./internal/data/sui.js";
 import type { Entry } from "./internal/registry.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 const peer: { bcs: typeof SuiBcs } | undefined = await import("@mysten/sui/bcs").then(
@@ -77,17 +82,31 @@ export interface SuiReader {
   read(digest: string): Promise<{ tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null }>;
 }
 
+/** The read keys: the network, the digest, the epoch bound, and the payee, the `payTo` of the option the payment answers. */
 export interface SuiRef {
   network: SuiNetwork;
+  payee: string;
   digest: string;
   /** The last epoch the transaction can execute in, as a decimal string, or null when it sets no maximum epoch. */
   untilEpoch: string | null;
 }
 
-export type SuiStatus =
+/**
+ * The answer of `suiStatus`, as the profile `read-status` gives it. Its one mark is `final`, the effects of an executed
+ * transaction, and its position the checkpoint sequence number.
+ */
+export type SuiStatus = StatusAnswer<bigint, SuiMark>;
+
+type SuiMark = "final";
+const MARKS: readonly SuiMark[] = ["final"];
+
+/** What the read of the digest found; `holds`, whether the endpoint holds transactions from the position given. */
+type SuiRead =
   | { state: "settled"; checkpoint: bigint | null }
-  | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "aborted" | "expired" | "not-this-instrument" };
+  | { state: "pending"; why: "not-found"; holds: boolean }
+  | { state: "failed"; why: "aborted"; checkpoint: bigint | null }
+  | { state: "failed"; why: "expired" | "not-this-instrument" }
+  | { state: "unreadable"; reason: UnreadableReason };
 
 /** The payload x402's Sui scheme defines. */
 export interface SuiPayload {
@@ -209,62 +228,111 @@ export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
 }
 
 /**
- * Reads the recorded digest. A failed read, or a reader for another network, is pending. `position` is the checkpoint
- * from which the caller needs the endpoint's history: one at or before every checkpoint the payment could have
- * executed in, such as the latest checkpoint when the payment is requested. An absent transaction is expired once the
- * latest epoch is past its bound and the endpoint holds transactions from `position` or earlier; otherwise it is
- * pending `not-found`, since an endpoint that holds a shorter history may have pruned a transaction that executed. One
- * with no bound (a null `untilEpoch`) is never expired: it can execute in any later epoch. A present one must be these
- * bytes carrying this hash, and its effects' status decides. A ref whose `digest` is not base58 of 32 bytes, whose `h`
- * is not `0x` and 64 hex digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and a
- * `position` that is not a non-negative bigint, are pending `unreadable`, with nothing read. One call. Only the decode
- * of a present transaction's bytes needs @mysten/sui: without it bytes that hash to the digest and that `decodeSuiTx`
- * cannot read before the peer are pending `unreadable` after the call, and every other answer is the one with it.
+ * Answers the read of the recorded digest as the profile `read-status` gives it. The digest is the single-use value:
+ * Sui derives it from the signed bytes alone, so a transaction with it that executed, succeeded or not, consumed it. A
+ * present transaction must be these bytes carrying this hash, else it carries no act that binds H; its effects' status
+ * then decides: `SUCCESS` is the payer's act, and `FAILURE` the act included with a failed result, each at the one
+ * mark `final` and at its checkpoint, where the effects name one. An absent transaction is past its validity once the
+ * latest epoch is past its bound and the endpoint holds transactions from the position the query gives as `after`, or
+ * earlier: such a position is at or before every checkpoint the payment could have executed in, such as the latest
+ * checkpoint when the payment is requested. Otherwise it names no included act, since an endpoint that holds a shorter
+ * history may have pruned a transaction that executed; one with no bound (a null `untilEpoch`) can execute in any later
+ * epoch. The read holds no search for H, so none of these answers `failed` but `before-position`. A read that rejects
+ * is unreadable `transport`; an answer out of the reader's form, bytes that do not hash to the digest, or, without
+ * @mysten/sui, bytes that hash to the digest and that `decodeSuiTx` cannot read before the peer, are `unparseable`;
+ * and a reader for another network than the ref's is `chain-mismatch`. A ref, a reader or a query that is not one, a
+ * reader that names no network, a ref whose `digest` is not base58 of 32 bytes, whose `h` is not `0x` and 64 hex
+ * digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and an `after` that is not a
+ * non-negative bigint, are unreadable `unparseable`, with nothing read. One call. Only the decode of a present
+ * transaction's bytes needs @mysten/sui; every other answer is the one with it.
  */
-export async function suiStatus(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint): Promise<SuiStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
-  }
+export async function suiStatus(
+  ref: SuiRef & { h: AtrHash },
+  reader: SuiReader,
+  query: StatusQuery<SuiRef & { h: AtrHash }, bigint, SuiMark>,
+): Promise<SuiStatus> {
+  if (!isQuery(query, MARKS, (p) => typeof p === "bigint" && p >= 0n)) return UNPARSEABLE;
+  return decide(factsOf(await readSui(ref, reader, query.after), ref), query, LEDGER);
+}
+
+const LEDGER = ledgerOf<bigint, SuiMark>(SUI[ID].coverage, MARKS, bigintOrder);
+
+async function readSui(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint | undefined): Promise<SuiRead> {
+  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
+  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") return unparseable;
   const untilEpoch = ref.untilEpoch === null ? null : decimalBelow(ref.untilEpoch, U64_LIMIT);
   const h = normalHash(ref.h);
-  if (untilEpoch === undefined || h === null || !isDigest(ref.digest)) return { state: "pending", why: "unreadable" };
-  if (typeof position !== "bigint" || position < 0n) return { state: "pending", why: "unreadable" };
+  if (!NETWORKS.includes(ref.network) || untilEpoch === undefined || h === null || !isDigest(ref.digest)) return unparseable;
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
   const answer = await readOnce(reader, ref.digest);
-  if (answer === null) return { state: "pending", why: "unreadable" };
+  if (typeof answer === "string") return { state: "unreadable", reason: answer };
   const { tx, epoch, firstCheckpoint } = answer;
   if (tx === null) {
-    const holds = firstCheckpoint !== null && firstCheckpoint <= position;
+    const holds = position !== undefined && firstCheckpoint !== null && firstCheckpoint <= position;
     const expired = untilEpoch !== null && epoch > untilEpoch && holds;
-    return expired ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
+    return expired ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found", holds };
   }
-  if (suiDigest(tx.transactionBcs) !== ref.digest) return { state: "pending", why: "unreadable" };
+  if (suiDigest(tx.transactionBcs) !== ref.digest) return unparseable;
   const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
-  if (isRefusal(decoded) && decoded.code === "sui/peer-missing") return { state: "pending", why: "unreadable" };
+  if (isRefusal(decoded) && decoded.code === "sui/peer-missing") return unparseable;
   if (isRefusal(decoded)) return { state: "failed", why: "not-this-instrument" };
   const carried = suiCarrier(decoded);
   if (isRefusal(carried) || carried !== h) return { state: "failed", why: "not-this-instrument" };
-  if (tx.status === "FAILURE") return { state: "failed", why: "aborted" };
+  if (tx.status === "FAILURE") return { state: "failed", why: "aborted", checkpoint: tx.checkpoint };
   return { state: "settled", checkpoint: tx.checkpoint };
 }
 
 /**
- * Reads the hash back from the executed transaction alone, by its digest. A ref whose `digest` is not base58 of 32
- * bytes is `sui/wrong-reader`, with nothing read. Bytes that do not hash to the digest are `sui/unreadable`; bytes that
- * do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` answers them failed `not-this-instrument`.
- * Without @mysten/sui the transaction cannot be decoded: bytes that hash to the digest, of a transaction that did not
- * abort, are `sui/peer-missing`, after the ref, the reader and the read are checked, which need no peer. One call.
+ * The read's facts: the act where it executed, succeeded or failed, with the digest read consumed; the digest read
+ * unconsumed with its validity passed where it expired; and nothing else, with the history the endpoint showed for a
+ * transaction not found. The lookup by digest is never a search read whole.
+ */
+function factsOf(read: SuiRead, ref: SuiRef): Facts<bigint, SuiMark> {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  const at = (checkpoint: bigint | null) => (checkpoint === null ? undefined : checkpoint);
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.reason };
+    case "settled":
+      return { ...none, seen: [actSeen<bigint, SuiMark>(ref.digest, "final", at(read.checkpoint))] };
+    case "pending":
+      return { ...none, history: read.holds };
+    case "failed":
+      switch (read.why) {
+        case "aborted":
+          return {
+            ...none,
+            seen: [actSeen<bigint, SuiMark>(ref.digest, "final", at(read.checkpoint), "failed")],
+            value: { consumed: true, lapsed: false, mark: "final" },
+          };
+        case "expired":
+          return { ...none, history: true, value: { consumed: false, lapsed: true, mark: "final" } };
+        case "not-this-instrument":
+          return none;
+      }
+  }
+}
+
+/**
+ * Reads the hash back from the executed transaction alone, by its digest, the input's `tx`; the input's `option` is
+ * the option the payment answers, an object, of which the read needs no member. An input whose `tx` is not base58 of
+ * 32 bytes, or whose option is not an object, is `sui/wrong-reader`, with nothing read. Bytes that do not hash to the
+ * digest are `sui/unreadable`; bytes that do, and that `decodeSuiTx` refuses, give its refusal, as `suiStatus` reads
+ * no act in them. Without @mysten/sui the transaction cannot be decoded: bytes that hash to the digest, of a
+ * transaction that did not abort, are `sui/peer-missing`, after the input, the reader and the read are checked, which
+ * need no peer. One call.
  */
 export async function suiRecover(
-  ref: { network: SuiNetwork; digest: string },
+  input: RecoverInput<SuiNetwork, PaymentRequirements | MppChallenge>,
   reader: SuiReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("sui/wrong-reader");
-  if (!isDigest(ref.digest)) return refusal("sui/wrong-reader");
-  const answer = await readOnce(reader, ref.digest);
-  if (answer === null) return refusal("sui/unreadable");
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("sui/wrong-reader");
+  if (!isDigest(input.tx) || !isObject(input.option)) return refusal("sui/wrong-reader");
+  const answer = await readOnce(reader, input.tx);
+  if (typeof answer === "string") return refusal("sui/unreadable");
   const { tx } = answer;
   if (tx === null) return refusal("sui/not-found");
-  if (suiDigest(tx.transactionBcs) !== ref.digest) return refusal("sui/unreadable");
+  if (suiDigest(tx.transactionBcs) !== input.tx) return refusal("sui/unreadable");
   if (tx.status === "FAILURE") return refusal("sui/aborted");
   const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
   if (isRefusal(decoded)) return decoded;
@@ -343,9 +411,12 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return boundNow(presented);
 }
 
-/** The read keys for this payment: network, digest and the epoch bound, null for a transaction that sets none. */
-async function reference(presented: unknown): Promise<SuiRef | Refusal> {
-  return referenceNow(presented);
+/**
+ * The read keys for this payment: network, digest and the epoch bound, null for a transaction that sets none; and the
+ * payee, the `payTo` of the option the payment answers.
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<SuiRef | Refusal> {
+  return referenceNow(presented, option);
 }
 
 function boundNow(presented: unknown): AtrHash | Refusal {
@@ -353,11 +424,13 @@ function boundNow(presented: unknown): AtrHash | Refusal {
   return isRefusal(tx) ? tx : suiCarrier(tx.tx);
 }
 
-function referenceNow(presented: unknown): SuiRef | Refusal {
+function referenceNow(presented: unknown, option: PaymentRequirements): SuiRef | Refusal {
   const tx = presentedTx(presented);
   if (isRefusal(tx)) return tx;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const { digest, untilEpoch } = tx.tx;
-  return { network: tx.network, digest, untilEpoch: untilEpoch === null ? null : untilEpoch.toString() };
+  return { network: tx.network, payee, digest, untilEpoch: untilEpoch === null ? null : untilEpoch.toString() };
 }
 
 function presentedTx(presented: unknown): { network: SuiNetwork; tx: SuiTx } | Refusal {
@@ -407,7 +480,20 @@ export const exactSui = Object.freeze({
   reference,
   status: suiStatus,
   recover: suiRecover,
-}) satisfies Entry<typeof ID, SuiPaymentPayload, SuiRef & { h: AtrHash }, SuiReader>;
+}) satisfies Entry<
+  typeof ID,
+  SuiPaymentPayload,
+  SuiRef,
+  SuiReader,
+  X402Forms & {
+    choice: { required: PaymentRequired; accepted: PaymentRequirements };
+    unsigned: SuiUnsigned;
+    landed: { h: AtrHash };
+    network: SuiNetwork;
+    query: StatusQuery<SuiRef & { h: AtrHash }, bigint, SuiMark>;
+    answer: SuiStatus;
+  }
+>;
 
 type ParsedCommand = ReturnType<typeof SuiBcs.Command.parse>;
 type ParsedArgument = ReturnType<typeof SuiBcs.Argument.parse>;
@@ -514,26 +600,29 @@ function suiDigest(bytes: Uint8Array): string {
   return base58.encode(blake2b(m, { dkLen: 32 }));
 }
 
-/** One read, with its answer's shape checked; null for a failed read or a malformed answer. */
+/**
+ * One read, with its answer's shape checked; `transport` for a failed read, `too-large` for transaction bytes over the
+ * bound, and `unparseable` for any other malformed answer.
+ */
 async function readOnce(
   reader: SuiReader,
   digest: string,
-): Promise<{ tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null } | null> {
+): Promise<{ tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null } | "transport" | "unparseable" | "too-large"> {
   let answer: unknown;
   try {
     answer = await reader.read(digest);
   } catch {
-    return null;
+    return "transport";
   }
-  if (!isObject(answer) || typeof answer["epoch"] !== "bigint") return null;
+  if (!isObject(answer) || typeof answer["epoch"] !== "bigint") return "unparseable";
   const epoch = answer["epoch"];
   const firstCheckpoint = answer["firstCheckpoint"];
-  if (firstCheckpoint !== null && typeof firstCheckpoint !== "bigint") return null;
+  if (firstCheckpoint !== null && typeof firstCheckpoint !== "bigint") return "unparseable";
   const tx = answer["tx"];
   if (tx === null) return { tx: null, epoch, firstCheckpoint };
-  if (!isObject(tx) || !(tx["transactionBcs"] instanceof Uint8Array)) return null;
-  if (tx["status"] !== "SUCCESS" && tx["status"] !== "FAILURE") return null;
-  if (tx["checkpoint"] !== null && typeof tx["checkpoint"] !== "bigint") return null;
-  if (tx["transactionBcs"].length > MAX_TX_BYTES) return null;
+  if (!isObject(tx) || !(tx["transactionBcs"] instanceof Uint8Array)) return "unparseable";
+  if (tx["status"] !== "SUCCESS" && tx["status"] !== "FAILURE") return "unparseable";
+  if (tx["checkpoint"] !== null && typeof tx["checkpoint"] !== "bigint") return "unparseable";
+  if (tx["transactionBcs"].length > MAX_TX_BYTES) return "too-large";
   return { tx: tx as unknown as SuiExecuted, epoch, firstCheckpoint };
 }

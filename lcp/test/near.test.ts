@@ -71,6 +71,9 @@ function readerFor(a: {
   };
 }
 const REF: NearRef & { transaction: string } = V.V3.ref;
+const Q = { act: "payment", finality: "final" } as const;
+const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
+const recoverInput = { network: REF.network, tx: REF.transaction, option: O };
 
 describe("x402-exact-near.json", () => {
   // The interface: "No function throws"; a value that is not a hash is x402's `payload-malformed`, as in `build`.
@@ -140,7 +143,7 @@ describe("x402-exact-near.json", () => {
         ? u.complete({ keyType: 1, bytes: Uint8Array.from(Buffer.from(V.secp256k1.signature, "hex")) })
         : u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) });
       if ("refused" in p) throw new Error(`${row.case}: ${p.code}`);
-      const ref = await exactNear.reference(p);
+      const ref = await exactNear.reference(p, O);
       if ("refused" in ref) throw new Error(`${row.case}: ${ref.code}`);
       expect([row.case, ref.publicKey]).toEqual([row.case, secp ? V.secp256k1.publicKey : V.fixed.publicKey]);
     }
@@ -163,7 +166,7 @@ describe("x402-exact-near.json", () => {
     expect(p.payload.signedDelegateAction).toBe(V.V2.expectSignedDelegateAction);
     expect(p).toEqual(payment(V.V2.expectSignedDelegateAction));
     expect(await exactNear.bound(p)).toBe(V.V2.expectBound);
-    const ref = await exactNear.reference(p);
+    const ref = await exactNear.reference(p, O);
     expect(ref).toEqual(V.V2.expectReference);
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
     for (const row of rowsOf(V.V2.refusals, "x402-exact-near.json V2.refusals")) {
@@ -317,7 +320,7 @@ describe("x402-exact-near.json", () => {
     expect(row.accepted.maxTimeoutSeconds).toBe(0);
     expect(exactNear.read({ ...doc, accepts: [row.accepted] })).toEqual({ refused: true, code: "x402/no-payable-option" });
     expect([row.case, await exactNear.bound(presented)]).toEqual([row.case, want]);
-    expect([row.case, await exactNear.reference(presented)]).toEqual([row.case, want]);
+    expect([row.case, await exactNear.reference(presented, row.accepted)]).toEqual([row.case, want]);
     expect(await exactNear.build({ ...choice(), required: { ...required, accepts: [row.accepted] }, accepted: row.accepted }, H)).toEqual(want);
     // x402's scheme_exact_near: timeoutBlocks = max(1, ceil(maxTimeoutSeconds / estimatedBlockSeconds)), 1 s blocks.
     const accepted = { ...O, maxTimeoutSeconds: 1 };
@@ -325,35 +328,36 @@ describe("x402-exact-near.json", () => {
     if ("refused" in u) throw new Error(u.code);
     const p = u.complete({ keyType: 0, bytes: ed25519.sign(u.request.hash, seed) });
     if ("refused" in p) throw new Error(p.code);
-    const ref = await exactNear.reference(p);
+    const ref = await exactNear.reference(p, O);
     if ("refused" in ref) throw new Error(ref.code);
     expect(ref.maxBlockHeight).toBe((BigInt(V.fixed.finalHeight) + 1n).toString());
   });
 
   it("V3: status, nearLapsed and recover on reader fixtures", async () => {
     for (const row of rowsOf(V.V3.status, "x402-exact-near.json V3.status")) {
-      expect([row.case, await exactNear.status(REF, readerFor(row))]).toEqual([row.case, row.expect]);
+      const got = await exactNear.status(REF, readerFor(row), { ...Q, finality: row.finality ?? "final" });
+      expect([row.case, got]).toEqual([row.case, row.expect]);
     }
     for (const row of rowsOf(V.V3.lapsed, "x402-exact-near.json V3.lapsed", { exact: 6 })) {
       expect([row.case, await nearLapsed({ ...REF, ...row.ref }, readerFor(row))]).toEqual([row.case, row.expect]);
     }
     for (const row of rowsOf(V.V3.recover, "x402-exact-near.json V3.recover", { exact: 3 })) {
-      const got = await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor(row));
+      const got = await exactNear.recover(recoverInput, readerFor(row));
       expect([row.case, got]).toEqual([row.case, row.expect]);
     }
   });
 
   // x402's NEAR scheme settles by a relayed meta transaction, whose outer transaction carries the payer's
   // SignedDelegate (NEP-366). A transaction the relayers know that carries no delegate action is not that payment, and
-  // a later read of it gives the same answer: status reads it as failed (docs/guides/rails.md, "Reading settlement":
-  // failed is a transaction "that does not carry this payment"), and recover refuses it as not an ft_transfer delegate.
-  // A transaction no relayer knows is not found yet.
+  // a later read of it gives the same answer: status reads no act of the payer's in it, and with no search for H
+  // answers pending search-incomplete (read-status rules 24 and 26), and recover refuses it as not an ft_transfer
+  // delegate. A transaction no relayer knows is not found yet.
   it("V3: recover refuses a known transaction with no delegate action near/not-ft-transfer, and an unknown one near/not-found", async () => {
     const landed = V.V3.recover[0];
     const none: Fixture = { ...landed.outcome, delegate: null };
-    expect(await exactNear.status(REF, readerFor({ outcome: none }))).toEqual({ state: "failed", why: "not-this-instrument" });
+    expect(await exactNear.status(REF, readerFor({ outcome: none }), Q)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
     const recover = (outcome: Fixture | null) =>
-      exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor({ outcome }));
+      exactNear.recover(recoverInput, readerFor({ outcome }));
     expect(await recover(none)).toEqual({ refused: true, code: "near/not-ft-transfer" });
     expect(await recover(null)).toEqual({ refused: true, code: "near/not-found" });
     expect(await recover(landed.outcome)).toBe(landed.expect);
@@ -433,24 +437,24 @@ describe("x402-exact-near.json", () => {
   });
 
   // The ref's argsDigest is a 32-byte hash compared as bytes, as hashEquals compares hashes; a ref without one cannot
-  // name the instrument, so the read is pending.
+  // name the instrument, so the read is unreadable.
   it("V3: status needs the ref's args digest, compared as 32 bytes", async () => {
     const settled = V.V3.status[0];
     const { argsDigest, ...noDigest } = REF;
-    expect(await exactNear.status(noDigest as never, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
-    expect(await exactNear.status({ ...REF, argsDigest: "0x12" as never }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactNear.status(noDigest as never, readerFor(settled), Q)).toEqual(UNPARSEABLE);
+    expect(await exactNear.status({ ...REF, argsDigest: "0x12" as never }, readerFor(settled), Q)).toEqual(UNPARSEABLE);
     const upper = `0x${argsDigest.slice(2).toUpperCase()}` as const;
-    expect(await exactNear.status({ ...REF, argsDigest: upper }, readerFor(settled))).toEqual(settled.expect);
+    expect(await exactNear.status({ ...REF, argsDigest: upper }, readerFor(settled), Q)).toEqual(settled.expect);
     // A NEAR account id's letters are lowercase (near-account-id's validate), so this ref names no token.
-    expect(await exactNear.status({ ...REF, asset: "USDC.testnet" }, readerFor(settled))).toEqual({ state: "pending", why: "unreadable" });
+    expect(await exactNear.status({ ...REF, asset: "USDC.testnet" }, readerFor(settled), Q)).toEqual(UNPARSEABLE);
   });
 
-  // A ref that cannot name the delegate is pending before any read. A NEAR account id's letters are lowercase, and a
+  // A ref that cannot name the delegate is unreadable before any read. A NEAR account id's letters are lowercase, and a
   // separator is never first, last or doubled (near-account-id's validate); a public key is written `ed25519:` and the
   // base58 of its 32 bytes (near-api-js PublicKey.toString), as nearCarrier and nearcore's RPC write it. build reads
   // the other spellings keyForms lists, but status compares the ref's key as text with the delegate's, so a ref holds
   // only the written form.
-  it("V3: a ref whose nonce, asset, payer, public key or digest is malformed is pending unreadable, with nothing read", async () => {
+  it("V3: a ref whose nonce, asset, payer, public key or digest is malformed is unreadable unparseable, with nothing read", async () => {
     const settled = V.V3.status[0];
     const [, key] = REF.publicKey.split(":") as [string, string];
     const malformed = [
@@ -461,10 +465,10 @@ describe("x402-exact-near.json", () => {
     ];
     for (const change of malformed) {
       const { reader, calls } = counting(readerFor(settled));
-      expect(await exactNear.status({ ...REF, ...change } as typeof REF, reader)).toEqual({ state: "pending", why: "unreadable" });
+      expect(await exactNear.status({ ...REF, ...change } as typeof REF, reader, Q)).toEqual(UNPARSEABLE);
       expect(calls).toEqual([]);
     }
-    expect(await exactNear.status(REF, readerFor(settled))).toEqual(settled.expect);
+    expect(await exactNear.status(REF, readerFor(settled), Q)).toEqual(settled.expect);
   });
 
   // A secp256k1 key is written `secp256k1:` and the base58 of its 64 bytes, x then y (near-api-js 7.3.1
@@ -477,23 +481,49 @@ describe("x402-exact-near.json", () => {
     const publicKey = new PublicKey({ keyType: KeyType.SECP256K1, data: Uint8Array.from(Buffer.from(G, "hex")) }).toString();
     const settled = V.V3.status[0];
     const outcome = { ...settled.outcome, delegate: { ...settled.outcome.delegate, publicKey } };
-    expect(await exactNear.status({ ...REF, publicKey }, readerFor({ ...settled, outcome }))).toEqual(settled.expect);
+    expect(await exactNear.status({ ...REF, publicKey }, readerFor({ ...settled, outcome }), Q)).toEqual(settled.expect);
   });
 
-  // nearcore's RPC gives a function call's args as base64; an answer that is not base64 is a reader fault, so the read
-  // is pending, never failed, once the delegate's sender, key, nonce, receiver and method are the ref's.
+  // nearcore's RPC gives a function call's args as base64; an answer that is not base64 is out of the reader's form, so
+  // the read is unreadable unparseable once the delegate's sender, key, nonce, receiver and method are the ref's; a
+  // delegate on a later nonce is another act that took the nonce, whatever its args.
   it("V3: a delegate whose args are not base64 is unreadable, after the instrument's other members", async () => {
     const settled = V.V3.status[0];
     const garbled = (delegate: object) => ({ ...settled, outcome: { ...settled.outcome, delegate: { ...settled.outcome.delegate, ...delegate } } });
-    expect(await exactNear.status(REF, readerFor(garbled({ argsBase64: "not base64!" })))).toEqual({ state: "pending", why: "unreadable" });
-    expect(await exactNear.status(REF, readerFor(garbled({ argsBase64: "not base64!", nonce: "102" })))).toEqual({
-      state: "failed",
-      why: "not-this-instrument",
+    expect(await exactNear.status(REF, readerFor(garbled({ argsBase64: "not base64!" })), Q)).toEqual(UNPARSEABLE);
+    expect(await exactNear.status(REF, readerFor(garbled({ argsBase64: "not base64!", nonce: "102" })), Q)).toEqual({
+      state: "pending",
+      reason: "search-incomplete",
+      foreign: [],
     });
   });
 
   it("plant: a successful outer transaction is not the payment when the token's receipt fails", async () => {
-    expect(await exactNear.status(REF, readerFor(V.plant))).toEqual(V.plant.expect);
+    expect(await exactNear.status(REF, readerFor(V.plant), Q)).toEqual(V.plant.expect);
+  });
+
+  it("status on the act agreement: the settled delegate settles as on the act payment, and below the mark asked is below-mark", async () => {
+    const [settled, optimistic] = V.V3.status;
+    const agreement = { act: "agreement", finality: "final" } as const;
+    expect(await exactNear.status(REF, readerFor(settled), agreement)).toEqual(settled.expect);
+    expect(await exactNear.status(REF, readerFor(optimistic), agreement)).toEqual({
+      state: "pending",
+      reason: "below-mark",
+      transaction: REF.transaction,
+      finality: "optimistic",
+      foreign: [],
+    });
+  });
+
+  it("status reads a reader for another network as chain-mismatch, and a query that is not one as unparseable, with nothing read", async () => {
+    const settled = V.V3.status[0];
+    const other = { ...readerFor(settled), network: "near:mainnet" as const };
+    expect(await exactNear.status(REF, other, Q)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
+    for (const query of [undefined, {}, { act: "payment" }, { act: "sale", finality: "final" }, { ...Q, finality: "safe" }, { ...Q, after: 1 }]) {
+      const { reader, calls } = counting(readerFor(settled));
+      expect(await exactNear.status(REF, reader, query as never), JSON.stringify(query)).toEqual(UNPARSEABLE);
+      expect(calls).toEqual([]);
+    }
   });
 
   it("refusal codes left to the implementation", async () => {
@@ -520,10 +550,10 @@ describe("x402-exact-near.json", () => {
         expect([row.case, u.complete({ keyType: 0, bytes })]).toEqual([row.case, want]);
       } else if (row.case.startsWith("recover when the reader fails")) {
         const r = readerFor({ outcome: "reader-error" });
-        expect(await exactNear.recover({ network: REF.network, transaction: REF.transaction }, r)).toEqual(want);
+        expect(await exactNear.recover(recoverInput, r)).toEqual(want);
       } else if (row.case.startsWith("recover with no relayer")) {
         const r = readerFor({ relayers: [] });
-        expect(await exactNear.recover({ network: REF.network, transaction: REF.transaction }, r)).toEqual(want);
+        expect(await exactNear.recover(recoverInput, r)).toEqual(want);
       } else {
         throw new Error(`no runner for ${row.case}`);
       }
@@ -555,7 +585,7 @@ describe("x402-exact-near.json", () => {
       const signed = deserialize(SCHEMA.SignedDelegate, Buffer.from(sda, "base64")) as Signed;
       const argsBase64 = Buffer.from(signed.delegateAction.actions[0]!.functionCall.args).toString("base64");
       const outcome: Fixture = { ...landed.outcome, delegate: { ...landed.outcome.delegate, argsBase64 } };
-      got.push([row.case, await exactNear.recover({ network: REF.network, transaction: REF.transaction }, readerFor({ outcome }))]);
+      got.push([row.case, await exactNear.recover(recoverInput, readerFor({ outcome }))]);
     }
     expect(got).toEqual(rows.map((row) => [row.case, { refused: true, code: "near/args-malformed" }]));
   });

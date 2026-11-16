@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/exact/eip155/erc7710-salt, MetaMask's DelegationManager v1.3.0. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The leaf L's caveat is arbitrary: bound never reads caveats.",
+ "about": "Vectors for x402/exact/eip155/erc7710-salt, MetaMask's DelegationManager v1.3.0. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The leaf L's caveat is arbitrary: bound never reads caveats. Under the profile read-status, a status row that read failed now reads pending search-incomplete: at coverage full a failed answer waits for a search for H that this pairing does not have yet (rule 24).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -146,10 +146,16 @@
    "0x00000000000000000000000000000000000000000000000000000000000000c0",
    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   ],
+  "query": {
+   "act": "payment",
+   "finality": "finalized"
+  },
   "expectStatus": {
    "state": "settled",
+   "transaction": "0x3333333333333333333333333333333333333333333333333333333333333333",
+   "position": "100",
    "finality": "finalized",
-   "blockNumber": "100"
+   "foreign": []
   },
   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "case": "the RedeemedDelegation event, L's event data, and a fixture receipt (finalized 100, safe 105) with that log from the manager, emitted with the root delegator (the payer) in topic 1 and the redeemer F in topic 2, and a Transfer from the delegator: status settles it, and recover gives H. A log carries a leaf when its delegate (data word 1) is the redeemer or the wildcard delegate 0x0000000000000000000000000000000000000a11 (MetaMask DelegationManager.sol L41, L155-158). The rows below change one thing each; the test encodes each delegation's event data with viem's encodeAbiParameters, as for L"
@@ -192,9 +198,14 @@
       }
      }
     ],
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expectStatus": {
-     "state": "failed",
-     "why": "binding-log-not-found"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "expectRecover": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
    },
@@ -218,9 +229,14 @@
       }
      }
     ],
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expectStatus": {
-     "state": "failed",
-     "why": "transfer-not-found"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
@@ -244,10 +260,16 @@
       }
      }
     ],
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expectStatus": {
      "state": "settled",
+     "transaction": "0x4444444444444444444444444444444444444444444444444444444444444444",
+     "position": "100",
      "finality": "finalized",
-     "blockNumber": "100"
+     "foreign": []
     },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
@@ -271,10 +293,16 @@
       }
      }
     ],
+    "query": {
+     "act": "payment",
+     "finality": "finalized"
+    },
     "expectStatus": {
      "state": "settled",
+     "transaction": "0x4444444444444444444444444444444444444444444444444444444444444444",
+     "position": "100",
      "finality": "finalized",
-     "blockNumber": "100"
+     "foreign": []
     },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    }

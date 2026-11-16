@@ -23,11 +23,12 @@ import {
   unplacedChallenge,
   type MppChallenge,
   type MppCredential,
+  type MppForms,
 } from "./mpp-challenge.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern, PaymentRequired, PaymentRequirements } from "./x402.js";
 import { LIGHTNING } from "./internal/data/lightning.js";
-import type { Entry } from "./internal/registry.js";
+import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 /**
@@ -303,7 +304,13 @@ function lnMppBinding<P extends LnMppPairingId>(id: P) {
  * preimage is presented. The seller's node, which received the payment, confirms it; `reference` names the invoice,
  * and no `status` reads it.
  */
-export const chargeLightning = lnMppBinding(LN_CHARGE) satisfies Entry<typeof LN_CHARGE, MppCredential, LnRef, never>;
+export const chargeLightning = lnMppBinding(LN_CHARGE) satisfies Entry<
+  typeof LN_CHARGE,
+  MppCredential,
+  LnRef,
+  never,
+  MppForms & NoRead & { choice: LnMppChoice; unsigned: LnMppUnsigned }
+>;
 /** The one network name every Lightning session channel key carries: a bearer or close challenge names no invoice. */
 const SESSION_CHANNEL_NETWORK = "lightning";
 const PAYMENT_HASH = /^[0-9a-fA-F]{64}$/;
@@ -372,4 +379,10 @@ export const sessionLightning = Object.freeze({
     boundWithin: measuringAsync(sessionBoundWithin),
     until: (_presented: unknown): number | undefined => undefined,
   }),
-}) satisfies Entry<typeof LN_SESSION, MppCredential, LnRef, never>;
+}) satisfies Entry<
+  typeof LN_SESSION,
+  MppCredential,
+  LnRef,
+  never,
+  MppForms & NoRead & { choice: LnMppChoice; unsigned: LnMppUnsigned }
+>;

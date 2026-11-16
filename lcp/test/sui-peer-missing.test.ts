@@ -8,7 +8,7 @@
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildChoices } from "./build-choices.js";
-import { BAD_H, hFirstChoices, SUI_STATUS_POSITION, suiDecodeInputs, suiPeerStepRows, suiRecoverDecodes, suiRecoverReads, suiStatusRows } from "./peer-free-inputs.js";
+import { BAD_H, hFirstChoices, SUI_STATUS_QUERY, suiDecodeInputs, suiPeerStepRows, suiRecoverDecodes, suiRecoverReads, suiStatusRows } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-sui.json", import.meta.url), "utf8"));
@@ -35,7 +35,7 @@ describe("without @mysten/sui", () => {
     const refused = { refused: true, code: CODE };
     expect(decodeSuiTx(b64)).toEqual(refused);
     expect(await exactSui.bound(p)).toEqual(refused);
-    expect(await exactSui.reference(p)).toEqual(refused);
+    expect(await exactSui.reference(p, V.fixed.O)).toEqual(refused);
   });
 
   // peer-free-inputs.test.ts gives every row its answer with the peer: build writes its request without it, and only
@@ -50,12 +50,12 @@ describe("without @mysten/sui", () => {
   });
 
   // peer-free-inputs.test.ts gives the same reads with the peer. Only bytes that hash to the digest and pass
-  // decodeSuiTx's tags are decoded: without the peer those are pending unreadable after the one read.
-  it("status reads as it does with the peer, pending unreadable only where it must decode the bytes", { timeout: IMPORT_MS }, async () => {
+  // decodeSuiTx's tags are decoded: without the peer those are unreadable unparseable after the one read.
+  it("status reads as it does with the peer, unreadable only where it must decode the bytes", { timeout: IMPORT_MS }, async () => {
     const { exactSui } = await import("../src/sui.js");
     for (const row of rowsOf(suiStatusRows(), "peer-free-inputs.ts", { exact: 13 })) {
       const c = row.reader();
-      const got = await exactSui.status(row.ref as never, c.reader as never, SUI_STATUS_POSITION);
+      const got = await exactSui.status(row.ref as never, c.reader as never, SUI_STATUS_QUERY);
       const want = row.without ?? { expect: row.expect, reads: row.reads };
       expect([row.case, got, c.reads()]).toEqual([row.case, want.expect, want.reads]);
     }

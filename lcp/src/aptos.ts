@@ -20,6 +20,7 @@ import {
   type OptionFilter,
   x402Broadcaster,
   type X402Read,
+  type X402Forms,
 } from "./internal/x402.js";
 import { base64Bytes, decimalBelow, hexOf, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -30,6 +31,8 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 import { APTOS } from "./internal/data/aptos.js";
+import { x402Payee } from "./internal/payee.js";
+import { decide, type Facts, type Ledger, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -86,12 +89,23 @@ export interface AptosRef {
   idDigest: Hex;
   /** The facilitator's transaction hash, once named. */
   transaction?: Hex;
+  /** The option's `payTo`. */
+  payee: string;
 }
 
-export type AptosStatus =
+/**
+ * The answer of `aptosStatus`: positions are ledger versions, and the one mark is `committed`, a transaction the REST
+ * endpoint serves as committed, which is final.
+ */
+export type AptosStatus = StatusAnswer<bigint, "committed", bigint>;
+
+/** What the read by hash and by sequence number observed, before the profile's rules choose the answer. */
+type AptosRead =
   | { state: "settled"; version: bigint; transaction: Hex }
-  | { state: "pending"; why: "not-found" | "in-mempool" | "unreadable" }
-  | { state: "failed"; why: "aborted" | "superseded" | "expired" };
+  | { state: "aborted"; version: bigint; transaction: Hex }
+  | { state: "pending"; why: "not-found" | "in-mempool" }
+  | { state: "failed"; why: "superseded" | "expired" }
+  | { state: "unreadable"; why: UnreadableReason };
 
 export interface AptosUnsigned {
   request: { kind: "aptos-transaction"; accepted: PaymentRequirements };
@@ -224,33 +238,37 @@ export function committedInstrument(t: AptosCommitted, chainId: number): AptosIn
  * its expiry (aptos-core's `transaction_validation.move`: `timestamp::now_seconds() < txn_expiration_time`), so status
  * is failed `expired` only when the ledger's timestamp is at or past `expiresAt` and the lookup by sequence number
  * finds nothing at a ledger timestamp at or past that ledger's; a lookup computed at an earlier ledger, or naming none,
- * is pending `not-found`. A failed read, or a reader for another network, is pending. A ref whose sequence number or
- * expiry is not a decimal string below 2^64, or whose `sender`, `idDigest` or named `transaction` is not `0x` and 64
- * hex digits, is pending `unreadable`, with nothing read; hex digits read the same in either case, and the reader is
- * given the sender and the transaction in lowercase. At most three calls.
+ * is `not-found`. A reader for another network, or a ledger for another chain, is `chain-mismatch`; a rejected read is
+ * `transport`, or by a `ReaderError`'s kind `too-large` or `unparseable`; an answer of another shape is `unparseable`.
+ * A ref whose sequence number or expiry is not a decimal string below 2^64, or whose `sender`, `idDigest` or named
+ * `transaction` is not `0x` and 64 hex digits, is `unparseable`, with nothing read; hex digits read the same in either
+ * case, and the reader is given the sender and the transaction in lowercase. At most three calls.
  */
-export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<AptosStatus> {
-  const unreadable = { state: "pending", why: "unreadable" } as const;
-  if (!isObject(ref) || !isObject(reader)) return unreadable;
+async function readAptos(ref: AptosRef, reader: AptosReader): Promise<AptosRead> {
+  const unparseable = { state: "unreadable", why: "unparseable" } as const;
+  const mismatch = { state: "unreadable", why: "chain-mismatch" } as const;
+  if (!isObject(ref)) return unparseable;
   const chainId = chainOf(ref.network);
-  if (reader.network !== ref.network || chainId === undefined) return unreadable;
+  if (chainId === undefined) return unparseable;
+  if (!isObject(reader) || reader.network !== ref.network) return mismatch;
   const sequenceNumber = decimalBelow(ref.sequenceNumber, U64_LIMIT);
   const expiresAt = decimalBelow(ref.expiresAt, U64_LIMIT);
-  if (sequenceNumber === undefined || expiresAt === undefined) return unreadable;
+  if (sequenceNumber === undefined || expiresAt === undefined) return unparseable;
   const sender = typeof ref.sender === "string" && ADDRESS_64.test(ref.sender) ? (ref.sender.toLowerCase() as Hex) : null;
   const idDigest = normalHash(ref.idDigest);
   const transaction = ref.transaction === undefined ? undefined : normalHash(ref.transaction);
-  if (sender === null || idDigest === null || transaction === null) return unreadable;
+  if (sender === null || idDigest === null || transaction === null) return unparseable;
   try {
     const ledger = await reader.ledger();
-    if (!isObject(ledger) || ledger.chainId !== chainId || typeof ledger.timestampUsecs !== "bigint") return unreadable;
+    if (!isObject(ledger) || typeof ledger.timestampUsecs !== "bigint") return unparseable;
+    if (ledger.chainId !== chainId) return mismatch;
 
     if (transaction !== undefined) {
       const named = await reader.byHash(transaction);
-      if (named !== null && !isObject(named)) return unreadable;
+      if (named !== null && !isObject(named)) return unparseable;
       if (named !== null && named.type === "pending_transaction") return { state: "pending", why: "in-mempool" };
       if (named !== null) {
-        if (!isCommitted(named)) return unreadable;
+        if (!isCommitted(named)) return unparseable;
         if (await matches(named, idDigest, expiresAt, chainId)) return decided(named);
       }
     }
@@ -263,13 +281,78 @@ export async function aptosStatus(ref: AptosRef, reader: AptosReader): Promise<A
         ? { state: "failed", why: "expired" }
         : { state: "pending", why: "not-found" };
     }
-    if (!isCommitted(found)) return unreadable;
-    if (longAddress(found.sender) !== sender || found.sequence_number !== sequenceNumber.toString()) return unreadable;
+    if (!isCommitted(found)) return unparseable;
+    if (longAddress(found.sender) !== sender || found.sequence_number !== sequenceNumber.toString()) return unparseable;
     if (!(await matches(found, idDigest, expiresAt, chainId))) return { state: "failed", why: "superseded" };
     return decided(found);
-  } catch {
-    return unreadable;
+  } catch (e) {
+    return { state: "unreadable", why: rejected(e) };
   }
+}
+
+/** A rejected read: a `ReaderError` by its kind, anything else `transport`. */
+function rejected(e: unknown): UnreadableReason {
+  const kind = e instanceof Error && e.name === "ReaderError" ? (e as { kind?: unknown }).kind : undefined;
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+}
+
+/** The REST endpoint's ledger: one mark, and positions ordered by version. */
+const APTOS_LEDGER: Ledger<bigint, "committed"> = {
+  coverage: APTOS[ID].coverage,
+  final: "committed",
+  markOrder: () => 0,
+  positionOrder: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
+};
+
+type AptosFacts = Facts<bigint, "committed", bigint>;
+
+/**
+ * The facts of a read of the payer's sequence number, its single-use value. A committed transaction at it, with the
+ * signed transfer and expiry, is the act where it succeeded and a failed act where it aborted, either consuming the
+ * sequence number; another transaction there consumed it; and nothing there at a ledger at or past the expiry leaves it
+ * unconsumed with its validity passed.
+ */
+function factsOfAptos(read: AptosRead): AptosFacts {
+  const none = { seen: [], search: { whole: true }, history: false } as const;
+  const own = (t: { version: bigint; transaction: Hex }, result: "succeeded" | "failed") => ({
+    transaction: t.transaction,
+    position: t.version,
+    mark: "committed" as const,
+    result,
+    consumed: true,
+    carries: true,
+    party: "payer" as const,
+    kind: "same" as const,
+    account: "payee" as const,
+  });
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.why };
+    case "settled":
+      return { ...none, seen: [own(read, "succeeded")] };
+    case "aborted":
+      return { ...none, seen: [own(read, "failed")], value: { consumed: true, lapsed: false, mark: "committed" } };
+    case "pending":
+      return read.why === "in-mempool" ? { ...none, search: { whole: false } } : none;
+    case "failed":
+      return read.why === "expired"
+        ? { ...none, value: { consumed: false, lapsed: true, mark: "committed" } }
+        : { ...none, value: { consumed: true, lapsed: false, mark: "committed" } };
+  }
+}
+
+/**
+ * The read of the payment, as the profile `read-status` answers it at coverage `none`: the transaction at the payer's
+ * sequence number with the signed transfer and expiry is the act, settled at `committed`; an aborted one is failed
+ * `transaction-failed`; nothing there past the expiry is failed `instrument-unused`; another transaction there is
+ * `pending`, `search-incomplete`, as is one still in the mempool.
+ */
+export async function aptosStatus(
+  ref: AptosRef,
+  reader: AptosReader,
+  query: StatusQuery<AptosRef, bigint, "committed", bigint>,
+): Promise<AptosStatus> {
+  return decide(factsOfAptos(await readAptos(ref, reader)), query, APTOS_LEDGER);
 }
 
 /** The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not. */
@@ -342,10 +425,15 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(lc) ? refusal("x402/no-legal-context") : lc.h;
 }
 
-/** The read keys for this payment: sender, sequence number, expiry, and the transfer's digest. */
-async function reference(presented: unknown): Promise<AptosRef | Refusal> {
+/**
+ * The read keys for this payment: sender, sequence number, expiry, and the transfer's digest; and the payee, the
+ * `payTo` of the option the payment answers.
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<AptosRef | Refusal> {
   const found = instrumentOf(presented);
   if (isRefusal(found)) return found;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const idDigest = await aptosIdDigest(found.instrument);
   if (isRefusal(idDigest)) return idDigest;
   const i = found.instrument;
@@ -355,6 +443,7 @@ async function reference(presented: unknown): Promise<AptosRef | Refusal> {
     sequenceNumber: i.sequenceNumber.toString(),
     expiresAt: i.expiresAt.toString(),
     idDigest,
+    payee,
   };
 }
 
@@ -405,7 +494,20 @@ export const exactAptos = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference,
   status: aptosStatus,
-}) satisfies Entry<typeof ID, AptosPaymentPayload, AptosRef, AptosReader>;
+}) satisfies Entry<
+  typeof ID,
+  AptosPaymentPayload,
+  AptosRef,
+  AptosReader,
+  X402Forms & {
+    choice: { required: PaymentRequired; accepted: PaymentRequirements };
+    unsigned: AptosUnsigned;
+    landed: unknown;
+    network: never;
+    query: StatusQuery<AptosRef, bigint, "committed", bigint>;
+    answer: AptosStatus;
+  }
+>;
 
 /**
  * True when the committed transaction is the one the payer signed: its transfer hashes to the ref's digest, given in
@@ -418,11 +520,11 @@ async function matches(t: AptosCommitted, idDigest: string, expiresAt: bigint, c
   return !isRefusal(d) && d === idDigest;
 }
 
-function decided(t: AptosCommitted): AptosStatus {
+function decided(t: AptosCommitted): AptosRead {
   const version = decimalBelow(t.version, U64_LIMIT);
   const hash = normalHash(t.hash);
-  if (version === undefined || hash === null) return { state: "pending", why: "unreadable" };
-  return t.success ? { state: "settled", version, transaction: hash } : { state: "failed", why: "aborted" };
+  if (version === undefined || hash === null) return { state: "unreadable", why: "unparseable" };
+  return { state: t.success ? "settled" : "aborted", version, transaction: hash };
 }
 
 function isCommitted(t: unknown): t is AptosCommitted {

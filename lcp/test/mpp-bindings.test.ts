@@ -106,32 +106,34 @@ describe("MPP_BINDINGS", () => {
 
   it("every pairing's reference survives JSON unchanged", async () => {
     const refs: unknown[] = [];
+    /** A pairing's `reference` of a credential, with the challenge it echoes as the option the payment answers. */
+    const issued = <C extends MppCredential>(reference: (c: C, option: MppChallenge) => Promise<unknown>, c: C) => reference(c, c.challenge);
     const chE = placed(C_E);
     const auth = await evmAuthorization.build({ challenge: chE, from: A.fixed.payer, now: 0, tokenDomain: A.fixed.tokenDomain }, H);
     if ("refused" in auth) throw new Error(auth.code);
-    refs.push(await evmAuthorization.reference(auth.complete(A.MV5.expectSignature) as MppCredential));
+    refs.push(await issued(evmAuthorization.reference, auth.complete(A.MV5.expectSignature) as MppCredential));
     const p2 = await evmPermit2.build({ challenge: chE, from: A.fixed.payer, now: 0, spender: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" }, H);
     if ("refused" in p2) throw new Error(p2.code);
-    refs.push(await evmPermit2.reference(p2.complete(A.MV5.expectSignature) as MppCredential));
+    refs.push(await issued(evmPermit2.reference, p2.complete(A.MV5.expectSignature) as MppCredential));
     const chEH = challenge("evm", "charge", load("mpp-charge-evm-transaction.json").fixed.R_ENoTypes);
-    refs.push(await evmTransaction.reference({ challenge: chEH, source: A.MV5.expectSource } as MppCredential));
-    refs.push(await evmHash.reference({ challenge: chEH, source: A.MV5.expectSource } as MppCredential));
+    refs.push(await issued(evmTransaction.reference, { challenge: chEH, source: A.MV5.expectSource } as MppCredential));
+    refs.push(await issued(evmHash.reference, { challenge: chEH, source: A.MV5.expectSource } as MppCredential));
     const chES = placed(challenge("evm", "session", E.fixed.request));
     const s = (await sessionEvm.build(
       { challenge: chES, from: E.fixed.payer, now: 0, deposit: 5000000n, credentialType: "authorization", tokenDomain: E.fixed.tokenDomain },
       H,
     )) as SessionUnsigned;
     const fundSig = await payer.signTypedData((s.funding as unknown as { typedData: never }).typedData);
-    refs.push(await sessionEvm.reference(s.complete(fundSig, fundSig) as MppCredential));
+    refs.push(await issued(sessionEvm.reference, s.complete(fundSig, fundSig) as MppCredential));
     const chTS = placed(challenge("tempo", "session", T.fixed.requestV2));
     const st = (await sessionTempo.build({ challenge: chTS, from: T.fixed.payer, now: 0, deposit: 10000000n }, H)) as SessionUnsigned;
     const call = (st.funding as { call: { data: `0x${string}` } }).call.data;
     const fields = ["0xa5bf", "0x01", "0x02", "0x030d40", [[T.fixed.escrowV2, "0x", call]], [], toHex((1n << 256n) - 1n), "0x", "0x6ab05f3c", "0x", T.fixed.pathUSD, "0x", []];
     const tx = toHex(toBytes(concat(["0x76", toRlp([...fields, await sig65(keccak256(concat(["0x76", toRlp(fields as never)])))] as never)])));
-    refs.push(await sessionTempo.reference(st.complete(tx, `0x${"66".repeat(65)}`) as MppCredential));
+    refs.push(await issued(sessionTempo.reference, st.complete(tx, `0x${"66".repeat(65)}`) as MppCredential));
     const chSub = placed(challenge("tempo", "subscription", U.fixed.request));
     const sub = (await subscriptionTempo.build({ challenge: chSub, from: U.fixed.payer, now: 0 }, H)) as KeyAuthorizationUnsigned;
-    refs.push(await subscriptionTempo.reference(sub.complete(await sig65(sub.request.digest)) as MppCredential));
+    refs.push(await issued(subscriptionTempo.reference, sub.complete(await sig65(sub.request.digest)) as MppCredential));
 
     expect(refs.length).toBe(7);
     for (const r of rowsOf(refs, "the references the seven pairings above build", { exact: 7 })) {

@@ -35,7 +35,8 @@ const vector = (f: string) => JSON.parse(readFileSync(new URL(f, DIR), "utf8"));
 type Pairing = {
   id: string;
   bound(c: unknown): Promise<unknown>;
-  reference?: (c: unknown) => Promise<unknown>;
+  /** The read keys of a payment, with the issued challenge it answers as the option. */
+  reference?: (c: unknown, option: unknown) => Promise<unknown>;
 };
 const MPP = rowsOf(
   BINDINGS.filter((b) => b.id.startsWith("mpp/")) as unknown as Pairing[],
@@ -187,6 +188,7 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   "mpp/charge/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/usdc/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/usdc/evm": { "mpp/nonce-not-usdc-derivation": "the signed nonce derives from the challenge's id, realm and request" },
+  "mpp/charge/usdc/stacks": { "mpp/request-malformed": "reference takes the request's recipient, the option's payee, as a non-empty string" },
   "mpp/charge/usdc/gateway": { "mpp/salt-not-usdc-derivation": "the burn intent's salt derives from the challenge's id, realm and request" },
   "mpp/charge/xrpl": { "xrpl/carrier-mismatch": "the signed InvoiceID is the request's methodDetails.invoiceId" },
   "mpp/session/evm": { "mpp/channel-not-bound": "the channel id derives from the request's chain, escrow, recipient and currency" },
@@ -218,7 +220,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
       for (const pairing of MPP) {
         const own = await pairing.bound(credential);
         if (typeof own !== "string") continue;
-        const ownReference = pairing.reference === undefined ? undefined : await pairing.reference(credential);
+        const ownReference = pairing.reference === undefined ? undefined : await pairing.reference(credential, credential.challenge);
         PRESENTED.push({ pairing, where: `${file}${at}`, credential, own, ownReference });
       }
     }
@@ -234,7 +236,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
           code,
           bound: await pairing.bound(presented),
           own,
-          reference: pairing.reference === undefined ? undefined : await pairing.reference(presented),
+          reference: pairing.reference === undefined ? undefined : await pairing.reference(presented, presented.challenge),
           ownReference,
         });
       }

@@ -524,7 +524,7 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
         }),
         latestLedger: async () => landed.latestLedger,
       };
-      expect(await stellarStatus(ref, reader), r.name).toEqual(landed.expect);
+      expect(await stellarStatus(ref, reader, { act: "payment", finality: "closed" }), r.name).toEqual(landed.expect);
       expect(await stellarLocate(ref, reader), r.name).toEqual({ found: ref.transaction, complete: true });
     }
   });

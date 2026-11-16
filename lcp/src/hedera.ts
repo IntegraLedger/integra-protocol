@@ -16,7 +16,7 @@ import {
   type ExecutorPaymentPayload,
   type HederaPaymentPayload,
 } from "./internal/hedera.js";
-import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read } from "./internal/x402.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -26,7 +26,10 @@ import {
   type PaymentRequirements,
 } from "./x402.js";
 import { HEDERA } from "./internal/data/hedera.js";
+import { decide, type Facts, type Ledger, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { x402Payee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
+import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
@@ -113,12 +116,15 @@ export interface HederaRef {
   expectMemo: string;
   /** Unix seconds: valid start plus the valid duration. */
   validUntil: number;
+  /** The option's `payTo`. */
+  payee: string;
 }
 
-export type HederaStatus =
-  | { state: "settled"; consensus: string }
-  | { state: "pending"; why: "not-found" | "unreadable" }
-  | { state: "failed"; why: "not-this-instrument" | `result:${string}` };
+/**
+ * The answer of `hederaStatus` and `executorStatus`: positions are the Mirror Node's `consensus_timestamp`
+ * (`seconds.nanos`), and the one mark is `consensus`, the record the Mirror Node serves, which is final.
+ */
+export type HederaStatus = StatusAnswer<string, "consensus", string>;
 
 /** The body the payer signs, and how its signature completes the wire transaction. */
 export interface HederaUnsigned {
@@ -131,6 +137,8 @@ export interface HederaUnsigned {
 export interface ExecutorRef {
   network: HederaNetwork;
   asset: string;
+  /** The option's `payTo`. */
+  payee: string;
   /** `hederaIdDigest` of the payer. */
   idDigest: Hex;
   /** Unix seconds: the time `reference` ran plus `maxTimeoutSeconds`. */
@@ -441,22 +449,56 @@ function completeWith(
 
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Every Mirror Node entry for the transaction id. A reader for another network is `chain-mismatch`, a rejected read
+ * `transport`, and an answer that is not a list of entries `unparseable`.
+ */
 async function entriesOf(
   network: HederaNetwork,
   transaction: string,
   reader: HederaReader,
-): Promise<readonly MirrorEntry[] | "not-found" | "unreadable"> {
-  if (!isObject(reader) || reader.network !== network) return "unreadable";
+): Promise<readonly MirrorEntry[] | "not-found" | UnreadableReason> {
+  if (!isObject(reader) || reader.network !== network) return "chain-mismatch";
   let entries: readonly MirrorEntry[] | null;
   try {
     entries = await reader.transactions(transaction);
   } catch {
-    return "unreadable";
+    return "transport";
   }
   if (entries === null) return "not-found";
-  if (!Array.isArray(entries) || !entries.every(isEntry)) return "unreadable";
+  if (!Array.isArray(entries) || !entries.every(isEntry)) return "unparseable";
   return entries;
 }
+
+/** A consensus timestamp, `seconds.nanos`, as nanoseconds; -1 for one that is not that form. */
+function consensusKey(t: string): bigint {
+  const m = typeof t === "string" ? /^(\d{1,19})\.(\d{1,9})$/.exec(t) : null;
+  return m === null ? -1n : BigInt(m[1]!) * 1_000_000_000n + BigInt(m[2]!.padEnd(9, "0"));
+}
+
+/** The Mirror Node's ledger: one mark, the record it serves, and positions ordered by consensus timestamp. */
+function hederaLedger(coverage: "full" | "none"): Ledger<string, "consensus"> {
+  return {
+    coverage,
+    final: "consensus",
+    markOrder: () => 0,
+    positionOrder: (a, b) => {
+      const d = consensusKey(a) - consensusKey(b);
+      return d < 0n ? -1 : d > 0n ? 1 : 0;
+    },
+  };
+}
+
+type HederaQuery<Ref> = StatusQuery<Ref, string, "consensus", string>;
+type HederaFacts = Facts<string, "consensus", string>;
+
+/** What the read of a transaction id observed, before the profile's rules choose the answer. */
+type HederaRead =
+  | { state: "settled"; consensus: string }
+  | { state: "pending"; why: "not-found" }
+  | { state: "failed"; why: "not-this-instrument" }
+  | { state: "failed"; why: `result:${string}`; consensus: string }
+  | { state: "unreadable"; why: UnreadableReason };
 
 function isEntry(e: unknown): e is MirrorEntry {
   if (!isObject(e)) return false;
@@ -487,47 +529,93 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
 
 /**
  * Reads every Mirror Node entry for the transaction id. Duplicates, node due-diligence failures, child and scheduled
- * records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo it is
- * not this instrument, and any other result is failed with that result. A failed read, a reader for another network,
- * or a SUCCESS entry whose `memo_base64` is not base64 in its canonical form (RFC 4648 §3.5) is pending. A ref whose
- * `expectMemo` is not a string is pending `unreadable`, with nothing read. It never answers expired: a transaction id
- * that no entry uses stays pending `not-found`, and `validUntil` is not read, so the caller decides when to stop
- * reading.
+ * records are skipped; the user transaction with SUCCESS and the recorded memo is settled, with another memo another
+ * body consumed the transaction id, and any other result is the transaction's own failed result. A SUCCESS entry whose
+ * `memo_base64` is not base64 in its canonical form (RFC 4648 §3.5) is `unparseable`, as is a ref whose `expectMemo`
+ * is not a string, with nothing read. `validUntil` is not read.
  */
-export async function hederaStatus(ref: HederaRef, reader: HederaReader): Promise<HederaStatus> {
-  if (!isObject(ref) || typeof ref.expectMemo !== "string") return { state: "pending", why: "unreadable" };
+async function readHedera(ref: HederaRef, reader: HederaReader): Promise<HederaRead> {
+  if (!isObject(ref) || typeof ref.expectMemo !== "string") return { state: "unreadable", why: "unparseable" };
   const entries = await entriesOf(ref.network, ref.transactionId, reader);
-  if (entries === "not-found" || entries === "unreadable") return { state: "pending", why: entries };
+  if (entries === "not-found") return { state: "pending", why: "not-found" };
+  if (typeof entries === "string") return { state: "unreadable", why: entries };
   const own = counted(entries);
   const success = own.find((e) => e.result === SUCCESS);
   if (success !== undefined) {
     const memo = memoOf(success);
-    if (memo === null) return { state: "pending", why: "unreadable" };
+    if (memo === null) return { state: "unreadable", why: "unparseable" };
     return sameBytes(memo, ENCODER.encode(ref.expectMemo))
       ? { state: "settled", consensus: success.consensus_timestamp }
       : { state: "failed", why: "not-this-instrument" };
   }
   const first = own[0];
   if (first === undefined) return { state: "pending", why: "not-found" };
-  return { state: "failed", why: `result:${first.result}` };
+  return { state: "failed", why: `result:${first.result}`, consensus: first.consensus_timestamp };
+}
+
+/**
+ * The facts of a read of the transaction id the payer signed, its single-use value: a record of it, settled or failed,
+ * consumed the id, and a record under another memo is another act that consumed it.
+ */
+function factsOfHedera(read: HederaRead, ref: HederaRef): HederaFacts {
+  const none = { seen: [], search: { whole: false }, history: false } as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.why };
+    case "settled":
+      return { ...none, seen: [own(ref.transactionId, read.consensus, "succeeded")] };
+    case "pending":
+      return none;
+    case "failed":
+      if (read.why === "not-this-instrument") return { ...none, value: { consumed: true, lapsed: false, mark: "consensus" } };
+      return {
+        ...none,
+        seen: [own(ref.transactionId, read.consensus, "failed")],
+        value: { consumed: true, lapsed: false, mark: "consensus" },
+      };
+  }
+}
+
+/** The payer's own transaction under the reference, read at consensus. */
+function own(transaction: string, consensus: string, result: "succeeded" | "failed"): HederaFacts["seen"][number] {
+  return {
+    transaction,
+    position: consensus,
+    mark: "consensus",
+    result,
+    consumed: true,
+    carries: true,
+    party: "payer",
+    kind: "same",
+    account: "payee",
+  };
+}
+
+/**
+ * The read of the payment by its transaction id, as the profile `read-status` answers it: the record of the id with
+ * the recorded memo is the act, settled at `consensus`; another memo under the id is a consumed value and the
+ * transaction's own failed result a failed act, each `pending`, `search-incomplete`, since the read has no search for H.
+ */
+export async function hederaStatus(ref: HederaRef, reader: HederaReader, query: HederaQuery<HederaRef>): Promise<HederaStatus> {
+  return decide(factsOfHedera(await readHedera(ref, reader), ref), query, hederaLedger(HEDERA[EXACT].coverage));
 }
 
 /**
  * The hash from the landed user transaction's memo alone, for anyone holding the transaction id. A transaction id that
  * no counted user entry uses yet is `hedera/not-found`; counted user entries with no `SUCCESS` among them are
- * `hedera/not-success`: the transaction reached consensus and failed, and a later read gives the same answer. A ref
- * whose `transactionId` is not a Mirror Node transaction id (`shard.realm.num-seconds-nanos`, as `reference` writes it)
- * is `hedera/wrong-reader`, with nothing read. One call.
+ * `hedera/not-success`: the transaction reached consensus and failed, and a later read gives the same answer. An input
+ * whose `tx` is not a Mirror Node transaction id (`shard.realm.num-seconds-nanos`, as `reference` writes it), or whose
+ * option is not an object, is `hedera/wrong-reader`, with nothing read; the option is not read further. One call.
  */
 async function recover(
-  ref: { network: HederaNetwork; transactionId: string },
+  input: RecoverInput<HederaNetwork, PaymentRequirements | MppChallenge>,
   reader: HederaReader,
 ): Promise<AtrHash | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) return refusal("hedera/wrong-reader");
-  if (typeof ref.transactionId !== "string" || !MIRROR_ID.test(ref.transactionId)) return refusal("hedera/wrong-reader");
-  const entries = await entriesOf(ref.network, ref.transactionId, reader);
-  if (entries === "unreadable") return refusal("hedera/unreadable");
+  if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("hedera/wrong-reader");
+  if (typeof input.tx !== "string" || !MIRROR_ID.test(input.tx) || !isObject(input.option)) return refusal("hedera/wrong-reader");
+  const entries = await entriesOf(input.network, input.tx, reader);
   if (entries === "not-found") return refusal("hedera/not-found");
+  if (typeof entries === "string") return refusal("hedera/unreadable");
   const own = counted(entries);
   const success = own.find((e) => e.result === SUCCESS);
   if (success === undefined) return own.length === 0 ? refusal("hedera/not-found") : refusal("hedera/not-success");
@@ -700,16 +788,22 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return fromLcpString(s.body.memo) ?? refusal("hedera/memo-not-lcp");
 }
 
-/** The read keys, from the signed body: the mirror-form id, the memo and the end of validity. */
-async function reference(presented: unknown): Promise<HederaRef | Refusal> {
+/**
+ * The read keys, from the signed body: the mirror-form id, the memo and the end of validity; and the payee, the
+ * `payTo` of the option the payment answers.
+ */
+async function reference(presented: unknown, option: PaymentRequirements): Promise<HederaRef | Refusal> {
   const h = await bound(presented);
   if (isRefusal(h)) return h;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const { accepted, body } = signedBody(presented) as { accepted: PaymentRequirements; body: HederaBody };
   return {
     network: accepted.network as HederaNetwork,
     transactionId: txIdMirror(body.id),
     expectMemo: body.memo,
     validUntil: Number(body.id.seconds) + body.validDuration,
+    payee,
   };
 }
 
@@ -750,7 +844,20 @@ export const exactHedera = Object.freeze({
   reference,
   status: hederaStatus,
   recover,
-}) satisfies Entry<typeof EXACT, HederaPaymentPayload, HederaRef, HederaReader>;
+}) satisfies Entry<
+  typeof EXACT,
+  HederaPaymentPayload,
+  HederaRef,
+  HederaReader,
+  X402Forms & {
+    choice: Parameters<typeof build>[0];
+    unsigned: HederaUnsigned;
+    landed: unknown;
+    network: HederaNetwork;
+    query: HederaQuery<HederaRef>;
+    answer: HederaStatus;
+  }
+>;
 
 // ── x402/exact/hedera/transfer-executor ─────────────────────────────────────────────────────────────────────────────
 
@@ -863,18 +970,21 @@ async function boundExecutor(presented: unknown): Promise<AtrHash | Refusal> {
 /**
  * Read keys only: the network, the asset, the digest of the payer, and the time by which the transfer settles, counted
  * from the time `reference` runs: that time in Unix seconds plus the option's `maxTimeoutSeconds`. A sum that is not a
- * safe integer is `hedera/option-malformed`, as `build`'s `validBefore` is. Payee and amount are not recorded: the
- * facilitator builds the executor's transfer and reports what it moved.
+ * safe integer is `hedera/option-malformed`, as `build`'s `validBefore` is. The payee is the `payTo` of the option the
+ * payment answers; the amount is not recorded: the facilitator builds the executor's transfer and reports what it moved.
  */
-async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refusal> {
+async function referenceExecutor(presented: unknown, option: PaymentRequirements): Promise<ExecutorRef | Refusal> {
   const h = await boundExecutor(presented);
   if (isRefusal(h)) return h;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
   const { accepted, payload } = executorPresented(presented) as { accepted: PaymentRequirements; payload: ExecutorPayload };
   const settleBy = Math.floor(Date.now() / 1000) + accepted.maxTimeoutSeconds;
   if (!Number.isSafeInteger(settleBy)) return refusal("hedera/option-malformed");
   return {
     network: accepted.network as HederaNetwork,
     asset: accepted.asset,
+    payee,
     idDigest: await hederaIdDigest(payload.payer),
     settleBy,
   };
@@ -886,29 +996,28 @@ async function referenceExecutor(presented: unknown): Promise<ExecutorRef | Refu
  * HBAR transfers. The fee payer's rows are kept: fees are paid in HBAR, so token rows are whole, and on HBAR the fee the
  * user entry's `charged_tx_fee` names is added back to the fee payer, so a payer or payee that is also the fee payer
  * reads as what it paid or received. Exactly one account must be debited, by at least one unit, and its digest must be
- * the recorded one: the payment is the named transaction's debit of the payer. Payee and amount are not read. A transfer
- * list that is not an array, or an HBAR user entry without `charged_tx_fee`, is pending `unreadable`. A ref whose
- * `transaction` is not a Mirror Node transaction id, whose `asset` is not `shard.realm.num` or whose `idDigest` is not
- * `0x` and 64 hex digits is pending `unreadable`, with nothing read.
+ * the recorded one: the payment is the named transaction's debit of the payer; another debit is no act of the payer's.
+ * Payee and amount are not read. A transfer list that is not an array, or an HBAR user entry without
+ * `charged_tx_fee`, is `unparseable`, and more than 64 entries `too-large`. A ref whose `transaction` is not a Mirror
+ * Node transaction id, whose `asset` is not `shard.realm.num` or whose `idDigest` is not `0x` and 64 hex digits is
+ * `unparseable`, with nothing read.
  */
-export async function executorStatus(
-  ref: ExecutorRef & { transaction: string },
-  reader: HederaReader,
-): Promise<HederaStatus> {
-  if (!isObject(ref)) return { state: "pending", why: "unreadable" };
+async function readExecutorTransfer(ref: ExecutorRef & { transaction: string }, reader: HederaReader): Promise<HederaRead> {
+  if (!isObject(ref)) return { state: "unreadable", why: "unparseable" };
   const id = typeof ref.transaction === "string" ? MIRROR_ID.exec(ref.transaction) : null;
   const idDigest = normalHash(ref.idDigest);
-  if (id === null || idDigest === null || !isEntity(ref.asset)) return { state: "pending", why: "unreadable" };
+  if (id === null || idDigest === null || !isEntity(ref.asset)) return { state: "unreadable", why: "unparseable" };
   const feePayer = id[1]!;
   const entries = await entriesOf(ref.network, ref.transaction, reader);
-  if (entries === "not-found" || entries === "unreadable") return { state: "pending", why: entries };
-  if (entries.length > MAX_ENTRIES) return { state: "pending", why: "unreadable" };
+  if (entries === "not-found") return { state: "pending", why: "not-found" };
+  if (typeof entries === "string") return { state: "unreadable", why: entries };
+  if (entries.length > MAX_ENTRIES) return { state: "unreadable", why: "too-large" };
   const own = counted(entries);
   const user = own.find((e) => e.result === SUCCESS) ?? own[0];
   if (user === undefined) return { state: "pending", why: "not-found" };
-  if (user.result !== SUCCESS) return { state: "failed", why: `result:${user.result}` };
+  if (user.result !== SUCCESS) return { state: "failed", why: `result:${user.result}`, consensus: user.consensus_timestamp };
   const fee = ref.asset === "0.0.0" ? user.charged_tx_fee : 0;
-  if (typeof fee !== "number" || !Number.isSafeInteger(fee) || fee < 0) return { state: "pending", why: "unreadable" };
+  if (typeof fee !== "number" || !Number.isSafeInteger(fee) || fee < 0) return { state: "unreadable", why: "unparseable" };
 
   const merged = entries.filter((e) => e.scheduled === false && !NOT_COUNTED.has(e.result) && (e === user || e.nonce > 0));
   const net = new Map<string, bigint>();
@@ -935,7 +1044,7 @@ export async function executorStatus(
   for (const e of merged) {
     const moves = movesOf(ref.asset === "0.0.0" ? e.transfers : e.token_transfers);
     const rewards = ref.asset === "0.0.0" ? movesOf(e.staking_reward_transfers) : [];
-    if (moves === undefined || rewards === undefined) return { state: "pending", why: "unreadable" };
+    if (moves === undefined || rewards === undefined) return { state: "unreadable", why: "unparseable" };
     for (const m of moves) credit(m.account, m.amount);
     for (const r of rewards) {
       credit(r.account, -r.amount);
@@ -948,6 +1057,38 @@ export async function executorStatus(
   return (await hederaIdDigest(payer)) === idDigest
     ? { state: "settled", consensus: user.consensus_timestamp }
     : { state: "failed", why: "not-this-instrument" };
+}
+
+/**
+ * The facts of a read of the transaction the facilitator named. Nothing the payer signs carries H or a single-use value
+ * the read can read, so a debit of the payer that succeeded is the act, the transaction's own failed result is a
+ * failed act that leaves no value read, and a transaction that debits another account is no act of the payer's.
+ */
+function factsOfExecutor(read: HederaRead, ref: ExecutorRef & { transaction: string }): HederaFacts {
+  const none = { seen: [], search: { whole: true }, history: false } as const;
+  switch (read.state) {
+    case "unreadable":
+      return { ...none, unreadable: read.why };
+    case "settled":
+      return { ...none, seen: [own(ref.transaction, read.consensus, "succeeded")] };
+    case "pending":
+      return none;
+    case "failed":
+      return "consensus" in read ? { ...none, seen: [{ ...own(ref.transaction, read.consensus, "failed"), consumed: false }] } : none;
+  }
+}
+
+/**
+ * The read of the executor's transfer by the transaction the facilitator named, as the profile `read-status` answers
+ * it at coverage `none`: the named transaction is the act, settled at `consensus` where it debits the payer. With no
+ * single-use value to read, a missing or failed transaction answers no `failed`.
+ */
+export async function executorStatus(
+  ref: ExecutorRef & { transaction: string },
+  reader: HederaReader,
+  query: HederaQuery<ExecutorRef & { transaction: string }>,
+): Promise<HederaStatus> {
+  return decide(factsOfExecutor(await readExecutorTransfer(ref, reader), ref), query, hederaLedger(HEDERA[EXECUTOR].coverage));
 }
 
 const executorPattern: LcpPattern = deepFreeze({
@@ -976,7 +1117,20 @@ export const exactHederaExecutor = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference: referenceExecutor,
   status: executorStatus,
-}) satisfies Entry<typeof EXECUTOR, ExecutorPaymentPayload, ExecutorRef & { transaction: string }, HederaReader>;
+}) satisfies Entry<
+  typeof EXECUTOR,
+  ExecutorPaymentPayload,
+  ExecutorRef,
+  HederaReader,
+  X402Forms & {
+    choice: Parameters<typeof buildExecutor>[0];
+    unsigned: Exclude<Awaited<ReturnType<typeof buildExecutor>>, Refusal>;
+    landed: { transaction: string };
+    network: never;
+    query: HederaQuery<ExecutorRef & { transaction: string }>;
+    answer: HederaStatus;
+  }
+>;
 
 export { FETCHED } from "./mpp-challenge.js";
 export {

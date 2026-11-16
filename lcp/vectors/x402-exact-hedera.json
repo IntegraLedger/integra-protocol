@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/hedera pairing of @integraledger/lcp's hedera entry point. H is SHA-256(\"abc\") from FIPS 180-2. The bytes were computed with hiero-sdk-python 0.2.10's generated protobufs and protobuf 7.36.2 (SerializeToString(deterministic=True)) and cryptography's Ed25519 on Python 3.12.3, 2026-09-25; the signing seed is not recorded here. Byte strings are hex unless named base64.",
+ "about": "Vectors for the x402/exact/hedera pairing of @integraledger/lcp's hedera entry point. H is SHA-256(\"abc\") from FIPS 180-2. The bytes were computed with hiero-sdk-python 0.2.10's generated protobufs and protobuf 7.36.2 (SerializeToString(deterministic=True)) and cryptography's Ed25519 on Python 3.12.3, 2026-09-25; the signing seed is not recorded here. Byte strings are hex unless named base64. The V5 rows give status's answer under the profile read-status at the one mark, consensus, asked about the act payment unless a row's query says otherwise. The rows read failed with the transaction's own result, failed under another memo, and pending not-found answer pending search-incomplete: at coverage full, failed comes only once the search for H is read whole, and the read has no search (rules 18, 23 and 24).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -45,7 +45,8 @@
    "network": "hedera:testnet",
    "transactionId": "0.0.1235-1700000000-000000000",
    "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "validUntil": 1700000120
+   "validUntil": 1700000120,
+   "payee": "0.0.1234"
   },
   "expectTxIdText": "0.0.1235@1700000000.000000000",
   "presentedOptions": [
@@ -97,7 +98,8 @@
      "network": "hedera:testnet",
      "transactionId": "0.0.1235-1700000000-000000000",
      "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "validUntil": 1700000120
+     "validUntil": 1700000120,
+     "payee": "0.0.1234"
     }
    }
   ]
@@ -115,12 +117,13 @@
   "expectRefusal": "hedera/memo-not-lcp"
  },
  "V5": {
-  "case": "status for V2's reference, and recover",
+  "case": "status for V2's reference with the payee of the option it answers, and recover from the transaction id, for each reader answer",
   "reference": {
    "network": "hedera:testnet",
    "transactionId": "0.0.1235-1700000000-000000000",
    "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "validUntil": 1700000120
+   "validUntil": 1700000120,
+   "payee": "0.0.1234"
   },
   "readerNetwork": "hedera:testnet",
   "rows": [
@@ -136,8 +139,12 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1700000003.000000001"
-    }
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "foreign": []
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
     "entries": [
@@ -150,15 +157,25 @@
      }
     ],
     "expect": {
-     "state": "failed",
-     "why": "result:INSUFFICIENT_ACCOUNT_BALANCE"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "hedera/not-success"
     }
    },
    {
     "entries": null,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "hedera/not-found"
     }
    },
    {
@@ -172,8 +189,13 @@
      }
     ],
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "hedera/memo-not-lcp"
     }
    },
    {
@@ -188,16 +210,26 @@
     ],
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "expectRecover": {
+     "refused": true,
+     "code": "hedera/not-found"
     }
    },
    {
     "entries": "reader-error",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     },
-    "source": "a failed read is pending"
+    "source": "a failed read is pending",
+    "expectRecover": {
+     "refused": true,
+     "code": "hedera/unreadable"
+    }
    },
    {
     "entries": [
@@ -211,9 +243,14 @@
     ],
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     },
-    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'"
+    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'",
+    "expectRecover": {
+     "refused": true,
+     "code": "hedera/not-found"
+    }
    },
    {
     "entries": [
@@ -227,9 +264,14 @@
     ],
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     },
-    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'"
+    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'",
+    "expectRecover": {
+     "refused": true,
+     "code": "hedera/not-found"
+    }
    },
    {
     "entries": [
@@ -250,9 +292,63 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1700000009.000000001"
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000009.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
-    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'"
+    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'",
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "the settled entry, asked about on the act agreement: an agreement is held to no account, and the same record settles it",
+    "query": {
+     "act": "agreement",
+     "finality": "consensus"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000003.000000001"
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "foreign": []
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "the settled entry, asked about after its own consensus timestamp: failed before-position",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1700000003.000000001"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+      "consensus_timestamp": "1700000003.000000001"
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "foreign": []
+    },
+    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    }
   ],
   "recover": {
@@ -289,7 +385,10 @@
    ],
    "expect": {
     "state": "settled",
-    "consensus": "1700000003.000000001"
+    "transaction": "0.0.1235-1700000000-000000000",
+    "position": "1700000003.000000001",
+    "finality": "consensus",
+    "foreign": []
    }
   },
   "noMemo": {

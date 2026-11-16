@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is the payer's, printf '%s' '0.0.5001' | sha256sum; openssl dgst -sha256 and Python hashlib printed the same. Payee and amount are not read: a row settles when the payer is the one account debited. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. Each parent entry with transfers carries charged_tx_fee, the fee the Mirror Node's Transaction records as charged to the fee payer; here it is the fee payer's 5000000-tinybar debit, credited to 0.0.3 and 0.0.98; x402's example states no fee. A row's reference fields override the status reference.",
+ "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is the payer's, printf '%s' '0.0.5001' | sha256sum; openssl dgst -sha256 and Python hashlib printed the same. Payee and amount are not read: a row settles when the payer is the one account debited. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. Each parent entry with transfers carries charged_tx_fee, the fee the Mirror Node's Transaction records as charged to the fee payer; here it is the fee payer's 5000000-tinybar debit, credited to 0.0.3 and 0.0.98; x402's example states no fee. A row's reference fields override the status reference. The status rows give executorStatus's answer under the profile read-status at the one mark, consensus, asked about the act payment unless a row's query says otherwise. At coverage none the read has no single-use value to read: a transaction with a failed result answers pending search-incomplete, never failed (rule 23), and a transaction id with no counted entry, or one that debits another account than the payer, answers unreadable history-gap, since the reader states no history (rule 18).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -152,7 +152,8 @@
    "network": "hedera:testnet",
    "asset": "0.0.0",
    "idDigest": "0x2baa52abedfc2bc71addf127e5dd4f6016a273bdc886027a5435ae35455f86f1",
-   "transaction": "0.0.9000-1755500000-000000000"
+   "transaction": "0.0.9000-1755500000-000000000",
+   "payee": "0.0.4001"
   },
   "readerNetwork": "hedera:testnet",
   "rows": [
@@ -200,7 +201,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     }
    },
    {
@@ -229,8 +233,9 @@
      }
     ],
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
     }
    },
    {
@@ -259,15 +264,17 @@
      }
     ],
     "expect": {
-     "state": "failed",
-     "why": "result:CONTRACT_REVERT_EXECUTED"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "entries": null,
     "expect": {
-     "state": "pending",
-     "why": "not-found"
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
     }
    },
    {
@@ -315,7 +322,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit"
    },
@@ -364,7 +374,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit"
    },
@@ -416,8 +429,9 @@
      }
     ],
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit; x402 rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)'"
    },
@@ -480,7 +494,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
    },
@@ -539,7 +556,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
    },
@@ -602,7 +622,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'if a transaction has a portion of its transaction fee that sends 3 tinybars to 0.0.800, and 0.0.800 is sending Bob 1 tinybar as an earned staking reward, then the existing list will show a change of +2 tinybars for 0.0.800'."
    },
@@ -665,7 +688,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
    },
@@ -732,7 +758,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'the new list will show a -1 change for 0.0.800 (change due to staking rewards)'."
    },
@@ -787,7 +816,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "the payer, 0.0.5001, is the one account debited; the payee's credit, less the listed reward, is not read"
    },
@@ -839,8 +871,9 @@
      }
     ],
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     },
     "source": "the Mirror Node's token_transfers is an array; another shape is an unreadable answer, never a throw"
    },
@@ -892,8 +925,9 @@
      }
     ],
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     },
     "source": "the Mirror Node's token_transfers is an array; another shape is an unreadable answer, never a throw"
    },
@@ -945,8 +979,9 @@
      }
     ],
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     },
     "source": "the Mirror Node's token_transfers is an array; another shape is an unreadable answer, never a throw"
    },
@@ -998,8 +1033,9 @@
      }
     ],
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     },
     "source": "the Mirror Node's staking_reward_transfers is an array; another shape is an unreadable answer"
    },
@@ -1015,8 +1051,9 @@
      }
     ],
     "expect": {
-     "state": "pending",
-     "why": "not-found"
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
     },
     "source": "hiero-consensus-node RecordCache: records with INVALID_NODE_ACCOUNT or INVALID_PAYER_SIGNATURE 'do not prevent valid transactions with the same id from reaching consensus and being handled'"
    },
@@ -1068,7 +1105,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.5001-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'When `payer` is the fee payer, the single HBAR debit MUST equal `amount + transactionFee`'; the Mirror Node's Transaction charged_tx_fee is that fee, in tinybars, and the fee payer's transfers row includes it"
    },
@@ -1102,8 +1142,9 @@
      }
     ],
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'When `payer` is the fee payer, the single HBAR debit MUST equal `amount + transactionFee`'; the Mirror Node's Transaction charged_tx_fee is that fee, in tinybars, and the fee payer's transfers row includes it; with the fee taken out, no account is debited"
    },
@@ -1158,7 +1199,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.5001-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"
    },
@@ -1213,7 +1257,10 @@
     ],
     "expect": {
      "state": "settled",
-     "consensus": "1755500003.000000001"
+     "transaction": "0.0.4001-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"
    },
@@ -1260,10 +1307,68 @@
      }
     ],
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     },
     "source": "the Mirror Node's Transaction carries charged_tx_fee; an answer without it cannot separate the fee payer's fee from what it paid"
+   },
+   {
+    "case": "the payer's debit, asked about after its own consensus timestamp: failed before-position",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1755500003.000000001"
+    },
+    "entries": [
+     {
+      "result": "SUCCESS",
+      "nonce": 0,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000001",
+      "charged_tx_fee": 5000000,
+      "transfers": [
+       {
+        "account": "0.0.9000",
+        "amount": -5000000
+       },
+       {
+        "account": "0.0.3",
+        "amount": 250000
+       },
+       {
+        "account": "0.0.98",
+        "amount": 4750000
+       }
+      ]
+     },
+     {
+      "result": "SUCCESS",
+      "nonce": 1,
+      "scheduled": false,
+      "memo_base64": null,
+      "consensus_timestamp": "1755500003.000000002",
+      "transfers": [
+       {
+        "account": "0.0.5001",
+        "amount": -100000000
+       },
+       {
+        "account": "0.0.4001",
+        "amount": 100000000
+       }
+      ]
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "foreign": []
+    }
    }
   ]
  },
@@ -1311,8 +1416,9 @@
    }
   ],
   "expect": {
-   "state": "failed",
-   "why": "not-this-instrument"
+   "state": "unreadable",
+   "reason": "history-gap",
+   "foreign": []
   }
  },
  "buyer": {

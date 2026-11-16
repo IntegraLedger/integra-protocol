@@ -66,6 +66,17 @@ export interface MppCredential {
   payload: { [k: string]: Json };
 }
 
+/** The members of an MPP pairing's family descriptor that the MPP surface fixes. */
+export interface MppForms {
+  readonly doc: readonly MppChallenge[];
+  readonly offered: { h: AtrHash; link: string; agreement?: string; offer: { challenges: MppChallenge[] } };
+  readonly placedIn: readonly MppChallenge[];
+  readonly offer: MppChallenge;
+  readonly rest: [position: number | null, agreementUrl?: string];
+  readonly advertised: MppChallenge[];
+  readonly option: MppChallenge;
+}
+
 export type MppMethod =
   | "evm"
   | "tempo"
@@ -1306,19 +1317,15 @@ const INVALID_CHALLENGE = ["mpp/id-not-ours"];
 /**
  * The codes of a call that cannot read the payment: a reader that is not for the network the challenge or reference
  * names, or a ref `recover` cannot read, and `bound` or `reference` on a push credential before `fetchPresented` has
- * read it. Only the codes `REFUSAL_CODES` holds are returned by this package.
+ * read it.
  */
 const CANNOT_READ = [
   "tempo/wrong-reader",
   "svm/wrong-reader",
-  "stellar/wrong-reader",
   "xrpl/wrong-reader",
   "hedera/wrong-reader",
-  "tempo/read-first",
   "svm/read-first",
-  "stellar/read-first",
   "xrpl/read-first",
-  "hedera/read-first",
 ];
 
 /**

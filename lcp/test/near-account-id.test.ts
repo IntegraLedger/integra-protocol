@@ -19,6 +19,8 @@ const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-near.json", imp
 const H: AtrHash = V.fixed.H;
 const O: PaymentRequirements = V.fixed.O;
 const REF: NearRef & { transaction: string } = V.V3.ref;
+const Q = { act: "payment", finality: "final" } as const;
+const UNPARSEABLE = JSON.stringify({ state: "unreadable", reason: "unparseable", foreign: [] });
 /** Each sweep's bound: its time grows with the machine's load. */
 const SWEEP_MS = 300_000;
 
@@ -301,10 +303,10 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
           const b = await exactNear.bound(payment(text));
           if (isRefusal(c, "near/sda-malformed") && isRefusal(b, "near/sda-malformed")) return "refused";
           if ("refused" in c || c[field] !== onWire(s) || b !== H) return `read as ${JSON.stringify(c)}, bound ${JSON.stringify(b)}`;
-          const ref = await exactNear.reference(payment(text));
+          const ref = await exactNear.reference(payment(text), O);
           if ("refused" in ref || ref[field] !== onWire(s)) return `reference ${JSON.stringify(ref)}`;
           const { reader, calls } = counting(readerFor(SETTLED.outcome));
-          const answer = await exactNear.status({ ...ref, transaction: REF.transaction }, reader);
+          const answer = await exactNear.status({ ...ref, transaction: REF.transaction }, reader, Q);
           return calls.length > 0 ? "ok" : `status read nothing: ${JSON.stringify(answer)}`;
         },
         onWire,
@@ -354,7 +356,7 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
           advertised,
           await exactNear.build({ ...choice(), required: doc, accepted: option }, H),
           await exactNear.bound(payment(V.V2.expectSignedDelegateAction, option)),
-          await exactNear.reference(payment(V.V2.expectSignedDelegateAction, option)),
+          await exactNear.reference(payment(V.V2.expectSignedDelegateAction, option), option),
         ];
         if (answers.every((a) => isRefusal(a, "near/option-malformed"))) {
           const placedO = exactNear.advertise(required, H, V.fixed.link, O);
@@ -388,13 +390,13 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
     expect(r).toEqual({ ok: each.ok(), refused: each.refused(), differ: [] });
   });
 
-  it("a ref's payer and asset: status is pending unreadable and nearLapsed false, each with nothing read, for one that is not an account id", { timeout: SWEEP_MS }, async () => {
+  it("a ref's payer and asset: status is unreadable unparseable and nearLapsed false, each with nothing read, for one that is not an account id", { timeout: SWEEP_MS }, async () => {
     const lapsed = V.V3.lapsed.find((row: { expect: boolean }) => row.expect === true);
     for (const field of ["payer", "asset"] as const) {
       const r = await differences(`a ref's ${field}`, async (s) => {
         const { reader, calls } = counting(readerFor(SETTLED.outcome));
-        const answer = await exactNear.status({ ...REF, [field]: s }, reader);
-        if (calls.length === 0) return JSON.stringify(answer) === JSON.stringify({ state: "pending", why: "unreadable" }) ? "refused" : JSON.stringify(answer);
+        const answer = await exactNear.status({ ...REF, [field]: s }, reader, Q);
+        if (calls.length === 0) return JSON.stringify(answer) === UNPARSEABLE ? "refused" : JSON.stringify(answer);
         return "ok";
       });
       expect([field, r]).toEqual([field, { ok: each.ok(), refused: each.refused(), differ: [] }]);
@@ -414,7 +416,7 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
   });
 
   it("the reader's answer: a delegate sender or receiver, or a receipt's executor, that is not an account id is unreadable", { timeout: SWEEP_MS }, async () => {
-    const recoverRef = { network: REF.network, transaction: REF.transaction };
+    const recoverRef = { network: REF.network, tx: REF.transaction, option: O };
     const edits: [string, (s: string) => Fixture][] = [
       ["the delegate's sender", (s) => ({ ...SETTLED.outcome, delegate: { ...SETTLED.outcome.delegate, senderId: s } })],
       ["the delegate's receiver", (s) => ({ ...SETTLED.outcome, delegate: { ...SETTLED.outcome.delegate, receiverId: s } })],
@@ -423,9 +425,9 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
     for (const [where, edit] of edits) {
       const r = await differences(where, async (s) => {
         const reader = readerFor(edit(s));
-        const status = await exactNear.status(REF, reader);
+        const status = await exactNear.status(REF, reader, Q);
         const recovered = await exactNear.recover(recoverRef, reader);
-        const unreadable = JSON.stringify(status) === JSON.stringify({ state: "pending", why: "unreadable" });
+        const unreadable = JSON.stringify(status) === UNPARSEABLE;
         if (unreadable && isRefusal(recovered, "near/unreadable")) return "refused";
         return !unreadable && recovered === H ? "ok" : `${JSON.stringify(status)} ${JSON.stringify(recovered)}`;
       });
@@ -433,15 +435,15 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
     }
   });
 
-  it("the reader's relayers: a list whose first four are not each an account id is pending unreadable and near/no-relayer, with nothing read", { timeout: SWEEP_MS }, async () => {
-    const recoverRef = { network: REF.network, transaction: REF.transaction };
+  it("the reader's relayers: a list whose first four are not each an account id is unreadable unparseable and near/no-relayer, with nothing read", { timeout: SWEEP_MS }, async () => {
+    const recoverRef = { network: REF.network, tx: REF.transaction, option: O };
     const r = await differences("a relayer", async (s) => {
       const relayers = ["relayer.testnet", "relayer.near", "r2.testnet", s];
       const { reader, calls } = counting(readerFor(SETTLED.outcome, relayers));
-      const status = await exactNear.status(REF, reader);
+      const status = await exactNear.status(REF, reader, Q);
       const recovered = await exactNear.recover(recoverRef, reader);
       if (calls.length === 0) {
-        const unreadable = JSON.stringify(status) === JSON.stringify({ state: "pending", why: "unreadable" });
+        const unreadable = JSON.stringify(status) === UNPARSEABLE;
         return unreadable && isRefusal(recovered, "near/no-relayer") ? "refused" : `${JSON.stringify(status)} ${JSON.stringify(recovered)}`;
       }
       return JSON.stringify(status) === JSON.stringify(SETTLED.expect) && recovered === H ? "ok" : `${JSON.stringify(status)} ${JSON.stringify(recovered)}`;
@@ -449,7 +451,7 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
     expect(r).toEqual({ ok: each.ok(), refused: each.refused(), differ: [] });
     // A fifth relayer is never asked, so it is not read.
     const fifth = readerFor(SETTLED.outcome, ["relayer.testnet", "relayer.near", "r2.testnet", "r3.testnet", "Not An Id"]);
-    expect(await exactNear.status(REF, fifth)).toEqual(SETTLED.expect);
+    expect(await exactNear.status(REF, fifth, Q)).toEqual(SETTLED.expect);
     expect(await exactNear.recover(recoverRef, fifth)).toBe(H);
   });
 });

@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/starknet pairing: the starknet entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The option and the payer are x402's Starknet example (scheme_exact_starknet.md at 0cb1a1f0). Expected values are computed with starknet 10.7.6, the version package.json pins and the tests run, and @noble/hashes 2.4.0 on Node, Python 3.12.3 and GNU coreutils; the type hashes are SNIP-9's published values. Trace fixtures model starknet_traceTransaction's execute_invocation. Receipt fixtures model starknet_getTransactionReceipt's events. A Transfer is an event emitted by the asset whose first key is sn_keccak(\"Transfer\") (S1.expectSelectorTransferEvent, from starknet.js hash.getSelectorFromName and keccak256 masked to 250 bits, which agree), keyed (keys [selector, from, to], data [low, high]) or unkeyed (keys [selector], data [from, to, low, high]), and status requires exactly one from the payer whose recipient and amount give the signed transfer's identity digest. scheme_exact_starknet.md's settlement step 4 counts the same payer-scoped Transfer and also compares its recipient and amount with payTo and accepted.amount; status does not. A failed call's descendants keep is_reverted false, and their events are cleared (blockifier's execute_inner_call; Pathfinder maps is_reverted from execution.failed).",
+ "about": "Vectors for the x402/exact/starknet pairing: the starknet entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The option and the payer are x402's Starknet example (scheme_exact_starknet.md at 0cb1a1f0). Expected values are computed with starknet 10.7.6, the version package.json pins and the tests run, and @noble/hashes 2.4.0 on Node, Python 3.12.3 and GNU coreutils; the type hashes are SNIP-9's published values. Trace fixtures model starknet_traceTransaction's execute_invocation. Receipt fixtures model starknet_getTransactionReceipt's events. A Transfer is an event emitted by the asset whose first key is sn_keccak(\"Transfer\") (S1.expectSelectorTransferEvent, from starknet.js hash.getSelectorFromName and keccak256 masked to 250 bits, which agree), keyed (keys [selector, from, to], data [low, high]) or unkeyed (keys [selector], data [from, to, low, high]), and status requires exactly one from the payer whose recipient and amount give the signed transfer's identity digest. scheme_exact_starknet.md's settlement step 4 counts the same payer-scoped Transfer and also compares its recipient and amount with payTo and accepted.amount; status does not. A failed call's descendants keep is_reverted false, and their events are cleared (blockifier's execute_inner_call; Pathfinder maps is_reverted from execution.failed). S5's status rows, the plant and the agreedRefusals status row are read with the act payment at the finality the row gives, ACCEPTED_ON_L1 where it gives none, and answer as the profile read-status gives them: since the read holds no search for H and does not read the payer's outside-execution nonce, a reverted transaction, one that carries no transfer with this identity and nonce, a pre-confirmed one and an unknown hash answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -62,6 +62,7 @@
   "chainIdShortString": "SN_SEPOLIA",
   "expectReference": {
    "network": "starknet:SN_SEPOLIA",
+   "payee": "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
    "from": "0x3f16efeb2ae57f7d8befb03af08a3a370562dde15149c3506ac2038ffa9be24",
    "asset": "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
    "nonce": "0x27816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -72,6 +73,7 @@
  "S5": {
   "ref": {
    "network": "starknet:SN_SEPOLIA",
+   "payee": "0x02dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
    "transaction": "0x4c2f9a1b",
    "from": "0x3f16efeb2ae57f7d8befb03af08a3a370562dde15149c3506ac2038ffa9be24",
    "asset": "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
@@ -82,6 +84,7 @@
   "status": [
    {
     "case": "SUCCEEDED, ACCEPTED_ON_L2, block 900",
+    "finality": "ACCEPTED_ON_L2",
     "receipt": {
      "finality": "ACCEPTED_ON_L2",
      "execution": "SUCCEEDED",
@@ -147,8 +150,10 @@
     },
     "expect": {
      "state": "settled",
+     "transaction": "0x4c2f9a1b",
+     "position": "900",
      "finality": "ACCEPTED_ON_L2",
-     "blockNumber": "900"
+     "foreign": []
     }
    },
    {
@@ -218,12 +223,15 @@
     },
     "expect": {
      "state": "settled",
+     "transaction": "0x4c2f9a1b",
+     "position": "900",
      "finality": "ACCEPTED_ON_L1",
-     "blockNumber": "900"
+     "foreign": []
     }
    },
    {
     "case": "the transfer's event in the unkeyed layout",
+    "finality": "ACCEPTED_ON_L2",
     "receipt": {
      "finality": "ACCEPTED_ON_L2",
      "execution": "SUCCEEDED",
@@ -289,12 +297,15 @@
     },
     "expect": {
      "state": "settled",
+     "transaction": "0x4c2f9a1b",
+     "position": "900",
      "finality": "ACCEPTED_ON_L2",
-     "blockNumber": "900"
+     "foreign": []
     }
    },
    {
     "case": "the fee payer's Transfer on the same asset beside the payer's",
+    "finality": "ACCEPTED_ON_L2",
     "receipt": {
      "finality": "ACCEPTED_ON_L2",
      "execution": "SUCCEEDED",
@@ -372,8 +383,10 @@
     },
     "expect": {
      "state": "settled",
+     "transaction": "0x4c2f9a1b",
+     "position": "900",
      "finality": "ACCEPTED_ON_L2",
-     "blockNumber": "900"
+     "foreign": []
     }
    },
    {
@@ -429,8 +442,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -499,8 +513,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -581,8 +596,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -651,8 +667,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -729,8 +746,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -794,12 +812,14 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "the payer's transfer one call below the execute, through an intermediate call on the payer's account",
+    "finality": "ACCEPTED_ON_L2",
     "receipt": {
      "finality": "ACCEPTED_ON_L2",
      "execution": "SUCCEEDED",
@@ -875,8 +895,10 @@
     },
     "expect": {
      "state": "settled",
+     "transaction": "0x4c2f9a1b",
+     "position": "900",
      "finality": "ACCEPTED_ON_L2",
-     "blockNumber": "900"
+     "foreign": []
     }
    },
    {
@@ -955,8 +977,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -1013,7 +1036,8 @@
     },
     "expect": {
      "state": "pending",
-     "why": "pre-confirmed"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -1069,8 +1093,9 @@
      ]
     },
     "expect": {
-     "state": "failed",
-     "why": "reverted"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
@@ -1078,15 +1103,17 @@
     "receipt": null,
     "expect": {
      "state": "pending",
-     "why": "not-found"
+     "reason": "search-incomplete",
+     "foreign": []
     }
    },
    {
     "case": "a ReaderError",
     "receipt": "reader-error",
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
     }
    },
    {
@@ -1155,8 +1182,9 @@
      ]
     },
     "expect": {
-     "state": "pending",
-     "why": "unreadable"
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
     }
    }
   ],
@@ -1293,8 +1321,9 @@
    ]
   },
   "expect": {
-   "state": "failed",
-   "why": "not-this-instrument"
+   "state": "pending",
+   "reason": "search-incomplete",
+   "foreign": []
   }
  },
  "agreedRefusals": {
@@ -1418,8 +1447,9 @@
     "case": "status with more than one matching invocation",
     "twoMatches": true,
     "expect": {
-     "state": "failed",
-     "why": "not-this-instrument"
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
     }
    }
   ]

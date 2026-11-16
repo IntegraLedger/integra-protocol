@@ -6,13 +6,29 @@
 import { sha256, sha512 } from "@noble/hashes/sha2.js";
 import { isObject } from "../fields.js";
 import { refusal, type Refusal } from "../refusal.js";
-import type { XrplNetwork, XrplReader, XrplRef, XrplStatus } from "./xrpl.js";
+import { decide } from "./read.js";
+import {
+  isXrplNetwork,
+  isXrplQuery,
+  readXrplTx,
+  rejectedAs,
+  upperOf,
+  xrplFacts,
+  xrplLedger,
+  type XrplNetwork,
+  type XrplQuery,
+  type XrplRead,
+  type XrplReader,
+  type XrplRef,
+  type XrplStatus,
+} from "./xrpl.js";
 
-export type XrplCloseRef = { phase: "close"; network: XrplNetwork; channel: string; transaction: string };
-export type XrplCloseStatus =
-  | { state: "settled"; ledgerIndex: number }
-  | { state: "pending"; why: "not-found" | "not-validated" | "unreadable" }
-  | { state: "failed"; why: "not-a-close" };
+/** The read keys of a reported close: the network, the channel, the close's transaction and the option's payee. */
+export type XrplCloseRef = { phase: "close"; network: XrplNetwork; channel: string; transaction: string; payee: string };
+/** A reported close's read, as the profile `read-status` answers it: the answer `XrplStatus` names. */
+export type XrplCloseStatus = XrplStatus;
+
+const SESSION_LEDGER = xrplLedger("mpp/session/xrpl");
 
 const PAY_CHANNEL_SPACE = Uint8Array.of(0x00, 0x78);
 const CLAIM_PREFIX = Uint8Array.of(0x43, 0x4c, 0x4d, 0x00);
@@ -124,70 +140,66 @@ export function cancelAfterOf(blobHex: string): number | undefined {
 }
 
 /**
- * Reads an opening by the hash computed from its signed blob: settled only when a validated ledger holds it with
- * `tesSUCCESS` as a `PaymentChannelCreate`; `tec` codes are final failures that claimed the fee; past
- * `LastLedgerSequence` with the whole range searched it expired. A failed read is pending. A ref whose `transaction` is
- * not 64 hex digits is pending `unreadable`, with nothing read; the transaction is looked up in upper case. At most two
- * calls.
+ * Reads an opening by the hash computed from its signed blob, as the profile `read-status` answers it: the
+ * `PaymentChannelCreate` a validated ledger holds with `tesSUCCESS` is `settled` at its ledger index. A `tec` result,
+ * a validated success of another type, an expiry past `LastLedgerSequence`, a lookup that finds nothing and a
+ * transaction in no validated ledger yet are `pending`, `search-incomplete`, since this read is no search for H; a
+ * ledger index at or before the query's `after` is `failed`, `before-position`. A ref, reader or query of the wrong
+ * form is `unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read; the
+ * transaction is looked up in upper case. At most two calls.
  */
-export async function xrplOpenStatus(ref: Omit<XrplRef, "expect">, reader: XrplReader): Promise<XrplStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "pending", why: "unreadable" };
-  const range = ref.lastLedgerSequence === null ? null : { min: ref.fromLedger, max: ref.lastLedgerSequence };
-  let r: Awaited<ReturnType<XrplReader["tx"]>>;
-  try {
-    r = await reader.tx(ref.transaction.toUpperCase(), range);
-  } catch {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (typeof r !== "object" || r === null) return { state: "pending", why: "unreadable" };
-  if ("notFound" in r) {
-    if (r.searchedAll !== true || ref.lastLedgerSequence === null) return { state: "pending", why: "not-found" };
-    let validated: number;
-    try {
-      validated = await reader.validatedLedger();
-    } catch {
-      return { state: "pending", why: "unreadable" };
-    }
-    if (!Number.isSafeInteger(validated)) return { state: "pending", why: "unreadable" };
-    return validated > ref.lastLedgerSequence ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
-  }
-  if (r.validated !== true) return { state: "pending", why: "not-validated" };
-  if (r.result === "tesSUCCESS") {
-    if (r.transactionType !== "PaymentChannelCreate") return { state: "failed", why: "not-this-instrument" };
-    if (!Number.isSafeInteger(r.ledgerIndex)) return { state: "pending", why: "unreadable" };
-    return { state: "settled", ledgerIndex: r.ledgerIndex! };
-  }
-  if (typeof r.result === "string" && r.result.startsWith("tec")) return { state: "failed", why: "claimed-fee" };
-  return { state: "pending", why: "unreadable" };
+export async function xrplOpenStatus(
+  ref: Omit<XrplRef, "expect">,
+  reader: XrplReader,
+  query: XrplQuery<Omit<XrplRef, "expect">>,
+): Promise<XrplStatus> {
+  if (!isXrplQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
+  const read = await readXrplTx(ref, reader, (r) => r.transactionType === "PaymentChannelCreate", false);
+  return decide(xrplFacts(read, upperOf(ref), SESSION_LEDGER), query, SESSION_LEDGER);
 }
 
 /**
  * Reads a reported close: validated with the channel among the transaction's deleted `PayChannel` entries is settled;
- * validated without it is failed `not-a-close`; otherwise pending. A ref whose channel or transaction is not 64 hex
- * digits is pending `unreadable`, with nothing read; the transaction is looked up in upper case. One call.
+ * validated without it shows no close; otherwise nothing is found. A ref whose channel or transaction is not 64 hex
+ * digits, or whose network is not an XRPL network, and a reader that is not an object or names no XRPL network, are
+ * `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read; the transaction is looked
+ * up in upper case. A rejected read is unreadable by `rejectedAs`; an answer of another shape, and a validated ledger
+ * index that is not an integer, are `unparseable`. One call.
  */
-export async function xrplCloseStatus(ref: XrplCloseRef, reader: XrplReader): Promise<XrplCloseStatus> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network) {
-    return { state: "pending", why: "unreadable" };
-  }
-  if (typeof ref.channel !== "string" || !HASH256.test(ref.channel)) return { state: "pending", why: "unreadable" };
-  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "pending", why: "unreadable" };
+async function readClose(ref: XrplCloseRef, reader: XrplReader): Promise<XrplRead> {
+  if (!isObject(ref) || !isXrplNetwork(ref.network)) return { state: "unreadable", reason: "unparseable" };
+  if (typeof ref.channel !== "string" || !HASH256.test(ref.channel)) return { state: "unreadable", reason: "unparseable" };
+  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "unreadable", reason: "unparseable" };
+  if (!isObject(reader) || !isXrplNetwork(reader.network)) return { state: "unreadable", reason: "unparseable" };
+  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
     r = await reader.tx(ref.transaction.toUpperCase(), null);
-  } catch {
-    return { state: "pending", why: "unreadable" };
+  } catch (e) {
+    return { state: "unreadable", reason: rejectedAs(e) };
   }
-  if (typeof r !== "object" || r === null) return { state: "pending", why: "unreadable" };
+  if (typeof r !== "object" || r === null) return { state: "unreadable", reason: "unparseable" };
   if ("notFound" in r) return { state: "pending", why: "not-found" };
   if (r.validated !== true) return { state: "pending", why: "not-validated" };
   const deleted = Array.isArray(r.deletedChannels) ? r.deletedChannels : [];
   if (!deleted.some((c) => typeof c === "string" && c.toUpperCase() === ref.channel.toUpperCase())) {
     return { state: "failed", why: "not-a-close" };
   }
-  if (!Number.isSafeInteger(r.ledgerIndex)) return { state: "pending", why: "unreadable" };
+  if (!Number.isSafeInteger(r.ledgerIndex)) return { state: "unreadable", reason: "unparseable" };
   return { state: "settled", ledgerIndex: r.ledgerIndex! };
+}
+
+/**
+ * A reported close's read, as the profile `read-status` answers it: the close is `settled` at its ledger index; a
+ * validated transaction that deleted no such channel, a lookup that finds nothing and a transaction in no validated
+ * ledger yet are `pending`, `search-incomplete`; a ledger index at or before the query's `after` is `failed`,
+ * `before-position`; and a ref, reader or query of the wrong form is `unreadable`, as `readClose` gives it. One call.
+ */
+export async function xrplCloseStatus(
+  ref: XrplCloseRef,
+  reader: XrplReader,
+  query: XrplQuery<XrplCloseRef>,
+): Promise<XrplCloseStatus> {
+  if (!isXrplQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
+  return decide(xrplFacts(await readClose(ref, reader), upperOf(ref), SESSION_LEDGER), query, SESSION_LEDGER);
 }
