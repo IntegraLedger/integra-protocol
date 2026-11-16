@@ -2,7 +2,7 @@
  * The pieces the x402 pairings share: the option filter's type, the seller's placement over a filter (each x402
  * pairing's `advertise`), the step that holds a presented `accepted` to a filter (each x402 pairing's `bound`), the
  * legal context's extension key and schema, the bounds on a document's options and on a link, an option's match by
- * RFC 8785 form, and the other types and helpers the pairings' modules are built from.
+ * RFC 8785 form, and the other types and helpers each pairing's own module is built from.
  * `../x402.ts` re-exports `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`; no entry point exports the other names.
  */
 import {
