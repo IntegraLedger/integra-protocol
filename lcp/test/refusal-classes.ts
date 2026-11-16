@@ -193,7 +193,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "facilitator-missing", "flow-missing", "flow-not-carried", "header-malformed", "tool-call-malformed", "legal-context-conflict", "legal-context-malformed",
     "link-not-https", "manager-not-reference", "no-legal-context", "no-payable-option", "nonce-malformed",
     "nonce-not-payment", "not-an-opening", "not-bound-within", "not-v2", "option-malformed", "option-not-in-document",
-    "option-not-this-pairing", "payload-malformed", "permission-context-malformed", "request-target-invalid",
+    "option-not-this-pairing", "payload-malformed", "permission-context-malformed", "request-header-invalid", "request-target-invalid",
     "request-too-large", "salt-malformed", "salt-not-bound", "signature-malformed", "signed-not-bound",
     "spender-not-proxy",
   ],

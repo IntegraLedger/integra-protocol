@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the request an x402 challenge commits to in the ATR's binding slot (x402-request-commitment.md). HTTP: the method as received, the target split at its first ?, SHA-256 over the body bytes. MCP: the tool's name and SHA-256 over the RFC 8785 form of its arguments, _meta not committed. The MCP calls are the x402 MCP transport's own example tools/call request (x402 d6d2c58, specs/transports-v2/mcp.md, Payment Payload Transmission) and the changes each row's case names. Expected values were computed with Python 3.12.3's hashlib.sha256 and, for RFC 8785, json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False), which is RFC 8785's form for these values (keys of ASCII, numbers that are integers or 0.5); bodyUtf8 is the body's bytes as UTF-8.",
+ "about": "Vectors for the request an x402 challenge commits to in the ATR's binding slot (x402-request-commitment.md). HTTP: the method as received, the target split at its first ?, SHA-256 over the body bytes. MCP: the tool's name and SHA-256 over the RFC 8785 form of its arguments, _meta not committed. The MCP calls are the x402 MCP transport's own example tools/call request (x402 d6d2c58, specs/transports-v2/mcp.md, Payment Payload Transmission) and the changes each row's case names. Expected values were computed with Python 3.12.3's hashlib.sha256 and, for RFC 8785, json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False), which is RFC 8785's form for these values (keys of ASCII, numbers that are integers or 0.5); bodyUtf8 is the body's bytes as UTF-8. Header fields (httpHeaders, httpHeaderRefusals): where the resource server names request header fields, the HTTP commitment also holds headers, for each field named, in the order named, its lower-cased name and SHA-256 of its value, the field's lines as received, each without its leading and trailing spaces and tabs, joined in the order received by a comma and a space, cookie's by a semicolon and a space, and null for a field the request lacks; with none named it has no headers member. Each httpHeaders row gives the field lines as received on the wire (received), the record requestCommitment is given (request.headers) and the names (fields). Its expected digests were computed 2026-11-16 by sending received, as one HTTP/1.1 request, to a node:http 26.11.1 server created with joinDuplicateHeaders: true, whose req.headers gives each field's lines trimmed and joined, cookie's by '; ' (as @types/node 26.6.5 http.d.ts states), and hashing that value with node:crypto's SHA-256, checked with Python's hashlib; none was taken from the package's output. A refusal row's fill, where present, sets the named field to char repeated length times, on lines lines (1 where absent).",
  "http": [
   {
    "case": "a POST with a query and a JSON body",
@@ -235,6 +235,551 @@
    "expect": {
     "refused": true,
     "code": "x402/tool-call-malformed"
+   }
+  }
+ ],
+ "httpHeaders": [
+  {
+   "case": "two named fields, received in another order than named: listed in the order named, each name lower-cased",
+   "received": [
+    [
+     "Accept-Language",
+     "en-GB"
+    ],
+    [
+     "X-Tier",
+     "gold"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "Accept-Language": "en-GB",
+     "X-Tier": "gold"
+    }
+   },
+   "fields": [
+    "X-Tier",
+    "Accept-Language"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-tier",
+      "digest": "0x24d7f03d8dc3c3666969e6fa5bb1fac4736d3f1353c28307ed51b320f9dc42d3"
+     },
+     {
+      "name": "accept-language",
+      "digest": "0x3d968247019d23a376f379880283c43f69a995405aec19eb70c8e052618c5cc3"
+     }
+    ]
+   }
+  },
+  {
+   "case": "a field received on two lines: its lines joined in the order received by a comma and a space",
+   "received": [
+    [
+     "X-Tier",
+     "gold"
+    ],
+    [
+     "X-Tier",
+     "silver"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": [
+      "gold",
+      "silver"
+     ]
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-tier",
+      "digest": "0x3399a8418c49e9438072cdcbdcdf971b2dca2f30e2c5f1cb030cc6d1b7399e9b"
+     }
+    ]
+   }
+  },
+  {
+   "case": "the same value received on one line has the same digest",
+   "received": [
+    [
+     "X-Tier",
+     "gold, silver"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "gold, silver"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-tier",
+      "digest": "0x3399a8418c49e9438072cdcbdcdf971b2dca2f30e2c5f1cb030cc6d1b7399e9b"
+     }
+    ]
+   }
+  },
+  {
+   "case": "cookie received on two lines, as HTTP/2 may send it: joined by a semicolon and a space",
+   "received": [
+    [
+     "Cookie",
+     "a=1"
+    ],
+    [
+     "Cookie",
+     "b=2"
+    ]
+   ],
+   "request": {
+    "method": "POST",
+    "target": "/v1/quote?x=1",
+    "bodyUtf8": "{\"q\":1}",
+    "headers": {
+     "cookie": [
+      "a=1",
+      "b=2"
+     ]
+    }
+   },
+   "fields": [
+    "cookie"
+   ],
+   "expect": {
+    "method": "POST",
+    "path": "/v1/quote",
+    "query": "x=1",
+    "bodyDigest": "0x6ae0f660046dadcf5fe8462c0e00a062db4c8d67be82f4098c5ea4208d19b076",
+    "headers": [
+     {
+      "name": "cookie",
+      "digest": "0xc4fa17e6446d6c65906746c32762fb20856666fa285d76a53a8d1dea0488dbee"
+     }
+    ]
+   }
+  },
+  {
+   "case": "a named field the request lacks has digest null, and an empty field the digest of no bytes",
+   "received": [
+    [
+     "X-Empty",
+     ""
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-empty": ""
+    }
+   },
+   "fields": [
+    "X-Missing",
+    "X-Empty"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-missing",
+      "digest": null
+     },
+     {
+      "name": "x-empty",
+      "digest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+     }
+    ]
+   }
+  },
+  {
+   "case": "a line's leading and trailing spaces and tabs are not part of its value, and the spaces within it are",
+   "received": [
+    [
+     "X-Note",
+     "  a  b \t"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-note": [
+      "  a  b \t"
+     ]
+    }
+   },
+   "fields": [
+    "x-note"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-note",
+      "digest": "0x6e12db73209a66d147a67a15868bdb4b8ae57b884d4731310b62f82a7d67611e"
+     }
+    ]
+   }
+  },
+  {
+   "case": "a record key in another case than the name matches the field",
+   "received": [
+    [
+     "X-TIER",
+     "gold"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "X-TIER": "gold"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-tier",
+      "digest": "0x24d7f03d8dc3c3666969e6fa5bb1fac4736d3f1353c28307ed51b320f9dc42d3"
+     }
+    ]
+   }
+  },
+  {
+   "case": "a field that is not named is not read, whatever it holds",
+   "received": [
+    [
+     "X-Other",
+     "café"
+    ],
+    [
+     "X-Tier",
+     "gold"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-other": "café",
+     "x-tier": "gold"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-tier",
+      "digest": "0x24d7f03d8dc3c3666969e6fa5bb1fac4736d3f1353c28307ed51b320f9dc42d3"
+     }
+    ]
+   }
+  },
+  {
+   "case": "header fields given and none named: no headers member, the four members alone, as before any field could be named",
+   "received": [
+    [
+     "X-Tier",
+     "gold"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/premium-data",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "gold"
+    }
+   },
+   "fields": [],
+   "expect": {
+    "method": "GET",
+    "path": "/premium-data",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   }
+  }
+ ],
+ "httpHeaderRefusals": [
+  {
+   "case": "a named field's value holding a character outside visible ASCII, the space and the tab",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "café"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "a named field's value holding a control character",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "go\u0001ld"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "a named field's line holding a line feed",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": [
+      "gold\nX-Other: 1"
+     ]
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "a name that is not a field name",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "gold"
+    }
+   },
+   "fields": [
+    "x tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "an empty name",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "gold"
+    }
+   },
+   "fields": [
+    ""
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "one field named twice, in two cases",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "gold"
+    }
+   },
+   "fields": [
+    "X-Tier",
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "two keys of the header record that name one named field, whose order is not known",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "X-Tier": "gold",
+     "x-tier": "silver"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "header fields that are not a record",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": "x-tier: gold"
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "a named field's line that is not a string",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": [
+      7
+     ]
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "names that are not a list",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "gold"
+    }
+   },
+   "fields": "x-tier",
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "a named field's value of 1 MiB and one character",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {}
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-too-large"
+   },
+   "fill": {
+    "name": "x-tier",
+    "char": "a",
+    "length": 1048577
+   }
+  },
+  {
+   "case": "a named field's two lines whose joined value is 1 MiB and one character",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {}
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-too-large"
+   },
+   "fill": {
+    "name": "x-tier",
+    "char": "a",
+    "length": 524288,
+    "lines": 2
    }
   }
  ]

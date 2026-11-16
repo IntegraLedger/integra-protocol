@@ -433,7 +433,7 @@ import { authCaptureEip3009, authCapturePermit2, decodePaymentRequired, … } fr
 
 **Values (21):** `authCaptureEip3009`, `authCapturePermit2`, `decodePaymentRequired`, `decodePaymentResponse`, `decodePaymentSignature`, `encodeHeader`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `pairingOfPayment`, `PAYMENT_REQUIRED`, `PAYMENT_RESPONSE`, `PAYMENT_SIGNATURE`, `requestCommitment`, `tie`, `toolCallCommitment`, `uptoPermit2`.
 
-**Types (16):** `Broadcaster`, `Eip3009Payment`, `Eip3009TypedData`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `SettlementResponse`, `ToolCall`, `ToolCallCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
+**Types (18):** `Broadcaster`, `Eip3009Payment`, `Eip3009TypedData`, `HeaderDigest`, `HeaderFields`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `SettlementResponse`, `ToolCall`, `ToolCallCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
 
 ## `@integraledger/lcp/x402-batch-settlement`
 

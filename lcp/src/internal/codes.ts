@@ -455,6 +455,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "x402/option-not-this-pairing",
   "x402/payload-malformed",
   "x402/permission-context-malformed",
+  "x402/request-header-invalid",
   "x402/request-target-invalid",
   "x402/request-too-large",
   "x402/salt-malformed",

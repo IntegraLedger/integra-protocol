@@ -183,9 +183,9 @@
     {
       "unit": "x402 documents and the request commitment",
       "exports": {
-        "./x402": ["HttpRequest", "LEGAL_CONTEXT", "LEGAL_CONTEXT_SCHEMA", "PaymentPayload", "PaymentRequired", "PaymentRequirements", "RequestCommitment", "requestCommitment", "ToolCall", "ToolCallCommitment", "toolCallCommitment", "Unsigned", "X402Choice", "X402Offer", "X402Unsigned", "issuedDigest", "tie"]
+        "./x402": ["HeaderDigest", "HeaderFields", "HttpRequest", "LEGAL_CONTEXT", "LEGAL_CONTEXT_SCHEMA", "PaymentPayload", "PaymentRequired", "PaymentRequirements", "RequestCommitment", "requestCommitment", "ToolCall", "ToolCallCommitment", "toolCallCommitment", "Unsigned", "X402Choice", "X402Offer", "X402Unsigned", "issuedDigest", "tie"]
       },
-      "use": "Any x402 server and client reads and writes the v2 documents and the legalContext extension, and anyone reproducing H computes the request commitment the ATR's binding slot holds, of an HTTP request or an MCP tool call.",
+      "use": "Any x402 server and client reads and writes the v2 documents and the legalContext extension, and anyone reproducing H computes the request commitment the ATR's binding slot holds, of an HTTP request, with the header fields a resource server names, each by its name and the digest of its value, or of an MCP tool call.",
       "fixedBy": "The x402 v2 specification; x402-request-commitment.md; docs/guides/x402.md."
     },
     {

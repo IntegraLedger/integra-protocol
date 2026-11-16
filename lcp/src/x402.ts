@@ -79,10 +79,12 @@ import {
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_X402 } from "./internal/data/eip155-x402.js";
+import { headerDigests, type HeaderDigest, type HeaderFields } from "./internal/request-headers.js";
 import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type { Eip3009TypedData } from "./evm.js";
+export type { HeaderDigest, HeaderFields } from "./internal/request-headers.js";
 export { LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA } from "./internal/x402.js";
 export {
   PAYMENT_REQUIRED,
@@ -150,14 +152,28 @@ export type PaymentPayload = {
 /** A payment of the `x402/exact/eip155/eip3009` pairing. */
 export type Eip3009Payment = PaymentPayload & { payload: { signature: Hex; authorization: Eip3009Authorization } };
 
-/** An HTTP request as received: the method token, the raw origin-form target and the body bytes. */
+/**
+ * An HTTP request as received: the method token, the raw origin-form target and the body bytes, and, where the
+ * commitment names header fields, the request's header fields, each name with its lines in the order received.
+ */
 export interface HttpRequest {
   method: string;
   target: string;
   body: Uint8Array;
+  headers?: HeaderFields;
 }
 
-export type RequestCommitment = { method: string; path: string; query: string; bodyDigest: AtrHash };
+/**
+ * The commitment to an HTTP request: its method, path, query and body's digest, and, where the resource server names
+ * header fields, `headers`: each named field's lower-cased name and SHA-256 of its value, never the value.
+ */
+export type RequestCommitment = {
+  method: string;
+  path: string;
+  query: string;
+  bodyDigest: AtrHash;
+  headers?: readonly HeaderDigest[];
+};
 
 /** An MCP `tools/call` request's tool call, as received: its `params.name` and `params.arguments`. */
 export interface ToolCall {
@@ -212,10 +228,16 @@ const MIN_SIGNED_BYTES = 65;
 const HEX_BODY = /^0x[0-9a-fA-F]*$/;
 
 /**
- * The commitment to the request a challenge answers: the method as received, the target split at its first `?`, and
- * SHA-256 over the body bytes exactly as received.
+ * The commitment to the request a challenge answers (x402-request-commitment.md): the method as received, the target
+ * split at its first `?`, and SHA-256 over the body bytes exactly as received; and, where `fields` names request header
+ * fields, `headers`: for each, in the order named, its lower-cased name and SHA-256 of its value as `r.headers` gives
+ * it, the lines of a field given more than once joined by a comma and a space, `cookie`'s by a semicolon and a space,
+ * and `null` for a field the request lacks. With no field named the commitment has no `headers` member. Names that are
+ * not distinct field names, header fields that are not a record of strings or lists of strings, two keys naming one
+ * named field, or a named field's value holding a character outside visible ASCII, the space and the tab, are
+ * `x402/request-header-invalid`; a named field's value over 1 MiB is `x402/request-too-large`.
  */
-export async function requestCommitment(r: HttpRequest): Promise<RequestCommitment | Refusal> {
+export async function requestCommitment(r: HttpRequest, fields?: readonly string[]): Promise<RequestCommitment | Refusal> {
   if (!isObject(r) || typeof r.method !== "string" || typeof r.target !== "string") {
     return refusal("x402/request-target-invalid");
   }
@@ -225,7 +247,12 @@ export async function requestCommitment(r: HttpRequest): Promise<RequestCommitme
   const q = r.target.indexOf("?");
   const path = q === -1 ? r.target : r.target.slice(0, q);
   const query = q === -1 ? "" : r.target.slice(q + 1);
-  return { method: r.method, path, query, bodyDigest: await hash(r.body) };
+  const commitment = { method: r.method, path, query, bodyDigest: await hash(r.body) };
+  if (fields === undefined || (Array.isArray(fields) && fields.length === 0)) return commitment;
+  const headers = await headerDigests(fields, r.headers);
+  if (headers === "too-large") return refusal("x402/request-too-large");
+  if (headers === "invalid") return refusal("x402/request-header-invalid");
+  return { ...commitment, headers };
 }
 
 /**
