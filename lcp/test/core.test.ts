@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import {
+  agreementValue,
   assemble,
   canonicalJson,
   digestJson,
@@ -15,6 +16,7 @@ import {
   toLcpString,
   toLegalContext,
   toRawBytes,
+  type AtrHash,
   type Json,
 } from "../src/index.js";
 import { isHashWithNonHttpsLink } from "../src/internal/core.js";
@@ -30,6 +32,7 @@ type Vector = {
   bytesHex?: string;
 };
 const file = JSON.parse(readFileSync(new URL("../vectors/core-vectors.json", import.meta.url), "utf8")) as {
+  agreementValue: { rows: { name: string; case: string; h: string; preimageHex: string; expect: string }[] };
   vectors: Vector[];
   refusals: {
     name: string;
@@ -499,6 +502,29 @@ describe("carrier forms", () => {
     const upper = ("0x" + h.slice(2).toUpperCase()) as `0x${string}`;
     expect(toLcpString(upper)).toBe(toLcpString(h));
     expect(fromLcpString("lcp:sha256:" + upper)).toBe(h);
+  });
+});
+
+// The agreement's own value (core-vectors.json `agreementValue`, computed outside the package): SHA-256 over the tag's
+// 16 ASCII bytes and H's 32 bytes, written as H is.
+describe("agreementValue", () => {
+  const rows = rowsOf(file.agreementValue.rows, "core-vectors.json agreementValue.rows", { exact: 4 });
+  for (const r of rows) {
+    it(`${r.name}: ${r.case}`, async () => {
+      expect(await agreementValue(r.h as AtrHash)).toBe(r.expect);
+    });
+    it(`${r.name}: the stated bytes are the tag and H, and hash to the value`, async () => {
+      expect(r.preimageHex).toBe(toHexString(utf8("lcp-agreement-v1")) + r.h.slice(2).toLowerCase());
+      expect(await hash(fromHex(r.preimageHex))).toBe(r.expect);
+    });
+  }
+  it("is never H itself", async () => {
+    for (const r of rows) expect(hashEquals(await agreementValue(r.h as AtrHash), r.h)).toBe(false);
+  });
+  it("rejects with a TypeError a value that is not a 32-byte hash", async () => {
+    for (const bad of ["0x1234", `0X${"ab".repeat(32)}`, `0x${"ab".repeat(33)}`, `0x${"g".repeat(64)}`, 7, null]) {
+      await expect(agreementValue(bad as AtrHash)).rejects.toThrow(TypeError);
+    }
   });
 });
 

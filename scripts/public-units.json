@@ -11,6 +11,15 @@
       "fixedBy": "The Legal Context Protocol's record and hash rules; core-vectors.json."
     },
     {
+      "unit": "The agreement's own value",
+      "exports": {
+        ".": ["agreementValue"],
+        "./core": ["agreementValue"]
+      },
+      "use": "Computes from H the value an agreement carries in H's place on a pairing whose single-use value is H itself or H's low bits, so any resource server that offers an agreement and a payment of one pairing under one H keeps the two acts from sharing a single-use value, and any holder of the ATR compares what recover reads from an agreement's transaction with the value it computes from its own H.",
+      "fixedBy": "read-status.md, rules 1, 2 and 27; core-vectors.json, agreementValue."
+    },
+    {
       "unit": "Links and hosts",
       "exports": {
         ".": ["isHttpsLink", "isOtherSchemeLink", "readUrl", "parseHost", "domainToAscii", "UrlAuthority"],

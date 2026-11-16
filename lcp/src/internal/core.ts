@@ -163,6 +163,23 @@ export async function hash(bytes: Uint8Array): Promise<AtrHash> {
   return toHex(new Uint8Array(digest));
 }
 
+/** The agreement tag: the 16 ASCII bytes `lcp-agreement-v1`. */
+const AGREEMENT_TAG = utf8.encode("lcp-agreement-v1");
+
+/**
+ * The agreement's own value for H (read-status.md, rule 1): SHA-256 over the 16 ASCII bytes `lcp-agreement-v1`
+ * followed by H's 32 bytes, as `0x` and lowercase hex. On a pairing whose single-use value is H itself or H's low bits,
+ * an agreement carries this value, or its low bits as the pairing takes H's, where a payment carries H, so the two acts
+ * under one H never share a single-use value; a holder of the ATR compares it with what `recover` reads from an
+ * agreement's transaction. Rejects with a TypeError when `h` is not a 32-byte hash.
+ */
+export async function agreementValue(h: AtrHash): Promise<AtrHash> {
+  const preimage = new Uint8Array(AGREEMENT_TAG.length + 32);
+  preimage.set(AGREEMENT_TAG, 0);
+  preimage.set(mustDecode(h), AGREEMENT_TAG.length);
+  return hash(preimage);
+}
+
 /**
  * SHA-256 over the RFC 8785 form of `v`. Takes any value and refuses, as `core/content-not-json`, a value deeper than
  * 64 levels, a non-finite number, a string with an unpaired surrogate, or anything else that is not a JSON value.

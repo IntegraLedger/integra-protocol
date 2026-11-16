@@ -472,5 +472,38 @@
     "stringified": "{\"n\":null}"
    }
   ]
+ },
+ "agreementValue": {
+  "about": "The agreement's own value for H (read-status.md, rule 1): SHA-256 over the 16 ASCII bytes 'lcp-agreement-v1' (hex 6c63702d61677265656d656e742d7631) followed by H's 32 bytes, written as H is, '0x' and 64 lowercase hex digits. On a pairing whose single-use value is H itself or H's low bits, an agreement carries this value, or its low bits as the pairing takes H's, where a payment carries H. Each row gives H, the 48 bytes hashed as hex, and the value. Expected values were computed 2026-11-16 with node:crypto's createHash('sha256') over the stated bytes (Buffer.concat of the tag's ASCII bytes and H's 32 bytes), and checked with sha256sum and openssl dgst -sha256 over the same bytes; none was taken from the package's output.",
+  "rows": [
+   {
+    "name": "AV1",
+    "case": "H of V1",
+    "h": "0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f",
+    "preimageHex": "6c63702d61677265656d656e742d7631f693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f",
+    "expect": "0x86a6a4163c0c4fefa9be7d7b390465193099d34bcee090b175df7ae6e0428f4b"
+   },
+   {
+    "name": "AV2",
+    "case": "H of 32 zero bytes",
+    "h": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "preimageHex": "6c63702d61677265656d656e742d76310000000000000000000000000000000000000000000000000000000000000000",
+    "expect": "0xd90fa1cfbfc4425f4de553d7f607a1a1bb46112950c07a89567f74e0b5631c80"
+   },
+   {
+    "name": "AV3",
+    "case": "H of 32 bytes 0xff",
+    "h": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "preimageHex": "6c63702d61677265656d656e742d7631ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "expect": "0x0b767c48afb3ac70cd4df196dbca7285daaefb4e06c49bb6fc9085c620129b45"
+   },
+   {
+    "name": "AV4",
+    "case": "H of V1 written in uppercase hex: the value is written in lowercase, as H is",
+    "h": "0xF693F8353BD93131403120D11E849C7646AD8976857560B9F72AC2EBE08DE12F",
+    "preimageHex": "6c63702d61677265656d656e742d7631f693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f",
+    "expect": "0x86a6a4163c0c4fefa9be7d7b390465193099d34bcee090b175df7ae6e0428f4b"
+   }
+  ]
  }
 }

@@ -6,7 +6,7 @@
 import type { AtrHash } from "./core.js";
 import type { Refusal } from "../refusal.js";
 import type { Broadcaster } from "./broadcaster.js";
-import type { RecoverInput } from "./read.js";
+import type { Act, RecoverInput } from "./read.js";
 
 /**
  * `full`: the payer's own signed act, on a public ledger, binds all of H, a 256-bit digest over a preimage that holds H,
@@ -189,6 +189,11 @@ export type ChannelKind = "open" | "within" | "close";
  * reader the caller supplies to `status`, `recover` and `fetchPresented`, and `F` the family's other types. A pairing
  * with no read has no `status` and no `recover`, and takes `never` for `Reader`, and for `Ref` where it has no
  * `reference`.
+ *
+ * `build`, `bound` and `reference` take the act, and `bound` and `reference` H with it, where the caller gives them;
+ * absent means the act `payment`. On a pairing whose single-use value is H itself or H's low bits, the act `agreement`
+ * makes each use the agreement's own value (`agreementValue`, or its low bits as the pairing takes H's) where the
+ * payment uses H; on every other pairing the act changes nothing. `status` takes the act in its query.
  */
 export interface Codec<Presented, Ref, Reader, F extends Family> {
   readonly read: (doc: F["doc"]) => F["offered"] | Refusal;
@@ -207,15 +212,33 @@ export interface Codec<Presented, Ref, Reader, F extends Family> {
     offer: F["offer"],
     ...rest: F["rest"]
   ) => F["advertised"] | Refusal;
-  /** Absent where lcp builds no payment for the pairing: the payer's own client builds it. */
-  readonly build?: (choice: F["choice"], h: AtrHash) => Promise<F["unsigned"] | Refusal>;
-  readonly bound: (presented: Presented) => Promise<AtrHash | Refusal>;
+  /**
+   * What the payer signs, with H in place, or for the act `agreement` on a pairing whose agreement has its own value,
+   * that value. Absent where lcp builds no payment for the pairing: the payer's own client builds it.
+   */
+  readonly build?: (choice: F["choice"], h: AtrHash, act?: Act) => Promise<F["unsigned"] | Refusal>;
+  /**
+   * H as what was presented carries it. Given the act `agreement` and H on a pairing whose agreement has its own value,
+   * it checks that what was presented carries that value in H's place, and gives H where it does.
+   */
+  readonly bound: (presented: Presented, given?: { readonly act: Act; readonly h: AtrHash }) => Promise<AtrHash | Refusal>;
   readonly broadcaster: (presented: Presented) => Promise<Broadcaster | Refusal>;
-  /** The read keys of a presented payment, with the payee of the option it answers. */
-  readonly reference?: (presented: Presented, option: F["option"]) => Promise<Ref | Refusal>;
+  /**
+   * The read keys of a presented payment, with the payee of the option it answers; given the act `agreement` and H on
+   * a pairing whose agreement has its own value, the single-use value it names is that value.
+   */
+  readonly reference?: (
+    presented: Presented,
+    option: F["option"],
+    given?: { readonly act: Act; readonly h: AtrHash },
+  ) => Promise<Ref | Refusal>;
   /** The read of the act the query asks about, from the reference and what the landed transaction adds to it. */
   readonly status?: (ref: Ref & F["landed"], reader: Reader, query: F["query"]) => Promise<F["answer"]>;
-  /** H, or the value an agreement's transaction carries, read back from a landed transaction. */
+  /**
+   * The value a landed transaction carries in H's place, in H's spelling: H, or H's low bits as the pairing carries
+   * them; and from an agreement's transaction on a pairing whose agreement has its own value, that value, which a
+   * holder of the ATR compares with `agreementValue` of its own H, since a digest is not read back to H.
+   */
   readonly recover?: (input: RecoverInput<F["network"], F["option"]>, reader: Reader) => Promise<AtrHash | Refusal>;
   /** For a channel, a session or a subscription. */
   readonly channel?: {

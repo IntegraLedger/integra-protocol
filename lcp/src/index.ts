@@ -2,6 +2,7 @@ import { toLegalContext, type AtrHash, type Json } from "./core.js";
 import { isRefusal, type Refusal } from "./refusal.js";
 
 export {
+  agreementValue,
   assemble,
   base64Bytes,
   base64UrlBytes,
