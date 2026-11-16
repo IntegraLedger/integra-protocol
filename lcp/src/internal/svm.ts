@@ -131,7 +131,13 @@ export interface SvmLanded {
  */
 export interface SvmReader {
   readonly network: SolanaNetwork;
-  /** `getTransaction` at that commitment, or `notFound` with the node's slot there. */
+  /**
+   * `getTransaction` at that commitment, with encoding `base64` and `maxSupportedTransactionVersion: 1`, or `notFound`
+   * with the node's slot there. A reader must ask with 1: a node asked with 0 answers a version-1 transaction with an
+   * error (-32015), which this call's contract reads as a rejection, so a version-1 payment, which `bound` and
+   * `reference` accept, reads `svm/unreadable` and its status pending `unreadable` on every read, and never reads
+   * settled.
+   */
   transaction(
     signature: string,
     commitment: "confirmed" | "finalized",
