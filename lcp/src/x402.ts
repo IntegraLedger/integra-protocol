@@ -694,7 +694,7 @@ function permit2Build(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
       permitted: { token: accepted.asset, amount: accepted.amount },
       from,
       spender,
-      nonce: upto ? c.h : BigInt(c.h).toString(),
+      nonce: BigInt(c.h).toString(),
       deadline: c.deadline.toString(),
       witness,
     };

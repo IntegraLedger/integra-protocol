@@ -416,9 +416,12 @@ describe("x402-upto-eip155-permit2.json", () => {
     ).toBe(true);
     const p = await signed(uptoPermit2, f);
     const a = (p.payload as any).permit2Authorization;
-    expect(a.nonce).toBe(UP.EV2.expectNonceHex);
+    expect(a.nonce).toBe(UP.EV2.expectNonceDecimal);
     expect(a.deadline).toBe(UP.EV2.expectDeadline);
     expect(await uptoPermit2.bound(p)).toBe(UP.EV2.expectBound);
+    const hex = structuredClone(p) as any;
+    hex.payload.permit2Authorization.nonce = H;
+    expect(await uptoPermit2.bound(hex)).toBe(UP.EV2.boundOfHexNonce);
     const ref = plain(await uptoPermit2.reference(p));
     expect(ref.transferLog.identity).toBe(UP.EV2.expectReference.identity);
     expect(ref.transferLog.digest).toBe(UP.EV2.expectReference.digest);
