@@ -215,6 +215,9 @@ importers:
       '@ton/crypto':
         specifier: 3.3.0
         version: 3.3.0
+      '@x402/evm':
+        specifier: 2.31.0
+        version: 2.31.0(typescript@7.0.2)
       '@x402/svm':
         specifier: 2.31.0
         version: 2.31.0(@solana/kit@8.4.0(typescript@7.0.2))(@solana/sysvars@8.4.0(typescript@7.0.2))(typescript@7.0.2)
@@ -1374,6 +1377,9 @@ packages:
 
   '@x402/core@2.31.0':
     resolution: {integrity: sha512-7ToCOwHfftfFEERW5Mp6Fc5U1+JrtCLTkbQnEVsBl13IutltP9lWIBYi/J+zy8vQWaLUmACq8A2qywzdt/RRIQ==}
+
+  '@x402/evm@2.31.0':
+    resolution: {integrity: sha512-CCOqou/7f0/5kKQXlcVvWbiVnFmk/CqaSCs8YkJ2GPzxDYoQD13iKAjo0Uv7y/dVlkkOH0p/eJVxgcrO6aagbw==}
 
   '@x402/svm@2.31.0':
     resolution: {integrity: sha512-nWoh/wVG/rbIB9tY3GZKh7G/E1vUVFCP8Y+CAQJVSH+weqMpenqIRzoX8Q3Y94L6ZL5QD9BEgUSIkJmbuVb3ig==}
@@ -3551,6 +3557,16 @@ snapshots:
   '@x402/core@2.31.0':
     dependencies:
       zod: 4.6.7
+
+  '@x402/evm@2.31.0(typescript@7.0.2)':
+    dependencies:
+      '@x402/core': 2.31.0
+      viem: 2.57.4(typescript@7.0.2)(zod@4.6.7)
+      zod: 4.6.7
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
 
   '@x402/svm@2.31.0(@solana/kit@8.4.0(typescript@7.0.2))(@solana/sysvars@8.4.0(typescript@7.0.2))(typescript@7.0.2)':
     dependencies:
