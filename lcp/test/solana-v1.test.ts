@@ -2,12 +2,21 @@
 // version-1 transactions (SIMD-0385) as the stock @x402/svm 2.31.0 clients write them, read through each pairing's
 // bound, reference, status and recover. The stock client is run again here and must write the recorded payload byte
 // for byte; @solana/kit 8.4.0's own transaction decoder and @noble/curves' Ed25519 check the message the payer signed.
+// x402-exact-solana.json's changed rows also hold each rule of the version-1 decoder, and where a row names kit,
+// @solana/kit 8.4.0 is run on it and must give the row's verdict.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { base58 } from "@scure/base";
-import { getTransactionDecoder, type Address } from "@solana/kit";
+import {
+  createTransactionMessage,
+  getCompiledTransactionMessageDecoder,
+  getTransactionDecoder,
+  isTransactionWithinSizeLimit,
+  setTransactionMessageHeapSize,
+  type Address,
+} from "@solana/kit";
 import { ReaderError } from "../src/evm.js";
 import { decodeSvmTx, type SvmLanded, type SvmReader, type SvmRef } from "../src/svm.js";
 import { batchSvm } from "../src/x402-batch-settlement.js";
@@ -34,9 +43,14 @@ interface V1 {
   txid: string;
   statusRows: { at: "finalized" | "confirmed"; err: unknown; expect: unknown }[];
   expectRecover: string;
-  changed: { case: string; wireBase64: string; expect: unknown }[];
+  changed: { case: string; wireBase64: string; expect: unknown; kit?: Kit }[];
   landedChanged: { landedWireBase64: string; expect: unknown };
 }
+/** @solana/kit 8.4.0's verdict on a changed row's wire. */
+type Kit =
+  | { check: "isTransactionWithinSizeLimit"; expect: boolean }
+  | { check: "messageDecoder"; expect: "throws" }
+  | { check: "setTransactionMessageHeapSize"; value: number; expect: "accepts" | "throws" };
 /** The payload members that hold the wire: `transaction`, `openTransaction` or `deposit.transaction`. */
 interface Payload {
   transaction?: string;
@@ -49,6 +63,22 @@ const U = load("x402-upto-solana.json");
 const B = load("x402-batch-settlement.json");
 const b64 = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "base64"));
 const sha256 = (b: Uint8Array): string => `0x${createHash("sha256").update(b).digest("hex")}`;
+/** What @solana/kit 8.4.0 answers for `wire` under the row's check. */
+function kitVerdict(kit: Kit, wire: Uint8Array): unknown {
+  const throws = (f: () => unknown) => {
+    try {
+      f();
+      return "accepts";
+    } catch {
+      return "throws";
+    }
+  };
+  if (kit.check === "isTransactionWithinSizeLimit") return isTransactionWithinSizeLimit(getTransactionDecoder().decode(wire));
+  if (kit.check === "messageDecoder") {
+    return throws(() => getCompiledTransactionMessageDecoder().decode(getTransactionDecoder().decode(wire).messageBytes));
+  }
+  return throws(() => setTransactionMessageHeapSize(kit.value, createTransactionMessage({ version: 1 })));
+}
 const landed = (wire: Uint8Array, err: unknown = null): SvmLanded => ({ wire, err, loaded: { writable: [], readonly: [] }, inner: [] });
 
 function readerFor(network: string, at: "finalized" | "confirmed" | "reader-error", l: SvmLanded, txid: string): SvmReader {
@@ -79,6 +109,7 @@ type Codec = {
 const cases: {
   file: string;
   v: V1;
+  changedRows: number;
   codec: Codec;
   wireOf: (payload: Payload) => string;
   withWire: (payload: Payload, wire: string) => Payload;
@@ -87,6 +118,7 @@ const cases: {
   {
     file: "x402-exact-solana.json",
     v: E.transactionV1,
+    changedRows: 26,
     codec: exactSvm as unknown as Codec,
     wireOf: (p) => p.transaction!,
     withWire: (p, transaction) => ({ ...p, transaction }),
@@ -95,6 +127,7 @@ const cases: {
   {
     file: "x402-upto-solana.json",
     v: U.transactionV1,
+    changedRows: 3,
     codec: uptoSvm as unknown as Codec,
     wireOf: (p) => p.openTransaction!,
     withWire: (p, openTransaction) => ({ ...p, openTransaction }),
@@ -103,6 +136,7 @@ const cases: {
   {
     file: "x402-batch-settlement.json",
     v: B.transactionV1,
+    changedRows: 3,
     codec: batchSvm as unknown as Codec,
     wireOf: (p) => p.deposit!.transaction,
     withWire: (p, transaction) => ({ ...p, deposit: { ...p.deposit!, transaction } }),
@@ -110,7 +144,7 @@ const cases: {
   },
 ];
 
-describe.each(cases)("$file transactionV1", ({ v, codec, wireOf, withWire, stock }) => {
+describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, withWire, stock }) => {
   const presented = v.presented;
   const wire = b64(wireOf(presented.payload));
   const presentedWith = (w: string) => ({ ...presented, payload: withWire(presented.payload, w) });
@@ -144,9 +178,24 @@ describe.each(cases)("$file transactionV1", ({ v, codec, wireOf, withWire, stock
   });
 
   it("each changed member is refused with its code", async () => {
-    for (const row of rowsOf(v.changed, "transactionV1.changed", { exact: 3 })) {
+    for (const row of rowsOf(v.changed, "transactionV1.changed", { exact: changedRows })) {
       expect(await codec.bound(presentedWith(row.wireBase64)), row.case).toEqual(row.expect);
     }
+  });
+
+  it("decodeSvmTx alone gives each changed row's svm/tx-* refusal, and decodes every other row", () => {
+    for (const row of rowsOf(v.changed, "transactionV1.changed", { exact: changedRows })) {
+      const d = decodeSvmTx(b64(row.wireBase64));
+      const code = (row.expect as { code?: string }).code;
+      if (code?.startsWith("svm/tx-")) expect(d, row.case).toEqual(row.expect);
+      else expect("refused" in d ? d.code : "decoded", row.case).toBe("decoded");
+    }
+  });
+
+  it("@solana/kit 8.4.0 gives each changed row's kit verdict", () => {
+    const rows = v.changed.filter((row) => row.kit !== undefined);
+    expect(rows).toHaveLength(changedRows === 3 ? 0 : 9);
+    for (const row of rows) expect(kitVerdict(row.kit!, b64(row.wireBase64)), row.case).toEqual(row.kit!.expect);
   });
 
   it("status and recover of the landed wire, and the landed wire with its memo changed", async () => {
