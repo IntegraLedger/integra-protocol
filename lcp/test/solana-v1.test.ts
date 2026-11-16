@@ -177,7 +177,7 @@ describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, wi
     expect(await codec.reference(presented)).toEqual(v.expectReference);
   });
 
-  it("each changed member is refused with its code", async () => {
+  it("each changed member is answered with its row's code, or H for a row within every rule", async () => {
     for (const row of rowsOf(v.changed, "transactionV1.changed", { exact: changedRows })) {
       expect(await codec.bound(presentedWith(row.wireBase64)), row.case).toEqual(row.expect);
     }
