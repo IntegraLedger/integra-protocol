@@ -388,6 +388,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "svm/tx-malformed",
   "svm/tx-too-large",
   "svm/unreadable",
+  "svm/version-not-built",
   "svm/wrong-reader",
   "tempo/ambiguous",
   "tempo/descriptor-mismatch",

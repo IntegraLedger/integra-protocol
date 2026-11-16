@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 501 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 502 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -37,7 +37,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 17 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
 | [`tempo`](#tempo) | 19 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
-| [`svm`](#svm) | 30 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
+| [`svm`](#svm) | 31 | Solana (`@integraledger/lcp/svm` and the Solana pairings). |
 | [`stellar`](#stellar) | 19 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 23 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 21 | Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`). |
@@ -407,6 +407,7 @@ Solana (`@integraledger/lcp/svm` and the Solana pairings).
 | `svm/tx-malformed` | A Solana transaction is not non-empty base64 of a well-formed unversioned or v0 wire transaction (signature count, header, keys, instructions and lookup tables consistent and fully consumed, and each lookup naming at least one index, as the runtime's sanitize requires) or v1 wire transaction (SIMD-0385's layout fully consumed, the signatures after the message, and the counts, indexes, addresses and `TransactionConfigMask` its sanitization admits), or an MPP `bundle` credential's `transactions` is not an array within the bound, or `svmCarrier` or `channelInstruction` is given a transaction that is not a decoded one. |
 | `svm/tx-too-large` | A Solana transaction, or its base64 text, exceeds the wire size bound: 1,232 bytes for an unversioned or v0 transaction, 4,096 for a v1 transaction. |
 | `svm/unreadable` | **Read to repeat.** The Solana reader threw, gave an answer of neither documented shape (a landed transaction, or a not-found answer; to `mpp/session/solana`'s `fetchPresented` and to `svmNonceMoved`, an account read with a bigint context slot and no account or an owner string and data bytes), or returned a landed transaction that is not well formed. A rejected `account` call is this code wherever it is read: `fetchPresented` and `svmNonceMoved` give it, and `svmStatus`, whose nonce account read or first-available-block read fails or answers out of its shape, is pending `unreadable`. |
+| `svm/version-not-built` | A Solana `build` (x402 `exact`, `upto` and `batch-settlement`, and `batch-settlement`'s `buildWithin` where it builds a `request_close` transaction) is given an option whose `extra.transactionVersions` is present and does not admit version 0: an array that does not hold 0, or a value that is not an array of the integers 0 and 1, which x402's `scheme_exact_svm.md` §1.5 makes invalid. This package's builders write version-0 messages only. An option without the field, whose accepted set is `[0]`, or whose field holds 0, is built. |
 | `svm/wrong-reader` | The Solana reader answers for a different network than the reference or challenge names, or the reference given to a Solana `recover` names a `transaction` that is not a signature, base58 of 64 bytes. |
 
 ## stellar

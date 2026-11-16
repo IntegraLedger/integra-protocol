@@ -1270,6 +1270,189 @@
    }
   }
  },
+ "transactionVersions": {
+  "case": "build of ES2's opening input, and buildWithin of ES6.withMemo's refund with recentBlockhash (refundRows), each under ES4's option with extra.transactionVersions set to each row's value, both in the document and as the chosen option. scheme_exact_svm.md \u00a71.5 at x402-foundation/x402 88b66dd4: extra.transactionVersions holds the transaction message versions the sponsor accepts, the JSON integers 0 and 1; when it is absent the accepted set is [0]; a field holding any other entry is invalid. This package's builders write version-0 messages only, so a row whose field admits 0 is built as the file's version-0 message, its first byte 128 and its SHA-256 the build's buildMessageSha256 as the input's own vector records it, and a row whose field does not is refused svm/version-not-built, with no request to sign (ES2.buildMessageSha256; ES6.withMemo.buildMessageSha256). A refund without recentBlockhash builds no transaction and carries the voucher alone, whatever the field holds.",
+  "rows": [
+   {
+    "transactionVersions": [
+     0,
+     1
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "1a983a58b3d086619c90892b35f16acc05bd62487316a133d3e0e013cc42b7d2"
+    }
+   },
+   {
+    "transactionVersions": [
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "1a983a58b3d086619c90892b35f16acc05bd62487316a133d3e0e013cc42b7d2"
+    }
+   },
+   {
+    "transactionVersions": [
+     1,
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "1a983a58b3d086619c90892b35f16acc05bd62487316a133d3e0e013cc42b7d2"
+    }
+   },
+   {
+    "transactionVersions": [
+     1
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     "0"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     2
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     "legacy"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": null,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": 0,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   }
+  ],
+  "refundRows": [
+   {
+    "transactionVersions": [
+     0,
+     1
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de"
+    }
+   },
+   {
+    "transactionVersions": [
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de"
+    }
+   },
+   {
+    "transactionVersions": [
+     1,
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "9b899c1a20f2e9f84f625ba7f24bdbf124792059cc719eb10b40c303bd7674de"
+    }
+   },
+   {
+    "transactionVersions": [
+     1
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     "0"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     2
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     "legacy"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": null,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": 0,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   }
+  ]
+ },
  "agreedRefusals": {
   "about": "Refusal codes the batch-settlement specification leaves to the implementation. A row with pairing and call runs that pairing's function: with choice, call(choice, H); with h, build of ES2's choice, the advertised Solana option with the svm payer as payer and payerAuthorizer, deposit, salt 42, openSlot, tokenProgram and blockhash as recentBlockhash, with that h; with zeroMembers, the EVM build of EB2 and EB3's opening once per member named, with that member the zero address: from in its choice, or payTo or asset in fixed.evm.option. A row with pairing and calls runs each of those functions of that pairing on an opening. On the EVM pairing it is EB2 and EB3's opening: the EVM build of fixed.evm.option advertised under H, with the payer, payer authorizer, deposit, authSalt and now of fixed.evm, completed with EB3's and EB2's signatures, and the same build for a Permit2 deposit (the option's extra.assetTransferMethod permit2), completed with the same signatures, which no read verifies; buildWithin takes the advertised option and EB2's maxClaimableAmount. On the Solana pairing it is ES2's opening as ES4 presents it: ES4's config, a voucher for ES1's PDA, and ES2's wire as deposit.transaction; buildWithin takes the advertised Solana option and maxClaimableAmount 1000. With depositAmount, deposit.amount is replaced by it. With validBeforeOrDeadline, the ERC-3009 authorization's validBefore, or the Permit2 authorization's deadline, is replaced by it. With configMembers, each member set replaces those members of channelConfig, one run per set; voucher.channelId is the channel id of the configuration that results, and buildWithin takes that configuration, under H. With refundAmounts, each value is the amount of a refund payload that carries the opening's channelConfig and voucher, one run per value.",
   "rows": [

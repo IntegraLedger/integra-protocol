@@ -652,6 +652,19 @@ function advanceNonce(tx: SvmTx): SvmInstruction | null {
 }
 
 /**
+ * `svm/version-not-built` when an x402 Solana option's `extra` holds `transactionVersions` and it does not admit version
+ * 0, the one message version this package's builders write: the field is the set of versions the sponsor accepts, the
+ * JSON integers 0 and 1, and a field holding any other entry is invalid (scheme_exact_svm.md §1.5 at
+ * x402-foundation/x402 88b66dd4). Absent, the accepted set is `[0]`. Else null.
+ */
+export function unbuiltVersion(extra: unknown): Refusal | null {
+  if (!isObject(extra) || !("transactionVersions" in extra)) return null;
+  const versions = extra["transactionVersions"];
+  const admitsV0 = Array.isArray(versions) && versions.every((v) => v === 0 || v === 1) && versions.includes(0);
+  return admitsV0 ? null : refusal("svm/version-not-built");
+}
+
+/**
  * `svm/nonce-account-not-static` when the message's first instruction is `AdvanceNonceAccount` and its nonce account
  * is an address lookup table entry, past the static keys: a durable message names its nonce account as a static key
  * (SIMD-0242), so the cluster does not take that message as durable, and the message alone cannot show the nonce

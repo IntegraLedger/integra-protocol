@@ -447,6 +447,99 @@
    }
   }
  },
+ "transactionVersions": {
+  "case": "build of EU3's input, the advertised option with extra.transactionVersions set to each row's value, both in the document and as the chosen option. scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4: extra.transactionVersions holds the transaction message versions the sponsor accepts, the JSON integers 0 and 1; when it is absent the accepted set is [0]; a field holding any other entry is invalid. This package's builders write version-0 messages only, so a row whose field admits 0 is built as the file's version-0 message, its first byte 128 and its SHA-256 the build's buildMessageSha256 as the input's own vector records it, and a row whose field does not is refused svm/version-not-built, with no request to sign (EU3.buildMessageSha256).",
+  "rows": [
+   {
+    "transactionVersions": [
+     0,
+     1
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "440a78573a1185f684c8c6e58ee4fc1a410f5c40e06d9d58ab0750847a06b0f5"
+    }
+   },
+   {
+    "transactionVersions": [
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "440a78573a1185f684c8c6e58ee4fc1a410f5c40e06d9d58ab0750847a06b0f5"
+    }
+   },
+   {
+    "transactionVersions": [
+     1,
+     0
+    ],
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "440a78573a1185f684c8c6e58ee4fc1a410f5c40e06d9d58ab0750847a06b0f5"
+    }
+   },
+   {
+    "transactionVersions": [
+     1
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     "0"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     2
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": [
+     0,
+     "legacy"
+    ],
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": null,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   },
+   {
+    "transactionVersions": 0,
+    "expect": {
+     "refused": true,
+     "code": "svm/version-not-built"
+    }
+   }
+  ]
+ },
  "agreedRefusals": {
   "about": "Refusal codes the specification leaves to the implementation. A row with choice is build(choice, H). A row with h is build of EU3's choice, the advertised option with fixed's payer, nonce, openSlot, now, tokenProgram and blockhash as recentBlockhash, with that h.",
   "rows": [

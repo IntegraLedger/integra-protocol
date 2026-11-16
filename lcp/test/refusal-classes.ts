@@ -172,7 +172,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "channel-instruction", "channel-mismatch", "err", "input-malformed", "memo-count", "memo-not-lcp", "memo-not-utf8",
     "network-malformed", "network-undeclared", "no-carrier", "no-channel-instruction", "nonce-account-not-static",
     "open-not-found", "pda-not-found", "peer-missing", "proof-not-challenge", "read-first", "signer-not-operator",
-    "table-unusable", "tx-malformed", "tx-too-large", "wrong-reader",
+    "table-unusable", "tx-malformed", "tx-too-large", "version-not-built", "wrong-reader",
   ],
   tempo: [
     "ambiguous", "descriptor-mismatch", "key-authorization-malformed", "key-not-authorized", "memo-not-bound",
