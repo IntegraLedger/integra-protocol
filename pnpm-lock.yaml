@@ -215,6 +215,9 @@ importers:
       '@ton/crypto':
         specifier: 3.3.0
         version: 3.3.0
+      '@x402/svm':
+        specifier: 2.31.0
+        version: 2.31.0(@solana/kit@8.4.0(typescript@7.0.2))(@solana/sysvars@8.4.0(typescript@7.0.2))(typescript@7.0.2)
       algosdk:
         specifier: 3.8.0
         version: 3.8.0
@@ -250,10 +253,10 @@ importers:
         version: 2.11.0
       starknet:
         specifier: 10.7.6
-        version: 10.7.6(typescript@7.0.2)
+        version: 10.7.6(typescript@7.0.2)(zod@4.6.7)
       viem:
         specifier: 2.57.4
-        version: 2.57.4(typescript@7.0.2)
+        version: 2.57.4(typescript@7.0.2)(zod@4.6.7)
 
 packages:
 
@@ -714,6 +717,41 @@ packages:
   '@sindresorhus/is@8.1.0':
     resolution: {integrity: sha512-2SX/1jW6CIMAiebvVv5ZInoCEuWQmMyBoJXXGC6Vjakjp/fpxP5eHs7/V6WKuPEIbuK06+VpjH+vjLQhr98rDQ==}
     engines: {node: '>=22'}
+
+  '@solana-program/compute-budget@0.18.1':
+    resolution: {integrity: sha512-ZVWknu3XvF6NI3zAuT6TXV19lQ7iDPzToM9gwI6KnUlnzHHP3u7IAIzDM7hLueQ6T7vLGjIUjYFCVg4mLHRZcg==}
+    peerDependencies:
+      '@solana/kit': ^8.0.0
+
+  '@solana-program/record@0.4.1':
+    resolution: {integrity: sha512-3iurtMAc3POMKVSZBqpNZQeoxAYVIxi0VZNOjkdaZqxr5glCxkWWruT8JekDwNFM0FnXxvtdu7tFFn3j6Kpegg==}
+    peerDependencies:
+      '@solana/kit': ^8.0.0
+
+  '@solana-program/system@0.14.1':
+    resolution: {integrity: sha512-K6ZiIrAKoJAfcwfUdsoFvfSAxeRJaRrV7BPFTJvUVRS4m3zszN+nLcdaNMMe2F1/zTriZqC+xh+Kgw6ziGUqpQ==}
+    peerDependencies:
+      '@solana/kit': ^8.0.0
+
+  '@solana-program/token-2022@0.16.1':
+    resolution: {integrity: sha512-VEQHBcFFGErW+gDGQAjuLRjAbg2x7uJqoWV9EgwG82exPpqHP2VGcV0sb7DXc8uXP+IvkmZeVH81gtuKyMxpZw==}
+    peerDependencies:
+      '@solana/kit': ^8.0.0
+      '@solana/sysvars': ^8.0.0
+      '@solana/zk-sdk': ^0.5.1
+    peerDependenciesMeta:
+      '@solana/zk-sdk':
+        optional: true
+
+  '@solana-program/token@0.16.1':
+    resolution: {integrity: sha512-X9dsvbh+VDq4SuCfvxn95P1DCvtBYHJOBiVmgBJMfW8l/lp8uSwEhy9IurpcdltnGi5kNIkCm4sk4YOXKAMiCw==}
+    peerDependencies:
+      '@solana/kit': ^8.0.0
+
+  '@solana-program/zk-elgamal-proof@0.4.0':
+    resolution: {integrity: sha512-bf2Q3f25xcCNaLm/MR4lwoAguJzEW2eeLdrJb6rUjMcA63qcgyJOWl6To7Bn4e+0OyWBa+J7YP2BUhi//VPz3g==}
+    peerDependencies:
+      '@solana/kit': ^8.0.0
 
   '@solana/accounts@8.4.0':
     resolution: {integrity: sha512-YklERWeG5UD2fzxR0zwWgzCVyuHRqg6eTIyGBAe8hOWIim8TYS1aPBVFAlVkSZiAXaFRxmu1E3IRfeCe/QSQmg==}
@@ -1333,6 +1371,14 @@ packages:
   '@wallet-standard/features@1.1.1':
     resolution: {integrity: sha512-aCWYmVeSCGViyEU5k7GMoW8zxE4Gs+C1s1Pp2XLesvSNlnZ4PMES9HUnTB3hl0b3RVj7C61yze3IWyrncqg4MA==}
     engines: {node: '>=22'}
+
+  '@x402/core@2.31.0':
+    resolution: {integrity: sha512-7ToCOwHfftfFEERW5Mp6Fc5U1+JrtCLTkbQnEVsBl13IutltP9lWIBYi/J+zy8vQWaLUmACq8A2qywzdt/RRIQ==}
+
+  '@x402/svm@2.31.0':
+    resolution: {integrity: sha512-nWoh/wVG/rbIB9tY3GZKh7G/E1vUVFCP8Y+CAQJVSH+weqMpenqIRzoX8Q3Y94L6ZL5QD9BEgUSIkJmbuVb3ig==}
+    peerDependencies:
+      '@solana/kit': '>=8.0.0'
 
   '@xrplf/isomorphic@1.0.2':
     resolution: {integrity: sha512-ncZUdMXr6VlSXtdoiDi0jTH+gBrgGxwVeEidhoegII3PmyErbQsyj6e+j7acmR4LW/lvBkPkzb9QzRfJH0n3rA==}
@@ -2452,6 +2498,9 @@ packages:
     resolution: {integrity: sha512-GZtjxm/J/4TSxuL3FNYjCmLktBTnIw/rVmKSIyKeYAZpmJB2ig9VauCC5xsa82GNKVKDAqpOn3KVzNt0zmrU0g==}
     engines: {node: '>=12'}
 
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
+
 snapshots:
 
   '@0no-co/graphql.web@1.3.4(graphql@17.0.2)':
@@ -2778,6 +2827,38 @@ snapshots:
   '@sec-ant/readable-stream@0.4.1': {}
 
   '@sindresorhus/is@8.1.0': {}
+
+  '@solana-program/compute-budget@0.18.1(@solana/kit@8.4.0(typescript@7.0.2))':
+    dependencies:
+      '@solana/kit': 8.4.0(typescript@7.0.2)
+
+  '@solana-program/record@0.4.1(@solana/kit@8.4.0(typescript@7.0.2))':
+    dependencies:
+      '@solana-program/system': 0.14.1(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana/kit': 8.4.0(typescript@7.0.2)
+
+  '@solana-program/system@0.14.1(@solana/kit@8.4.0(typescript@7.0.2))':
+    dependencies:
+      '@solana/kit': 8.4.0(typescript@7.0.2)
+
+  '@solana-program/token-2022@0.16.1(@solana/kit@8.4.0(typescript@7.0.2))(@solana/sysvars@8.4.0(typescript@7.0.2))':
+    dependencies:
+      '@noble/curves': 1.9.7
+      '@solana-program/record': 0.4.1(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana-program/system': 0.14.1(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana-program/zk-elgamal-proof': 0.4.0(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana/kit': 8.4.0(typescript@7.0.2)
+      '@solana/sysvars': 8.4.0(typescript@7.0.2)
+
+  '@solana-program/token@0.16.1(@solana/kit@8.4.0(typescript@7.0.2))':
+    dependencies:
+      '@solana-program/system': 0.14.1(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana/kit': 8.4.0(typescript@7.0.2)
+
+  '@solana-program/zk-elgamal-proof@0.4.0(@solana/kit@8.4.0(typescript@7.0.2))':
+    dependencies:
+      '@solana-program/system': 0.14.1(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana/kit': 8.4.0(typescript@7.0.2)
 
   '@solana/accounts@8.4.0(typescript@7.0.2)':
     dependencies:
@@ -3291,22 +3372,22 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@starknet-io/get-starknet-wallet-standard@5.0.0(typescript@7.0.2)':
+  '@starknet-io/get-starknet-wallet-standard@5.0.0(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
       '@starknet-io/types-js': 0.7.10
       '@wallet-standard/base': 1.1.1
       '@wallet-standard/features': 1.1.1
-      ox: 0.4.4(typescript@7.0.2)
+      ox: 0.4.4(typescript@7.0.2)(zod@4.6.7)
     transitivePeerDependencies:
       - typescript
       - zod
 
-  '@starknet-io/get-starknet-wallet-standard@6.0.4(typescript@7.0.2)':
+  '@starknet-io/get-starknet-wallet-standard@6.0.4(typescript@7.0.2)(zod@4.6.7)':
     dependencies:
       '@starknet-io/types-js': 0.10.4-beta.2
       '@wallet-standard/base': 1.1.1
       '@wallet-standard/features': 1.1.1
-      ox: 0.4.4(typescript@7.0.2)
+      ox: 0.4.4(typescript@7.0.2)(zod@4.6.7)
     transitivePeerDependencies:
       - typescript
       - zod
@@ -3467,6 +3548,25 @@ snapshots:
     dependencies:
       '@wallet-standard/base': 1.1.1
 
+  '@x402/core@2.31.0':
+    dependencies:
+      zod: 4.6.7
+
+  '@x402/svm@2.31.0(@solana/kit@8.4.0(typescript@7.0.2))(@solana/sysvars@8.4.0(typescript@7.0.2))(typescript@7.0.2)':
+    dependencies:
+      '@noble/hashes': 1.8.0
+      '@solana-program/compute-budget': 0.18.1(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana-program/token': 0.16.1(@solana/kit@8.4.0(typescript@7.0.2))
+      '@solana-program/token-2022': 0.16.1(@solana/kit@8.4.0(typescript@7.0.2))(@solana/sysvars@8.4.0(typescript@7.0.2))
+      '@solana/kit': 8.4.0(typescript@7.0.2)
+      '@solana/program-client-core': 8.4.0(typescript@7.0.2)
+      '@x402/core': 2.31.0
+    transitivePeerDependencies:
+      - '@solana/sysvars'
+      - '@solana/zk-sdk'
+      - fastestsmallesttextencoderdecoder
+      - typescript
+
   '@xrplf/isomorphic@1.0.2':
     dependencies:
       '@noble/hashes': 2.4.0
@@ -3483,13 +3583,15 @@ snapshots:
       fs-extra: 10.1.0
       yargs: 17.7.3
 
-  abitype@1.2.3(typescript@7.0.2):
+  abitype@1.2.3(typescript@7.0.2)(zod@4.6.7):
     optionalDependencies:
       typescript: 7.0.2
+      zod: 4.6.7
 
-  abitype@1.3.0(typescript@7.0.2):
+  abitype@1.3.0(typescript@7.0.2)(zod@4.6.7):
     optionalDependencies:
       typescript: 7.0.2
+      zod: 4.6.7
 
   agent-base@6.0.2:
     dependencies:
@@ -4329,7 +4431,7 @@ snapshots:
 
   obug@3.0.0: {}
 
-  ox@0.14.54(typescript@7.0.2):
+  ox@0.14.54(typescript@7.0.2)(zod@4.6.7):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/ciphers': 1.3.0
@@ -4337,21 +4439,21 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.3.0(typescript@7.0.2)
+      abitype: 1.3.0(typescript@7.0.2)(zod@4.6.7)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 7.0.2
     transitivePeerDependencies:
       - zod
 
-  ox@0.4.4(typescript@7.0.2):
+  ox@0.4.4(typescript@7.0.2)(zod@4.6.7):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.3.0(typescript@7.0.2)
+      abitype: 1.3.0(typescript@7.0.2)(zod@4.6.7)
       eventemitter3: 5.0.1
     optionalDependencies:
       typescript: 7.0.2
@@ -4485,14 +4587,14 @@ snapshots:
 
   source-map-js@1.2.2: {}
 
-  starknet@10.7.6(typescript@7.0.2):
+  starknet@10.7.6(typescript@7.0.2)(zod@4.6.7):
     dependencies:
       '@noble/curves': 1.7.0
       '@noble/hashes': 1.6.1
       '@scure/base': 1.2.6
       '@scure/starknet': 1.1.0
-      '@starknet-io/get-starknet-wallet-standard': 5.0.0(typescript@7.0.2)
-      '@starknet-io/get-starknet-wallet-standard-v6': '@starknet-io/get-starknet-wallet-standard@6.0.4(typescript@7.0.2)'
+      '@starknet-io/get-starknet-wallet-standard': 5.0.0(typescript@7.0.2)(zod@4.6.7)
+      '@starknet-io/get-starknet-wallet-standard-v6': '@starknet-io/get-starknet-wallet-standard@6.0.4(typescript@7.0.2)(zod@4.6.7)'
       '@starknet-io/starknet-types-0101': '@starknet-io/types-js@0.10.2'
       '@starknet-io/starknet-types-0103': '@starknet-io/types-js@0.10.3'
       '@starknet-io/starknet-types-0104': '@starknet-io/types-js@0.10.4-beta.2'
@@ -4597,15 +4699,15 @@ snapshots:
     dependencies:
       safe-buffer: 5.2.1
 
-  viem@2.57.4(typescript@7.0.2):
+  viem@2.57.4(typescript@7.0.2)(zod@4.6.7):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      abitype: 1.2.3(typescript@7.0.2)
+      abitype: 1.2.3(typescript@7.0.2)(zod@4.6.7)
       isows: 1.0.7(ws@8.21.0)
-      ox: 0.14.54(typescript@7.0.2)
+      ox: 0.14.54(typescript@7.0.2)(zod@4.6.7)
       ws: 8.21.0
     optionalDependencies:
       typescript: 7.0.2
@@ -4693,3 +4795,5 @@ snapshots:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
+
+  zod@4.6.7: {}

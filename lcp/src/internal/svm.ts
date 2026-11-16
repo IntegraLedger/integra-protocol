@@ -59,7 +59,23 @@ export const COMPUTE_BUDGET = "ComputeBudget111111111111111111111111111111";
 /** The Associated Token Account program id. */
 export const ATA_PROGRAM = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 
+/** The serialized size bound of a legacy or v0 transaction. */
 export const MAX_WIRE = 1232;
+/** The serialized size bound of a v1 transaction (SIMD-0385, *Transaction Constraints*). */
+export const MAX_WIRE_V1 = 4096;
+/** The first byte of a v1 wire transaction, its message's version byte (SIMD-0385, *VersionByte*). */
+const V1_VERSION_BYTE = 0x81;
+/** SIMD-0385's bounds on a v1 message: signatures, account addresses and instructions. */
+const V1_MAX_SIGNATURES = 12;
+const V1_MAX_ADDRESSES = 64;
+const V1_MAX_INSTRUCTIONS = 64;
+/**
+ * The `TransactionConfigMask` bits SIMD-0385 assigns: 0 and 1 the priority fee (a u64, both bits set together), 2 the
+ * compute unit limit, 3 the loaded accounts data size limit, 4 the requested heap size (each a u32).
+ */
+const V1_CONFIG_BITS = 0b11111;
+const V1_PRIORITY_FEE_BITS = 0b11;
+const V1_HEAP_SIZE_BIT = 0b10000;
 const NETWORK = /^solana:[1-9A-HJ-NP-Za-km-z]{32}$/;
 const MAX_LOCATE_PAGES = 10;
 const LOCATE_PAGE = 1000;
@@ -91,7 +107,10 @@ export interface SvmTx<B extends ArrayBufferLike = ArrayBufferLike> {
   blockhash: Uint8Array<B>;
 }
 
-/** A landed transaction as `getTransaction` returns it with encoding `base64` and `maxSupportedTransactionVersion` 0. */
+/**
+ * A landed transaction as `getTransaction` returns it with encoding `base64` and `maxSupportedTransactionVersion` 1,
+ * the highest message version this package decodes.
+ */
 export interface SvmLanded {
   wire: Uint8Array;
   err: unknown | null;
@@ -331,10 +350,11 @@ class Cursor {
 }
 
 /**
- * Decodes a legacy or v0 wire transaction of at most 1,232 bytes; a longer one is `svm/tx-too-large`. Bytes that are not
- * one well-formed transaction are `svm/tx-malformed`, as is a v0 message with an address table lookup that names no
- * index, which the runtime refuses ("each lookup table must be used to load at least one account"). Each byte field is
- * a copy, so none shares memory with `wire`.
+ * Decodes a legacy or v0 wire transaction of at most 1,232 bytes, or a v1 wire transaction (SIMD-0385) of at most 4,096
+ * bytes; a longer one is `svm/tx-too-large`. Bytes that are not one well-formed transaction are `svm/tx-malformed`, as
+ * is a v0 message with an address table lookup that names no index, which the runtime refuses ("each lookup table must
+ * be used to load at least one account"), and a v1 message that SIMD-0385's sanitization refuses (`decodeV1`). Each
+ * byte field is a copy, so none shares memory with `wire`.
  */
 export function decodeSvmTx(wire: Uint8Array): SvmTx<ArrayBuffer> | Refusal {
   const d = decode(wire);
@@ -363,6 +383,7 @@ export function decodeWithLookups(wire: Uint8Array): { tx: SvmTx; lookups: reado
 
 function decode(wire: Uint8Array): Decoded | Refusal {
   if (!(wire instanceof Uint8Array) || wire.length === 0) return refusal("svm/tx-malformed");
+  if (wire[0] === V1_VERSION_BYTE) return decodeV1(wire);
   if (wire.length > MAX_WIRE) return refusal("svm/tx-too-large");
   try {
     const c = new Cursor(wire);
@@ -428,6 +449,88 @@ function decode(wire: Uint8Array): Decoded | Refusal {
 }
 
 /**
+ * A v1 wire transaction, laid out as SIMD-0385's *Transaction V1 Specification* states: the version byte 129, the
+ * legacy header, the `TransactionConfigMask` (u32 little-endian), the lifetime specifier (the recent blockhash or
+ * durable nonce), the instruction count and address count (one byte each), the addresses, one 4-byte config value per
+ * mask bit, one 4-byte header per instruction (program index, account count, data length as a u16 little-endian),
+ * each instruction's account indexes and data, then one 64-byte signature per required signer. The message every
+ * signer signs is every byte before the signatures, and no byte follows them. A v1 message has no address table
+ * lookups. `svm/tx-malformed` where SIMD-0385's sanitization refuses the message: no signer, or a read-only signer
+ * count not below the signer count; fewer addresses than the signers and read-only unsigned accounts, or more than 64;
+ * more than 12 signers or 64 instructions; an address listed twice; a program or account index not below the address
+ * count; only one of the priority fee's two mask bits set; a mask bit SIMD-0385 assigns no field; or a requested heap
+ * size that is not a multiple of 1,024 from 32,768 to 262,144. Over 4,096 bytes is `svm/tx-too-large`.
+ */
+function decodeV1(wire: Uint8Array): Decoded | Refusal {
+  if (wire.length > MAX_WIRE_V1) return refusal("svm/tx-too-large");
+  try {
+    const c = new Cursor(wire);
+    c.byte();
+    const requiredSignatures = c.byte();
+    const readonlySigned = c.byte();
+    const readonlyUnsigned = c.byte();
+    const mask = new DataView(c.bytes(4).slice().buffer).getUint32(0, true);
+    const blockhash = c.bytes(32);
+    const nIx = c.byte();
+    const nKeys = c.byte();
+    if (requiredSignatures === 0 || readonlySigned >= requiredSignatures) return refusal("svm/tx-malformed");
+    if (nKeys < requiredSignatures + readonlyUnsigned || nKeys > V1_MAX_ADDRESSES) return refusal("svm/tx-malformed");
+    if (requiredSignatures > V1_MAX_SIGNATURES || nIx > V1_MAX_INSTRUCTIONS) return refusal("svm/tx-malformed");
+    if ((mask & ~V1_CONFIG_BITS) !== 0) return refusal("svm/tx-malformed");
+    const fee = mask & V1_PRIORITY_FEE_BITS;
+    if (fee !== 0 && fee !== V1_PRIORITY_FEE_BITS) return refusal("svm/tx-malformed");
+    const keys: Uint8Array[] = [];
+    const seen = new Set<string>();
+    for (let i = 0; i < nKeys; i++) {
+      const key = c.bytes(32);
+      const k = keyString(key);
+      if (seen.has(k)) return refusal("svm/tx-malformed");
+      seen.add(k);
+      keys.push(key);
+    }
+    const values = c.bytes(4 * popcount(mask));
+    if ((mask & V1_HEAP_SIZE_BIT) !== 0) {
+      const heap = new DataView(values.slice(values.length - 4).buffer).getUint32(0, true);
+      if (heap % 1024 !== 0 || heap < 32 * 1024 || heap > 256 * 1024) return refusal("svm/tx-malformed");
+    }
+    const headers: { program: number; nAcc: number; nData: number }[] = [];
+    for (let i = 0; i < nIx; i++) {
+      const h = c.bytes(4);
+      headers.push({ program: h[0]!, nAcc: h[1]!, nData: h[2]! | (h[3]! << 8) });
+    }
+    const instructions: SvmInstruction[] = [];
+    for (const { program, nAcc, nData } of headers) {
+      const indices = c.bytes(nAcc);
+      const accounts = Array.from({ length: indices.length }, (_, j) => indices[j]!);
+      if (program >= nKeys || accounts.some((a) => a >= nKeys)) return refusal("svm/tx-malformed");
+      instructions.push({ program, accounts, data: c.bytes(nData) });
+    }
+    const messageEnd = c.at;
+    const signatures: Uint8Array[] = [];
+    for (let i = 0; i < requiredSignatures; i++) signatures.push(c.bytes(64));
+    if (c.at !== wire.length) return refusal("svm/tx-malformed");
+    return {
+      signatures,
+      message: wire.subarray(0, messageEnd),
+      keys,
+      instructions,
+      blockhash,
+      requiredSignatures,
+      loads: { writable: 0, readonly: 0 },
+      lookups: [],
+    };
+  } catch {
+    return refusal("svm/tx-malformed");
+  }
+}
+
+function popcount(v: number): number {
+  let n = 0;
+  for (let x = v; x !== 0; x &= x - 1) n++;
+  return n;
+}
+
+/**
  * The one top-level Memo instruction (v3 or v4) and the ATR hash its UTF-8 data carries in LCP string form. None, or
  * more than one, is `svm/memo-count`. The memo must be `toLcpString(h)` exactly, in lowercase hex; the same hash in
  * any other spelling is `svm/carrier-not-canonical`. A `tx` that is not a decoded transaction is `svm/tx-malformed`.
@@ -478,10 +581,10 @@ export async function svmDigest(tx: SvmTx): Promise<Hex> {
 /** The base64 wire in a payment, decoded, or the refusal naming what is wrong with it. */
 export function wireOf(b64: unknown): Uint8Array | Refusal {
   if (typeof b64 !== "string" || b64.length === 0) return refusal("svm/tx-malformed");
-  if (b64.length > Math.ceil(MAX_WIRE / 3) * 4 + 4) return refusal("svm/tx-too-large");
+  if (b64.length > Math.ceil(MAX_WIRE_V1 / 3) * 4 + 4) return refusal("svm/tx-too-large");
   const bytes = fromBase64(b64);
   if (bytes === null) return refusal("svm/tx-malformed");
-  if (bytes.length > MAX_WIRE) return refusal("svm/tx-too-large");
+  if (bytes.length > (bytes[0] === V1_VERSION_BYTE ? MAX_WIRE_V1 : MAX_WIRE)) return refusal("svm/tx-too-large");
   return bytes;
 }
 

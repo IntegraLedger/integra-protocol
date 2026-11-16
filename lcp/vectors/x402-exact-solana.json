@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. V3's row 4 is V2's wire with a bit set past the last byte in its last base64 character before the padding. Byte strings are hex unless named base64. carrierSpelling and durableNonce were built with solders 0.26.0 on Python 3.12.3 from the same seeds and inputs (the nonce account from seed 04x32, its authority the payer); durableNonce's messages were sent to the LiteSVM bundled with solders 0.26.0, whose outcomes and nonce account bytes the section records.",
+ "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. V3's row 4 is V2's wire with a bit set past the last byte in its last base64 character before the padding. Byte strings are hex unless named base64. carrierSpelling and durableNonce were built with solders 0.26.0 on Python 3.12.3 from the same seeds and inputs (the nonce account from seed 04x32, its authority the payer); durableNonce's messages were sent to the LiteSVM bundled with solders 0.26.0, whose outcomes and nonce account bytes the section records. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -366,6 +366,115 @@
   },
   "v1Digest": {
    "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
+   "expect": {
+    "state": "failed",
+    "why": "not-this-instrument"
+   }
+  }
+ },
+ "transactionV1": {
+  "case": "A version-1 transaction as the stock client writes it: @x402/svm 2.31.0 (npm, the devDependency this package pins), run offline: the payer's key from Ed25519 seed 01x32 (@solana/kit 8.4.0 createKeyPairSignerFromPrivateKeyBytes), the clock at now, the option's extra.recentBlockhash as the lifetime and transactionVersions [0, 1] as a stock facilitator advertises them (scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4), so the client builds version 1, the highest version both sides admit; the client's one RPC read, getAccountInfo of the asset, answered with an initialized SPL Token mint of 6 decimals owned by the Token program, and no other read made, the seller memo extra.memo being L. bound gives H from the one memo, extra.memo; reference gives the message's digest, the fee payer and the blockhash. landedWireBase64 is the stock wire with the fee payer's Ed25519 signature (seed 02x32, @noble/curves 2.4.0) of the message in signature slot 0; txid is that signature in base58. The message is every byte before the signatures (SIMD-0385, Transaction V1 Specification, at solana-foundation/solana-improvement-documents ae7b00f3), and messageSha256 is SHA-256 over it (node:crypto). status of the landed wire's reference, its transaction the txid, read at each row's commitment, answers the row's expect, and recover gives H. changed holds the stock wire with one member changed, each refused by bound with its code; landedChanged is the landed wire with the memo changed as changed's first row, read under the same txid, which status answers failed not-this-instrument, since its message digest is not the reference's",
+  "now": 1790000000,
+  "expectAsked": [
+   "getAccountInfo"
+  ],
+  "presented": {
+   "x402Version": 2,
+   "accepted": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "1000",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+     "transactionVersions": [
+      0,
+      1
+     ]
+    }
+   },
+   "payload": {
+    "transaction": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6Ozpgw="
+   }
+  },
+  "expectVersionByte": 129,
+  "messageLength": 381,
+  "messageSha256": "0x50660952e15e4a91a9de575967952c5f69d1c562e39c157d8dd56b5327b32bcf",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+   "digest": "0x50660952e15e4a91a9de575967952c5f69d1c562e39c157d8dd56b5327b32bcf",
+   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+  },
+  "landedWireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkCw7kV/lU1S2rQjclzsAEK1j9uBOSqbjmbEU3oxTyJPFi9yFgEXW/JZZi9jl+gpFmjetoM9Sovq4CstfJIsBBAWgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6Ozpgw=",
+  "txid": "DpjyYi7c6w3zzh6caNLqk3C1wdrgefRApYPLia8QDFPe5a9CnaVqBySDjuZasZrbjhKHniBCsGCkAqgsvA7dKon",
+  "statusRows": [
+   {
+    "at": "finalized",
+    "err": null,
+    "expect": {
+     "state": "settled",
+     "commitment": "finalized"
+    }
+   },
+   {
+    "at": "confirmed",
+    "err": null,
+    "expect": {
+     "state": "settled",
+     "commitment": "confirmed"
+    }
+   },
+   {
+    "at": "finalized",
+    "err": {
+     "InstructionError": [
+      0,
+      {
+       "Custom": 1
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "why": "err"
+    }
+   }
+  ],
+  "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "changed": [
+   {
+    "case": "the memo's last character, d, changed to e inside the signed message: the memo carries another hash than extra.memo's",
+    "wireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFlAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6Ozpgw=",
+    "expect": {
+     "refused": true,
+     "code": "svm/carrier-mismatch"
+    }
+   },
+   {
+    "case": "the version byte 129 changed to 130, a message version SIMD-0385 does not define",
+    "wireBase64": "ggIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6Ozpgw=",
+    "expect": {
+     "refused": true,
+     "code": "svm/tx-malformed"
+    }
+   },
+   {
+    "case": "one byte appended after the signatures, where SIMD-0385 admits none",
+    "wireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6OzpgwA",
+    "expect": {
+     "refused": true,
+     "code": "svm/tx-malformed"
+    }
+   }
+  ],
+  "landedChanged": {
+   "landedWireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFlCw7kV/lU1S2rQjclzsAEK1j9uBOSqbjmbEU3oxTyJPFi9yFgEXW/JZZi9jl+gpFmjetoM9Sovq4CstfJIsBBAWgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6Ozpgw=",
    "expect": {
     "state": "failed",
     "why": "not-this-instrument"
