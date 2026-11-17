@@ -221,7 +221,7 @@ function arrange(c: ReadCase, act: Act): { run: () => Promise<CaseAnswer> } {
       const memo = !s.carries ? null : token === undefined ? MEMO : pltMemo(H);
       return {
         kind: token === undefined ? ("ccd" as const) : ("plt" as const),
-        ...(token === undefined ? {} : { tokenId: token }),
+        ...(token === undefined ? {} : { tokenId: token, decimals: 6 }),
         receiver: s.account === "payee" && i === 0 ? PAYEE : receiverOf(m.to),
         amount: BigInt(m.amount),
         memo,

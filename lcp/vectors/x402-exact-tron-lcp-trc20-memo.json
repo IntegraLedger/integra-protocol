@@ -251,6 +251,7 @@
        "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
        "position": "86542790",
        "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "authority": "Permission_id 0",
        "moved": [],
        "reason": "other-account"
       }
@@ -518,6 +519,7 @@
      "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
      "position": "86542790",
      "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "authority": "Permission_id 0",
      "moved": [
       {
        "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
@@ -1262,6 +1264,7 @@
        "transaction": "0x34bfe9a22fd6879336629420e051c02d2c189112ece62ab9fc6444e051163c1f",
        "position": "86542793",
        "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "authority": "Permission_id 0",
        "moved": [
         {
          "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
@@ -1319,6 +1322,7 @@
        "transaction": "0x9f9506d1aa40d619bbde052e06da319af44c5efb8bba7c839d97c957d396ebc0",
        "position": "86542793",
        "signer": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+       "authority": "Permission_id 0",
        "moved": [
         {
          "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
@@ -1571,6 +1575,7 @@
        "transaction": "0xa9a23cb82ce9a82e539dbcdf357c4299c5dd3aef0e12cfa9fc7a2d75151e8d87",
        "position": "86542790",
        "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "authority": "Permission_id 0",
        "moved": [
         {
          "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
@@ -1640,6 +1645,7 @@
        "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
        "position": "86542790",
        "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "authority": "Permission_id 0",
        "moved": [
         {
          "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
@@ -1737,6 +1743,7 @@
        "transaction": "0x4336ce73c18b5d7c053064c87431eae9430dbab7827213772b5f29aa4492ae13",
        "position": "86542790",
        "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "authority": "Permission_id 0",
        "moved": [],
        "reason": "other-account"
       }

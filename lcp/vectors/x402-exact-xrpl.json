@@ -1133,7 +1133,7 @@
   ]
  },
  "read": {
-  "about": "The read of x402/exact/xrpl by the payer's instrument, its signer and its authority (the profile x402-exact-xrpl.md, rules 10 and 11), and the search's gate (rule 15), each row on a constructed server holding ledgers 1 to ledger + 1, ledger validated, ledger 1000 where the row names none (test/fixtures/xrpl-reader.ts): reference of the presented blob under V2's accepted, read from ledger 900 at the mark validated; account_tx answers the landed blob, or nothing where the row names none, for the payer's account alone (any other account's account_tx is empty, its account_info finds no account and its tickets are absent), validated at ledger 990 with meta.delivered_amount 1000000 drops where it succeeded and the result given otherwise; account_info answers accountSequence, and a ticket's ledger_entry ticketPresent, at both ledgers; tx answers the landed blob only where it is the presented one. Blobs are made with ripple-binary-codec 2.11.0 and @noble/curves' Ed25519 from the keys of Ed25519 entropy 01x16 (the payer) and 02x16, by xrpl.org's Ed25519 key derivation. Each expect is the answer the profile read-status (read-status.md) and the profile x402-exact-xrpl.md (rules 9 to 15) give that ledger, read at the mark validated for the act payment.",
+  "about": "The read of x402/exact/xrpl by the payer's instrument, its signer and its authority (the profile x402-exact-xrpl.md, rules 10 and 11), and the search's gate (rule 15), each row on a constructed server holding ledgers 1 to ledger + 1, ledger validated, ledger 1000 where the row names none (test/fixtures/xrpl-reader.ts): reference of the presented blob under V2's accepted, read from ledger 900 at the mark validated; account_tx answers the landed blob, or nothing where the row names none, for the payer's account alone (any other account's account_tx is empty, its account_info finds no account and its tickets are absent), validated at ledger 990 with meta.delivered_amount 1000000 drops where it succeeded, or the row's delivered, and the result given otherwise; account_info answers accountSequence, and a ticket's ledger_entry ticketPresent, at both ledgers; tx answers the landed blob only where it is the presented one. Blobs are made with ripple-binary-codec 2.11.0 and @noble/curves' Ed25519 from the keys of Ed25519 entropy 01x16 (the payer) and 02x16, by xrpl.org's Ed25519 key derivation. Each expect is the answer the profile read-status (read-status.md) and the profile x402-exact-xrpl.md (rules 9 to 15) give that ledger, read at the mark validated for the act payment.",
   "rows": [
    {
     "case": "a ticket: V2's fields with Sequence 0 and TicketSequence 9 (TicketSequence, ripple-binary-codec 2.11.0 dist/enums/definitions.json L572), signed again by its payer; the presented blob lands, the ticket absent at both ledgers: settled on it, presented yes",
@@ -1304,6 +1304,7 @@
        "transaction": "11843CB3FEF4CC1E6BC9B7DB27ABC4FA048D001070281D6D4BCCF8318014D813",
        "position": 990,
        "signer": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "authority": "Delegate for r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
        "moved": [
         {
          "asset": "XRP",
@@ -1338,6 +1339,32 @@
     "expect": {
      "state": "pending",
      "reason": "instrument-live",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a partial payment: V2's fields with Flags tfPartialPayment (131072, ripple-binary-codec 2.11.0 dist/enums/definitions.json L5283), signed by its payer (Ed25519 entropy 01x16), lands at ledger 990 with meta.delivered_amount 400000 drops of its Amount 1000000; it presented: settled on it, presented yes, what moved the delivered amount with the flag beside it, partial, observed and not judged (read-status rule 10)",
+    "presented": "12000022000200002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744085AE82DC863E42EACDBF7F53199D1AC2B523987051DF13F14917CBBB1E70E42C0C4A03FB4CD4FD2C967CBC90E9443C5D4AB62228F0365531D022D7B07E4E570481144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
+    "landed": "12000022000200002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9744085AE82DC863E42EACDBF7F53199D1AC2B523987051DF13F14917CBBB1E70E42C0C4A03FB4CD4FD2C967CBC90E9443C5D4AB62228F0365531D022D7B07E4E570481144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
+    "delivered": "400000",
+    "accountSequence": 8,
+    "ticketPresent": false,
+    "expect": {
+     "state": "settled",
+     "transaction": "08CE7DB5A96191FF7180ABF9169C154CF701AA416877427B9FC1007281E9397F",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "400000",
+       "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "transaction": "08CE7DB5A96191FF7180ABF9169C154CF701AA416877427B9FC1007281E9397F",
+       "partial": true
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "presented": "yes",
      "foreign": []
     }
    }

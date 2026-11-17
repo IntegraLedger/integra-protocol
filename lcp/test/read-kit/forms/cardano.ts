@@ -86,7 +86,8 @@ export function arrangeOn(method: CardanoRef["method"], c: ReadCase, act: Act): 
   seen.forEach((s, n) => {
     const holder: Who = s.party === "payee" ? PAYEE : s.party;
     const isSpender = s === spender;
-    const inputs = isSpender ? [REF_INPUT, inputN(n + 1)] : [inputN(n + 1)];
+    // Where the case reads no value, its one transaction is the body the reference names, which spends the input.
+    const inputs = isSpender || !valueRead ? [REF_INPUT, inputN(n + 1)] : [inputN(n + 1)];
     const outputs: TxSpec["outputs"] = [];
     const coin = BigInt(s.moved?.[0]?.amount ?? "1");
     const asset = s.moved?.[0]?.asset;

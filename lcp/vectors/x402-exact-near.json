@@ -862,6 +862,7 @@
         "transaction": "T4",
         "position": "200000010",
         "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
         "moved": [
          {
           "asset": "usdc.testnet",
@@ -960,6 +961,7 @@
         "transaction": "T5",
         "position": "200000015",
         "signer": "merchant.testnet",
+        "authority": "ed25519:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8",
         "moved": [
          {
           "asset": "usdc.testnet",
@@ -981,6 +983,7 @@
         "transaction": "T5",
         "position": "200000015",
         "signer": "merchant.testnet",
+        "authority": "ed25519:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8",
         "moved": [
          {
           "asset": "usdc.testnet",
@@ -1725,6 +1728,7 @@
         "transaction": "T1",
         "position": "200000010",
         "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
         "moved": [
          {
           "asset": "usdc.testnet",
@@ -1746,6 +1750,7 @@
         "transaction": "T1",
         "position": "200000010",
         "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
         "moved": [
          {
           "asset": "usdc.testnet",

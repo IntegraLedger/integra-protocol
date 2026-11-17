@@ -630,7 +630,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -683,7 +684,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -718,6 +720,7 @@
           "tokenId": "EURR",
           "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
           "amount": "5000000",
+          "decimals": 6,
           "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
          }
         ]
@@ -737,7 +740,8 @@
        "amount": "5000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "bb0658ef3b98011753b0db57689213692d3943fc5a34fc82c0d23722c060aba9",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -789,7 +793,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -899,7 +904,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "5917a61fb9223a4b93593929f30fb93e6a39a73c1f9e75b3cd04f691cadceb24",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -1033,7 +1039,8 @@
          "amount": "1000000",
          "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
          "transaction": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
-         "place": 0
+         "place": 0,
+         "decimals": 6
         }
        ],
        "reason": "other-account"
@@ -1087,7 +1094,8 @@
        "amount": "1000000",
        "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
        "transaction": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -1139,7 +1147,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD5xFFikFaU",
        "transaction": "3dc30e6000ef3e4b0f53e0a1826e022475c93b400e978c80ffcb744404fdb25e",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeSrK5wmYep",
@@ -1196,7 +1205,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "e9a7b11ff55237edbdd74a746fdeaa63c06be932b5b079573fc1fadc6a9af3d0",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -1349,7 +1359,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -1440,7 +1451,8 @@
          "amount": "1000000",
          "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
          "transaction": "c1af47f5ff422a704cc1966285cbd032e914584e7c69f64d3b730c1156bfa70c",
-         "place": 0
+         "place": 0,
+         "decimals": 6
         }
        ],
        "reason": "given"
@@ -2396,7 +2408,8 @@
        "amount": "1000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "5cb525127adbead6797acd0f57b3e70b88b7ca6501a570ac237bfc9d663da5d1",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -2447,7 +2460,8 @@
          "amount": "1000000",
          "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
          "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
-         "place": 0
+         "place": 0,
+         "decimals": 6
         }
        ],
        "reason": "payee-signed"
@@ -2500,7 +2514,8 @@
          "amount": "1000000",
          "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
          "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
-         "place": 0
+         "place": 0,
+         "decimals": 6
         }
        ],
        "reason": "payee-signed"
@@ -2644,7 +2659,8 @@
        "amount": "0",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "0ee1a5c6b5e132d9961ca99fa974c96c382a12882298138fbebdf5bc356b19cd",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -2678,6 +2694,7 @@
           "tokenId": "EURR",
           "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
           "amount": "5000000",
+          "decimals": 6,
           "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
          }
         ]
@@ -2697,7 +2714,8 @@
        "amount": "5000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "b9264a1bfd8716e8ffcddaa265387d1675b0c0b19b91d923689212cfd8d3fd41",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -2759,7 +2777,8 @@
          "amount": "1000000",
          "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
          "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
-         "place": 0
+         "place": 0,
+         "decimals": 6
         }
        ],
        "reason": "given"
@@ -2817,7 +2836,8 @@
          "amount": "0",
          "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
          "transaction": "1bd2dd330385606d92cb3af02b48d08e7ce349817addfaafa5d93e1a2d8e9aa2",
-         "place": 0
+         "place": 0,
+         "decimals": 6
         }
        ],
        "reason": "other-account"
@@ -2873,6 +2893,7 @@
           "tokenId": "EURR",
           "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
           "amount": "5000000",
+          "decimals": 6,
           "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
          }
         ]
@@ -2892,7 +2913,8 @@
        "amount": "5000000",
        "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
        "transaction": "b80be2c4ddccea7f927c9248547336eca733f36202ea5505e6e0a311708b05ac",
-       "place": 0
+       "place": 0,
+       "decimals": 6
       }
      ],
      "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
@@ -2970,7 +2992,8 @@
          "amount": "1000000",
          "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
          "transaction": "b58aea6bd5834853b5b8231b9e1dcf3d1bc568922687f79a51323dcb5523d29c",
-         "place": 0
+         "place": 0,
+         "decimals": 6
         }
        ],
        "reason": "other-account"
@@ -3146,6 +3169,7 @@
         "tokenId": "EURR",
         "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
         "amount": "5000000",
+        "decimals": 6,
         "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
        }
       ]

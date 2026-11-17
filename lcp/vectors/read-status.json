@@ -2003,6 +2003,45 @@
    }
   },
   {
+   "case": "a read with no means to read the single-use value that meets a failed result of the payer's, which the read does not show consumed the value, answers search-incomplete and never not-found, whether or not it is the act asked about",
+   "rules": "20, 23",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "t1",
+      "position": 10,
+      "mark": "final",
+      "result": "failed",
+      "consumed": false,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "other"
+     }
+    ],
+    "search": {
+     "whole": true
+    },
+    "history": true
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   }
+  },
+  {
    "case": "below-mark is answered before instrument-live",
    "rules": "22",
    "coverage": "full",

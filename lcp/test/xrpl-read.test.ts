@@ -1,6 +1,6 @@
 // Runs x402-exact-xrpl.json's read rows through x402/exact/xrpl's status: the read by the payer's instrument of a
 // ticket, used and not yet used, a validated tec result, a re-signed copy, a delegated payment, an inner Batch payment, a payment the payee
-// signed as the payer's Delegate, and one that signs no LastLedgerSequence; and the search's gate, which holds a lapse
+// signed as the payer's Delegate, one that signs no LastLedgerSequence, and a partial payment; and the search's gate, which holds a lapse
 // and a sequence number another payment took. Every expected answer is the file's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -19,13 +19,14 @@ interface ReadRow {
   ledger?: number;
   result?: string;
   parent?: string;
+  delivered?: string;
   accountSequence: number;
   ticketPresent: boolean;
   expect: unknown;
 }
 
 describe("x402-exact-xrpl.json read: the read by the instrument, its signer and its authority", () => {
-  for (const row of rowsOf<ReadRow>(V.read.rows, "x402-exact-xrpl.json read.rows", { exact: 10 })) {
+  for (const row of rowsOf<ReadRow>(V.read.rows, "x402-exact-xrpl.json read.rows", { exact: 11 })) {
     it(row.case, async () => {
       const payment = { x402Version: 2, accepted: V.V2.accepted, payload: { signedTxBlob: row.presented } };
       const ref = await exactXrpl.reference(payment as never, V.V2.accepted);
@@ -34,7 +35,7 @@ describe("x402-exact-xrpl.json read: the read by the instrument, its signer and 
         row.landed === undefined
           ? undefined
           : landed(row.landed, {
-              ...(row.result === undefined ? { delivered: "1000000" } : { result: row.result }),
+              ...(row.result === undefined ? { delivered: row.delivered ?? "1000000" } : { result: row.result }),
               ...(row.parent === undefined ? {} : { parent: row.parent }),
             });
       const validated = row.ledger ?? 1000;

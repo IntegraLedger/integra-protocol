@@ -153,6 +153,15 @@ function movedOf(amount: XrplAmount | undefined, to: string | undefined, transac
   return undefined;
 }
 
+/**
+ * Whether a Payment sets `tfPartialPayment` (131072, ripple-binary-codec 2.11.0 `dist/enums/definitions.json` L5283),
+ * by which its payer let it deliver less than its `Amount`.
+ */
+function partialPayment(tx: XrplTxJson): boolean {
+  const flags = tx["Flags"];
+  return typeof flags === "number" && Number.isInteger(flags) && (flags & 131072) !== 0;
+}
+
 /** The authority a transaction acted under, beside its signer: its `Signers`, its `Delegate`, or its `Batch`. */
 function authorityOf(tx: XrplTxJson, landed: XrplLanded): string | undefined {
   if (Array.isArray(tx["Signers"])) {
@@ -247,7 +256,7 @@ async function classify(
         : tx.TransactionType === "Payment"
           ? movedOf(l.delivered, destination, hash)
           : undefined;
-    moved = m === undefined ? undefined : [m];
+    moved = m === undefined ? undefined : [tx.TransactionType === "Payment" && partialPayment(tx) ? { ...m, partial: true } : m];
   }
   const authority = authorityOf(tx, l);
   return {

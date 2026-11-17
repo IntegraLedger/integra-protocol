@@ -32,6 +32,17 @@ export interface Moved {
    * receipt's logs; elsewhere the position of the instruction, operation, output or event it was read from.
    */
   readonly place?: number | string;
+  /**
+   * Where the ledger states it for the asset, the number of decimals in which `amount` is written: `amount` counts the
+   * asset's smallest unit, and the amount in the asset's own unit is `amount` × 10^-`decimals`. Observed, and never
+   * compared with anything.
+   */
+  readonly decimals?: number;
+  /**
+   * True where the ledger records that the payer signed the payment as one that may deliver less than the amount it
+   * names, and `amount` is then what it delivered; absent otherwise. Observed, and never judged.
+   */
+  readonly partial?: true;
 }
 
 /** A transaction that carries H, succeeded, and is not the act asked about. */
@@ -39,6 +50,8 @@ export interface ForeignItem<Position> {
   readonly transaction: string;
   readonly position?: Position;
   readonly signer?: string;
+  /** The authority the ledger records for its signer, where the read records one. */
+  readonly authority?: string;
   readonly moved?: readonly Moved[];
   readonly reason: ForeignReason;
 }
@@ -207,8 +220,9 @@ const PENDING_ORDER: readonly PendingReason[] = ["below-mark", "instrument-live"
  * transaction of `instrument-consumed`; `failed` only at the final mark and, at
  * coverage `full`, only once the search was read whole, an item it could not decode that the caller did not give
  * holding it; a value read consumed, at the final mark or at the latest head, with no transaction found as
- * `search-incomplete`; `instrument-live` only where the value reads unconsumed at the final mark and at the latest
- * head; `not-found` only where the reader showed its history, and `history-gap` otherwise; and the `pending` reasons in
+ * `search-incomplete`, and so is a value unread beside a failed result of the payer's that the read does not show
+ * consumed it; `instrument-live` only where the value reads unconsumed at the final mark and at the latest head;
+ * `not-found` only where the reader showed its history, and `history-gap` otherwise; and the `pending` reasons in
  * their order, `search-incomplete` held at the first item it could not decode and naming each. A `settled` answer
  * states `presented` as the read compared the act with what was presented, and none where it made no comparison; it
  * never changes which state is answered. Every transaction that
@@ -336,7 +350,9 @@ export function decide<Ref, Position, Mark, Cursor>(
     else if (v.lapsed) failedAt("instrument-unused", v.mark);
     else if (isFinal(v.mark) && v.head !== undefined) pendingReasons.add("instrument-live");
     else pendingReasons.add("search-incomplete");
-  } else if (facts.seen.some((s) => ownFailed(s) && !s.consumed)) {
+  } else if (facts.seen.some((s) => s.result === "failed" && s.party === "payer" && !s.consumed)) {
+    // With the value unread, a failed result of the payer's that the read does not show consumed it, the act's own or
+    // another, leaves the value's state unshown: it may have been taken, or the signed act may still land.
     pendingReasons.add("search-incomplete");
   }
 
@@ -387,6 +403,7 @@ function itemOf<Position, Mark>(s: Seen<Position, Mark>, reason: ForeignReason):
     transaction: s.transaction,
     ...(s.position === undefined ? {} : { position: s.position }),
     ...(s.signer === undefined ? {} : { signer: s.signer }),
+    ...(s.authority === undefined ? {} : { authority: s.authority }),
     ...(s.moved === undefined ? {} : { moved: s.moved }),
     reason,
   };

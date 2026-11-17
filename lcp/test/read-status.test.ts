@@ -251,3 +251,15 @@ describe("decide on a query it cannot read", () => {
     }
   });
 });
+
+describe("decide on a foreign item", () => {
+  it("names it with its signer, the authority the read records for it, and what it moved", async () => {
+    const { decide } = await import("../src/internal/read.js");
+    const ledger = { coverage: "full" as const, final: 1, markOrder: (a: number, b: number) => a - b, positionOrder: (a: number, b: number) => a - b };
+    const moved = [{ asset: "A", amount: "1", to: "other", transaction: "f", place: 0 }];
+    const f = { transaction: "f", position: 3, mark: 1, result: "succeeded" as const, consumed: false, carries: true, party: "other" as const, kind: "same" as const, account: "other" as const, signer: "s", authority: "lsig", moved };
+    const facts = { seen: [f], search: { whole: true }, history: true };
+    const answer = decide(facts, { act: "payment", finality: 1 }, ledger);
+    expect(answer.foreign).toEqual([{ transaction: "f", position: 3, signer: "s", authority: "lsig", moved, reason: "other-signer" }]);
+  });
+});

@@ -43,11 +43,18 @@ export type { Broadcaster } from "./internal/broadcaster.js";
 /** CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash. */
 export type CcdNetwork = `ccd:${string}`;
 
+/**
+ * One transfer an item's effects or events list: CCD, its amount in microCCD (concordium-grpc-api
+ * `v2/concordium/types.proto` L328, `Amount`), or a PLT by its token id, its amount the `value` of the event's
+ * `TokenAmount` and `decimals` that amount's own (`v2/concordium/protocol-level-tokens.proto` L43-50 at 30c79ca0).
+ */
 export interface CcdTransfer {
   kind: "ccd" | "plt";
   tokenId?: string;
   receiver: Uint8Array;
   amount: bigint;
+  /** A PLT's: the `decimals` of its `TokenAmount`. A CCD transfer gives none, microCCD being six. */
+  decimals?: number;
   memo: Uint8Array | null;
 }
 

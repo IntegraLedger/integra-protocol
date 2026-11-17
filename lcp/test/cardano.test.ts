@@ -793,7 +793,7 @@ describe("the read kit's lock form runs the script lock's read", () => {
         if (outcome === "ran" && runsOnScript(c)) ran.push(`${c.case} (act ${act})`);
       }
     }
-    rowsOf(ran, "the lock's cases on the script lock", { exact: 47 });
+    rowsOf(ran, "the lock's cases on the script lock", { exact: 48 });
     expect([...SCRIPT_RAN].sort()).toEqual(ran.sort());
   });
 });

@@ -433,7 +433,7 @@ const chargeWords: Inapplicable[] = [
   stated("a value whose validity passed, unconsumed at the final mark and consumed at the latest head", ONE_MARK),
   stated("a read that did not read the value at the latest head", ONE_MARK),
   stated("a value read consumed whose transaction the search has not found", NAMES_IT),
-  stated("a read with no means to read the single-use value", HOLDS_ID),
+  ...statedAll("a read with no means to read the single-use value", 2, HOLDS_ID),
   stated("a payment act carrying H that transferred zero", ZERO),
   stated("an act carrying H that transferred zero", ZERO),
   stated("the settled act's answer names every foreign item", BEFORE_FAILED),

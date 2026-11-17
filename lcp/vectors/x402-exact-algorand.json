@@ -1332,6 +1332,7 @@
        "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
        "position": "67634790",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "sig",
        "moved": [
         {
          "asset": "10458941",
@@ -1418,6 +1419,7 @@
        "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
        "position": "67634790",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "sig",
        "moved": [
         {
          "asset": "10458941",
@@ -1609,6 +1611,7 @@
        "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
        "position": "67634795",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "sig",
        "moved": [
         {
          "asset": "10458941",
@@ -1711,7 +1714,7 @@
     }
    },
    {
-    "case": "the search meets a transaction carrying H that the payee signed, one under a logic signature, one that names asnd, an inner transaction and the payer's payment of ALGO: each a foreign item",
+    "case": "the search meets a transaction carrying H that the payee signed, one under a logic signature, one that names asnd, an inner transaction and the payer's payment of ALGO: each a foreign item, named with its signer and its authority, the logic signature's logicsig and the inner transaction's none",
     "query": {
      "after": "67634700"
     },
@@ -1852,6 +1855,7 @@
        "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
        "position": "67634799",
        "signer": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "authority": "sig",
        "moved": [
         {
          "asset": "10458941",
@@ -1867,6 +1871,7 @@
        "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
        "position": "67634798",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "logicsig",
        "moved": [
         {
          "asset": "10458941",
@@ -1882,6 +1887,7 @@
        "transaction": "LGQX7ZCEJDKYV2BP5SVZNYPAZMJP3KVTVY4YF43OS2S4WVNGGI2Q",
        "position": "67634797",
        "signer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "authority": "sig",
        "moved": [
         {
          "asset": "10458941",
@@ -1897,6 +1903,7 @@
        "transaction": "FW5NQL5QD4MF6V6C5VGOFKOROOX2ULKS3GYKATJT25G2YEYYEXEQ",
        "position": "67634796",
        "signer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "authority": "none",
        "moved": [
         {
          "asset": "10458941",
@@ -1912,6 +1919,7 @@
        "transaction": "MPOC3JAS2EHCERRYBE2CDYDVILZY4QBUMU4BWYFG6VHESMKQG5ZQ",
        "position": "67634795",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "sig",
        "reason": "other-kind"
       }
      ]
@@ -1965,6 +1973,7 @@
        "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
        "position": "67634740",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "sig",
        "moved": [
         {
          "asset": "10458941",
@@ -2110,6 +2119,7 @@
        "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
        "position": "67634740",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "logicsig",
        "moved": [
         {
          "asset": "10458941",
@@ -2184,6 +2194,7 @@
        "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
        "position": "67634740",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "logicsig",
        "moved": [
         {
          "asset": "10458941",
@@ -2249,6 +2260,7 @@
        "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
        "position": "67634740",
        "signer": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "authority": "sig",
        "moved": [
         {
          "asset": "10458941",
@@ -2331,6 +2343,7 @@
        "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
        "position": "67634740",
        "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "authority": "logicsig",
        "moved": [
         {
          "asset": "10458941",

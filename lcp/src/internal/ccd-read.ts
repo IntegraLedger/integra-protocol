@@ -287,7 +287,10 @@ function carriesOf(p: CcdPayload, h: CcdRef["h"]): { carries: boolean; one: bool
   }
 }
 
-/** What an item's outcome moved: each transfer it lists, named by the item's hash and its index among them. */
+/**
+ * What an item's outcome moved: each transfer it lists, named by the item's hash and its index among them, with the
+ * decimals of its amount: six for CCD, in microCCD, and a PLT's own.
+ */
 function movedOf(outcome: InBlock, hash: string): Moved[] {
   return outcome.transfers.map((t, place) => ({
     asset: t.kind === "ccd" ? "CCD" : (t.tokenId ?? ""),
@@ -295,6 +298,7 @@ function movedOf(outcome: InBlock, hash: string): Moved[] {
     to: accountText(t.receiver),
     transaction: hash,
     place,
+    decimals: t.kind === "ccd" ? CCD_DECIMALS : t.decimals!,
   }));
 }
 
@@ -362,12 +366,20 @@ export function isItem(v: unknown): v is CcdItem {
     transfers.every(
       (t: unknown) =>
         isObject(t) &&
-        (t["kind"] === "ccd" || t["kind"] === "plt") &&
+        (t["kind"] === "ccd" ? t["decimals"] === undefined : t["kind"] === "plt" && isDecimals(t["decimals"])) &&
         t["receiver"] instanceof Uint8Array &&
         typeof t["amount"] === "bigint" &&
         (t["memo"] === null || t["memo"] instanceof Uint8Array),
     )
   );
+}
+
+/** The decimals of a CCD amount, in microCCD (concordium-grpc-api `v2/concordium/types.proto` L328 at 30c79ca0). */
+const CCD_DECIMALS = 6;
+
+/** A `TokenAmount`'s `decimals`, a `uint32` (`v2/concordium/protocol-level-tokens.proto` L49 at 30c79ca0). */
+function isDecimals(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
 }
 
 /** A reference in the form `reference` writes it. */

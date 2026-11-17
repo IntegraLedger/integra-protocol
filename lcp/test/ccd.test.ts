@@ -48,7 +48,7 @@ function set(base: unknown, changes: Record<string, unknown>): unknown {
   return copy;
 }
 
-type FixtureTransfer = { kind: "ccd" | "plt"; tokenId?: string; receiver: string; amount: string; memo: string | null };
+type FixtureTransfer = { kind: "ccd" | "plt"; tokenId?: string; receiver: string; amount: string; decimals?: number; memo: string | null };
 type FixtureOutcome = { success: boolean; transfers: FixtureTransfer[]; unknown?: boolean };
 type FixtureItem = null | "reader-error" | { state: "received" } | ({
   state: "committed" | "finalized"; sender: string | null; height?: string; nonce?: string;
@@ -59,6 +59,7 @@ const transfersOf = (ts: FixtureTransfer[]) =>
     ...(t.tokenId !== undefined ? { tokenId: t.tokenId } : {}),
     receiver: bytes(t.receiver),
     amount: BigInt(t.amount),
+    ...(t.decimals !== undefined ? { decimals: t.decimals } : {}),
     memo: t.memo === null ? null : bytes(t.memo),
   }));
 function itemOf(f: Exclude<FixtureItem, null | "reader-error">): CcdItem {
@@ -378,6 +379,34 @@ describe("x402/exact/ccd", () => {
       ] as const) {
         const reader: CcdReader = { ...nodeReader(V.D5.rows[0].node), lastFinal: async () => { throw error; } };
         expect(await exactCcd.status(V.D5.ref, reader, queryOf())).toEqual({ state: "unreadable", reason, foreign: [] });
+      }
+    });
+    it("an outcome whose PLT transfer gives no decimals, or whose CCD transfer gives some, is unreadable unparseable", async () => {
+      const each = (node: Node, kind: "ccd" | "plt", change: (t: Record<string, unknown>) => void): Node => {
+        const copy = structuredClone(node);
+        const walk = (v: unknown): void => {
+          if (Array.isArray(v)) v.forEach(walk);
+          else if (v !== null && typeof v === "object") {
+            const o = v as Record<string, unknown>;
+            if (o["kind"] === kind && "receiver" in o) change(o);
+            Object.values(o).forEach(walk);
+          }
+        };
+        walk(copy);
+        return copy;
+      };
+      const plt = V.D5.rows.find((r: { case: string }) => r.case.startsWith("a token transfer carrying H in its memo"));
+      const ccd = V.D5.rows[0];
+      const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };
+      for (const [row, kind, change] of [
+        [plt, "plt", (t: Record<string, unknown>) => delete t["decimals"]],
+        [plt, "plt", (t: Record<string, unknown>) => (t["decimals"] = 1.5)],
+        [ccd, "ccd", (t: Record<string, unknown>) => (t["decimals"] = 6)],
+      ] as const) {
+        const ref = { ...V.D5[row.ref ?? "ref"], ...(row.refSet ?? {}) };
+        expect(withStrings(await exactCcd.status(ref, nodeReader(row.node, undefined, ref.sender), queryOf(row.query)))).toEqual(row.expect);
+        const changed = nodeReader(each(row.node, kind, change), undefined, ref.sender);
+        expect(await exactCcd.status(ref, changed, queryOf(row.query))).toEqual(unparseable);
       }
     });
     // A ref not in the form reference writes cannot name the act, so the read is unreadable unparseable, never failed.
