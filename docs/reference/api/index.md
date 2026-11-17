@@ -154,7 +154,7 @@ the option a payment answers, and what `status` and `recover` take and answer.
 | <a id="property-placedin"></a> `placedIn` | `readonly` | `unknown` | What `advertise` places H in: the document, or nothing where H goes into values the seller places itself. |
 | <a id="property-query"></a> `query` | `readonly` | `unknown` | What `status` takes beside the reference and the reader. |
 | <a id="property-receipt"></a> `receipt?` | `readonly` | `unknown` | The receipt `keySearch` reads; absent where the pairing has no `keySearch`. |
-| <a id="property-rest"></a> `rest` | `readonly` | readonly `unknown`[] | The arguments `advertise` takes after `offer`: on MPP the challenge's position, then the agreement URL. |
+| <a id="property-rest"></a> `rest` | `readonly` | readonly `unknown`[] | The arguments `advertise` takes after `offer`: on MPP the challenge's position, the act, then the agreement URL. |
 | <a id="property-unsigned"></a> `unsigned` | `readonly` | `unknown` | What `build` gives the payer to sign. |
 
 ***
@@ -182,6 +182,19 @@ A transaction that carries H, succeeded, and is not the act asked about.
 
 ***
 
+### LegalContextRecord
+
+What a resource server's own record holds for the request a return names: the sale's H, and its return value where it has one.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-h"></a> `h` | `` `0x${string}` `` |
+| <a id="property-returnvalue"></a> `returnValue?` | `Uint8Array`\<`ArrayBufferLike`\> |
+
+***
+
 ### LegalContextReturn
 
 What a `Legal-Context` header carries: H, and the sale's return value where it has one, as 32 bytes.
@@ -190,8 +203,8 @@ What a `Legal-Context` header carries: H, and the sale's return value where it h
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-h"></a> `h` | `` `0x${string}` `` |
-| <a id="property-returnvalue"></a> `returnValue?` | `Uint8Array`\<`ArrayBufferLike`\> |
+| <a id="property-h-1"></a> `h` | `` `0x${string}` `` |
+| <a id="property-returnvalue-1"></a> `returnValue?` | `Uint8Array`\<`ArrayBufferLike`\> |
 
 ***
 
@@ -313,7 +326,7 @@ The act `status` is asked about.
 
 ### Binding
 
-> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`agentPay`](card.md#agentpay) \| *typeof* [`visaVic`](card.md#visavic) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) \| *typeof* [`checkoutMandateX402`](ap2.md#checkoutmandatex402) \| *typeof* [`agentSigned`](ucp.md#agentsigned) & `PushMode` & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
+> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`agentPay`](card.md#agentpay) \| *typeof* [`visaVic`](card.md#visavic) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) \| *typeof* [`checkoutMandateX402`](ap2.md#checkoutmandatex402) \| *typeof* [`agentSigned`](ucp.md#agentsigned) \| *typeof* [`spendPermissionsEip155`](spend-permissions.md#spendpermissionseip155) & `PushMode` & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
 
 A pairing of protocol, scheme and rail.
 
@@ -545,7 +558,7 @@ What the basic URL parser gives for an absolute URL's scheme and authority.
 
 ### X402Binding
 
-> **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCardanoLock`](cardano.md#exactcardanolock) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm)
+> **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCardanoLock`](cardano.md#exactcardanolock) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactLnbtcPaymentHash`](lightning.md#exactlnbtcpaymenthash) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactStellarPrecondition`](x402-exact-stellar.md#exactstellarprecondition) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm) \| *typeof* [`exactGatewayBatched`](x402.md#exactgatewaybatched) \| *typeof* [`uptoXrpl`](x402-upto-xrpl.md#uptoxrpl)
 
 An x402 pairing of scheme and rail.
 
@@ -580,6 +593,14 @@ and `@integraledger/lcp/hedera`, the entry points whose pairings write it.
 > `const` **LEGAL\_CONTEXT\_HEADER**: `"Legal-Context"` = `"Legal-Context"`
 
 The header's name.
+
+***
+
+### LEGAL\_CONTEXT\_META
+
+> `const` **LEGAL\_CONTEXT\_META**: `"com.integraledger.lcp/legal-context"` = `"com.integraledger.lcp/legal-context"`
+
+The `_meta` key under which an MCP tool result, and each later tool call's `params`, carry the header's value.
 
 ***
 
@@ -719,7 +740,9 @@ is returned as a refusal, from the first check that fails, in this order:
 6. The binding value is a JSON value `JSON.stringify` writes exactly, every number a safe integer, nested at most 64
    levels (`core/binding-not-json`).
 7. The assembled length is at most the limit (`core/too-large`).
-8. Each party's bytes, in order, are one JSON value (`core/content-not-json`).
+8. Each party's bytes, in order, are one JSON value in which no object repeats a member name, names compared after
+   their escapes are decoded, no number overflows a double, and no integer lies beyond 2^53 - 1 either way
+   (`core/content-not-json`).
 
 Each input is read once: each array's length and members, each party's name, bytes and size, and each member of
 the binding value, in the one walk that checks the value and writes it. What is checked is what is written, an input
@@ -860,6 +883,30 @@ base64url, without padding, of H's 32 bytes, then `.` and the challenge's positi
 
 ***
 
+### checkLegalContextReturn()
+
+> **checkLegalContextReturn**(`value`, `record`): `true` \| [`Refusal`](#refusal)
+
+The check a resource server makes of a return: `value`, a `Legal-Context` header's value or the same value from an
+MCP `_meta`, read as `fromLegalContextHeader` reads it (`return/header-malformed`); its H the record's H
+(`return/not-this-sale`); and its return value the record's, compared in constant time, an `rv` given where the
+record holds none and none given where it holds one refused alike (`return/value-mismatch`). True where all hold. A
+record whose H is not a 32-byte hash is `return/not-this-sale`, and one whose return value is not 32 bytes is
+`return/value-mismatch`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `value` | `unknown` |
+| `record` | [`LegalContextRecord`](#legalcontextrecord) |
+
+#### Returns
+
+`true` \| [`Refusal`](#refusal)
+
+***
+
 ### digestJson()
 
 > **digestJson**(`v`): `Promise`\<`` `0x${string}` `` \| [`CoreRefusal`](#corerefusal)\>
@@ -990,10 +1037,12 @@ are ignored.
 
 > **fromLegalContextHeader**(`value`): [`Refusal`](#refusal) \| [`LegalContextReturn`](#legalcontextreturn)
 
-H, and the return value where the header carries `rv`, from a `Legal-Context` header's value: an RFC 9651 Item whose
-bare item is a token that is H's LCP string in lowercase hex, with no parameter but `rv`, a byte sequence of 32 bytes
-in canonical padded base64, and spaces only where RFC 9651 admits them (before and after the item, and after a `;`).
-Any other value is `return/header-malformed`.
+H, and the return value where the header carries `rv`, from a `Legal-Context` header's value, parsed as an RFC 9651
+Item (section 4.2): spaces before and after the item and after each `;`; a bare item that is a token, H's LCP string
+in lowercase hex; and parameters whose keys are `rv` alone, a repeated key overwriting the value before it
+(section 4.2.3.2). `rv` is a byte sequence of 32 bytes in the standard base64 alphabet, read with its `=` padding
+absent and with bits set past its last byte, which section 4.2.7 says a parser should not refuse. Any other value is
+`return/header-malformed`.
 
 #### Parameters
 

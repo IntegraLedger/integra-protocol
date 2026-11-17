@@ -20,6 +20,7 @@
     "mpp",
     "near",
     "polkadot",
+    "spend-permissions",
     "stacks",
     "starknet",
     "stellar",
@@ -35,6 +36,7 @@
     "x402-exact-stellar",
     "x402-exact-xrpl",
     "x402-upto-solana",
+    "x402-upto-xrpl",
     "xrpl"
   ]
 }

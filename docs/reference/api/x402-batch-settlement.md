@@ -17,13 +17,13 @@ description: "The exports of @integraledger/lcp/x402-batch-settlement."
 
 | Property | Type | Description | Inherited from |
 | ------ | ------ | ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - | [`X402Choice`](x402.md#x402choice).[`accepted`](x402.md#property-accepted) |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - | [`X402Choice`](x402.md#x402choice).[`accepted`](x402.md#property-accepted-1) |
 | <a id="property-authsalt"></a> `authSalt` | `` `0x${string}` `` | 32 bytes the caller draws at random: the deposit authorization's salt (ERC-3009) or the deposit permit's nonce (Permit2); under an option in the scheme's refund-authorizer mode, where H is that salt or nonce, the entropy the channel salt packs. | - |
 | <a id="property-deposit"></a> `deposit` | `bigint` | - | - |
-| <a id="property-from"></a> `from` | `` `0x${string}` `` | - | [`X402Choice`](x402.md#x402choice).[`from`](x402.md#property-from) |
-| <a id="property-now"></a> `now` | `number` | - | [`X402Choice`](x402.md#x402choice).[`now`](x402.md#property-now) |
+| <a id="property-from"></a> `from` | `` `0x${string}` `` | - | [`X402Choice`](x402.md#x402choice).[`from`](x402.md#property-from-1) |
+| <a id="property-now"></a> `now` | `number` | - | [`X402Choice`](x402.md#x402choice).[`now`](x402.md#property-now-1) |
 | <a id="property-payerauthorizer"></a> `payerAuthorizer` | `` `0x${string}` `` | - | - |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - | [`X402Choice`](x402.md#x402choice).[`required`](x402.md#property-required) |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - | [`X402Choice`](x402.md#x402choice).[`required`](x402.md#property-required-1) |
 
 ***
 
