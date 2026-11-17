@@ -1,8 +1,8 @@
 // A TON ledger written as a TON Center v3 index would answer for it: the payer's W5 wallet, its transactions newest
 // first, each linked to its predecessor with the account's status and data hash before and after it, the Jetton wallets
 // each run's transfer reached, and the index's statement of the blocks it holds. It is a constructed fixture, not a
-// recorded one: the read kit's TON form and tvm.test.ts arrange their cases on it, and the recorded answers of a tvm:-3
-// index are owed by the run at step 4. The cells are written with @ton/core 0.63.1 as the profile x402-exact-tvm lays
+// recorded one: the read kit's TON form and tvm.test.ts arrange their cases on it, and no recorded answer of a tvm:-3
+// index is held yet. The cells are written with @ton/core 0.63.1 as the profile x402-exact-tvm lays
 // them out; the presented request is the vector file's (V2's settlement).
 import { readFileSync } from "node:fs";
 import { Address, beginCell, Cell } from "@ton/core";

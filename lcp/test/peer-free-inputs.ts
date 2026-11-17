@@ -938,7 +938,7 @@ export function tvmStatusRows(): StatusRow[] {
     ["the same, confirmed", { head: VU - 100, seqno: 6, run: { finality: 1, delivery: "payee" } }, { ...settled, state: "pending", reason: "below-mark", finality: "confirmed", presented: undefined }, 9],
     ["the request's run, its transfer not yet taken", { head: VU - 100, seqno: 6, run: { finality: 2, delivery: "untaken" } }, { state: "pending", reason: "search-incomplete", search: { top: { hash: "w5", lt: "2" }, next: { hash: "w5", lt: "2" } }, foreign: [] }, 6],
     ["no run, the number not passed, before the validity", { head: VU - 100, seqno: 5 }, { state: "pending", reason: "instrument-live", foreign: [] }, 4],
-    // The step-4 gate: the expiry read proves no absence until a run shows the index lists whole, so no failed but before-position.
+    // The expiry read proves no absence until a run shows the index lists whole, so no failed but before-position.
     ["no run, the number not passed, the validity past at the stated block: search-incomplete", { head: VU + 100, seqno: 5 }, { state: "pending", reason: "search-incomplete", foreign: [] }, 4],
     ["a wallet that is not W5, nothing found", { head: VU + 100, seqno: 5, code: "other" }, { state: "pending", reason: "not-found", foreign: [] }, 4],
     ["a frozen wallet, read as uninit, the validity past: search-incomplete under the gate", { head: VU + 100, seqno: 5, status: "frozen" }, { state: "pending", reason: "search-incomplete", foreign: [] }, 4],

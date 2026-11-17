@@ -369,7 +369,7 @@
     {
       "unit": "Hedera session channels",
       "exports": {
-        "./hedera": ["CHANNEL_CLOSED_TOPIC", "CHANNEL_OPENED_TOPIC", "HederaChannelConfig", "hederaChannelId", "HederaCloseRef", "HederaEvmReader", "HederaSessionRef", "hederaVoucher"]
+        "./hedera": ["CHANNEL_CLOSED_TOPIC", "CHANNEL_OPENED_TOPIC", "HederaChannelConfig", "hederaChannelId", "HederaCloseRef", "hederaVoucher"]
       },
       "use": "Any buyer and seller of a Hedera session compute its channel's id, sign and check its vouchers, and read its opening and close.",
       "fixedBy": "MPP's Hedera session draft; mpp-session-hedera-solana-xrpl.md."

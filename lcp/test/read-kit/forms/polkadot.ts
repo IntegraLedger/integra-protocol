@@ -259,8 +259,8 @@ function opening(words: string, stated: string): Inapplicable[] {
 const ENTRY = "Declared inapplicable to the read kit: ";
 const PROFILE = "; the profile x402-exact-polkadot-lcp-assets-remark.md, rule 8, Cases that cannot arise";
 const NONCE_HELD =
-  "*a read with no means to read the single-use value*, *search-incomplete is answered before not-found* and *a read that " +
-  "did not read the value at the latest head*, since the read holds the account nonce and reads it at finalized and at the " +
+  "*a read with no means to read the single-use value* and *a read that did not read the value at the latest head*, " +
+  "since the read holds the account nonce and reads it at finalized and at the " +
   "latest head";
 const PLACED =
   "*an act the read cannot place against the position given* (its three cases) and *an item the search could not decode " +
@@ -286,7 +286,6 @@ const DECLARED: readonly Inapplicable[] = [
     ENTRY + "*the validity passed with the value unconsumed, read below the final mark*, since the era's end is compared with finalized alone" + PROFILE,
   ),
   ...opening("a read with no means to read the single-use value", ENTRY + NONCE_HELD + PROFILE),
-  ...opening("search-incomplete is answered before not-found", ENTRY + NONCE_HELD + PROFILE),
   ...opening("a read that did not read the value at the latest head", ENTRY + NONCE_HELD + PROFILE),
 ];
 

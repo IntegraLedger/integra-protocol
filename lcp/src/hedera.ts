@@ -1702,6 +1702,4 @@ export {
   hederaVoucher,
   type HederaChannelConfig,
   type HederaCloseRef,
-  type HederaEvmReader,
-  type HederaSessionRef,
 } from "./internal/hedera-session.js";

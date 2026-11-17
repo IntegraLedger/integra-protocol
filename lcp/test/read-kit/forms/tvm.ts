@@ -25,7 +25,7 @@ import { ACTS, READ_STATUS } from "../harness.js";
 
 const VU = TVM_REF.validUntil;
 const STATED =
-  "x402-exact-tvm.md, rule 9, transcribing the chain entry `tvm`, Marks: Declared inapplicable to the read kit: while " +
+  "x402-exact-tvm.md, rule 9, declared inapplicable to the read kit: while " +
   "the expiry read releases nothing (rule 6, *Not yet shown*), the cases its gate holds";
 /** The failed answers whose search rests on the expiry read, at coverage full: the cases the gate holds, on those acts. */
 const GATED = new Set(["instrument-unused", "instrument-consumed", "transaction-failed"]);

@@ -87,7 +87,7 @@
   }
  },
  "S5": {
-  "about": "status over a constructed node (no answer of a live node is recorded yet). final and latest are the newest blocks at ACCEPTED_ON_L1 and ACCEPTED_ON_L2, each with its number and its own timestamp in Unix seconds; used lists the nonces the account reads used, each from block at on (is_valid_outside_execution_nonce answers false at a block at or after it, true before); stateFrom, where given, is the lowest block whose state the node serves (null below it); events are what starknet_getEvents serves, filtered by address, the first key and the block range, pageSize to a page, the continuation the decimal offset of the next page, and null for a range that starts below eventsFrom; transactions are the receipts and traces by hash; fail, every call rejects; nonceError, where given, the JSON-RPC error with which every is_valid_outside_execution_nonce call rejects. A row's transaction is the one the caller adds as named by the settler. ref is S4's expectReference with H added as h. Block numbers, amounts and positions are decimal strings. Every expected answer is derived from the profile's rules 11 to 22 and read-status.md, none taken from the package's output.",
+  "about": "status over a constructed node (no answer of a live node is recorded yet). final and latest are the newest blocks at ACCEPTED_ON_L1 and ACCEPTED_ON_L2, each with its number and its own timestamp in Unix seconds; used lists the nonces the account reads used, each from block at on (is_valid_outside_execution_nonce answers false at a block at or after it, true before); stateFrom, where given, is the lowest block whose state the node serves (null below it); events are what starknet_getEvents serves, filtered by address, the first key and the block range, pageSize to a page, the continuation the decimal offset of the next page, and null for a range that starts below eventsFrom; transactions are the receipts and traces by hash, a REVERTED transaction's trace being what a node gives for one, its revert_reason alone and no call (REVERTIBLE_FUNCTION_INVOCATION, @starknet-io/types-js dist/types/api/components.d.ts); fail, every call rejects; nonceError, where given, the JSON-RPC error with which every is_valid_outside_execution_nonce call rejects. A row's transaction is the one the caller adds as named by the settler. ref is S4's expectReference with H added as h. Block numbers, amounts and positions are decimal strings. Every expected answer is derived from the profile's rules 11 to 22 and read-status.md, none taken from the package's output.",
   "ref": {
    "network": "starknet:SN_SEPOLIA",
    "from": "0x3f16efeb2ae57f7d8befb03af08a3a370562dde15149c3506ac2038ffa9be24",
@@ -2333,48 +2333,7 @@
         "events": []
        },
        "trace": {
-        "contract": "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-        "selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-        "calldata": [
-         "0x1"
-        ],
-        "reverted": false,
-        "calls": [
-         {
-          "contract": "0x3f16efeb2ae57f7d8befb03af08a3a370562dde15149c3506ac2038ffa9be24",
-          "selector": "0x34cc13b274446654ca3233ed2c1620d4c5d1d32fd20b47146a3371064bdc57d",
-          "calldata": [
-           "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-           "0x27816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-           "0x1",
-           "0x6ab13cac",
-           "0x1",
-           "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-           "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-           "0x3",
-           "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-           "0x2710",
-           "0x0",
-           "0x2",
-           "0x1234",
-           "0x5678"
-          ],
-          "reverted": false,
-          "calls": [
-           {
-            "contract": "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-            "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-            "calldata": [
-             "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-             "0x2710",
-             "0x0"
-            ],
-            "reverted": false,
-            "calls": []
-           }
-          ]
-         }
-        ]
+        "revert_reason": "a constructed revert reason"
        }
       }
      }
@@ -5601,7 +5560,7 @@
   ]
  },
  "landed": {
-  "about": "starknetLandedNonce reads the named transaction's receipt and trace and gives the nonce under which a transfer call on the asset has the reference's identity digest, the core's hash over from, to and amount as three 32-byte words. fixtures are the receipts and traces it reads, each with its case.",
+  "about": "starknetLandedNonce reads the named transaction's receipt and trace and gives the nonce under which a transfer call on the asset has the reference's identity digest, the core's hash over from, to and amount as three 32-byte words. fixtures are the receipts and traces it reads, each with its case, a REVERTED transaction's trace being its revert_reason alone, as a node gives it.",
   "ref": {
    "network": "starknet:SN_SEPOLIA",
    "transaction": "0x4c2f9a1b",
@@ -6497,48 +6456,7 @@
      "events": []
     },
     "trace": {
-     "contract": "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-     "selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-     "calldata": [
-      "0x1"
-     ],
-     "reverted": false,
-     "calls": [
-      {
-       "contract": "0x3f16efeb2ae57f7d8befb03af08a3a370562dde15149c3506ac2038ffa9be24",
-       "selector": "0x34cc13b274446654ca3233ed2c1620d4c5d1d32fd20b47146a3371064bdc57d",
-       "calldata": [
-        "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-        "0x27816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-        "0x1",
-        "0x6ab13cac",
-        "0x1",
-        "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-        "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-        "0x3",
-        "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-        "0x2710",
-        "0x0",
-        "0x2",
-        "0x1234",
-        "0x5678"
-       ],
-       "reverted": false,
-       "calls": [
-        {
-         "contract": "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-         "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-         "calldata": [
-          "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-          "0x2710",
-          "0x0"
-         ],
-         "reverted": false,
-         "calls": []
-        }
-       ]
-      }
-     ]
+     "revert_reason": "a constructed revert reason"
     }
    },
    {
@@ -6912,48 +6830,7 @@
       "events": []
      },
      "trace": {
-      "contract": "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-      "selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-      "calldata": [
-       "0x1"
-      ],
-      "reverted": false,
-      "calls": [
-       {
-        "contract": "0x3f16efeb2ae57f7d8befb03af08a3a370562dde15149c3506ac2038ffa9be24",
-        "selector": "0x34cc13b274446654ca3233ed2c1620d4c5d1d32fd20b47146a3371064bdc57d",
-        "calldata": [
-         "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-         "0x27816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "0x1",
-         "0x6ab13cac",
-         "0x1",
-         "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-         "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-         "0x3",
-         "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-         "0x2710",
-         "0x0",
-         "0x2",
-         "0x1234",
-         "0x5678"
-        ],
-        "reverted": false,
-        "calls": [
-         {
-          "contract": "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-          "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-          "calldata": [
-           "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-           "0x2710",
-           "0x0"
-          ],
-          "reverted": false,
-          "calls": []
-         }
-        ]
-       }
-      ]
+      "revert_reason": "a constructed revert reason"
      }
     },
     "expect": {
@@ -6971,48 +6848,7 @@
       "events": []
      },
      "trace": {
-      "contract": "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-      "selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-      "calldata": [
-       "0x1"
-      ],
-      "reverted": false,
-      "calls": [
-       {
-        "contract": "0x3f16efeb2ae57f7d8befb03af08a3a370562dde15149c3506ac2038ffa9be24",
-        "selector": "0x34cc13b274446654ca3233ed2c1620d4c5d1d32fd20b47146a3371064bdc57d",
-        "calldata": [
-         "0x5f2e02acd59f37f1e19da7ea1db6bf31d49e6e5ba66a7f1c2f0e2ba1be36f81",
-         "0x27816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-         "0x1",
-         "0x6ab13cac",
-         "0x1",
-         "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-         "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-         "0x3",
-         "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-         "0x2710",
-         "0x0",
-         "0x2",
-         "0x1234",
-         "0x5678"
-        ],
-        "reverted": false,
-        "calls": [
-         {
-          "contract": "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
-          "selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-          "calldata": [
-           "0x2dd1b492765c064eac4039e3841aa5f382773b598097a40073bd8b48170ab57",
-           "0x2710",
-           "0x0"
-          ],
-          "reverted": false,
-          "calls": []
-         }
-        ]
-       }
-      ]
+      "revert_reason": "a constructed revert reason"
      }
     },
     "expect": {

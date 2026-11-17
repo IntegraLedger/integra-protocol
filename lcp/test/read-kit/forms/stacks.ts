@@ -233,25 +233,24 @@ function movedBack(m: Moved, nameOf: (txid: string) => string): Moved {
   return { asset, amount: m.amount, to, ...(m.transaction === undefined ? {} : { transaction: nameOf(m.transaction) }), ...(m.place === undefined ? {} : { place: m.place }) };
 }
 
-const RULE_16 = "mpp-charge-usdc-stacks.md rule 16, transcribing the chain entry `stacks`, Marks: Declared inapplicable to the read kit";
+const RULE_16 = "mpp-charge-usdc-stacks.md rule 16, declared inapplicable to the read kit";
 const NO_EXPIRY = `${RULE_16}: every case that reads the value with its validity passed, since a Stacks transaction has no expiry`;
 const HOLDS_THE_NONCE =
-  `${RULE_16}: *a read with no means to read the single-use value*, *search-incomplete is answered before not-found* and ` +
-  "*a read that did not read the value at the latest head*, since the read holds the nonce and reads it at the latest head's height";
+  `${RULE_16}: *a read with no means to read the single-use value* and *a read that did not read the value at the latest head*, ` +
+  "since the read holds the nonce and reads it at the latest head's height";
 const NOT_FOUND =
   `${RULE_16}: \`not-found\`, since the read holds the single-use value, the origin's nonce, and answers it unconsumed ` +
   "`pending`, `instrument-live`, and consumed with its transaction not found `pending`, `search-incomplete`";
 
-/** The cases the entry names by their words, each by the opening words of its text. */
+/** The cases the profile names by their words, each by the opening words of its text. */
 const BY_WORDS = [
   "a read with no means to read the single-use value",
-  "search-incomplete is answered before not-found",
   "a read that did not read the value at the latest head",
 ];
 
 /**
  * The cases the profile states cannot arise on this ledger, each under the first statement that takes it: every case
- * whose facts give a value whose validity passed; the three the entry names by their words; and, by its reason, every
+ * whose facts give a value whose validity passed; the two the profile names by their words; and, by its reason, every
  * other case whose answer is `not-found`. (`instrument-unused`, by its reason, takes no case the first does not.)
  */
 export const STACKS_INAPPLICABLE: readonly Inapplicable[] = READ_STATUS.cases.flatMap((c): Inapplicable[] => {

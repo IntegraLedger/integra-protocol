@@ -44,6 +44,11 @@ interface Spec {
   readonly value?: "own" | "other";
   /** Its `Transfer`s from the signer, each at its index among the receipt's events where given. */
   readonly transfers?: readonly { readonly to: "payee" | "elsewhere"; readonly amount?: string; readonly token?: "A" | "B"; readonly index?: number }[];
+  /**
+   * Its receipt is `REVERTED`, with no event, and its trace's `execute_invocation` is what a node gives for one, the
+   * revert reason alone and no call (`REVERTIBLE_FUNCTION_INVOCATION`, @starknet-io/types-js
+   * dist/types/api/components.d.ts), which is no invocation the reader's form holds.
+   */
   readonly reverted?: boolean;
   readonly preconfirmed?: boolean;
   /** The reference names it as the transaction a settler named. */
@@ -182,6 +187,11 @@ const SETUPS: Record<string, Setup | ((act: Act) => Setup)> = {
   "the validity passed with the value unconsumed, read below the final mark: below-mark": { lapsedBelow: true },
   "the validity passed with the value unconsumed and the search for H read whole: instrument-unused": { lapsed: true },
   "a value read consumed whose transaction the search has not found is never failed and never not-found": { consumed: 10 },
+  "search-incomplete is answered before not-found": {
+    consumed: 10,
+    overflow: true,
+    why: "the read always reads the nonce, so the case, which reads no value, is the nonce read used with no transaction found and the search left with range to read, which read-status rule 22 answers alike, search-incomplete at the search's position",
+  },
   "below-mark is answered before instrument-live": { consumed: "latest", txs: [own("t1", 10, "payee", "1", { mark: "l2" })] },
   "absence without the history shown is history-gap": { stateGap: true, why: "the read holds the nonce, so absence is never answered; the node serving no state at the final block is history-gap" },
   "a read that established nothing: transport": { fault: "transport" },
@@ -268,6 +278,7 @@ function nodeOf(s: Setup, nonce: bigint, other: bigint, start: bigint): { reader
   };
   const traceOf = (x: Spec): StarknetInvocation => {
     if (x.neither === true) return { contract: FEE, selector: "not a felt", calldata: [], reverted: false, calls: [] } as never;
+    if (x.reverted === true) return { revert_reason: "a constructed revert reason" } as never;
     return {
       contract: FEE,
       selector: SEL_ACCOUNT,
@@ -421,7 +432,6 @@ const inapplicable: Inapplicable[] = once([
   ...answering("not-found", STATED("`not-found`, since the read always holds the nonce (rule 14)")),
   ...opening("a failed result that consumed the value", FAILED),
   ...opening("a read with no means to read the single-use value", HOLDS),
-  ...opening("search-incomplete is answered before not-found", HOLDS),
   ...opening("a read that did not read the value at the latest head", HOLDS),
   ...opening("an act the read cannot place against the position given", PLACED),
   ...opening("an item the search could not decode that gives no position", PLACED),

@@ -300,10 +300,9 @@ export const ZERO =
 export const ONE =
   "*each transfer of what moved is named by its transaction and its place in it*: a delegate holds one action, an " +
   "`ft_transfer`, which moves one transfer";
-export const HELD_HEAD =
-  "*a read with no means to read the single-use value*, *search-incomplete is answered before not-found* and *a read " +
-  "that did not read the value at the latest head*: the read holds the access key's nonce and reads the changes to the " +
-  "latest head";
+export const HEAD =
+  "*a read that did not read the value at the latest head*: the read reads the access key's nonce and its changes to " +
+  "the latest head";
 export const NOPOS =
   "*an act the read cannot place against the position given* (its three cases) and *an item the search could not decode " +
   "that gives no position*: the search reads changes by block";
@@ -319,12 +318,7 @@ export const DECLARED: readonly Inapplicable[] = (() => {
     ...answering("not-found", NOT_FOUND),
     ...byWords(ZERO, "a payment act carrying H that transferred zero", "an act carrying H that transferred zero"),
     ...byWords(ONE, "each transfer of what moved is named by its transaction and its place in it"),
-    ...byWords(
-      HELD_HEAD,
-      "a read with no means to read the single-use value",
-      "search-incomplete is answered before not-found",
-      "a read that did not read the value at the latest head",
-    ),
+    ...byWords(HEAD, "a read that did not read the value at the latest head"),
     ...byWords(NOPOS, "an act the read cannot place against the position given", "an item the search could not decode that gives no position"),
     ...["instrument-unused", "instrument-consumed", "transaction-failed"].flatMap((r) => answering(r, UNSHOWN)),
   ];

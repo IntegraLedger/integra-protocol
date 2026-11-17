@@ -112,6 +112,10 @@ const SETUPS: Record<string, Setup> = {
   "at coverage full, instrument-consumed waits for the search for H to be read whole": { setFrom: 10, calls: [own("t1", "elsewhere")], overflow: true },
   "a failed result that left the value unconsumed, its validity not passed: instrument-live": { setFrom: null },
   "the validity passed with the value unconsumed and the search for H not read whole: search-incomplete": { setFrom: null, lapsed: true },
+  // The read always reads the item, so the case, which reads no value, is made as the item read unset past
+  // `validBefore` with nothing found and the search not read whole: read-status rule 22 answers both `search-incomplete`,
+  // at the search's position.
+  "search-incomplete is answered before not-found": { setFrom: null, lapsed: true },
   "a value read consumed whose transaction the search has not found is never failed and never not-found": { setFrom: 10, calls: [] },
   "instrument-live is answered before search-incomplete": { setFrom: null, resume: true },
   "absence without the history shown is history-gap": { setFrom: 0, lowest: 0 },
@@ -314,7 +318,6 @@ const inapplicable: Inapplicable[] = once([
   ...opening("a value whose validity passed, unconsumed at the final mark and consumed at the latest head", ONE_MARK),
   ...opening("a read that did not read the value at the latest head", ONE_MARK),
   ...opening("a read with no means to read the single-use value", HOLDS),
-  ...opening("search-incomplete is answered before not-found", HOLDS),
   ...opening("an act the read cannot place against the position given", AT_HEIGHT),
   ...opening("an item the search could not decode that gives no position", AT_HEIGHT),
   ...opening(

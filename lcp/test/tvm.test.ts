@@ -1491,8 +1491,8 @@ describe("x402-exact-tvm.json", () => {
 
 // The read on a constructed ledger (tvm-ledger.ts): the read kit's x402/exact/tvm form runs every case of
 // read-status.json through it; these hold what is TON's own. VU is the request's validUntil; the expiry read decides once
-// the stated finalized block is more than 60 seconds past it, and, under the step-4 gate, never reads its list as whole,
-// so no answer but before-position is failed (profile x402-exact-tvm, rule 6).
+// the stated finalized block is more than 60 seconds past it, and, until a run shows that the index lists whole, never
+// reads its list as whole, so no answer but before-position is failed (profile x402-exact-tvm, rule 6).
 describe("x402/exact/tvm status on a constructed ledger", () => {
   const VU = REF.validUntil;
   const W5: LedgerSpec["wallet"] = { status: "active", code: "w5", seqno: REF.seqno + 1 };
@@ -1550,7 +1550,7 @@ describe("x402/exact/tvm status on a constructed ledger", () => {
   });
 
   it("reads a frozen account's number as not passed, and is unreadable on a rejection of kind too-large and a reader for another network", async () => {
-    // A frozen account runs no request until its state is restored (target, the chain entry tvm, row 1138).
+    // A frozen account runs no request until a message restores its state (profile x402-exact-tvm, rule 6).
     const frozen = { status: "frozen" as const, code: "w5" as const, seqno: null };
     expect(await settledOn({ wallet: frozen }, [])).toEqual({ state: "pending", reason: "instrument-live", foreign: [] });
     const expired = { head: VU + 100, indexed: statedAt(VU + 100), wallet: frozen };

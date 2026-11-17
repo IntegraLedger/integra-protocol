@@ -78,7 +78,6 @@ export const DECLARED: readonly Inapplicable[] = once([
   ...byWords("an act the read cannot place against the position given", NOT_PLACED),
   ...byWords("an item the search could not decode that gives no position", NOT_PLACED),
   ...byWords("a read with no means to read the single-use value", DIGEST_READ),
-  ...byWords("search-incomplete is answered before not-found", DIGEST_READ),
   ...byWords("a read that did not read the value at the latest head", DIGEST_READ),
   ...byWords(
     "each transfer of what moved is named by its transaction and its place in it",

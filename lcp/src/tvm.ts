@@ -1380,8 +1380,8 @@ async function factsOf(
       mark: final ? "finalized" : "confirmed",
       ...(headRead ? { head: { consumed: ran || above || moved } } : {}),
     };
-    // The step-4 gate: that the index lists whole is not yet shown by a run (profile `x402-exact-tvm`, rule 6), so the
-    // expiry read proves no absence and is never read whole, through any reader.
+    // Until a run shows that the index lists whole (profile `x402-exact-tvm`, rule 6, *Not yet shown*), the expiry read
+    // proves no absence and is never read whole, through any reader.
     whole = false;
   } else {
     whole = !held && stated !== null && stated.utime >= head;
