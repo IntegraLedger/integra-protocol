@@ -295,6 +295,13 @@ export interface BatchUnsigned {
    * signatures grant, so a client can show them and hold the channel id to them. No other build gives it.
    */
   config?: ChannelConfig;
+  /**
+   * On an EVM opening, the deposit authorization's salt: the ERC-3009 deposit's nonce is
+   * `erc3009DepositNonce(channelId, authSalt)` and the Permit2 deposit's nonce is `authSalt` as a uint256. It is the
+   * caller's `authSalt`, or H under an option in the refund-authorizer mode, so a client holds each nonce to it without
+   * repeating the mode test. No other build gives it.
+   */
+  authSalt?: Hex;
   complete(signatures: readonly string[]): BatchPaymentPayload | Refusal;
 }
 
@@ -665,6 +672,7 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   return {
     requests,
     config: { ...config },
+    authSalt,
     complete(signatures: readonly string[]): BatchPaymentPayload | Refusal {
       const [s1, s2] = signatures;
       if (signatures.length !== 2 || !isHexSignature(s1) || !isHexSignature(s2)) return refusal("x402/signature-malformed");

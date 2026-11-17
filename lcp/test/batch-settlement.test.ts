@@ -156,6 +156,7 @@ describe("x402-batch-settlement.json: EVM", () => {
     const [auth, voucher] = u.requests;
     // The opening carries the preimage of the channel id both signatures name.
     expect(batchChannelId(84532, u.config!)).toBe(V.EB1.channelId);
+    expect(erc3009DepositNonce(V.EB1.channelId, u.authSalt!)).toBe(V.EB3.depositNonce);
     expect(hashTypedData(forViem(auth!.kind === "eip712" ? auth!.typedData : undefined))).toBe(V.EB3.digest);
     expect(hashTypedData(forViem(voucher!.kind === "eip712" ? voucher!.typedData : undefined))).toBe(V.EB2.digest);
     const p = payment.payload as Record<string, any>;
@@ -188,6 +189,7 @@ describe("x402-batch-settlement.json: EVM", () => {
 
   it("EB4: the Permit2 deposit", async () => {
     const { u, payment } = await evmOpening("permit2");
+    expect(BigInt(u.authSalt!)).toBe(BigInt(V.EB4.nonce));
     expect(hashTypedData(forViem(u.requests[0]!.kind === "eip712" ? u.requests[0]!.typedData : undefined))).toBe(V.EB4.digest);
     const a = (payment.payload as Record<string, any>)["deposit"].authorization.permit2Authorization;
     expect([a.nonce, a.deadline]).toEqual([V.EB4.nonce, V.EB4.deadline]);

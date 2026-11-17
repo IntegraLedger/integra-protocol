@@ -56,6 +56,7 @@ base58 for `solana-message` and `ed25519-raw`.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
+| <a id="property-authsalt-1"></a> `authSalt?` | `` `0x${string}` `` | On an EVM opening, the deposit authorization's salt: the ERC-3009 deposit's nonce is `erc3009DepositNonce(channelId, authSalt)` and the Permit2 deposit's nonce is `authSalt` as a uint256. It is the caller's `authSalt`, or H under an option in the refund-authorizer mode, so a client holds each nonce to it without repeating the mode test. No other build gives it. |
 | <a id="property-config"></a> `config?` | [`ChannelConfig`](#channelconfig) | On an EVM opening, the channel's configuration: `batchChannelId(chainId, config)` is the `channelId` the deposit authorization and the voucher sign, `chainId` their domain's. It names the receiver and the authorizers the signatures grant, so a client can show them and hold the channel id to them. No other build gives it. |
 | <a id="property-requests"></a> `requests` | readonly [`SigningRequest`](#signingrequest)[] | - |
 
