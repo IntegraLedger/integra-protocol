@@ -198,6 +198,106 @@
    "claims": false
   }
  },
+ "K6": {
+  "about": "The token under the name ACK's SDKs before 0.10.0 write: paymentToken, renamed paymentRequestToken in ACK's commit 27e3ffb (agentcommercekit/ack, 2025-09-01, 'Rename paymentToken to paymentRequestToken'), first released in @agentcommercekit/ack-pay 0.10.0 (commit 95aec55). At the rename's parent, 6fc3247, where ack-pay is 0.9.2, the 402 body is {paymentRequest, paymentToken} (packages/ack-pay/src/create-payment-request-body.ts:28-31) and the receipt's attestation is {paymentToken, paymentOptionId} (packages/ack-pay/src/create-payment-receipt.ts:30-33); its schemas name the member paymentToken in both (packages/ack-pay/src/schemas/valibot.ts:34, :41). At 3db94d6 the same places write paymentRequestToken (create-signed-payment-request.ts:34, create-payment-receipt.ts:30). lcp reads either name, in the body and in the credential subject alike; where both are present they must be the same string, and two different tokens are refused as a malformed token is.",
+  "body": {
+   "paymentRequest": {
+    "id": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "paymentOptions": [
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ]
+   },
+   "paymentToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+   "legalContext": {
+    "type": "sha256",
+    "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+   }
+  },
+  "expect": {
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+   "offer": {
+    "options": [
+     {
+      "id": "opt-usdc-base",
+      "currency": "USDC",
+      "network": "eip155:8453",
+      "amount": "10000",
+      "decimals": 6,
+      "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+     }
+    ]
+   }
+  },
+  "bothSame": {
+   "body": {
+    "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+    "paymentToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+    }
+   },
+   "expect": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+    "offer": {
+     "options": [
+      {
+       "id": "opt-usdc-base",
+       "currency": "USDC",
+       "network": "eip155:8453",
+       "amount": "10000",
+       "decimals": 6,
+       "recipient": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+      }
+     ]
+    }
+   }
+  },
+  "bothDiffer": {
+   "body": {
+    "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+    "paymentToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.H0TnArvtfx0IDSKHxikIvPH-tgGCcVfoMPTgsKN9IRawI_9_u0qEc45iNie4bOsv41nB1gqq20Q70pm628tbGw",
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+    }
+   },
+   "expect": {
+    "refused": true,
+    "code": "ack/token-malformed"
+   }
+  },
+  "credentialSubject": {
+   "id": "did:web:buyer.example",
+   "paymentToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+   "paymentOptionId": "opt-usdc-base"
+  },
+  "receiptExpect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "receiptBothDiffer": {
+   "credentialSubject": {
+    "id": "did:web:buyer.example",
+    "paymentRequestToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.BAxLeShhHOBYhymrBZtfEKkbFLTljlGC9RTViqyUR5nnizL8AoNTgR9B_MgnWTk2-P9S791Ceumb_zOawJmtXg",
+    "paymentToken": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImxjcDpzaGEyNTY6MHhlM2IwYzQ0Mjk4ZmMxYzE0OWFmYmY0Yzg5OTZmYjkyNDI3YWU0MWU0NjQ5YjkzNGNhNDk1OTkxYjc4NTJiODU1IiwicGF5bWVudE9wdGlvbnMiOlt7ImlkIjoib3B0LXVzZGMtYmFzZSIsImN1cnJlbmN5IjoiVVNEQyIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImFtb3VudCI6IjEwMDAwIiwiZGVjaW1hbHMiOjYsInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9XSwic3ViIjoibGNwOnNoYTI1NjoweGUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJpc3MiOiJkaWQ6d2ViOnNlbGxlci5leGFtcGxlIiwiaWF0IjoxNzkwMDAwMDAwfQ.H0TnArvtfx0IDSKHxikIvPH-tgGCcVfoMPTgsKN9IRawI_9_u0qEc45iNie4bOsv41nB1gqq20Q70pm628tbGw",
+    "paymentOptionId": "opt-usdc-base"
+   },
+   "expect": {
+    "refused": true,
+    "code": "ack/receipt-malformed"
+   }
+  }
+ },
  "agreedRefusals": {
   "about": "Refusal codes the specification leaves to the implementation, as this package applies them. call names the function; args are its arguments. A body is measured as JSON.stringify writes it, at most 64 levels of arrays and objects, the body being level 1: an integer past the double range, which JSON.parse reads as Infinity, is written null.",
   "rows": [

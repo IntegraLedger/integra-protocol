@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the card entry point of @integraledger/lcp: Visa TAP, Mastercard Verifiable Intent and the plain card checkout. H is SHA-256(\"abc\") from FIPS 180-2 and E is SHA-256 of the empty string. The TAP signatures are RFC 9421 Ed25519 under RFC 9421's test-key-ed25519. The VI strings are built from a recipe (compact JSON, members in the order written) with fixed ES256 signatures, which verify under USER (L2i, L2a) and AGENT (L3b); every digest was checked with Python 3.12.3 hashlib.",
+ "about": "Vectors for the card entry point of @integraledger/lcp: Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent and the plain card checkout. H is SHA-256(\"abc\") from FIPS 180-2 and E is SHA-256 of the empty string. The TAP and Agent Pay signatures are RFC 9421 Ed25519 under RFC 9421's test-key-ed25519, and their nonces the base64 of H or E followed by C2.random. C2 to C9 and T2 to V10 were computed with Node's node:crypto from the profiles, importing no lcp code. The VI strings of `vi` are built from a recipe (compact JSON, members in the order written) with fixed ES256 signatures, which verify under USER (L2i, L2a) and AGENT (L3b); every digest was checked with Python 3.12.3 hashlib.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "E": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -71,29 +71,26 @@
   "request": {
    "authority": "merchant.example",
    "path": "/checkout/pay",
-   "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
-   "signature": "sig1=:d2z/nlZwMjoE0x63KxkEwRW9BfsZDA0e7de6lc/cJkGCyHyG8fb9BWtGb28ADB+UBDMgFwJcj9qJimcaVThbDg==:, sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:",
-   "lcpHash": [
-    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-   ]
+   "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\"",
+   "signature": "sig1=:8F3zvqWdc/8ewDSigOnG89gB36ZuxnOB32OWUdRHjJ7Q+nk98kE9erQD0tHCej7pHh0bRVD40LqHaV/2U89DBw==:, sig2=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:"
   },
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-  "upperCaseField": {
-   "lcpHash": [
-    "0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
-   ],
-   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-  },
-  "repeatedField": {
-   "lcpHash": [
-    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-   ],
-   "expect": "card/tap-field-repeated"
-  },
-  "sig2Base": "\"@authority\": merchant.example\n\"@path\": /checkout/pay\n\"lcp-hash\": 0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n\"@signature-params\": (\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
-  "expectSig2BaseSha256": "08445f6675f28dc87fa7993cb7f89f4e04698a53c0349cde4c6febd6dd7bdc18",
+  "nonce": "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==",
+  "random": "3dc97fd391d14ea59c0350a43faf8b8fa73194495932bad5285f16e7a7eede12",
+  "sig2Base": "\"@authority\": merchant.example\n\"@path\": /checkout/pay\n\"@signature-params\": (\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\"",
+  "expectSig2BaseSha256": "ebd06e62d470d523bc4fdb73c92e1e96f11e3225c5864f9d766b7411ae2ec3f8",
   "testKeyEd25519Spki": "MCowBQYDK2VwAyEAJrQLj5P/89iXES9+vFgrIy29clF9CC/oPPsw3c5D0bs=",
+  "keyId": {
+   "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\");created=1790000000;keyId=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\"",
+   "signature": "sig1=:8F3zvqWdc/8ewDSigOnG89gB36ZuxnOB32OWUdRHjJ7Q+nk98kE9erQD0tHCej7pHh0bRVD40LqHaV/2U89DBw==:, sig2=:f8rJBustUhc1jtyqJuyOnRpIzf4Min9qteLUTW/lrhx2qADSvH9q3L8LX1sY4cxg5mj6rAZJvx+ZO8nUsPapAg==:",
+   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "sig2Base": "\"@authority\": merchant.example\n\"@path\": /checkout/pay\n\"@signature-params\": (\"@authority\" \"@path\");created=1790000000;keyId=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\""
+  },
+  "bothSpellings": {
+   "signatureInput": "sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\";keyId=\"test-key-ed25519\"",
+   "signature": "sig2=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:",
+   "expect": "card/tap-signature-input-malformed"
+  },
   "build": {
    "doc": {
     "legalContext": {
@@ -102,20 +99,14 @@
      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
     }
    },
-   "expect": {
-    "field": "lcp-hash",
-    "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-    "component": "lcp-hash"
-   }
+   "expectNonceLength": 88,
+   "expectHashBytes": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   }
  },
  "C3": {
-  "case": "sig1 lists lcp-hash and sig2, the agent-payer-auth signature, does not",
-  "signatureInput": "sig1=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
-  "signature": "sig1=:d2z/nlZwMjoE0x63KxkEwRW9BfsZDA0e7de6lc/cJkGCyHyG8fb9BWtGb28ADB+UBDMgFwJcj9qJimcaVThbDg==:, sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:",
-  "lcpHash": [
-   "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-  ],
+  "case": "sig1, the browsing signature, carries H in its nonce, and sig2, the agent-payer-auth signature, carries a UUID and no path is given",
+  "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\";tag=\"agent-payer-auth\"",
+  "signature": "sig1=:8F3zvqWdc/8ewDSigOnG89gB36ZuxnOB32OWUdRHjJ7Q+nk98kE9erQD0tHCej7pHh0bRVD40LqHaV/2U89DBw==:, sig2=:LvHDjZb1isMrVTci4InytKSgh9TqHjrejC5NDL9yLFLFuef9cY8lp0cXgVImDe8Nczr1ti/bF6XULfMWHlSDDg==:",
   "expect": "card/tap-hash-not-covered"
  },
  "C4": [
@@ -219,7 +210,7 @@
     "expect": "card/legal-context-malformed"
    },
    {
-    "case": "advertise or TAP build with a hash that is not 0x and 64 hex digits",
+    "case": "advertise, or the TAP, Agent Pay or VIC build, with a hash that is not 0x and 64 hex digits",
     "expect": "card/legal-context-malformed"
    },
    {
@@ -259,12 +250,20 @@
     "expect": "card/tap-no-payer-signature"
    },
    {
-    "case": "TAP bound with lcpHash not an array, or a line that is not a string",
-    "expect": "card/tap-field-malformed"
+    "case": "TAP or Agent Pay bound with a payment signature whose nonce parameter is not a String",
+    "expect": "card/tap-nonce-malformed"
    },
    {
-    "case": "TAP bound with the one lcp-hash line over 256 characters",
+    "case": "TAP or Agent Pay bound with a request path over 2048 characters",
     "expect": "card/too-large"
+   },
+   {
+    "case": "TAP or Agent Pay bound with a request path that is not a string of visible ASCII starting with /",
+    "expect": "card/tap-path-malformed"
+   },
+   {
+    "case": "TAP or Agent Pay bound with a signature input that names both keyid and keyId",
+    "expect": "card/tap-signature-input-malformed"
    },
    {
     "case": "VI bound with a layer over 65536 characters or over 32 disclosures",
@@ -309,6 +308,14 @@
    {
     "case": "VI read or bound with a checkout_jwt or layer segment, or a disclosure, that has a pad bit set in its last character",
     "expect": "card/vi-malformed"
+   },
+   {
+    "case": "VI Immediate build of a checkout payload that is not an object, or whose checkout is not an object",
+    "expect": "card/vi-malformed"
+   },
+   {
+    "case": "VI Immediate build of a checkout payload over 12288 bytes of JSON",
+    "expect": "card/too-large"
    }
   ]
  },
@@ -471,11 +478,8 @@
     "pairing": "card/visa-tap",
     "input": {
      "presented": {
-      "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
-      "signature": "sig1=:d2z/nlZwMjoE0x63KxkEwRW9BfsZDA0e7de6lc/cJkGCyHyG8fb9BWtGb28ADB+UBDMgFwJcj9qJimcaVThbDg==:, sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:",
-      "lcpHash": [
-       "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-      ]
+      "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-browser-auth\", sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\"",
+      "signature": "sig1=:8F3zvqWdc/8ewDSigOnG89gB36ZuxnOB32OWUdRHjJ7Q+nk98kE9erQD0tHCej7pHh0bRVD40LqHaV/2U89DBw==:, sig2=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:"
      },
      "check": [
       {
@@ -495,6 +499,105 @@
      }
     ],
     "note": "presented is this file's C2 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "card/mastercard-agent-pay",
+    "plant": true,
+    "input": {
+     "doc": {
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "card/mastercard-agent-pay",
+    "input": {
+     "presented": {
+      "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"Agent-pay-auth\"",
+      "signature": "sig1=:pal0fA66hAtxESCWK+NqHSSofV/reZLFtYWXQPUhug5BBrGVl+FWNsOrW24xh2Pj9a8AN6WagocpHeWVAeLkAg==:"
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's T6's first row; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "card/visa-vic",
+    "plant": true,
+    "input": {
+     "doc": {
+      "legalContext": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "card/visa-vic",
+    "input": {
+     "presented": {
+      "transactionReferenceId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0"
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's T7's bound row; no signature was made for this row."
    }
   ],
   "noSignedPayment": {
@@ -502,41 +605,312 @@
   }
  },
  "C9": {
-  "about": "TAP requests with two agent-payer-auth signatures. A verifier determines which signature to process by its own policy and configuration (RFC 9421 §3.2, step 1.1), so bound takes the hash only when every agent-payer-auth signature lists lcp-hash. sig3's signature is 64 zero bytes, since bound verifies no signature. Built from C2's request.",
+  "about": "TAP requests with two agent-payer-auth signatures. A verifier determines which signature to process by its own policy and configuration (RFC 9421 §3.2, step 1.1), so bound takes the hash only when every agent-payer-auth signature carries it, and the same one. Built as C2's request is.",
   "rows": [
    {
-    "case": "sig2 lists lcp-hash and sig3, a second agent-payer-auth signature, does not",
-    "signatureInput": "sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
-    "signature": "sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:, sig3=:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==:",
-    "lcpHash": [
-     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-    ],
-    "expect": {
-     "refused": true,
-     "code": "card/tap-hash-not-covered"
-    }
+    "case": "sig2 carries H in its nonce and sig3, a second agent-payer-auth signature, a UUID",
+    "signatureInput": "sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\";tag=\"agent-payer-auth\"",
+    "signature": "sig2=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:, sig3=:LvHDjZb1isMrVTci4InytKSgh9TqHjrejC5NDL9yLFLFuef9cY8lp0cXgVImDe8Nczr1ti/bF6XULfMWHlSDDg==:",
+    "expect": "card/tap-hash-not-covered"
    },
    {
-    "case": "sig3 lists lcp-hash and sig2, the first agent-payer-auth signature, does not",
-    "signatureInput": "sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
-    "signature": "sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:, sig3=:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==:",
-    "lcpHash": [
-     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-    ],
-    "expect": {
-     "refused": true,
-     "code": "card/tap-hash-not-covered"
-    }
+    "case": "sig2 carries H and sig3 carries E",
+    "signatureInput": "sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU9yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\"",
+    "signature": "sig2=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:, sig3=:+aFCnnRtHuc8TOSA1ECbspBvrCZxHNhWYbLPAfWhCV7C1QATKQ/6brXRnWaEeFkXRCgWjv/q4DxohTFvWvMdCA==:",
+    "expect": "card/tap-hash-conflict"
    },
    {
-    "case": "sig2 and sig3 both list lcp-hash",
-    "signatureInput": "sig2=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\" \"lcp-hash\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"bm9uY2UtMQ\";tag=\"agent-payer-auth\"",
-    "signature": "sig2=:o8U57fdugWf8o2l07N/ErYeZkPTTUEAtDbzHpvSQzzK33O93TkpM52rNuvD0x1UrGwuc9iP67s6uH/OftKJEDA==:, sig3=:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==:",
-    "lcpHash": [
-     "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-    ],
+    "case": "sig2 and sig3 both carry H",
+    "signatureInput": "sig2=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\", sig3=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\"",
+    "signature": "sig2=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:, sig3=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:",
     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    }
   ]
+ },
+ "T2": {
+  "about": "The checkout path, for an agent whose nonce does not carry H: Visa's reference agent's Signature-Input as tap-agent/agent_app.py:1364 writes it (keyId, \"; \" separators, a UUID nonce), signed as :1331-1338 builds the base, under RFC 9421's test-key-ed25519 in place of Visa's key. Where the signature covers a path ending in a hash, the path carries H and the nonce is not read: a stock agent's 64 random nonce bytes, in the shape of the specification's example nonce, are not read as a hash there (the first T2 row naming a stock agent's nonce; built by node:crypto from the profile, fam-card2's tap-path-rows.mjs).",
+  "rows": [
+   {
+    "case": "the path ends in H and the signature covers @path",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:945B2DW1KjMq+Am6vm3oWi/0rRlr92mx2BB2dE3roTNAfJI2hn+Qq9mo7popkiyqZyB4FNxLnW/Ss5PdchWwDw==:",
+    "path": "/checkout/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "base": "\"@authority\": merchant.example\n\"@path\": /checkout/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n\"@signature-params\": (\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\"; tag=\"agent-payer-auth\"",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "no path is given",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:945B2DW1KjMq+Am6vm3oWi/0rRlr92mx2BB2dE3roTNAfJI2hn+Qq9mo7popkiyqZyB4FNxLnW/Ss5PdchWwDw==:",
+    "expect": "card/tap-hash-not-covered"
+   },
+   {
+    "case": "the path's last segment is not H",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:h7Zp/N/qwXAcTOjzwd0hkFXPLB2WMacvXI+Xh0gTwIVSRDPwd+2Q+vO7GuDFvOp2Yz6AIfRmmkN2ncERKd4FBA==:",
+    "path": "/checkout",
+    "expect": "card/tap-hash-not-covered"
+   },
+   {
+    "case": "the path's last segment is H in upper case",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:945B2DW1KjMq+Am6vm3oWi/0rRlr92mx2BB2dE3roTNAfJI2hn+Qq9mo7popkiyqZyB4FNxLnW/Ss5PdchWwDw==:",
+    "path": "/checkout/0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+    "expect": "card/tap-hash-not-covered"
+   },
+   {
+    "case": "a stock agent's 64 random bytes in the nonce, as the specification's example draws it, and the path carries H: the path decides",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"xeZSUhMUGRyUl6adG/Kmu3IyYp6btrhx+kMEwfkcCP7YqLxiXoUHMWsg/hwp6k6Jx8vG69CWyfaGXjuwrDFKaQ==\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:+kfqv5OdqvEJp2CdB2vs5sCCFmViWgQH1Gg9TE1Ez6LttDhUAbq+mz32Js5tjQx/6b9loefJ+QaaGMDm21Y4Dg==:",
+    "path": "/checkout/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "the nonce carries H and the path carries E: the path decides, the nonce not read",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:WgLm2xupJYLnlxp29t498bBXi96cjiWDT6INe8+NkEQZwp2ILH/sngOzBhItuXO+n/98r2ddGXUmPR+uDdMOCQ==:",
+    "path": "/checkout/0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "expect": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   },
+   {
+    "case": "the nonce and the path both carry H",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:rPaV7iIlDDVRZpP7GQMYYYyK0BTAiiop9bYCB18KVYrBF3NcliCdlOdGM0fUj4uLZbnoQ9Sr+w8FCKnkxmFTCw==:",
+    "path": "/checkout/0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "a path that does not start with /",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:945B2DW1KjMq+Am6vm3oWi/0rRlr92mx2BB2dE3roTNAfJI2hn+Qq9mo7popkiyqZyB4FNxLnW/Ss5PdchWwDw==:",
+    "path": "checkout",
+    "expect": "card/tap-path-malformed"
+   }
+  ]
+ },
+ "T3": {
+  "about": "TAP's published requests, as refusal vectors. Multi-line displays are joined with one space, the markdown emphasis and the escape before _ removed. V1 to V3: the TAP specification (https://developer.visa.com/docs/trusted-agent-protocol/trusted-agent-protocol-specifications.md, read 2026-11-16, SHA-256 7f2408c64c2723c4...), lines given; R1 to R3: visa/trusted-agent-protocol at 16d59bd. None carries a hash a merchant issued: V3's nonce is 64 bytes, read as a hash no merchant issued.",
+  "rows": [
+   {
+    "name": "V1",
+    "source": "spec.md:79-86, the first browsing example",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1735689600; expires=1735693200; keyId=\"poqkLGiymh_W0uP6PZFw-dvez3QJT5SolqXBCW38r0U\"; alg=\"Ed25519\"; nonce= \"e8N7S2MFd/qrd6T2R3tdfAuuANngKI7LFtKYI/vowzk4lAZyadIX6wW25MwG7DCT9RUKAJ0qVkU0mEeLElW1qg==\"; tag=\"agent-browser-auth\"",
+    "signature": "sig2=:jdq0SqOwHdyHr9+r5jw3iYZH6aNGKijYp/EstF4RQTQdi5N5YYKrD+mCT1HA1nZDsi6nJKuHxUi/5Syp3rLWBA==:",
+    "path": "/example-product",
+    "expect": "card/tap-signature-input-malformed",
+    "why": "a space after nonce= breaks RFC 9651's parameter syntax"
+   },
+   {
+    "name": "V2",
+    "source": "spec.md:115-127, Sample Browsing Request",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1735689600; keyid=\"poqkLGiymh_W0uP6PZFw-dvez3QJT5SolqXBCW38r0U\"; alg=\"Ed25519\"; expires=1735693200; nonce=\"e8N7S2MFd/qrd6T2R3tdfAuuANngKI7LFtKYI/vowzk4lAZYadIX6wW25MwG7DCT9RUKAJ0qVkU0mEeLElW1qg==\"; tag=\"agent-browser-auth\"",
+    "signature": "sig2=:jdq0SqOwHdyHr9+r5jw3iYZH6aNGKijYp/EstF4RQTQdi5N5YYKrD+mCT1HA1nZDsi6nJKuHxUi/5Syp3rLWBA==:",
+    "path": "/example-product",
+    "expect": "card/tap-no-payer-signature",
+    "why": "agent-browser-auth only"
+   },
+   {
+    "name": "V3",
+    "source": "spec.md:131-143, Sample Checkout Request",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1735689600; keyid=\"poqkLGiymh_W0uP6PZFw-dvez3QJT5SolqXBCW38r0U\"; alg=\"Ed25519\"; expires=1735693200; nonce=\"e8N7S2MFd/qrd6T2R3tdfAuuANngKI7LFtKYI/vowzk4lAZYadIX6wW25MwG7DCT9RUKAJ0qVkU0mEeLElW1qg==\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:jdq0SqOwHdyHr9+r5jw3iYZH6aNGKijYp/EstF4RQTQdi5N5YYKrD+mCT1HA1nZDsi6nJKuHxUi/5Syp3rLWBA==:",
+    "path": "/checkout",
+    "expect": "0x7bc37b4b630577faab77a4f6477b5d7c0bae00d9e0288ecb16d29823fbe8c339",
+    "notIssued": true,
+    "why": "a 64-byte nonce, read as a hash no merchant issued"
+   },
+   {
+    "name": "R1",
+    "source": "cdn-proxy/README.md:62-63",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1697123456; keyId=\"primary-ed25519\"; alg=\"ed25519\"",
+    "signature": "sig2=:base64EncodedSignature:",
+    "path": "/products/1",
+    "expect": "card/tap-no-payer-signature",
+    "why": "no tag"
+   },
+   {
+    "name": "R2",
+    "source": "cdn-proxy/server.js:215, the format the verifier parses",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1735689600; expires=1735693200; keyId=\"key-id\"; alg=\"rsa-pss-sha256\"; nonce=\"123\"; tag=\"agent-payment-auth\"",
+    "signature": "",
+    "expect": "card/tap-no-payer-signature",
+    "why": "agent-payment-auth is not TAP's tag"
+   },
+   {
+    "name": "R3",
+    "source": "tap-agent/agent_app.py:1364-1365, its checkout tag :1553, its defaults :1439-1442",
+    "signatureInput": "sig2=(\"@authority\" \"@path\"); created=1790000000; expires=1790000480; keyId=\"primary-ed25519\"; alg=\"ed25519\"; nonce=\"4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90\"; tag=\"agent-payer-auth\"",
+    "signature": "sig2=:945B2DW1KjMq+Am6vm3oWi/0rRlr92mx2BB2dE3roTNAfJI2hn+Qq9mo7popkiyqZyB4FNxLnW/Ss5PdchWwDw==:",
+    "path": "/checkout",
+    "expect": "card/tap-hash-not-covered",
+    "why": "a UUID nonce, and a checkout path that carries no hash"
+   }
+  ]
+ },
+ "T6": {
+  "about": "Mastercard Agent Pay, its tag in Mastercard's two published spellings (Developer Playbook, agentic-commerce-guide/21 :149, :166, :172, :300 and /24 :386, read 2026-11-16), signed under RFC 9421's test-key-ed25519. published is the playbook's example request (guide-21:156-167), whose 64-byte nonce reads as a hash no merchant issued.",
+  "rows": [
+   {
+    "case": "tag Agent-pay-auth",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"Agent-pay-auth\"",
+    "signature": "sig1=:pal0fA66hAtxESCWK+NqHSSofV/reZLFtYWXQPUhug5BBrGVl+FWNsOrW24xh2Pj9a8AN6WagocpHeWVAeLkAg==:",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "tag agent-pay-auth",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-pay-auth\"",
+    "signature": "sig1=:p8O0arTQT8QiW7P8jA9pVkXC74UDs7ZKLugvAkDVgBreDOEuKf6YfGfCUOKhs7JFDG8V+tDtylSWkbZAivD1BA==:",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "TAP's tag agent-payer-auth is not Agent Pay's",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=1790000000;keyid=\"test-key-ed25519\";alg=\"ed25519\";expires=1790000480;nonce=\"ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa09yX/TkdFOpZwDUKQ/r4uPpzGUSVkyutUoXxbnp+7eEg==\";tag=\"agent-payer-auth\"",
+    "signature": "sig1=:ttknTs4NG6hXGVEOv1WdJK/gjzkoUCKBAoV4dvhoVs6cv4Q2m6fJjqeN/eL6YQBN4kKLVqGv5L9yfTiTOGVpAA==:",
+    "expect": "card/tap-no-payer-signature"
+   }
+  ],
+  "published": {
+   "signatureInput": "sig1=(\"@authority\" \"@path\"); created=1735689600; expires=1735693200; keyid=\"poqkLGiymh_W0uP6PZFw-dvez3QJT5SolqXBCW38r0U\"; alg=\"ed25519\"; nonce=\"e8N7S2MFd/qrd6T2R3tdfAuuANngKI7LFtKYI/vowzk4lAZyadIX6wW25MwG7DCT9RUKAJ0qVkU0mEeLElW1qg==\"; tag=\"Agent-pay-auth\"",
+   "signature": "sig1=:jdq0SqOwHdyHr9+r5jw3iYZH6aNGKijYp/EstF4RQTQdi5N5YYKrD+mCT1HA1nZDsi6nJKuHxUi/5Syp3rLWBA==:",
+   "path": "/products/widget-pro",
+   "expect": "0x7bc37b4b630577faab77a4f6477b5d7c0bae00d9e0288ecb16d29823fbe8c339",
+   "notIssued": true,
+   "visaTapExpect": "card/tap-no-payer-signature"
+  }
+ },
+ "T7": {
+  "about": "Visa Intelligent Commerce: H as unpadded base64url in transactionReferenceId (Node's Buffer base64url). The UUID is the form Visa's reference agent writes (visa/vic-reference-agent@39bc93d reference-agent-backend/src/schemas/commerce.py:72, src/services/vdp_client.py:550).",
+  "build": {
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expect": {
+    "transactionReferenceId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0"
+   }
+  },
+  "bound": {
+   "presented": {
+    "transactionReferenceId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0"
+   },
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "refusals": [
+   {
+    "case": "a UUID, as Visa's reference agent writes it",
+    "presented": {
+     "transactionReferenceId": "4f0c6f0e-6d2b-4b7e-9d8a-2f3b1c5e7a90"
+    },
+    "expect": "card/vic-reference-malformed"
+   },
+   {
+    "case": "padded base64url",
+    "presented": {
+     "transactionReferenceId": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0="
+    },
+    "expect": "card/vic-reference-malformed"
+   },
+   {
+    "case": "standard base64",
+    "presented": {
+     "transactionReferenceId": "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0="
+    },
+    "expect": "card/vic-reference-malformed"
+   },
+   {
+    "case": "the 0x form",
+    "presented": {
+     "transactionReferenceId": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    "expect": "card/vic-reference-malformed"
+   },
+   {
+    "case": "not an object",
+    "presented": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expect": "card/vic-reference-malformed"
+   }
+  ]
+ },
+ "V10": {
+  "about": "Verifiable Intent views (spec/credential-format.md §5.4 at agent-intent/verifiable-intent@356c296): an Autonomous chain shaped as the reference SDK example builds it (examples/autonomous_flow.py, examples/helpers.py), with an L2 holding the open checkout and payment mandates, the merchant once for each and two acceptable items as disclosures, under the P-256 keys ISSUER, USER and AGENT. merchantView is §5.4's L2_base_jwt~checkout~item~, the presentation L3b's sd_hash covers; roleView is the SDK example's build_role_presentations view (helpers.py:233-273), the checkout mandate with every acceptable item; fullL2 is the whole Autonomous L2. Built with Node's node:crypto from the profile, not by lcp.",
+  "keys": {
+   "ISSUER": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "bI6pULD9XR4Qa5zBNIuWoGxAZllRniUYJUXFyfBFttA",
+    "y": "Ykrql6nCuiVWL3rT8nK83x_i7GLU2JoguX4pIe26_ZQ"
+   },
+   "USER": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "o_YO-VqYZxoBBMXPkjRWhHHIqUVqjj74sqMKvF_WOmM",
+    "y": "Xtzx13BI3mXKYBzWVnD4vMsgLIOISlN1eyug-NKNvvc"
+   },
+   "AGENT": {
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "f0wqaYi6s38oqEgJJW7hXd_vBgv3nCVi5wYY-KiWcno",
+    "y": "_q8Os1eCu25MRpqfbGPWHS0hN0LOt556deuT4oLGm9Y",
+    "kid": "agent-1"
+   }
+  },
+  "L1": "eyJhbGciOiJFUzI1NiIsInR5cCI6InNkK2p3dCIsImtpZCI6Imlzc3Vlci0xIn0.eyJpc3MiOiJodHRwczovL2lzc3Vlci5leGFtcGxlIiwic3ViIjoidXNlci0xIiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE4MjE1MzYwMDAsInZjdCI6Imh0dHBzOi8vY3JlZGVudGlhbHMubWFzdGVyY2FyZC5jb20vY2FyZCIsImNuZiI6eyJqd2siOnsia3R5IjoiRUMiLCJjcnYiOiJQLTI1NiIsIngiOiJvX1lPLVZxWVp4b0JCTVhQa2pSV2hISElxVVZxamo3NHNxTUt2Rl9XT21NIiwieSI6Ilh0engxM0JJM21YS1lCeldWbkQ0dk1zZ0xJT0lTbE4xZXl1Zy1OS052dmMifX0sIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbXX0.1C0X-UK8wEATsUyt8upIu6cbDDbf2PY3_RzVCzZ3zLE0PCXnGdELJJatNMPp_FDvXpP-YfASsxRR95jnc0-kmg~",
+  "merchantView": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiRS1iYmFWUnk1RjNrWE5USklKaUJyQ2JVZW1iNHVyX2hWaUY1Z01WUGRXSSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbImtNSVdiejhLYjRRc1ROMmlwWUNZTUNFUFVIQUpncERjcTlXd2UxdE8xYjQiLCJFVzduSXhKUHY0SUQyTFNJS2djQjctYzNVbHk1RExBXzFzUWVYd3lDVENnIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6ImtNSVdiejhLYjRRc1ROMmlwWUNZTUNFUFVIQUpncERjcTlXd2UxdE8xYjQifSx7Ii4uLiI6IkVXN25JeEpQdjRJRDJMU0lLZ2NCNy1jM1VseTVETEFfMXNRZVh3eUNUQ2cifV19.8JV1V-rfddQxxIK44_bk6oC9UVScykvm_6vPj8QswYQ8ju_HhrvcdRXyQiP4qarTv_Z3md6_7xK2iA1YxvDBFQ~WyJzYWx0LW9wZW4tY2hlY2tvdXQiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiZjB3cWFZaTZzMzhvcUVnSkpXN2hYZF92Qmd2M25DVmk1d1lZLUtpV2NubyIsInkiOiJfcThPczFlQ3UyNU1ScHFmYkdQV0hTMGhOMExPdDU1NmRldVQ0b0xHbTlZIiwia2lkIjoiYWdlbnQtMSJ9fSwiY29uc3RyYWludHMiOlt7InR5cGUiOiJtYW5kYXRlLmNoZWNrb3V0LmFsbG93ZWRfbWVyY2hhbnRzIiwiYWxsb3dlZCI6W3siLi4uIjoiU21qQld2VzZxQlAxTGRXaUZRZWxiaS1uaUExVmd5RFJLaXJfVmF2NjA1YyJ9XX0seyJ0eXBlIjoibWFuZGF0ZS5jaGVja291dC5saW5lX2l0ZW1zIiwiaXRlbXMiOlt7ImlkIjoibGluZS1pdGVtLTEiLCJhY2NlcHRhYmxlX2l0ZW1zIjpbeyIuLi4iOiJsdE1BVVNLQllUN3pIbVZnUzZrVmxiXzFWSS02UW40RUVDZ0hjZ2s2MkkwIn0seyIuLi4iOiJMT25mZ1NvZDBqVlRJWjkyR2tfR2ZYMFhzNllCU20zTHVncXFadlVUek9nIn1dLCJxdWFudGl0eSI6MX1dfV19XQ~WyJzYWx0LWl0ZW0tMSIseyJpZCI6IkJBQjg2MzQ1IiwidGl0bGUiOiJCYWJvbGF0IFB1cmUgQWVybyBUZW5uaXMgUmFja2V0In1d~",
+  "roleView": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiRS1iYmFWUnk1RjNrWE5USklKaUJyQ2JVZW1iNHVyX2hWaUY1Z01WUGRXSSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbImtNSVdiejhLYjRRc1ROMmlwWUNZTUNFUFVIQUpncERjcTlXd2UxdE8xYjQiLCJFVzduSXhKUHY0SUQyTFNJS2djQjctYzNVbHk1RExBXzFzUWVYd3lDVENnIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6ImtNSVdiejhLYjRRc1ROMmlwWUNZTUNFUFVIQUpncERjcTlXd2UxdE8xYjQifSx7Ii4uLiI6IkVXN25JeEpQdjRJRDJMU0lLZ2NCNy1jM1VseTVETEFfMXNRZVh3eUNUQ2cifV19.8JV1V-rfddQxxIK44_bk6oC9UVScykvm_6vPj8QswYQ8ju_HhrvcdRXyQiP4qarTv_Z3md6_7xK2iA1YxvDBFQ~WyJzYWx0LW9wZW4tY2hlY2tvdXQiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiZjB3cWFZaTZzMzhvcUVnSkpXN2hYZF92Qmd2M25DVmk1d1lZLUtpV2NubyIsInkiOiJfcThPczFlQ3UyNU1ScHFmYkdQV0hTMGhOMExPdDU1NmRldVQ0b0xHbTlZIiwia2lkIjoiYWdlbnQtMSJ9fSwiY29uc3RyYWludHMiOlt7InR5cGUiOiJtYW5kYXRlLmNoZWNrb3V0LmFsbG93ZWRfbWVyY2hhbnRzIiwiYWxsb3dlZCI6W3siLi4uIjoiU21qQld2VzZxQlAxTGRXaUZRZWxiaS1uaUExVmd5RFJLaXJfVmF2NjA1YyJ9XX0seyJ0eXBlIjoibWFuZGF0ZS5jaGVja291dC5saW5lX2l0ZW1zIiwiaXRlbXMiOlt7ImlkIjoibGluZS1pdGVtLTEiLCJhY2NlcHRhYmxlX2l0ZW1zIjpbeyIuLi4iOiJsdE1BVVNLQllUN3pIbVZnUzZrVmxiXzFWSS02UW40RUVDZ0hjZ2s2MkkwIn0seyIuLi4iOiJMT25mZ1NvZDBqVlRJWjkyR2tfR2ZYMFhzNllCU20zTHVncXFadlVUek9nIn1dLCJxdWFudGl0eSI6MX1dfV19XQ~WyJzYWx0LWl0ZW0tMSIseyJpZCI6IkJBQjg2MzQ1IiwidGl0bGUiOiJCYWJvbGF0IFB1cmUgQWVybyBUZW5uaXMgUmFja2V0In1d~WyJzYWx0LWl0ZW0tMiIseyJpZCI6IkhFQTIzMTAyIiwidGl0bGUiOiJIZWFkIEdyYXBoZW5lIDM2MCBTcGVlZCJ9XQ~",
+  "fullL2": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCtrYiJ9.eyJub25jZSI6ImJtOXVZMlV0YkRKaCIsImF1ZCI6Imh0dHBzOi8vYWdlbnQuZXhhbXBsZSIsImlhdCI6MTc5MDAwMDAwMCwiZXhwIjoxNzkyNTkyMDAwLCJzZF9oYXNoIjoiRS1iYmFWUnk1RjNrWE5USklKaUJyQ2JVZW1iNHVyX2hWaUY1Z01WUGRXSSIsIl9zZF9hbGciOiJzaGEtMjU2IiwiX3NkIjpbImtNSVdiejhLYjRRc1ROMmlwWUNZTUNFUFVIQUpncERjcTlXd2UxdE8xYjQiLCJFVzduSXhKUHY0SUQyTFNJS2djQjctYzNVbHk1RExBXzFzUWVYd3lDVENnIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6ImtNSVdiejhLYjRRc1ROMmlwWUNZTUNFUFVIQUpncERjcTlXd2UxdE8xYjQifSx7Ii4uLiI6IkVXN25JeEpQdjRJRDJMU0lLZ2NCNy1jM1VseTVETEFfMXNRZVh3eUNUQ2cifV19.8JV1V-rfddQxxIK44_bk6oC9UVScykvm_6vPj8QswYQ8ju_HhrvcdRXyQiP4qarTv_Z3md6_7xK2iA1YxvDBFQ~WyJzYWx0LW9wZW4tY2hlY2tvdXQiLHsidmN0IjoibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiZjB3cWFZaTZzMzhvcUVnSkpXN2hYZF92Qmd2M25DVmk1d1lZLUtpV2NubyIsInkiOiJfcThPczFlQ3UyNU1ScHFmYkdQV0hTMGhOMExPdDU1NmRldVQ0b0xHbTlZIiwia2lkIjoiYWdlbnQtMSJ9fSwiY29uc3RyYWludHMiOlt7InR5cGUiOiJtYW5kYXRlLmNoZWNrb3V0LmFsbG93ZWRfbWVyY2hhbnRzIiwiYWxsb3dlZCI6W3siLi4uIjoiU21qQld2VzZxQlAxTGRXaUZRZWxiaS1uaUExVmd5RFJLaXJfVmF2NjA1YyJ9XX0seyJ0eXBlIjoibWFuZGF0ZS5jaGVja291dC5saW5lX2l0ZW1zIiwiaXRlbXMiOlt7ImlkIjoibGluZS1pdGVtLTEiLCJhY2NlcHRhYmxlX2l0ZW1zIjpbeyIuLi4iOiJsdE1BVVNLQllUN3pIbVZnUzZrVmxiXzFWSS02UW40RUVDZ0hjZ2s2MkkwIn0seyIuLi4iOiJMT25mZ1NvZDBqVlRJWjkyR2tfR2ZYMFhzNllCU20zTHVncXFadlVUek9nIn1dLCJxdWFudGl0eSI6MX1dfV19XQ~WyJzYWx0LW9wZW4tcGF5bWVudCIseyJ2Y3QiOiJtYW5kYXRlLnBheW1lbnQub3Blbi4xIiwiY25mIjp7Imp3ayI6eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6ImYwd3FhWWk2czM4b3FFZ0pKVzdoWGRfdkJndjNuQ1ZpNXdZWS1LaVdjbm8iLCJ5IjoiX3E4T3MxZUN1MjVNUnBxZmJHUFdIUzBoTjBMT3Q1NTZkZXVUNG9MR205WSIsImtpZCI6ImFnZW50LTEifX0sInBheW1lbnRfaW5zdHJ1bWVudCI6eyJ0eXBlIjoibWFzdGVyY2FyZC5zcmNEaWdpdGFsQ2FyZCIsImlkIjoiZjE5OWMzZGQtNzEwNi00NzhiLTliNWYtN2FmOWNhNzI1MTcwIn0sImNvbnN0cmFpbnRzIjpbeyJ0eXBlIjoibWFuZGF0ZS5wYXltZW50LmFtb3VudF9yYW5nZSIsImN1cnJlbmN5IjoiVVNEIiwibWluIjoxMDAwMCwibWF4Ijo0MDAwMH0seyJ0eXBlIjoibWFuZGF0ZS5wYXltZW50LmFsbG93ZWRfcGF5ZWVzIiwiYWxsb3dlZCI6W3siLi4uIjoiczdvSm9BN21OR3JGZHhsRjk0WkJBS2x4U1VVb3FsRnhINWJwUzEtTnctSSJ9XX1dfV0~WyJzYWx0LW1lcmNoYW50LWNoZWNrb3V0Iix7ImlkIjoibS0xMDAxIiwibmFtZSI6IlNlbGxlciBFeGFtcGxlIiwid2Vic2l0ZSI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUifV0~WyJzYWx0LW1lcmNoYW50LXBheW1lbnQiLHsiaWQiOiJtLTEwMDEiLCJuYW1lIjoiU2VsbGVyIEV4YW1wbGUiLCJ3ZWJzaXRlIjoiaHR0cHM6Ly9zZWxsZXIuZXhhbXBsZSJ9XQ~WyJzYWx0LWl0ZW0tMSIseyJpZCI6IkJBQjg2MzQ1IiwidGl0bGUiOiJCYWJvbGF0IFB1cmUgQWVybyBUZW5uaXMgUmFja2V0In1d~WyJzYWx0LWl0ZW0tMiIseyJpZCI6IkhFQTIzMTAyIiwidGl0bGUiOiJIZWFkIEdyYXBoZW5lIDM2MCBTcGVlZCJ9XQ~",
+  "L3b": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImtiLXNkLWp3dCIsImtpZCI6ImFnZW50LTEifQ.eyJub25jZSI6ImJtOXVZMlV0YkROaSIsImF1ZCI6Imh0dHBzOi8vc2VsbGVyLmV4YW1wbGUiLCJpYXQiOjE3OTAwMDAxMDAsImV4cCI6MTc5MDAwMDQwMCwic2RfaGFzaCI6ImRlU1RIWDVCem1mSEtFaGo2ZTR2Y0c2aVhac1Vmc2xfYXBNSjBxTmE5ODgiLCJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyI2OUZoRFZ4QlBNYWJfT3Y3VkQwQzlfdGlVX3ZyWEowc3JGRUxiWWk0cWxrIl0sImRlbGVnYXRlX3BheWxvYWQiOlt7Ii4uLiI6IjY5RmhEVnhCUE1hYl9PdjdWRDBDOV90aVVfdnJYSjBzckZFTGJZaTRxbGsifV19.rTU9cGcDRqxCWVzjMas3XVppB0yk6fair1j09E7-ckJDAs0Tlw8bCB2WTPSjjj48_NXJ3CockH4f5_64ZIRKkw~WyJzYWx0LWwzYi1jaGVja291dCIseyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9qd3QiOiJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExURWlmUS5leUpwYzNNaU9pSm9kSFJ3Y3pvdkwzTmxiR3hsY2k1bGVHRnRjR3hsSWl3aVkyaGxZMnR2ZFhRaU9pSmphR3RmTVRBd01TSXNJbXhsWjJGc1EyOXVkR1Y0ZENJNmV5SjBlWEJsSWpvaWMyaGhNalUySWl3aWRtRnNkV1VpT2lJd2VHSmhOemd4Tm1KbU9HWXdNV05tWldFME1UUXhOREJrWlRWa1lXVXlNakl6WWpBd016WXhZVE01TmpFM04yRTVZMkkwTVRCbVpqWXhaakl3TURFMVlXUWlMQ0pzWldkaGJFTnZiblJsZUhSVmNtd2lPaUpvZEhSd2N6b3ZMMkYwY2k1elpXeHNaWEl1WlhoaGJYQnNaUzgzWXpoaFkyWmhNaTFtT0RBd0xUUXhPVEl0T0RsbE9TMHhZMlZtT1Rnek16RTRNR1lpZlgwLjByZHREN1JjR3dTbEE2OWJ2eW16TVAyWTZwVGc4RTRQcG15ZDFwcUlXM3V5a1F4SWdxXzgwUncwSVNiai11OTc2b3ZJSnl6Q1ZiOHpWT1k0R2xpRFlRIiwiY2hlY2tvdXRfaGFzaCI6IjE5U3JEdlpvNHNhMTMwQkhVd05VV1U2ZTFOLXJhZ01VVGllRlZ3QjdLbnMifV0~",
+  "expect": {
+   "merchantView": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "roleView": "card/vi-sd-hash-mismatch",
+   "fullL2UnderImmediate": "card/vi-typ"
+  },
+  "immediateBuild": {
+   "choice": {
+    "checkout": {
+     "iss": "https://seller.example",
+     "checkout": "chk_1001",
+     "items": [
+      {
+       "sku": "BAB86345",
+       "quantity": 1
+      }
+     ]
+    },
+    "shown": {
+     "legalContext": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     }
+    }
+   },
+   "expect": {
+    "checkout": {
+     "iss": "https://seller.example",
+     "checkout": "chk_1001",
+     "items": [
+      {
+       "sku": "BAB86345",
+       "quantity": 1
+      }
+     ],
+     "legalContext": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     }
+    }
+   }
+  },
+  "immediateRead": {
+   "doc": {
+    "legalContext": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+    }
+   },
+   "expect": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+   }
+  }
  }
 }

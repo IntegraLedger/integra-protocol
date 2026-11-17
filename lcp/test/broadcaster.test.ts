@@ -21,9 +21,9 @@ type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: st
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
 type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
-const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 58 });
-const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 27 });
-const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 22 });
+const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 62 });
+const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 29 });
+const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 23 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
 const answerOf = (id: string): Broadcaster | null => PAIRINGS.find((r) => r.pairing === id)!.broadcaster;
 
@@ -111,7 +111,7 @@ function candidates(): unknown[] {
   const out: unknown[] = [];
   const walk = (x: unknown, depth: number): void => {
     if (depth > 14 || typeof x !== "object" || x === null) return;
-    if (!Array.isArray(x) && ["payload", "allowance", "checkout_mandate", "signatureInput", "l2"].some((k) => k in x)) out.push(x);
+    if (!Array.isArray(x) && ["payload", "allowance", "checkout_mandate", "signatureInput", "l2", "contentDigest", "transactionReferenceId"].some((k) => k in x)) out.push(x);
     for (const v of Array.isArray(x) ? x : Object.values(x)) walk(v, depth + 1);
   };
   for (const f of readdirSync(new URL("../vectors/", import.meta.url)).sort()) {

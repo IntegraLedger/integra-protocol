@@ -22,7 +22,8 @@ const RECEIPT = {
 /** The draft's example credential payload, under any challenge. */
 const PRESENTED = { challenge: { id: "x", realm: "api.seller.example", method: "stripe", intent: "subscription", request: "e30" }, payload: { paymentMethod: "pm_1Qabc32eZvKYlo2C7b8H1234", customer: "cus_S7x1Pq5R9n2Lm4" } };
 
-const SUBSCRIPTION_SENTENCE = "The close is the seller's report.";
+/** The subscription's own clause: the seller reports its activation, and no close is reported or recorded. */
+const SUBSCRIPTION_SENTENCE = "the activation is known from the seller's report alone.";
 const SESSION_SENTENCE = "The close is the seller's report.";
 
 describe("mpp/subscription/stripe's channel members", () => {
@@ -73,10 +74,10 @@ describe("mpp/subscription/stripe's channel members", () => {
 
   // The record reads no renewal invoice: the seller reports the activation, and its proves says nothing of later
   // billing periods.
-  it("proves ends with the subscription's sentence, which the charge's proves does not carry, and speaks of no renewal", () => {
-    expect(subscriptionStripe.data.proves.endsWith(` ${SUBSCRIPTION_SENTENCE}`)).toBe(true);
+  it("proves states the activation as the seller's report, which the charge's proves does not, and speaks of no renewal or close", () => {
+    expect(subscriptionStripe.data.proves.includes(SUBSCRIPTION_SENTENCE)).toBe(true);
     expect(chargeStripe.data.proves.includes(SUBSCRIPTION_SENTENCE)).toBe(false);
-    expect(subscriptionStripe.data.proves).not.toMatch(/later billing|renewal|paid under this ATR/i);
+    expect(subscriptionStripe.data.proves).not.toMatch(/later billing|renewal|paid under this ATR|\bclose\b/i);
     expect(load("mpp-subscription-stripe.json").pattern.proves).toBe(subscriptionStripe.data.proves);
   });
 });

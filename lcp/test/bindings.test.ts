@@ -19,6 +19,8 @@ describe("BINDINGS", () => {
       "card/mastercard-vi/immediate",
       "card/seller-reference",
       "card/visa-tap",
+      "card/mastercard-agent-pay",
+      "card/visa-vic",
       "mpp/charge/evm/authorization",
       "mpp/charge/evm/permit2",
       "mpp/charge/evm/transaction",
@@ -43,6 +45,8 @@ describe("BINDINGS", () => {
       "ucp/booking/unsigned",
       "ucp/checkout/ap2-mandate",
       "ucp/checkout/unsigned",
+      "ap2/checkout-mandate/x402",
+      "ucp/checkout/agent-signed",
       "x402/auth-capture/eip155/eip3009",
       "x402/auth-capture/eip155/permit2",
       "x402/batch-settlement/cloudflare",
@@ -85,7 +89,7 @@ describe("the record's members", () => {
     expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
   it("every pairing's record carries only those members, and every one but x402/exact/starknet's names its pattern", () => {
-    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 58 })) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 62 })) {
       for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
       expect(b.pattern.pattern === undefined, b.id).toBe(b.id === "x402/exact/starknet");
     }

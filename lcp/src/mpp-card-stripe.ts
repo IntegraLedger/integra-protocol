@@ -198,6 +198,7 @@ async function subscriptionBoundWithin(_presented: unknown): Promise<AtrHash | R
  */
 export const subscriptionStripe = Object.freeze({
   ...pairingOf("mpp/subscription/stripe"),
+  pattern: deepFreeze({ ...pattern, profile: "mpp/subscription/stripe" }) as LcpPattern,
   channel: Object.freeze({
     /** Every payment the seller reports on this pairing is the activation, which opens the subscription. */
     kind: (_presented: unknown): "open" => "open",

@@ -1,33 +1,34 @@
 // Every expected value comes from vectors/card.json: FIPS 180-2's SHA-256("abc"), RFC 9421's test-key-ed25519 and its
-// worked TAP request, RFC 9901's published disclosures, and a Verifiable Intent recipe with its printed digests and
-// ES256 signatures.
+// worked TAP requests, TAP's and Mastercard's published requests, RFC 9901's published disclosures, and Verifiable
+// Intent chains with their printed digests and ES256 signatures.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { digestJson, type AtrHash } from "../src/index.js";
 import {
-  TAP_FIELD,
+  agentPay,
   disclosureDigest,
   sellerReference,
   tie,
   viAutonomous,
   viImmediate,
   visaTap,
+  visaVic,
   type CardOption,
   type TapPresented,
 } from "../src/card.js";
 import { rowsOf } from "./rows.js";
+import { AGREEMENT_FIRST } from "../src/internal/data/card.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/card.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
 const E: AtrHash = V.fixed.E;
 const L: string = V.fixed.link;
 const VI = V.vi;
-const PAIRINGS = [visaTap, viImmediate, viAutonomous, sellerReference] as const;
+const PAIRINGS = [visaTap, viImmediate, viAutonomous, sellerReference, agentPay, visaVic] as const;
 const refused = (code: string) => ({ refused: true, code });
 const tap = (over: Partial<TapPresented>): TapPresented => ({
   signatureInput: V.C2.request.signatureInput,
   signature: V.C2.request.signature,
-  lcpHash: V.C2.request.lcpHash,
   ...over,
 });
 const b64u = (b: Uint8Array) => Buffer.from(b).toString("base64url");
@@ -118,25 +119,30 @@ describe("C1 values and digests", () => {
   });
 });
 
-describe("C2 TAP", () => {
-  it("bound returns H when the agent-payer-auth signature lists lcp-hash", async () => {
+describe("C2 TAP: H in the nonce", () => {
+  it("bound returns H when every agent-payer-auth signature's nonce is the base64 of H and 32 random bytes", async () => {
     expect(await visaTap.bound(tap({}))).toBe(V.C2.expectBound);
   });
 
-  it("an upper-case field is returned lowercase", async () => {
-    expect(await visaTap.bound(tap({ lcpHash: V.C2.upperCaseField.lcpHash }))).toBe(V.C2.upperCaseField.expectBound);
-    expect(await visaTap.bound(tap({ lcpHash: [` \t${H}\t `] }))).toBe(H);
+  it("the key id parameter is read as keyid and as keyId, Visa's reference agent's spelling, but not both", async () => {
+    expect(await visaTap.bound({ signatureInput: V.C2.keyId.signatureInput, signature: V.C2.keyId.signature })).toBe(V.C2.keyId.expectBound);
+    expect(await visaTap.bound({ signatureInput: V.C2.bothSpellings.signatureInput, signature: V.C2.bothSpellings.signature })).toEqual(
+      refused(V.C2.bothSpellings.expect),
+    );
+    expect(await visaTap.bound(tap({ signatureInput: (V.C2.request.signatureInput as string).replaceAll("keyid=", "KeyId=") }))).toEqual(
+      refused("card/tap-signature-input-malformed"),
+    );
   });
 
-  it("two lcp-hash lines are card/tap-field-repeated; none is card/tap-field-missing", async () => {
-    expect(await visaTap.bound(tap({ lcpHash: V.C2.repeatedField.lcpHash }))).toEqual(refused(V.C2.repeatedField.expect));
-    expect(await visaTap.bound(tap({ lcpHash: [] }))).toEqual(refused("card/tap-field-missing"));
-    expect(await visaTap.bound(tap({ lcpHash: ["0x1234"] }))).toEqual(refused("card/tap-field-malformed"));
-  });
-
-  it("build returns the field, its value and the component", async () => {
-    expect(await visaTap.build(V.C2.build.doc, H)).toEqual(V.C2.build.expect);
-    expect(TAP_FIELD).toBe("lcp-hash");
+  it("build returns a nonce of 88 characters whose first 32 bytes are H, drawn afresh each time", async () => {
+    const a = (await visaTap.build(V.C2.build.doc, H)) as { nonce: string };
+    const b = (await visaTap.build(V.C2.build.doc, H)) as { nonce: string };
+    expect(a.nonce).toHaveLength(V.C2.build.expectNonceLength);
+    const bytes = Buffer.from(a.nonce, "base64");
+    expect([bytes.length, `0x${bytes.subarray(0, 32).toString("hex")}`]).toEqual([64, V.C2.build.expectHashBytes]);
+    expect(a.nonce).not.toBe(b.nonce);
+    const withNonce = (V.C2.request.signatureInput as string).replaceAll(V.C2.nonce, a.nonce);
+    expect(await visaTap.bound(tap({ signatureInput: withNonce }))).toBe(H);
   });
 
   it("the worked example: sig2's base has the printed SHA-256 and verifies under RFC 9421's test-key-ed25519", async () => {
@@ -145,6 +151,7 @@ describe("C2 TAP", () => {
     const key = await crypto.subtle.importKey("spki", Buffer.from(V.C2.testKeyEd25519Spki, "base64"), { name: "Ed25519" }, false, ["verify"]);
     const sig2 = /sig2=:([^:]+):/.exec(V.C2.request.signature)![1]!;
     expect(await crypto.subtle.verify({ name: "Ed25519" }, key, Buffer.from(sig2, "base64"), base)).toBe(true);
+    expect(V.C2.sig2Base).toContain(`nonce="${V.C2.nonce}"`);
   });
 
   it("read returns the shown legal context", () => {
@@ -156,23 +163,124 @@ describe("C2 TAP", () => {
   });
 });
 
-describe("C3 TAP plant: the lcp-hash listing must be the agent-payer-auth signature's", () => {
-  it("sig1 lists lcp-hash and sig2 does not: card/tap-hash-not-covered, never H", async () => {
-    const r = await visaTap.bound({ signatureInput: V.C3.signatureInput, signature: V.C3.signature, lcpHash: V.C3.lcpHash });
+describe("C3 TAP plant: the hash must ride in the agent-payer-auth signature", () => {
+  it("sig1, a browsing signature, carries H and sig2 does not: card/tap-hash-not-covered, never H", async () => {
+    const r = await visaTap.bound({ signatureInput: V.C3.signatureInput, signature: V.C3.signature });
     expect(r).toEqual(refused(V.C3.expect));
     expect(r).not.toBe(H);
   });
 });
 
-describe("C9 TAP: every agent-payer-auth signature must list lcp-hash", () => {
-  it.each(rowsOf(V.C9.rows as { case: string; signatureInput: string; signature: string; lcpHash: string[]; expect: unknown }[], "card.json C9.rows"))(
+/** A row's expected answer: a hash, or a refusal code. */
+const answer = (e: string) => (e.startsWith("0x") ? e : refused(e));
+
+describe("C9 TAP: every agent-payer-auth signature carries the same H", () => {
+  it.each(rowsOf(V.C9.rows as { case: string; signatureInput: string; signature: string; expect: string }[], "card.json C9.rows"))(
     "$case",
     async (row) => {
-      expect(await visaTap.bound({ signatureInput: row.signatureInput, signature: row.signature, lcpHash: row.lcpHash })).toEqual(
-        row.expect,
-      );
+      expect(await visaTap.bound({ signatureInput: row.signatureInput, signature: row.signature })).toEqual(answer(row.expect));
     },
   );
+});
+
+describe("T2 TAP: H in the checkout path, for Visa's reference agent", () => {
+  it("the worked row's base is the one Visa's agent builds, and verifies under RFC 9421's test-key-ed25519", async () => {
+    const row = V.T2.rows[0];
+    const key = await crypto.subtle.importKey("spki", Buffer.from(V.C2.testKeyEd25519Spki, "base64"), { name: "Ed25519" }, false, ["verify"]);
+    const sig = /sig2=:([^:]+):/.exec(row.signature)![1]!;
+    expect(await crypto.subtle.verify({ name: "Ed25519" }, key, Buffer.from(sig, "base64"), new TextEncoder().encode(row.base))).toBe(true);
+    expect(row.base).toContain(`"@path": ${row.path}`);
+  });
+  it.each(rowsOf(V.T2.rows as { case: string; signatureInput: string; signature: string; path?: string; expect: string }[], "card.json T2.rows"))(
+    "$case",
+    async (row) => {
+      const presented = row.path === undefined ? { signatureInput: row.signatureInput, signature: row.signature } : row;
+      expect(await visaTap.bound(presented as TapPresented)).toEqual(answer(row.expect));
+    },
+  );
+});
+
+describe("T3 TAP's published requests", () => {
+  const rows = rowsOf(V.T3.rows as { name: string; signatureInput: string; signature: string; path?: string; expect: string; notIssued?: boolean }[], "card.json T3.rows", { exact: 6 });
+  it.each(rows)("$name: $source", async (row) => {
+    const r = await visaTap.bound({ signatureInput: row.signatureInput, signature: row.signature, ...(row.path === undefined ? {} : { path: row.path }) });
+    expect(r).toEqual(answer(row.expect));
+    expect(r).not.toBe(H);
+    if (row.notIssued === true) expect(r).not.toBe(E);
+  });
+});
+
+describe("T6 Mastercard Agent Pay", () => {
+  it.each(rowsOf(V.T6.rows as { case: string; signatureInput: string; signature: string; expect: string }[], "card.json T6.rows"))(
+    "$case",
+    async (row) => {
+      expect(await agentPay.bound({ signatureInput: row.signatureInput, signature: row.signature })).toEqual(answer(row.expect));
+    },
+  );
+  it("the playbook's example reads as a hash no merchant issued, and Visa's pairing finds no payment signature in it", async () => {
+    const p = V.T6.published;
+    const presented = { signatureInput: p.signatureInput, signature: p.signature, path: p.path };
+    expect(await agentPay.bound(presented)).toBe(p.expect);
+    expect(p.expect).not.toBe(H);
+    expect(await visaTap.bound(presented)).toEqual(refused(p.visaTapExpect));
+  });
+  it("Visa's agent-payer-auth request is not Agent Pay's", async () => {
+    expect(await agentPay.bound(tap({}))).toEqual(refused("card/tap-no-payer-signature"));
+  });
+});
+
+describe("T7 Visa Intelligent Commerce", () => {
+  it("build gives H as unpadded base64url, and bound reads it back", async () => {
+    expect(await visaVic.build({}, V.T7.build.h)).toEqual(V.T7.build.expect);
+    expect(await visaVic.bound(V.T7.bound.presented)).toBe(V.T7.bound.expect);
+  });
+  it.each(rowsOf(V.T7.refusals as { case: string; presented: unknown; expect: string }[], "card.json T7.refusals"))(
+    "$case",
+    async (row) => {
+      expect(await visaVic.bound(row.presented)).toEqual(refused(row.expect));
+      expect(await visaVic.broadcaster(row.presented)).toEqual(isObjectRow(row.presented) ? "payee" : refused(row.expect));
+    },
+  );
+});
+const isObjectRow = (v: unknown) => typeof v === "object" && v !== null && !Array.isArray(v);
+
+describe("V10 Verifiable Intent: the merchant's view, the SDK example's role view, and a full Autonomous L2", () => {
+  const X = V.V10;
+  it("the merchant's view of §5.4 is bound to H", async () => {
+    expect(await viAutonomous.bound({ l1: X.L1, l2: X.merchantView, l3b: X.L3b })).toBe(X.expect.merchantView);
+  });
+  it("the reference SDK example's role view is refused", async () => {
+    expect(await viAutonomous.bound({ l1: X.L1, l2: X.roleView, l3b: X.L3b })).toEqual(refused(X.expect.roleView));
+  });
+  it("a full Autonomous L2 presented under Immediate is refused", async () => {
+    expect(await viImmediate.bound({ l2: X.fullL2 })).toEqual(refused(X.expect.fullL2UnderImmediate));
+  });
+  it("Immediate reads the legal context the seller shows, and builds the agent's checkout payload with it", async () => {
+    expect(viImmediate.read(X.immediateRead.doc)).toEqual(X.immediateRead.expect);
+    expect(await viImmediate.build(X.immediateBuild.choice, H)).toEqual(X.immediateBuild.expect);
+    expect(JSON.stringify(((await viImmediate.build(X.immediateBuild.choice, H)) as { checkout: object }).checkout)).toBe(
+      JSON.stringify(X.immediateBuild.expect.checkout),
+    );
+    expect(await viImmediate.build(X.immediateBuild.choice, E)).toEqual(refused("card/vi-legal-context-conflict"));
+    const other = { ...X.immediateBuild.choice, checkout: { ...X.immediateBuild.choice.checkout, legalContext: { type: "sha256", value: E, legalContextUrl: L } } };
+    expect(await viImmediate.build(other, H)).toEqual(refused("card/vi-legal-context-conflict"));
+    expect(await viImmediate.build({ checkout: X.immediateBuild.choice.checkout }, H)).toEqual(refused("card/no-legal-context"));
+  });
+  it("Immediate builds a payload whose checkout_jwt, with a 702-byte header and an ES256 signature, read takes; one byte more is refused", async () => {
+    const shown = X.immediateBuild.choice.shown;
+    const base = JSON.stringify({ pad: "", legalContext: shown.legalContext }).length;
+    const at = (n: number) => ({ checkout: { pad: "x".repeat(n) }, shown });
+    const largest = 11520 - base; // (16,384 - 1,024) / 4 * 3 bytes of JSON
+    const built = (await viImmediate.build(at(largest), H)) as { checkout: object };
+    expect(Buffer.byteLength(JSON.stringify(built.checkout))).toBe(11520);
+    const header = { alg: "ES256", typ: "JWT", kid: "" };
+    header.kid = "k".repeat(702 - JSON.stringify(header).length);
+    const b64u = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const jwt = `${b64u(header)}.${b64u(built.checkout)}.${"A".repeat(86)}`;
+    expect(jwt.length).toBe(16384);
+    expect(viImmediate.read(jwt)).toMatchObject({ h: H });
+    expect(await viImmediate.build(at(largest + 1), H)).toEqual(refused("card/too-large"));
+  });
 });
 
 describe("TAP bound, the remaining refusals", () => {
@@ -186,9 +294,15 @@ describe("TAP bound, the remaining refusals", () => {
     );
   });
 
-  it("a parameter on the lcp-hash component is not coverage", async () => {
-    expect(await visaTap.bound(tap({ signatureInput: input.replace('"lcp-hash")', '"lcp-hash";sf)') }))).toEqual(
-      refused("card/tap-hash-not-covered"),
+  it("a parameter on the @path component is not coverage of the path", async () => {
+    const row = V.T2.rows[0];
+    const signatureInput = (row.signatureInput as string).replace('"@path")', '"@path";sf)');
+    expect(await visaTap.bound({ signatureInput, signature: row.signature, path: row.path })).toEqual(refused("card/tap-hash-not-covered"));
+  });
+
+  it("a nonce that is not a String is card/tap-nonce-malformed", async () => {
+    expect(await visaTap.bound(tap({ signatureInput: input.replaceAll(`nonce="${V.C2.nonce}"`, "nonce=7") }))).toEqual(
+      refused("card/tap-nonce-malformed"),
     );
   });
 
@@ -200,31 +314,33 @@ describe("TAP bound, the remaining refusals", () => {
   it("malformed dictionaries are refused by field", async () => {
     for (const signatureInput of [
       "sig2=(",
-      'sig2=("lcp-hash"),',
+      'sig2=("@path"),',
       "Sig2=()",
-      'sig2=("lcp-hash");tag="agent-payer-auth";x=1.5',
-      'sig2=("lcp-hash");tag="agent-payer-auth";x=:AAAA:',
-      'sig2=(lcp-hash);tag="agent-payer-auth"',
-      'sig2="lcp-hash";tag="agent-payer-auth"',
+      'sig2=("@path");tag="agent-payer-auth";x=1.5',
+      'sig2=("@path");tag="agent-payer-auth";x=:AAAA:',
+      'sig2=(@path);tag="agent-payer-auth"',
+      'sig2="@path";tag="agent-payer-auth"',
     ]) {
       expect(await visaTap.bound(tap({ signatureInput }))).toEqual(refused("card/tap-signature-input-malformed"));
     }
     for (const signature of ["sig2=(:AAAA:)", 'sig2="abc"', "sig2=:AA$A:", "sig2=:AAAA"]) {
       expect(await visaTap.bound(tap({ signature }))).toEqual(refused("card/tap-signature-malformed"));
     }
+    expect(await visaTap.bound(tap({ path: 7 as unknown as string }))).toEqual(refused("card/tap-path-malformed"));
   });
 
-  it("bounds: 8 KiB fields, 16 members, 32 components, 256-byte lines", async () => {
+  it("bounds: 8 KiB fields, 16 members, 32 components, 2048-character paths", async () => {
     expect(await visaTap.bound(tap({ signatureInput: input + " ".repeat(8193 - input.length) }))).toEqual(refused("card/too-large"));
     const members = Array.from({ length: 17 }, (_, i) => `s${i}=()`).join(", ");
     expect(await visaTap.bound(tap({ signatureInput: members }))).toEqual(refused("card/too-large"));
     const components = Array.from({ length: 33 }, (_, i) => `"c${i}"`).join(" ");
     expect(await visaTap.bound(tap({ signatureInput: `sig2=(${components})` }))).toEqual(refused("card/too-large"));
-    expect(await visaTap.bound(tap({ lcpHash: [H + " ".repeat(200)] }))).toEqual(refused("card/too-large"));
+    expect(await visaTap.bound(tap({ path: `/${"a".repeat(2048)}` }))).toEqual(refused("card/too-large"));
+    expect(await visaTap.bound(tap({ path: `/${"a".repeat(2047)}` }))).toBe(H);
   });
 
   it("a repeated key takes the later value, as RFC 9651 parses it", async () => {
-    const later = `${input}, sig2=("@path");tag="agent-payer-auth"`;
+    const later = `${input}, sig2=("@path");tag="agent-payer-auth";nonce="x"`;
     expect(await visaTap.bound(tap({ signatureInput: later }))).toEqual(refused("card/tap-hash-not-covered"));
   });
 });
@@ -277,7 +393,8 @@ describe("C5 VI read and build", () => {
 
   it("a checkout_jwt that is not a JWS, or too large, is refused", () => {
     expect(viImmediate.read("a.b")).toEqual(refused("card/vi-malformed"));
-    expect(viImmediate.read(42)).toEqual(refused("card/vi-malformed"));
+    expect(viAutonomous.read(42)).toEqual(refused("card/vi-malformed"));
+    expect(viImmediate.read(42)).toEqual(refused("card/no-legal-context"));
     expect(viImmediate.read(`${enc({ alg: "none" })}.${enc({})}.`)).toEqual(refused("card/no-legal-context"));
     expect(viImmediate.read("a".repeat(16385))).toEqual(refused("card/too-large"));
   });
@@ -403,8 +520,7 @@ describe("C8 plain checkout", () => {
 });
 
 describe("what each record proves", () => {
-  const opening =
-    "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. ";
+  const opening = AGREEMENT_FIRST;
   it("every card pairing has coverage none and opens with the agreement sentence", () => {
     for (const p of PAIRINGS) {
       expect(p.data.coverage).toBe("none");
@@ -421,15 +537,15 @@ describe("what each record proves", () => {
       ["card/visa-tap", "protocol-extension", "card/visa-tap", true, true],
       ["card/mastercard-vi/immediate", "id-reuse", "card/mastercard-vi", true, true],
       ["card/mastercard-vi/autonomous", "id-reuse", "card/mastercard-vi", true, true],
-      ["card/seller-reference", "http-advisory", undefined, false, false],
+      ["card/seller-reference", "http-advisory", "card/seller-reference", false, false],
     ]);
   });
 
-  it("no card pairing reads a rail", () => {
+  it("no card pairing reads a rail; card/seller-reference alone has a reference, the seller's own for the charge", () => {
     for (const p of PAIRINGS) {
       expect(p).not.toHaveProperty("status");
       expect(p).not.toHaveProperty("recover");
-      expect(p).not.toHaveProperty("reference");
+      expect(Object.hasOwn(p, "reference"), p.id).toBe(p.id === "card/seller-reference");
     }
   });
 });
@@ -512,9 +628,11 @@ describe("card.json agreedRefusals: every row runs", () => {
     "advertise with a link over 2048 characters": async () => [
       visaTap.advertise({}, H, `https://atr.seller.example/${"a".repeat(2048)}`, offer),
     ],
-    "advertise or TAP build with a hash that is not 0x and 64 hex digits": async () => [
+    "advertise, or the TAP, Agent Pay or VIC build, with a hash that is not 0x and 64 hex digits": async () => [
       visaTap.advertise({}, "0x12" as AtrHash, L, offer),
       await visaTap.build({}, H.slice(2) as AtrHash),
+      await agentPay.build({}, H.slice(2) as AtrHash),
+      await visaVic.build({}, H.slice(2) as AtrHash),
     ],
     "read of shown JSON that is not an object, or has no legalContext member": async () => [
       visaTap.read([]),
@@ -527,7 +645,7 @@ describe("card.json agreedRefusals: every row runs", () => {
       visaTap.read({ legalContext: { type: "sha256", value: H, legalContextUrl: `https://a.example/${"a".repeat(2048)}` } }),
     ],
     "VI read or build of a checkout_jwt that is not a string of three dot-separated visible-ASCII segments whose second decodes to a JSON object":
-      async () => [viImmediate.read("a.b"), viImmediate.read(42), await viAutonomous.build(`a.${enc([1])}.b`, H)],
+      async () => [viImmediate.read("a.b"), viAutonomous.read(42), await viAutonomous.build(`a.${enc([1])}.b`, H)],
     "VI read or build of a checkout_jwt over 16384 characters": async () => [
       viImmediate.read("a".repeat(16385)),
       await viImmediate.build("a".repeat(16385), H),
@@ -552,12 +670,29 @@ describe("card.json agreedRefusals: every row runs", () => {
     "TAP bound with tag=agent-payer-auth as a Token rather than a String": async () => [
       await visaTap.bound(tap({ signatureInput: input.replace('tag="agent-payer-auth"', "tag=agent-payer-auth") })),
     ],
-    "TAP bound with lcpHash not an array, or a line that is not a string": async () => [
-      await visaTap.bound(tap({ lcpHash: H as unknown as string[] })),
-      await visaTap.bound(tap({ lcpHash: [7] as unknown as string[] })),
+    "TAP or Agent Pay bound with a payment signature whose nonce parameter is not a String": async () => [
+      await visaTap.bound(tap({ signatureInput: input.replaceAll(`nonce="${V.C2.nonce}"`, "nonce=7") })),
+      await agentPay.bound(tap({ signatureInput: input.replaceAll(`nonce="${V.C2.nonce}"`, "nonce=?1").replace("agent-payer-auth", "agent-pay-auth") })),
     ],
-    "TAP bound with the one lcp-hash line over 256 characters": async () => [
-      await visaTap.bound(tap({ lcpHash: [H + " ".repeat(200)] })),
+    "TAP or Agent Pay bound with a request path over 2048 characters": async () => [
+      await visaTap.bound(tap({ path: `/${"a".repeat(2048)}` })),
+      await agentPay.bound(tap({ path: `/${"a".repeat(2048)}` })),
+    ],
+    "TAP or Agent Pay bound with a request path that is not a string of visible ASCII starting with /": async () => [
+      await visaTap.bound(tap({ path: "checkout" })),
+      await visaTap.bound(tap({ path: "/check out" })),
+      await agentPay.bound(tap({ path: 7 as unknown as string })),
+    ],
+    "TAP or Agent Pay bound with a signature input that names both keyid and keyId": async () => [
+      await visaTap.bound({ signatureInput: V.C2.bothSpellings.signatureInput, signature: V.C2.bothSpellings.signature }),
+      await visaTap.bound(tap({ signatureInput: input.replaceAll('keyid="test-key-ed25519"', 'keyId="a";keyid="b"') })),
+    ],
+    "VI Immediate build of a checkout payload that is not an object, or whose checkout is not an object": async () => [
+      await viImmediate.build(42, H),
+      await viImmediate.build({ checkout: [], shown: V.C2.build.doc }, H),
+    ],
+    "VI Immediate build of a checkout payload over 12288 bytes of JSON": async () => [
+      await viImmediate.build({ checkout: { pad: "a".repeat(12288) }, shown: V.C2.build.doc }, H),
     ],
     "VI bound with a layer over 65536 characters or over 32 disclosures": async () => {
       const d = VI.L2i.split("~")[1];

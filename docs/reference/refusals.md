@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 483 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 492 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -30,10 +30,10 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`x402`](#x402) | 34 | x402 documents, the request commitment, and the checks every x402 pairing shares (`@integraledger/lcp/x402` and the x402 pairings on each rail). |
 | [`mpp`](#mpp) | 52 | MPP challenges and credentials, and the checks every MPP pairing shares (`@integraledger/lcp/mpp`). |
 | [`ack`](#ack) | 10 | ACK Payment Requests and receipts (`@integraledger/lcp/ack`). |
-| [`acp`](#acp) | 15 | ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`). |
-| [`ap2`](#ap2) | 17 | AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledger/lcp/ap2`, and the AP2 Mandate pairings of `@integraledger/lcp/ucp`). |
-| [`ucp`](#ucp) | 13 | UCP checkouts and bookings (`@integraledger/lcp/ucp`). |
-| [`card`](#card) | 25 | Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
+| [`acp`](#acp) | 16 | ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`). |
+| [`ap2`](#ap2) | 20 | AP2 checkouts, Checkout Mandates and the SD-JWT reader under them (`@integraledger/lcp/ap2`, and the AP2 Mandate pairings of `@integraledger/lcp/ucp`). |
+| [`ucp`](#ucp) | 16 | UCP checkouts and bookings (`@integraledger/lcp/ucp`). |
+| [`card`](#card) | 27 | Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`). |
 | [`a2a`](#a2a) | 6 | The A2A extension (`@integraledger/lcp/a2a`). |
 | [`evm`](#evm) | 17 | EVM chains: typed data, logs and the settlement read (`@integraledger/lcp/evm`, and the EVM pairings of `@integraledger/lcp/x402`, `@integraledger/lcp/x402-batch-settlement` and `@integraledger/lcp/mpp`). |
 | [`tempo`](#tempo) | 17 | Tempo: transactions, memos, channels and key authorizations (`@integraledger/lcp/tempo`, and the MPP Tempo pairings and `keySearch` in `@integraledger/lcp/mpp`). |
@@ -221,6 +221,7 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 |---|---|
 | `acp/allowance-changed` | The `complete` function returned by `build` refuses a `delegate_payment` request that is not an object or whose `allowance` differs from the one built. |
 | `acp/allowance-malformed` | `bound` refuses a presented request that is not an object or whose `allowance` is not exactly ACP's six members with `reason` `one_time`. |
+| `acp/charge-reference-malformed` | `reference` of `acp/checkout/undelegated` is given a value that is not an object whose `charge`, the seller's own reference for the charge, is 1 to 255 visible ASCII characters. |
 | `acp/choice-malformed` | `build` refuses a choice that is not an object, or whose `max_amount`, `currency`, `merchant_id` or `expires_at` is not a non-negative safe integer, a three-letter lowercase code, a non-empty string and an RFC 3339 date-time respectively, or whose allowance has no RFC 8785 form (a `merchant_id` holding an unpaired surrogate). |
 | `acp/hash-not-session` | `build` refuses when H is not a valid ATR hash or the chosen session's `id` is not H. |
 | `acp/id-conflict` | `advertise` finds that the session already has an `id` other than H. |
@@ -231,7 +232,7 @@ ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`).
 | `acp/no-legal-context` | `read` finds no `metadata.legal_context` in the session. |
 | `acp/not-buyer-signed` | `bound` of `acp/checkout/undelegated` always refuses, because nothing the buyer signs names the hash. |
 | `acp/nothing-to-sign` | `build` of `acp/checkout/undelegated` always refuses, because a handler that does not require `delegate_payment` gives the buyer nothing to sign. |
-| `acp/option-malformed` | `advertise` refuses a handler option that is not an object with a boolean `requires_delegate_payment`, and `unplaced` refuses an option that carries a `refused` member. |
+| `acp/option-malformed` | `advertise` refuses a handler option that is not an object with a boolean `requires_delegate_payment`, `reference` of `acp/checkout/undelegated` one whose `requires_delegate_payment` is not `false`, and `unplaced` refuses an option that carries a `refused` member. |
 | `acp/session-malformed` | `advertise` or `read` refuses a checkout session that is not a serialisable JSON object, or (in `advertise`) one that carries a `refused` member or whose `metadata` is present but not an object. |
 | `acp/too-large` | The checkout session, or the session `advertise` would return, exceeds 1 MiB or is nested more than 64 levels deep, an `https` link given to `advertise` or read from `metadata.legal_context` exceeds 2048 characters, or (in `read`) its `id` is longer than a hash, or the buyer's choice given to `build` has a `merchant_id` over 256 characters or an `expires_at` over 64 characters. |
 
@@ -255,10 +256,13 @@ pairings of `@integraledger/lcp/ucp`).
 | `ap2/mandate-malformed` | The Checkout Mandate is not a well-formed SD-JWT presentation (bad segments or disclosures, base64url not in its canonical form (RFC 4648 §3.5) included, a digest referenced twice, or a digest that names no three-element disclosure listed twice in `_sd`), or is a chain joined by `~~` with more than two hops or a hop that is not one, its `checkout_hash` is not 43 base64url characters, its `checkout_jwt` is present but not a string, the presentation given to `bound` is not an object, or `checkoutJwtOf` finds no disclosed `checkout_jwt`. |
 | `ap2/no-checkout-mandate` | The resolved SD-JWT (the last hop of a chain) contains no object whose `vct` is `mandate.checkout.1`. |
 | `ap2/no-legal-context` | The checkout payload read by `read`, `build` or `bound` has no `legalContext` member. |
-| `ap2/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout`, a string of 1 to 256 characters, and `unplaced` refuses an option that carries a `refused` member. |
+| `ap2/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout`, a string of 1 to 256 characters; `unplaced` refuses an option that carries a `refused` member; and `ap2/checkout-mandate/x402`'s `reference` refuses a payment method that is not `{type: "x402", address, network}`, the address 20 bytes in hex and the network 1 to 128 characters. |
+| `ap2/payment-malformed` | `ap2/checkout-mandate/x402`'s `bound` or `reference` finds that the x402 credential is not AP2's bundle: an object with a non-empty string `payment_mandate_chain`, a string `payment_nonce`, and an `eip_3009_payload` whose `signature` is a hex string of at most 8192 characters and whose `authorization` has exactly `from` and `to` (20-byte hex addresses), `value`, `validAfter` and `validBefore` (decimal integers) and `nonce` (64 hex digits, with or without `0x`), each a string. |
+| `ap2/payment-not-bound` | `ap2/checkout-mandate/x402`'s `bound` finds that the x402 authorization's `nonce` is not keccak-256 of the UTF-8 text of the bundle's `payment_mandate_chain`, the check AP2's payment processor makes. |
 | `ap2/option-not-this-checkout` | `advertise` finds that the option's `checkout` is not the payload's `id`. |
+| `ap2/receipt-malformed` | A presentation carries a `payment_receipt`, the confirmation of funds sent in AP2's push funding, that is not a JSON object. |
 | `ap2/sd-alg-unsupported` | The `_sd_alg` of an SD-JWT of the Checkout Mandate presentation names a digest algorithm other than `sha-256`. |
-| `ap2/too-large` | A checkout JWT, Checkout Mandate or checkout payload exceeds 1 MiB or nests deeper than 64 levels, an SD-JWT of a mandate carries too many disclosures or nests them too deeply, a checkout `id` is longer than 256 characters, or an `https` link given to `advertise` or read from the checkout payload's `legalContext` is longer than 2048 characters. |
+| `ap2/too-large` | A checkout JWT, Checkout Mandate, checkout payload or x402 payment mandate chain exceeds 1 MiB or nests deeper than 64 levels, an SD-JWT of a mandate carries too many disclosures or nests them too deeply, a checkout `id` is longer than 256 characters, or an `https` link given to `advertise` or read from the checkout payload's `legalContext` is longer than 2048 characters. |
 
 ## ucp
 
@@ -268,44 +272,49 @@ UCP checkouts and bookings (`@integraledger/lcp/ucp`).
 |---|---|
 | `ucp/already-signed` | `advertise` refuses a checkout that already carries `ap2.merchant_authorization`, because the link must be placed before the business signs. |
 | `ucp/ap2-not-active` | An AP2 Mandate pairing's `read` or `build` finds no `ap2.merchant_authorization` in the checkout in detached JWS form. |
+| `ucp/charge-reference-malformed` | `reference` of `ucp/checkout/unsigned` is given a value that is not an object whose `charge`, the seller's own reference for the charge, is 1 to 255 visible ASCII characters. |
 | `ucp/checkout-malformed` | The checkout (or booking) is not a serialisable JSON object with a non-empty string `id`, its `links` is present but not an array, the checkout given to `advertise` carries a `refused` member, or the offer given to `build` is not an object. |
-| `ucp/hash-not-in-checkout` | The AP2 Mandate pairing's `build` finds that the checkout's `legal_context` link carries a hash other than H. |
+| `ucp/content-digest-mismatch` | `ucp/checkout/agent-signed`'s `bound` finds that the `Content-Digest` value is not exactly `sha-256=:`, the standard base64 of the SHA-256 of the request body's UTF-8 bytes, and `:`, the comparison UCP's request verification makes. |
+| `ucp/hash-not-in-checkout` | The AP2 Mandate or agent-signed pairing's `build` finds that the checkout's `legal_context` link carries a hash other than H. |
 | `ucp/legal-context-conflict` | The checkout has more than one `legal_context` link, `read` finds more than one `legal_context_agreement` link, or `advertise` finds an existing `legal_context` link whose values differ from the ones it would write, or, given an agreement URL, finds more than one `legal_context_agreement` link, one whose `url` differs from it, or an existing `legal_context` link with no agreement link. |
-| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form or its `url` is not a usable `https` URL, `read` finds a `legal_context_agreement` link whose `url` is not a usable `https` URL of at most 2048 characters, or the agreement URL given to `advertise` is an `https` link over 2048 characters or the H given to it is invalid. |
+| `ucp/legal-context-malformed` | The `legal_context` link's `title` is not an ATR hash in LCP's string form or its `url` is not a usable `https` URL, `read` finds a `legal_context_agreement` link whose `url` is not a usable `https` URL of at most 2048 characters, or the agreement URL given to `advertise` is an `https` link over 2048 characters or the H given to it is invalid; or `ucp/checkout/agent-signed`'s `bound` finds a request `legal_context` member that is not exactly `{type: "sha256", value}` with an ATR hash as `value`. |
 | `ucp/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the `url` of the checkout's `legal_context` link, or the `url` of its `legal_context_agreement` link read by `read`, is an absolute URL whose scheme is not `https`. |
-| `ucp/no-legal-context` | The checkout has no `links` or no link whose `type` is `legal_context`. |
+| `ucp/no-legal-context` | The checkout has no `links` or no link whose `type` is `legal_context`, or the platform's request given to `ucp/checkout/agent-signed`'s `bound` has no `legal_context` member. |
 | `ucp/not-buyer-signed` | `bound` of the unsigned checkout and booking pairings always refuses, because nothing the buyer signs carries the hash. |
 | `ucp/nothing-to-sign` | `build` of the unsigned checkout and booking pairings always refuses, because the buyer signs nothing. |
-| `ucp/option-malformed` | `advertise` refuses an option that is not an object with exactly one member, `checkout` or `booking` as the pairing requires, a string of 1 to 256 characters, and `unplaced` refuses an option that carries a `refused` member. |
+| `ucp/option-malformed` | `advertise`, and `reference` of `ucp/checkout/unsigned`, refuse an option that is not an object with exactly one member, `checkout` or `booking` as the pairing requires, a string of 1 to 256 characters, and `unplaced` refuses an option that carries a `refused` member. |
 | `ucp/option-not-this-checkout` | `advertise` finds that the option names a checkout or booking other than the document's `id`. |
-| `ucp/too-large` | The checkout exceeds 1 MiB as JSON or is nested more than 64 levels deep, its `id` exceeds 256 characters, its `links` holds, or after `advertise` would hold, more than 64 entries, or the `legal_context` link's `url`, or the link given to `advertise`, is an `https` URL over 2048 characters. |
+| `ucp/request-malformed` | `ucp/checkout/agent-signed`'s `bound` is given a value that is not an object with a string `body` and a string `contentDigest`, or a body that is not one JSON object nesting at most 64 levels. |
+| `ucp/too-large` | The checkout exceeds 1 MiB as JSON or is nested more than 64 levels deep, its `id` exceeds 256 characters, its `links` holds, or after `advertise` would hold, more than 64 entries, or the `legal_context` link's `url`, or the link given to `advertise`, is an `https` URL over 2048 characters; or the request given to `ucp/checkout/agent-signed`'s `bound` has a body over 1 MiB or a `Content-Digest` value over 2048 characters. |
 
 ## card
 
-Visa TAP, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`).
+Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent and the plain card checkout (`@integraledger/lcp/card`).
 
 | Code | Meaning |
 |---|---|
-| `card/legal-context-malformed` | The link or agreement URL given to `advertise` is an `https` link over 2048 characters, or H given to `advertise` or to the Visa TAP `build` is invalid, or a `legalContext` read from the shown JSON or a `checkout_jwt` does not decode (a link that is not `https` included), has a link over 2048 characters, or has an agreement URL that is not an `https` link of at most 2048 characters or is given in both spellings with different values. |
+| `card/charge-reference-malformed` | `reference` of `card/seller-reference` is given a value that is not an object whose `charge`, the seller's own reference for the charge, is 1 to 255 visible ASCII characters. |
+| `card/legal-context-malformed` | The link or agreement URL given to `advertise` is an `https` link over 2048 characters, or H given to `advertise` or to the `build` of Visa TAP, Mastercard Agent Pay or Visa Intelligent Commerce is invalid, or a `legalContext` read from the shown JSON or a `checkout_jwt` does not decode (a link that is not `https` included), has a link over 2048 characters, or has an agreement URL that is not an `https` link of at most 2048 characters or is given in both spellings with different values. |
 | `card/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link. |
-| `card/no-legal-context` | The JSON the seller showed (for `card/visa-tap` and `card/seller-reference`) or the payload of a `checkout_jwt` (for Verifiable Intent) has no `legalContext` member. |
+| `card/no-legal-context` | The JSON the seller showed (for `card/visa-tap`, `card/mastercard-agent-pay`, `card/visa-vic`, `card/seller-reference`, and Verifiable Intent Immediate where the agent creates the `checkout_jwt`) or the payload of a `checkout_jwt` (for Verifiable Intent) has no `legalContext` member. |
 | `card/no-signed-place` | `build` and `bound` of `card/seller-reference` always refuse, because nothing the buyer signs carries the hash. |
-| `card/option-malformed` | `advertise` refuses a card option that is not an object with a known `scheme` and a `checkout` of 1 to 128 visible ASCII characters, and `unplaced` refuses an option that carries a `refused` member. |
-| `card/tap-field-malformed` | The TAP request's `lcpHash` is not an array of strings, or its one line is not an ATR hash. |
-| `card/tap-field-missing` | The TAP request carries no `lcp-hash` field line. |
-| `card/tap-field-repeated` | The TAP request carries more than one `lcp-hash` field line. |
-| `card/tap-hash-not-covered` | An `agent-payer-auth` signature input in the TAP request does not list the `lcp-hash` component without parameters. |
-| `card/tap-no-payer-signature` | No signature input in the TAP request has the `agent-payer-auth` tag. |
-| `card/tap-signature-input-malformed` | The Visa TAP `bound` refuses a presentation that is not an object, or a `signatureInput` that is not a string parsing as an RFC 9651 dictionary of signature inputs. |
-| `card/tap-signature-malformed` | The Visa TAP `bound` refuses a `signature` that is not a string parsing as an RFC 9651 dictionary of byte-sequence signatures. |
-| `card/tap-signature-missing` | No `agent-payer-auth` signature input has a matching member in the `Signature` field. |
-| `card/too-large` | A `checkout_jwt` exceeds 16384 characters, a Verifiable Intent layer exceeds 65536 characters or 32 disclosures, a decoded payload nests too deeply, a TAP `Signature-Input` or `Signature` field exceeds 8192 characters, 16 members or 32 components, or an `lcp-hash` line exceeds 256 characters. |
+| `card/option-malformed` | `advertise` refuses a card option that is not an object with a known `scheme` and a `checkout` of 1 to 128 visible ASCII characters, `reference` of `card/seller-reference` one whose `scheme` is not `seller-reference`, and `unplaced` refuses an option that carries a `refused` member. |
+| `card/tap-hash-conflict` | In a TAP or Agent Pay request, two payment signatures carry different hashes, each read from the request's path where the signature covers a path ending in a hash, and otherwise from its nonce. |
+| `card/tap-hash-not-covered` | A payment signature input in a TAP or Agent Pay request carries no hash: its `nonce` is not the base64 of 64 bytes, and it does not list `@path` without parameters on a path whose last segment is a hash. |
+| `card/tap-no-payer-signature` | No signature input in the request has a payment tag: `agent-payer-auth` for Visa TAP, `Agent-pay-auth` or `agent-pay-auth` for Mastercard Agent Pay. |
+| `card/tap-nonce-malformed` | A payment signature input's `nonce` parameter is not a String. |
+| `card/tap-path-malformed` | The request path given to the TAP or Agent Pay `bound` is not a string of visible ASCII starting with `/`. |
+| `card/tap-signature-input-malformed` | The TAP or Agent Pay `bound` refuses a presentation that is not an object, or a `signatureInput` that is not a string parsing as an RFC 9651 dictionary of signature inputs, a signature input naming both `keyid` and `keyId` among them. |
+| `card/tap-signature-malformed` | The TAP or Agent Pay `bound` refuses a `signature` that is not a string parsing as an RFC 9651 dictionary of byte-sequence signatures. |
+| `card/tap-signature-missing` | No payment signature input has a matching member in the `Signature` field. |
+| `card/too-large` | A `checkout_jwt` exceeds 16384 characters, a checkout payload the Verifiable Intent `build` writes exceeds 12288 bytes of JSON, a Verifiable Intent layer exceeds 65536 characters or 32 disclosures, a decoded payload nests too deeply, a TAP or Agent Pay `Signature-Input` or `Signature` field exceeds 8192 characters, 16 members or 32 components, or its request path exceeds 2048 characters. |
 | `card/vi-checkout-hash-mismatch` | The checkout mandate's `checkout_hash` is not the digest of its `checkout_jwt`. |
 | `card/vi-disclosure-unreferenced` | A Verifiable Intent layer carries a disclosure that no digest in its payload references. |
 | `card/vi-key-malformed` | In autonomous mode, L2 does not delegate exactly one open checkout mandate whose `cnf.jwk` is an EC P-256 key with a string `kid`, L1's `cnf.jwk` is not an EC P-256 key, a key's `x` or `y` is not base64url without padding of 32 bytes in its canonical form (RFC 4648 §3.5), or a key cannot be imported for verification. |
 | `card/vi-kid-mismatch` | In autonomous mode, the `kid` in L3b's header is not the `kid` of the agent key that L2 delegates. |
-| `card/vi-legal-context-conflict` | The Verifiable Intent `build` finds that the hash in the `checkout_jwt` is not H. |
-| `card/vi-malformed` | A Verifiable Intent input is not what it must be: the presentation is not an object, a layer or `checkout_jwt` is not a string, not a well-formed compact JWS or SD-JWT, each segment and disclosure base64url without padding in its canonical form (RFC 4648 §3.5), with a JSON object payload, has no disclosures or trailing `~`, has an `_sd_alg` other than `sha-256`, or lacks a `delegate_payload` array of `{"...": digest}` entries. |
+| `card/vi-legal-context-conflict` | The Verifiable Intent `build` finds that the hash in the `checkout_jwt`, or in the legal context the seller showed, is not H, or that the checkout payload it is given already holds another `legalContext`. |
+| `card/vic-reference-malformed` | The Visa Intelligent Commerce `bound` refuses a presentation that is not an object, or a `transactionReferenceId` that is not 43 characters of base64url without padding of 32 bytes, in its canonical form (RFC 4648 §3.5). |
+| `card/vi-malformed` | A Verifiable Intent input is not what it must be: the presentation is not an object, a checkout choice given to the Immediate `build` has no object `checkout`, a layer or `checkout_jwt` is not a string, not a well-formed compact JWS or SD-JWT, each segment and disclosure base64url without padding in its canonical form (RFC 4648 §3.5), with a JSON object payload, has no disclosures or trailing `~`, has an `_sd_alg` other than `sha-256`, or lacks a `delegate_payload` array of `{"...": digest}` entries. |
 | `card/vi-no-checkout-mandate` | A Verifiable Intent layer's `delegate_payload` does not reference exactly one `mandate.checkout.1` mandate. |
 | `card/vi-sd-hash-mismatch` | In autonomous mode, L3b's `sd_hash` is not the digest of L2, or L2's `sd_hash` is not the digest of L1. |
 | `card/vi-signature-invalid` | In autonomous mode, L3b's ES256 signature does not verify under the key L2 delegates, or L2's under L1's `cnf.jwk`, or a signature is not 64 bytes of base64url. |

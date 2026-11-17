@@ -6,25 +6,33 @@
  * or verifies a signature, a `cnf` delegation or a link between chained mandates.
  */
 import {
+  canonicalJson,
   digestJson,
   fromLcpString,
+  hash,
   hashEquals,
   isHttpsLink,
   isOtherSchemeLink,
+  toBase64,
   toLcpString,
   type AtrHash,
   type Json,
 } from "./core.js";
 import { deepFreeze, isObject, jsonBytes, normalHash } from "./fields.js";
-import { checkoutBinding, checkoutJwtOf, type Presented } from "./ap2.js";
+import { CHECKOUT_VCT, checkoutBinding, type Presented } from "./ap2.js";
 import type { LcpPattern } from "./index.js";
 import { agreementFault, agreementUrlFault, isAgreementUrl } from "./internal/agreement.js";
 import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { toBase64Url } from "./rail-bytes.js";
+import { disclosureDigest } from "./sd-jwt.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { CARD } from "./internal/data/card.js";
+import { chargeOf, type ChargePresented, type ChargeRef } from "./internal/charge-reference.js";
+import { withinDepth } from "./sd-jwt.js";
 import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { ChargePresented, ChargeRef } from "./internal/charge-reference.js";
 
 export const LINK_TYPE = "legal_context";
 const AGREEMENT_LINK_TYPE = "legal_context_agreement";
@@ -42,8 +50,13 @@ export type BookingOption = { booking: string };
 export interface UcpOffer {
   checkout: Checkout;
 }
+/**
+ * The checkout as the business signed it, and the claims the buyer's checkout mandate carries for it: the checkout JWT
+ * (`checkoutJwt`) and its hash. `complete` takes the signed mandate and returns it beside that JWT.
+ */
 export interface Unsigned {
   checkout: Checkout;
+  content: { vct: typeof CHECKOUT_VCT; checkout_jwt: string; checkout_hash: string };
   complete(checkout_mandate: string): Promise<Presented | Refusal>;
 }
 
@@ -215,19 +228,49 @@ function readShown(base: (doc: Checkout) => { h: AtrHash; link: string; offer: U
   };
 }
 
-/** The checkout unchanged, for the buyer's mandate issuer, once its link carries `h`. */
+/**
+ * The checkout JWT a buyer's checkout mandate commits to, for a checkout the business signed: its detached
+ * `ap2.merchant_authorization` with the payload reinserted, `header.payload.signature`, the payload being the base64url
+ * of the RFC 8785 form of the checkout without its `ap2` member, the bytes that signature covers (UCP 2026-08-25, the
+ * AP2 Mandates extension, *Business Authorization*). UCP does not say which bytes are the checkout JWT; this is the
+ * second of the two readings its open issue 905 sets out, and the profile states it as provisional. A checkout with no
+ * `ap2.merchant_authorization` of the form `header..signature` is `ucp/ap2-not-active`; one with no RFC 8785 form is
+ * `ucp/checkout-malformed`. No signature is verified.
+ */
+export function checkoutJwt(c: Checkout): string | Refusal {
+  const checkout = checkoutOf(c);
+  if (isRefusal(checkout)) return checkout;
+  const ap2: unknown = checkout["ap2"];
+  const auth = isObject(ap2) ? ap2["merchant_authorization"] : undefined;
+  if (typeof auth !== "string" || !MERCHANT_AUTHORIZATION.test(auth)) return refusal("ucp/ap2-not-active");
+  const { ap2: _signature, ...covered } = checkout;
+  const payload = canonicalJson(covered);
+  if (typeof payload !== "string") return refusal("ucp/checkout-malformed");
+  const [header, , signature] = auth.split(".");
+  return `${header}.${toBase64Url(new TextEncoder().encode(payload))}.${signature}`;
+}
+
+/**
+ * The claims the buyer's checkout mandate carries for a checkout the business signed, once its link carries `h`: the
+ * checkout JWT `checkoutJwt` gives, and its hash. `complete` returns the signed mandate beside that JWT, and refuses a
+ * mandate that commits to another JWT as `bound` would, so it never hands back a presentation `bound` refuses for that.
+ */
 async function buildAp2(offer: UcpOffer, h: AtrHash): Promise<Unsigned | Refusal> {
   if (!isObject(offer)) return refusal("ucp/checkout-malformed");
   const r = readAp2(offer.checkout);
   if (isRefusal(r)) return r;
   if (!hashEquals(r.h, h)) return refusal("ucp/hash-not-in-checkout");
   const checkout = offer.checkout;
+  const checkout_jwt = checkoutJwt(checkout);
+  if (isRefusal(checkout_jwt)) return checkout_jwt;
+  const checkout_hash = await disclosureDigest(checkout_jwt);
   return {
     checkout,
+    content: { vct: CHECKOUT_VCT, checkout_jwt, checkout_hash },
     async complete(checkout_mandate: string): Promise<Presented | Refusal> {
-      const checkout_jwt = await checkoutJwtOf(checkout_mandate);
-      if (isRefusal(checkout_jwt)) return checkout_jwt;
-      return { checkout_mandate, checkout_jwt };
+      const presented: Presented = { checkout_mandate, checkout_jwt };
+      const b = await checkoutBinding(presented);
+      return isRefusal(b) ? b : presented;
     },
   };
 }
@@ -323,10 +366,26 @@ export const ap2Mandate: UcpBinding<"ucp/checkout/ap2-mandate", CheckoutOption> 
 }) satisfies Entry<"ucp/checkout/ap2-mandate", Presented, never, never, UcpFamily<CheckoutOption>>;
 
 /**
- * `ucp/checkout/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
- * executes the payment the checkout completed; nothing here reads it.
+ * The reference of a `ucp/checkout/unsigned` charge: the checkout of the option it answers and the seller's own
+ * reference for the charge, `{checkout, charge}`. What is presented is `{charge}`, 1 to 255 visible ASCII characters,
+ * else `ucp/charge-reference-malformed`; then an option that is not `{checkout}` of 1 to 256 characters is
+ * `ucp/option-malformed`. Nothing the charge moved is compared with the option.
  */
-export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Object.freeze({
+async function unsignedReference(presented: unknown, option: CheckoutOption): Promise<ChargeRef | Refusal> {
+  const charge = chargeOf(presented);
+  if (charge === undefined) return refusal("ucp/charge-reference-malformed");
+  if (!isOption(option, "checkout")) return refusal("ucp/option-malformed");
+  return { checkout: option.checkout, charge };
+}
+
+/**
+ * `ucp/checkout/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+ * executes the payment the checkout completed; nothing here reads it. `reference` names the charge by the seller's own
+ * reference for it.
+ */
+export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> & {
+  reference(presented: unknown, option: CheckoutOption): Promise<ChargeRef | Refusal>;
+} = Object.freeze({
   id: "ucp/checkout/unsigned",
   data: CARD["ucp/checkout/unsigned"],
   pattern: unsignedPattern("checkout"),
@@ -338,7 +397,8 @@ export const unsigned: UcpBinding<"ucp/checkout/unsigned", CheckoutOption> = Obj
   build: buildUnsigned,
   bound: boundUnsigned,
   broadcaster: broadcasts("payee"),
-}) satisfies Entry<"ucp/checkout/unsigned", Presented, never, never, UcpFamily<CheckoutOption>>;
+  reference: unsignedReference,
+}) satisfies Entry<"ucp/checkout/unsigned", ChargePresented, ChargeRef, never, Omit<UcpFamily<CheckoutOption>, "option"> & { option: CheckoutOption }>;
 
 /**
  * `ucp/booking/ap2-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
@@ -383,3 +443,97 @@ function isOption(o: unknown, key: "checkout" | "booking"): boolean {
   return Object.keys(o).length === 1 && typeof v === "string" && v.length >= 1 && v.length <= MAX_ID;
 }
 
+
+// ── ucp/checkout/agent-signed: H in a member of the platform's signed request ──
+
+/** The member the platform writes into the request that completes the checkout, before it signs the request. */
+export interface AgentSignedUnsigned {
+  legal_context: { type: "sha256"; value: AtrHash };
+}
+/** The platform's signed request as the business received it: its body, as text, and its `Content-Digest` value. */
+export interface AgentSignedPresented {
+  body: string;
+  contentDigest: string;
+}
+
+const REQUEST_MEMBER = "legal_context";
+
+/** The member for the platform to write into its request body, once the checkout's link carries `h`. */
+async function buildAgentSigned(offer: UcpOffer, h: AtrHash): Promise<AgentSignedUnsigned | Refusal> {
+  if (!isObject(offer)) return refusal("ucp/checkout-malformed");
+  const r = readUnsigned(offer.checkout);
+  if (isRefusal(r)) return r;
+  if (!hashEquals(r.h, h)) return refusal("ucp/hash-not-in-checkout");
+  return { legal_context: { type: "sha256", value: r.h } };
+}
+
+/**
+ * The hash in the platform's signed request: the body's one `legal_context` member, once the `Content-Digest` value is
+ * exactly `sha-256=:` and the standard base64 of the SHA-256 of the body's UTF-8 bytes and `:`, the comparison UCP's
+ * request verification makes. No signature is verified and no key is read: the business verifies the platform's
+ * signature, which covers `content-digest`, as UCP defines.
+ */
+async function boundAgentSigned(presented: unknown): Promise<AtrHash | Refusal> {
+  if (!isObject(presented)) return refusal("ucp/request-malformed");
+  const { body, contentDigest } = presented;
+  if (typeof body !== "string" || typeof contentDigest !== "string") return refusal("ucp/request-malformed");
+  if (body.length > MIB || contentDigest.length > MAX_LINK_LENGTH) return refusal("ucp/too-large");
+  const bytes = new TextEncoder().encode(body);
+  if (bytes.length > MIB) return refusal("ucp/too-large");
+  const digest = await hash(bytes);
+  const expected = `sha-256=:${toBase64(hexBytes(digest))}:`;
+  if (contentDigest !== expected) return refusal("ucp/content-digest-mismatch");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return refusal("ucp/request-malformed");
+  }
+  if (!isObject(parsed) || !withinDepth(parsed as Json)) return refusal("ucp/request-malformed");
+  const lc = parsed[REQUEST_MEMBER];
+  if (lc === undefined) return refusal("ucp/no-legal-context");
+  if (!isObject(lc) || Object.keys(lc).length !== 2 || lc["type"] !== "sha256") return refusal("ucp/legal-context-malformed");
+  const h = normalHash(lc["value"]);
+  if (h === null) return refusal("ucp/legal-context-malformed");
+  return h;
+}
+
+/** The 32 bytes of a hash written `0x` and 64 hex digits. */
+function hexBytes(h: AtrHash): Uint8Array {
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) out[i] = parseInt(h.slice(2 + 2 * i, 4 + 2 * i), 16);
+  return out;
+}
+
+/** The shape gate `boundAgentSigned` applies first: an object, else `ucp/request-malformed`. */
+function requestShape(presented: unknown): true | Refusal {
+  return isObject(presented) ? true : refusal("ucp/request-malformed");
+}
+
+/** The agent-signed pairing's family descriptor: the unsigned pairing's, with the member `build` gives. */
+type AgentSignedFamily = Omit<UcpFamily<CheckoutOption>, "unsigned"> & { unsigned: AgentSignedUnsigned };
+
+/**
+ * `ucp/checkout/agent-signed`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+ * executes the payment the signed request completes; nothing here reads it. A value that is not an object gets
+ * `ucp/request-malformed`, as `bound` refuses it.
+ */
+export const agentSigned = Object.freeze({
+  id: "ucp/checkout/agent-signed" as const,
+  data: CARD["ucp/checkout/agent-signed"],
+  pattern: deepFreeze({
+    pattern: "protocol-extension",
+    profile: "ucp/checkout/agent-signed",
+    onChain: false,
+    zeroPartyRecoverable: false,
+    forwardIndexable: false,
+  }) as LcpPattern,
+  claims: true as boolean,
+  unplaced: unplaced<CheckoutOption>,
+  tie: tie<CheckoutOption>,
+  advertise: advertiseFor("checkout"),
+  read: readShown(readUnsigned),
+  build: buildAgentSigned,
+  bound: boundAgentSigned,
+  broadcaster: broadcastsWithin(requestShape, "payee"),
+}) satisfies Entry<"ucp/checkout/agent-signed", AgentSignedPresented, never, never, AgentSignedFamily>;

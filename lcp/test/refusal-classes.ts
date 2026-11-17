@@ -63,7 +63,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "no-signed-place", "option-malformed", "receipt-malformed", "token-malformed", "too-large",
   ],
   acp: [
-    "allowance-changed", "allowance-malformed", "choice-malformed", "hash-not-session", "id-conflict", "id-not-hash",
+    "allowance-changed", "allowance-malformed", "charge-reference-malformed", "choice-malformed", "hash-not-session", "id-conflict", "id-not-hash",
     "legal-context-conflict", "legal-context-malformed", "link-not-https", "no-legal-context", "not-buyer-signed",
     "nothing-to-sign", "option-malformed", "session-malformed", "too-large",
   ],
@@ -71,7 +71,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "checkout-hash-mismatch", "checkout-id-missing", "checkout-not-latest", "disclosure-unreferenced",
     "hash-not-in-checkout", "jws-malformed", "legal-context-conflict", "legal-context-malformed", "link-not-https",
     "mandate-ambiguous", "mandate-malformed", "no-checkout-mandate", "no-legal-context", "option-malformed",
-    "option-not-this-checkout", "sd-alg-unsupported", "too-large",
+    "option-not-this-checkout", "payment-malformed", "payment-not-bound", "receipt-malformed", "sd-alg-unsupported",
+    "too-large",
   ],
   aptos: [
     "chain-mismatch", "network-malformed", "not-an-x402-transfer", "not-entry-function", "tx-malformed", "tx-too-large",
@@ -81,11 +82,11 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "option-malformed", "peer-missing", "signature-malformed", "txn-malformed", "wrong-reader",
   ],
   card: [
-    "legal-context-malformed", "link-not-https", "no-legal-context", "no-signed-place", "option-malformed",
-    "tap-field-malformed", "tap-field-missing", "tap-field-repeated", "tap-hash-not-covered", "tap-no-payer-signature",
+    "charge-reference-malformed", "legal-context-malformed", "link-not-https", "no-legal-context", "no-signed-place", "option-malformed",
+    "tap-hash-conflict", "tap-hash-not-covered", "tap-no-payer-signature", "tap-nonce-malformed", "tap-path-malformed",
     "tap-signature-input-malformed", "tap-signature-malformed", "tap-signature-missing", "too-large",
     "vi-checkout-hash-mismatch", "vi-disclosure-unreferenced", "vi-key-malformed", "vi-kid-mismatch",
-    "vi-legal-context-conflict", "vi-malformed", "vi-no-checkout-mandate", "vi-sd-hash-mismatch",
+    "vi-legal-context-conflict", "vi-malformed", "vic-reference-malformed", "vi-no-checkout-mandate", "vi-sd-hash-mismatch",
     "vi-signature-invalid", "vi-transaction-id-mismatch", "vi-typ",
   ],
   cardano: [
@@ -184,9 +185,9 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "wrong-reader",
   ],
   ucp: [
-    "already-signed", "ap2-not-active", "checkout-malformed", "hash-not-in-checkout", "legal-context-conflict",
-    "legal-context-malformed", "link-not-https", "no-legal-context", "not-buyer-signed", "nothing-to-sign",
-    "option-malformed", "option-not-this-checkout", "too-large",
+    "already-signed", "ap2-not-active", "charge-reference-malformed", "checkout-malformed", "content-digest-mismatch", "hash-not-in-checkout",
+    "legal-context-conflict", "legal-context-malformed", "link-not-https", "no-legal-context", "not-buyer-signed",
+    "nothing-to-sign", "option-malformed", "option-not-this-checkout", "request-malformed", "too-large",
   ],
   x402: [
     "channel-id-mismatch", "channel-kind-unknown", "delegation-empty", "deposit-authorization", "escrow-not-canonical",

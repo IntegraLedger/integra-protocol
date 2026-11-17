@@ -10,10 +10,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { paymentRequest } from "../src/ack.js";
 import { delegated, undelegated, type Presented as AcpPresented } from "../src/acp.js";
-import { checkoutMandate, type Presented as Ap2Presented } from "../src/ap2.js";
+import { checkoutMandate, checkoutMandateX402, type Presented as Ap2Presented, type X402Presented as Ap2X402Presented, type X402Ref as Ap2X402Ref } from "../src/ap2.js";
 import { exactAptos, type AptosReader, type AptosRef } from "../src/aptos.js";
 import { exactAvm, type AvmReader, type AvmRef } from "../src/avm.js";
-import { sellerReference, viAutonomous, viImmediate, visaTap, type TapPresented, type ViAutonomous, type ViImmediate } from "../src/card.js";
+import { agentPay, sellerReference, viAutonomous, viImmediate, visaTap, visaVic, type ChargeRef, type TapPresented, type VicPresented, type ViAutonomous, type ViImmediate } from "../src/card.js";
 import { exactCardano, type CardanoReader, type CardanoRef } from "../src/cardano.js";
 import { exactCasper, type CasperReader, type CasperRef } from "../src/casper.js";
 import { exactCcd, type CcdReader, type CcdRef } from "../src/ccd.js";
@@ -86,7 +86,7 @@ import { exactStarknet, type StarknetReader, type StarknetRef } from "../src/sta
 import { exactSui, type SuiReader, type SuiRef } from "../src/sui.js";
 import { exactTronMemo, type TronReader, type TronRef } from "../src/tron.js";
 import { exactTvm, type TvmReader, type TvmRef } from "../src/tvm.js";
-import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "../src/ucp.js";
+import { agentSigned, ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned, type AgentSignedPresented } from "../src/ucp.js";
 import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, uptoPermit2, type Eip3009Payment, type PaymentPayload } from "../src/x402.js";
 import { batchCloudflare, batchEvm, batchSvm } from "../src/x402-batch-settlement.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
@@ -176,16 +176,20 @@ const OWN = {
   "mpp/charge/usdc/gateway": chargeUsdcGateway satisfies Entry<"mpp/charge/usdc/gateway", MppCredential, never, never, Own<typeof chargeUsdcGateway>>,
   "ack/payment-request": paymentRequest satisfies Entry<"ack/payment-request", Json, never, never, Own<typeof paymentRequest>>,
   "acp/checkout/delegated": delegated satisfies Entry<"acp/checkout/delegated", AcpPresented, never, never, Own<typeof delegated>>,
-  "acp/checkout/undelegated": undelegated satisfies Entry<"acp/checkout/undelegated", AcpPresented, never, never, Own<typeof undelegated>>,
+  "acp/checkout/undelegated": undelegated satisfies Entry<"acp/checkout/undelegated", AcpPresented, ChargeRef, never, Own<typeof undelegated>>,
   "ap2/checkout-mandate": checkoutMandate satisfies Entry<"ap2/checkout-mandate", Ap2Presented, never, never, Own<typeof checkoutMandate>>,
   "card/visa-tap": visaTap satisfies Entry<"card/visa-tap", TapPresented, never, never, Own<typeof visaTap>>,
   "card/mastercard-vi/immediate": viImmediate satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never, Own<typeof viImmediate>>,
   "card/mastercard-vi/autonomous": viAutonomous satisfies Entry<"card/mastercard-vi/autonomous", ViAutonomous, never, never, Own<typeof viAutonomous>>,
-  "card/seller-reference": sellerReference satisfies Entry<"card/seller-reference", unknown, never, never, Own<typeof sellerReference>>,
+  "card/seller-reference": sellerReference satisfies Entry<"card/seller-reference", unknown, ChargeRef, never, Own<typeof sellerReference>>,
+  "card/mastercard-agent-pay": agentPay satisfies Entry<"card/mastercard-agent-pay", TapPresented, never, never, Own<typeof agentPay>>,
+  "card/visa-vic": visaVic satisfies Entry<"card/visa-vic", VicPresented, never, never, Own<typeof visaVic>>,
   "ucp/checkout/ap2-mandate": ap2Mandate satisfies Entry<"ucp/checkout/ap2-mandate", Ap2Presented, never, never, Own<typeof ap2Mandate>>,
-  "ucp/checkout/unsigned": unsigned satisfies Entry<"ucp/checkout/unsigned", Ap2Presented, never, never, Own<typeof unsigned>>,
+  "ucp/checkout/unsigned": unsigned satisfies Entry<"ucp/checkout/unsigned", Ap2Presented, ChargeRef, never, Own<typeof unsigned>>,
   "ucp/booking/ap2-mandate": bookingAp2Mandate satisfies Entry<"ucp/booking/ap2-mandate", Ap2Presented, never, never, Own<typeof bookingAp2Mandate>>,
   "ucp/booking/unsigned": bookingUnsigned satisfies Entry<"ucp/booking/unsigned", Ap2Presented, never, never, Own<typeof bookingUnsigned>>,
+  "ap2/checkout-mandate/x402": checkoutMandateX402 satisfies Entry<"ap2/checkout-mandate/x402", Ap2X402Presented, Ap2X402Ref, never, Own<typeof checkoutMandateX402>>,
+  "ucp/checkout/agent-signed": agentSigned satisfies Entry<"ucp/checkout/agent-signed", AgentSignedPresented, never, never, Own<typeof agentSigned>>,
 } satisfies { readonly [I in PairingId]: { readonly id: I } };
 
 // ── Compile time: no codec satisfies Entry with another family's reader. Each alias differs from the line above only
@@ -212,7 +216,7 @@ void (exactAptos satisfies AptosWithNoReader);
 type AptosWithNoRef = Entry<"x402/exact/aptos", AptosPaymentPayload, never, AptosReader, Own<typeof exactAptos>>;
 // @ts-expect-error -- an entry with a `reference` takes its reference type.
 void (exactAptos satisfies AptosWithNoRef);
-type SellerReferenceWithNothing = Entry<"card/seller-reference", never, never, never, Own<typeof sellerReference>>;
+type SellerReferenceWithNothing = Entry<"card/seller-reference", never, ChargeRef, never, Own<typeof sellerReference>>;
 // @ts-expect-error -- every entry's `bound` takes what is presented.
 void (sellerReference satisfies SellerReferenceWithNothing);
 
@@ -342,7 +346,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 58 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 62 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.

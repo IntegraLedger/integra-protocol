@@ -243,8 +243,13 @@
     },
     {
       "pairing": "ap2/checkout-mandate",
+      "broadcaster": null,
+      "source": "by the kind of presentation: see kinds"
+    },
+    {
+      "pairing": "ap2/checkout-mandate/x402",
       "broadcaster": "payee",
-      "source": "AP2: the merchant's payment processor executes the payment the mandate authorizes"
+      "source": "AP2 e1ea56d: the merchant forwards the x402 credential to its payment processor, which submits the authorization (code/samples/python/src/roles/merchant_agent_mcp/server.py:981-995)"
     },
     {
       "pairing": "ucp/checkout/ap2-mandate",
@@ -255,6 +260,11 @@
       "pairing": "ucp/checkout/unsigned",
       "broadcaster": "payee",
       "source": "UCP: the business's payment handler executes the payment"
+    },
+    {
+      "pairing": "ucp/checkout/agent-signed",
+      "broadcaster": "payee",
+      "source": "UCP: the business's payment handler executes the payment the platform's signed request completes"
     },
     {
       "pairing": "ucp/booking/ap2-mandate",
@@ -268,6 +278,16 @@
     },
     {
       "pairing": "card/visa-tap",
+      "broadcaster": "payee",
+      "source": "card networks: the merchant submits the authorization to its acquirer"
+    },
+    {
+      "pairing": "card/mastercard-agent-pay",
+      "broadcaster": "payee",
+      "source": "card networks: the merchant submits the authorization to its acquirer"
+    },
+    {
+      "pairing": "card/visa-vic",
       "broadcaster": "payee",
       "source": "card networks: the merchant submits the authorization to its acquirer"
     },
@@ -939,6 +959,35 @@
       },
       "expect": "payee",
       "source": "the server creates the Stripe subscription with the client's shared payment token"
+    },
+    {
+      "case": "ap2/checkout-mandate: a charge the merchant initiates, the B6 presentation of ap2-checkout-mandate.json",
+      "pairing": "ap2/checkout-mandate",
+      "presented": {
+        "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoidVJSek1NY2pRUEdkOGI1MmlybXBVQTNoblB3RUlyVnYxbGVTQzdPeTBydyIsIl9zZCI6WyJmdkJ1Ty10V3NGTFR5UlVtR3FxNlFVbEJEbkpPQWFVM2pkQi0wdTczQ0xnIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SnBaQ0k2SW1Ob2ExOHlJaXdpWTNWeWNtVnVZM2tpT2lKVlUwUWlMQ0owYjNSaGJITWlPbHQ3SW5SNWNHVWlPaUowYjNSaGJDSXNJbUZ0YjNWdWRDSTZNVGs1TURCOVhTd2liR1ZuWVd4RGIyNTBaWGgwSWpwN0luUjVjR1VpT2lKemFHRXlOVFlpTENKMllXeDFaU0k2SWpCNFlURTJOelZqWVRJMFlXTTJaRGhpTkdKbE5XVTBObUV3WVRObFpHRXlaREl4WXpZMk1qWTJOMkl5TURreU0yTXpZVGxsT0RJd09ESTRaVGxoT0RKaFppSXNJbXhsWjJGc1EyOXVkR1Y0ZEZWeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMMk5tWlRreU1tUTFMVGRpWmpFdE5ETmlZUzA1TkdRMkxUUmtZMlUzTm1FNVltSmlNeUo5ZlEuQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiXQ~",
+        "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJpZCI6ImNoa18yIiwiY3VycmVuY3kiOiJVU0QiLCJ0b3RhbHMiOlt7InR5cGUiOiJ0b3RhbCIsImFtb3VudCI6MTk5MDB9XSwibGVnYWxDb250ZXh0Ijp7InR5cGUiOiJzaGEyNTYiLCJ2YWx1ZSI6IjB4YTE2NzVjYTI0YWM2ZDhiNGJlNWU0NmEwYTNlZGEyZDIxYzY2MjY2N2IyMDkyM2MzYTllODIwODI4ZTlhODJhZiIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlL2NmZTkyMmQ1LTdiZjEtNDNiYS05NGQ2LTRkY2U3NmE5YmJiMyJ9fQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expect": "payee",
+      "source": "AP2 e1ea56d, docs/ap2/specification.md:203-209: the merchant \"initiates payment with the Merchant Payment Processor if a Merchant-initiated charge\"; \"In the case that the payment method pushes funds to the Merchant, the Merchant will instead receive confirmation of funds sent\". The push presentation carries that confirmation as payment_receipt, AP2's Payment Receipt (code/sdk/schemas/ap2/payment_receipt.json at e1ea56d), as the profile ap2-checkout-mandate.md states."
+    },
+    {
+      "case": "ap2/checkout-mandate: push funding, the B6 presentation with the confirmation of funds sent, an AP2 Payment Receipt of the schema's required members, its reference the base64url SHA-256 of a closed Payment Mandate's JWT, as AP2 binds a receipt (specification.md:359-360; sdk/mandate.py:402-417): AP2's published closed Payment Mandate, docs/ap2/payment_mandate.md line 408 (Python 3's hashlib)",
+      "pairing": "ap2/checkout-mandate",
+      "presented": {
+        "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoidVJSek1NY2pRUEdkOGI1MmlybXBVQTNoblB3RUlyVnYxbGVTQzdPeTBydyIsIl9zZCI6WyJmdkJ1Ty10V3NGTFR5UlVtR3FxNlFVbEJEbkpPQWFVM2pkQi0wdTczQ0xnIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SnBaQ0k2SW1Ob2ExOHlJaXdpWTNWeWNtVnVZM2tpT2lKVlUwUWlMQ0owYjNSaGJITWlPbHQ3SW5SNWNHVWlPaUowYjNSaGJDSXNJbUZ0YjNWdWRDSTZNVGs1TURCOVhTd2liR1ZuWVd4RGIyNTBaWGgwSWpwN0luUjVjR1VpT2lKemFHRXlOVFlpTENKMllXeDFaU0k2SWpCNFlURTJOelZqWVRJMFlXTTJaRGhpTkdKbE5XVTBObUV3WVRObFpHRXlaREl4WXpZMk1qWTJOMkl5TURreU0yTXpZVGxsT0RJd09ESTRaVGxoT0RKaFppSXNJbXhsWjJGc1EyOXVkR1Y0ZEZWeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMMk5tWlRreU1tUTFMVGRpWmpFdE5ETmlZUzA1TkdRMkxUUmtZMlUzTm1FNVltSmlNeUo5ZlEuQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiXQ~",
+        "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJpZCI6ImNoa18yIiwiY3VycmVuY3kiOiJVU0QiLCJ0b3RhbHMiOlt7InR5cGUiOiJ0b3RhbCIsImFtb3VudCI6MTk5MDB9XSwibGVnYWxDb250ZXh0Ijp7InR5cGUiOiJzaGEyNTYiLCJ2YWx1ZSI6IjB4YTE2NzVjYTI0YWM2ZDhiNGJlNWU0NmEwYTNlZGEyZDIxYzY2MjY2N2IyMDkyM2MzYTllODIwODI4ZTlhODJhZiIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlL2NmZTkyMmQ1LTdiZjEtNDNiYS05NGQ2LTRkY2U3NmE5YmJiMyJ9fQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "payment_receipt": {
+          "status": "Success",
+          "iss": "https://psp.example",
+          "iat": 1790000000,
+          "reference": "wS1mjZomc9ofFgSgpPHmcQZ9QqtJLpP_YysOVroxgog",
+          "payment_id": "pay_1",
+          "psp_confirmation_id": "psp_conf_1",
+          "network_confirmation_id": "net_conf_1"
+        }
+      },
+      "expect": "payer",
+      "source": "AP2 e1ea56d, docs/ap2/specification.md:203-209: the merchant \"initiates payment with the Merchant Payment Processor if a Merchant-initiated charge\"; \"In the case that the payment method pushes funds to the Merchant, the Merchant will instead receive confirmation of funds sent\". The push presentation carries that confirmation as payment_receipt, AP2's Payment Receipt (code/sdk/schemas/ap2/payment_receipt.json at e1ea56d), as the profile ap2-checkout-mandate.md states."
     }
   ],
   "refusals": [
@@ -1442,6 +1491,16 @@
       },
       "expectRefusal": "x402/payload-malformed",
       "bound": "x402/not-an-opening"
+    },
+    {
+      "case": "ap2/checkout-mandate: a payment_receipt that is not a JSON object",
+      "pairing": "ap2/checkout-mandate",
+      "presented": {
+        "checkout_mandate": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJ2Y3QiOiJtYW5kYXRlLmNoZWNrb3V0LjEiLCJjaGVja291dF9oYXNoIjoidVJSek1NY2pRUEdkOGI1MmlybXBVQTNoblB3RUlyVnYxbGVTQzdPeTBydyIsIl9zZCI6WyJmdkJ1Ty10V3NGTFR5UlVtR3FxNlFVbEJEbkpPQWFVM2pkQi0wdTczQ0xnIl0sIl9zZF9hbGciOiJzaGEtMjU2IiwiaWF0IjoxNzkwMDAwMDAwLCJleHAiOjE3OTAwMDA2MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pSkZVekkxTmlJc0luUjVjQ0k2SWtwWFZDSXNJbXRwWkNJNkltMWxjbU5vWVc1MExXdGxlUzB4SW4wLmV5SnBaQ0k2SW1Ob2ExOHlJaXdpWTNWeWNtVnVZM2tpT2lKVlUwUWlMQ0owYjNSaGJITWlPbHQ3SW5SNWNHVWlPaUowYjNSaGJDSXNJbUZ0YjNWdWRDSTZNVGs1TURCOVhTd2liR1ZuWVd4RGIyNTBaWGgwSWpwN0luUjVjR1VpT2lKemFHRXlOVFlpTENKMllXeDFaU0k2SWpCNFlURTJOelZqWVRJMFlXTTJaRGhpTkdKbE5XVTBObUV3WVRObFpHRXlaREl4WXpZMk1qWTJOMkl5TURreU0yTXpZVGxsT0RJd09ESTRaVGxoT0RKaFppSXNJbXhsWjJGc1EyOXVkR1Y0ZEZWeWJDSTZJbWgwZEhCek9pOHZZWFJ5TG5ObGJHeGxjaTVsZUdGdGNHeGxMMk5tWlRreU1tUTFMVGRpWmpFdE5ETmlZUzA1TkdRMkxUUmtZMlUzTm1FNVltSmlNeUo5ZlEuQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiXQ~",
+        "checkout_jwt": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im1lcmNoYW50LWtleS0xIn0.eyJpZCI6ImNoa18yIiwiY3VycmVuY3kiOiJVU0QiLCJ0b3RhbHMiOlt7InR5cGUiOiJ0b3RhbCIsImFtb3VudCI6MTk5MDB9XSwibGVnYWxDb250ZXh0Ijp7InR5cGUiOiJzaGEyNTYiLCJ2YWx1ZSI6IjB4YTE2NzVjYTI0YWM2ZDhiNGJlNWU0NmEwYTNlZGEyZDIxYzY2MjY2N2IyMDkyM2MzYTllODIwODI4ZTlhODJhZiIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlL2NmZTkyMmQ1LTdiZjEtNDNiYS05NGQ2LTRkY2U3NmE5YmJiMyJ9fQ.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "payment_receipt": "Success"
+      },
+      "expectRefusal": "ap2/receipt-malformed"
     }
   ]
 }

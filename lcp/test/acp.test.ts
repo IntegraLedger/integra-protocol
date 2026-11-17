@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { assemble, canonicalJson, type AtrHash } from "../src/index.js";
 import { delegated, issuedDigest, tie, undelegated, type Presented, type Session, type Unsigned } from "../src/acp.js";
 import { rowsOf } from "./rows.js";
+import { AGREEMENT_FIRST } from "../src/internal/data/card.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/acp-checkout.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -114,7 +115,7 @@ describe("acp-checkout.json", () => {
   it("each record states its pattern, and neither pairing claims", () => {
     for (const b of [delegated, undelegated]) {
       expect({ ...b.pattern, claims: b.claims }).toEqual(V.patterns[b.id]);
-      expect(b.data.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
+      expect(b.data.proves.startsWith(AGREEMENT_FIRST)).toBe(true);
       expect(b.unplaced(V.V1.options[0])).toBe(V.V1.options[0]);
     }
   });

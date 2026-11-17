@@ -81,10 +81,10 @@ export {
 
 import { paymentRequest } from "./ack.js";
 import { delegated, type Presented as AcpPresented, undelegated } from "./acp.js";
-import { checkoutMandate, type Presented as Ap2Presented } from "./ap2.js";
+import { checkoutMandate, checkoutMandateX402, type Presented as Ap2Presented, type X402Presented as Ap2X402Presented } from "./ap2.js";
 import { exactAptos } from "./aptos.js";
 import { exactAvm } from "./avm.js";
-import { sellerReference, type TapPresented, viAutonomous, type ViAutonomous, viImmediate, type ViImmediate, visaTap } from "./card.js";
+import { agentPay, sellerReference, type TapPresented, type VicPresented, viAutonomous, type ViAutonomous, viImmediate, type ViImmediate, visaTap, visaVic } from "./card.js";
 import { exactCardano } from "./cardano.js";
 import { exactCasper } from "./casper.js";
 import { exactCcd } from "./ccd.js";
@@ -113,7 +113,7 @@ import { exactStarknet } from "./starknet.js";
 import { exactSui } from "./sui.js";
 import { exactTronMemo } from "./tron.js";
 import { exactTvm } from "./tvm.js";
-import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "./ucp.js";
+import { agentSigned, ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned, type AgentSignedPresented } from "./ucp.js";
 import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA, type PaymentPayload, type PaymentRequired, type PaymentRequirements, uptoPermit2 } from "./x402.js";
 import { batchCloudflare, batchEvm, batchSvm } from "./x402-batch-settlement.js";
 import { exactSvm } from "./x402-exact-solana.js";
@@ -182,10 +182,14 @@ export type Binding = (
   | typeof viImmediate
   | typeof sellerReference
   | typeof visaTap
+  | typeof agentPay
+  | typeof visaVic
   | typeof bookingAp2Mandate
   | typeof bookingUnsigned
   | typeof ap2Mandate
   | typeof unsigned
+  | typeof checkoutMandateX402
+  | typeof agentSigned
 ) &
   PushMode &
   CarrierAfterH &
@@ -203,10 +207,10 @@ interface PresentedOn {
   /** ACK defines no payer signature; its `bound` refuses whatever is presented. */
   ack: Json;
   acp: AcpPresented;
-  ap2: Ap2Presented;
-  card: TapPresented | ViAutonomous | ViImmediate;
+  ap2: Ap2Presented | Ap2X402Presented;
+  card: TapPresented | VicPresented | ViAutonomous | ViImmediate;
   mpp: MppCredential;
-  ucp: Ap2Presented;
+  ucp: Ap2Presented | AgentSignedPresented;
   x402:
     | PaymentPayload
     | AptosPaymentPayload
@@ -247,11 +251,15 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   viImmediate,
   sellerReference,
   visaTap,
+  agentPay,
+  visaVic,
   ...MPP_BINDINGS,
   bookingAp2Mandate,
   bookingUnsigned,
   ap2Mandate,
   unsigned,
+  checkoutMandateX402,
+  agentSigned,
   authCaptureEip3009,
   authCapturePermit2,
   batchCloudflare,

@@ -119,7 +119,7 @@
       "unit": "The resource bounds",
       "exports": {
         ".": ["MAX_CHALLENGES", "MAX_CHALLENGE_DEPTH", "MAX_CREDENTIAL_BYTES", "MAX_HEADER_BYTES", "MAX_JSON_DEPTH", "MAX_LINK_LENGTH", "MAX_OPTIONS", "MAX_REQUEST_BYTES", "MAX_SIGNATURE_BYTES"],
-        "./card": ["MAX_CHECKOUT_ID", "MAX_CHECKOUT_JWT", "MAX_TAP_COMPONENTS", "MAX_TAP_FIELD", "MAX_TAP_HASH_LINE", "MAX_TAP_MEMBERS", "MAX_VI_DISCLOSURES", "MAX_VI_LAYER"]
+        "./card": ["MAX_CHARGE_REFERENCE", "MAX_CHECKOUT_ID", "MAX_CHECKOUT_JWT", "MAX_TAP_COMPONENTS", "MAX_TAP_FIELD", "MAX_TAP_PATH", "MAX_TAP_MEMBERS", "MAX_VI_DISCLOSURES", "MAX_VI_LAYER"]
       },
       "use": "Any server sizes its own limits from the largest input the package's decoders accept, a card agent's signed headers and Verifiable Intent layers among them.",
       "fixedBy": "Each bound's stated reason, against the format it bounds: MPP's challenge and credential, x402's accepts and request commitment, JSON, the ATR's link, TAP's signed headers and Verifiable Intent's layers; decoder-caps.json."
@@ -143,10 +143,10 @@
     {
       "unit": "ACP checkouts",
       "exports": {
-        "./acp": ["AcpBinding", "AcpChoice", "Allowance", "HandlerOption", "METADATA_KEY", "Presented", "Session", "Unsigned", "delegated", "issuedDigest", "tie", "undelegated"]
+        "./acp": ["AcpBinding", "AcpChoice", "Allowance", "ChargePresented", "ChargeRef", "HandlerOption", "METADATA_KEY", "Presented", "Session", "Unsigned", "delegated", "issuedDigest", "tie", "undelegated"]
       },
       "use": "Any ACP merchant carries H as the checkout session's id, with the link in the session's metadata, and any agent carries it in a delegate-payment allowance.",
-      "fixedBy": "acp-checkout-session-id.md; the Agentic Commerce Protocol."
+      "fixedBy": "acp-checkout-session-id.md; the Agentic Commerce Protocol; charge-reference.json."
     },
     {
       "unit": "AP2 checkout mandates",
@@ -157,20 +157,36 @@
       "fixedBy": "ap2-checkout-mandate.md; AP2 v0.2; sd-jwt.json."
     },
     {
+      "unit": "AP2 checkouts paid with AP2's x402 credential",
+      "exports": {
+        "./ap2": ["X402Authorization", "X402Bundle", "X402Method", "X402Presented", "X402Ref", "checkoutMandateX402"]
+      },
+      "use": "Any AP2 merchant paid through AP2's x402 payment credential reads H from the checkout mandate, checks the credential's authorization is bound to its payment mandate chain as AP2's payment processor does, and keys its record of the payment by the authorization's signer and nonce.",
+      "fixedBy": "ap2-checkout-mandate-x402.md; AP2 v0.2 and its reference x402 flow."
+    },
+    {
       "unit": "Card checkouts",
       "exports": {
-        "./card": ["CardOption", "CardPairing", "CardPairingId", "CardScheme", "CardValues", "TAP_FIELD", "TapPresented", "TapUnsigned", "ViAutonomous", "ViImmediate", "ViUnsigned", "disclosureDigest", "sellerReference", "tie", "viAutonomous", "viImmediate", "visaTap"]
+        "./card": ["CardOption", "CardPairing", "CardPairingId", "CardScheme", "CardValues", "ChargePresented", "ChargeRef", "TapPresented", "TapUnsigned", "VicPresented", "VicUnsigned", "ViAutonomous", "ViCheckoutChoice", "ViCheckoutUnsigned", "ViImmediate", "ViUnsigned", "agentPay", "disclosureDigest", "sellerReference", "tie", "viAutonomous", "viImmediate", "visaTap", "visaVic"]
       },
-      "use": "Any agent or merchant on a card checkout carries H through Visa's Trusted Agent Protocol, Mastercard's Verifiable Intent or the plain checkout, and a seller keys its record of a card payment by its own processor reference.",
-      "fixedBy": "card-visa-tap.md; card-mastercard-vi.md; card.json."
+      "use": "Any agent or merchant on a card checkout carries H through Visa's Trusted Agent Protocol, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard's Verifiable Intent or the plain checkout, and a seller keys its record of a card payment by its own processor reference.",
+      "fixedBy": "card-visa-tap.md; card-mastercard-agent-pay.md; card-visa-vic.md; card-mastercard-vi.md; card-seller-reference.md; card.json; charge-reference.json."
     },
     {
       "unit": "UCP checkouts and bookings",
       "exports": {
-        "./ucp": ["BookingOption", "Checkout", "CheckoutOption", "LINK_TYPE", "Link", "UcpBinding", "UcpOffer", "Unsigned", "ap2Mandate", "bookingAp2Mandate", "bookingUnsigned", "issuedDigest", "legalContextLink", "tie", "unsigned"]
+        "./ucp": ["BookingOption", "ChargePresented", "ChargeRef", "Checkout", "CheckoutOption", "LINK_TYPE", "Link", "UcpBinding", "UcpOffer", "Unsigned", "ap2Mandate", "bookingAp2Mandate", "bookingUnsigned", "checkoutJwt", "issuedDigest", "legalContextLink", "tie", "unsigned"]
       },
-      "use": "Any UCP business carries H and the link as a legal_context entry of the checkout response, and reads H back from the checkout JWT an AP2 mandate commits to.",
-      "fixedBy": "ucp-checkout-legal-context.md; ucp-payment-handler-x402.md; UCP."
+      "use": "Any UCP business carries H and the link as a legal_context entry of the checkout response, and any platform builds the checkout JWT an AP2 mandate commits to from the business's detached signature, and reads H back from it.",
+      "fixedBy": "ucp-checkout-legal-context.md; ucp-payment-handler-x402.md; UCP; charge-reference.json."
+    },
+    {
+      "unit": "UCP checkouts completed by a platform-signed request",
+      "exports": {
+        "./ucp": ["AgentSignedPresented", "AgentSignedUnsigned", "agentSigned"]
+      },
+      "use": "Any UCP platform that signs its requests writes H into the request that completes the checkout, and any business reads H back from that request once its Content-Digest is the body's, under the platform's signature UCP has it verify.",
+      "fixedBy": "ucp-checkout-agent-signed.md; UCP's message signatures (RFC 9421, RFC 9530)."
     },
     {
       "unit": "Discovery",

@@ -27,7 +27,7 @@ Where H rides depends on the pairing. Some examples, all from the package's own 
 | `x402/exact/xrpl` | The Payment's `InvoiceID`, which is SHA-256 of H's LCP string, in a Payment the payer signs with a single key. |
 | `mpp/charge/evm/authorization` | The MPP challenge `id`, from which the signed nonce is derived. |
 | `x402/batch-settlement/eip155` | The channel configuration's `salt`, which every signature in the channel signs. |
-| `card/visa-tap` | An `lcp-hash` field covered by every `agent-payer-auth` message signature of the agent's request. |
+| `card/visa-tap` | The `nonce` of every `agent-payer-auth` message signature of the agent's request, the base64 of H and 32 random bytes, or the checkout path those signatures cover. |
 
 The [pairings reference](../reference/pairings.md) gives every pairing with the sentence its record states.
 

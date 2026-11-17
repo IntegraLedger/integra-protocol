@@ -6,6 +6,7 @@ import { digestJson, type AtrHash } from "../src/index.js";
 import * as ack from "../src/ack.js";
 import * as a2a from "../src/a2a.js";
 import { decodeJsonSegment } from "../src/sd-jwt.js";
+import { AGREEMENT_FIRST } from "../src/internal/data/card.js";
 import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
@@ -85,8 +86,16 @@ describe("ack-payment-request.json", () => {
       expect(await pr.bound(x)).toEqual(K.K5.expect);
     }
     expect({ ...pr.pattern, claims: pr.claims }).toEqual(K.K5.pattern);
-    expect(pr.data.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
+    expect(pr.data.proves.startsWith(AGREEMENT_FIRST)).toBe(true);
     expect(pr.unplaced(K.fixed.O)).toBe(K.fixed.O);
+  });
+
+  it("K6: the token under the name ACK's SDKs before 0.10.0 write, in the body and in a receipt", () => {
+    expect(pr.read(K.K6.body)).toEqual(K.K6.expect);
+    expect(pr.read(K.K6.bothSame.body)).toEqual(K.K6.bothSame.expect);
+    expect(pr.read(K.K6.bothDiffer.body)).toEqual(K.K6.bothDiffer.expect);
+    expect(ack.fromReceipt(K.K6.credentialSubject)).toBe(K.K6.receiptExpect);
+    expect(ack.fromReceipt(K.K6.receiptBothDiffer.credentialSubject)).toEqual(K.K6.receiptBothDiffer.expect);
   });
 
   it("the pattern names the profile published as profiles/ack-payment-request.md", () => {

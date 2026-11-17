@@ -1,0 +1,176 @@
+{
+  "about": "Vectors for ucp/checkout/agent-signed. H = SHA-256(\"abc\") (FIPS 180-2) and OTHER = SHA-256(\"abd\"), as 0x lowercase hex. Each Content-Digest is UCP's recipe (Universal-Commerce-Protocol/ucp v2026-08-25, docs/specification/signatures.md:455-457): sha-256=: then the standard base64 of the SHA-256 of the body's UTF-8 bytes then :, computed with Python 3's hashlib and base64. The request body is UCP's complete-checkout payment with the legal_context member this profile adds, written compactly in member order by Python's json; 'spaced' is the same members indented, whose own digest binds its own bytes. No signature is made or verified here: UCP's verifier checks the platform's signature before bound is called.",
+  "fixed": {
+    "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "L": "https://atr.seller.example/0b5d6c62-4d1b-4f3e-9b1e-2a4c6f8e0d13",
+    "OTHER": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]},\"legal_context\":{\"type\":\"sha256\",\"value\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"}}",
+    "contentDigest": "sha-256=:79JgiPced+mmW0U9lBes8kqEOyFALL6DKfb764npg0s=:",
+    "checkout": {
+      "id": "chk_7c1",
+      "status": "ready_for_complete",
+      "links": [
+        {
+          "type": "legal_context",
+          "url": "https://atr.seller.example/0b5d6c62-4d1b-4f3e-9b1e-2a4c6f8e0d13",
+          "title": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+      ]
+    }
+  },
+  "bound": [
+    {
+      "case": "the compact body and its digest",
+      "presented": {
+        "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]},\"legal_context\":{\"type\":\"sha256\",\"value\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"}}",
+        "contentDigest": "sha-256=:79JgiPced+mmW0U9lBes8kqEOyFALL6DKfb764npg0s=:"
+      },
+      "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "case": "the same members in other bytes, with their own digest",
+      "presented": {
+        "body": "{\n  \"payment\": {\n    \"instruments\": [\n      {\n        \"id\": \"instr_1\",\n        \"handler_id\": \"gpay_1234\",\n        \"type\": \"card\",\n        \"credential\": {\n          \"type\": \"PAYMENT_GATEWAY\",\n          \"token\": \"examplePaymentMethodToken\"\n        }\n      }\n    ]\n  },\n  \"legal_context\": {\n    \"type\": \"sha256\",\n    \"value\": \"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"\n  }\n}",
+        "contentDigest": "sha-256=:BW2ZganXDTrBitmSYud998//b1nJmn8l5zE9jFLwn9o=:"
+      },
+      "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "case": "the compact body under the spaced body's digest",
+      "presented": {
+        "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]},\"legal_context\":{\"type\":\"sha256\",\"value\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"}}",
+        "contentDigest": "sha-256=:BW2ZganXDTrBitmSYud998//b1nJmn8l5zE9jFLwn9o=:"
+      },
+      "expectRefusal": "ucp/content-digest-mismatch"
+    },
+    {
+      "case": "the digest in base64url",
+      "presented": {
+        "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]},\"legal_context\":{\"type\":\"sha256\",\"value\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"}}",
+        "contentDigest": "sha-256=:79JgiPced-mmW0U9lBes8kqEOyFALL6DKfb764npg0s:"
+      },
+      "expectRefusal": "ucp/content-digest-mismatch"
+    },
+    {
+      "case": "a body with no legal_context member",
+      "presented": {
+        "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]}}",
+        "contentDigest": "sha-256=:NgkhrEn/9Sa3FuumV1G4jO4BpmXCsT8SpTt7ePYeQkk=:"
+      },
+      "expectRefusal": "ucp/no-legal-context"
+    },
+    {
+      "case": "a legal_context member with a third member",
+      "presented": {
+        "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]},\"legal_context\":{\"type\":\"sha256\",\"value\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\",\"url\":\"https://atr.seller.example/0b5d6c62-4d1b-4f3e-9b1e-2a4c6f8e0d13\"}}",
+        "contentDigest": "sha-256=:yUn6Ye2qjZyZzEMkcRlq3ju2wBGS7R/d5q9Y1dp9NMw=:"
+      },
+      "expectRefusal": "ucp/legal-context-malformed"
+    },
+    {
+      "case": "a body that is not JSON",
+      "presented": {
+        "body": "legal_context=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "contentDigest": "sha-256=:irsOt3iYqU55tDI2f0DnY53/WhiWRs8Wgcwny9z47Ag=:"
+      },
+      "expectRefusal": "ucp/request-malformed"
+    },
+    {
+      "case": "no contentDigest",
+      "presented": {
+        "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]},\"legal_context\":{\"type\":\"sha256\",\"value\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"}}"
+      },
+      "expectRefusal": "ucp/request-malformed"
+    }
+  ],
+  "build": [
+    {
+      "case": "the checkout's link carries H",
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "expect": {
+        "legal_context": {
+          "type": "sha256",
+          "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+      }
+    },
+    {
+      "case": "the checkout's link carries another hash",
+      "h": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+      "expectRefusal": "ucp/hash-not-in-checkout"
+    }
+  ],
+  "buyer": {
+    "about": "The buyer gate's rows for this file's pairing, in the form of buyer.json's rows. B2 reads ucp.json's B2 checkout for ucp/checkout/unsigned with its legal_context link carrying H = SHA-256(\"abc\") (FIPS 180-2 B.1), and the link serves the planted ATR abd; B6 binds this file's first bound row to abc and not to abd. SHA-256 values are Python 3's hashlib.",
+    "rows": [
+      {
+        "name": "B2",
+        "pairing": "ucp/checkout/agent-signed",
+        "plant": true,
+        "input": {
+          "doc": {
+            "ucp": {
+              "version": "2026-08-25"
+            },
+            "id": "chk_1",
+            "status": "ready_for_complete",
+            "currency": "USD",
+            "totals": [
+              {
+                "type": "total",
+                "amount": 19900
+              }
+            ],
+            "links": [
+              {
+                "type": "terms_of_service",
+                "url": "https://seller.example/tos"
+              },
+              {
+                "type": "legal_context",
+                "url": "https://atr.seller.example/3db21a20-8679-4bb0-942e-a2158fa08683",
+                "title": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+              }
+            ]
+          },
+          "servesHex": "616264",
+          "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "signer": "counting"
+        },
+        "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+        "expect": {
+          "decline": "hash-mismatch",
+          "signCalls": 0
+        }
+      },
+      {
+        "name": "B6",
+        "pairing": "ucp/checkout/agent-signed",
+        "input": {
+          "presented": {
+            "body": "{\"payment\":{\"instruments\":[{\"id\":\"instr_1\",\"handler_id\":\"gpay_1234\",\"type\":\"card\",\"credential\":{\"type\":\"PAYMENT_GATEWAY\",\"token\":\"examplePaymentMethodToken\"}}]},\"legal_context\":{\"type\":\"sha256\",\"value\":\"0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\"}}",
+            "contentDigest": "sha-256=:79JgiPced+mmW0U9lBes8kqEOyFALL6DKfb764npg0s=:"
+          },
+          "check": [
+            {
+              "bytesHex": "616263"
+            },
+            {
+              "bytesHex": "616264"
+            }
+          ]
+        },
+        "expect": [
+          {
+            "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+          },
+          {
+            "decline": "signed-not-bound"
+          }
+        ],
+        "note": "presented is this file's first bound row; no signature was made for this row."
+      }
+    ]
+  }
+}

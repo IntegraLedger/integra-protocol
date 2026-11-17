@@ -27,8 +27,9 @@ proof that the buyer accepted that record.
 5. The handler has no provider. Nothing is needed from anyone but the business, its x402 facilitator and the platform's
    wallet.
 6. Under UCP's AP2 Mandates extension, `dev.ucp.common.payment.ap2_mandate`, the buyer's checkout mandate commits to
-   the checkout the business signed, whose `legal_context` link carries H, and the buyer first pays an agreement step
-   whose `nonce` is H. [Under AP2 mandates](#under-ap2-mandates) states the rules.
+   the checkout the business signed, whose `legal_context` link carries H, and the buyer first pays an agreement step,
+   one of the agreement options the business declares, in x402 or in MPP, whose payment carries H. [Under AP2
+   mandates](#under-ap2-mandates) states the rules.
 
 ## Participants
 
@@ -290,8 +291,10 @@ of [Processing payments](#processing-payments). Every other rule holds.
 
 1. **The ATR** is issued under LCP's `ucp/checkout/ap2-mandate` pairing. Its binding slot is
    `ucp: {options: [{checkout: <id>}]}`, the checkout's own `id`, and it commits to no request.
-2. **The agreement step** is an x402 resource at an `https` URL, A, whose payment is `exact` with EIP-3009 and carries
-   H as its `nonce`. One is served for each ATR, by the business or on its behalf.
+2. **The agreement step** is a resource at an `https` URL, A, that offers the agreement options the business declares:
+   x402 options, MPP challenges, or both, each of a pairing whose payment can itself be an agreement (its LCP registry
+   data has `agreement`), carrying H where that pairing's profile places it, on any network the business declares. One
+   is served for each ATR, by the business or on its behalf.
 3. **The links.** The checkout's `links[]` carries the `legal_context` link, then
    `{"type":"legal_context_agreement","url":A}`. Both are written before `ap2.merchant_authorization` is computed, so
    the business's signature covers them.
@@ -490,8 +493,8 @@ the signature recovers to `from`.
 When the checkout negotiates the extension, these steps take the place of steps 5 and 6:
 
 1. **Pay the agreement step first.** Fetch A, the url of the checkout's `legal_context_agreement` link, and check that
-   its x402 challenge carries the same H. Pay it, `exact` with EIP-3009 and H as its `nonce`, and wait for its
-   receipt, which names H.
+   the agreement options it offers, x402 options or MPP challenges, carry the same H. Pay one the wallet can pay, as
+   its pairing's LCP profile says, and wait for its receipt.
 2. **Make the checkout mandate,** once the buyer approves, after checking `ap2.merchant_authorization` as the
    extension says: `mandate.checkout.1`, whose `checkout_jwt` is `ap2.merchant_authorization` with its payload
    attached (the checkout without `ap2`, in RFC 8785 form, base64url), and whose `checkout_hash` is the base64url
@@ -569,7 +572,7 @@ is one of the extension's, at the mandate's `path`, `$.ap2.checkout_mandate`, or
 - **Handler schema:** `https://lcp.integraledger.com/ucp/x402/2026-10-02/schema.json` (the configs, the instrument and
   the credential)
 - **LCP profiles:** `ucp/checkout/legal-context`, `x402/exact/eip155/eip3009`, `x402/auth-capture/eip155`, and the
-  profile of each x402 pairing, at `https://github.com/IntegraLedger/integra-protocol/tree/main/lcp/profiles`
+  profile of each x402 pairing and of each pairing an agreement step offers, at `https://github.com/IntegraLedger/integra-protocol/tree/main/lcp/profiles`
 - **x402 version 2:** `https://github.com/x402-foundation/x402/blob/main/specs/x402-specification-v2.md`
 - **UCP's payment handler guide:** `https://ucp.dev/2026-08-25/specification/payment/guide/`
 - **UCP's AP2 Mandates extension:** `https://ucp.dev/2026-08-25/specification/payment/extensions/ap2-mandates/`

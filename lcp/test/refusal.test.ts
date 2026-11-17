@@ -188,12 +188,12 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     ucp: { checkout: "chk_1" },
   };
   const checkouts = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 12,
+    exact: 16,
     keep: ["the ACK, ACP, AP2, card and UCP pairings", (b) => options[b.id.split("/")[0]!] !== undefined],
     leave: ["the x402 and MPP pairings, which the tests below take", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
   });
-  it("the ACK, ACP, AP2, card and UCP pairings are twelve", () => {
-    expect(checkouts.length).toBe(12);
+  it("the ACK, ACP, AP2, card and UCP pairings are sixteen", () => {
+    expect(checkouts.length).toBe(16);
   });
   for (const b of checkouts) {
     const ns = b.id.split("/")[0]!;

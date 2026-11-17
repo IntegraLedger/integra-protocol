@@ -1,0 +1,348 @@
+{
+  "about": "Vectors for the reference of card/seller-reference, acp/checkout/undelegated and ucp/checkout/unsigned: the seller's own reference for the charge, presented as {charge}, 1 to 255 visible ASCII characters, with the checkout of the option the charge answers where the option names one. The charge reference is the id of Stripe's published PaymentIntent object (https://docs.stripe.com/api/payment_intents/object.md, read 2026-11-17, SHA-256 392c5d46d8260839\u2026, its line 7). The rows apply the profiles' rules (card-seller-reference.md rules 4 and 5; acp-checkout-session-id.md and ucp-checkout-legal-context.md on the reference); written by Python 3 from those rules, not by lcp.",
+  "rows": [
+    {
+      "pairing": "card/seller-reference",
+      "case": "Stripe's published PaymentIntent id as the charge reference",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expect": {
+        "checkout": "chk_1001",
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      }
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "a charge reference of 255 visible ASCII characters",
+      "presented": {
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      },
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expect": {
+        "checkout": "chk_1001",
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      }
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "a charge reference of 256 characters",
+      "presented": {
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      },
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expectRefusal": "card/charge-reference-malformed"
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "an empty charge reference",
+      "presented": {
+        "charge": ""
+      },
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expectRefusal": "card/charge-reference-malformed"
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "a charge reference with a space",
+      "presented": {
+        "charge": "pi_3MtwBw LkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expectRefusal": "card/charge-reference-malformed"
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "a charge reference that is not a string",
+      "presented": {
+        "charge": 7
+      },
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expectRefusal": "card/charge-reference-malformed"
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "no charge reference",
+      "presented": {},
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expectRefusal": "card/charge-reference-malformed"
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "a presentation that is not an object",
+      "presented": "pi_3MtwBwLkdIwHu7ix28a3tqPa",
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": "chk_1001"
+      },
+      "expectRefusal": "card/charge-reference-malformed"
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "a card option of another scheme",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "scheme": "visa-tap",
+        "checkout": "chk_1001"
+      },
+      "expectRefusal": "card/option-malformed"
+    },
+    {
+      "pairing": "card/seller-reference",
+      "case": "a card option whose checkout is empty",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "scheme": "seller-reference",
+        "checkout": ""
+      },
+      "expectRefusal": "card/option-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "Stripe's published PaymentIntent id as the charge reference",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expect": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      }
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "a charge reference of 255 visible ASCII characters",
+      "presented": {
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      },
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expect": {
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      }
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "a charge reference of 256 characters",
+      "presented": {
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      },
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expectRefusal": "acp/charge-reference-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "an empty charge reference",
+      "presented": {
+        "charge": ""
+      },
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expectRefusal": "acp/charge-reference-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "a charge reference with a space",
+      "presented": {
+        "charge": "pi_3MtwBw LkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expectRefusal": "acp/charge-reference-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "a charge reference that is not a string",
+      "presented": {
+        "charge": 7
+      },
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expectRefusal": "acp/charge-reference-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "no charge reference",
+      "presented": {},
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expectRefusal": "acp/charge-reference-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "a presentation that is not an object",
+      "presented": "pi_3MtwBwLkdIwHu7ix28a3tqPa",
+      "option": {
+        "requires_delegate_payment": false
+      },
+      "expectRefusal": "acp/charge-reference-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "a handler option that requires delegate_payment",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "requires_delegate_payment": true
+      },
+      "expectRefusal": "acp/option-malformed"
+    },
+    {
+      "pairing": "acp/checkout/undelegated",
+      "case": "a handler option with no requires_delegate_payment",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {},
+      "expectRefusal": "acp/option-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "Stripe's published PaymentIntent id as the charge reference",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expect": {
+        "checkout": "chk_2",
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      }
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "a charge reference of 255 visible ASCII characters",
+      "presented": {
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      },
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expect": {
+        "checkout": "chk_2",
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      }
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "a charge reference of 256 characters",
+      "presented": {
+        "charge": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+      },
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expectRefusal": "ucp/charge-reference-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "an empty charge reference",
+      "presented": {
+        "charge": ""
+      },
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expectRefusal": "ucp/charge-reference-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "a charge reference with a space",
+      "presented": {
+        "charge": "pi_3MtwBw LkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expectRefusal": "ucp/charge-reference-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "a charge reference that is not a string",
+      "presented": {
+        "charge": 7
+      },
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expectRefusal": "ucp/charge-reference-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "no charge reference",
+      "presented": {},
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expectRefusal": "ucp/charge-reference-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "a presentation that is not an object",
+      "presented": "pi_3MtwBwLkdIwHu7ix28a3tqPa",
+      "option": {
+        "checkout": "chk_2"
+      },
+      "expectRefusal": "ucp/charge-reference-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "a booking option",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "booking": "bk_1"
+      },
+      "expectRefusal": "ucp/option-malformed"
+    },
+    {
+      "pairing": "ucp/checkout/unsigned",
+      "case": "an option with a second member",
+      "presented": {
+        "charge": "pi_3MtwBwLkdIwHu7ix28a3tqPa"
+      },
+      "option": {
+        "checkout": "chk_2",
+        "extra": "1"
+      },
+      "expectRefusal": "ucp/option-malformed"
+    }
+  ]
+}

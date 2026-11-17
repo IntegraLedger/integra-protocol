@@ -5,9 +5,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { paymentRequest } from "../src/ack.js";
 import { delegated, undelegated } from "../src/acp.js";
-import { checkoutMandate } from "../src/ap2.js";
+import { checkoutMandate, checkoutMandateX402 } from "../src/ap2.js";
 import { exactAptos } from "../src/aptos.js";
-import { sellerReference, viAutonomous, viImmediate, visaTap } from "../src/card.js";
+import { agentPay, sellerReference, viAutonomous, viImmediate, visaTap, visaVic } from "../src/card.js";
 import { exactHederaExecutor } from "../src/hedera.js";
 import { BINDINGS, canonicalJson, type AtrHash, type Json } from "../src/index.js";
 import { chargeLightning, sessionLightning } from "../src/lightning.js";
@@ -22,7 +22,7 @@ import {
   subscriptionStripe,
   type MppChallenge,
 } from "../src/mpp.js";
-import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "../src/ucp.js";
+import { agentSigned, ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "../src/ucp.js";
 import { exactErc7710 } from "../src/x402.js";
 import { batchCloudflare } from "../src/x402-batch-settlement.js";
 import { rowsOf } from "./rows.js";
@@ -268,12 +268,16 @@ const OTHER_CASES: Case[] = [
   acpCase("acp/checkout/delegated", delegated),
   acpCase("acp/checkout/undelegated", undelegated),
   ap2,
+  { ...ap2, id: "ap2/checkout-mandate/x402", binding: checkoutMandateX402 },
   cardCase("card/visa-tap", visaTap, "visa-tap", (d) => d),
   cardCase("card/mastercard-vi/immediate", viImmediate, "mastercard-vi", cardJwt),
   cardCase("card/mastercard-vi/autonomous", viAutonomous, "mastercard-vi", cardJwt),
   cardCase("card/seller-reference", sellerReference, "seller-reference", (d) => d),
+  cardCase("card/mastercard-agent-pay", agentPay, "mastercard-agent-pay", (d) => d),
+  cardCase("card/visa-vic", visaVic, "visa-vic", (d) => d),
   ucpCase("ucp/checkout/ap2-mandate", ap2Mandate, UCP.V2, UCP.V2.advertise.doc, UCP.V2.expectCheckout, signed),
   ucpCase("ucp/checkout/unsigned", unsigned, UCP.V2, UCP.V2.advertise.doc, UCP.V2.expectCheckout, (d) => d),
+  ucpCase("ucp/checkout/agent-signed", agentSigned, UCP.V2, UCP.V2.advertise.doc, UCP.V2.expectCheckout, (d) => d),
   ucpCase("ucp/booking/ap2-mandate", bookingAp2Mandate, UCP.V2b, UCP.V2b.B0, UCP.V2b.expectBooking, signed),
   ucpCase("ucp/booking/unsigned", bookingUnsigned, UCP.V2b, UCP.V2b.B0, UCP.V2b.expectBooking, (d) => d),
 ];

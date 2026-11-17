@@ -8,6 +8,7 @@ import {
   ap2Mandate,
   bookingAp2Mandate,
   bookingUnsigned,
+  checkoutJwt,
   issuedDigest,
   legalContextLink,
   tie,
@@ -23,8 +24,20 @@ const F = V.fixed;
 const b64u = (s: string) => Buffer.from(s, "utf8").toString("base64url");
 const sha256b64u = (s: string) => createHash("sha256").update(Buffer.from(s, "ascii")).digest("base64url");
 
+/** RFC 8785 for the values these vectors hold (ASCII strings and integers): members sorted, no whitespace. */
+const jcs = (v: unknown): string =>
+  Array.isArray(v)
+    ? `[${v.map(jcs).join(",")}]`
+    : typeof v === "object" && v !== null
+      ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${jcs((v as Record<string, unknown>)[k])}`).join(",")}}`
+      : JSON.stringify(v);
+/** The detached merchant authorization with the checkout, without `ap2`, reinserted as its payload. */
+const reinsert = (checkout: object): string => {
+  const [header, , signature] = (F.merchantAuthorization as string).split(".");
+  return `${header}.${b64u(jcs(checkout))}.${signature}`;
+};
 // J from V2's checkout, then D and M, built from the fixed strings.
-const J = `${b64u(F.jwtHeader)}.${b64u(JSON.stringify(V.V2.expectCheckout))}.${F.signature}`;
+const J = reinsert(V.V2.expectCheckout);
 const D = b64u(F.disclosureTemplate.replace("<J>", J));
 const M = `${b64u(F.mandateHeader)}.${b64u(F.mandatePayload)}.${F.signature}~${D}~`;
 const PAIRINGS = { ap2Mandate, unsigned, bookingAp2Mandate, bookingUnsigned } as const;
@@ -36,6 +49,15 @@ describe("ucp.json", () => {
     expect(D).toBe(V.built.D);
     expect(M).toBe(V.built.M);
     expect(J.length).toBe(V.V2.expectJLength);
+    expect(F.merchantAuthorization.split(".")[0]).toBe(b64u(F.merchantAuthorizationHeader));
+  });
+
+  it("J is the business's detached authorization with the checkout reinserted, as checkoutJwt builds it", () => {
+    const signed = { ...V.V2.expectCheckout, ap2: { merchant_authorization: F.merchantAuthorization } } as Checkout;
+    expect(checkoutJwt(signed)).toBe(J);
+    expect(checkoutJwt(V.V2.expectCheckout as Checkout)).toEqual({ refused: true, code: "ucp/ap2-not-active" });
+    const plantCheckout = JSON.parse(Buffer.from((V.plant.checkoutJwt as string).split(".")[1]!, "base64url").toString("utf8"));
+    expect(reinsert(plantCheckout)).toBe(V.plant.checkoutJwt);
   });
 
   it("V1: the slot", async () => {
@@ -138,6 +160,7 @@ describe("ucp.json", () => {
     const u = await ap2Mandate.build(r.offer, F.H);
     if ("refused" in u) throw new Error(u.code);
     expect(u.checkout).toBe(signed);
+    expect(u.content).toEqual({ vct: "mandate.checkout.1", checkout_jwt: J, checkout_hash: V.V4.expectCheckoutHash });
     const p = await u.complete(M);
     expect(p).toEqual({ checkout_mandate: M, checkout_jwt: J });
     expect(await ap2Mandate.bound(p as never)).toBe(V.V4.expectBound);
@@ -175,7 +198,8 @@ describe("ucp.json", () => {
     if ("refused" in r) throw new Error(r.code);
     const u = await ap2Mandate.build(r.offer, F.H);
     if ("refused" in u) throw new Error(u.code);
-    expect(await u.complete(chain)).toEqual({ checkout_mandate: chain, checkout_jwt: jwt });
+    // That chain commits to AP2's own checkout JWT, not to this checkout's, so complete refuses it as bound would.
+    expect(await u.complete(chain)).toEqual({ refused: true, code: "ap2/checkout-not-latest" });
   });
 
   it("V6: names", () => {

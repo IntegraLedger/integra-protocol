@@ -22,7 +22,9 @@ import { carriesRefused, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { CARD } from "./internal/data/card.js";
+import { chargeOf, type ChargePresented, type ChargeRef } from "./internal/charge-reference.js";
 import type { Entry, NoRead, PairingData } from "./internal/registry.js";
+export type { ChargePresented, ChargeRef } from "./internal/charge-reference.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export const METADATA_KEY = "legal_context";
@@ -291,10 +293,26 @@ export const delegated: AcpBinding<"acp/checkout/delegated"> = Object.freeze({
 }) satisfies Entry<"acp/checkout/delegated", Presented, never, never, AcpFamily>;
 
 /**
- * `acp/checkout/undelegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment handler
- * charges the payment the checkout completed; nothing here reads it.
+ * The reference of an `acp/checkout/undelegated` charge: the seller's own reference for it, `{charge}`; the checkout is
+ * the session, whose id is H. What is presented is `{charge}`, 1 to 255 visible ASCII characters, else
+ * `acp/charge-reference-malformed`; then an option that is not a handler option whose `requires_delegate_payment` is
+ * `false` is `acp/option-malformed`. Nothing the charge moved is compared with the option.
  */
-export const undelegated: AcpBinding<"acp/checkout/undelegated"> = Object.freeze({
+async function undelegatedReference(presented: unknown, option: HandlerOption): Promise<ChargeRef | Refusal> {
+  const charge = chargeOf(presented);
+  if (charge === undefined) return refusal("acp/charge-reference-malformed");
+  if (!isObject(option) || option["requires_delegate_payment"] !== false) return refusal("acp/option-malformed");
+  return { charge };
+}
+
+/**
+ * `acp/checkout/undelegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment handler
+ * charges the payment the checkout completed; nothing here reads it. `reference` names the charge by the seller's own
+ * reference for it.
+ */
+export const undelegated: AcpBinding<"acp/checkout/undelegated"> & {
+  reference(presented: unknown, option: HandlerOption): Promise<ChargeRef | Refusal>;
+} = Object.freeze({
   id: "acp/checkout/undelegated",
   data: CARD["acp/checkout/undelegated"],
   pattern: undelegatedPattern,
@@ -306,7 +324,8 @@ export const undelegated: AcpBinding<"acp/checkout/undelegated"> = Object.freeze
   build: async (): Promise<Refusal> => refusal("acp/nothing-to-sign"),
   bound: async (): Promise<Refusal> => refusal("acp/not-buyer-signed"),
   broadcaster: broadcasts("payee"),
-}) satisfies Entry<"acp/checkout/undelegated", Presented, never, never, AcpFamily>;
+  reference: undelegatedReference,
+}) satisfies Entry<"acp/checkout/undelegated", ChargePresented, ChargeRef, never, Omit<AcpFamily, "option"> & { option: HandlerOption }>;
 
 /** Exactly ACP's six allowance members, with `reason` "one_time", strings, and a non-negative safe integer amount. */
 function isAllowance(a: unknown): a is Allowance {

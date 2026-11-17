@@ -1,20 +1,22 @@
 /**
- * The `card` entry point: the ATR hash on a card checkout, on three paths: Visa TAP, Mastercard Verifiable Intent
- * (Immediate and Autonomous) and the plain card checkout.
+ * The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa
+ * Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout.
  *
- * - Visa TAP: the agent sends the hash in an `lcp-hash` field and lists that field among the covered components of
- *   its `agent-payer-auth` message signature.
- * - Mastercard Verifiable Intent: the hash rides in the merchant's `checkout_jwt`, whose SHA-256 the user's L2
- *   mandate (Immediate) or the agent's L3b mandate (Autonomous) signs as `checkout_hash`.
+ * - Visa TAP and Mastercard Agent Pay: the hash rides in what the agent's message signature covers: its `nonce`, the
+ *   base64 of the hash followed by 32 random bytes, or the merchant's checkout path, whose last segment is the hash.
+ * - Visa Intelligent Commerce: the hash is the `transactionReferenceId` the agent writes when it asks for the sale's
+ *   credential, as unpadded base64url.
+ * - Mastercard Verifiable Intent: the hash rides in the `checkout_jwt`, whose SHA-256 the user's L2 mandate
+ *   (Immediate) or the agent's L3b mandate (Autonomous) signs as `checkout_hash`.
  * - The plain card checkout: nothing the buyer signs carries the hash. The seller shows it with the link before
  *   payment and places it in its processor reference.
  *
  * Pure: no I/O, no state. WebCrypto supplies SHA-256 and ES256. No function throws.
  */
-import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash } from "./core.js";
-import { normalHash } from "./fields.js";
+import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash, type Json } from "./core.js";
+import { jsonBytes, normalHash, sameJson } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
-import { fromBase64Url } from "./rail-bytes.js";
+import { bytesOfHexDigits, fromBase64, fromBase64Url, hexOf, toBase64, toBase64Url } from "./rail-bytes.js";
 import { broadcasts, broadcastsWithin, type Broadcaster } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
@@ -29,12 +31,14 @@ import {
 } from "./sd-jwt.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { CARD } from "./internal/data/card.js";
+import { chargeOf, type ChargePresented, type ChargeRef } from "./internal/charge-reference.js";
 import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export { MAX_CHARGE_REFERENCE, type ChargePresented, type ChargeRef } from "./internal/charge-reference.js";
 
 export { disclosureDigest } from "./sd-jwt.js";
 
-export type CardScheme = "visa-tap" | "mastercard-vi" | "seller-reference";
+export type CardScheme = "visa-tap" | "mastercard-vi" | "seller-reference" | "visa-vic" | "mastercard-agent-pay";
 /** One card option offered at a checkout. `checkout` is the seller's own id: 1–128 visible ASCII characters. */
 export interface CardOption {
   scheme: CardScheme;
@@ -44,7 +48,9 @@ export type CardPairingId =
   | "card/visa-tap"
   | "card/mastercard-vi/immediate"
   | "card/mastercard-vi/autonomous"
-  | "card/seller-reference";
+  | "card/seller-reference"
+  | "card/visa-vic"
+  | "card/mastercard-agent-pay";
 
 /**
  * The values the seller's own stack places: the legal context shown before payment, with the agreement URL after the
@@ -55,18 +61,41 @@ export interface CardValues {
   reference: string;
 }
 
-export const TAP_FIELD = "lcp-hash";
-/** A TAP payment request as received: the two signature fields and every `lcp-hash` field line. */
+/**
+ * A TAP or Agent Pay request as the merchant received it: its two signature fields and, where the merchant's checkout
+ * path carries the hash, the request's absolute path without its query, as RFC 9421 §2.2.6 defines `@path`.
+ */
 export interface TapPresented {
   signatureInput: string;
   signature: string;
-  lcpHash: readonly string[];
+  path?: string;
 }
-/** What the agent's own RFC 9421 signer adds: the field, its value, and the component it lists. */
+/**
+ * What the agent's own RFC 9421 signer places in every message signature of its checkout request: the `nonce`, the
+ * padded base64 of the hash's 32 bytes followed by 32 random bytes.
+ */
 export interface TapUnsigned {
-  field: "lcp-hash";
-  value: AtrHash;
-  component: "lcp-hash";
+  nonce: string;
+}
+/** A VIC transaction reference as the merchant reads it from the credential payload Visa signs for the sale. */
+export interface VicPresented {
+  transactionReferenceId: string;
+}
+/** The transaction reference the agent writes into its VIC credential request: the hash as unpadded base64url. */
+export interface VicUnsigned {
+  transactionReferenceId: string;
+}
+/**
+ * Immediate mode with a `checkout_jwt` the agent creates: the checkout payload it will sign, and the JSON the seller
+ * showed, whose `legalContext` member `build` writes into the payload.
+ */
+export interface ViCheckoutChoice {
+  checkout: { [k: string]: Json };
+  shown: unknown;
+}
+/** The checkout payload with the seller's `legalContext` member, for the agent to sign as its `checkout_jwt`. */
+export interface ViCheckoutUnsigned {
+  checkout: { [k: string]: Json };
 }
 /** L2 as presented: its JWS, then its disclosures, `~`-separated, ending in `~`. */
 export interface ViImmediate {
@@ -111,17 +140,33 @@ export const MAX_TAP_FIELD = 8192;
 export const MAX_TAP_MEMBERS = 16;
 /** The most items lcp parses in one inner list of a TAP signature field: a signature's covered components. */
 export const MAX_TAP_COMPONENTS = 32;
-const MAX_TAP_HASH_LINES = 4;
-/** The longest `lcp-hash` field line lcp reads from a TAP payment request, in characters. */
-export const MAX_TAP_HASH_LINE = 256;
+/** The longest request path lcp reads from a TAP or Agent Pay request, in characters. */
+export const MAX_TAP_PATH = 2048;
 /** The longest Verifiable Intent layer, an SD-JWT with its disclosures, lcp reads, in characters. */
 export const MAX_VI_LAYER = 65_536;
 /** The longest `checkout_jwt` lcp reads, in characters. */
 export const MAX_CHECKOUT_JWT = 16_384;
 /** The most disclosures lcp reads in one Verifiable Intent layer. */
 export const MAX_VI_DISCLOSURES = 32;
-const SCHEMES: readonly CardScheme[] = ["visa-tap", "mastercard-vi", "seller-reference"];
-const PAYER_TAG = "agent-payer-auth";
+const SCHEMES: readonly CardScheme[] = ["visa-tap", "mastercard-vi", "seller-reference", "visa-vic", "mastercard-agent-pay"];
+/** The `tag` of a TAP payment signature (TAP's field table, `tag`). */
+const TAP_TAGS: readonly string[] = ["agent-payer-auth"];
+/** Mastercard's two published spellings of Agent Pay's `tag` (its playbook, pages 21 and 24). */
+const AGENT_PAY_TAGS: readonly string[] = ["Agent-pay-auth", "agent-pay-auth"];
+/** The one parameter name admitted in a spelling RFC 9651 does not allow, as Visa's reference agent writes it. */
+const KEY_ID_SPELLING = "keyId";
+/** The bytes of a nonce that carries the hash: the hash, then 32 random bytes. */
+const NONCE_BYTES = 64;
+/**
+ * The room `build` leaves within `MAX_CHECKOUT_JWT` for the agent's protected header and signature, in characters: an
+ * ES256 signature's 86 and the two dots, and 936 for the header's base64url, a header of up to 702 bytes of JSON.
+ */
+const CHECKOUT_JWT_FRAME = 1024;
+/**
+ * The longest checkout payload `build` writes, in bytes of JSON: its base64url, with a header and signature within
+ * `CHECKOUT_JWT_FRAME`, makes a `checkout_jwt` within `MAX_CHECKOUT_JWT`, which `read` and `bound` take.
+ */
+const MAX_CHECKOUT_PAYLOAD = ((MAX_CHECKOUT_JWT - CHECKOUT_JWT_FRAME) / 4) * 3;
 const CHECKOUT_VCT = "mandate.checkout.1";
 const PAYMENT_VCT = "mandate.payment.1";
 const OPEN_CHECKOUT_VCT = "mandate.checkout.open.1";
@@ -231,11 +276,61 @@ function withAgreement(
   return agreement === undefined ? r : { ...r, agreement };
 }
 
-/** The field for the agent's signer to add and list in its `agent-payer-auth` signature. */
+/**
+ * Immediate mode: the hash, the link and, when present, the agreement URL from a `checkout_jwt`, or from the JSON the
+ * seller showed where the agent creates the `checkout_jwt` itself.
+ */
+function readViImmediate(doc: unknown): { h: AtrHash; link: string; agreement?: string } | Refusal {
+  return typeof doc === "string" ? readCheckoutShown(doc) : readShown(doc);
+}
+
+/** The hash's 32 bytes. */
+function hashBytes(h: AtrHash): Uint8Array {
+  return bytesOfHexDigits(h.slice(2))!;
+}
+
+/**
+ * The nonce for the agent's signer to place in every message signature of its checkout request: the padded base64 of
+ * the hash's 32 bytes followed by 32 bytes drawn at random.
+ */
 async function tapBuild(_doc: unknown, h: AtrHash): Promise<TapUnsigned | Refusal> {
   const value = normalHash(h);
   if (value === null) return refusal("card/legal-context-malformed");
-  return { field: TAP_FIELD, value, component: TAP_FIELD };
+  const bytes = new Uint8Array(NONCE_BYTES);
+  bytes.set(hashBytes(value), 0);
+  crypto.getRandomValues(bytes.subarray(32));
+  return { nonce: toBase64(bytes) };
+}
+
+/** The transaction reference for the agent to write into its VIC credential request: the hash as unpadded base64url. */
+async function vicBuild(_doc: unknown, h: AtrHash): Promise<VicUnsigned | Refusal> {
+  const value = normalHash(h);
+  if (value === null) return refusal("card/legal-context-malformed");
+  return { transactionReferenceId: toBase64Url(hashBytes(value)) };
+}
+
+/**
+ * Immediate mode: on a `checkout_jwt`, the checkout mandate as `viBuild` gives it; on a checkout payload the agent
+ * creates, the payload with the seller's `legalContext` member written into it, last, for the agent to sign as its
+ * `checkout_jwt`. The shown legal context's hash must be `h`, and a payload that already holds a `legalContext` must
+ * hold that one.
+ */
+async function viImmediateBuild(doc: unknown, h: AtrHash): Promise<ViUnsigned | ViCheckoutUnsigned | Refusal> {
+  if (typeof doc === "string") return viBuild(doc, h);
+  if (!isObject(doc) || !isObject(doc["checkout"])) return refusal("card/vi-malformed");
+  const shown = readShown(doc["shown"]);
+  if (isRefusal(shown)) return shown;
+  if (!hashEquals(shown.h, h)) return refusal("card/vi-legal-context-conflict");
+  const legalContext = (doc["shown"] as Record<string, Json>)["legalContext"]!;
+  const checkout = doc["checkout"] as { [k: string]: Json };
+  if (Object.hasOwn(checkout, "legalContext") && !sameJson(checkout["legalContext"], legalContext)) {
+    return refusal("card/vi-legal-context-conflict");
+  }
+  const out: { [k: string]: Json } = Object.hasOwn(checkout, "legalContext") ? { ...checkout } : { ...checkout, legalContext };
+  const size = jsonBytes(out);
+  if (size === undefined) return refusal("card/vi-malformed");
+  if (size > MAX_CHECKOUT_PAYLOAD || !withinDepth(out)) return refusal("card/too-large");
+  return { checkout: out };
 }
 
 /**
@@ -261,40 +356,75 @@ async function noSignedPlace(): Promise<Refusal> {
 // ── The one check: bound ──
 
 /**
- * The hash from a TAP payment request: the one `lcp-hash` line, when every `agent-payer-auth` signature lists
- * `"lcp-hash"` without parameters and one of them has its `Signature` member, so whichever payer signature the
- * seller's recognition verifies covers the hash. No signature, key, window or nonce is verified.
+ * The hash from a TAP or Agent Pay request: every signature whose `tag` is one of `tags` carries it, by `@path`, listed
+ * with no parameters, where the request's path ends in a segment that is the hash, the nonce then not read, since a
+ * stock agent draws its nonce at random and may draw 64 bytes; or otherwise by its `nonce`, the padded base64 of 64
+ * bytes whose first 32 are the hash. Each such signature carries the same hash, and one of them has its `Signature`
+ * member, so whichever the merchant's recognition verifies covers the hash. No signature, key, window or nonce use is
+ * verified.
  */
-async function tapBound(presented: unknown): Promise<AtrHash | Refusal> {
-  if (!isObject(presented)) return refusal("card/tap-signature-input-malformed");
-  const { signatureInput, signature, lcpHash } = presented as unknown as Record<string, unknown>;
+function tapBoundFor(tags: readonly string[]): (presented: unknown) => Promise<AtrHash | Refusal> {
+  return async (presented: unknown): Promise<AtrHash | Refusal> => {
+    if (!isObject(presented)) return refusal("card/tap-signature-input-malformed");
+    const { signatureInput, signature, path } = presented;
 
-  if (typeof signatureInput !== "string") return refusal("card/tap-signature-input-malformed");
-  if (signatureInput.length > MAX_TAP_FIELD) return refusal("card/too-large");
-  const inputs = parseDictionary(signatureInput);
-  if (inputs === TOO_LARGE) return refusal("card/too-large");
-  if (inputs === null || !isSignatureInput(inputs)) return refusal("card/tap-signature-input-malformed");
+    if (typeof signatureInput !== "string") return refusal("card/tap-signature-input-malformed");
+    if (signatureInput.length > MAX_TAP_FIELD) return refusal("card/too-large");
+    const inputs = parseDictionary(signatureInput);
+    if (inputs === TOO_LARGE) return refusal("card/too-large");
+    if (inputs === null || !isSignatureInput(inputs)) return refusal("card/tap-signature-input-malformed");
 
-  if (typeof signature !== "string") return refusal("card/tap-signature-malformed");
-  if (signature.length > MAX_TAP_FIELD) return refusal("card/too-large");
-  const signatures = parseDictionary(signature);
-  if (signatures === TOO_LARGE) return refusal("card/too-large");
-  if (signatures === null || !isSignatureSet(signatures)) return refusal("card/tap-signature-malformed");
+    if (typeof signature !== "string") return refusal("card/tap-signature-malformed");
+    if (signature.length > MAX_TAP_FIELD) return refusal("card/too-large");
+    const signatures = parseDictionary(signature);
+    if (signatures === TOO_LARGE) return refusal("card/too-large");
+    if (signatures === null || !isSignatureSet(signatures)) return refusal("card/tap-signature-malformed");
 
-  const payers = [...inputs].filter(([, m]) => isPayerTag(m.params.get("tag")));
-  if (payers.length === 0) return refusal("card/tap-no-payer-signature");
-  if (!payers.every(([, m]) => (m as InnerList).list.some(isBareHashComponent))) return refusal("card/tap-hash-not-covered");
-  if (!payers.some(([label]) => signatures.has(label))) return refusal("card/tap-signature-missing");
+    let byPathHash: AtrHash | null = null;
+    if (path !== undefined) {
+      if (typeof path !== "string") return refusal("card/tap-path-malformed");
+      if (path.length > MAX_TAP_PATH) return refusal("card/too-large");
+      if (!path.startsWith("/") || !isVisibleAscii(path)) return refusal("card/tap-path-malformed");
+      byPathHash = hashInPath(path);
+    }
 
-  if (!Array.isArray(lcpHash)) return refusal("card/tap-field-malformed");
-  if (lcpHash.length === 0) return refusal("card/tap-field-missing");
-  if (lcpHash.length > 1) return refusal("card/tap-field-repeated");
-  const line: unknown = lcpHash[0];
-  if (typeof line !== "string") return refusal("card/tap-field-malformed");
-  if (line.length > MAX_TAP_HASH_LINE) return refusal("card/too-large");
-  const h = normalHash(trimSpHtab(line));
-  if (h === null) return refusal("card/tap-field-malformed");
-  return h;
+    const payers = [...inputs].filter(([, m]) => isTag(m.params.get("tag"), tags)) as [string, InnerList][];
+    if (payers.length === 0) return refusal("card/tap-no-payer-signature");
+    let h: AtrHash | null = null;
+    for (const [, m] of payers) {
+      const nonce = m.params.get("nonce");
+      if (nonce !== undefined && nonce.t !== "string") return refusal("card/tap-nonce-malformed");
+      const byPath = byPathHash !== null && m.list.some(isBarePathComponent) ? byPathHash : null;
+      const carried = byPath ?? (nonce === undefined ? null : hashInNonce(nonce.v as string));
+      if (carried === null) return refusal("card/tap-hash-not-covered");
+      if (h !== null && carried !== h) return refusal("card/tap-hash-conflict");
+      h = carried;
+    }
+    if (!payers.some(([label]) => signatures.has(label))) return refusal("card/tap-signature-missing");
+    return h!;
+  };
+}
+
+/** The hash a nonce carries: the first 32 of the 64 bytes it is the padded base64 of, or null for any other nonce. */
+function hashInNonce(nonce: string): AtrHash | null {
+  const bytes = fromBase64(nonce);
+  return bytes === null || bytes.length !== NONCE_BYTES ? null : (hexOf(bytes.subarray(0, 32)) as AtrHash);
+}
+
+/** The hash a path carries: its last segment where that is `0x` and 64 lowercase hex digits, or null. */
+function hashInPath(path: string): AtrHash | null {
+  const last = path.slice(path.lastIndexOf("/") + 1);
+  return /^0x[0-9a-f]{64}$/.test(last) ? (last as AtrHash) : null;
+}
+
+/** The hash from a VIC transaction reference: exactly 43 characters of unpadded base64url of 32 bytes. */
+async function vicBound(presented: unknown): Promise<AtrHash | Refusal> {
+  if (!isObject(presented)) return refusal("card/vic-reference-malformed");
+  const reference = presented["transactionReferenceId"];
+  if (typeof reference !== "string" || reference.length !== 43) return refusal("card/vic-reference-malformed");
+  const bytes = fromBase64Url(reference);
+  if (bytes === null || bytes.length !== 32) return refusal("card/vic-reference-malformed");
+  return hexOf(bytes) as AtrHash;
 }
 
 /**
@@ -465,8 +595,25 @@ const viAutonomousPattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
 });
 
+const visaVicPattern: LcpPattern = deepFreeze({
+  pattern: "protocol-extension",
+  profile: "card/visa-vic",
+  onChain: false,
+  zeroPartyRecoverable: false,
+  forwardIndexable: false,
+});
+
+const agentPayPattern: LcpPattern = deepFreeze({
+  pattern: "protocol-extension",
+  profile: "card/mastercard-agent-pay",
+  onChain: false,
+  zeroPartyRecoverable: false,
+  forwardIndexable: false,
+});
+
 const sellerReferencePattern: LcpPattern = deepFreeze({
   pattern: "http-advisory",
+  profile: "card/seller-reference",
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
@@ -503,16 +650,54 @@ export const visaTap: CardPairing<"card/visa-tap", TapUnsigned> = Object.freeze(
   advertise,
   read: readShown,
   build: tapBuild,
-  bound: tapBound,
+  bound: tapBoundFor(TAP_TAGS),
   broadcaster: broadcastsWithin(tapShape, "payee"),
 }) satisfies Entry<"card/visa-tap", TapPresented, never, never, CardFamily<TapUnsigned>>;
+
+/**
+ * `card/mastercard-agent-pay`. TAP's carrier under Mastercard's two published `tag` spellings. The payee broadcasts
+ * (`broadcaster` answers `"payee"`): the seller submits the card payment to its processor; nothing here reads it. A
+ * value that is not an object gets `card/tap-signature-input-malformed`, as `bound` refuses it.
+ */
+export const agentPay: CardPairing<"card/mastercard-agent-pay", TapUnsigned> = Object.freeze({
+  id: "card/mastercard-agent-pay",
+  data: CARD["card/mastercard-agent-pay"],
+  pattern: agentPayPattern,
+  claims: true,
+  unplaced,
+  tie,
+  advertise,
+  read: readShown,
+  build: tapBuild,
+  bound: tapBoundFor(AGENT_PAY_TAGS),
+  broadcaster: broadcastsWithin(tapShape, "payee"),
+}) satisfies Entry<"card/mastercard-agent-pay", TapPresented, never, never, CardFamily<TapUnsigned>>;
+
+/**
+ * `card/visa-vic`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment with the
+ * credential Visa issued for the sale to its processor; nothing here reads it. A value that is not an object gets
+ * `card/vic-reference-malformed`, as `bound` refuses it.
+ */
+export const visaVic: CardPairing<"card/visa-vic", VicUnsigned> = Object.freeze({
+  id: "card/visa-vic",
+  data: CARD["card/visa-vic"],
+  pattern: visaVicPattern,
+  claims: true,
+  unplaced,
+  tie,
+  advertise,
+  read: readShown,
+  build: vicBuild,
+  bound: vicBound,
+  broadcaster: broadcastsWithin(vicShape, "payee"),
+}) satisfies Entry<"card/visa-vic", VicPresented, never, never, CardFamily<VicUnsigned>>;
 
 /**
  * `card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
  * payment the mandate authorizes to its processor; nothing here reads it. A value that is not an object gets
  * `card/vi-malformed`, as `bound` refuses it.
  */
-export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned> = Object.freeze({
+export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned | ViCheckoutUnsigned> = Object.freeze({
   id: "card/mastercard-vi/immediate",
   data: CARD["card/mastercard-vi/immediate"],
   pattern: viImmediatePattern,
@@ -520,11 +705,11 @@ export const viImmediate: CardPairing<"card/mastercard-vi/immediate", ViUnsigned
   unplaced,
   tie,
   advertise,
-  read: readCheckoutShown,
-  build: viBuild,
+  read: readViImmediate,
+  build: viImmediateBuild,
   bound: viImmediateBound,
   broadcaster: broadcastsWithin(viShape, "payee"),
-}) satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never, CardFamily<ViUnsigned>>;
+}) satisfies Entry<"card/mastercard-vi/immediate", ViImmediate, never, never, CardFamily<ViUnsigned | ViCheckoutUnsigned>>;
 
 /**
  * `card/mastercard-vi/autonomous`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
@@ -546,10 +731,26 @@ export const viAutonomous: CardPairing<"card/mastercard-vi/autonomous", ViUnsign
 }) satisfies Entry<"card/mastercard-vi/autonomous", ViAutonomous, never, never, CardFamily<ViUnsigned>>;
 
 /**
- * `card/seller-reference`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment
- * to its processor, with H in its processor reference; nothing here reads it.
+ * The reference of a `card/seller-reference` charge: the checkout of the card option it answers and the seller's own
+ * reference for the charge, `{checkout, charge}`. What is presented is `{charge}`, 1 to 255 visible ASCII characters,
+ * else `card/charge-reference-malformed`; then an option that is not a card option of the `seller-reference` scheme is
+ * `card/option-malformed`. Nothing the charge moved is compared with the option.
  */
-export const sellerReference: CardPairing<"card/seller-reference", never> = Object.freeze({
+async function sellerReferenceOf(presented: unknown, option: CardOption): Promise<ChargeRef | Refusal> {
+  const charge = chargeOf(presented);
+  if (charge === undefined) return refusal("card/charge-reference-malformed");
+  if (!isOption(option) || option.scheme !== "seller-reference") return refusal("card/option-malformed");
+  return { checkout: option.checkout, charge };
+}
+
+/**
+ * `card/seller-reference`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment
+ * to its processor, with H in its processor reference; nothing here reads it. `reference` names the charge by the
+ * seller's own reference for it.
+ */
+export const sellerReference: CardPairing<"card/seller-reference", never> & {
+  reference(presented: unknown, option: CardOption): Promise<ChargeRef | Refusal>;
+} = Object.freeze({
   id: "card/seller-reference",
   data: CARD["card/seller-reference"],
   pattern: sellerReferencePattern,
@@ -561,7 +762,8 @@ export const sellerReference: CardPairing<"card/seller-reference", never> = Obje
   build: noSignedPlace,
   bound: noSignedPlace,
   broadcaster: broadcasts("payee"),
-}) satisfies Entry<"card/seller-reference", unknown, never, never, CardFamily<never>>;
+  reference: sellerReferenceOf,
+}) satisfies Entry<"card/seller-reference", ChargePresented, ChargeRef, never, Omit<CardFamily<never>, "option"> & { option: CardOption }>;
 
 // ── RFC 9651: the subset TAP's two signature fields need ──
 
@@ -580,8 +782,9 @@ const TOO_LARGE = Symbol("too-large");
 
 /**
  * An RFC 9651 Dictionary, with Integer, String, Token, Boolean and Byte Sequence items; a Decimal, Date or Display
- * String fails. A repeated key overwrites the earlier value. Null when the text does not parse; TOO_LARGE past 16
- * members or 32 items in an inner list.
+ * String fails. A repeated key overwrites the earlier value. One parameter name is also admitted as `keyId`, the
+ * spelling Visa's reference agent writes, and read as `keyid`; parameters that name both spellings fail. Null when the
+ * text does not parse; TOO_LARGE past 16 members or 32 items in an inner list.
  */
 function parseDictionary(s: string): Map<string, Member> | null | typeof TOO_LARGE {
   let i = 0;
@@ -654,11 +857,23 @@ function parseDictionary(s: string): Map<string, Member> | null | typeof TOO_LAR
   };
   const params = (): Params | null => {
     const p: Params = new Map();
+    let keyIdSpelled: string | undefined;
     while (s[i] === ";") {
       i++;
       sp();
-      const k = key();
+      let k: string | null;
+      if (s.startsWith(KEY_ID_SPELLING, i) && !isKeyChar(s[i + KEY_ID_SPELLING.length] ?? " ")) {
+        i += KEY_ID_SPELLING.length;
+        k = KEY_ID_SPELLING;
+      } else {
+        k = key();
+      }
       if (k === null) return null;
+      if (k === "keyid" || k === KEY_ID_SPELLING) {
+        if (keyIdSpelled !== undefined && keyIdSpelled !== k) return null;
+        keyIdSpelled = k;
+        k = "keyid";
+      }
       let v: Bare | null = { t: "boolean", v: true };
       if (s[i] === "=") {
         i++;
@@ -740,13 +955,14 @@ function plainParams(p: Params): boolean {
   return true;
 }
 
-function isPayerTag(v: Bare | undefined): boolean {
-  return v !== undefined && v.t === "string" && v.v === PAYER_TAG;
+/** A `tag` parameter that is a String and one of `tags`. */
+function isTag(v: Bare | undefined, tags: readonly string[]): boolean {
+  return v !== undefined && v.t === "string" && tags.includes(v.v);
 }
 
-/** The String `lcp-hash` with no parameters. */
-function isBareHashComponent(it: Item): boolean {
-  return it.item.t === "string" && it.item.v === TAP_FIELD && it.params.size === 0;
+/** The String `@path` with no parameters. */
+function isBarePathComponent(it: Item): boolean {
+  return it.item.t === "string" && it.item.v === "@path" && it.params.size === 0;
 }
 
 function isLcAlpha(c: string): boolean {
@@ -798,9 +1014,14 @@ function isVisibleAscii(s: string): boolean {
   return true;
 }
 
-/** The shape gate `tapBound` applies first: an object, else `card/tap-signature-input-malformed`. */
+/** The shape gate the TAP and Agent Pay `bound` applies first: an object, else `card/tap-signature-input-malformed`. */
 function tapShape(presented: unknown): true | Refusal {
   return isObject(presented) ? true : refusal("card/tap-signature-input-malformed");
+}
+
+/** The shape gate `vicBound` applies first: an object, else `card/vic-reference-malformed`. */
+function vicShape(presented: unknown): true | Refusal {
+  return isObject(presented) ? true : refusal("card/vic-reference-malformed");
 }
 
 /** The shape gate the VI `bound`s apply first: an object, else `card/vi-malformed`. */

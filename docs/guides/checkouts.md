@@ -16,10 +16,10 @@ seller advertises into and what the buyer presents:
 | Protocol | Entry point | Pairings | Where H rides | Buyer signs H |
 |---|---|---|---|---|
 | ACP | `@integraledger/lcp/acp` | `acp/checkout/delegated`, `acp/checkout/undelegated` | The checkout session's `id`, and the delegate-payment allowance's `checkout_session_id` where the handler requires one. | no |
-| UCP | `@integraledger/lcp/ucp` | `ucp/checkout/ap2-mandate`, `ucp/checkout/unsigned`, `ucp/booking/ap2-mandate`, `ucp/booking/unsigned` | A `legal_context` entry in the checkout's `links[]`, before the business signs the checkout. | with an AP2 mandate |
-| AP2 | `@integraledger/lcp/ap2` | `ap2/checkout-mandate` | The `legalContext` member of the merchant-signed `checkout_jwt`, which the buyer's Checkout Mandate commits to. | yes |
+| UCP | `@integraledger/lcp/ucp` | `ucp/checkout/ap2-mandate`, `ucp/checkout/agent-signed`, `ucp/checkout/unsigned`, `ucp/booking/ap2-mandate`, `ucp/booking/unsigned` | A `legal_context` entry in the checkout's `links[]`, before the business signs the checkout; on `ucp/checkout/agent-signed` also the `legal_context` member of the platform's signed request that completes it. | with an AP2 mandate, or in the platform's signed request |
+| AP2 | `@integraledger/lcp/ap2` | `ap2/checkout-mandate`, `ap2/checkout-mandate/x402` | The `legalContext` member of the merchant-signed `checkout_jwt`, which the buyer's Checkout Mandate commits to; on the x402 route the payment's nonce carries the payment mandate chain, not H. | yes |
 | ACK | `@integraledger/lcp/ack` | `ack/payment-request` | The `id` of the seller-signed Payment Request, as H's LCP string. | no |
-| Card networks | `@integraledger/lcp/card` | `card/visa-tap`, `card/mastercard-vi/immediate`, `card/mastercard-vi/autonomous`, `card/seller-reference` | A covered `lcp-hash` field of the agent's message signature, the `checkout_jwt` a Verifiable Intent mandate signs, or the seller's processor reference. | Visa TAP and Verifiable Intent |
+| Card networks | `@integraledger/lcp/card` | `card/visa-tap`, `card/mastercard-agent-pay`, `card/visa-vic`, `card/mastercard-vi/immediate`, `card/mastercard-vi/autonomous`, `card/seller-reference` | The nonce or the checkout path the agent's message signature covers, the transaction reference of a Visa Intelligent Commerce credential request, the `checkout_jwt` a Verifiable Intent mandate signs, or the seller's processor reference. | Visa TAP, Agent Pay and Verifiable Intent |
 | A2A | `@integraledger/lcp/a2a` | none | The Task's `metadata`, under the extension's URI. Delivery only. | no |
 
 The "Buyer signs H" column says where each pairing's `data.carrier.signed` names a field. The
@@ -286,27 +286,38 @@ rules.
 
 ## Card networks
 
-The `card` entry point covers three ways to pay a card checkout. The option is the seller's own
-`{ scheme, checkout }`, where `scheme` is `"visa-tap"`, `"mastercard-vi"` or `"seller-reference"` and `checkout` is
-the seller's checkout id. `advertise` gives the same values for every card pairing: the `legalContext` the seller
-shows before payment, and `reference`, H's LCP string, for the seller to place in its processor reference.
+The `card` entry point covers five ways to pay a card checkout. The option is the seller's own
+`{ scheme, checkout }`, where `scheme` is `"visa-tap"`, `"mastercard-agent-pay"`, `"visa-vic"`, `"mastercard-vi"` or
+`"seller-reference"` and `checkout` is the seller's checkout id. `advertise` gives the same values for every card
+pairing: the `legalContext` the seller shows before payment, and `reference`, H's LCP string, for the seller to place
+in its processor reference.
 
-- **[Visa Trusted Agent Protocol](https://developer.visa.com/capabilities/trusted-agent-protocol).** The agent sends H
-  in an `lcp-hash` HTTP header field, and lists `"lcp-hash"` among the covered components of every `agent-payer-auth`
-  message signature it sends (RFC 9421). `build` returns the field for the agent's signer to add:
-  `{ field: "lcp-hash", value: H, component: "lcp-hash" }`. `bound` reads the one `lcp-hash` line when every
-  `agent-payer-auth` signature in the request lists `"lcp-hash"` without parameters, so whichever payer signature the
-  seller's TAP recognition verifies covers H. It verifies no signature, key, window or nonce. The LCP profile
-  [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) states the rules.
+- **[Visa Trusted Agent Protocol](https://developer.visa.com/capabilities/trusted-agent-protocol).** H rides in what
+  the agent's `agent-payer-auth` message signature covers (RFC 9421): its `nonce`, the base64 of H's 32 bytes followed
+  by 32 random bytes, which `build` returns as `{ nonce }` for the agent's signer to place in every signature of the
+  request; or, for an agent whose nonce does not carry H, the merchant's checkout path, whose last segment is H and
+  which the signature covers as `@path`. `bound` takes the request's `signatureInput`, `signature` and, for the path,
+  its `path`, and returns H when every `agent-payer-auth` signature carries the same H. It reads the key id parameter
+  as `keyid` and as `keyId`, the spelling Visa's reference agent writes. It verifies no signature, key, window or
+  nonce. The LCP profile [`card/visa-tap`](../../lcp/profiles/card-visa-tap.md) states the rules.
+- **Mastercard Agent Pay.** TAP's carrier, in a message signature whose `tag` is `Agent-pay-auth` or `agent-pay-auth`,
+  the two spellings Mastercard publishes. The form is built from Mastercard's published playbook and is not confirmed:
+  the LCP profile [`card/mastercard-agent-pay`](../../lcp/profiles/card-mastercard-agent-pay.md) states it.
+- **Visa Intelligent Commerce.** H, as unpadded base64url, is the `transactionReferenceId` the agent writes when it
+  asks Visa for the sale's credential; `build` returns it, and `bound` reads it back as the merchant reads it from the
+  credential payload Visa signs. That Visa returns it unchanged is not yet shown, so the form is not confirmed: the LCP
+  profile [`card/visa-vic`](../../lcp/profiles/card-visa-vic.md) states it.
 - **[Mastercard Verifiable Intent](https://github.com/agent-intent/verifiable-intent).** The pairings target Verifiable
-  Intent 0.1 (draft). H rides in the merchant's `checkout_jwt` as its `legalContext`, and a mandate signs that JWT's
+  Intent at commit `356c296`. H rides in the `checkout_jwt` as its `legalContext`, and a mandate signs that JWT's
   SHA-256 as `checkout_hash`. `build` returns `checkoutMandate`, the checkout mandate to sign, and `transactionId`, the
-  value for the payment mandate's `transaction_id`: both carry that digest.
+  value for the payment mandate's `transaction_id`: both carry that digest. In Immediate mode the agent may create the
+  `checkout_jwt`: `read` then takes the `legalContext` the seller shows, and `build`, given `{ checkout, shown }`,
+  returns the checkout payload with that `legalContext` written into it, for the agent to sign.
   `card/mastercard-vi/immediate` reads H from the checkout mandate the user's L2 mandate references, and checks the
   `checkout_hash` and any disclosed `transaction_id`; it verifies no signature. `card/mastercard-vi/autonomous` reads
   H from the agent's L3b checkout mandate, and verifies the ES256 signatures of L2 and L3b and their `sd_hash` links,
-  but not the L1 issuer's signature. The LCP profile [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md)
-  states the rules.
+  but not the L1 issuer's signature; its `l2` is the merchant's view of the user's L2 that L3b's `sd_hash` covers. The
+  LCP profile [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) states the rules.
 - **`card/seller-reference`.** A plain card checkout: nothing the buyer signs carries H. The seller shows H and the
   link before payment and places `reference` in its processor reference. `build` and `bound` refuse
   `card/no-signed-place`.
@@ -323,14 +334,15 @@ const shown = visaTap.advertise({}, h, link, option);
 if (isRefusal(shown)) throw new Error(shown.code);
 console.log(shown.reference === `lcp:sha256:${h}`);
 
-const field = await visaTap.build(shown, h);
-if (isRefusal(field)) throw new Error(field.code);
-console.log(field.field, field.component, field.value === h);
+const placed = await visaTap.build(shown, h);
+if (isRefusal(placed)) throw new Error(placed.code);
+const bytes = Uint8Array.from(atob(placed.nonce), (c) => c.charCodeAt(0));
+console.log(placed.nonce.length, `0x${Buffer.from(bytes.subarray(0, 32)).toString("hex")}` === h);
 ```
 
 ```text
 true
-lcp-hash lcp-hash true
+88 true
 ```
 
 ## A2A

@@ -13,12 +13,12 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 |---|---|
 | [`@integraledger/lcp`](#integraledgerlcp) | The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, the registry of every pairing (`BINDINGS`, `pairingOf`), and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
 | [`@integraledger/lcp/a2a`](#integraledgerlcpa2a) | The LCP extension for A2A: the ATR hash and the link to the seller's copy delivered in a Task's `metadata`, keyed by the extension's URI. A2A signs nothing per transaction, so this is a carrier and exports no pairing. Pure; no I/O. |
-| [`@integraledger/lcp/ack`](#integraledgerlcpack) | ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines no payer signature, so `build` and `bound` always refuse. Pure; no I/O. No token or receipt signature is verified here. |
+| [`@integraledger/lcp/ack`](#integraledgerlcpack) | ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines no payer signature, so `build` and `bound` always refuse. The token is read under the name ACK's SDKs write from 0.10.0, `paymentRequestToken`, and under `paymentToken`, the name they wrote before it, in the 402 body and in a receipt's credential subject alike. Pure; no I/O. No token or receipt signature is verified here. |
 | [`@integraledger/lcp/acp`](#integraledgerlcpacp) | ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`, with the link beside it in the session's `metadata.legal_context`, and, where the handler requires `delegate_payment`, as the allowance's `checkout_session_id`. Pure; no I/O. Nothing here signs or verifies a signature. |
-| [`@integraledger/lcp/ap2`](#integraledgerlcpap2) | AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout Mandate through `checkout_hash`, and read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in AP2's chain after the open mandate. Nothing here verifies a signature, a `cnf` delegation or a link between hops. |
+| [`@integraledger/lcp/ap2`](#integraledgerlcpap2) | AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout Mandate through `checkout_hash`, and read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends the funds, the presentation also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a signature, a `cnf` delegation or a link between hops. |
 | [`@integraledger/lcp/aptos`](#integraledgerlcpaptos) | Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified by a digest of the transfer the payer signed and by the expiry it signed. |
 | [`@integraledger/lcp/avm`](#integraledgerlcpavm) | Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes. `algosdk` is an optional peer: this module loads it when present, and `build` writes the transactions with it. The addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`, `reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs none. |
-| [`@integraledger/lcp/card`](#integraledgerlcpcard) | The `card` entry point: the ATR hash on a card checkout, on three paths: Visa TAP, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout. |
+| [`@integraledger/lcp/card`](#integraledgerlcpcard) | The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout. |
 | [`@integraledger/lcp/cardano`](#integraledgerlcpcardano) | Cardano, and the `x402/exact/cardano` pairing: the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so settlement is read by an id fixed before any money moves. |
 | [`@integraledger/lcp/casper`](#integraledgerlcpcasper) | CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments. |
 | [`@integraledger/lcp/ccd`](#integraledgerlcpccd) | Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer event. |
@@ -73,7 +73,7 @@ import { A2A_EXTENSION_URIS, agentExtension, binding, … } from "@integraledger
 
 ## `@integraledger/lcp/ack`
 
-ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines no payer signature, so `build` and `bound` always refuse. Pure; no I/O. No token or receipt signature is verified here.
+ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines no payer signature, so `build` and `bound` always refuse. The token is read under the name ACK's SDKs write from 0.10.0, `paymentRequestToken`, and under `paymentToken`, the name they wrote before it, in the 402 body and in a receipt's credential subject alike. Pure; no I/O. No token or receipt signature is verified here.
 
 ```ts no-check
 import { fromReceipt, paymentRequest, tie } from "@integraledger/lcp/ack";
@@ -97,21 +97,21 @@ import { delegated, issuedDigest, METADATA_KEY, … } from "@integraledger/lcp/a
 
 **Values (5):** `delegated`, `issuedDigest`, `METADATA_KEY`, `tie`, `undelegated`.
 
-**Types (8):** `AcpBinding`, `AcpChoice`, `Allowance`, `Broadcaster`, `HandlerOption`, `Presented`, `Session`, `Unsigned`.
+**Types (10):** `AcpBinding`, `AcpChoice`, `Allowance`, `Broadcaster`, `ChargePresented`, `ChargeRef`, `HandlerOption`, `Presented`, `Session`, `Unsigned`.
 
 ## `@integraledger/lcp/ap2`
 
-AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout Mandate through `checkout_hash`, and read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in AP2's chain after the open mandate. Nothing here verifies a signature, a `cnf` delegation or a link between hops.
+AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout Mandate through `checkout_hash`, and read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends the funds, the presentation also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a signature, a `cnf` delegation or a link between hops.
 
 ```ts no-check
 import { CHECKOUT_VCT, checkoutBinding, checkoutJwtOf, … } from "@integraledger/lcp/ap2";
 ```
 
-**Pairings:** `ap2/checkout-mandate`.
+**Pairings:** `ap2/checkout-mandate`, `ap2/checkout-mandate/x402`.
 
-**Values (8):** `CHECKOUT_VCT`, `checkoutBinding`, `checkoutJwtOf`, `checkoutMandate`, `issuedDigest`, `jwsPayload`, `readMandate`, `tie`.
+**Values (9):** `CHECKOUT_VCT`, `checkoutBinding`, `checkoutJwtOf`, `checkoutMandate`, `checkoutMandateX402`, `issuedDigest`, `jwsPayload`, `readMandate`, `tie`.
 
-**Types (8):** `Ap2Offer`, `Broadcaster`, `CheckoutOption`, `Jws`, `MandateContent`, `Payload`, `Presented`, `Unsigned`.
+**Types (13):** `Ap2Offer`, `Broadcaster`, `CheckoutOption`, `Jws`, `MandateContent`, `Payload`, `Presented`, `Unsigned`, `X402Authorization`, `X402Bundle`, `X402Method`, `X402Presented`, `X402Ref`.
 
 ## `@integraledger/lcp/aptos`
 
@@ -143,17 +143,17 @@ import { avmCarrier, avmRecover, avmStatus, … } from "@integraledger/lcp/avm";
 
 ## `@integraledger/lcp/card`
 
-The `card` entry point: the ATR hash on a card checkout, on three paths: Visa TAP, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout.
+The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout.
 
 ```ts no-check
-import { disclosureDigest, MAX_CHECKOUT_ID, MAX_CHECKOUT_JWT, … } from "@integraledger/lcp/card";
+import { agentPay, disclosureDigest, MAX_CHARGE_REFERENCE, … } from "@integraledger/lcp/card";
 ```
 
-**Pairings:** `card/mastercard-vi/autonomous`, `card/mastercard-vi/immediate`, `card/seller-reference`, `card/visa-tap`.
+**Pairings:** `card/mastercard-agent-pay`, `card/mastercard-vi/autonomous`, `card/mastercard-vi/immediate`, `card/seller-reference`, `card/visa-tap`, `card/visa-vic`.
 
-**Values (15):** `disclosureDigest`, `MAX_CHECKOUT_ID`, `MAX_CHECKOUT_JWT`, `MAX_TAP_COMPONENTS`, `MAX_TAP_FIELD`, `MAX_TAP_HASH_LINE`, `MAX_TAP_MEMBERS`, `MAX_VI_DISCLOSURES`, `MAX_VI_LAYER`, `sellerReference`, `TAP_FIELD`, `tie`, `viAutonomous`, `viImmediate`, `visaTap`.
+**Values (17):** `agentPay`, `disclosureDigest`, `MAX_CHARGE_REFERENCE`, `MAX_CHECKOUT_ID`, `MAX_CHECKOUT_JWT`, `MAX_TAP_COMPONENTS`, `MAX_TAP_FIELD`, `MAX_TAP_MEMBERS`, `MAX_TAP_PATH`, `MAX_VI_DISCLOSURES`, `MAX_VI_LAYER`, `sellerReference`, `tie`, `viAutonomous`, `viImmediate`, `visaTap`, `visaVic`.
 
-**Types (11):** `Broadcaster`, `CardOption`, `CardPairing`, `CardPairingId`, `CardScheme`, `CardValues`, `TapPresented`, `TapUnsigned`, `ViAutonomous`, `ViImmediate`, `ViUnsigned`.
+**Types (17):** `Broadcaster`, `CardOption`, `CardPairing`, `CardPairingId`, `CardScheme`, `CardValues`, `ChargePresented`, `ChargeRef`, `TapPresented`, `TapUnsigned`, `ViAutonomous`, `ViCheckoutChoice`, `ViCheckoutUnsigned`, `VicPresented`, `VicUnsigned`, `ViImmediate`, `ViUnsigned`.
 
 ## `@integraledger/lcp/cardano`
 
@@ -412,14 +412,14 @@ import { exactTvm, lcpComment, OP, … } from "@integraledger/lcp/tvm";
 UCP checkouts and bookings, and four pairings: the ATR hash and link as one `links[]` entry of type `legal_context` in the checkout response. The `ap2-mandate` pairings read the hash from the checkout JWT presented beside the buyer's checkout mandate, after AP2's `checkout_hash` check, the mandate presented alone or last in AP2's chain after the open mandate; the `unsigned` pairings have nothing signed to read. Nothing here takes a key, signs, or verifies a signature, a `cnf` delegation or a link between chained mandates.
 
 ```ts no-check
-import { ap2Mandate, bookingAp2Mandate, bookingUnsigned, … } from "@integraledger/lcp/ucp";
+import { agentSigned, ap2Mandate, bookingAp2Mandate, … } from "@integraledger/lcp/ucp";
 ```
 
-**Pairings:** `ucp/booking/ap2-mandate`, `ucp/booking/unsigned`, `ucp/checkout/ap2-mandate`, `ucp/checkout/unsigned`.
+**Pairings:** `ucp/booking/ap2-mandate`, `ucp/booking/unsigned`, `ucp/checkout/agent-signed`, `ucp/checkout/ap2-mandate`, `ucp/checkout/unsigned`.
 
-**Values (8):** `ap2Mandate`, `bookingAp2Mandate`, `bookingUnsigned`, `issuedDigest`, `legalContextLink`, `LINK_TYPE`, `tie`, `unsigned`.
+**Values (10):** `agentSigned`, `ap2Mandate`, `bookingAp2Mandate`, `bookingUnsigned`, `checkoutJwt`, `issuedDigest`, `legalContextLink`, `LINK_TYPE`, `tie`, `unsigned`.
 
-**Types (8):** `BookingOption`, `Broadcaster`, `Checkout`, `CheckoutOption`, `Link`, `UcpBinding`, `UcpOffer`, `Unsigned`.
+**Types (12):** `AgentSignedPresented`, `AgentSignedUnsigned`, `BookingOption`, `Broadcaster`, `ChargePresented`, `ChargeRef`, `Checkout`, `CheckoutOption`, `Link`, `UcpBinding`, `UcpOffer`, `Unsigned`.
 
 ## `@integraledger/lcp/x402`
 

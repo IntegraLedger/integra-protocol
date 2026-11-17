@@ -1,8 +1,9 @@
 /**
  * ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the
  * seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines
- * no payer signature, so `build` and `bound` always refuse. Pure; no I/O. No token or receipt signature is verified
- * here.
+ * no payer signature, so `build` and `bound` always refuse. The token is read under the name ACK's SDKs write from
+ * 0.10.0, `paymentRequestToken`, and under `paymentToken`, the name they wrote before it, in the 402 body and in a
+ * receipt's credential subject alike. Pure; no I/O. No token or receipt signature is verified here.
  */
 import {
   fromLcpString,
@@ -40,9 +41,13 @@ export interface AckValues {
   legalContext: { type: "sha256"; value: AtrHash; legalContextUrl: string; legalContextAgreementUrl?: string };
 }
 
-/** The 402 body. */
+/**
+ * The 402 body. The seller-signed token is `paymentRequestToken`, as ACK's SDKs write it from 0.10.0, or
+ * `paymentToken`, as they wrote it before; a body that carries both carries one token under both names.
+ */
 export interface AckBody {
-  paymentRequestToken: string;
+  paymentRequestToken?: string;
+  paymentToken?: string;
   legalContext: Json;
   paymentRequest?: Json;
 }
@@ -52,6 +57,9 @@ const MAX_BODY_BYTES = 65_536;
 const MAX_TOKEN = 16_384;
 const MAX_OPTIONS = 16;
 const MAX_CREDENTIAL_SUBJECT_BYTES = 65_536;
+/** The token's name from ACK's SDK 0.10.0 on, and its name before it. */
+const TOKEN = "paymentRequestToken";
+const TOKEN_BEFORE_0_10 = "paymentToken";
 
 /** The binding slot: the Payment Request's options exactly as issued. */
 export function tie(options: readonly AckPaymentOption[]): ["ack", { paymentOptions: readonly AckPaymentOption[] }] {
@@ -99,7 +107,7 @@ function read(
   const size = jsonBytes(doc);
   if (size === undefined) return refusal("ack/token-malformed");
   if (size > MAX_BODY_BYTES) return refusal("ack/too-large");
-  const token: unknown = doc["paymentRequestToken"];
+  const token = tokenOf(doc);
   if (typeof token === "string" && token.length > MAX_TOKEN) return refusal("ack/too-large");
   const payload = tokenPayload(token);
   if (payload === null) return refusal("ack/token-malformed");
@@ -123,15 +131,15 @@ function read(
 }
 
 /**
- * The hash in a receipt: the `id` of the Payment Request token embedded in its `credentialSubject`. Verifies nothing;
- * a party calls it on a receipt it has verified.
+ * The hash in a receipt: the `id` of the Payment Request token embedded in its `credentialSubject`, under either of the
+ * token's two names. Verifies nothing; a party calls it on a receipt it has verified.
  */
 export function fromReceipt(credentialSubject: unknown): AtrHash | Refusal {
   if (!isObject(credentialSubject)) return refusal("ack/receipt-malformed");
   const size = jsonBytes(credentialSubject);
   if (size === undefined) return refusal("ack/receipt-malformed");
   if (size > MAX_CREDENTIAL_SUBJECT_BYTES) return refusal("ack/too-large");
-  const payload = tokenPayload(credentialSubject["paymentRequestToken"]);
+  const payload = tokenPayload(tokenOf(credentialSubject));
   const id = payload?.["id"];
   const h = typeof id === "string" ? fromLcpString(id) : null;
   return h === null ? refusal("ack/receipt-malformed") : h;
@@ -185,6 +193,19 @@ export const paymentRequest = Object.freeze({
   bound: async (_presented: unknown): Promise<Refusal> => refusal("ack/no-signed-place"),
   broadcaster: broadcasts("payer"),
 }) satisfies Entry<typeof ID, Json, never, never, AckFamily>;
+
+/**
+ * The token an object carries: `paymentRequestToken` where only it is present, `paymentToken` where only that is, and
+ * either where both are present and are the same string. Undefined where neither is present, or where the two differ,
+ * which the caller then refuses as it refuses a malformed token.
+ */
+function tokenOf(o: Record<string, unknown>): unknown {
+  const current = o[TOKEN];
+  const before = o[TOKEN_BEFORE_0_10];
+  if (current === undefined) return before;
+  if (before === undefined || before === current) return current;
+  return undefined;
+}
 
 /**
  * The JSON object in a compact JWS's second segment, decoded as base64url without padding, fatal UTF-8 and JSON, or
