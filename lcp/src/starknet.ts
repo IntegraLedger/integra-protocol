@@ -403,11 +403,8 @@ function word(v: bigint): Uint8Array {
 
 // ── The read.
 
-/**
- * The reference `status` reads with: the read keys, H, which the caller adds, and the transaction a settler named; the
- * outside execution as presented where the caller has it, without which the read compares nothing with it.
- */
-type StarknetRefRead = Omit<StarknetRef, "presented"> & { presented?: StarknetOutsideExecution; h: AtrHash; transaction?: Felt };
+/** The reference `status` reads with: the read keys, H, which the caller adds, and the transaction a settler named. */
+type StarknetRefRead = StarknetRef & { h: AtrHash; transaction?: Felt };
 
 /** An outside execution as numbers: its `Caller`, `Nonce`, window and calls. */
 interface Execution {
@@ -429,7 +426,7 @@ interface Keys {
   readonly other: bigint;
   /** `Execute Before`, `settleBy`. */
   readonly before: bigint;
-  readonly presented?: Execution;
+  readonly presented: Execution;
   readonly transaction?: bigint;
 }
 
@@ -439,8 +436,8 @@ const LEDGER = ledgerOf<bigint, StarknetMark>(STARKNET[ID].coverage, MARKS, bigi
 /**
  * The read keys of a reference for the act asked about, or undefined where one is malformed: the network, the payer, the
  * asset and the payee, each a felt; the signed nonce, the low 250 bits of the value that act carries (H on a payment,
- * the agreement's value on an agreement), and H; `settleBy`, a safe integer; and the outside execution as presented and
- * the named transaction, where the caller gives them.
+ * the agreement's value on an agreement), and H; `settleBy`, a safe integer; the outside execution as presented; and
+ * the named transaction, where the caller gives one.
  */
 async function keysOf(ref: unknown, act: Act): Promise<Keys | undefined> {
   if (!isObject(ref)) return undefined;
@@ -457,8 +454,8 @@ async function keysOf(ref: unknown, act: Act): Promise<Keys | undefined> {
   if (nonce !== (act === "agreement" ? agreed : own)) return undefined;
   const settleBy = ref["settleBy"];
   if (!Number.isSafeInteger(settleBy) || (settleBy as number) < 0) return undefined;
-  const presented = ref["presented"] === undefined ? undefined : presentedKeys(ref["presented"]);
-  if (ref["presented"] !== undefined && presented === undefined) return undefined;
+  const presented = presentedKeys(ref["presented"]);
+  if (presented === undefined) return undefined;
   const named = transaction === undefined ? undefined : feltValue(transaction);
   if (transaction !== undefined && named === undefined) return undefined;
   return {
@@ -469,7 +466,7 @@ async function keysOf(ref: unknown, act: Act): Promise<Keys | undefined> {
     nonce,
     other: nonce === own ? agreed : own,
     before: BigInt(settleBy as number),
-    ...(presented === undefined ? {} : { presented }),
+    presented,
     ...(named === undefined ? {} : { transaction: named }),
   };
 }
@@ -630,7 +627,7 @@ function transferOf(e: StarknetEvent): Transfer | "neither" | undefined {
   return { token, from, to, amount: low + high * U128 };
 }
 
-/** A transaction as the read classified it: what it saw there, `presented` stated on the act that consumed the nonce. */
+/** A transaction as the read classified it: what it saw there. */
 interface Classified {
   readonly seen: Seen<bigint, StarknetMark>[];
 }
@@ -640,8 +637,8 @@ interface Classified {
  * either of H's values is seen: its signer against the reference's `from` and the payee, `same` where it carries the
  * act's own nonce, consumed only where that nonce is executed on the reference's account, what moved (each `Transfer`
  * of the receipt from its signer, by its event's index, and each `transfer` call of zero under it for which its token
- * emitted no `Transfer`, by its call path), the account that names against the payee; and on the act that consumed
- * the nonce, where the reference holds the outside execution as presented, `presented`, the landed one against it. A receipt that is `PRE_CONFIRMED`,
+ * emitted no `Transfer`, by its call path), the account that names against the payee; and `presented`, the landed
+ * outside execution against the one presented, `yes` only where the reference's `from` signed it. A receipt that is `PRE_CONFIRMED`,
  * names no block, or is `REVERTED` decides nothing: its nonce use is rolled back. `unknown` where the node knows no
  * such transaction, `no-trace` where it gives no trace, `malformed` where an answer is not well formed or where the act
  * that consumed the nonce on a payment names no payee's account beside a `Transfer`-keyed event of neither layout, and
@@ -686,8 +683,8 @@ async function classify(
     const consumed = same && signer === k.from;
     const account = moved.some((m) => BigInt(m.to) === k.payee) ? "payee" : moved.length > 0 ? "other" : "none";
     if (consumed && neither && account !== "payee" && query.act === "payment") return "malformed";
-    const landed = consumed && k.presented !== undefined ? executionOf(e.calldata) : undefined;
-    const presented = landed === undefined ? "unshown" : sameExecution(landed, k.presented!) ? "yes" : "no";
+    const landed = executionOf(e.calldata);
+    const presented = landed === undefined ? "unshown" : signer === k.from && sameExecution(landed, k.presented) ? "yes" : "no";
     const given = (query.others ?? []).some(
       (o) => "ref" in o && isObject(o.ref) && feltValue(o.ref["from"]) === signer && feltValue(o.ref["nonce"]) === e.nonce,
     );
@@ -702,7 +699,7 @@ async function classify(
       kind: same ? "same" : "other",
       account,
       ...(given ? { given: true } : {}),
-      ...(consumed && k.presented !== undefined ? { presented } : {}),
+      presented,
       moved,
       signer: feltOf(signer),
     });

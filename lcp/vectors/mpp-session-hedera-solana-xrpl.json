@@ -1015,6 +1015,7 @@
       }
      ],
      "signer": "0.0.5005",
+     "presented": "yes",
      "foreign": []
     }
    },
@@ -1077,6 +1078,7 @@
       }
      ],
      "signer": "0.0.5005",
+     "presented": "yes",
      "foreign": []
     }
    },
@@ -1262,6 +1264,7 @@
       }
      ],
      "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+     "presented": "yes",
      "foreign": []
     }
    },

@@ -178,6 +178,8 @@ function innerSeen(root: AvmIndexed, inner: AvmIndexed, path: string, ref: AvmRe
     kind: "other",
     account: tr === null ? "none" : tr.receiver === ref.payee ? "payee" : "other",
     ...(given.has(root.id.toUpperCase()) ? { given: true } : {}),
+    // No key signed an inner transaction, so it is not the transaction the payer signed and presented.
+    presented: "no",
     ...(tr === null ? {} : { moved: movedOf(tr, root.id, path) }),
     signer: inner.sender,
     authority: "none",

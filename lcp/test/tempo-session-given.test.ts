@@ -24,6 +24,7 @@ describe("the Tempo session read of an opening given as another act by its refer
     opened: { address: opened.address, version: "v2", channel: opened.topics[1]!, h: word(3), chainId: 42431 },
     payer: L1.sender,
     payee: `0x${opened.topics[3]!.slice(26)}`,
+    signed,
   } as unknown as SessionRef;
   const reader = ledgerReader({
     network: "eip155:42431",

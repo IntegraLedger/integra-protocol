@@ -111,6 +111,7 @@
    "transaction": "0x7777777777777777777777777777777777777777777777777777777777777777",
    "position": "100",
    "finality": "finalized",
+   "presented": "unshown",
    "foreign": []
   },
   "expectNotFound": {

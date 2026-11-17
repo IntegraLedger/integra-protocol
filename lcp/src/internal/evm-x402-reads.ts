@@ -45,7 +45,7 @@ import {
 } from "./evm-x402.js";
 import { EIP3009_PRESENTED, eip3009Spec, isSigned } from "./evm-eip3009.js";
 
-type Acts = Omit<SeenEvm, "transaction" | "position" | "mark">[];
+type Acts = Omit<SeenEvm, "transaction" | "position" | "mark" | "presented">[];
 
 export function hexOfWord(w: Uint8Array): Hex {
   let s = "0x";

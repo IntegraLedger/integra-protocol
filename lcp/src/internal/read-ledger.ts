@@ -1,11 +1,10 @@
 /**
  * The pieces a pairing's `status` shares when it turns what its read observed into the profile `read-status`'s facts:
- * its ledger from the pairing's coverage and its marks in ascending order, the check of a query's act and finality,
- * and the row of a transaction the read identified as the payer's act.
+ * its ledger from the pairing's coverage and its marks in ascending order, and the check of a query's act and finality.
  */
 import { isObject } from "../fields.js";
 import type { Coverage } from "./registry.js";
-import type { Ledger, Seen, StatusAnswer } from "./read.js";
+import type { Ledger, StatusAnswer } from "./read.js";
 
 /** The ledger of a pairing whose marks are `marks`, lowest first, the last final. */
 export function ledgerOf<Position, Mark>(
@@ -46,28 +45,3 @@ export function isQuery<Mark>(query: unknown, marks: readonly Mark[], isPosition
 
 /** The answer to a query that is not one: unreadable, unparseable. */
 export const UNPARSEABLE: StatusAnswer<never, never> = Object.freeze({ state: "unreadable", reason: "unparseable", foreign: [] });
-
-/**
- * The row of a transaction the read identified as the payer's act, signed by the payer, of the pairing's kind, and
- * naming the payee's account: `succeeded`, or included with a failed result, which consumed the single-use value
- * where `consumed`.
- */
-export function actSeen<Position, Mark>(
-  transaction: string,
-  mark: Mark,
-  position?: Position,
-  result: "succeeded" | "failed" = "succeeded",
-  consumed = true,
-): Seen<Position, Mark> {
-  return {
-    transaction,
-    ...(position === undefined ? {} : { position }),
-    mark,
-    result,
-    consumed,
-    carries: true,
-    party: "payer",
-    kind: "same",
-    account: "payee",
-  };
-}

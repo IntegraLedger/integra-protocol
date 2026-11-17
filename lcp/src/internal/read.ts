@@ -91,10 +91,9 @@ export type StatusAnswer<Position, Mark, Cursor = Position> =
       /**
        * Whether the act is the payment the reference was built from: `yes` where every member its form names of the
        * message the payer signed equals the one presented, `no` where one differs, `unshown` where the read could not
-       * read every member. Stated where the pairing's read compared the act with what was presented, and never `yes`
-       * without that comparison. It decides no answer.
+       * read every member. It decides no answer.
        */
-      readonly presented?: "yes" | "no" | "unshown";
+      readonly presented: Presented;
       readonly foreign: readonly ForeignItem<Position>[];
     })
   | (Named<Position, Mark> & {
@@ -121,6 +120,9 @@ export interface RecoverInput<Network, Option> {
   readonly option: Option;
 }
 
+/** Whether a landed act is the payment presented, its signed message compared member by member with that payment's. */
+export type Presented = "yes" | "no" | "unshown";
+
 /** A transaction a read met, as the pairing's read classified it against the reference and the option. */
 export interface Seen<Position, Mark> {
   readonly transaction: string;
@@ -145,11 +147,11 @@ export interface Seen<Position, Mark> {
   /** True where the pairing's read matched it to an other act the caller gave by its reference. */
   readonly given?: boolean;
   /**
-   * Whether the message the payer signed in it equals, member by member as the pairing's form names them, what was
-   * presented: `yes`, `no`, or `unshown` where the read could not read every member. Absent where the read made no
-   * comparison, and the answer then states none.
+   * Whether the message signed in it equals, member by member as the pairing's form names them, the payment presented:
+   * `yes`; `no` where a member differs; `unshown` where the read could not read every member. A `settled` answer
+   * states the act's.
    */
-  readonly presented?: "yes" | "no" | "unshown";
+  readonly presented: Presented;
   readonly moved?: readonly Moved[];
   readonly signer?: string;
   readonly authority?: string;
@@ -224,11 +226,10 @@ const PENDING_ORDER: readonly PendingReason[] = ["below-mark", "instrument-live"
  * consumed it; `instrument-live` only where the value reads unconsumed at the final mark and at the latest head;
  * `not-found` only where the reader showed its history, and `history-gap` otherwise; and the `pending` reasons in
  * their order, `search-incomplete` held at the first item it could not decode and naming each. A `settled` answer
- * states `presented` as the read compared the act with what was presented, and none where it made no comparison; it
- * never changes which state is answered. Every transaction that
- * carries H, succeeded, is not the act and is not named as the consumer of the value is a foreign item where a reason
- * holds, named with the first; and an item the caller gave by its transaction that the read could not decode is named
- * `given`.
+ * states `presented` as the read compared the act with what was presented; it never changes which state is answered.
+ * Every transaction that carries H, succeeded, is not the act and is not named as the consumer of the value is a
+ * foreign item where a reason holds, named with the first; and an item the caller gave by its transaction that the read
+ * could not decode is named `given`.
  */
 export function decide<Ref, Position, Mark, Cursor>(
   facts: Facts<Position, Mark, Cursor>,
@@ -316,7 +317,7 @@ export function decide<Ref, Position, Mark, Cursor>(
         ...namedOf(act),
         transaction: act.transaction,
         finality: act.mark,
-        ...(act.presented === undefined ? {} : { presented: act.presented }),
+        presented: act.presented,
         foreign: foreignOf(act),
       };
     }

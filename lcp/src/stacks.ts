@@ -167,7 +167,7 @@ export interface StacksRef {
   payee: string;
   origin: string;
   nonce: string;
-  signed?: Hex;
+  signed: Hex;
   transaction?: Hex;
 }
 
@@ -231,7 +231,7 @@ interface Keys {
   payee: string;
   origin: string;
   nonce: bigint;
-  signed: Hex | undefined;
+  signed: Hex;
   hint: Hex | undefined;
   h: AtrHash;
 }
@@ -245,10 +245,10 @@ function keysOf(ref: unknown): Keys | undefined {
   const n = BigInt(nonce);
   const hh = normalHash(h);
   if (n >= NONCE_LIMIT || hh === null) return undefined;
-  const s = signed === undefined ? undefined : normalHash(signed);
+  const s = normalHash(signed);
   const hint = transaction === undefined ? undefined : normalHash(transaction);
   if (s === null || hint === null) return undefined;
-  return { network, payee, origin, nonce: n, signed: s as Hex | undefined, hint: hint as Hex | undefined, h: hh };
+  return { network, payee, origin, nonce: n, signed: s as Hex, hint: hint as Hex | undefined, h: hh };
 }
 
 /** True for an answer of `StacksLanded`'s shape. */
@@ -543,7 +543,7 @@ async function classify(
     ...(givenIn(t, query.others) ? { given: true } : {}),
     moved,
     signer: t.sender.address,
-    ...(k.signed === undefined ? {} : { presented: presentedOf(t, k.signed) }),
+    presented: presentedOf(t, k.signed),
   };
   return { seen, landed: t };
 }
@@ -569,7 +569,7 @@ async function classify(
  * `history-gap`, and a reader for another network than the reference's `chain-mismatch`. A reference or query not of
  * its form is `unparseable`, with nothing read. A `settled` answer states `presented`: `yes` where the digest of what
  * the landed transaction's origin signed is the reference's `signed`, `no` where it differs, and `unshown` where the
- * reference holds none or the reader gives no bytes that are the transaction's.
+ * reader gives no bytes that are the transaction's.
  */
 export async function stacksStatus(ref: StacksRef & { h: AtrHash }, reader: StacksReader, query: StacksQuery): Promise<StacksStatus> {
   if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;

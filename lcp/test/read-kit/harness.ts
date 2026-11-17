@@ -1,7 +1,7 @@
 // The read kit's harness: runs every case of read-status.json, on both acts, through a form. A form skips only the
 // cases its pairing's profile states cannot arise on its ledger; a skip it does not state fails, a stated case it runs
-// is reported, and each form's count of cases run and skipped is printed. An answer is held to `presented` only in the
-// cases whose expected answer states it.
+// is reported, and each form's count of cases run and skipped is printed. Every settled answer states `presented`, and
+// an answer is held to its value only in the cases whose expected answer states it.
 import { readFileSync } from "node:fs";
 import { afterAll, describe, expect, it } from "vitest";
 import { BINDINGS } from "../../src/index.js";
@@ -95,9 +95,10 @@ export async function runCase(declared: DeclaredForm, c: ReadCase, act: Act): Pr
   }
   const answer = await arranged.run();
   const want = c.expect[act];
-  // `presented` is held only where the case states it (read-status.md rule 28): `toMatchObject` holds the value there,
-  // and a read that compares every act answers each other case with whatever its comparison gives.
+  // `presented` is held to its value only where the case states it (read-status.md rule 28): `toMatchObject` holds the
+  // value there, and in each other case a settled answer states whatever the read's comparison gives.
   expect(answer).toMatchObject(want);
+  if (answer.state === "settled") expect("presented" in answer, "a settled answer states presented").toBe(true);
   expect(foreignOf(answer)).toEqual(foreignOf(want));
   for (const key of ["transaction", "carries", "search", "undecoded"] as const) {
     expect(key in answer, `${key} in the answer`).toBe(key in want);

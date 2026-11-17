@@ -678,7 +678,7 @@ async function readNear(
         ? [{ asset: d.receiverId, amount: amountOf(named.args?.["amount"]), to: receiver, transaction: tx, place: token.id }]
         : [];
     const given = givenTx.has(tx) || givenRefs.some((g) => g.payer === d.senderId && g.key === d.publicKey && g.signed === d.nonce);
-    const seen: Seen<bigint, NearMark> = {
+    const seen: Omit<Seen<bigint, NearMark>, "presented"> = {
       transaction: tx,
       ...(at === undefined ? {} : { position: at }),
       mark: notRun ? "optimistic" : markOf(o.status === "FINAL", at, final),

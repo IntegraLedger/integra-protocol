@@ -215,7 +215,7 @@ function x402Mirror(c: ReadCase, act: Act, m: Mapping): { reader: HederaReader; 
 }
 
 function own(): Seen {
-  return { transaction: "own", position: 3, mark: "final", result: "succeeded", consumed: true, carries: true, party: "payer", kind: "same", account: "payee" };
+  return { transaction: "own", position: 3, mark: "final", result: "succeeded", consumed: true, carries: true, party: "payer", kind: "same", account: "payee", presented: "yes" };
 }
 
 function readerOf(

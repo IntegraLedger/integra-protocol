@@ -297,6 +297,7 @@ describe("x402-exact-stellar.json", () => {
         transaction: ref.transaction,
         position: 990,
         finality: "closed",
+        presented: "yes",
         foreign: [],
       });
     });
@@ -402,6 +403,7 @@ describe("x402-exact-stellar.json", () => {
         transaction: listedTx,
         position: ref.expiration,
         finality: "closed",
+        presented: "yes",
         foreign: [],
       });
       expect([calls[0]!.fromLedger, calls[0]!.toLedger]).toEqual([ref.fromLedger, ref.expiration]);
@@ -412,7 +414,14 @@ describe("x402-exact-stellar.json", () => {
       const ref = refOf(V.V5.ref) as EntryRef;
       const read = async (inclusive: boolean) => stellarStatus(ref, readerOver(ref, ref.expiration, inclusive, []), ASKED);
       expect(await read(false)).toEqual(SEARCH_INCOMPLETE);
-      expect(await read(true)).toEqual({ state: "settled", transaction: listedTx, position: ref.expiration, finality: "closed", foreign: [] });
+      expect(await read(true)).toEqual({
+        state: "settled",
+        transaction: listedTx,
+        position: ref.expiration,
+        finality: "closed",
+        presented: "yes",
+        foreign: [],
+      });
     });
   });
 

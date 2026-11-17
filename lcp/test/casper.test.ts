@@ -250,21 +250,6 @@ describe("x402/exact/casper", () => {
       const reader = nodeReader(row.node, V.C4.ref, V.C4.wrongReader.network);
       expect(await exactCasper.status(V.C4.ref, reader, queryOf(row.query) as never)).toEqual(V.C4.wrongReader.expectStatus);
     });
-    // `presented` is stated only where the read compared the act with what was presented (profile rule 20); without
-    // the authorization as presented, the lapse is the reference's settleBy.
-    it("a reference without the authorization as presented is settled with no presented, and lapses at its settleBy", async () => {
-      const row = V.C4.rows.find((r: { expectStatus: { state: string; presented?: string } }) => r.expectStatus.presented === "yes");
-      const { presented: _, ...bare } = V.C4.ref;
-      const { presented: __, ...want } = row.expectStatus;
-      expect(plain(await exactCasper.status(bare, nodeReader(row.node, V.C4.ref), queryOf(row.query) as never))).toEqual(want);
-      const unset = V.C4.rows.find((r: { node: { setFrom: string | null }; expectStatus: { reason?: string } }) => r.node.setFrom === null && r.expectStatus.reason === "instrument-live");
-      const at = BigInt(unset.node.head.timestamp) / 1000n;
-      for (const [settleBy, reason] of [[Number(at), "search-incomplete"], [Number(at) + 1, "instrument-live"]] as const) {
-        const answer = plain(await exactCasper.status({ ...bare, settleBy }, nodeReader(unset.node, V.C4.ref), queryOf(unset.query) as never));
-        expect([settleBy, answer.reason]).toEqual([settleBy, reason]);
-      }
-    });
-
     it("a reference, a query or a search position that is not one is unreadable unparseable, with nothing read", async () => {
       const ref = V.C4.ref;
       const row = V.C4.rows[0];
@@ -274,7 +259,7 @@ describe("x402/exact/casper", () => {
         { ...ref, h: undefined }, { ...ref, h: "0x12" }, { ...ref, nonce: `0x${"00".repeat(32)}` }, { ...ref, from: "0x12" },
         { ...ref, asset: `0x${ref.asset}` }, { ...ref, payee: "" }, { ...ref, presented: 7 },
         { ...ref, presented: { ...ref.presented, validBefore: "18446744073709551616" } },
-        { ...ref, presented: undefined, settleBy: 1.5 }, { ...ref, presented: undefined, settleBy: undefined },
+        { ...ref, presented: undefined },
       ];
       for (const r of refs) {
         const { reader, calls } = counting(nodeReader(row.node, ref));

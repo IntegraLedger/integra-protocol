@@ -75,8 +75,6 @@ interface Setup {
   readonly txs?: readonly Spec[];
   /** Nine more events of the asset from another sender, a page each, past the eight pages a call reads. */
   readonly overflow?: boolean;
-  /** The reference holds no outside execution as presented, so the read compares none: the case of a read that made no comparison. */
-  readonly bare?: boolean;
   /** The node serves no state at the final block. */
   readonly stateGap?: boolean;
   readonly fault?: "transport" | "too-large" | "unparseable" | "chain-mismatch";
@@ -107,7 +105,6 @@ const SETUPS: Record<string, Setup | ((act: Act) => Setup)> = {
     consumed: 10,
     txs: [own("t1", 10, "payee", "5", { differs: true })],
   },
-  "a read that made no comparison with the payment presented states no presented, never yes": { consumed: 10, bare: true, txs: [own("t1", 10)] },
   "each transfer of what moved is named by its transaction and its place in it, in the pairing's own spelling": {
     consumed: 10,
     txs: [{ tx: "t1", pos: 10, transfers: [{ to: "payee", amount: "5", index: 1 }, { to: "payee", amount: "2", index: 4 }] }],
@@ -483,7 +480,7 @@ export const forms: readonly DeclaredForm[] = [
               payee: PAYEE,
               settleBy: Number(BEFORE),
               h: H,
-              ...(s.bare === true ? {} : { presented: presentedOf(act0) }),
+              presented: presentedOf(act0),
               ...(named === undefined ? {} : { transaction: TX[named.tx]! }),
             };
             const others = [

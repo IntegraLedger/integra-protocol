@@ -877,7 +877,10 @@ async function readStellar(ref: StellarRef & { transaction: string }, reader: St
  * The facts of a read of the instrument. A transaction that used the entry is the act, at `closed`; a named
  * transaction that failed is a failed act that left the entry's nonce unconsumed, since a failed transaction is
  * rolled back; the entry expired with no transaction found is a value read unconsumed past its validity; and a
- * transaction not found, or one that succeeded with another entry, is no act the read identified.
+ * transaction not found, or one that succeeded with another entry, is no act the read identified. The act is the
+ * payment presented: the read settles only on the entry whose `HashIDPreimage` digest is the one the reference holds,
+ * which covers every member the payer signed, or, with no entry, on the transaction the credential names; a failed
+ * transaction is not decoded, and shows no member.
  */
 function factsOfStellar(read: StellarRead, ref: StellarRef & { transaction: string }): Facts<number, "closed", number> {
   const none = { seen: [], search: { whole: false }, history: false } as const;
@@ -886,7 +889,10 @@ function factsOfStellar(read: StellarRead, ref: StellarRef & { transaction: stri
     case "unreadable":
       return { ...none, unreadable: read.why };
     case "settled":
-      return { ...none, seen: [{ ...row, transaction: read.transaction, position: read.ledger, result: "succeeded", consumed: true }] };
+      return {
+        ...none,
+        seen: [{ ...row, transaction: read.transaction, position: read.ledger, result: "succeeded", consumed: true, presented: "yes" }],
+      };
     case "failed":
       return { ...none, value: { consumed: false, lapsed: true, mark: "closed" } };
     case "pending":
@@ -902,6 +908,7 @@ function factsOfStellar(read: StellarRead, ref: StellarRef & { transaction: stri
             ...(read.ledger === undefined ? {} : { position: read.ledger }),
             result: "failed",
             consumed: false,
+            presented: "unshown",
           },
         ],
       };

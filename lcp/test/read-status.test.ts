@@ -22,16 +22,13 @@ describe("the read kit's forms", () => {
     expect(subjectFaults(FORMS)).toEqual([]);
   });
 
-  it("list the pairings with a read that have no form yet", () => {
+  it("leave no pairing with a read without a form", () => {
     const without = pairingsWithoutForm(FORMS);
     const withRead = rowsOf(pairingsWithRead(), "BINDINGS with a read");
     const formed = FORMS.map((f) => f.form.subject).filter((s) => s !== "decide");
-    expect([...without, ...formed].sort()).toEqual([...withRead].sort());
-    console.log(
-      [`read kit: ${without.length} of ${withRead.length} pairings with a read have no form yet`, ...without.map((id) => `  ${id}`)].join(
-        "\n",
-      ),
-    );
+    console.log(`read kit: ${formed.length} forms for ${withRead.length} pairings with a read`);
+    expect(without, `pairings with a read and no form: ${without.join(", ")}`).toEqual([]);
+    expect([...formed].sort()).toEqual([...withRead].sort());
   });
 });
 
@@ -77,13 +74,13 @@ describe("the read kit's settled cases", () => {
     }),
   );
 
-  it("state presented yes and no as the act's facts give it, only in the cases about it, and none elsewhere", () => {
+  it("state presented yes and no as the act's facts give it, only in the cases about it", () => {
     for (const p of ["yes", "no"] as const) expect(settled.some((s) => s.want === p && s.given === p), p).toBe(true);
-    expect(settled.some((s) => s.given === undefined && s.want === undefined), "absent, none").toBe(true);
+    expect(settled.some((s) => s.given === undefined && s.want === undefined), "a case not about it").toBe(true);
     expect(settled.filter((s) => s.want !== s.given).map((s) => s.c.case)).toEqual([]);
   });
 
-  it("through the machinery, state presented as the act's facts give it, unshown included, and none where they give none", async () => {
+  it("through the machinery, state presented on every settled answer, as the act's facts give it where they give it", async () => {
     const decideForm = (FORMS.find((f) => f.form.subject === "decide") as DeclaredForm).form;
     const no = settled.find((s) => s.given === "no") as (typeof settled)[number];
     const unshown: ReadCase = {
@@ -96,8 +93,7 @@ describe("the read kit's settled cases", () => {
       if ("inapplicable" in arranged) throw new Error("the machinery skips no case");
       const answer = await arranged.run();
       const given = c.facts.seen.find((s) => answer.state === "settled" && s.transaction === answer.transaction)?.presented;
-      expect("presented" in answer, `${c.case} (act ${act})`).toBe(given !== undefined);
-      if (given !== undefined) expect(answer).toMatchObject({ state: "settled", presented: given });
+      expect(answer, `${c.case} (act ${act})`).toMatchObject({ state: "settled", presented: given ?? "yes" });
     }
   });
 });
@@ -130,10 +126,10 @@ describe("the read kit's harness", () => {
     expect(await runCase({ form: decideForm, inapplicable: [] }, settledZero, "payment")).toBe("ran");
   });
 
-  it("holds presented only in a case that states it", async () => {
+  it("holds presented to its value only in a case that states it, and fails a settled answer that states none", async () => {
     const stating = cases.find((c) => c.expect.payment.state === "settled" && c.expect.payment.presented === "no") as ReadCase;
-    const silent = cases.find((c) => c.case === "a read that made no comparison with the payment presented states no presented, never yes") as ReadCase;
-    const answering = (c: ReadCase, presented: "yes" | "no" | undefined): DeclaredForm => ({
+    const silent = cases.find((c) => c.expect.payment.state === "settled" && c.expect.payment.presented === undefined) as ReadCase;
+    const answering = (c: ReadCase, presented: "yes" | "no" | "unshown" | undefined): DeclaredForm => ({
       form: {
         subject: "decide",
         arrange: (_c, act) => ({
@@ -146,6 +142,8 @@ describe("the read kit's harness", () => {
       inapplicable: [],
     });
     expect(await runCase(answering(silent, "yes"), silent, "payment")).toBe("ran");
+    expect(await runCase(answering(silent, "unshown"), silent, "payment")).toBe("ran");
+    await expect(runCase(answering(silent, undefined), silent, "payment")).rejects.toThrow(/a settled answer states presented/);
     expect(await runCase(answering(stating, "no"), stating, "payment")).toBe("ran");
     await expect(runCase(answering(stating, "yes"), stating, "payment")).rejects.toThrow();
     await expect(runCase(answering(stating, undefined), stating, "payment")).rejects.toThrow();
@@ -234,7 +232,7 @@ describe("decide on items the search could not decode", () => {
 
   it("names a given item the read also decoded once, from what it read", async () => {
     const { decide } = await import("../src/internal/read.js");
-    const g = { transaction: "g", position: 3, mark: 1, result: "succeeded" as const, consumed: false, carries: true, party: "payer" as const, kind: "same" as const, account: "payee" as const };
+    const g = { transaction: "g", position: 3, mark: 1, result: "succeeded" as const, consumed: false, carries: true, party: "payer" as const, kind: "same" as const, account: "payee" as const, presented: "yes" as const };
     const facts = { seen: [g], search: { whole: true }, undecoded: [{ transaction: "g", at: 3 }], history: true };
     const answer = decide(facts, { act: "payment", finality: 1, others: [{ transaction: "g" }] }, ledger);
     expect(answer.foreign).toEqual([{ transaction: "g", position: 3, reason: "given" }]);
@@ -257,7 +255,7 @@ describe("decide on a foreign item", () => {
     const { decide } = await import("../src/internal/read.js");
     const ledger = { coverage: "full" as const, final: 1, markOrder: (a: number, b: number) => a - b, positionOrder: (a: number, b: number) => a - b };
     const moved = [{ asset: "A", amount: "1", to: "other", transaction: "f", place: 0 }];
-    const f = { transaction: "f", position: 3, mark: 1, result: "succeeded" as const, consumed: false, carries: true, party: "other" as const, kind: "same" as const, account: "other" as const, signer: "s", authority: "lsig", moved };
+    const f = { transaction: "f", position: 3, mark: 1, result: "succeeded" as const, consumed: false, carries: true, party: "other" as const, kind: "same" as const, account: "other" as const, signer: "s", authority: "lsig", moved, presented: "no" as const };
     const facts = { seen: [f], search: { whole: true }, history: true };
     const answer = decide(facts, { act: "payment", finality: 1 }, ledger);
     expect(answer.foreign).toEqual([{ transaction: "f", position: 3, signer: "s", authority: "lsig", moved, reason: "other-signer" }]);

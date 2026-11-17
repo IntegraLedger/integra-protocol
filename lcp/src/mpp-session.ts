@@ -88,7 +88,7 @@ import {
   type ReceiveTypedData,
 } from "./internal/evm.js";
 import { mppPayee } from "./internal/payee.js";
-import { decide, type Facts, type Moved, type RecoverInput, type Seen, type UnreadableReason } from "./internal/read.js";
+import { decide, type Facts, type Moved, type Presented, type RecoverInput, type Seen, type UnreadableReason } from "./internal/read.js";
 import type { EvmLogEntry, EvmSearchReader } from "./internal/evm-search.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
@@ -226,8 +226,8 @@ export interface SessionRef extends EvmRef {
   /**
    * What the payer signed, as presented: on a Tempo session `expiringNonceHash` over the opening transaction's
    * sender-signed fields, in the `0x76` form whatever envelope carried it, under its sender; on a subscription
-   * keccak-256 over the signed key authorization's bytes, the authorization and its root signature whole. Absent where
-   * the reference holds nothing to compare, and `status` then states no `presented`.
+   * keccak-256 over the signed key authorization's bytes, the authorization and its root signature whole. A reference
+   * that `status` reads by the search, with `payer`, holds it, and one without it is `unparseable`.
    */
   signed?: Hex;
   /**
@@ -796,8 +796,8 @@ async function tempoTxOf(
  * otherwise; it names the payee's account where the event's `payee` is the option's payee, and moved the deposit,
  * recorded with the channel's token and its `payee` as the beneficiary, the token compared with nothing. `presented` is
  * `yes` where the hash the transaction's sender-signed fields give (`expiringNonceHash`) is the reference's `signed`,
- * `no` where it is another, and `unshown` where the node holds no signed bytes for it; none where the reference holds no
- * `signed`. A reverted transaction the reference names is the payer's failed opening.
+ * `no` where it is another, and `unshown` where the node holds no signed bytes for it; a reference without `signed` is
+ * unparseable. A reverted transaction the reference names is the payer's failed opening.
  *
  * The value: the opening transaction's nonce, read by its key at the final mark and at the latest head (`readValue`),
  * where the reference holds it (`nonce`) and the reader reads a block's state (`TempoSearchReader`); a value read
@@ -834,12 +834,13 @@ async function tempoOpeningFacts(
   const fault = readerFault(ref, reader);
   if (fault !== undefined) return { unreadable: fault };
   if (!readableOpened(ref.opened) || !isAddress(ref.payer) || typeof ref.payee !== "string") return { unreadable: "unparseable" };
-  if ((ref.signed !== undefined && normalHash(ref.signed) === null) || (ref.transaction !== undefined && normalHash(ref.transaction) === null)) {
+  if (normalHash(ref.signed) === null || (ref.transaction !== undefined && normalHash(ref.transaction) === null)) {
     return { unreadable: "unparseable" };
   }
+  const signed = ref.signed!;
   const nonce: unknown = ref.nonce;
   const decimal = (x: unknown, digits: number): boolean => typeof x === "string" && new RegExp(`^[0-9]{1,${digits}}$`).test(x);
-  if (nonce !== undefined && (!isObject(nonce) || !decimal(nonce["key"], 78) || !decimal(nonce["value"], 78) || ref.signed === undefined)) {
+  if (nonce !== undefined && (!isObject(nonce) || !decimal(nonce["key"], 78) || !decimal(nonce["value"], 78))) {
     return { unreadable: "unparseable" };
   }
   if (ref.validBefore !== undefined && !decimal(ref.validBefore, 20)) return { unreadable: "unparseable" };
@@ -871,7 +872,7 @@ async function tempoOpeningFacts(
           sender: ref.payer!,
           key: BigInt(ref.nonce.key),
           nonce: BigInt(ref.nonce.value),
-          signed: ref.signed!,
+          signed,
           validBefore: ref.validBefore === undefined ? null : BigInt(ref.validBefore),
         };
   let read: Awaited<ReturnType<typeof readValue>> | undefined;
@@ -907,8 +908,7 @@ async function tempoOpeningFacts(
       return undefined;
     }
     const party = partyOf(tx.sender, ref.payer!, ref.payee);
-    const presented: "yes" | "no" | "unshown" | undefined =
-      ref.signed === undefined ? undefined : tx.signed === undefined ? "unshown" : sameBytes(tx.signed, ref.signed) ? "yes" : "no";
+    const presented: Presented = tx.signed === undefined ? "unshown" : sameBytes(tx.signed, signed) ? "yes" : "no";
     const took =
       value !== undefined && tx.value !== undefined
         ? sameValue(value, tx.value)
@@ -922,7 +922,7 @@ async function tempoOpeningFacts(
       party,
       consumed: took,
       ...(tx.sender === undefined ? {} : { signer: tx.sender }),
-      ...(presented === undefined ? {} : { presented }),
+      presented,
       ...(given ? { given } : {}),
     };
     const before = seen.length;
@@ -1026,7 +1026,7 @@ async function tempoOpeningFacts(
  * any recipient, names no account. It moved every token transfer from its account the receipt shows (`movedFrom`), a
  * held transfer recorded as moved to the guard, nothing where there is none. `presented` is `yes` where the key
  * authorization the transaction carries is the one presented, byte for byte (the reference's `signed`, keccak-256 over
- * its bytes), and `no` where it is another; none where the reference holds no `signed`. A transaction whose signed
+ * its bytes), and `no` where it is another; a reference without `signed` is unparseable. A transaction whose signed
  * bytes the node does not hold, or that do not decode, is an item the search could not decode, held at its block.
  *
  * The history is shown where the reader serves the block the search starts at; a read of the slot that fails without
@@ -1069,9 +1069,10 @@ async function activationFacts(
   if (expiry !== undefined && (typeof expiry !== "string" || !/^[1-9][0-9]{0,19}$/.test(expiry) || BigInt(expiry) >= 1n << 64n)) {
     return { unreadable: "unparseable" };
   }
-  if ((ref.signed !== undefined && normalHash(ref.signed) === null) || (ref.transaction !== undefined && normalHash(ref.transaction) === null)) {
+  if (normalHash(ref.signed) === null || (ref.transaction !== undefined && normalHash(ref.transaction) === null)) {
     return { unreadable: "unparseable" };
   }
+  const signed = ref.signed!;
   if (typeof reader.logs !== "function" || typeof reader.block !== "function" || typeof reader.raw !== "function" || !readsState(reader)) {
     return { unreadable: "transport" };
   }
@@ -1149,7 +1150,7 @@ async function activationFacts(
       account: recipient === undefined ? "none" : sameBytes(recipient, ref.payee) ? "payee" : "other",
       moved,
       ...(landedSigned !== undefined && givenSigned.some((g) => sameBytes(g, landedSigned)) ? { given: true } : {}),
-      ...(ref.signed === undefined ? {} : { presented: landedSigned !== undefined && sameBytes(landedSigned, ref.signed) ? ("yes" as const) : ("no" as const) }),
+      presented: landedSigned !== undefined && sameBytes(landedSigned, signed) ? "yes" : "no",
     });
     return undefined;
   };

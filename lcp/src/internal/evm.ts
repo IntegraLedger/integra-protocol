@@ -323,11 +323,12 @@ export function evmLedger(coverage: Coverage): Ledger<bigint, EvmMark> {
  * value. Reverted: that transaction included with a failed result, which consumes no single-use value, at `finalized`
  * where the read reached that mark and at `latest` below it. Not found: nothing seen, the lookup read whole at
  * coverage `none`. Any other reason: the transaction is not an act that carries H, and nothing is seen. No read here
- * reads the single-use value or a search, and none shows the history.
+ * reads the single-use value or a search, and none shows the history. The read reads the logs the reference names and
+ * no member of the message the payer signed, so `presented` is `unshown`.
  */
 export function evmFacts(read: EvmRead<string>, ref: { transaction: Hex }, coverage: Coverage): Facts<bigint, EvmMark> {
   if (read.state === "unreadable") return { unreadable: read.reason, seen: [], search: { whole: false }, history: false };
-  const row = { transaction: ref.transaction, carries: true, party: "payer", kind: "same", account: "payee" } as const;
+  const row = { transaction: ref.transaction, carries: true, party: "payer", kind: "same", account: "payee", presented: "unshown" } as const;
   if (read.state === "settled") {
     const seen = { ...row, position: read.blockNumber, mark: read.finality, result: "succeeded", consumed: true } as const;
     return { seen: [seen], search: { whole: false }, history: false };

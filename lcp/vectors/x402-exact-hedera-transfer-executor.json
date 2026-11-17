@@ -249,6 +249,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "case": "the named transaction debits the payer and credits the payee: settled"
@@ -476,6 +477,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit"
@@ -620,6 +622,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
@@ -693,6 +696,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
@@ -770,6 +774,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'if a transaction has a portion of its transaction fee that sends 3 tinybars to 0.0.800, and 0.0.800 is sending Bob 1 tinybar as an earned staking reward, then the existing list will show a change of +2 tinybars for 0.0.800'."
@@ -847,6 +852,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
@@ -928,6 +934,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'the new list will show a -1 change for 0.0.800 (change due to staking rewards)'."
@@ -997,6 +1004,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "the payer, 0.0.5001, is the one account debited; the payee's credit, less the listed reward, is not read"
@@ -1302,6 +1310,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'When `payer` is the fee payer, the single HBAR debit MUST equal `amount + transactionFee`'; the Mirror Node's Transaction charged_tx_fee is that fee, in tinybars, and the fee payer's transfers row includes it"
@@ -1413,6 +1422,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"
@@ -1482,6 +1492,7 @@
       }
      ],
      "signer": "0.0.5001",
+     "presented": "unshown",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"

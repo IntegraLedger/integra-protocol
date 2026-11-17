@@ -162,7 +162,7 @@ describe("evmStatus", () => {
     };
     const r = { ...ref, transferLog: { ...ref.transferLog, digest }, transaction: TX };
     const named = { transaction: TX, position: 100n, finality: "finalized", foreign: [] };
-    expect(await evmStatus(r, reader(paid), final)).toEqual({ state: "settled", ...named });
+    expect(await evmStatus(r, reader(paid), final)).toEqual({ state: "settled", ...named, presented: "unshown" });
     expect(await evmStatus(r, reader(paid), { ...final, after: 100n })).toEqual({
       state: "failed",
       reason: "before-position",

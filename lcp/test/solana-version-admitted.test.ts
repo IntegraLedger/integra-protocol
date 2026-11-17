@@ -80,20 +80,18 @@ describe("a Solana payment of a version its option does not admit", () => {
     }
   }
 
-  // On MPP the server that writes `methodDetails.transactionVersions`, a release later than @solana/mpp 0.7.0, refuses a
-  // legacy message whatever the list holds (solana-foundation/pay-kit 86400da, typescript/packages/mpp/src/utils/
-  // transaction-versions.ts:218-226, applied before it co-signs at src/server/Charge.ts:424-433 and to a pushed
-  // signature at :1077-1081). 0.7.0 writes no list and checks no version (src/server/Charge.ts:339-350), so with the
-  // list absent a legacy message is admitted, as version 0 is. The legacy credential is the buyer's version-0 one with
-  // its version prefix and its empty lookup list removed, the same instructions in the legacy layout.
+  // On MPP the server refuses a legacy message whatever the list holds, the list absent being [0]
+  // (solana-foundation/pay-kit 86400da, typescript/packages/mpp/src/utils/transaction-versions.ts:15-16 and :218-226,
+  // applied before it co-signs at src/server/Charge.ts:424-433 and to a pushed signature at :1077-1081), so every MPP
+  // Solana charge challenge refuses one. The legacy credential is the buyer's version-0 one with its version prefix and
+  // its empty lookup list removed, the same instructions in the legacy layout.
   const legacy = { ...M.buyer.rows[1].input.presented, payload: { ...M.buyer.rows[1].input.presented.payload, transaction: legacyOf(M.buyer.rows[1].input.presented.payload.transaction) } };
   for (const list of LISTS) {
-    const admitted = list === undefined;
-    it(`mpp/charge/solana, the buyer's credential as a legacy message, methodDetails.transactionVersions ${name(list)}: ${admitted ? "bound gives H" : "refused"}`, async () => {
+    it(`mpp/charge/solana, the buyer's credential as a legacy message, methodDetails.transactionVersions ${name(list)}: refused`, async () => {
       const presented = mppUnder(legacy, list);
-      expect(await chargeSolana.bound(presented)).toEqual(admitted ? M.fixed.H : { refused: true, code: "svm/version-not-admitted" });
+      expect(await chargeSolana.bound(presented)).toEqual({ refused: true, code: "svm/version-not-admitted" });
       const reference = await chargeSolana.reference(presented, presented.challenge as never);
-      expect("refused" in (reference as object) ? reference : "read keys").toEqual(admitted ? "read keys" : { refused: true, code: "svm/version-not-admitted" });
+      expect(reference).toEqual({ refused: true, code: "svm/version-not-admitted" });
     });
   }
 

@@ -72,7 +72,14 @@ describe("the EVM session's close read", () => {
 
   it("close, closeWithAuthorization and withdraw on the escrow naming the channel are the close, at the block's finality", async () => {
     for (const data of [call.close(CHANNEL), call.closeWithAuthorization(CHANNEL), call.withdraw(CHANNEL)]) {
-      expect(await read({ to: escrow, input: data })).toEqual({ state: "settled", transaction: TX, position: 90n, finality: "finalized", foreign: [] });
+      expect(await read({ to: escrow, input: data })).toEqual({
+        state: "settled",
+        transaction: TX,
+        position: 90n,
+        finality: "finalized",
+        presented: "unshown",
+        foreign: [],
+      });
     }
   });
 

@@ -121,6 +121,7 @@ describe("sessionStatus on the key's read keys", () => {
       transaction: r.transactionHash,
       position: BigInt(r.blockNumber),
       finality: "finalized",
+      presented: "unshown",
       foreign: [],
     });
   });
@@ -141,7 +142,14 @@ describe("sessionStatus on the key's read keys", () => {
     const r = F.chargeUnderKey.receipt;
     const below = reader(r, BigInt(r.blockNumber) - 1n);
     const s = await sessionStatus({ ...key, transaction: r.transactionHash }, below, { act: "payment", finality: "latest" });
-    expect(s).toEqual({ state: "settled", transaction: r.transactionHash, position: BigInt(r.blockNumber), finality: "latest", foreign: [] });
+    expect(s).toEqual({
+      state: "settled",
+      transaction: r.transactionHash,
+      position: BigInt(r.blockNumber),
+      finality: "latest",
+      presented: "unshown",
+      foreign: [],
+    });
     expect(await sessionStatus({ ...key, transaction: r.transactionHash }, below, FINAL)).toEqual({
       state: "pending",
       reason: "below-mark",

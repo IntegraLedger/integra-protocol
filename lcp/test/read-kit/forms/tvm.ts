@@ -18,9 +18,9 @@
 // back as the case's number of the transaction it reads next.
 import { exactTvm, type TvmRef, type TvmStatus } from "../../../src/tvm.js";
 import { isObject } from "../../../src/fields.js";
-import type { Act, Seen } from "../../../src/internal/read.js";
+import type { Act } from "../../../src/internal/read.js";
 import { ELSEWHERE, MASTERS, STRANGER, TVM_REF, ledgerReader, type LedgerSpec, type LedgerTx } from "../../tvm-ledger.js";
-import type { Arranged, CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
+import type { Arranged, CaseAnswer, CaseMark, CaseSeen, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, READ_STATUS } from "../harness.js";
 
 const VU = TVM_REF.validUntil;
@@ -38,14 +38,14 @@ const DECLARED: readonly Inapplicable[] = READ_STATUS.cases.flatMap((c): Inappli
 const tonMark = (m: CaseMark): "confirmed" | "finalized" => (m === "final" ? "finalized" : "confirmed");
 
 /** Whether only the W5 wallet's list, the expiry read, meets the case's transaction. */
-const listedOnly = (s: Seen<number, CaseMark>, payeeOnly: boolean): boolean =>
+const listedOnly = (s: CaseSeen, payeeOnly: boolean): boolean =>
   (s.party !== "payer" && !payeeOnly) ||
   s.kind === "other" ||
   (s.result === "succeeded" && !s.consumed) ||
   s.presented === "no" ||
   s.presented === "unshown";
 
-function txOf(s: Seen<number, CaseMark>, payeeOnly: boolean, payee: string): LedgerTx {
+function txOf(s: CaseSeen, payeeOnly: boolean, payee: string): LedgerTx {
   const moved = s.moved?.[0];
   const base = {
     hash: s.transaction,
@@ -74,10 +74,7 @@ function arrange(c: ReadCase, act: Act): Arranged | { inapplicable: string } {
   if (gated !== undefined) return { inapplicable: gated.stated };
   const f = c.facts;
   const payeeOnly = f.seen.length > 0 && f.seen.every((s) => s.party === "payee");
-  // The reference holds the members of the payment presented only where the case states `presented`.
-  const { signedHash: _signed, ...bare } = TVM_REF;
-  const held = f.seen.some((s) => s.presented !== undefined) ? TVM_REF : bare;
-  const ref: TvmRef = payeeOnly ? { ...held, payee: TVM_REF.wallet } : held;
+  const ref: TvmRef = payeeOnly ? { ...TVM_REF, payee: TVM_REF.wallet } : TVM_REF;
   const undecoded = f.undecoded ?? [];
   const heldAt = f.search.whole ? undefined : f.search.at;
   const w5 = f.value !== undefined || undecoded.length > 0 || heldAt !== undefined || f.seen.some((s) => listedOnly(s, payeeOnly));

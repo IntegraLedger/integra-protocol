@@ -271,12 +271,15 @@ describe("x402-exact-starknet.json", () => {
       expect(plain(await exactStarknet.status(upper as never, nodeReader(row.node), queryOf(row.query) as never))).toEqual(row.expect);
     });
 
-    // `presented` is stated only where the read compared the act with what was presented (profile rule 20).
-    it("a reference without the outside execution as presented is settled with no presented", async () => {
+    // Every settled answer states `presented` (profile rule 20), so the reference holds the outside execution as presented.
+    it("a reference without the outside execution as presented is unreadable unparseable", async () => {
       const row = V.S5.rows.find((r: { transaction?: string; expect: { state: string } }) => r.transaction !== undefined && r.expect.state === "settled");
       const { presented: _, ...bare } = refOf(row) as Record<string, unknown>;
-      const { presented: __, ...want } = row.expect;
-      expect(plain(await exactStarknet.status(bare as never, nodeReader(row.node), queryOf(row.query) as never))).toEqual(want);
+      expect(plain(await exactStarknet.status(bare as never, nodeReader(row.node), queryOf(row.query) as never))).toEqual({
+        state: "unreadable",
+        reason: "unparseable",
+        foreign: [],
+      });
     });
 
     // Each other act given by its transaction is read, a receipt and a trace (profile rule 13), so a query reads at most

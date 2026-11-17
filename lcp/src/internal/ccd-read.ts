@@ -331,6 +331,8 @@ function hintSeen(
     kind: "same",
     account: t === undefined ? "none" : sameAccount(t.receiver, payee) ? "payee" : "other",
     ...(isGiven(hash, it.sender, it.nonce) ? { given: true } : {}),
+    // The outcome shows neither the signed header nor the payload, so no member of the payment presented.
+    presented: "unshown",
     moved: movedOf(it, hash),
     ...(it.sender === null ? {} : { signer: accountText(it.sender) }),
   };

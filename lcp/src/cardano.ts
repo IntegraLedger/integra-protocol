@@ -397,6 +397,8 @@ async function readStatus(r: CardanoRef, reader: CardanoReader, query: CardanoQu
       kind: "same",
       account: "none",
       moved: [],
+      // The body the payer signed holds every member of the payment presented, and its id is that body's digest.
+      presented: txId === r.txId ? "yes" : "no",
     };
     if (!carries && !consumed && !asked) return s;
     const addresses: unknown = await reader.inputAddresses(txId);
@@ -434,8 +436,6 @@ async function readStatus(r: CardanoRef, reader: CardanoReader, query: CardanoQu
       kind,
       account,
       moved,
-      // The body the payer signed holds every member of the payment presented, and its id is that body's digest.
-      presented: txId === r.txId ? "yes" : "no",
       ...(signer === undefined || signer === null ? {} : { signer }),
       ...(given ? { given: true } : {}),
     };

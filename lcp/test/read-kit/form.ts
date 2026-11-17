@@ -1,17 +1,23 @@
 // The read kit's form: what a pairing gives the read kit so that the cases common to every pairing's read
 // (vectors/read-status.json) run through its own reader.
 import type { PairingId } from "../../src/index.js";
-import type { Act, Facts, StatusAnswer, StatusQuery } from "../../src/internal/read.js";
+import type { Act, Facts, Presented, Seen, StatusAnswer, StatusQuery } from "../../src/internal/read.js";
 
 /** A mark of the cases: their order is the vector file's `marks`. */
 export type CaseMark = "included" | "safe" | "final";
+
+/** A transaction of a case: it states `presented` only in the cases about the comparison. */
+export type CaseSeen = Omit<Seen<number, CaseMark>, "presented"> & { readonly presented?: Presented };
+
+/** What a case's read observed, its transactions as the case states them. */
+export type CaseFacts = Omit<Facts<number, CaseMark, number>, "seen"> & { readonly seen: readonly CaseSeen[] };
 
 /** One case of read-status.json. */
 export interface ReadCase {
   readonly case: string;
   readonly rules: string;
   readonly coverage: "full" | "none";
-  readonly facts: Facts<number, CaseMark, number>;
+  readonly facts: CaseFacts;
   readonly query: Omit<StatusQuery<never, number, CaseMark, number>, "act">;
   readonly expect: { readonly payment: CaseAnswer; readonly agreement: CaseAnswer };
 }

@@ -15,8 +15,8 @@ import {
   type NearRef,
   type NearStatus,
 } from "../../../src/near.js";
-import type { Act, Seen } from "../../../src/internal/read.js";
-import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
+import type { Act } from "../../../src/internal/read.js";
+import type { CaseAnswer, CaseMark, CaseSeen, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, READ_STATUS, answering } from "../harness.js";
 
 const V = JSON.parse(readFileSync(new URL("../../../vectors/x402-exact-near.json", import.meta.url), "utf8"));
@@ -186,7 +186,7 @@ export function onNear(c: ReadCase, act: Act): {
   const outside: string[] = [];
   const after = c.query.after;
 
-  f.seen.forEach((s: Seen<number, CaseMark>, i) => {
+  f.seen.forEach((s: CaseSeen, i) => {
     const hash = `T${i + 1}near`;
     names.set(hash, s.transaction);
     const usesKey = s === ours;

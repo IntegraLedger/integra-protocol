@@ -618,7 +618,8 @@ describe("mpp-session-tempo.json", () => {
     const v1OtherSalt = { ...v1, data: concat([topicOf(f.pathUSD), wordOf(0n), H2 as ViemHex, wordOf(deposit)]) };
     expect(await run(refV1, [v1OtherSalt])).toEqual(T.TS6.expectNotFound);
     // The opening is before a position at its own block, through sessionStatus and through the pairing's status.
-    const before = { ...T.TS6.expectSettled, state: "failed", reason: "before-position" };
+    const { presented: _, ...named } = T.TS6.expectSettled;
+    const before = { ...named, state: "failed", reason: "before-position" };
     expect(await run(ref, [opened(f.escrowV2, H)], { ...FINAL, after: 100n })).toEqual(before);
     const own = await sessionTempo.status(ref, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs: [opened(f.escrowV2, H)] }), { ...FINAL, after: 100n });
     expect(withBigints(own)).toEqual(before);

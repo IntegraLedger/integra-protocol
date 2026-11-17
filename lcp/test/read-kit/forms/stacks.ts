@@ -22,9 +22,9 @@ import { principalCV, serializeCV } from "@stacks/transactions";
 import { readFileSync } from "node:fs";
 import type { Hex } from "../../../src/evm-abi.js";
 import { MAX_SEARCH_NONCES, stacksStatus, type StacksLanded, type StacksMark, type StacksQuery } from "../../../src/stacks.js";
-import type { Act, ForeignItem, Moved, OtherAct, Seen } from "../../../src/internal/read.js";
+import type { Act, ForeignItem, Moved, OtherAct } from "../../../src/internal/read.js";
 import { ftEvent, ledgerReader, type Fault, type Ledger } from "../../stacks-ledger.js";
-import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
+import type { CaseAnswer, CaseMark, CaseSeen, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, READ_STATUS } from "../harness.js";
 
 const NETWORK = "stacks:2147483648" as const;
@@ -86,7 +86,7 @@ function landed(
 }
 
 /** The case transaction as a ledger transaction, at the nonce and height the form gives it. */
-function caseTx(s: Seen<number, CaseMark>, nonce: bigint, height: bigint): StacksLanded {
+function caseTx(s: CaseSeen, nonce: bigint, height: bigint): StacksLanded {
   const sender = s.consumed || s.party === "payer" ? ORIGIN : s.party === "payee" ? PAYEE : OTHER;
   const moved: readonly Moved[] =
     s.moved ?? (s.account === "none" ? [] : [{ asset: "A", amount: "1", to: s.account === "payee" ? "payee" : "elsewhere" }]);
@@ -113,7 +113,7 @@ function arrange(c: ReadCase, act: Act) {
   const unconsumed = f.value !== undefined && !f.value.consumed && f.value.head?.consumed !== true;
   const n0 = unconsumed && !f.search.whole ? 50n : 2n;
   const finalMark = (m: CaseMark) => m === "final";
-  const heightOf = (s: Seen<number, CaseMark>) => BASE + BigInt(s.position ?? 10);
+  const heightOf = (s: CaseSeen) => BASE + BigInt(s.position ?? 10);
   const nonFinal = f.seen.filter((s) => !finalMark(s.mark)).map(heightOf);
   const finalThrough = nonFinal.length > 0 ? nonFinal.reduce((a, b) => (a < b ? a : b)) - 1n : BASE + 500n;
   const txs: StacksLanded[] = [];
@@ -188,8 +188,7 @@ function arrange(c: ReadCase, act: Act) {
     payee: PAYEE,
     origin: ORIGIN,
     nonce: n0.toString(),
-    // The read compares the act with the payment presented only where the reference holds what the origin signed.
-    ...(f.seen.some((s) => s.presented !== undefined) ? { signed: SIGNED.digest } : {}),
+    signed: SIGNED.digest,
     h: H,
     ...(hint === undefined ? {} : { transaction: hint }),
   };

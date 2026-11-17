@@ -334,6 +334,8 @@ describe("x402/exact/eip155/erc7710 on Arc: the asset contract's own Transfer, n
       finality: "finalized",
       position: BASE + 10n,
       signer: delegator,
+      // The reference holds no leaf delegation as presented, so no member is shown.
+      presented: "unshown",
       foreign: [],
       moved: [{ asset: USDC, amount: VALUE.toString(), to: PAYEE, transaction: T1, place: 1 }],
     });

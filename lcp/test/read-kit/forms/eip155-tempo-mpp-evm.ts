@@ -40,9 +40,9 @@ import {
   type MppNamedRef,
   type MppPermit2Ref,
 } from "../../../src/internal/mpp-evm-read.js";
-import type { Act, Seen, StatusAnswer } from "../../../src/internal/read.js";
+import type { Act, StatusAnswer } from "../../../src/internal/read.js";
 import { CASE_MARK_OF, ledgerReader, txHashOf, txNameOf, type LedgerSpec, type LedgerTx } from "../../eip155-tempo-mpp-ledger.js";
-import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
+import type { CaseAnswer, CaseMark, CaseSeen, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, READ_STATUS, answering } from "../harness.js";
 
 const NETWORK = "eip155:84532" as const;
@@ -254,7 +254,7 @@ function eip3009Ref(c: ReadCase, plan: Plan): MppEip3009Ref {
 }
 
 /** One seen item of a case as a transaction of the EIP-3009 ledger, or none where it cannot be placed. */
-function eip3009Tx(s: Seen<number, CaseMark>, c: ReadCase, plan: Plan): LedgerTx | undefined {
+function eip3009Tx(s: CaseSeen, c: ReadCase, plan: Plan): LedgerTx | undefined {
   if (s.position === undefined) return undefined;
   const hash = txHashOf(s.transaction);
   const block = BigInt(s.position);
@@ -462,7 +462,7 @@ function permit2Cannot(c: ReadCase): string | undefined {
 }
 
 /** One seen item of a case as a transaction of the Permit2 ledger, or none where it cannot be placed. */
-function permit2Tx(s: Seen<number, CaseMark>, deadline: bigint): LedgerTx | undefined {
+function permit2Tx(s: CaseSeen, deadline: bigint): LedgerTx | undefined {
   if (s.position === undefined) return undefined;
   const hash = txHashOf(s.transaction);
   const block = BigInt(s.position);
@@ -667,7 +667,7 @@ function sessionCannot(c: ReadCase): string | undefined {
 }
 
 /** One seen item of a case as a transaction of the session's ledger. */
-function sessionTx(s: Seen<number, CaseMark>, deadline: bigint): LedgerTx | undefined {
+function sessionTx(s: CaseSeen, deadline: bigint): LedgerTx | undefined {
   if (s.position === undefined) return undefined;
   const hash = txHashOf(s.transaction);
   const block = BigInt(s.position);

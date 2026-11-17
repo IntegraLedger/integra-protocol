@@ -269,11 +269,8 @@ export async function casperIdDigest(from: CasperAddress, to: CasperAddress, val
   return hash(packed);
 }
 
-/**
- * The reference `status` reads with: the read keys, and H, which the caller adds, from which the other act's value comes;
- * the authorization as presented where the caller has it, without which the read compares nothing with it.
- */
-type CasperRefRead = Omit<CasperRef, "presented"> & { presented?: CasperAuthorization; h: AtrHash };
+/** The reference `status` reads with: the read keys, and H, which the caller adds, from which the other act's value comes. */
+type CasperRefRead = CasperRef & { h: AtrHash };
 
 /** A reference as the read takes it, its addresses and hashes lowercase, and the two values under H. */
 interface Keys {
@@ -285,7 +282,7 @@ interface Keys {
   /** H's other value: the agreement's value where the act's nonce is H, and H where it is the agreement's value. */
   readonly other: AtrHash;
   readonly validBefore: bigint;
-  readonly presented?: CasperAuthorization;
+  readonly presented: CasperAuthorization;
 }
 
 /** The ledger: one mark, and block heights in their order. */
@@ -294,12 +291,11 @@ const LEDGER = ledgerOf<bigint, typeof FINAL>(CASPER[ID].coverage, MARKS, bigint
 /**
  * The read keys of a reference for the act asked about, or undefined where one is malformed: the network, the asset
  * package, `from` and the payee, the signed nonce and H, the nonce being the value that act carries (H on a payment, the
- * agreement's value on an agreement), and the lapse: the `validBefore` of the authorization as presented, or
- * `settleBy`, a safe integer, where the reference holds none.
+ * agreement's value on an agreement), the authorization as presented, and the lapse: its `validBefore`.
  */
 async function keysOf(ref: unknown, act: Act): Promise<Keys | undefined> {
   if (!isObject(ref)) return undefined;
-  const { network, asset, from, payee, presented, settleBy } = ref;
+  const { network, asset, from, payee, presented } = ref;
   if (typeof network !== "string" || !NETWORK.test(network)) return undefined;
   if (typeof asset !== "string" || !PACKAGE.test(asset) || !isAddress(from)) return undefined;
   if (typeof payee !== "string" || payee.length === 0) return undefined;
@@ -308,17 +304,11 @@ async function keysOf(ref: unknown, act: Act): Promise<Keys | undefined> {
   if (nonce === null || h === null) return undefined;
   const agreement = await agreementValue(h);
   if (nonce !== (act === "agreement" ? agreement : h)) return undefined;
-  let validBefore: bigint | undefined;
-  if (presented === undefined) {
-    if (!Number.isSafeInteger(settleBy) || (settleBy as number) < 0) return undefined;
-    validBefore = BigInt(settleBy as number);
-  } else {
-    if (!isObject(presented) || !isAddress(presented["from"]) || !isAddress(presented["to"])) return undefined;
-    if (uint256Of(presented["value"]) === undefined || decimalBelow(presented["validAfter"], U64_LIMIT) === undefined) return undefined;
-    const n = presented["nonce"];
-    if (typeof n !== "string" || normalHash(n.startsWith("0x") ? n : `0x${n}`) === null) return undefined;
-    validBefore = decimalBelow(presented["validBefore"], U64_LIMIT);
-  }
+  if (!isObject(presented) || !isAddress(presented["from"]) || !isAddress(presented["to"])) return undefined;
+  if (uint256Of(presented["value"]) === undefined || decimalBelow(presented["validAfter"], U64_LIMIT) === undefined) return undefined;
+  const n = presented["nonce"];
+  if (typeof n !== "string" || normalHash(n.startsWith("0x") ? n : `0x${n}`) === null) return undefined;
+  const validBefore = decimalBelow(presented["validBefore"], U64_LIMIT);
   if (validBefore === undefined) return undefined;
   return {
     network: network as CasperNetwork,
@@ -328,7 +318,7 @@ async function keysOf(ref: unknown, act: Act): Promise<Keys | undefined> {
     nonce,
     other: nonce === h ? agreement : h,
     validBefore,
-    ...(presented === undefined ? {} : { presented: presented as unknown as CasperAuthorization }),
+    presented: presented as unknown as CasperAuthorization,
   };
 }
 
@@ -514,8 +504,8 @@ function seenOf(
       : {
           // A failed result moved nothing; the account it names is the `to` the payer signed.
           moved: succeeded ? [{ asset: pkg, amount: value!.toString(), to: to!.toLowerCase(), transaction, place: c.entryPoint! }] : [],
-          ...(k.presented === undefined ? {} : { presented: presentedOf(c, k.presented) }),
         }),
+    presented: presentedOf(c, k.presented),
     signer: from,
   };
 }
@@ -523,15 +513,16 @@ function seenOf(
 /**
  * Whether the act is the payment presented: the executed call's package, `from`, `to`, `value`, `validAfter`,
  * `validBefore` and nonce against the authorization as presented, `unshown` where the reader shows one of them not; a
- * `receive_with_authorization` is another signed message than the `TransferWithAuthorization` lcp builds, so `no`.
+ * `receive_with_authorization` or a cancellation is another signed message than the `TransferWithAuthorization` lcp
+ * builds, so `no`.
  */
 function presentedOf(c: CasperCall, p: CasperAuthorization): "yes" | "no" | "unshown" {
+  if (c.entryPoint !== "transfer_with_authorization") return "no";
   const { from, to, value, validAfter, validBefore, nonce } = c.args;
   if (from === undefined || to === undefined || value === undefined || validAfter === undefined || validBefore === undefined) {
     return "unshown";
   }
   const same =
-    c.entryPoint === "transfer_with_authorization" &&
     from.toLowerCase() === p.from.toLowerCase() &&
     to.toLowerCase() === p.to.toLowerCase() &&
     value === BigInt(p.value) &&
@@ -545,9 +536,10 @@ function presentedOf(c: CasperCall, p: CasperAuthorization): "yes" | "no" | "uns
 /**
  * The read of the act the query asks about, as the profile `read-status` answers it through the profile
  * `x402/exact/casper`'s rules 12 to 22: the nonce's item, the block that set it and its transactions. A query, a
- * reference or a search position that is not one is `unreadable`, `unparseable`, with nothing read, and a reader for
- * another network `chain-mismatch`; a read the node does not serve is `history-gap`. On `settled` the answer states
- * `presented` where the reference holds the authorization as presented, and none where it does not.
+ * reference or a search position that is not one, a reference without the authorization as presented among them, is
+ * `unreadable`, `unparseable`, with nothing read, and a reader for another network `chain-mismatch`; a read the node
+ * does not serve is `history-gap`. On `settled` the answer states `presented`, the executed call compared with the
+ * authorization as presented.
  */
 export async function casperStatus(
   ref: CasperRefRead,

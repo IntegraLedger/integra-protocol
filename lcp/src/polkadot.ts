@@ -896,10 +896,10 @@ async function readPolkadot(
     // The wrapper the signer acted through for the payer; none where it signed as the payer.
     const authority = forPayer && !mine && runs.wrappers.length > 0 ? runs.wrappers.join(", ") : undefined;
     const given = item.kind === "signed" && signerHex !== undefined && others.some((o) => o.signer === signerHex && o.nonce === String(item.nonce));
-    // The payment presented: the payer's extrinsic compared with the presented one by its signed body, its signature
-    // apart, the members the payer signed that its bytes hold.
-    const body = party === "payer" ? bodyOf(xt) : null;
-    const presented = party !== "payer" ? undefined : body === null || presentedBody === null ? "unshown" : equalBytes(body, presentedBody) ? "yes" : "no";
+    // The payment presented: the extrinsic compared with the presented one by its signed body, its signer among it and
+    // its signature apart, the members the payer signed that its bytes hold.
+    const body = bodyOf(xt);
+    const presented = body === null || presentedBody === null ? "unshown" : equalBytes(body, presentedBody) ? "yes" : "no";
     const seen: Seen<bigint, PolkadotMark> = {
       transaction,
       position: x.at.height,
@@ -920,7 +920,7 @@ async function readPolkadot(
       ...(x.success ? { moved } : {}),
       ...(signerHex === undefined ? {} : { signer: signerHex }),
       ...(authority === undefined ? {} : { authority }),
-      ...(presented === undefined ? {} : { presented }),
+      presented,
     };
     found.set(transaction, { seen, raw: xt });
     return "ok";

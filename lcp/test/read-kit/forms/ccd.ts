@@ -13,8 +13,8 @@ import type { AtrHash } from "../../../src/core.js";
 import { accountText } from "../../../src/internal/ccd.js";
 import { isRefusal } from "../../../src/refusal.js";
 import type { PaymentRequirements } from "../../../src/x402.js";
-import type { Act, Moved, Seen } from "../../../src/internal/read.js";
-import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
+import type { Act, Moved } from "../../../src/internal/read.js";
+import type { CaseAnswer, CaseMark, CaseSeen, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, READ_STATUS } from "../harness.js";
 
 const NETWORK = "ccd:4221332d34e1694168c2a0c0b3fd0f27" as const;
@@ -182,7 +182,6 @@ const p27 = (token: string, to: Uint8Array): Uint8Array => {
   return new Uint8Array([27, token.length, ...new TextEncoder().encode(token), ...be(BigInt(ops.length), 4), ...ops]);
 };
 
-type CaseSeen = Seen<number, CaseMark>;
 /** One item of the constructed node: an item of the sender's at a height and number, or one under another signature. */
 interface NodeItem {
   hash: string;

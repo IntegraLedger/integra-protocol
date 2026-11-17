@@ -1,5 +1,5 @@
 // The read kit's forms: every module of read-kit/forms/ exports `forms`, a list of declared forms, and this module
-// gathers them; and the pairings with a read that no form runs the cases through yet.
+// gathers them; and the pairings with a read that no form runs the cases through.
 import { readdirSync } from "node:fs";
 import { BINDINGS, type PairingId } from "../../src/index.js";
 import type { DeclaredForm } from "./form.js";

@@ -196,7 +196,7 @@ export interface TvmRef {
    * The representation hash of the W5 request with its signature removed, its last 512 bits: the hash the wallet's key
    * signs. It holds the members of the payment presented, the request the payer signed, whole, its signature apart.
    */
-  signedHash?: Hex;
+  signedHash: Hex;
   /** The payer's W5 wallet, raw: the address TON sends the settlement message to. */
   wallet: string;
   validUntil: number;
@@ -1126,7 +1126,7 @@ function isRef(ref: unknown): ref is TvmRef {
     typeof ref["network"] === "string" &&
     normalHash(ref["h"]) !== null &&
     normalHash(ref["requestBodyHash"]) !== null &&
-    (ref["signedHash"] === undefined || normalHash(ref["signedHash"]) !== null) &&
+    normalHash(ref["signedHash"]) !== null &&
     rawKey(ref["jettonWallet"]) !== null &&
     rawKey(ref["wallet"]) !== null &&
     rawKey(ref["payee"]) !== null &&
@@ -1159,8 +1159,8 @@ async function factsOf(
 ): Promise<Facts<bigint, TvmMark, TvmSearch>> {
   const h = normalHash(ref.h)!;
   const request = normalHash(ref.requestBodyHash)!;
-  // The members of the payment presented, where the reference holds them: `presented` is stated only then.
-  const signedHash = ref.signedHash === undefined ? null : normalHash(ref.signedHash);
+  // The members of the payment presented: the request the payer signed, its signature apart.
+  const signedHash = normalHash(ref.signedHash);
   const head = await call(() => reader.headUtime(), isSafeInteger);
   const stated = await call(() => reader.indexed(), isIndexed);
   const own = (await call(() => reader.byInBody(request), isTxList)).filter((t) => sameAccount(t.account, ref.wallet));
@@ -1198,7 +1198,16 @@ async function factsOf(
   const positionOf = (t: TonTx): { position?: bigint } => (t.mcSeqno === undefined || t.mcSeqno === null ? {} : { position: t.mcSeqno });
   const row = (
     t: TonTx,
-    of: { result: "succeeded" | "failed"; consumed: boolean; carries: boolean; party: TvmSeen["party"]; kind: TvmSeen["kind"]; given: boolean; signer: string },
+    of: {
+      result: "succeeded" | "failed";
+      consumed: boolean;
+      carries: boolean;
+      party: TvmSeen["party"];
+      kind: TvmSeen["kind"];
+      given: boolean;
+      signer: string;
+      presented: Presented;
+    },
     mark: TvmMark,
   ): TvmSeen => ({ transaction: t.hash, ...positionOf(t), mark, account: "none", ...of });
 
@@ -1210,8 +1219,7 @@ async function factsOf(
   const follow = async (
     t: TonTx,
     msgs: readonly TonOutMsg[],
-    of: { consumed: boolean; party: TvmSeen["party"]; given: boolean; signer: string },
-    shown: Presented | undefined,
+    of: { consumed: boolean; party: TvmSeen["party"]; given: boolean; signer: string; presented: Presented },
   ): Promise<void> => {
     const moved: Moved[] = [];
     const txs: TonTx[] = [t];
@@ -1256,7 +1264,6 @@ async function factsOf(
       ...row(t, { result: "succeeded", carries: true, kind: "same", ...of }, mark),
       account,
       moved,
-      ...(shown === undefined ? {} : { presented: shown }),
     });
   };
 
@@ -1275,9 +1282,9 @@ async function factsOf(
   };
   for (const t of candidates) {
     if (ownHashes.has(t.hash)) {
-      // The request itself: found by its body hash, at the signed number.
+      // The request itself: found by its body hash, its signature included, at the signed number, so the one presented.
       const given = givenBy(request, signedHash);
-      const of = { consumed: true, party, given, signer };
+      const of = { consumed: true, party, given, signer, presented: "yes" as const };
       if (t.aborted) {
         const mark = markOf(t.finality);
         if (mark === undefined) hold(t);
@@ -1287,7 +1294,7 @@ async function factsOf(
       const transfers = t.outMsgs.filter((m) => m.opcode === OP.jettonTransfer);
       if (transfers.length > 0) {
         ranAt(t);
-        await follow(t, transfers, of, signedHash === null ? undefined : "yes");
+        await follow(t, transfers, of);
         continue;
       }
       const changed = dataChanged(t);
@@ -1315,7 +1322,8 @@ async function factsOf(
       else if (carrying !== undefined) {
         const source = rawKey(t.inSource);
         if (source === null) hold(t);
-        else await follow(t, carrying, { consumed: false, party: sameAccount(source, ref.payee) ? "payee" : "other", given: false, signer: source }, undefined);
+        // An extension's action carries no request the payer signed, so it is not the one presented.
+        else await follow(t, carrying, { consumed: false, party: sameAccount(source, ref.payee) ? "payee" : "other", given: false, signer: source, presented: "no" });
       }
       continue;
     }
@@ -1334,14 +1342,15 @@ async function factsOf(
     const atNumber = req.seqno === ref.seqno;
     if (atNumber) ranAt(t);
     const bodyHash = liteHash(body!);
-    const of = { consumed: atNumber, party, given: givenBy(bodyHash === null ? null : (`0x${toHex(bodyHash.hash)}` as Hex), req.signed), signer };
+    const presented: Presented = req.signed === null ? "unshown" : req.signed === signedHash ? "yes" : "no";
+    const of = { consumed: atNumber, party, given: givenBy(bodyHash === null ? null : (`0x${toHex(bodyHash.hash)}` as Hex), req.signed), signer, presented };
     const carrying = carrying_(t, h);
     if (carrying === "undecodable") {
       undecodable(t);
       continue;
     }
     if (carrying !== undefined) {
-      await follow(t, carrying, of, signedHash === null ? undefined : req.signed === null ? "unshown" : req.signed === signedHash ? "yes" : "no");
+      await follow(t, carrying, of);
       continue;
     }
     const mark = markOf(t.finality);

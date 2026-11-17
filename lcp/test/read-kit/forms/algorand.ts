@@ -9,8 +9,8 @@ import { base32 } from "@scure/base";
 import { encodeAddress } from "algosdk";
 import { avmStatus, type AvmIndexed, type AvmPage, type AvmReader, type AvmRef, type AvmSearch } from "../../../src/avm.js";
 import { toLcpString, type AtrHash } from "../../../src/core.js";
-import type { Act, Moved, Seen } from "../../../src/internal/read.js";
-import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
+import type { Act, Moved } from "../../../src/internal/read.js";
+import type { CaseAnswer, CaseMark, CaseSeen, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, READ_STATUS } from "../harness.js";
 
 const NETWORK = "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe" as const;
@@ -98,7 +98,7 @@ const inapplicable: Inapplicable[] = once([
 const declared = (c: ReadCase, act: Act): Inapplicable | undefined =>
   inapplicable.find((d) => d.case === c.case && (d.acts === undefined || d.acts.includes(act)));
 
-type Named = { name: string; seen?: Seen<number, CaseMark> };
+type Named = { name: string; seen?: CaseSeen };
 
 /** The case's ledger: the fixtures, the reader over them, and the maps back to the case's names and numbers. */
 function arrange(c: ReadCase, act: Act): { run: () => Promise<CaseAnswer> } {
@@ -121,7 +121,7 @@ function arrange(c: ReadCase, act: Act): { run: () => Promise<CaseAnswer> } {
   const round = (p: number) => BASE + BigInt(p);
   // Each transfer's place in the case's spelling, by the member it is read from: the first `arcv`, the second `aclose`.
   const places = new Map<string, number | string>();
-  const fixture = (s: Seen<number, CaseMark>): AvmIndexed => {
+  const fixture = (s: CaseSeen): AvmIndexed => {
     s.moved?.forEach((m, i) => {
       if (m.place !== undefined) places.set(`${id(s.transaction)}\u0000${i === 0 ? "arcv" : "aclose"}`, m.place);
     });

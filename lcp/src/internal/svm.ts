@@ -564,12 +564,10 @@ export function builtVersion(fields: unknown): 0 | 1 | null {
  *   (`isAcceptedTransactionVersion`, `:269-278`); its server copies the facilitator's list into the option (`@x402/svm`
  *   at `88b66dd4`, `exact/server/scheme.ts:139-141`), so a version the option does not list is one its facilitator
  *   refuses.
- * - On MPP (`on` `"mpp"`) a challenge that lists `transactionVersions` comes from a server later than @solana/mpp 0.7.0,
- *   which refuses a legacy message whatever the list holds (solana-foundation/pay-kit 86400da,
- *   `typescript/packages/mpp/src/utils/transaction-versions.ts:218-226`, applied before it co-signs at
- *   `src/server/Charge.ts:424-433` and to a pushed signature at `:1077-1081`), so `legacy` is refused there; with the
- *   list absent, @solana/mpp 0.7.0's server, which writes no list and checks no version (`src/server/Charge.ts:339-350`),
- *   admits `legacy` as it admits version 0.
+ * - On MPP (`on` `"mpp"`) the server refuses a legacy message whatever the list holds, the list absent being `[0]`
+ *   (solana-foundation/pay-kit 86400da, `typescript/packages/mpp/src/utils/transaction-versions.ts:15-16` and
+ *   `:218-226`, applied before it co-signs at `src/server/Charge.ts:424-433` and to a pushed signature at
+ *   `:1077-1081`), so `legacy` is refused on every MPP Solana charge challenge.
  */
 export function versionNotAdmitted(fields: unknown, tx: SvmTx, on: "x402" | "mpp"): Refusal | null {
   const present = isObject(fields) && "transactionVersions" in fields;
@@ -577,7 +575,7 @@ export function versionNotAdmitted(fields: unknown, tx: SvmTx, on: "x402" | "mpp
   const first = tx.message[0];
   if (!Array.isArray(listed) || first === undefined) return refusal("svm/version-not-admitted");
   const version = (first & 0x80) !== 0 ? first & 0x7f : "legacy";
-  if (version === "legacy" && on === "mpp" && present) return refusal("svm/version-not-admitted");
+  if (version === "legacy" && on === "mpp") return refusal("svm/version-not-admitted");
   return listed.includes(version === "legacy" ? 0 : version) ? null : refusal("svm/version-not-admitted");
 }
 

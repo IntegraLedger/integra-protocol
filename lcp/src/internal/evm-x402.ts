@@ -57,7 +57,7 @@ export const SEARCH_PAGE_BLOCKS = 10_000;
 export const MAX_SEARCH_PAGES = 8;
 
 /** Whether an act is the payment the reference was built from, what the payer signed compared: `Seen.presented`. */
-type Presentation = NonNullable<Seen<bigint, EvmMark>["presented"]>;
+type Presentation = Seen<bigint, EvmMark>["presented"];
 
 /** The members of what the payer signed, as read from a landed act or as presented, each a lowercase string. */
 export type Signed = Readonly<Record<string, string>>;
@@ -98,7 +98,7 @@ export interface TxView {
 
 /** What classifying a transaction gives: the acts it holds, an item the read cannot decode, or a read that failed. */
 export type Classified =
-  | { readonly seen: readonly Omit<SeenEvm, "transaction" | "position" | "mark">[] }
+  | { readonly seen: readonly Omit<SeenEvm, "transaction" | "position" | "mark" | "presented">[] }
   | { readonly undecodable: true }
   | { readonly unreadable: UnreadableReason };
 
@@ -313,9 +313,8 @@ async function factsOf<R extends EvmReadRefBase>(
     return {
       seen: c.seen.map((s) => {
         const given = givenTx.has(key) || (s.signed !== undefined && givenRefs.some((p) => presentation(p, s.signed) === "yes"));
-        // `presented` is stated where the pairing compares the act with what was presented, on an act of its kind.
-        const presented = presentedHere !== undefined && s.kind === "same" ? { presented: presentation(presentedHere, s.signed) } : {};
-        return { ...s, transaction: hash, position: at, mark: markOf(at), ...(given ? { given } : {}), ...presented };
+        const presented = presentation(presentedHere, s.signed);
+        return { ...s, transaction: hash, position: at, mark: markOf(at), ...(given ? { given } : {}), presented };
       }),
     };
   };

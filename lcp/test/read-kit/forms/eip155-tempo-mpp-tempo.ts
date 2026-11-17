@@ -549,7 +549,6 @@ async function activationLedger(c: ReadCase, act: Act) {
       : !v.lapsed ? undefined : v.mark === "final" ? timestamp(FINAL) - 100n : timestamp(FINAL) + 50n;
   const txs: LedgerTx[] = [];
   const keys: { account: Hex; keyId: Hex; from: bigint }[] = [];
-  const comparing = f.seen.some((s) => s.presented !== undefined);
   let signed: Hex | undefined;
   const witness = (account: Hex): EvmLog => ({ address: KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, word(account), H], data: "0x" });
   for (const [i, s] of f.seen.entries()) {
@@ -567,7 +566,10 @@ async function activationLedger(c: ReadCase, act: Act) {
     if (byCall && s.result === "failed") throw new Cannot("a reverted keychain call registers no key");
     const items = keyAuthorizationItems(TOKENS.A!, s.kind === "same" ? ACCESS_KEY : OTHER_KEY, recipients, 1_900_000_000n + BigInt(i), s.carries ? H : H2);
     const ka = await signedKeyAuthorization(KEYS[party], items);
-    if (s.presented === "yes") signed = keccak256(ka.bytes) as Hex;
+    // The key authorization presented: the case's, where it states one, else the payer's own act's.
+    if (s.presented === "yes" || (s.presented === undefined && signed === undefined && party === "payer" && s.kind === "same")) {
+      signed = keccak256(ka.bytes) as Hex;
+    }
     if (s.presented === "no") signed = keccak256((await signedKeyAuthorization(KEYS[party], keyAuthorizationItems(TOKENS.A!, ACCESS_KEY, recipients, 1_950_000_000n, H))).bytes) as Hex;
     // The log's place in the receipt is the place each transfer names; the others hold the witness and fillers.
     const transfers = (s.moved ?? []).map((mv, j) => ({ mv, place: typeof mv.place === "number" ? mv.place : j + 1 }));
@@ -593,6 +595,10 @@ async function activationLedger(c: ReadCase, act: Act) {
     if (v.consumed) keys.push({ account: ADDRESS.payer, keyId: ACCESS_KEY, from: 1n });
     else if (v.head?.consumed === true) keys.push({ account: ADDRESS.payer, keyId: ACCESS_KEY, from: FINAL + 10n });
   }
+  // With no act of the payer's, the key authorization presented is one that never landed.
+  signed ??= keccak256(
+    (await signedKeyAuthorization(KEYS.payer, keyAuthorizationItems(TOKENS.A!, ACCESS_KEY, [ADDRESS.payee], 1_950_000_000n, H))).bytes,
+  ) as Hex;
   for (const u of f.undecoded ?? []) {
     if (u.at === undefined) throw new Cannot("every item the search meets is in a block, so the read holds the search at it");
     const block = BigInt(u.at);
@@ -633,7 +639,7 @@ async function activationLedger(c: ReadCase, act: Act) {
     bindingLog: { address: KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: H as never },
     accessKey: { keyId: ACCESS_KEY, token: TOKENS.A!, to: H, ...(expiry === undefined ? {} : { expiry: expiry.toString() }) },
     payer: ADDRESS.payer,
-    ...(comparing && signed !== undefined ? { signed } : {}),
+    signed,
     ...(named === undefined ? {} : { transaction: named }),
   };
   const others = (c.query.others ?? []).map((o) => ("transaction" in o ? { transaction: txHashOf(o.transaction) } : o));

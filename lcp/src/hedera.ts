@@ -1644,6 +1644,8 @@ export async function executorStatus(
     consumed: true,
     carries: false,
     kind: "same",
+    // The read decodes no authorization the payer signed, so no member of the payment presented is shown.
+    presented: "unshown",
     ...(given.has(ref.transaction) ? { given: true } : {}),
   };
   return decide(

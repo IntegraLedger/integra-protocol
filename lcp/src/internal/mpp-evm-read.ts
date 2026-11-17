@@ -58,7 +58,7 @@ export const SEARCH_PAGE_BLOCKS = 10_000n;
 export const MAX_SEARCH_PAGES = 8;
 
 /** Whether an act is the payment the reference was built from, `Seen.presented`. */
-export type Presentation = NonNullable<Seen<bigint, EvmMark>["presented"]>;
+export type Presentation = Seen<bigint, EvmMark>["presented"];
 
 /** One transfer an act made, named by its transaction and its `Transfer` log's position among the receipt's logs. */
 export type EvmMoved = Moved & { readonly transaction: Hex; readonly place: number };
@@ -77,7 +77,7 @@ export type Signed = Readonly<Record<string, string>>;
 
 /** A transaction a read met, with what the payer signed in it where the read shows every member its form names. */
 type SeenEvm = Seen<bigint, EvmMark> & { readonly signed?: Signed; readonly moved?: readonly EvmMoved[] };
-type Act = Omit<SeenEvm, "transaction" | "position" | "mark">;
+type Act = Omit<SeenEvm, "transaction" | "position" | "mark" | "presented">;
 
 /** `yes` where every member the landed act shows equals the presented one, `no` where one differs, `unshown` else. */
 export function presentation(presented: Signed | undefined, signed: Signed | undefined): Presentation {
@@ -430,7 +430,7 @@ async function chargeFacts<R extends ChargeRefBase>(
       const given = byTx.has(key) || (a.signed !== undefined && byRef.some((o) => presentation(spec.presented(o), a.signed) === "yes"));
       seen.push({
         ...a,
-        ...(a.kind === "same" && a.result === "succeeded" ? { presented: presentation(spec.presented(ref), a.signed) } : {}),
+        presented: presentation(spec.presented(ref), a.signed),
         transaction: name(hash),
         position: receipt.blockNumber,
         mark: markOf(receipt.blockNumber),

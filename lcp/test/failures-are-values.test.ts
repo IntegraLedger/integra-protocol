@@ -393,7 +393,7 @@ describe("evm", () => {
     const query = { ...Q, finality: row.expect.finality };
     expect(plain(await eip3009Status(v.ref, reader(row.receipt.logs) as never, query))).toEqual(row.expect);
     const { state, transaction, position, finality, foreign } = row.expect;
-    expect(plain(await evmStatus(evmRef as never, reader(row.receipt.logs) as never, query))).toEqual({ state, transaction, position, finality, foreign });
+    expect(plain(await evmStatus(evmRef as never, reader(row.receipt.logs) as never, query))).toEqual({ state, transaction, position, finality, presented: "unshown", foreign });
     for (const [label, logs] of misshapen(row.receipt.logs, useOf(row.receipt.logs, v.ref.h))) {
       expect(await eip3009Status(v.ref, reader(logs) as never, Q), label).toEqual(unreadable("unparseable"));
       expect(await evmStatus(evmRef as never, reader(logs) as never, Q), label).toEqual(unreadable("unparseable"));

@@ -32,7 +32,7 @@ import {
   type Values,
 } from "./evm-x402.js";
 
-type Acts = Omit<SeenEvm, "transaction" | "position" | "mark">[];
+type Acts = Omit<SeenEvm, "transaction" | "position" | "mark" | "presented">[];
 
 function lower(h: string): string {
   return h.toLowerCase();

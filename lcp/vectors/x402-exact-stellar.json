@@ -434,6 +434,7 @@
      "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
      "position": 990,
      "finality": "closed",
+     "presented": "yes",
      "foreign": []
     }
    },
@@ -500,6 +501,7 @@
      "transaction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
      "position": 995,
      "finality": "closed",
+     "presented": "yes",
      "foreign": []
     }
    },
@@ -577,6 +579,7 @@
      "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
      "position": 990,
      "finality": "closed",
+     "presented": "yes",
      "foreign": []
     }
    },
@@ -618,6 +621,7 @@
      "transaction": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
      "position": 995,
      "finality": "closed",
+     "presented": "yes",
      "foreign": []
     },
     "expectLocate": {
@@ -756,6 +760,7 @@
    "transaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
    "position": 990,
    "finality": "closed",
+   "presented": "yes",
    "foreign": []
   }
  },

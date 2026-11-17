@@ -190,8 +190,12 @@ describe("the recorded reverted activation (test/fixtures/tempo-access-key.json,
       bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: F.revertedActivation.witness },
       accessKey: { keyId: F.revertedActivation.keyId, token: F.token, to: `0x${"00".repeat(32)}` },
       payer: F.account,
+      // The recording holds no key authorization's bytes; the read compares none whose transaction it cannot decode.
+      signed: `0x${"11".repeat(32)}`,
     };
     const q = { act: "payment", finality: "finalized", after: at - 1000n } as const;
+    const { signed: _, ...unsigned } = recorded;
+    expect(await subscriptionTempo.status(unsigned as never, reader as never, q)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
     expect(await subscriptionTempo.status(recorded as never, reader as never, q)).toEqual({
       state: "pending",
       reason: "search-incomplete",

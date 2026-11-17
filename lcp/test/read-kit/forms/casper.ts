@@ -139,7 +139,6 @@ const SETUPS: Record<string, Setup> = {
   "an act whose signed message differs in a member from the payment presented is settled all the same: presented no": {
     setFrom: 10, calls: [own("t1", "payee", "5")], presentedDiffers: true,
   },
-  "a read that made no comparison with the payment presented states no presented, never yes": { setFrom: 10, calls: [own("t1", "payee")] },
 };
 
 const height = (position: number): bigint => BASE + BigInt(position);
@@ -353,9 +352,6 @@ export const forms: readonly DeclaredForm[] = [
               validBefore: `${VALID_BEFORE}`,
               nonce,
             };
-            // The reference holds the authorization as presented, as a caller's does, save in the case of a read that
-            // made no comparison, whose reference holds none.
-            const compares = !c.case.startsWith("a read that made no comparison with the payment presented");
             const ref = {
               network: NETWORK,
               asset: PKG,
@@ -363,7 +359,7 @@ export const forms: readonly DeclaredForm[] = [
               nonce,
               settleBy: Number(VALID_BEFORE),
               payee: PAYEE,
-              ...(compares ? { presented } : {}),
+              presented,
               h: H,
             } as const;
             const others = (c.query.others ?? []).map((o) => ("transaction" in o ? { transaction: TX[o.transaction] ?? o.transaction } : o));

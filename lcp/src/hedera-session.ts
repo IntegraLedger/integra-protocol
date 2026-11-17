@@ -358,7 +358,8 @@ export async function hederaStockStatus(
   }
   if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return unreadable("unparseable");
   if (receipt.logs.length > MAX_LOGS) return unreadable("too-large");
-  const row = { transaction: tx, position: receipt.blockNumber, mark: "finalized" as const, consumed: true, carries: false };
+  // What was presented is the transaction the credential names, and every row read here is that transaction.
+  const row = { transaction: tx, position: receipt.blockNumber, mark: "finalized" as const, consumed: true, carries: false, presented: "yes" as const };
   let seen: Seen<bigint, "finalized">;
   // A revert executed in the EVM took the sender nonce; any other failed result shows none taken (HIP-844).
   let executed = true;
