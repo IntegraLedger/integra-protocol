@@ -27,8 +27,9 @@ export function unexpectedSettle(
 
 /**
  * A verify reason as a settle answer's: a node or store that could not be read before submission is a settle error.
- * Its entry is the one written where the verify reason is given.
+ * Its entry is the one written where the verify reason is given. Any other reason, a published class's among them, is
+ * the same on both calls.
  */
-export function settleReason(r: InvalidReason): string {
+export function settleReason(r: InvalidReason | string): string {
   return r === "unexpected_verify_error" ? "unexpected_settle_error" : r;
 }

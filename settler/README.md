@@ -1,574 +1,691 @@
 # @integraledger/profile-facilitator
 
-An x402 facilitator for two LCP profiles: `x402/exact/tron/lcp-trc20-memo` and
-`x402/exact/polkadot/lcp-assets-remark`. It verifies and settles payments whose payer-signed transaction carries the
-ATR hash, and it holds no key and pays no fee.
+The settler: an x402 facilitator for the x402 pairings that
+[`@integraledger/lcp`](https://www.npmjs.com/package/@integraledger/lcp) ships. A resource server calls it over x402's
+facilitator API, one HTTP surface: `GET /supported`, `POST /verify` and `POST /settle`. It checks each payment against
+its pairing's profile and the requirements it answers, submits what the payer signed, records each payment once in
+Postgres, and answers what the chain shows.
 
 ## What it is
 
-In x402, a **facilitator** is the role that verifies a payment and settles it on its network, answering the x402
-facilitator API: `GET /supported`, `POST /verify` and `POST /settle`. x402 specifies neither Tron nor Polkadot. The
-Legal Context Protocol (LCP) defines one transfer method on each, in which the payer's own signed transaction carries
-the **ATR hash (H)**: SHA-256 over the exact bytes of the Agentic Transaction Record (ATR), the agreement's record.
-Approving that transaction is then the buyer's acceptance of that exact record, and the proof is on chain.
+In x402, a **facilitator** is the role that verifies a payment and settles it on its network. The resource server, the
+seller's x402 server, sends it the buyer's payment and the requirements that payment answers. `POST /verify` says
+whether the payment is valid, `POST /settle` submits it and answers with the transaction, and `GET /supported` lists the
+kinds of payment it serves. The seller chooses its facilitator.
 
-| Profile | `network` | `extra.assetTransferMethod` | Where H rides |
-|---|---|---|---|
-| `x402/exact/tron/lcp-trc20-memo` | `tron:<chain id in decimal>` | `lcp-trc20-memo` | The transaction's `raw_data.data`: the 77 ASCII bytes `lcp:sha256:` followed by H, beside one TRC-20 `transfer(payTo, amount)`. |
-| `x402/exact/polkadot/lcp-assets-remark` | `polkadot:68d56f15f85d3136970ec16946040bc1` (Polkadot Asset Hub) or `polkadot:67f9723393ef76214df0118c34bbbd3d` (Westend Asset Hub) | `lcp-assets-remark` | `system.remark_with_event(R)`, where R is exactly `lcp:sha256:` followed by H in lowercase hex, batched with `assets.transfer_keep_alive` in one `utility.batch_all`. |
+The Legal Context Protocol (LCP) binds a payment to the agreement's record: the payer's signed act carries the **ATR
+hash (H)**, SHA-256 over the exact bytes of the Agentic Transaction Record (ATR). A **pairing** is one protocol, scheme
+and rail, and its profile, published with `@integraledger/lcp`, fixes where H rides
+([the pairing registry](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/pairings.md)).
 
-This package implements each profile's rule 5, the facilitator's duties. The profiles themselves are published with
-`@integraledger/lcp`, in [its repository at 0.5.0](https://github.com/IntegraLedger/integra-protocol/tree/v0.5.0/lcp/profiles), the release this package pins.
+The settler runs x402's own facilitator class, `x402Facilitator` of `@x402/core` 2.31.0, with one registration for each
+scheme on each configured network. Behind each registration is a **module**: x402's published facilitator class for
+that chain, registered unchanged, or the settler's own facilitator where x402 publishes no class. Around the class the
+settler adds three things:
 
-The facilitator is a pass-through. It checks the payment against the requirements it is given, asks a node to
-validate or simulate it, submits exactly the bytes the payer signed, deduplicates, and reports what the network shows.
-
-## Key concepts
-
-- **Agentic Transaction Record (ATR):** the agreement's record, the exact bytes the seller serves.
-- **ATR hash (H):** SHA-256 over the ATR's exact bytes.
-- **Legal Context Protocol (LCP):** the pattern these profiles implement: H bound into the payment, so that where the
-  payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does
-  not, the pairing's `proves` says so.
-- **Pairing:** a payment protocol, scheme and rail combination. This facilitator serves two:
-  `x402/exact/tron/lcp-trc20-memo` and `x402/exact/polkadot/lcp-assets-remark`.
-- **Binding:** how H rides in a pairing's payment: here, the Tron memo and the Polkadot remark.
-- **Seller:** the party serving the resource. It calls this facilitator from its x402 resource server.
-- **Facilitator:** the x402 role that verifies and settles.
-- **Deduplication:** each payment is settled at most once, keyed by its network and transaction id, in Postgres.
+- **lcp's checks of the pairing**, made from the payment and its requirements alone before the class is asked: the
+  payment carries H in its profile's form, and its form is one the kind declares.
+- **The record**: one row per payment in Postgres, keyed as its profile names the payment (the single-use value its
+  signer signed, or its transaction id), so that one payment is submitted once and answered success once, across
+  every process that shares the database.
+- **lcp's read of the chain**, which decides whether a payment the class did not answer success for is final.
 
 ```mermaid
 sequenceDiagram
-    participant R as Resource server (seller)
-    participant F as Profile facilitator
+    participant R as Resource server
+    participant S as Settler
     participant P as Postgres
-    participant N as Network node
-    R->>F: POST /verify
-    F->>N: read the permission, reference block and id, and simulate (Tron), or validate (Polkadot)
-    F-->>R: isValid, payer
-    R->>F: POST /settle
-    F->>P: read, then claim the transaction id
-    F->>N: broadcast or submit the signed bytes
-    loop every second until included or the wait ends
-        F->>N: read the receipt or the blocks
-    end
-    F->>P: store the answer
-    F-->>R: success, transaction, payer
+    participant N as Node
+    R->>S: POST /verify
+    Note over S: lcp's checks, the record, the class's verify, lcp's read
+    S-->>R: isValid, payer
+    R->>S: POST /settle
+    S->>P: claim the payment
+    S->>N: the class submits what the payer signed
+    S->>N: lcp's read, where the class did not answer success
+    S->>P: store the answer
+    S-->>R: success, transaction, payer
 ```
+
+**What it checks, and what it does not.** It checks that the payment carries H in its profile's form. It does not check
+that this H is the one the resource server issued for the request, or that the resource server has not accepted it
+before: those are the resource server's own records
+([the seller guide](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/guides/seller.md)). It checks the
+amount, asset and payee against the requirements because x402 requires that of a facilitator, and carries no business
+or legal logic beyond that.
 
 ## Install
 
 ```sh
-npm install @integraledger/profile-facilitator @integraledger/lcp@~0.5.0
+npm install @integraledger/profile-facilitator @integraledger/lcp
 ```
 
-It needs Node.js `>=24`, Postgres (the tests run on Postgres 18), and an HTTP endpoint for each network you
-serve: a Tron FullNode that keeps the block history (not a lite FullNode) and a Solidity node, or a Polkadot Asset Hub
-RPC node. A Polkadot node that keeps the state of every block (an archive node) gives the events of any block; a
-pruning node discards the state of older blocks, and a block that holds the extrinsic and whose state is discarded
-keeps the answer `settlement_pending`. It is ESM only. `@integraledger/lcp` (`~0.5.0`) is its peer dependency: install
-it beside it.
+It needs Node.js `>=24`, Postgres (the tests run on Postgres 18), and, for each network it serves, the node its module
+reads. It is ESM only. `@integraledger/lcp` is its peer dependency: install it with the settler. A module that holds a
+key takes it as the signer object of x402's class for that chain; make it with that chain's x402 package at 2.31.0, the
+release the settler's classes are pinned to (`@x402/evm`, `@x402/svm`, `@x402/avm`, and so on).
 
 ## Quickstart
 
-Start the facilitator for Tron mainnet and read what it supports. The node URLs below are java-tron's default HTTP
-ports on your own node; the facilitator calls them only when a payment arrives. `DATABASE_URL` is your Postgres
-connection string.
+Start the settler for Tron mainnet and Polkadot Asset Hub, and read what it supports. Neither module holds a key, so
+this deployment needs no credential. The node URLs are your own nodes; the settler calls them only when a payment
+arrives. `DATABASE_URL` is your Postgres connection string.
 
 ```ts no-check title="supported.ts"
 import { serveProfileFacilitator } from "@integraledger/profile-facilitator";
 
-const facilitator = await serveProfileFacilitator({
+const settler = await serveProfileFacilitator({
   listen: "127.0.0.1:4020",
-  tron: [{ network: "tron:728126428", fullNode: "http://127.0.0.1:8090", solidityNode: "http://127.0.0.1:8091" }],
-  polkadot: [{ network: "polkadot:68d56f15f85d3136970ec16946040bc1", rpc: "http://127.0.0.1:9944" }],
   store: { url: process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/postgres" },
   settleWaitMs: 30_000,
+  tron: [{ network: "tron:728126428", fullNode: "http://127.0.0.1:8090", solidityNode: "http://127.0.0.1:8091" }],
+  polkadot: [{ network: "polkadot:68d56f15f85d3136970ec16946040bc1", rpc: "http://127.0.0.1:9944" }],
 });
 
 const supported = await (await fetch("http://127.0.0.1:4020/supported")).json();
 console.log(JSON.stringify(supported, null, 2));
-await facilitator.close();
+await settler.close();
 ```
 
-```text output
+```text
 {
   "kinds": [
     {
       "x402Version": 2,
       "scheme": "exact",
-      "network": "tron:728126428",
+      "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
       "extra": {
-        "assetTransferMethod": "lcp-trc20-memo"
+        "assetTransferMethod": "lcp-assets-remark",
+        "key": "none",
+        "acceptsZero": false,
+        "pairings": [
+          "x402/exact/polkadot/lcp-assets-remark"
+        ]
       }
     },
     {
       "x402Version": 2,
       "scheme": "exact",
-      "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
+      "network": "tron:728126428",
       "extra": {
-        "assetTransferMethod": "lcp-assets-remark"
+        "assetTransferMethod": "lcp-trc20-memo",
+        "key": "none",
+        "acceptsZero": false,
+        "pairings": [
+          "x402/exact/tron/lcp-trc20-memo"
+        ]
       }
     }
   ],
   "extensions": [],
-  "signers": {}
+  "signers": {
+    "polkadot:*": [],
+    "tron:*": []
+  }
 }
 ```
 
-## Run it
+## Run it as a service
 
 The package exports one function that starts the server; it has no command-line entry. A service is a short module
-that reads its configuration and stops cleanly on a signal:
+that reads its configuration, makes the signer objects its keyed modules take, and stops cleanly on a signal. This one
+serves x402's `exact` scheme on Base Sepolia through the `evm` module, whose key, the seller's gas key, sends each
+transaction and pays its gas:
 
-```ts no-check title="facilitator.ts" server
+```ts no-check title="settler.ts"
 import { serveProfileFacilitator } from "@integraledger/profile-facilitator";
+import { toFacilitatorEvmSigner } from "@x402/evm";
+import { createWalletClient, http, publicActions, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { baseSepolia } from "viem/chains";
+
+const rpc = process.env.BASE_SEPOLIA_RPC ?? "http://127.0.0.1:8545";
+const credential = process.env.SETTLER_CREDENTIAL;
+const gasKey = process.env.SELLER_GAS_KEY as Hex | undefined;
+if (credential === undefined || gasKey === undefined) throw new Error("set SETTLER_CREDENTIAL and SELLER_GAS_KEY");
+
+// The seller's gas key, as x402's EVM classes take it.
+const account = privateKeyToAccount(gasKey);
+const client = createWalletClient({ account, chain: baseSepolia, transport: http(rpc) }).extend(publicActions);
+const signer = toFacilitatorEvmSigner({
+  address: account.address,
+  getCode: (a) => client.getCode(a),
+  readContract: (a) => client.readContract({ ...a, args: a.args ?? [] } as never),
+  verifyTypedData: (a) => client.verifyTypedData(a as never),
+  writeContract: (a) => client.writeContract({ ...a, args: a.args ?? [] } as never),
+  sendTransaction: (a) => client.sendTransaction(a as never),
+  waitForTransactionReceipt: (a) => client.waitForTransactionReceipt(a) as never,
+  simulateCalls: (a) => client.simulateCalls(a as never) as never,
+});
 
 const listen = process.env.LISTEN ?? "127.0.0.1:4021";
-const facilitator = await serveProfileFacilitator({
+const settler = await serveProfileFacilitator({
   listen,
-  tron: [
-    {
-      network: "tron:728126428",
-      fullNode: process.env.TRON_FULL_NODE ?? "http://127.0.0.1:8090",
-      solidityNode: process.env.TRON_SOLIDITY_NODE ?? "http://127.0.0.1:8091",
-    },
-  ],
   store: { url: process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/postgres" },
-  settleWaitMs: Number(process.env.SETTLE_WAIT_MS ?? 30_000),
+  settleWaitMs: 30_000,
+  credential,
+  evm: [{ network: "eip155:84532", rpc, signer, schemes: ["exact"] }],
+  // At most 0.01 ETH of gas in any 24 hours; past it, payments whose gas the key pays are refused.
+  feeBudgets: [{ network: "eip155:84532", amount: "10000000000000000", periodSeconds: 86_400 }],
 });
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
-    void facilitator.close().then(() => process.exit(0));
+    void settler.close().then(() => process.exit(0));
   });
 }
-console.log(`facilitator listening on ${listen}`);
+console.log(`settler listening on ${listen}`);
 ```
 
-```text output
-facilitator listening on 127.0.0.1:4021
+```text
+settler listening on 127.0.0.1:4021
 ```
 
-Run it with `node facilitator.ts`: Node.js 26 runs TypeScript directly. `close()` stops accepting requests, closes
-open connections, disconnects from the Polkadot nodes and closes the Postgres pool.
+Run it with `node settler.ts`: Node.js 26 runs TypeScript directly. Every call must then carry
+`Authorization: Bearer <credential>`. Its `/supported` states:
 
-### Configuration
+```json
+{
+  "kinds": [
+    {
+      "x402Version": 2,
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "extra": {
+        "key": "relayer",
+        "acceptsZero": false,
+        "pairings": ["x402/exact/eip155/eip3009", "x402/exact/eip155/permit2"],
+        "feeBudget": true
+      }
+    }
+  ],
+  "extensions": [],
+  "signers": { "eip155:*": ["<the gas key's address>"] }
+}
+```
 
-`serveProfileFacilitator(config)` takes a `ProfileFacilitatorConfig`:
+`close()` stops accepting requests, closes open connections, closes what each module opened (the Polkadot nodes'
+connections among them), stops the sweep and closes the Postgres pool. If the settler cannot start, it closes what it
+opened and rejects with the error that stopped it, such as the listen's `EADDRINUSE` or a configuration it refuses.
 
-| Field | Type | Meaning |
+## Configuration
+
+`serveProfileFacilitator(config)` takes a `ProfileFacilitatorConfig`: the core's members, and one member for each module
+the deployment starts, named for the module. A module whose member is absent is neither loaded nor started.
+
+### The core's members
+
+| Member | Type | Meaning |
 |---|---|---|
 | `listen` | `string` | `"host:port"`; an IPv6 host may be written in brackets. |
-| `tron` | `{ network, fullNode, solidityNode }[]`, optional | One entry per Tron network. `network` is `tron:<chain id in decimal>`. `fullNode` serves `/wallet/…` and `solidityNode` serves `/walletsolidity/…`; give each its base URL. |
-| `polkadot` | `{ network, rpc }[]`, optional | One entry per network, `polkadot:68d56f15f85d3136970ec16946040bc1` or `polkadot:67f9723393ef76214df0118c34bbbd3d`. `rpc` is an HTTP JSON-RPC endpoint that serves `state_call` and `author_submitExtrinsic`. |
-| `store` | `{ url }` | The Postgres connection string. Postgres holds the deduplication table only. |
-| `settleWaitMs` | `number` | How long `/settle` waits for inclusion before it answers `settlement_pending`. A value that is not a positive finite number means 30 000. |
-| `operatorLog` | `(entry, cause?) => void`, optional | Receives every entry for the operator (see "Bounds and logs"). `entry` is `{ event, network?, payer?, transaction?, … }`, naming the payment where it is known; `cause` is the error behind it, when there is one. The answer to the client is the same either way and carries nothing from the cause. A log that throws, or returns a promise that rejects, changes no answer: the entry is written by the default, with an `operator-log-failed` entry. The default writes one JSON line per entry on standard error, the cause as `cause` (its name, message, stack and `cause` chain). |
+| `store` | `{ url: string }` | The Postgres connection string. Postgres holds the record, the fee count and the modules' durable state; the settler creates its tables at start where they do not exist. |
+| `settleWaitMs` | `number` | How long `/settle` waits for the chain before it answers `settlement_pending`. A value that is not a positive finite number means 30 000. |
+| `credential` | `string`, optional | The credential every call must present as `Authorization: Bearer <credential>`; required where a configured module holds a key ([The credential](#the-credential)). Its characters are those RFC 6750 admits in a bearer token: letters, digits and `-._~+/`, then any `=`. |
+| `feeBudgets` | `{ network, amount, periodSeconds }[]`, optional | At most one per network, each on a network a configured module serves ([The fee budget](#the-fee-budget)). `amount` is in the smallest unit of the network's fee asset, a `bigint` or its decimal digits, and positive; `periodSeconds` is a positive whole number. |
+| `operatorLog` | `(entry, cause?) => void`, optional | Receives every entry for the operator ([Bounds and logs](#bounds-and-logs)). The default writes one JSON line per entry on standard error. |
 
-The facilitator serves only the networks it is configured with. A request for any other network is answered
-`invalid_network`. At start it creates its table if it does not exist; a Polkadot node's runtime metadata is loaded on
-the first payment for that network, and loaded again whenever the node's runtime version changes.
+### The modules
+
+Each module's member lists the networks it serves. Its keys reach it inside that member, as the signer objects its
+classes take; the settler reads no key material of its own. The network is the CAIP-2 id lcp's type for the chain
+names (`eip155:<chain id>`, `solana:<genesis hash prefix>`, and so on).
+
+| Member | Chain | Scheme: pairings | `extra.key` | `extra.acceptsZero` | Facilitator |
+|---|---|---|---|---|---|
+| `algorand` | Algorand | `exact`: `x402/exact/algorand` | `fee-payer` | `true` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
+| `aptos` | Aptos | `exact`: `x402/exact/aptos` | `fee-payer`, or `none` with `sponsor: false` | `false` | `@x402/aptos`'s class |
+| `cardano` | Cardano | `exact`: `x402/exact/cardano`, `x402/exact/cardano/lock` | `none` | `false` | `@x402/cardano`'s class |
+| `concordium` | Concordium | `exact`: `x402/exact/ccd` | `fee-payer` | `true` | `@x402/concordium`'s class |
+| `evm` | EVM | `exact`: `x402/exact/eip155/eip3009`, `x402/exact/eip155/permit2`; `upto`: `x402/upto/eip155/permit2`; `auth-capture`: `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`; `batch-settlement`: `x402/batch-settlement/eip155` | `relayer` | `false` | `@x402/evm`'s classes |
+| `erc7710` | EVM | `exact` with `erc7710`: `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt` | `relayer` | `false` | the settler's own, behind the `evm` module's `exact` |
+| `hedera` | Hedera | `exact`: `x402/exact/hedera` | `fee-payer` | `false` | `@x402/hedera`'s class |
+| `lnbtc` | Lightning | `exact`: `x402/exact/lnbtc/payment-hash` | `none` | `false` | the settler's own |
+| `near` | NEAR | `exact`: `x402/exact/near` | `relayer` | `false` | `@x402/near`'s class |
+| `polkadot` | Polkadot Asset Hub | `exact`: `x402/exact/polkadot/lcp-assets-remark` | `none` | `false` | the settler's own |
+| `solana` | Solana | `exact`: `x402/exact/solana`; `upto`: `x402/upto/solana`; `batch-settlement`: `x402/batch-settlement/solana` | `fee-payer` | `true` on `exact`, `false` on the others | `@x402/svm`'s classes |
+| `starknet` | Starknet | `exact`: `x402/exact/starknet` | `relayer` | `false` | the settler's own |
+| `stellar` | Stellar | `exact` with `lcp-precondition`: `x402/exact/stellar/precondition` | `relayer` | `true` | the settler's own |
+| `sui` | Sui | `exact`: `x402/exact/sui` | `none` | `false` | the settler's own |
+| `ton` | TON | `exact`: `x402/exact/tvm` | `relayer` | `true` | `@x402/tvm`'s class |
+| `tron` | Tron | `exact`: `x402/exact/tron/lcp-trc20-memo` | `none` | `false` | the settler's own |
+| `xrpl` | XRP Ledger | `exact`: `x402/exact/xrpl`; `upto`: `x402/upto/xrpl` | `none` | `false` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
+
+Each member, one entry per network unless it says otherwise:
+
+- **`algorand`**: `network`; `signer`, the seller's fee payer as `@x402/avm`'s class takes it (`FacilitatorAvmSigner`),
+  with its algod node; `indexer`, the seller's Indexer, which lcp's read uses; `archival`, optional, true where that
+  Indexer holds every round. The fee payer pools the group's fee by its own zero-amount payment in the same atomic
+  group. The class signs every entry of the group that one of the key's addresses sends, so a group may hold one such
+  entry, and only where the option's `extra.feePayer` names its sender: a group with two, or with one the option's
+  `extra.feePayer` does not name, is refused `invalid_exact_avm_invalid_fee_payer`; with no `extra.feePayer` the buyer
+  pays its own fee. An entry a logic signature authorises, and one that names `asnd`, are refused before anything
+  moves.
+- **`aptos`**: `network`; `signer`, the seller's account (`FacilitatorAptosSigner`); `sponsor`, optional, whether the
+  key pays the payer's gas as its fee payer (default true, the class's own default); `node`, the seller's REST endpoint,
+  its base without `/v1`. With `sponsor: false` the payer pays its own gas and the key signs nothing: the kind states
+  `extra.key` `none` and `/supported` names no signer for it, and an option that names an `extra.feePayer` is refused
+  `invalid_payment_requirements` before the class is asked, since the class pays the gas of any payment whose option
+  names one of the key's addresses.
+- **`cardano`**: `network`; `signer`, the chain-query object `@x402/cardano`'s class takes over the seller's provider (a
+  provider's project id is its configuration, not a key); `reader`, lcp's `CardanoReader` over the seller's indexer. The
+  class broadcasts the transaction the buyer signed, whose fee the buyer pays. Its guard against broadcasting one
+  transaction twice is kept in the settler's database, so a repeat after a restart resumes observing what was
+  broadcast.
+- **`concordium`**: `network`, the one the signer is connected to; `signer`, the seller's sponsor account and its key
+  with its node (`FacilitatorConcordiumSigner`), which co-signs the payer's sponsored transaction and pays its energy;
+  `reader`, lcp's `CcdReader` over the seller's node. The record names each payment by the digest of what its sender
+  signed, so a payment is never sent twice.
+- **`evm`**: `network`; `rpc`, the seller's JSON-RPC endpoint, which lcp's reads and the fee's read go through; `signer`,
+  the seller's gas key (`FacilitatorEvmSigner`, made with `toFacilitatorEvmSigner` over the same node); `schemes`,
+  optional, the schemes registered (`exact`, `upto`, `auth-capture`, `batch-settlement`; all four where absent);
+  `eip6492AllowedFactories`, optional, the ERC-6492 factories `exact` and `batch-settlement` may call to deploy a payer's
+  wallet (none where absent); `authCapture`, optional, `auth-capture`'s own configuration, passed to its class
+  unchanged. Before the class is asked, `exact` refuses an option that pays several payees (a non-empty
+  `extra.splits`) and Circle's batched option (`extra.name` `GatewayWalletBatched`, or an `extra.verifyingContract`
+  other than the asset), which no published EVM class settles.
+- **`erc7710`**: `network`; `rpc`; `signer`, the seller's gas key, whose node must answer `eth_simulateV1`. The key
+  sends from its first address, so that address is the delegate the leaf delegation must name (or the reference
+  implementation's wildcard delegate), and the account the simulation runs from. It registers nothing of its own: on
+  each of its networks it is offered to the `evm` module's `exact` registration, which hands it every payment whose
+  option names `erc7710`. The settler does not start where the `evm` module does not register `exact` on such a
+  network. It simulates the redemption the payment names, then calls `redeemDelegations` on the delegation manager the
+  payload names, with one execution that transfers the option's amount to `payTo`.
+- **`hedera`**: `network`; `signer`, the seller's fee-payer account and its key (`FacilitatorHederaSigner`): the class
+  takes only a payment whose transaction id names an account it manages as `extra.feePayer`; `mirror`, the seller's
+  Mirror Node REST base URL, which lcp's read and the fee count use; `archival`, optional, true where it holds every
+  record since the network began.
+- **`lnbtc`**: `network`, x402's `lnbtc` id of Bitcoin mainnet (`lnbtc:000000000019d6689c085ae165831e93`) or testnet3
+  (`lnbtc:000000000933ea01ad0ee984209779ba`). The buyer's node paid the invoice before the preimage reached the buyer,
+  so settling moves nothing: the module makes the scheme's validation through lcp's `validateExactLnbtc`, answers the
+  invoice's payment hash as the transaction, names no payer, and reads nothing. x402's scheme forbids `/verify` for
+  this flow, so `/verify` answers `unsupported_scheme`; `/settle` makes the validation before the record's claim.
+- **`near`**: `network`; `signer`, the seller's relayer account and key with its RPC node (`FacilitatorNearSigner`),
+  which wraps the payer's NEP-366 delegate action in a transaction of its own and pays its gas and one-yoctoNEAR
+  deposit; `rpc`, the seller's RPC node.
+- **`polkadot`**: `network`, `polkadot:68d56f15f85d3136970ec16946040bc1` (Polkadot Asset Hub) or
+  `polkadot:67f9723393ef76214df0118c34bbbd3d` (Westend Asset Hub); `rpc`, an HTTP JSON-RPC endpoint. The payer signs
+  and pays every fee. A node that keeps the state of every block (an archive node) gives the events of any block; a
+  pruning node discards the state of older blocks, and a block that holds the extrinsic and whose state is discarded
+  keeps the answer `settlement_pending`. The runtime metadata is loaded on the first payment for the network, and again
+  whenever the node's runtime version changes. A success names `<block hash>-<extrinsic index>`; a pending answer
+  names the extrinsic's hash.
+- **`solana`**: `network`; `node`, the seller's JSON-RPC endpoint, one whose `getFirstAvailableBlock` is at or below the
+  slot at which each payment was issued; `signer`, the seller's fee payer (`FacilitatorSvmSigner`), which co-signs every
+  transaction the payer signed and, on the channel forms, pays the channel's rent; `transactionVersions`, optional, the
+  message versions the classes accept (their default `[0, 1]`). `upto` and `batch-settlement` need the payment-channels
+  program, which is deployed on devnet and testnet and not on mainnet: on Solana mainnet
+  (`solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`) only `exact` is registered. Their channels are kept in the settler's
+  database.
+- **`starknet`**: an object `{ networks }`, one entry per network: `network`; `rpc`, a JSON-RPC node (specification 0.9
+  or later) that serves `starknet_traceTransaction` and `starknet_simulateTransactions`; `executor`, an `address` and
+  its `signer`, the account the payer's outside execution names as its caller, stated as `extra.feePayer`, which
+  sends and pays for the transaction that executes it; `maxFee`, optional, the most one settlement's resource bounds
+  may pay, in fri; `skewMarginSeconds` (default 60) and `minSettleMarginSeconds` (default 30), optional, the scheme's
+  margins. x402 specifies Starknet and publishes no code for it, so the module is written to x402's scheme text and
+  lcp's profile.
+- **`stellar`**: an object `{ networks }`: `network`; `rpc`, a Stellar RPC endpoint that holds the history the read
+  searches; `source`, the seller's funded account as a signer (`address` and `signTransaction`, such as x402's
+  `createEd25519Signer` of `@x402/stellar` or a SEP-43 wallet), the transaction's source, which pays its fee;
+  `maxTransactionFeeStroops`, optional (default 50,000), and `inclusionFeeStroops`, optional (at least 100, default
+  100). It serves the agreement form, the option whose `extra.assetTransferMethod` is `lcp-precondition`: the module
+  builds the transaction around the buyer's operation and preconditions, unchanged, signs it as its source, and carries
+  the buyer's payload signature with its own.
+- **`sui`**: an object `{ networks }`: `network` (`sui:mainnet`, `sui:testnet` or `sui:devnet`); `graphql`, the seller's
+  GraphQL endpoint. It serves the path where the buyer pays gas and the gasless path (`extra.gasless`), and holds no
+  key. A transaction the buyer already executed is judged at `/verify` by its effects, and not refused for having
+  executed; its `/settle` answers a failure naming it.
+- **`ton`**: `network`; `signer`, the seller's highload-v3 wallet and its node (`FacilitatorTvmSigner`), which relays
+  the payer's W5 request in a message of its own and pays its gas; `reader`, lcp's `TvmReader` over the seller's TON
+  Center v3 index.
+- **`tron`**: `network`, `tron:<chain id in decimal>`; `fullNode` and `solidityNode`, the base URLs of a FullNode that
+  keeps the block history (not a lite FullNode) and of a Solidity node, with java-tron's HTTP API. The payer signs and
+  pays every fee.
+- **`xrpl`**: `network`; `node`, the seller's rippled or Clio JSON-RPC endpoint, holding the ledgers from each payment's
+  issue to the validated ledger; `waitMs`, optional, how long a settle waits for its transaction in a validated ledger
+  (default 30 000); `maxFeeDrops`, optional, the most fee a payment may sign (the class's default, 10 000). Both paths
+  refuse a payment that names a `Delegate` or carries `Memos`, as x402's scheme requires. For `upto`, the payer opens a
+  payment channel to `payTo` and signs one claim off the ledger; at `/settle` the resource server adds
+  `settlementTransaction`, a `PaymentChannelClaim` its `payTo` key signed for the actual charge with `tfClose`, which the
+  module checks and submits unchanged; `/verify` refuses a payload that already carries one, as the scheme requires.
+
+## Keys
+
+`extra.key` states what the module's key signs, by one of three values:
+
+| `extra.key` | The key | Modules |
+|---|---|---|
+| `none` | The module holds no key and signs nothing: it submits what the payer signed, and the payer pays the fee. | `cardano`, `lnbtc`, `polkadot`, `sui`, `tron`, `xrpl`, and `aptos` with `sponsor: false` |
+| `relayer` | The key sends the transaction and pays its network fee. | `erc7710`, `evm`, `near`, `starknet`, `stellar`, `ton` |
+| `fee-payer` | The key co-signs the payer's transaction as the account that pays its fee. | `algorand`, `aptos`, `concordium`, `hedera`, `solana` |
+
+Each chain's own name for the role (a gas key, a sponsor, a source account, an executor) stays in its module's notes
+above. The key is always the seller's: the operator's code makes the signer object the module's class takes and passes
+it in the configuration, and its address is in `/supported`'s `signers`. One kind states one purpose: two modules
+behind one registration whose keys sign for different purposes are refused at start.
+
+## The credential
+
+The resource server names the payee and the amount, and a keyed module pays a fee for whatever it submits, so an open
+settler would spend the seller's money on payments between other parties. A deployment with a module whose key is not
+`none` therefore does not start without `credential`. Every call, `GET /supported` included, must then present it as
+`Authorization: Bearer <credential>`; the settler compares the SHA-256 of what is presented with that of the credential
+in constant time, and answers a call without it `401` `{"error":"unauthorized"}` with `WWW-Authenticate: Bearer`,
+before it reads the body, closing the connection. A keyless deployment may set one too, with the same effect.
+
+## What `/supported` states
+
+`GET /supported` answers `{kinds, extensions, signers}` as x402's facilitator class gives it. Each kind is
+`{x402Version: 2, scheme, network, extra}`, one per scheme on each configured network, and its `extra` holds:
+
+| Member | Value |
+|---|---|
+| `extra.pairings` | The lcp pairing ids the kind submits. A scheme on one network can hold several forms, so the scheme alone does not name them. |
+| `extra.key` | `none`, `relayer` or `fee-payer` ([Keys](#keys)). |
+| `extra.acceptsZero` | Whether the kind settles a payment of amount zero: true only where every pairing behind it does. A kind that states false refuses an option of amount zero `invalid_payment_requirements`. |
+| `extra.feeBudget` | `true` on each kind of a network whose fee budget the operator set; absent otherwise. Neither the amount nor what remains is stated. |
+| The class's own members | Kept unchanged, such as `assetTransferMethod` on Tron and Polkadot, `feePayer` where a fee payer co-signs, and `areFeesSponsored` on the XRP Ledger and Stellar. No module's class may state one of the four members above: the settler refuses one that does at start. |
+
+`signers` is keyed as x402's class keys it, by CAIP family (`eip155:*`, `solana:*`, ...), and holds the address of every
+key that signs on that family. A seller reads `extra.key` to know what a deployment must hold, `extra.pairings` to know
+which forms it can offer with this settler, and `extra.acceptsZero` before choosing a zero agreement amount.
 
 ## Verify and settle
 
-Both `POST /verify` and `POST /settle` take the x402 facilitator request:
-`{x402Version: 2, paymentPayload, paymentRequirements}`, with `paymentPayload.x402Version` 2 and
-`paymentRequirements.scheme` `"exact"`.
+Both `POST /verify` and `POST /settle` take x402's facilitator request,
+`{x402Version: 2, paymentPayload, paymentRequirements}`, with `paymentPayload.x402Version` 2. A refusal answers `200`
+with the refusal in its body.
 
 ```ts no-check title="verify.ts"
 import { serveProfileFacilitator } from "@integraledger/profile-facilitator";
 
-const facilitator = await serveProfileFacilitator({
+const settler = await serveProfileFacilitator({
   listen: "127.0.0.1:4022",
-  tron: [{ network: "tron:728126428", fullNode: "http://127.0.0.1:8090", solidityNode: "http://127.0.0.1:8091" }],
   store: { url: process.env.DATABASE_URL ?? "postgres://postgres@127.0.0.1:5432/postgres" },
   settleWaitMs: 30_000,
+  tron: [{ network: "tron:728126428", fullNode: "http://127.0.0.1:8090", solidityNode: "http://127.0.0.1:8091" }],
 });
 
-const request = {
-  x402Version: 2,
-  paymentPayload: { x402Version: 2, payload: { transaction: "0a02" } },
-  paymentRequirements: {
-    scheme: "exact",
-    network: "tron:3448148188",
-    amount: "10000",
-    asset: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
-    payTo: "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
-    maxTimeoutSeconds: 60,
-    extra: { assetTransferMethod: "lcp-trc20-memo" },
-  },
+const requirements = {
+  scheme: "exact",
+  amount: "10000",
+  asset: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+  payTo: "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+  maxTimeoutSeconds: 60,
+  extra: { assetTransferMethod: "lcp-trc20-memo" },
 };
-for (const path of ["/verify", "/settle"]) {
-  const res = await fetch(`http://127.0.0.1:4022${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(request),
-  });
-  console.log(path, res.status, JSON.stringify(await res.json()));
+// The first network is configured, and its payload is not a Tron transaction; the second is not configured.
+for (const network of ["tron:728126428", "tron:3448148188"]) {
+  const body = {
+    x402Version: 2,
+    paymentPayload: { x402Version: 2, payload: { transaction: "0a02" } },
+    paymentRequirements: { ...requirements, network },
+  };
+  for (const path of ["/verify", "/settle"]) {
+    const res = await fetch(`http://127.0.0.1:4022${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    console.log(path, res.status, JSON.stringify(await res.json()));
+  }
 }
-await facilitator.close();
+await settler.close();
 ```
 
-```text output
+```text
+/verify 200 {"isValid":false,"invalidReason":"invalid_payload"}
+/settle 200 {"success":false,"errorReason":"invalid_payload","transaction":"","network":"tron:728126428"}
 /verify 200 {"isValid":false,"invalidReason":"invalid_network"}
 /settle 200 {"success":false,"errorReason":"invalid_network","transaction":"","network":"tron:3448148188"}
 ```
 
-### What `/verify` checks on Tron
+### `/verify`
 
-In order; the first failure is the answer.
+`/verify` moves nothing. In order; the first refusal is the answer:
 
-1. The network is configured, and the requirements are ones the profile admits (its rule 1), else
-   `invalid_network` or `invalid_payment_requirements`.
-2. `payload.transaction` is a serialized Tron `Transaction` in hex that decodes to exactly one
-   `TriggerSmartContract` whose `data` is an LCP `sha256` string, else `invalid_payload`.
-3. `asset` and `payTo` are Tron addresses, else `invalid_payment_requirements`.
-4. The contract called is `asset`, and the call data is exactly `transfer(payTo, amount)`, else `invalid_payload`.
-5. The transaction carries exactly one signature, else `unsupported_permission`. That signature recovers to the
-   transaction's owner, else `invalid_payload`.
-6. The store does not hold the transaction id, else `invalid_transaction_state`.
-7. `expiration` is in the future and no later than now plus `maxTimeoutSeconds`, else `invalid_payload`.
-8. Five reads of the FullNode, made together. The first refusal in this order is the answer, and a node that does
-   not answer gives `unexpected_verify_error`:
-   - **The owner's permission.** `/wallet/getaccount` gives the owner permission, and the weight it gives the
-     owner's key must be at least its threshold, else `unsupported_permission`. An account with no owner permission
-     set, or one the node does not hold, has the network's default: its own key, weight 1, threshold 1. So a
-     multi-signature owner, or an owner whose permission does not hold the address's own key, is refused here
-     rather than at broadcast.
-   - **TaPoS.** The node accepts a transaction only when `ref_block_hash` equals bytes 8–15 of the id of the latest
-     block whose number's bytes 6–7 are `ref_block_bytes`. The facilitator reads the head with
-     `/wallet/getnowblock`, then that block with `/wallet/getblock`, and makes the same comparison, else
-     `invalid_transaction`.
-   - **The id.** `/wallet/gettransactionbyid` must not find the transaction in a block, and
-     `/wallet/gettransactionfrompending` must not find it in the node's pending pool, else
-     `invalid_transaction_state`.
-   - **The simulation.** `/wallet/triggerconstantcontract` simulates the transfer without failure, else
-     `invalid_transaction`.
+1. The request's shape: `invalid_x402_version`, `invalid_payload`.
+2. The network is one a module serves, else `invalid_network`, and the scheme one a module registers on it, else
+   `unsupported_scheme`. Where an own module claims the payment (by a member of the option, or by what the payment
+   holds), it goes to that module, else to the registration's class. On `lnbtc` the answer is `unsupported_scheme`.
+3. lcp's checks of the pairing, from the payment and its requirements alone. A refusal carries x402's reason and, on
+   the `algorand`, `aptos`, `hedera`, `solana`, `starknet` and `sui` modules, lcp's refusal code as `invalidMessage`
+   (on `starknet` and `sui`, the module's own code where its own check refused).
+4. The record: a payment it holds, claimed or final, is refused `invalid_transaction_state`, since `isValid: true`
+   tells the caller that a settle may follow.
+5. What the kind declares: an amount of zero where it does not take zero, and a form outside the pairings of the module
+   the payment goes to, are refused `invalid_payment_requirements`.
+6. The fee budget, where the module's key pays the fee: a spent budget is refused `fee_budget_spent`.
+7. The class's verify, unchanged, with its own reasons.
+8. lcp's read of the chain: a payment the chain shows final (landed, or consumed by another act) is refused
+   `invalid_transaction_state`. A read that fails goes to the operator log and leaves the class's answer.
 
-The answer is `{isValid: true, payer}`, with `payer` the owner in base58check.
+On `sui`, whose `/verify` judges a transaction the buyer already executed by its effects, steps 4 and 8 are not made.
+The answer is `{isValid: true, payer}` or `{isValid: false, invalidReason, invalidMessage?, payer?}`.
 
-### What `/settle` does on Tron
+### `/settle`
 
-1. Repeats the checks of `/verify` that read neither the store nor the node (steps 1 to 5).
-2. Reads the stored answer for the transaction id. A stored success means the payment is consumed: the answer is
-   `invalid_transaction_state` with the transaction id, never a second success. Any other final answer is returned
-   as it is. A claimed id, or a stored `settlement_pending`, goes on to step 6 and broadcasts nothing.
-3. For an id the store does not hold, checks the expiration window and then the settle's wait: once `settleWaitMs`
-   has passed, it sends no node call and answers `unexpected_settle_error` (`invalid_payload` for an expiration
-   outside the window). Otherwise it reads the id first, with `/wallet/gettransactionbyid` and
-   `/wallet/gettransactionfrompending`. An id the FullNode holds, in a block or its pending pool, is a consumed
-   payment, answered `invalid_transaction_state` with the id, whatever the other checks give, an expiration outside
-   the window among them. A node that does not answer the id reads gives `unexpected_settle_error`. Otherwise an
-   expiration outside the window is answered `invalid_payload`, and for one inside it the facilitator makes the other
-   node reads of `/verify`; a refusal is answered with an empty `transaction`. Once the reads have started, one the
-   wait leaves no time for is not sent, and in its place among the refusals is answered `unexpected_settle_error`;
-   for an expiration outside the window, an id read not sent finds nothing, and the answer is `invalid_payload`.
-4. Claims the transaction id with one conditional insert, so concurrent settles of one payment broadcast once. Once
-   the wait for the chain has ended, the broadcast would have no time left: it claims nothing and answers
-   `unexpected_settle_error`, and nothing is stored, so a repeat of the payment is settled as a new one.
-5. Broadcasts the signed bytes with `/wallet/broadcasthex`. A `DUP_TRANSACTION_ERROR` says the node already holds the
-   transaction: the payment is consumed, answered `invalid_transaction_state` with the id. Any other refusal, or a
-   request that cannot have reached the node, is answered `unexpected_settle_error` with an empty `transaction`:
-   nothing was broadcast. So is a broadcast the wait leaves no time for, as after a claim that answers late: it is not
-   sent. Either answer is stored final and every repeat gets it. The claim is never removed, so the payment is
-   broadcast at most once.
-6. Reads the transaction's status every second with `@integraledger/lcp`'s `tronStatus`, by transaction id: through the
-   Solidity node's `/walletsolidity` API for solidified data first, then the FullNode's `/wallet` API at the head.
-   Success requires receipt result `SUCCESS` **and** a `Transfer` log emitted by `asset`. A success read at the head,
-   before its block is solidified, can be reorganised out of the chain. The value the call returned is not read: a
-   TRC-20 token may return false from `transfer` and still transfer, and USDT-TRC20 does. `tronStatus` answers a receipt
-   with another result, or `SUCCESS` with no such log, as failed at whichever lookup finds it first; the facilitator
-   takes that failure as final only from the Solidity node's lookup, which reads solidified blocks alone. A transaction
-   whose expiration has passed can never be included once the solidified head, read first, is two slots past it and
-   neither lookup finds it, each naming a latest block at or past that head's time, read from its node before the
-   lookup. A lookup whose node cannot give that time, or whose latest block is behind the head, leaves the answer
-   pending. Each failure is answered `invalid_transaction_state`.
-7. Stores the answer and returns it. A success is returned only by the settle whose write stored it, so of two
-   concurrent settles of one payment, one answers success and the other `invalid_transaction_state` with the id. A
-   success, or an answer with an empty `transaction`, whose write fails is answered `settlement_pending` with the id.
+1. Steps 1 to 3 of `/verify`, with `errorMessage` for `invalidMessage`; `lnbtc` is served here.
+2. The record. A final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
+   success. A claim another settle holds, or one whose hold has ended, is answered as
+   [the record](#the-record-and-what-a-repeat-answers) says.
+3. What the kind declares, as `/verify` checks it.
+4. The class's verify. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value
+   another act consumed, is stored final and answered `invalid_transaction_state` naming its transaction; otherwise the
+   class's refusal is the answer, nothing is stored, and a repeat is checked again.
+5. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's
+   position, read just before the claim, which the row keeps for every later read.
+6. The claim: one conditional insert of the payment's row, held by this settle for `settleWaitMs`, so that of two
+   settles of one payment only one submits.
+7. The fee budget, where the module's key pays the fee: a spent budget answers `fee_budget_spent`, sends nothing, and
+   leaves the claim, not final.
+8. The class's settle, which submits what the payer signed. A success that names a transaction is stored final, then
+   answered `{success: true, transaction, network, payer}`. Anything else is classified by lcp's read: a payment the
+   chain shows final is stored final and answered (success only where the read shows a transaction this settler sent,
+   or the payment it presented, settled); one still live is answered `settlement_pending` naming the transaction sent,
+   or the class's own failure where it named no transaction or its failure consumed nothing.
 
-Success is `{success: true, transaction, network, payer}`, where `transaction` is the transaction id in hex.
+A success is answered once, only by the settle whose write stored it: of two settles of one payment, only one answers
+success, and the other answers `invalid_transaction_state` naming the transaction, or `settlement_pending` where its
+wait ends first. A success that cannot be stored is answered `settlement_pending` naming its transaction, and a later
+`/settle` reads the chain again.
 
-### What `/verify` checks on Polkadot
+## The record, and what a repeat answers
 
-1. The network is configured, and the requirements are ones the profile admits, else `invalid_network` or
-   `invalid_payment_requirements`.
-2. `payload.extrinsic` and `payload.call` are lowercase hex; the call is exactly
-   `utility.batch_all([assets.transfer_keep_alive(asset, Id(payTo), amount), system.remark_with_event(R)])` for this
-   `asset`, `payTo` and `amount`, and R is exactly the 77 bytes `lcp:sha256:` followed by H in lowercase hex, else
-   `invalid_payload`. `System.Remarked` carries the BLAKE2b-256 of the remark's bytes as signed, so a remark that
-   spells H any other way, such as with upper-case digits, is refused.
-3. With the network's runtime metadata, the extrinsic decodes as a signed v4 extrinsic whose call is `payload.call`
-   byte for byte, with a mortal era, else `invalid_payload`. The node must serve the chain the network names (its
-   genesis hash), else `unexpected_verify_error`.
-4. `TaggedTransactionQueue_validate_transaction` at the best block returns `Ok`, else `invalid_transaction`.
+The record is one row per payment, its **instrument**, within its network: the single-use value its signer signed (an
+authorization nonce, a sequence number, an account nonce, with the token or nonce key it counts in), or the transaction
+id where the chain derives it from the signed content alone, or the digest of the signed payment where the pairing's
+single-use value is not shown. It is never the single-use value alone, which two payers can share, and never a hash
+that a copy signed again would change. An agreement and a payment of one payer under one H are two instruments.
 
-The answer is `{isValid: true, payer}`, with `payer` the signer in SS58.
+A row is **final** once its answer can never change: a success; a failed result that consumed the single-use value; a
+value another act consumed; a validity that passed with the value unconsumed; or a payment that landed by another
+route. A refused submission, one that cannot have reached the node, and a failed result that consumed nothing leave the
+row a claim, which a repeat reads again. A claim is never removed.
 
-### What `/settle` does on Polkadot
+| A repeated `/settle` finds | It answers |
+|---|---|
+| A final row | `invalid_transaction_state` naming the transaction the row holds. Never a second success, as x402's `exact` family requires: a consumed payment produces a settlement failure. |
+| A claim another settle holds | It reads the row every second and sends nothing, until that settle answers or its hold ends; then the row's answer, or lcp's read. It answers `settlement_pending` naming the transaction where one is known, and `unexpected_settle_error` where none is known when its wait ends. |
+| A claim whose hold has ended | It takes the claim and reads the chain. A payment the chain shows final is stored and answered. The identical signed payment is submitted again only where the pairing's `nonce` is `single-use` in lcp's registry, the row is not named by the digest of the signed payment, the read shows the value unconsumed and its validity open, the body is the one that claimed the row, and the class's verify passes again. Another body under the same instrument is answered `invalid_transaction_state`. Otherwise `settlement_pending` naming the transaction sent, or `unexpected_settle_error` where none is known. |
+| No row, and the store cannot be read | `settlement_pending` where the payment's transaction id is known before it is sent, else `unexpected_settle_error`: the settler cannot know whether it was sent. |
 
-1. Repeats the checks of `/verify` that read nothing from the node (steps 1 and 2).
-2. Reads the stored answer for the extrinsic's BLAKE2b-256 hash. A stored success means the payment is consumed: the
-   repeat answers `invalid_transaction_state` with the success's `transaction`, never a second success. Any other
-   final answer is returned as it is. A claimed hash, or a stored `settlement_pending`, is followed from the chain: the
-   extrinsic is decoded again and step 5's scan goes on from the blocks its row records as not yet read, and nothing
-   is submitted.
-3. For a hash the store does not hold, decodes the extrinsic and asks the node to validate it, as `/verify` does
-   (steps 3 and 4), reading the finalized head before the validation. The settle's wait is checked before each of
-   these three node reads and before each node call they make: once `settleWaitMs` has passed, it sends no node call
-   and answers `unexpected_settle_error`. A metadata load, which serves every request for the network, is not started
-   then; one started earlier goes on within its own bound of 30 seconds, and sends no node call once that bound has
-   passed.
-   Step 1's refusals come first; the decode's refusals need the node's metadata, so they are given only while the wait
-   leaves time for it. Then claims the hash, with the first block to scan: the block after the finalized head read
-   before validation, never before the era's birth. Once the wait for the chain has ended, the submission would have
-   no time left: it claims nothing and answers `unexpected_settle_error`, and nothing is stored, so a repeat of the
-   payment is settled as a new one.
-4. Submits with `author_submitExtrinsic`. A refusal that says the node has already seen the extrinsic or its nonce
-   (1013 already imported, 1012 temporarily banned, or 1010 with an outdated nonce) is a consumed payment, answered
-   `invalid_transaction_state` with the extrinsic's hash, and no block is scanned for it. Any other refusal, or a
-   request that cannot have reached the node, is answered `unexpected_settle_error` with an empty `transaction`:
-   nothing was submitted. So is a submission the wait leaves no time for, as after a claim that answers late: it is not
-   sent. Either answer is stored final and every repeat gets it. The claim is never removed, so the extrinsic is
-   submitted at most once.
-5. Scans every second, up to the last block that can include the extrinsic: the era's last block, and no later than
-   `System.BlockHashCount` + 1 blocks after the era's birth. Each block's execution keeps only the hashes of the
-   `BlockHashCount` + 1 blocks before it, and the chain refuses an extrinsic whose birth block's hash is gone. The scan
-   reads first the finalized blocks, then the blocks up to the head. In the block that holds the extrinsic, success
-   needs `System.ExtrinsicSuccess`, `System.Remarked` for R's BLAKE2b-256 and `Assets.Transferred` for `asset`. A
-   success read in a block above the finalized head can be reorganised out of the chain. A failure counts only in a
-   finalized block.
-6. A finalized block the node cannot give, its body or, for the block that holds the extrinsic, its events, is recorded
-   as unread and skipped. The scan goes on to the blocks after it, so a success in a later block is still found, and the
-   unread block is read again on each later pass and on each repeat. A block read that cannot start before the deadline,
-   because the process's 4 block reads are all running, is recorded the same way. A block above the finalized head that
-   cannot be read is skipped, since it is read again at finality.
-7. Once every block to the last is finalized without the extrinsic, and no block is unread, it can never be included:
-   `invalid_transaction_state`.
-8. Stores the answer and returns it. A success is given only by the `/settle` that stores it, and an answer with an
-   empty `transaction` only once it is the stored answer. When either cannot be stored, the answer is
-   `settlement_pending` with the extrinsic's hash, and a later `/settle` reads the chain again.
+When the wait ends first, `/settle` answers `{success: false, errorReason: "settlement_pending", transaction}`; x402
+requires that `transaction` not be empty. Call `/settle` again with the same request: it reads the chain from where the
+last read stopped, never sends what it sent before unless the rule above admits it, and returns the final answer once
+there is one. A final row is kept at least 24 hours past the time its payment can last land (its signed validity, or
+the longest the rail keeps a signed payment payable), and for the settler's life where neither is known or the
+pairing's `nonce` is not `single-use`; a claim that is not final is kept until a repeat makes it final.
 
-Success is `{success: true, transaction, network, payer}`, where `transaction` is `<block hash>-<extrinsic index>`.
-While the extrinsic is broadcast but not yet in a block, the answer is `settlement_pending` with `transaction` set to
-the extrinsic's hash.
+## The fee budget
 
-### Pending and repeated settles
+A keyed module pays fees for what it submits. `feeBudgets` caps them per network: an amount of the network's fee asset,
+in its smallest unit, over a period of seconds. The count holds every transaction a module whose key pays the fee
+submitted on the network over the last period: its bound until the chain shows it included, then the fee it paid.
+Where the count has reached the amount:
 
-When the wait ends first, `/settle` answers `{success: false, errorReason: "settlement_pending", transaction}` with the
-transaction id or extrinsic hash; x402 requires that `transaction` not be empty. Call `/settle` again with the same
-request: it reads the chain from where it stopped, never submits twice, and returns the final answer once there is one.
-The facilitator keeps the payment's row until that final answer is written, however long that takes, so a repeat made
-after the validity window has ended still reads the chain. On Tron a payment is answered success once: every later
-`/settle` of it answers `invalid_transaction_state` with the transaction id, because x402's `exact` family requires that
-a consumed payment produce a settlement failure, never a success. Once the payment's row is gone, the FullNode's blocks
-give that answer. A broadcast or submission the node refused, or never received, is stored too, and every repeat gets
-its answer. When the store cannot be read, the facilitator cannot know whether the payment was submitted, so it answers
-`settlement_pending` with the id.
+- `/verify` and `/settle` refuse a payment whose fee the module's key would pay, `fee_budget_spent`, before anything is
+  sent. A payment whose payer pays the fee is never refused for it.
+- Each kind of the network states `extra.feeBudget: true`, so that a resource server learns that the settler may refuse
+  every payment on that network for a period.
 
-An answer with an empty `transaction` means nothing was submitted: on Tron always, and on Polkadot while the
-facilitator keeps the payment's row (until 24 hours after its validity window). After that, a repeated `/settle` of a
-Polkadot extrinsic that landed finds no row, the node's validation refuses it, and the answer is `invalid_transaction`
-with an empty `transaction`.
+The fee counted is what the chain shows. On an EVM network it is the gas used times its price and, on an OP Stack
+network, the L1 data fee the receipt shows (`l1Fee`); before inclusion, the gas limit times the fee cap, with the L1
+data fee the network's GasPriceOracle (`getL1Fee`) gives. On Hedera it is the fee the Mirror Node shows, asked for up
+to five seconds after the settle answers; where the mirror shows none by then, the `maxFee` the payer signed. The
+`evm`, `solana` and `aptos` modules count each transaction their key sends as it is sent, one their class does not
+name in its answer included: a payer's ERC-6492 wallet deployment on EVM, or a Solana transaction whose send failed.
 
-A payment whose success has been answered is consumed. On Polkadot, while the facilitator keeps the payment's row, a
-repeated `/settle` for it answers `invalid_transaction_state` with the success's `transaction`, never a second
-success, as x402's `exact` family requires: *"A consumed primitive MUST produce a settlement failure, never a
-success."* Of two concurrent settles of one payment, one answers success and the other that failure.
+At start the settler refuses a budget on a network no configured module serves, and one on a network where a module
+whose key pays fees can neither show the fee of what it sent nor count it as it sends: the `ton` and `concordium`
+modules, whose classes and lcp's reads give no fee.
 
-## API reference
+Its stated costs:
 
-The package's entry point exports:
+- A transaction is counted once it is sent (`evm`, `solana`, `aptos`) or once its settle answers (`algorand`,
+  `erc7710`, `hedera`, `near`), so settles that run at once on a nearly spent budget can each pass the check before the
+  first is counted. The `starknet` and `stellar` modules count each send before it is made, one at a time per network.
+- A transaction whose id is not known before it is sent is counted at its bound for the whole period, as well as at
+  the fee it paid once included. The count can exceed what was paid; it never falls short of it.
 
-| Export | Kind | What it is |
-|---|---|---|
-| `serveProfileFacilitator(config)` | `(c: ProfileFacilitatorConfig) => Promise<{ close(): Promise<void> }>` | Opens the store, starts the HTTP server and resolves once it listens. If it cannot start, it closes the store and rejects with the error that stopped it, such as the listen's `EADDRINUSE`. |
-| `ProfileFacilitatorConfig` | interface | The configuration above. |
+## What it does not serve
 
-### HTTP API
+- **MPP.** The settler answers x402's facilitator calls only, and serves none of MPP's calls.
+- **Sui's sponsored path.** x402's Sui scheme needs a gas station, whose wire its scheme does not state and whose caller
+  is the buyer's client, which does not hold the resource server's credential. An option that names one is refused
+  `invalid_payment_requirements`; the `sui` module holds no key.
+- **Hedera's transfer executor** (`x402/exact/hedera/transfer-executor`). No member of the configuration names an
+  executor, and x402's specification of the method admits none by default.
+- **Solana's channel forms on mainnet.** `x402/upto/solana` and `x402/batch-settlement/solana` need the payment-channels
+  program, which is not deployed on Solana mainnet; there only `exact` is registered.
+- **lcp's x402 pairings that another party settles.** `x402/exact/eip155/gateway-batched`, Circle's batched option,
+  which the `evm` module refuses, and `x402/batch-settlement/cloudflare`, on Cloudflare's `cloudflare:402` network,
+  which no module serves.
+
+## HTTP API
 
 | Request | Answer |
 |---|---|
-| `GET /supported` | `200` `{kinds, extensions: [], signers: {}}`, one kind per configured network. |
-| `POST /verify` | `200` `{isValid: true, payer}` or `{isValid: false, invalidReason, payer?}`; `400` `{isValid: false, invalidReason: "invalid_payload"}` when the body is not JSON. |
-| `POST /settle` | `200` `{success: true, transaction, network, payer}` or `{success: false, errorReason, transaction, network}`; `400` with `errorReason` `invalid_payload` when the body is not JSON. |
-| A body over 64 KiB | `413`, and the connection is closed. |
+| `GET /supported` | `200` `{kinds, extensions, signers}`. |
+| `POST /verify` | `200` `{isValid: true, payer}` or `{isValid: false, invalidReason, invalidMessage?, payer?}`; `400` `{isValid: false, invalidReason: "invalid_payload"}` when the body is not JSON. |
+| `POST /settle` | `200` `{success: true, transaction, network, payer}` or `{success: false, errorReason, errorMessage?, transaction, network}`; `400` with `errorReason` `invalid_payload` when the body is not JSON. |
+| A call without the credential, where one is configured | `401` `{error: "unauthorized"}` with `WWW-Authenticate: Bearer`, before the body is read; the connection is closed. |
+| A body over 132,096 bytes | `413`, and the connection is closed. |
 | Another method on a served path | `405` `{error}`. |
 | Any other path | `404` `{error}`. |
+| An error outside every answer | `500` `{error: "internal error"}`, once its entry is in the operator log. |
 
-The facilitator has no authentication of its own. Serve it on a private interface, or behind your own network
-controls, to the resource servers that use it.
+The body bound is twice lcp's `MAX_HEADER_BYTES` (65,536), the largest payment payload and the largest option lcp's
+x402 codec reads, and 1,024 bytes for the envelope.
 
 ### Reasons
 
 | Reason | `/verify` | `/settle` | Meaning |
 |---|---|---|---|
 | `invalid_x402_version` | yes | yes | `x402Version` is not 2 in the request or the payload. |
-| `unsupported_scheme` | yes | yes | `scheme` is not `"exact"`. |
-| `invalid_network` | yes | yes | The network is not one this facilitator is configured with. |
-| `invalid_payment_requirements` | yes | yes | The requirements are not ones the profile admits. |
-| `invalid_payload` | yes | yes | The payload does not match the profile or the requirements, or its signature or expiration fails. |
-| `unsupported_permission` | yes | yes | Tron: the transaction carries more than one signature, or the owner's permission does not accept its one signature (the key's weight is below the threshold). |
-| `invalid_transaction` | yes | yes | The node refuses the transaction in simulation or validation. On Tron this includes a reference block (TaPoS) that does not match the node's. |
-| `unexpected_verify_error` | yes | no | The node or the store could not be read. |
-| `unexpected_settle_error` | no | yes | The node could not be read before submission, or refused the submission, or the settle's `settleWaitMs` passed before a node read, or its wait for the chain ended before its claim or its submission. |
-| `settlement_pending` | no | yes | Submitted, or possibly submitted (the store could not be read), and not yet final or not yet stored when the wait ended. |
-| `invalid_transaction_state` | yes | yes | `/settle`: included and failed, or it can never be included. On Tron also a consumed payment: its success was already answered, or the node already holds its id. `/verify` (Tron): the node, in a block or its pending pool, or the store already holds the transaction id. On Polkadot, also a repeat of a payment whose success has been answered, or a submission the node refuses as one it has already seen (already imported, temporarily banned, or an outdated nonce). |
+| `invalid_network` | yes | yes | No configured module serves the network. |
+| `unsupported_scheme` | yes | yes | No module registers the scheme on the network. On `lnbtc`, every `/verify`. |
+| `invalid_payment_requirements` | yes | yes | The requirements are not ones the pairing's profile admits; an amount of zero where the kind does not take zero; a form outside the kind's pairings; an option the module refuses (each module's notes). |
+| `invalid_payload` | yes | yes | The payload does not match the profile or the requirements. |
+| `unsupported_permission` | yes | yes | Tron: the owner's permission does not accept the transaction's signatures. |
+| `invalid_transaction` | yes | yes | The node refuses the transaction in simulation or validation, in a module of the settler's own. |
+| `invalid_transaction_state` | yes | yes | `/verify`: the record or the chain already holds the payment. `/settle`: a repeat of a final row, or a payment the chain shows failed, consumed by another act, lapsed or landed by another route; each names the transaction where one is known. |
+| `fee_budget_spent` | yes | yes | The network's fee budget is spent, and the module's key would pay the fee. |
+| `settlement_pending` | no | yes | Submitted, or possibly submitted, and not yet final or not yet stored when the wait ended; `transaction` names it. |
+| `unexpected_verify_error` | yes | no | A node or the store could not be read. |
+| `unexpected_settle_error` | no | yes | A node or the store could not be read before submission, the settle's wait ended before it, or the submission failed with nothing sent. |
 
-`unsupported_permission` and `invalid_transaction` are this facilitator's, for a Tron owner permission that does not
-accept the transaction's one signature and for a transaction the node refuses in simulation or validation. The
-others are the x402 specification's.
+`unsupported_permission`, `invalid_transaction` and `fee_budget_spent` are the settler's own; the others are x402's. A
+published class's own reasons, such as `invalid_exact_evm_payload_signature`, pass unchanged.
 
-### Storage
+## Storage
 
-Postgres holds one table, created at start:
+Postgres holds three tables, created at start where they do not exist:
 
 ```sql
-CREATE TABLE IF NOT EXISTS settlement (
+CREATE TABLE IF NOT EXISTS instrument (
   network text NOT NULL,
-  id text NOT NULL,
+  key text NOT NULL,
+  pairing text NOT NULL,
+  claimed bigint NOT NULL,
+  held_until bigint NOT NULL,
+  final boolean NOT NULL DEFAULT false,
+  outcome text,
   answer jsonb,
-  until timestamptz NOT NULL,
-  since bigint,
-  unread bigint[] NOT NULL DEFAULT '{}',
-  PRIMARY KEY (network, id)
+  transaction text,
+  sent text[] NOT NULL DEFAULT '{}',
+  body text,
+  payer text,
+  search jsonb,
+  since jsonb,
+  keep_until bigint,
+  PRIMARY KEY (network, key)
 );
-CREATE INDEX IF NOT EXISTS settlement_final_until ON settlement (until)
-  WHERE answer IS NOT NULL AND answer->>'errorReason' IS DISTINCT FROM 'settlement_pending'
+CREATE INDEX IF NOT EXISTS instrument_final_keep ON instrument (keep_until) WHERE final AND keep_until IS NOT NULL;
+CREATE TABLE IF NOT EXISTS fee (
+  network text NOT NULL,
+  transaction text NOT NULL,
+  at bigint NOT NULL,
+  fee numeric(78, 0) NOT NULL,
+  included boolean NOT NULL,
+  PRIMARY KEY (network, transaction)
+);
+CREATE INDEX IF NOT EXISTS fee_at ON fee (network, at);
+CREATE TABLE IF NOT EXISTS module_state (
+  module text NOT NULL,
+  key text NOT NULL,
+  value jsonb NOT NULL,
+  PRIMARY KEY (module, key)
+)
 ```
 
-- One row per settled payment, keyed by network and transaction id (Tron) or extrinsic hash (Polkadot).
-- `answer` is null while the row is claimed and the answer is not yet written. A final answer is never replaced; a
-  pending one is replaced by what a later read of the chain shows, or by the stored answer to a broadcast or
-  submission the node refused or never received.
-- `until` is the end of the payment's validity window: Tron's `expiration`, or, for Polkadot, the end of the last
-  block that can include the extrinsic (the era's last, and no later than `System.BlockHashCount` + 1 blocks after its
-  birth), counted from the best block at 12 seconds a block.
-- A row whose answer is final (`success: true`, or a failure other than `settlement_pending`) is kept for 24 hours
-  after `until`, so a repeat in that time reads the stored answer before the expiration check and the node reads are
-  made again.
-- A row whose answer is not final (claimed with no answer, or `settlement_pending`) is kept, whatever its age, until a
-  repeated `/settle` reads the chain and writes a final answer, or the answer to a refused or unsent broadcast or
-  submission makes it final. A repeat therefore always finds the id of a payment this facilitator submitted, and never
-  answers with an empty `transaction` for it.
-- A claim is never removed. A broadcast or submission the node refuses, or that cannot have reached it, stores its
-  answer, final, in the claimed row: `invalid_transaction_state` with the id when the node says it already holds the
-  transaction, and `unexpected_settle_error` with an empty `transaction` for any other refusal or a request that cannot
-  have reached the node. Every repeat gets that stored answer, so a payment is submitted at most once.
-- A sweep every minute drops the rows whose answer is final and whose `until` is more than 24 hours past. It reads
-  them through `settlement_final_until`, an index that holds only rows with a final answer, so the rows it keeps add
-  nothing to its work.
-- `since` is, for Polkadot, the first block the scan has not yet read at finality.
-- `unread` is, for Polkadot, the finalized blocks below `since` that the node could not give. None of them is shown to
-  lack the extrinsic, so each is read again, and the answer that the extrinsic can never be included waits until the
-  list is empty. A scan's write keeps every block of the list that the scan did not read, so concurrent repeats lose
-  none. It holds at most one entry per block of the validity window.
-- The pool holds at most 10 connections. Acquiring a connection, each query and each statement are bounded by 5
-  seconds.
+- `instrument` is the record: `key` is the instrument, its kind and parts as a JSON array. `held_until` is when the
+  settle holding the claim may no longer send (0 once it answered); `answer` is the answer as first given, once
+  `final`; `transaction` the transaction the row names; `sent` every transaction the settler's submissions for the
+  claim named, any of which can be the one that lands; `body` the SHA-256 of the body that claimed the row, the only
+  body sent again; `search` where the next read resumes; `since` the chain's position read just before the claim; times
+  are Unix milliseconds.
+- `fee` is the fee count: one row per transaction a keyed module submitted on a network with a budget.
+- `module_state` is the modules' durable state, under each module's name: a class's pending settlements, Cardano's
+  broadcast guard, Solana's channels.
+- A sweep every minute drops the final rows kept 24 hours past their keep, and the fees older than the longest budget
+  period. The pool holds at most 10 connections; acquiring one, each query and each statement are bounded by 5 seconds.
 
-### Bounds and logs
+## Bounds and logs
 
-- Each node call has a timeout of at most 5 seconds and an answer of at most 4 MiB, except Polkadot's
-  `chain_getBlock`. Its bound is sized from the runtime's `System.BlockLength`, read from the metadata: 4 MiB, plus
-  9/2 of the largest class limit (an extrinsic of n encoded bytes is at most 2n + 5 JSON characters), plus 7 times
-  `maxHeaderSize`. For Polkadot Asset Hub's runtime 2005000 that is 28,504,064 bytes. At most 4 of these reads run at
-  once in one process, so block answers take at most 114,016,256 bytes for that runtime. A read waits for a free slot
-  until the scan's deadline; one that cannot start by then is recorded as unread, like a block the node cannot give,
-  and read again later. Every other node call has no such limit. On Tron, `/verify` makes six FullNode calls:
-  the account, the two id reads, the simulation and the head read at once, then the reference block read. A node call
-  is sent only while its bound leaves it time. In `/settle` that bound is the settle's deadline for the node reads
-  before the claim, and the end of the wait for the chain for the submission and the reads that follow the chain:
-  that wait ends a second before the deadline (a quarter of a shorter `settleWaitMs`), the time kept for storing the
-  answer. A call its bound leaves no time for is not sent. A Polkadot metadata load serves every request for its
-  network, so no request's deadline bounds it: the load has 30 seconds as a whole, and each of its calls has the node
-  call bound within the time the load has left. Once the 30 seconds have passed, the load is given up: it has no call
-  in flight and sends no further call, and a later request starts a fresh load.
-- A request body is at most 64 KiB. The server's request timeout is `settleWaitMs` plus 60 seconds.
-- The table holds a row with a final answer until 24 hours after its validity window ends. A row with no final answer
-  stays until a repeated `/settle` for it gives one. Each such row is a payment that passed every check and was
-  claimed for submission; it is one row of fixed columns, the sweep's index does not hold it, and each repeat reads the
-  chain within `settleWaitMs`. On Tron, one repeat made once the latest solidified block is two slots past the
-  expiration gives a final answer whenever the nodes answer its reads, each naming a latest block at or past that one.
-- The facilitator gives its operator log (`operatorLog`; by default one JSON line on standard error) what the operator
-  should see and the answer does not carry, each entry with `network`, `payer` and `transaction` where they are known:
-  `settlement-failed` (with the events, or the receipt result and why the transfer does not count, that the chain
-  shows), `settlement-expired`, `answer-not-stored`, `block-unreadable` (a Polkadot block the node does not give, with
-  the node's reason; `final` when it was read at finality and is recorded as unread), `block-read-stopped` (a block read
-  the settle's deadline ended) and `settlement-consumed` (a repeated `/settle` of a Polkadot payment whose success has
-  been answered). Each error the facilitator turns into an answer or a retry is an entry with the error as its cause:
-  `verify-error`, `settle-error` and `request-error` (an error the request's handling threw), `node-call-failed` and
-  `store-call-failed` (with the `call`), and `store-connection-error`. Every `unexpected_verify_error` and
-  `unexpected_settle_error` answer has an entry that names why, written when it is first given (a repeated `/settle`
-  gets the stored answer), with the call or the bound: an error's entry above;
-  `node-call-failed` for a node answer the facilitator cannot read, its cause a `malformed` error naming the part, and
-  for a Tron broadcast the node does not accept, its cause the node's `code` and `message`; and
-  `settle-deadline-passed` for a settle whose deadline passed before its node reads or one of their node calls, or
-  whose wait for the chain ended before its claim or its submission, with `before`, the step it did not start
-  (`node reads` or `claim`, and on Polkadot, once the extrinsic is decoded, `finalized head` or `validation`) or the
-  call it did not send, named as `node-call-failed` names it, and `settleWaitMs`. A read made while following the
-  chain (a Tron status read, a Polkadot head or block read) that the wait for the chain leaves no time for is not
-  sent and writes no entry: the answer is the one the wait's end gives.
-  A request refused for its own bytes (a body that is not JSON, a signature
-  that recovers no key, an extrinsic that does not decode) is answered to its client and not logged, and a client that
-  leaves before its request body is complete writes no entry: the connection is destroyed.
-  `@polkadot/api`, which loads each Polkadot network's metadata, also writes its own lines (not JSON) on standard error
-  when that load fails; the facilitator's entry for it is `node-call-failed` with `call: metadata`.
+- Each node call the settler makes itself has a timeout of at most 5 seconds and an answer of at most 4 MiB, except
+  Polkadot's block reads, bounded by the runtime's `System.BlockLength` (at most 4 of them at once in a process). A
+  published class's calls are bounded by the class, and its settle takes no deadline: `settleWaitMs` bounds the
+  settler's own reads and store calls, and a class's settle runs on its own bounds.
+- `/settle`'s reads and submission end a second before `settleWaitMs` (a quarter of a shorter wait), the time kept for
+  storing the answer. The server's request timeout is `settleWaitMs` plus 60 seconds.
+- An error names a node by its origin alone, since a URL's path or query can hold an API key.
+- The operator log (`operatorLog`; by default one JSON line on standard error) receives what the operator should see
+  and the answer does not carry, each entry with `network`, `payer` and `transaction` where they are known, and the
+  error that caused it as `cause`. The answer to the client is the same either way and carries nothing from the cause.
+  A log that throws, or returns a promise that rejects, changes no answer: the entry is written by the default, with an
+  `operator-log-failed` entry. The core's entries are `verify-error`, `settle-error` and `request-error` (an error the
+  handling threw); `read-failed` and `position-unread` (lcp's read, or the position before a claim, could not be made);
+  `store-call-failed` (with the `call`), `store-connection-error` and `answer-not-stored`; `settle-deadline-passed`
+  (with `before`, the step not started); `claim-unread` (a held claim whose read told nothing); `success-not-stored`;
+  and `fee-not-counted`. Each module adds its own, such as `node-call-failed` and `settlement-failed`. Every
+  `unexpected_verify_error` and `unexpected_settle_error` has an entry that names why, written when it is first given.
 
-## Security model and guarantees
+## Tests and the test database
 
-- **No key, no fee.** The facilitator signs nothing. It submits exactly the bytes the payer signed, and the payer pays
-  every fee, as both profiles require.
-- **Settled once.** Settlements are deduplicated by transaction id or extrinsic hash, atomically, for as long as the
-  answer is not final, and for at least 24 hours after the validity window ends. A payment is answered success once,
-  across every process that shares the store, to the `/settle` whose write stores it, on Tron and on Polkadot. On
-  Tron, a transaction id the node already holds is refused.
-- **Success only from the chain.** `success: true` is given only when a node shows the transaction in a block with
-  the facilitator's success conditions: on Tron, receipt result `SUCCESS`, which the profile requires, and a `Transfer`
-  log from the token. A success read at the head, above the solidified or finalized block, can be reorganised out of
-  the chain.
-- **What it does not check.** It checks that the payment carries H in the profile's form, not which H the seller issued.
-  Its store claims a payment's id once, so the payment is submitted once. On Tron and on Polkadot, a success is answered
-  only by the settle whose write stored it, and a repeated `/settle` of that payment answers `invalid_transaction_state`
-  with the transaction: on Tron from the stored answer or, once the row is gone, from the FullNode's blocks; on Polkadot
-  while the facilitator keeps the payment's row (until 24 hours after its validity window). Each profile's rule 6 puts
-  the remaining checks on the resource server: it accepts a payment only when the payment's H is one it issued for that
-  request and has not seen claimed. The facilitator checks the amount, asset and payee against the requirements it is
-  given because x402 requires that of a facilitator, and carries no business or legal logic beyond that.
+The tests feed lcp's vectors for each module's pairings through the settler's `/verify` and `/settle`, against local
+node stubs that replay recorded node answers (`test/fixtures/tron-mainnet-answers.json`, Polkadot Asset Hub's runtime
+metadata in `test/fixtures/polkadot-asset-hub-2005000.json.gz`) or answers derived from the pairing's profile. They
+need Postgres: set `INTEGRA_DATABASE_URL` to a connection string whose user may create databases. Each test file makes
+and drops its own database, so test runs share one server. CI runs them against a Postgres 18 service.
 
-## Test vectors and conformance
-
-The tests check each profile's rule 5 against local node stubs, with the transactions of `@integraledger/lcp`'s
-shared vectors. The Tron stubs answer with Tron mainnet's recorded answers (`test/fixtures/tron-mainnet-answers.json`),
-and the Polkadot stub with Polkadot Asset Hub's recorded runtime metadata
-(`test/fixtures/polkadot-asset-hub-2005000.json.gz`); the Tron account, block and transaction reads follow
-java-tron's HTTP answers and its signature and TaPoS checks. They cover two concurrent settles of one payment (one
-submission), repeated settles while the node is down, a settle that finds its id claimed and unanswered, the end of
-each validity window (Tron's expiration and Polkadot's mortal era, capped by `System.BlockHashCount`), and a
-Polkadot remark that spells H with upper-case digits, refused before the node is asked. On Tron they also cover the
-owner's permission, TaPoS, a transaction id the node (in a block or its pending pool) or the store already holds,
-before and after the expiration and after the sweep has dropped the payment's row, a consumed payment, and a `SUCCESS`
-receipt with and without the token's `Transfer` log, including the live USDT-TRC20 receipt whose `transfer` returned
-false. On Polkadot they also cover a repeat of a consumed payment, a block answer over 4 MiB and one over the
-`System.BlockLength` bound, and a block the node cannot give, before and after the era's end. They need
-`INTEGRA_DATABASE_URL` set to a Postgres database.
-
-## Requirements
-
-- Node.js `>=24`.
-- Postgres; the tests run on Postgres 18.
-- For Tron, a FullNode and a Solidity node with java-tron's HTTP API: the FullNode serves `/wallet/getaccount`,
-  `/wallet/getnowblock`, `/wallet/getblock`, `/wallet/gettransactionbyid`, `/wallet/gettransactionfrompending`,
-  `/wallet/triggerconstantcontract`, `/wallet/broadcasthex` and `/wallet/gettransactioninfobyid`. The FullNode keeps
-  the block history, not a lite FullNode: `/wallet/gettransactionbyid` finds a transaction only in the blocks the node
-  holds, and it answers a repeated `/settle` of a payment whose row is gone.
-- For Polkadot, an Asset Hub RPC node that serves JSON-RPC over HTTP. A node that keeps the state of every block (an
-  archive node) gives the events of any block; a pruning node discards the state of older blocks, and a block that
-  holds the extrinsic and whose state is discarded keeps the answer `settlement_pending`.
+```sh
+INTEGRA_DATABASE_URL=postgres://postgres@127.0.0.1:5432/postgres pnpm --filter @integraledger/profile-facilitator test
+```
 
 ## Contributing
 
 See the [repository's README](https://github.com/IntegraLedger/integra-protocol#readme) and
-[CONTRIBUTING.md](https://github.com/IntegraLedger/integra-protocol/blob/main/CONTRIBUTING.md).
+[CONTRIBUTING.md](https://github.com/IntegraLedger/integra-protocol/blob/main/CONTRIBUTING.md). The settler's
+documentation is also at [lcp.integraledger.com](https://lcp.integraledger.com/guides/settler).
 
 ## License
 

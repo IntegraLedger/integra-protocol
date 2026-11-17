@@ -30,7 +30,7 @@ sequenceDiagram
 ```
 
 The **facilitator** is the x402 role that verifies and settles. It is the seller's to choose; this package does not
-call it.
+call it. This repository's [settler](../concepts/settler.md) is one, for the x402 pairings this package implements.
 
 ## 1. Assemble the ATR for this request
 

@@ -7,7 +7,9 @@ import type { OperatorEntry } from "../src/answers.js";
 import {
   outcomeOf,
   type ChainRead,
+  type Charged,
   type Claim,
+  type Core,
   type Descriptor,
   type FeeMeter,
   type FeeNeeds,
@@ -17,15 +19,16 @@ import {
   type Keep,
   type KeyPurpose,
   type Module,
+  type ModuleStarter,
+  type ModuleState,
   type ReadAnswer,
   type RecordNeeds,
   type Refused,
   type Registration,
+  type Started,
   type X402Payment,
 } from "../src/module.js";
-import type { SettlementStore } from "../src/store.js";
-import { createTron } from "../src/tron.js";
-import { tronModules } from "../src/tron-module.js";
+import { createTron, tronModules } from "../src/modules/tron/index.js";
 import { fixture, stub, type Stub } from "./support.js";
 
 // The lcp vectors' V2 payment, as test/tron.test.ts builds it: the raw data, its id, its payer's key and its expiration.
@@ -102,8 +105,6 @@ function receiptV2() {
 
 const entries: OperatorEntry[] = [];
 const log = (e: OperatorEntry) => void entries.push(e);
-/** The module's record and fees, the members read here, never reach the store. */
-const store = {} as SettlementStore;
 let node: Stub | undefined;
 afterEach(async () => {
   await node?.close();
@@ -113,7 +114,7 @@ afterEach(async () => {
 
 async function tronOn(answer: (path: string, body: unknown) => unknown): Promise<Module> {
   node = await stub(answer);
-  const rail = createTron([{ network: NETWORK, fullNode: node.url, solidityNode: node.url }], store, 30_000, log);
+  const rail = createTron([{ network: NETWORK, fullNode: node.url, solidityNode: node.url }], 30_000, log);
   const modules = tronModules(rail, log);
   expect(modules).toHaveLength(1);
   return modules[0]!;
@@ -131,7 +132,6 @@ describe("the module contract", () => {
     expectTypeOf<KeyPurpose>().toEqualTypeOf<"none" | "relayer" | "fee-payer">();
     expectTypeOf<Descriptor["pairings"]>().toEqualTypeOf<readonly PairingId[]>();
     expectTypeOf<Descriptor["acceptsZero"]>().toEqualTypeOf<boolean>();
-    expectTypeOf<NonNullable<Descriptor["added"]>>().toHaveProperty("gasStation");
     expectTypeOf<RecordNeeds["instrument"]>().parameter(0).toEqualTypeOf<X402Payment>();
     expectTypeOf<RecordNeeds["instrument"]>().returns.resolves.toEqualTypeOf<Instrumented | Refused>();
     expectTypeOf<RecordNeeds["read"]>().returns.resolves.toEqualTypeOf<ChainRead>();
@@ -146,6 +146,19 @@ describe("the module contract", () => {
     expectTypeOf<Registration>().toHaveProperty("own").toEqualTypeOf<readonly Handoff[]>();
     expectTypeOf<Instrument>().toHaveProperty("network").toEqualTypeOf<Network>();
     expectTypeOf<X402Payment["payload"]>().toEqualTypeOf<PaymentPayload>();
+    expectTypeOf<Descriptor["verifiesLanded"]>().toEqualTypeOf<true | undefined>();
+    expectTypeOf<Descriptor["verifyForbidden"]>().toEqualTypeOf<true | undefined>();
+    expectTypeOf<NonNullable<FeeNeeds["charged"]>>().parameter(1).toEqualTypeOf<{
+      readonly transaction: string;
+      readonly deadline: number;
+    }>();
+    expectTypeOf<NonNullable<FeeNeeds["charged"]>>().returns.resolves.toEqualTypeOf<Charged>();
+    expectTypeOf<Charged>().toEqualTypeOf<{ readonly fee: bigint; readonly included: boolean }>();
+    expectTypeOf<ModuleStarter<{ a: 1 }>["start"]>().parameters.toEqualTypeOf<[{ a: 1 }, Core]>();
+    expectTypeOf<ModuleStarter<{ a: 1 }>["start"]>().returns.resolves.toEqualTypeOf<Started>();
+    expectTypeOf<Started["registrations"]>().toEqualTypeOf<readonly Registration[]>();
+    expectTypeOf<Core["state"]>().toEqualTypeOf<ModuleState>();
+    expectTypeOf<Core["meter"]>().returns.toEqualTypeOf<FeeMeter>();
   });
 
   it("maps every state of lcp's read to final or live", () => {
@@ -166,7 +179,7 @@ describe("the module contract", () => {
 });
 
 describe("the Tron module", () => {
-  it("has every member, and states its kind as the rail's /supported does, with the settler's members beside it", async () => {
+  it("has every member, and states its kind as the rail's /supported does, with the settler's members added", async () => {
     const m = await tronOn(() => ({}));
     expect(Object.keys(m).sort()).toEqual(["descriptor", "facilitator", "fees", "network", "record"]);
     expect(m.descriptor).toEqual({ name: "tron", key: "none", pairings: ["x402/exact/tron/lcp-trc20-memo"], acceptsZero: false });

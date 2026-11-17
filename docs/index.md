@@ -74,26 +74,28 @@ These pages use each term in one sense:
 | Working on one protocol | [x402](./guides/x402.md), [MPP](./guides/mpp.md), or [agentic checkouts](./guides/checkouts.md) for ACP, UCP, AP2, ACK, card networks and A2A. |
 | Working on one chain | [Rails](./guides/rails.md): the field H rides in on each chain and on Lightning. |
 | Publishing your terms | [Discovery](./guides/discovery.md): the document at `/.well-known/legal-context.json`. |
+| Running an x402 facilitator | [The settler](./concepts/settler.md) and [Run the settler](./guides/settler.md): this repository's facilitator for its x402 pairings. |
 | Implementing LCP in another language | [Vectors](./concepts/vectors.md) and the [vector files](./reference/vectors.md). |
 
 ## The documentation
 
 - **Concepts** explain each rule: [the ATR](./concepts/atr.md), [the ATR hash](./concepts/atr-hash.md),
   [binding](./concepts/binding.md), [pairings](./concepts/pairings.md), [the buyer gate](./concepts/buyer-gate.md),
-  [refusals](./concepts/refusals.md) and [vectors](./concepts/vectors.md).
+  [refusals](./concepts/refusals.md), [vectors](./concepts/vectors.md) and [the settler](./concepts/settler.md).
 - **Guides** walk each flow with a program you can run: [seller](./guides/seller.md), [buyer](./guides/buyer.md),
   [channels, sessions and subscriptions](./guides/sessions.md), [x402](./guides/x402.md), [MPP](./guides/mpp.md),
-  [agentic checkouts](./guides/checkouts.md), [rails](./guides/rails.md) and [discovery](./guides/discovery.md).
+  [agentic checkouts](./guides/checkouts.md), [rails](./guides/rails.md), [discovery](./guides/discovery.md) and
+  [running the settler](./guides/settler.md).
 - **Reference**: [entry points](./reference/entry-points.md), [pairings](./reference/pairings.md),
   [vector files](./reference/vectors.md) and the [API](./reference/api/index.md) are generated from the package;
   [refusal codes](./reference/refusals.md) is written by hand, and CI checks that it lists every code the package
-  returns.
+  returns. The [settler reference](./reference/settler.md) is written by hand.
 
 A citation `LCP §N` names section N of the published
 [Legal Context Protocol v1.0](https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md).
 
 Every TypeScript program in these pages is compiled and run against the package in CI, and its output is checked
-against what the page shows.
+against what the page shows, except the settler's, which need a Postgres database and are marked `no-check`.
 
 ## For AI agents
 

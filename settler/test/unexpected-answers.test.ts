@@ -71,7 +71,7 @@ describe("the unexpected answers", () => {
       "unexpected_verify_error",
     ]);
     // The read reached the code: every rail's file, both answers given in the helper, and the union's literal type.
-    expect(source.files).toEqual(expect.arrayContaining(["src/index.ts", "src/tron.ts", "src/polkadot.ts", HELPER]));
+    expect(source.files).toEqual(expect.arrayContaining(["src/index.ts", "src/modules/tron/rail.ts", "src/modules/polkadot/rail.ts", HELPER]));
     expect([...new Set(values.map((s) => s.text))].sort()).toEqual(ANSWERS);
     expect(source.spellings.filter((s) => s.type).map((s) => [s.file, s.text])).toEqual([
       ["src/answers.ts", "unexpected_verify_error"],

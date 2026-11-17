@@ -66,7 +66,7 @@ export function countingSleep<T extends { sleep(ms: number): Promise<void> }>(ht
   };
 }
 
-/** The node and store calls the facilitator has made whose answers have not arrived, as `lateResume` and `lateStore` count them. */
+/** The node calls the facilitator has made whose answers have not arrived, as `lateResume` counts them. */
 let unanswered = 0;
 /**
  * Every node call the facilitator has asked its `postJson` for since the clock was installed, by its URL and body, in
@@ -115,52 +115,8 @@ export function lateResume<
   };
 }
 
-/** The store reads and claims the facilitator has asked for, by their promise, with what `resumeLate` matches. */
-const storeCalls = new WeakMap<Promise<unknown>, { call: string; body: { network: string; id: string } }>();
-
 /**
- * The facilitator's `store.js` with its store's reads and claims able to go on late, for `vi.mock`, as `lateResume`
- * holds a node call: the answer arrives within the bound the facilitator sets on it (`inTime`), and the facilitator
- * goes on with it only when the test opens it. `resumeLate` names a read as the call `store.read`, and a claim as
- * `store.claim`, each with `{ network, id }` as its body. Every call is the store's own.
- */
-export function lateStore<
-  T extends {
-    openStore(...args: never[]): Promise<{
-      read(network: string, id: string): Promise<unknown>;
-      claim(network: string, id: string, until: Date, since?: number): Promise<boolean>;
-    }>;
-    inTime<A>(p: Promise<A>, deadline: number): Promise<A>;
-  },
->(store: T): T {
-  return {
-    ...store,
-    async openStore(...args: Parameters<T["openStore"]>) {
-      const opened = await store.openStore(...args);
-      return {
-        ...opened,
-        read(network: string, id: string) {
-          const read = opened.read(network, id);
-          storeCalls.set(read, { call: "store.read", body: { network, id } });
-          return read;
-        },
-        claim(network: string, id: string, until: Date, since?: number) {
-          const claim = opened.claim(network, id, until, since);
-          storeCalls.set(claim, { call: "store.claim", body: { network, id } });
-          return claim;
-        },
-      };
-    },
-    inTime<A>(p: Promise<A>, deadline: number) {
-      const made = storeCalls.get(p);
-      const bounded = store.inTime(p, deadline);
-      return made === undefined ? bounded : goOn(made.call, made.body, () => bounded);
-    },
-  };
-}
-
-/**
- * Holds the facilitator at the answer to the next call `matches` names, through `lateResume` or `lateStore`:
+ * Holds the facilitator at the answer to the next call `matches` names, through `lateResume`:
  * `arrived()` once that answer is in and no other call is waiting for its answer, and `resume()` lets the facilitator go
  * on with it.
  */
@@ -170,7 +126,7 @@ export function resumeLate(matches: (call: string, body: unknown) => boolean): {
   return { arrived: () => held.arrived && unanswered === 0, resume: () => held.resume.open() };
 }
 
-/** How many node and store calls the facilitator has made whose answers have not arrived. */
+/** How many node calls the facilitator has made whose answers have not arrived. */
 export function unansweredCalls(): number {
   return unanswered;
 }
@@ -274,18 +230,6 @@ export function controlledClock(date?: number): Clock & { restore(): void } {
     },
   };
   return clock;
-}
-
-/**
- * Counts the claims made on `settlement`: every insert the store attempts, including one that finds the id already
- * claimed and inserts nothing. Reads the count through `pool`. The table must exist (the facilitator creates it).
- */
-export async function claimAttempts(pool: pg.Pool): Promise<() => Promise<number>> {
-  await pool.query(`CREATE TABLE claim_attempt (n bigserial PRIMARY KEY, id text NOT NULL);
-    CREATE FUNCTION count_claim() RETURNS trigger LANGUAGE plpgsql AS $$
-      BEGIN INSERT INTO claim_attempt (id) VALUES (NEW.id); RETURN NEW; END $$;
-    CREATE TRIGGER count_claim BEFORE INSERT ON settlement FOR EACH ROW EXECUTE FUNCTION count_claim();`);
-  return async () => Number((await pool.query<{ n: string }>("SELECT count(*) AS n FROM claim_attempt")).rows[0]!.n);
 }
 
 export function databaseUrl(): string {

@@ -1,7 +1,7 @@
 /**
  * What a module gives the settler's core, for one scheme on one network. A module is an x402 facilitator for that
  * scheme and network (`SchemeNetworkFacilitator` of `@x402/core`), either a class x402 publishes or the settler's own,
- * with three things beside it: a descriptor, which the kind's `extra` in `/supported` states; what the record needs to
+ * with three things alongside it: a descriptor, which the kind's `extra` in `/supported` states; what the record needs to
  * key a payment, keep its row and tell a final answer from a live one; and what a fee budget needs to count the fees
  * the module's key pays.
  *
@@ -11,7 +11,16 @@
  * reached through that class's registration, by a claim, never by a second registration.
  */
 import type { PairingData, PairingId, StatusAnswer } from "@integraledger/lcp";
-import type { Network, PaymentPayload, PaymentRequirements, SchemeNetworkFacilitator } from "@x402/core/types";
+import type { PendingSettlementStore } from "@x402/core/facilitator";
+import type {
+  FacilitatorContext,
+  FacilitatorExtension,
+  Network,
+  PaymentPayload,
+  PaymentRequirements,
+  SchemeNetworkFacilitator,
+} from "@x402/core/types";
+import type { OperatorLog } from "./answers.js";
 
 /** The settler's modules, one per chain form, each loaded only where its network is configured. */
 export type ModuleName =
@@ -22,17 +31,14 @@ export type ModuleName =
   | "concordium"
   | "erc7710"
   | "evm"
-  | "evm-mpp"
   | "hedera"
   | "lnbtc"
   | "near"
   | "polkadot"
   | "solana"
-  | "stacks"
   | "starknet"
   | "stellar"
   | "sui"
-  | "tempo"
   | "ton"
   | "tron"
   | "xrpl";
@@ -46,17 +52,8 @@ export type ModuleName =
  */
 export type KeyPurpose = "none" | "relayer" | "fee-payer";
 
-/** Members of a kind's `extra` that a module adds beside the settler's own, each a published scheme's member. */
-export interface AddedExtra {
-  /**
-   * Sui, where the module sponsors gas: the endpoint of the gas station the module serves, which the option carries, so
-   * that the buyer's client asks it to fill the transaction's gas data.
-   */
-  readonly gasStation?: string;
-}
-
 /**
- * What the kind states in `/supported`, beside the members its x402 facilitator's `getExtra` returns, which are kept
+ * What the kind states in `/supported`, with the members its x402 facilitator's `getExtra` returns, which are kept
  * unchanged. The fee budget's `extra.feeBudget` is the core's, stated from the operator's configuration.
  */
 export interface Descriptor {
@@ -73,8 +70,36 @@ export interface Descriptor {
    * needs to know. True only where every pairing in `pairings` takes zero.
    */
   readonly acceptsZero: boolean;
-  /** Further members of `extra`, where the module adds any. */
-  readonly added?: AddedExtra;
+  /**
+   * Set where the module's `/verify` judges a payment that has already landed, by what the chain shows of it, and does
+   * not refuse it for having landed: the core then asks neither its record nor the chain whether the instrument is
+   * held before that `/verify`. Every other module's `/verify` refuses an instrument the record or the chain already
+   * holds, since `isValid: true` tells the caller that a settle may follow.
+   */
+  readonly verifiesLanded?: true;
+  /**
+   * Set where the module's scheme forbids `/verify`, as x402's `exact` scheme on Lightning does: the core answers
+   * `/verify` `unsupported_scheme` before anything else, and `/settle` still runs the module's own checks before it
+   * submits.
+   */
+  readonly verifyForbidden?: true;
+}
+
+/**
+ * The call a facilitator's `verify` is made for: `verify`, the caller's `/verify`; `settle`, the check `/settle` makes
+ * before it submits. A scheme can check the two otherwise: x402's `upto` on XRPL refuses at `/verify` a payload carrying
+ * the settlement transaction the resource server adds at `/settle` alone, and at `/settle` checks that transaction,
+ * against the maximum the payment authorises rather than the charge.
+ */
+export type Phase = "verify" | "settle";
+
+/** The key of the extension of x402's `FacilitatorContext` by which the core names the phase of a `verify`. */
+export const PHASE = "settler-phase";
+
+/** The phase a facilitator's `verify` is called in, from the context the core gives it: `verify` where it names none. */
+export function phaseOf(context?: FacilitatorContext): Phase {
+  const named = context?.getExtension<FacilitatorExtension & { readonly phase?: unknown }>(PHASE);
+  return named?.phase === "settle" ? "settle" : "verify";
 }
 
 /** One payment, as the x402 calls carry it: the payload as presented, and the requirements of the option it answers. */
@@ -154,9 +179,13 @@ export interface Instrumented {
   readonly keep: Keep;
 }
 
-/** A payment the form's pure checks refuse, with x402's reason; nothing is read and nothing is recorded. */
+/**
+ * A payment the form's pure checks refuse, with x402's reason; nothing is read and nothing is recorded. `message` is
+ * lcp's refusal code where lcp gave one, which the answer carries as x402's `invalidMessage` or `errorMessage`.
+ */
 export interface Refused {
   readonly refused: string;
+  readonly message?: string;
 }
 
 /** An answer of lcp's read, as `status` answers it, its ledger position, marks and search position the pairing's own. */
@@ -164,9 +193,9 @@ export type ReadAnswer = StatusAnswer<unknown, unknown, unknown>;
 
 /**
  * The answers after which the instrument can never land again: `settled`, a success; `failed`, with a failed result
- * that consumed the single-use value (`transaction-failed`), a value another act consumed (`instrument-consumed`), or a
- * validity that passed with the value unconsumed (`instrument-unused`). The settler gives lcp's read no position, so
- * `before-position` does not arise; were it given one, the act at or before it would have consumed the value.
+ * that consumed the single-use value (`transaction-failed`), a value another act consumed (`instrument-consumed`), a
+ * validity that passed with the value unconsumed (`instrument-unused`), or an act at or before the position the read
+ * was given (`before-position`), which consumed the value before anything the settler sent could land.
  */
 export type FinalAnswer = Extract<ReadAnswer, { readonly state: "settled" | "failed" }>;
 
@@ -201,9 +230,23 @@ export interface RecordNeeds<P = X402Payment> {
    * where a check or the node shows the single-use value used, and what a claim the record already holds reads before
    * anything is sent again. Called only for a payment `instrument` accepted. Its node calls end by `deadline`, a
    * `performance.now()` time. `search` is the search position an earlier live answer returned, which the read resumes
-   * from.
+   * from. `from` is what `position` answered at the payment's claim, where the module gives `position` and the record
+   * holds a claim; a read without it searches as the pairing does with no position given. `transaction` is the
+   * transaction the record holds for the claim, the one the module's `settle` named (or the instrument's own id), where
+   * it holds one, for a pairing whose read reads a transaction its caller names.
    */
-  read(payment: P, at: { readonly deadline: number; readonly search?: unknown }): Promise<ChainRead>;
+  read(
+    payment: P,
+    at: { readonly deadline: number; readonly search?: unknown; readonly from?: unknown; readonly transaction?: string },
+  ): Promise<ChainRead>;
+  /**
+   * Where a pairing's read searches from a position at issue that no x402 call carries (a ledger, a slot, a round): the
+   * chain's position for the payment, read from the module's node just before the settler claims it, so that nothing
+   * the settler submits can land before it. The core calls it once per claim, keeps what it answers in the row, and
+   * gives it back to every later `read` of the payment as `from`. Its node calls end by `deadline`. A failure leaves the
+   * row without one.
+   */
+  position?(payment: P, at: { readonly deadline: number }): Promise<unknown>;
 }
 
 /** What a fee budget needs of a module, for every payment it claims. */
@@ -215,6 +258,28 @@ export interface FeeNeeds<P = X402Payment> {
    * never refused for a spent budget.
    */
   payerBroadcast(payment: P): boolean;
+  /**
+   * For a facilitator that sends inside its own `settle` and never calls `FeeMeter.sending`, as a published class does:
+   * given the payment and the transaction the facilitator's `settle` named, the fee the chain shows the transaction
+   * paid once it is included, or until then the most it can pay as its own fields bound it, in the smallest unit of the
+   * network's fee asset. It may read the node; its calls end by `deadline`, a `performance.now()` time its own and
+   * not the request's. The core asks it after each such `settle` whose payment `paysFee`, once the answer is stored,
+   * and again once the record makes the payment final, and counts what it answers. Before such a `settle` the core
+   * refuses the payment `fee_budget_spent` where the network's budget is spent. The core counts only the transactions
+   * a `settle` names: one its facilitator sends without naming it (a published class's deployment of the payer's
+   * wallet; a send whose wait for its receipt threw) the module counts through its `FeeMeter`, or names. An own module
+   * that calls `FeeMeter` leaves it out. A network's fee budget is refused at the settler's start where a module with a
+   * key on it neither gives this nor takes its network's meter at its start.
+   */
+  charged?(payment: P, sent: { readonly transaction: string; readonly deadline: number }): Promise<Charged>;
+}
+
+/** A transaction's fee as `FeeNeeds.charged` answers it. */
+export interface Charged {
+  /** In the smallest unit of the network's fee asset. */
+  readonly fee: bigint;
+  /** True where the chain shows the transaction included and `fee` is what it paid; false where `fee` is its bound. */
+  readonly included: boolean;
 }
 
 /** One transaction a module is about to send whose fee its key pays. */
@@ -243,9 +308,18 @@ export interface Included {
 export interface FeeMeter {
   sending(sending: Sending): Promise<boolean>;
   included(included: Included): void;
+  /**
+   * Counts a transaction the module's key sent without `sending` before it: one a published class sends inside its own
+   * `settle` and does not name in its answer, as x402's EVM classes deploy a payer's ERC-6492 wallet before its payment.
+   * `shown` reads what the chain shows of its fee, as `FeeNeeds.charged` answers it, or undefined where the node holds
+   * no such transaction; the meter calls it only where the network has a budget, and counts what it answers whatever
+   * the budget's state, the transaction being sent. Called again once the chain may show more, it counts again, a paid
+   * fee never replaced by a bound.
+   */
+  sent(transaction: string, shown: () => Promise<Charged | undefined>): void;
 }
 
-/** A module: an x402 facilitator for one scheme on one network, and what the core needs beside it. */
+/** A module: an x402 facilitator for one scheme on one network, and what the core needs with it. */
 export interface Module<P = X402Payment> {
   readonly descriptor: Descriptor;
   /** The network, exactly one. */
@@ -282,4 +356,65 @@ export interface Registration {
   readonly network: Network;
   readonly module: Module;
   readonly own: readonly Handoff[];
+}
+
+/**
+ * Durable state a module keeps in the settler's database, under its own name: a pending settlement, an `upto`
+ * channel, a scan position. Each value is JSON, a `bigint` within it kept as one. Every call is bounded as the
+ * record's are, and a call that fails rejects.
+ */
+export interface ModuleState {
+  get(key: string): Promise<unknown>;
+  set(key: string, value: unknown): Promise<void>;
+  /**
+   * Writes `value` only where the stored value equals `expected` as JSON, `undefined` being no value stored; true where
+   * this call wrote it. Two callers that swap from one value never both write.
+   */
+  swap(key: string, expected: unknown, value: unknown): Promise<boolean>;
+  delete(key: string): Promise<void>;
+  /** x402's `PendingSettlementStore` over this state, for a published class that takes one. */
+  pendingSettlements(): PendingSettlementStore;
+}
+
+/** What the core gives a module at its start. */
+export interface Core {
+  /** The operator log: what an answer does not carry, one entry per event. */
+  readonly log: OperatorLog;
+  /** How long a `/settle` waits for the chain before it answers, in milliseconds. */
+  readonly settleWaitMs: number;
+  /** The module's durable state. */
+  readonly state: ModuleState;
+  /**
+   * The fee meter of `network`, for an own module whose key pays fees there, taken at the module's start: the core
+   * refuses a fee budget on a network where a module with a key neither took it nor gives `FeeNeeds.charged`.
+   */
+  meter(network: Network): FeeMeter;
+}
+
+/** An own module offered to the registration another module makes of a scheme on a network. */
+export interface OfferedHandoff {
+  readonly scheme: string;
+  readonly network: Network;
+  readonly handoff: Handoff;
+}
+
+/**
+ * A module once started: its registrations, one per scheme and network; the own modules it offers to registrations
+ * other modules make, which the core puts behind each such registration's own modules, in the order of the modules'
+ * list, and refuses at start where no module registers that scheme and network; and what closes what it opened.
+ */
+export interface Started {
+  readonly registrations: readonly Registration[];
+  readonly handoffs?: readonly OfferedHandoff[];
+  close?(): Promise<void>;
+}
+
+/**
+ * How the core starts a module from configuration alone: the configuration's member named for the module is `C`, and
+ * the module's keys reach it inside `C` as the signer objects its classes take. A module whose configuration names no
+ * network is not started.
+ */
+export interface ModuleStarter<C> {
+  readonly name: ModuleName;
+  start(config: C, core: Core): Promise<Started>;
 }

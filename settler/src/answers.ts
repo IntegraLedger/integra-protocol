@@ -22,9 +22,10 @@ export interface FacilitatorRequest {
 
 /**
  * The reasons a payment is refused. The x402 codes are the x402 specification's (§9); `invalid_transaction_state` in
- * a verify answer is a Tron transaction id the node or the store already holds. `unsupported_permission` and
- * `invalid_transaction` are this facilitator's: a Tron owner permission that does not accept the transaction's one
- * signature, and a transaction the node refuses in simulation or validation.
+ * a verify answer is an instrument the record or the chain already holds. `unsupported_permission`,
+ * `invalid_transaction` and `fee_budget_spent` are this facilitator's: a Tron owner permission that does not accept the
+ * transaction's signatures, a transaction the node refuses in simulation or validation, and a network whose fee budget
+ * is spent, so that nothing is sent. A published class's own reasons pass unchanged.
  */
 export type InvalidReason =
   | "invalid_x402_version"
@@ -35,6 +36,7 @@ export type InvalidReason =
   | "unsupported_permission"
   | "invalid_transaction"
   | "invalid_transaction_state"
+  | "fee_budget_spent"
   | "unexpected_verify_error";
 
 export type VerifyAnswer = { isValid: true; payer: string } | { isValid: false; invalidReason: InvalidReason; payer?: string };
@@ -133,6 +135,24 @@ export function readRequest(body: unknown): FacilitatorRequest | InvalidReason {
   if (p["x402Version"] !== 2) return "invalid_x402_version";
   if (!isObject(p["payload"])) return "invalid_payload";
   if (r["scheme"] !== "exact") return "unsupported_scheme";
+  if (typeof r["network"] !== "string") return "invalid_network";
+  return body as unknown as FacilitatorRequest;
+}
+
+/**
+ * The shape checks of a request for any scheme: the versions, the objects a module reads, and the scheme and the
+ * network as strings. Returns the typed request, or the reason it is refused. Which scheme and network the settler
+ * serves is the core's to answer, from its configuration.
+ */
+export function readShape(body: unknown): FacilitatorRequest | InvalidReason {
+  if (!isObject(body)) return "invalid_payload";
+  if (body["x402Version"] !== 2) return "invalid_x402_version";
+  const p = body["paymentPayload"];
+  const r = body["paymentRequirements"];
+  if (!isObject(p) || !isObject(r)) return "invalid_payload";
+  if (p["x402Version"] !== 2) return "invalid_x402_version";
+  if (!isObject(p["payload"])) return "invalid_payload";
+  if (typeof r["scheme"] !== "string") return "unsupported_scheme";
   if (typeof r["network"] !== "string") return "invalid_network";
   return body as unknown as FacilitatorRequest;
 }

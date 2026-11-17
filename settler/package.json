@@ -1,7 +1,7 @@
 {
   "name": "@integraledger/profile-facilitator",
   "version": "0.4.0",
-  "description": "An x402 facilitator for the LCP profiles x402/exact/tron/lcp-trc20-memo and x402/exact/polkadot/lcp-assets-remark: verifies and settles payments whose signed transaction carries the ATR hash.",
+  "description": "An x402 facilitator for the pairings @integraledger/lcp ships: it checks, submits what the payer signed, records each payment once in Postgres, and answers what the chain shows, with one module per chain form on x402's published facilitator classes where x402 publishes them.",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=24"
@@ -18,10 +18,23 @@
     "legal-context-protocol",
     "x402",
     "facilitator",
+    "settler",
+    "evm",
+    "solana",
+    "stellar",
+    "hedera",
+    "xrpl",
+    "algorand",
+    "aptos",
+    "near",
+    "ton",
+    "cardano",
+    "concordium",
+    "sui",
+    "starknet",
     "tron",
-    "trc20",
     "polkadot",
-    "asset-hub"
+    "lightning"
   ],
   "type": "module",
   "publishConfig": {
@@ -47,11 +60,29 @@
     "@integraledger/lcp": "workspace:~"
   },
   "dependencies": {
+    "@algorandfoundation/algokit-utils": "10.0.0-alpha.46",
+    "@hiero-ledger/sdk": "2.90.1",
+    "@mysten/sui": "2.35.0",
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
     "@polkadot/api": "17.0.2",
+    "@solana/kit": "8.4.0",
+    "@stellar/stellar-sdk": "17.2.1",
+    "@x402/aptos": "2.31.0",
+    "@x402/avm": "2.31.0",
+    "@x402/cardano": "2.31.0",
+    "@x402/concordium": "2.31.0",
     "@x402/core": "2.31.0",
-    "pg": "8.23.1"
+    "@x402/evm": "2.31.0",
+    "@x402/hedera": "2.31.0",
+    "@x402/near": "2.31.0",
+    "@x402/svm": "2.31.0",
+    "@x402/tvm": "2.31.0",
+    "@x402/xrpl": "2.31.0",
+    "pg": "8.23.1",
+    "starknet": "10.7.6",
+    "viem": "2.57.4",
+    "xrpl": "4.7.0"
   },
   "devDependencies": {
     "@integraledger/lcp": "workspace:*",

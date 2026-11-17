@@ -1,9 +1,34 @@
 /** Bounded JSON over HTTP: outbound node calls, and reading and writing the facilitator's own requests. */
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { MAX_HEADER_BYTES } from "@integraledger/lcp";
 
 export const NODE_TIMEOUT_MS = 5_000;
 export const NODE_MAX_BYTES = 4 * 1024 * 1024;
-export const REQUEST_MAX_BYTES = 64 * 1024;
+/**
+ * The largest `/verify` or `/settle` body the settler reads: the largest payment lcp's x402 codec admits, with its
+ * requirements. lcp decodes a payment payload (x402's `PAYMENT-SIGNATURE`) of at most `MAX_HEADER_BYTES` bytes of JSON
+ * and reads the option it answers from a `PAYMENT-REQUIRED` of at most `MAX_HEADER_BYTES`, so each of the body's two
+ * members is at most `MAX_HEADER_BYTES` as the payer's client wrote it; x402's facilitator client writes the body as one
+ * object holding `x402Version` and those two, and `JSON.stringify` writes a value that `JSON.stringify` wrote and
+ * `JSON.parse` read back byte for byte as before. The rest of the body is its own members' names and the version, which
+ * `X402_ENVELOPE_BYTES` holds with room for a writer that spaces them. The bound assumes the payer's client wrote its
+ * payload with `JSON.stringify`, as x402's clients do: lcp admits any JSON object of that size, and one whose numbers
+ * another writer spelled shorter (`1e21` for `JSON.stringify`'s `1e+21`) can come back longer.
+ */
+export const X402_ENVELOPE_BYTES = 1024;
+export const X402_REQUEST_MAX_BYTES = 2 * MAX_HEADER_BYTES + X402_ENVELOPE_BYTES;
+
+/**
+ * A node's URL as an error names it: its origin alone, since a path or a query can hold the endpoint's API key, and
+ * every error reaches the operator log.
+ */
+export function site(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "the node";
+  }
+}
 
 /** Connection errors after which no byte of the request can have reached the node. */
 const UNSENT = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN", "EHOSTUNREACH", "ENETUNREACH"]);
@@ -47,7 +72,7 @@ export async function postJson(
   timeoutMs = NODE_TIMEOUT_MS,
   maxBytes = NODE_MAX_BYTES,
 ): Promise<unknown> {
-  if (timeoutMs <= 0) throw new NodeError("spent", false, url);
+  if (timeoutMs <= 0) throw new NodeError("spent", false, site(url));
   const ms = Number.isFinite(timeoutMs) ? Math.ceil(Math.min(timeoutMs, NODE_TIMEOUT_MS)) : NODE_TIMEOUT_MS;
   const signal = AbortSignal.timeout(ms);
   let res: Response;
@@ -59,7 +84,7 @@ export async function postJson(
       signal,
     });
   } catch (e) {
-    if (signal.aborted) throw new NodeError("timeout", true, url, { cause: e });
+    if (signal.aborted) throw new NodeError("timeout", true, site(url), { cause: e });
     const code = e instanceof Error && isObject(e.cause) ? e.cause["code"] : undefined;
     const unsent = typeof code === "string" && UNSENT.has(code);
     throw new NodeError("transport", !unsent, e instanceof Error ? e.message : String(e), { cause: e });
@@ -109,21 +134,22 @@ async function readBounded(res: Response, signal: AbortSignal, maxBytes: number)
 }
 
 /**
- * Reads a request body of at most 64 KiB as JSON: `tooLarge` when it is larger, `left` when the request ends before
+ * Reads a request body of at most `maxBytes` as JSON: `tooLarge` when it is larger, `left` when the request ends before
  * its body does (the client left), and undefined when it is not JSON.
  */
 export async function readRequestJson(
   req: IncomingMessage,
+  maxBytes: number,
 ): Promise<{ json: unknown } | { tooLarge: true } | { left: true } | undefined> {
   const declared = Number(req.headers["content-length"]);
-  if (Number.isFinite(declared) && declared > REQUEST_MAX_BYTES) return { tooLarge: true };
+  if (Number.isFinite(declared) && declared > maxBytes) return { tooLarge: true };
   const parts: Buffer[] = [];
   let total = 0;
   try {
     for await (const chunk of req) {
       const b = chunk as Buffer;
       total += b.byteLength;
-      if (total > REQUEST_MAX_BYTES) return { tooLarge: true };
+      if (total > maxBytes) return { tooLarge: true };
       parts.push(b);
     }
   } catch {

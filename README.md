@@ -45,6 +45,7 @@ of `@integraledger/lcp` they pin.
 | Package | Install | What it is |
 |---|---|---|
 | [`@integraledger/lcp`](./lcp) | `npm install @integraledger/lcp` | Assemble and hash an ATR, and bind H into x402, MPP, agentic checkout and card payments on every supported rail. |
+| [`@integraledger/profile-facilitator`](./settler) | `npm install @integraledger/profile-facilitator @integraledger/lcp` | The settler: an x402 facilitator (`/supported`, `/verify`, `/settle`) for the x402 pairings `@integraledger/lcp` implements. |
 
 ## Quickstart
 
@@ -78,14 +79,14 @@ The [package README](./lcp/README.md) walks one x402 payment through both sides,
 - Concepts: [the ATR](./docs/concepts/atr.md), [the ATR hash](./docs/concepts/atr-hash.md),
   [binding](./docs/concepts/binding.md), [pairings](./docs/concepts/pairings.md),
   [the buyer gate](./docs/concepts/buyer-gate.md), [refusals](./docs/concepts/refusals.md),
-  [vectors](./docs/concepts/vectors.md)
+  [vectors](./docs/concepts/vectors.md), [the settler](./docs/concepts/settler.md)
 - Guides: [seller](./docs/guides/seller.md), [buyer](./docs/guides/buyer.md),
   [channels, sessions and subscriptions](./docs/guides/sessions.md), [x402](./docs/guides/x402.md),
   [MPP](./docs/guides/mpp.md), [agentic checkouts](./docs/guides/checkouts.md), [rails](./docs/guides/rails.md),
-  [discovery](./docs/guides/discovery.md)
+  [discovery](./docs/guides/discovery.md), [running the settler](./docs/guides/settler.md)
 - Reference: [entry points](./docs/reference/entry-points.md), [pairings](./docs/reference/pairings.md),
   [refusal codes](./docs/reference/refusals.md), [vector files](./docs/reference/vectors.md),
-  [API](./docs/reference/api)
+  [the settler](./docs/reference/settler.md), [API](./docs/reference/api)
 
 A citation `LCP §N` names section N of the published
 [Legal Context Protocol v1.0](https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md).
@@ -98,6 +99,7 @@ The same pages are published at [lcp.integraledger.com](https://lcp.integraledge
 | Path | Contents |
 |---|---|
 | [`lcp/`](./lcp) | The `@integraledger/lcp` package: `src/`, its tests, `vectors/` and `profiles/`. |
+| [`settler/`](./settler) | The `@integraledger/profile-facilitator` package, the settler: `src/`, one folder per module under `src/modules/`, and its tests. |
 | [`docs/`](./docs) | The documentation, in Markdown. It is the single source of the documentation site. |
 | [`website/`](./website) | The documentation site app, built from `docs/`. It is not part of any published package. |
 | [`scripts/`](./scripts) | The checks that compile and run the TypeScript samples in every README and in `docs/` not marked `no-check`, and regenerate the reference pages. |

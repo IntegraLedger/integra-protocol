@@ -8,4 +8,5 @@ strictDepBuilds: true
 
 permissions:
   esbuild: {build: false}
+  protobufjs: {build: false}
   secp256k1: {build: false}
