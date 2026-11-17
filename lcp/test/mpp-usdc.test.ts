@@ -33,6 +33,7 @@ import {
 import { TRANSFER_TOPIC, type EvmLog, type EvmRef } from "../src/evm.js";
 import { b64u, fromB64u, load, readerFor, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
+import { ledgerReader } from "./eip155-tempo-mpp-ledger.js";
 
 const EVM = load("mpp-charge-usdc-evm.json");
 const SOL = load("mpp-charge-usdc-solana.json");
@@ -66,12 +67,39 @@ describe("mpp/charge/usdc/evm (M3)", () => {
 
   // The usdc draft lets the EVM profile's `credentialTypes` hold only `authorization` (draft-usdc-charge-00 L298); the
   // build makes an authorization whatever the list holds, so pairingsOf names the pairing whatever it holds.
-  it("pairingsOf reads no credentialTypes", () => {
+  it("pairingsOf admits credentialTypes absent or [\"authorization\"] and decimals 6 alone, as v00 of the draft requires", () => {
     const request = JSON.parse(EVM.M3.requestJson);
-    for (const credentialTypes of [["authorization", "permit2"], ["permit2"], [], "authorization"]) {
-      const r = { ...request, methodDetails: { ...request.methodDetails, evm: { ...request.methodDetails.evm, credentialTypes } } };
-      expect([credentialTypes, pairingsOf(issued(JSON.stringify(r)))]).toEqual([credentialTypes, ["mpp/charge/usdc/evm"]]);
+    const evm = (e: Record<string, unknown>): string => {
+      const details = { ...request.methodDetails.evm, ...e };
+      for (const k of Object.keys(e)) if (e[k] === undefined) delete details[k];
+      return canonicalize({ ...request, methodDetails: { ...request.methodDetails, evm: details } }) as string;
+    };
+    for (const credentialTypes of [["authorization", "permit2"], ["permit2"], [], "authorization", ["hash"]]) {
+      expect([credentialTypes, pairingsOf(issued(evm({ credentialTypes })))]).toEqual([credentialTypes, { refused: true, code: "mpp/credential-types" }]);
     }
+    expect(pairingsOf(issued(evm({ credentialTypes: undefined })))).toEqual(["mpp/charge/usdc/evm"]);
+    expect(pairingsOf(issued(evm({ credentialTypes: ["authorization"] })))).toEqual(["mpp/charge/usdc/evm"]);
+    for (const decimals of [18, 0, "6", undefined]) {
+      expect([decimals, pairingsOf(issued(evm({ decimals })))]).toEqual([decimals, { refused: true, code: "mpp/request-malformed" }]);
+    }
+  });
+
+  // "Servers MUST verify that request.currency is the native USDC token contract published by Circle for
+  // methodDetails.evm.chainId" (draft-usdc-charge-00 L300-301); Circle's *USDC Contract Addresses*, read on 2026-11-17:
+  // Base 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, Base Sepolia 0x036CbD53842c5426634e7929541eC2318f3dCF7e, Arc Testnet
+  // 0x3600000000000000000000000000000000000000.
+  it("pairingsOf names the pairing only where currency is Circle's native USDC for the chainId, in any case of hex", () => {
+    const request = JSON.parse(EVM.M3.requestJson);
+    const on = (chainId: number, currency: string): string =>
+      canonicalize({ ...request, currency, methodDetails: { ...request.methodDetails, evm: { ...request.methodDetails.evm, chainId } } }) as string;
+    expect(pairingsOf(issued(on(8453, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913")))).toEqual(["mpp/charge/usdc/evm"]);
+    expect(pairingsOf(issued(on(5042002, "0x3600000000000000000000000000000000000000")))).toEqual(["mpp/charge/usdc/evm"]);
+    expect(pairingsOf(issued(on(84532, "0x036cbd53842c5426634e7929541ec2318f3dcf7e")))).toEqual(["mpp/charge/usdc/evm"]);
+    const notNative = { refused: true, code: "mpp/usdc-not-native" };
+    // Base Sepolia's token on Base; a token one digit off; a chain Circle publishes no native USDC for.
+    expect(pairingsOf(issued(on(8453, "0x036CbD53842c5426634e7929541eC2318f3dCF7e")))).toEqual(notNative);
+    expect(pairingsOf(issued(on(84532, "0x036CbD53842c5426634e7929541eC2318f3dCF7f")))).toEqual(notNative);
+    expect(pairingsOf(issued(on(31337, "0x036CbD53842c5426634e7929541eC2318f3dCF7e")))).toEqual(notNative);
   });
 
   it("usdcRequestHash and usdcNonce are the vector's, and canonicalize with js-sha3 agree", async () => {
@@ -159,7 +187,7 @@ describe("mpp/charge/usdc/evm (M3)", () => {
   // A receipt at block 100, finalized 100, holding the authorization's AuthorizationUsed and the Transfer it produced.
   it("status settles on the authorization's use and transfer, on the act payment and on the act agreement, and is before a position at its own block", async () => {
     const cred = await signed();
-    const ref = (await chargeUsdcEvm.reference(cred, cred.challenge)) as EvmRef;
+    const ref = (await chargeUsdcEvm.reference(cred, cred.challenge)) as Exclude<Awaited<ReturnType<typeof chargeUsdcEvm.reference>>, { refused: true }>;
     const p = cred.payload as { from: string; to: string; value: string };
     const currency = JSON.parse(EVM.M3.requestJson).currency as `0x${string}`;
     const logs: EvmLog[] = [
@@ -167,13 +195,19 @@ describe("mpp/charge/usdc/evm (M3)", () => {
       { address: currency, topics: [TRANSFER_TOPIC, topicOf(p.from), topicOf(p.to)], data: wordOf(BigInt(p.value)) },
     ];
     const tx = `0x${"22".repeat(32)}` as const;
+    const reader = ledgerReader({
+      network: ref.network,
+      heads: { latest: 100n, safe: 100n, finalized: 100n },
+      txs: [{ hash: tx, block: 100n, status: 1, from: p.from as `0x${string}`, to: currency, input: "0x", logs }],
+      call: () => `0x${"0".repeat(63)}1`,
+    });
     const status = async (query: Parameters<typeof chargeUsdcEvm.status>[2]) =>
-      withBigints(await chargeUsdcEvm.status({ ...ref, transaction: tx }, readerFor(ref.network, { status: 1, blockNumber: "100", logs }), query));
-    const settled = { state: "settled", transaction: tx, position: "100", finality: "finalized", foreign: [] };
-    expect(await status({ act: "payment", finality: "finalized" })).toEqual(settled);
+      withBigints(await chargeUsdcEvm.status({ ...ref, transaction: tx }, reader, query));
+    const settled = { state: "settled", transaction: tx, position: "100", finality: "finalized", foreign: [], presented: "yes" };
+    expect(await status({ act: "payment", finality: "finalized" })).toMatchObject(settled);
     expect(chargeUsdcEvm.data.agreement).toBeDefined();
-    expect(await status({ act: "agreement", finality: "finalized" })).toEqual(settled);
-    expect(await status({ act: "payment", finality: "finalized", after: 100n })).toEqual({
+    expect(await status({ act: "agreement", finality: "finalized" })).toMatchObject(settled);
+    expect(await status({ act: "payment", finality: "finalized", after: 100n })).toMatchObject({
       state: "failed",
       reason: "before-position",
       transaction: tx,
@@ -181,7 +215,7 @@ describe("mpp/charge/usdc/evm (M3)", () => {
       finality: "finalized",
       foreign: [],
     });
-    expect(await status({ act: "payment", finality: "finalized", after: 99n })).toEqual(settled);
+    expect(await status({ act: "payment", finality: "finalized", after: 99n })).toMatchObject(settled);
   });
 
   it("A.1: the draft's request, id and realm give the nonce the draft prints", async () => {
@@ -317,18 +351,23 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
   // The usdc draft's Gateway details (`acceptedSources`, `destinationNetwork`, `maxFee`, `credentialTypes`,
   // draft-usdc-charge-00 L410-414) are what the server checks the payer's transfer against (L770-801); the build hashes
   // the request whole and reads none of them, so pairingsOf names the pairing whatever they hold.
-  it("pairingsOf reads none of the Gateway details", () => {
+  it("pairingsOf reads none of the Gateway details but credentialTypes", () => {
     const request = JSON.parse(GW.M5.requestJson);
     const edits: Record<string, unknown>[] = [
       { acceptedSources: [] },
       { acceptedSources: Array.from({ length: 33 }, (_, i) => `eip155:${i + 1}`) },
       { destinationNetwork: "base" },
       { maxFee: "0.5" },
-      { credentialTypes: ["transfer", "authorization"] },
     ];
+    const gateway = (e: Record<string, unknown>): string =>
+      canonicalize({ ...request, methodDetails: { ...request.methodDetails, gateway: { ...request.methodDetails.gateway, ...e } } }) as string;
     for (const e of edits) {
-      const r = { ...request, methodDetails: { ...request.methodDetails, gateway: { ...request.methodDetails.gateway, ...e } } };
-      expect([e, pairingsOf(issued(canonicalize(r) as string))]).toEqual([e, ["mpp/charge/usdc/gateway"]]);
+      expect([e, pairingsOf(issued(gateway(e)))]).toEqual([e, ["mpp/charge/usdc/gateway"]]);
+    }
+    // credentialTypes is read: v00 admits it absent or ["transfer"] alone (draft-usdc-charge-00 at 1f0574a, line 414).
+    expect(pairingsOf(issued(gateway({ credentialTypes: ["transfer"] })))).toEqual(["mpp/charge/usdc/gateway"]);
+    for (const credentialTypes of [["transfer", "authorization"], ["authorization"], []]) {
+      expect([credentialTypes, pairingsOf(issued(gateway({ credentialTypes })))]).toEqual([credentialTypes, { refused: true, code: "mpp/credential-types" }]);
     }
   });
 

@@ -6,6 +6,7 @@ import { canonicalJson, type Json } from "./core.js";
 import { isAddress } from "./fields.js";
 import { isCanonicalPrincipal } from "./internal/c32.js";
 import type { MppChallenge, MppPairingId } from "./mpp-challenge.js";
+import { NATIVE_USDC } from "./internal/data/native-usdc.js";
 import { solanaChargePairings, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { toBase64Url } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -94,7 +95,11 @@ export function isJcsRequest(requestParam: string, parsed: unknown): boolean {
 
 /**
  * `charge` on `usdc`: the active profile, `amount` a positive integer string, `recipient` a string, and what each
- * profile's build reads: EVM `chainId` and addresses; the Solana charge's checks on the Solana details, whose `network`
+ * profile's build reads: EVM `chainId` and addresses, with `decimals` 6 (else `mpp/request-malformed`) and
+ * `credentialTypes` absent or `["authorization"]`, the Gateway profile's absent or `["transfer"]` (else
+ * `mpp/credential-types`), as v00 of the draft requires (draft-usdc-charge-00 at tempoxyz/mpp-specs 1f0574a, lines
+ * 297-298 and 414), and an EVM `currency` that is the native USDC Circle publishes for its `chainId` (`NATIVE_USDC`;
+ * lines 300-301), else `mpp/usdc-not-native`, a chain the table lacks included; the Solana charge's checks on the Solana details, whose `network`
  * is required, and on `externalId`, its carrier; Stacks `chainId`, the token contract, and `recipient` as a Stacks node
  * writes a principal (`isCanonicalPrincipal`), the spelling the read compares with. The Gateway build reads
  * `recipient` and the request's hash, and none of the Gateway details. No other profile reads `externalId`. The EVM and
@@ -113,6 +118,9 @@ export function usdcChargePairings(r: Obj, d: Obj, c: MppChallenge): readonly Mp
       if (!isPositiveInt(p["chainId"]) || !isAddress(r["currency"]) || !isAddress(r["recipient"])) {
         return refusal("mpp/request-malformed");
       }
+      if (p["decimals"] !== 6) return refusal("mpp/request-malformed");
+      if (!onlyType(p["credentialTypes"], "authorization")) return refusal("mpp/credential-types");
+      if (NATIVE_USDC.get(p["chainId"] as number) !== (r["currency"] as string).toLowerCase()) return refusal("mpp/usdc-not-native");
       return isJcsRequest(c.request, r) ? ["mpp/charge/usdc/evm"] : refusal("mpp/request-not-jcs");
     }
     case "solana": {
@@ -136,8 +144,17 @@ export function usdcChargePairings(r: Obj, d: Obj, c: MppChallenge): readonly Mp
       return ["mpp/charge/usdc/stacks"];
     }
     default:
+      if (!onlyType(p["credentialTypes"], "transfer")) return refusal("mpp/credential-types");
       return isJcsRequest(c.request, r) ? ["mpp/charge/usdc/gateway"] : refusal("mpp/request-not-jcs");
   }
+}
+
+/**
+ * A profile's `credentialTypes`: absent, which implies the one type v00 of the `usdc` draft admits, or exactly a list
+ * holding that type alone (draft-usdc-charge-00 at tempoxyz/mpp-specs 1f0574a, lines 298 and 414).
+ */
+function onlyType(types: unknown, only: string): boolean {
+  return types === undefined || (Array.isArray(types) && types.length === 1 && types[0] === only);
 }
 
 /** The CAIP-2 network of a `usdc` Stacks profile: `stacks:` and its `chainId`. */

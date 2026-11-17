@@ -82,14 +82,18 @@ import {
   type HederaStockRef,
   subscriptionStripe,
   subscriptionTempo,
+  tempoSplitMemo,
+  tempoSplitMemoPush,
   type MppChallenge,
   type MppCredential,
+  type TempoSplitRef,
 } from "../src/mpp.js";
 import { carrierOf, type MppForms } from "../src/mpp-challenge.js";
 import type { NearIntentsRef } from "../src/mpp-nearintents.js";
 import type { XrplChargeChoice, XrplChargeUnsigned } from "../src/mpp-xrpl.js";
 import type { RailSessionChoice, XrplSessionUnsigned } from "../src/mpp-session-rails.js";
 import type { SessionRef } from "../src/mpp-session.js";
+import type { MppEip3009Ref, MppEvmReader, MppNamedRef, MppPermit2Ref } from "../src/internal/mpp-evm-read.js";
 import { exactNear, type NearReader, type NearRef } from "../src/near.js";
 import { exactPolkadotRemark, type PolkadotReader, type PolkadotRef } from "../src/polkadot.js";
 import { exactStarknet, type StarknetReader, type StarknetRef } from "../src/starknet.js";
@@ -103,6 +107,7 @@ import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import { uptoSvm } from "../src/x402-upto-solana.js";
 import type { StacksReader, StacksRef } from "../src/stacks.js";
+import type { TempoSearchReader } from "../src/tempo.js";
 import { rowsOf } from "./rows.js";
 
 // ── Compile time: each codec satisfies Entry with its own family's types.
@@ -165,10 +170,12 @@ const OWN = {
   "x402/exact/tron/lcp-trc20-memo": exactTronMemo satisfies Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TronReader, Own<typeof exactTronMemo>>,
   "x402/exact/tvm": exactTvm satisfies Entry<"x402/exact/tvm", TvmPayment, TvmRef, TvmReader, Own<typeof exactTvm>>,
   "x402/exact/xrpl": exactXrpl satisfies Entry<"x402/exact/xrpl", XrplPaymentPayload, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof exactXrpl>>,
-  "mpp/charge/evm/authorization": evmAuthorization satisfies Entry<"mpp/charge/evm/authorization", MppCredential, EvmRef, EvmReader, Own<typeof evmAuthorization>>,
-  "mpp/charge/evm/permit2": evmPermit2 satisfies Entry<"mpp/charge/evm/permit2", MppCredential, EvmRef, EvmReader, Own<typeof evmPermit2>>,
-  "mpp/charge/evm/transaction": evmTransaction satisfies Entry<"mpp/charge/evm/transaction", MppCredential, EvmRef & { asset: Hex }, EvmReader, Own<typeof evmTransaction>>,
-  "mpp/charge/evm/hash": evmHash satisfies Entry<"mpp/charge/evm/hash", MppCredential, EvmRef & { asset: Hex }, EvmReader, Own<typeof evmHash>>,
+  "mpp/charge/evm/authorization": evmAuthorization satisfies Entry<"mpp/charge/evm/authorization", MppCredential, EvmRef & MppEip3009Ref, MppEvmReader, Own<typeof evmAuthorization>>,
+  "mpp/charge/evm/permit2": evmPermit2 satisfies Entry<"mpp/charge/evm/permit2", MppCredential, EvmRef & MppPermit2Ref, MppEvmReader, Own<typeof evmPermit2>>,
+  "mpp/charge/evm/transaction": evmTransaction satisfies Entry<"mpp/charge/evm/transaction", MppCredential, EvmRef & MppNamedRef & { asset: Hex }, MppEvmReader, Own<typeof evmTransaction>>,
+  "mpp/charge/evm/hash": evmHash satisfies Entry<"mpp/charge/evm/hash", MppCredential, EvmRef & MppNamedRef & { asset: Hex }, MppEvmReader, Own<typeof evmHash>>,
+  "mpp/charge/tempo/split-memo": tempoSplitMemo satisfies Entry<"mpp/charge/tempo/split-memo", MppCredential, TempoSplitRef, TempoSearchReader, Own<typeof tempoSplitMemo>>,
+  "mpp/charge/tempo/split-memo/push": tempoSplitMemoPush satisfies Entry<"mpp/charge/tempo/split-memo/push", MppCredential, TempoSplitRef, TempoSearchReader, Own<typeof tempoSplitMemoPush>>,
   "mpp/session/evm": sessionEvm satisfies Entry<"mpp/session/evm", MppCredential, SessionRef, EvmReader, Own<typeof sessionEvm>>,
   "mpp/session/tempo": sessionTempo satisfies Entry<"mpp/session/tempo", MppCredential, SessionRef, EvmReader, Own<typeof sessionTempo>>,
   "mpp/subscription/tempo": subscriptionTempo satisfies Entry<"mpp/subscription/tempo", MppCredential, SessionRef, EvmReader, Own<typeof subscriptionTempo>>,
@@ -187,7 +194,7 @@ const OWN = {
   "mpp/charge/card": chargeCard satisfies Entry<"mpp/charge/card", MppCredential, never, never, Own<typeof chargeCard>>,
   "mpp/charge/stripe": chargeStripe satisfies Entry<"mpp/charge/stripe", MppCredential, never, never, Own<typeof chargeStripe>>,
   "mpp/subscription/stripe": subscriptionStripe satisfies Entry<"mpp/subscription/stripe", MppCredential, never, never, Own<typeof subscriptionStripe>>,
-  "mpp/charge/usdc/evm": chargeUsdcEvm satisfies Entry<"mpp/charge/usdc/evm", MppCredential, EvmRef, EvmReader, Own<typeof chargeUsdcEvm>>,
+  "mpp/charge/usdc/evm": chargeUsdcEvm satisfies Entry<"mpp/charge/usdc/evm", MppCredential, EvmRef & MppEip3009Ref, MppEvmReader, Own<typeof chargeUsdcEvm>>,
   "mpp/charge/usdc/solana": chargeUsdcSolana satisfies Entry<"mpp/charge/usdc/solana", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof chargeUsdcSolana>>,
   "mpp/charge/usdc/stacks": chargeUsdcStacks satisfies Entry<"mpp/charge/usdc/stacks", MppCredential, StacksRef, StacksReader, Own<typeof chargeUsdcStacks>>,
   "mpp/charge/usdc/gateway": chargeUsdcGateway satisfies Entry<"mpp/charge/usdc/gateway", MppCredential, never, never, Own<typeof chargeUsdcGateway>>,
@@ -218,7 +225,7 @@ void (exactAvm satisfies AvmWithSui);
 type SvmWithXrpl = Entry<"x402/exact/solana", SvmPaymentPayload, Omit<SvmRef, "fromSlot">, XrplReader, Own<typeof exactSvm>>;
 // @ts-expect-error -- a Solana codec's `status` and `recover` take a Solana reader, not an XRPL one.
 void (exactSvm satisfies SvmWithXrpl);
-type UsdcEvmWithStacks = Entry<"mpp/charge/usdc/evm", MppCredential, EvmRef, StacksReader, Own<typeof chargeUsdcEvm>>;
+type UsdcEvmWithStacks = Entry<"mpp/charge/usdc/evm", MppCredential, EvmRef & MppEip3009Ref, StacksReader, Own<typeof chargeUsdcEvm>>;
 // @ts-expect-error -- an EVM codec's `status` takes an EVM reader, not a Stacks one.
 void (chargeUsdcEvm satisfies UsdcEvmWithStacks);
 type TronWithTvm = Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TvmReader, Own<typeof exactTronMemo>>;
@@ -363,7 +370,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 69 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 71 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.
@@ -541,7 +548,7 @@ describe("the registry's type test", () => {
 
   it("CARRIER is the table the MPP entries' carrier datum gives, and the entries of one intent and method agree", () => {
     const table: { [intent: string]: { [method: string]: readonly string[] | null } } = {};
-    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 26 });
+    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 28 });
     for (const b of mpp) {
       const [, intent, method] = b.id.split("/") as [string, string, string];
       if (method === "usdc") continue;

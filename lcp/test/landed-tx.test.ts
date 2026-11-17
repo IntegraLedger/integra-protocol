@@ -5,21 +5,20 @@ import { BINDINGS, type Binding } from "../src/index.js";
 const vectors = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}.json`, import.meta.url), "utf8"));
 const SOLANA = vectors("mpp-charge-solana");
 const XRPL = vectors("mpp-charge-xrpl");
-const SESSION_EVM = vectors("mpp-session-evm");
 const SESSION_SOLANA = vectors("mpp-session-solana");
 
 const challenge = { id: "x", realm: "api.seller.example", method: "m", intent: "charge", request: "e30" };
 const credential = (payload: Record<string, unknown>) => ({ challenge, payload });
 const byId = (id: string): Binding => BINDINGS.find((b) => b.id === id)!;
 
-// Push mode is any pairing whose entry point exports fetchPresented or landedTx; the EVM session's `hash` opening is
-// one, broadcast by the payer before presenting it. Each names the transaction it pushed.
+// Push mode is any pairing whose entry point exports fetchPresented or landedTx. Each names the transaction it pushed.
+// The EVM session is none: an opening funded by a `hash`, which its payer broadcasts, is no part of it.
 const PUSHED_HASH = `0x${"55".repeat(32)}`;
 const ROWS: readonly [id: string, payload: Record<string, unknown>, landed: string][] = [
-  ["mpp/session/evm", { action: "open", type: "hash", hash: PUSHED_HASH, salt: SESSION_EVM.fixed.H }, PUSHED_HASH],
   ["mpp/charge/solana", { type: "signature", signature: SOLANA.refusals[1].payload.signature }, SOLANA.refusals[1].payload.signature],
   ["mpp/charge/solana/unsponsored", { type: "signature", signature: SOLANA.refusals[1].payload.signature }, SOLANA.refusals[1].payload.signature],
   ["mpp/charge/xrpl", { type: "hash", hash: XRPL.refusals[0].payload.hash }, XRPL.refusals[0].payload.hash],
+  ["mpp/charge/tempo/split-memo/push", { type: "hash", hash: PUSHED_HASH }, PUSHED_HASH],
   ["mpp/session/solana/stock", SESSION_SOLANA.stock.credential.payload, SESSION_SOLANA.stock.expectTransaction],
 ];
 

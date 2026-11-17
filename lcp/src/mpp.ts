@@ -6,7 +6,7 @@
  * modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
-import { addressWord, bytesOf, concat, hexOf, sameBytes, uintWord, type Hex } from "./evm-abi.js";
+import { addressWord, bytes32Word, bytesOf, concat, hexOf, keccak, keccakHex, sameBytes, uintWord, type Hex } from "./evm-abi.js";
 import {
   AUTHORIZATION_USED_TOPIC,
   TRANSFER_TOPIC,
@@ -68,22 +68,23 @@ import { hederaSessionResume, sessionHederaStock } from "./hedera-session.js";
 import { chargeSolana, chargeSolanaUnsponsored } from "./mpp-solana.js";
 import { subscriptionSolana } from "./mpp-subscription-solana.js";
 import { sessionSolanaMemo, sessionSolanaStock, solanaSessionResume } from "./mpp-session-solana.js";
+import { tempoSplitMemo, tempoSplitMemoPush } from "./mpp-tempo.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpDecode, rlpUint } from "./rlp.js";
+import { withPayee, type EvmQuery } from "./internal/evm.js";
 import {
-  evmStatusOf,
-  failedIfFinal,
-  isGuardTransfer,
-  permit2Status,
-  readEvm,
-  transferParts,
-  unreadable,
-  withPayee,
-  type EvmQuery,
-  type EvmRead,
-} from "./internal/evm.js";
-import { boundStatus } from "./internal/evm-status.js";
+  echoesOption,
+  eip3009Presented,
+  mppEip3009Status,
+  mppNamedStatus,
+  mppPermit2Status,
+  type MppEip3009Ref,
+  type MppEvmReader,
+  type MppEvmStatus,
+  type MppNamedRef,
+  type MppPermit2Ref,
+} from "./internal/mpp-evm-read.js";
 import { mppPayee } from "./internal/payee.js";
 import type { LcpPattern } from "./x402.js";
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
@@ -126,9 +127,28 @@ export {
 } from "./mpp-usdc.js";
 export { chargeNearIntents } from "./mpp-nearintents.js";
 export { toX402, type TokenDomain, type X402Mapped } from "./mpp-x402.js";
+export type { EvmLogEntry, EvmSearchReader } from "./internal/evm-search.js";
+export type {
+  EvmMoved,
+  MppEip3009Ref,
+  MppEvmReader,
+  MppEvmStatus,
+  MppNamedRef,
+  MppPermit2Ref,
+  Presentation,
+} from "./internal/mpp-evm-read.js";
 export { chargeSolana, chargeSolanaUnsponsored } from "./mpp-solana.js";
 export { subscriptionSolana } from "./mpp-subscription-solana.js";
 export { sessionSolanaMemo, sessionSolanaStock, type SolanaSessionChoice, type SolanaSessionUnsigned } from "./mpp-session-solana.js";
+export {
+  tempoSplitMemo,
+  tempoSplitMemoPush,
+  type TempoLandedCredential,
+  type TempoSplitLanded,
+  type TempoSplitQuery,
+  type TempoSplitRef,
+  type TempoSplitStatus,
+} from "./mpp-tempo.js";
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
 export {
   sessionXrpl,
@@ -209,70 +229,24 @@ const PAYMENT_WITNESS = [
 // ── Settlement for the pairings whose payment carries nothing signed.
 
 /**
- * The `status` of the EVM `transaction` and `hash` charges, whose data both give coverage `none`: `evmStatus`'s read of
- * the reported transaction with no named log, answered as the profile `read-status` does at that coverage, where the
- * act is the transaction the reference names. The read is settled where the receipt also holds one log from
- * `ref.asset` with three topics and `topics[0]` = `Transfer` whose sender `ref.transferLog` identifies and whose
- * recipient is not `RECEIVE_POLICY_GUARD`. `ref.asset` and `ref.transferLog.address` must be addresses naming the same
- * token, and `ref.transferLog` must identify a `Transfer` from it by its sender alone (identity `from`), as the
- * pairing's `reference` records it; any other ref is unreadable `unparseable`, with nothing read. Without such a log,
- * a `Transfer` from that sender to the guard, or none (another account's `Transfer` in the same transaction is not this
- * payment), the transaction is no act. A receipt the reader does not hold is a lookup read whole that found nothing,
- * which with no history shown answers unreadable `history-gap`. A reader that is not an object is unreadable
- * `transport`, and a query that is not one `status` takes unreadable `unparseable`, with nothing read. At most three
- * calls.
+ * The `status` of the EVM `transaction` and `hash` charges, whose data both give coverage `none`: the act is the
+ * transaction the reference names, which the credential carries (`transaction`, by the hash of its signed bytes) or
+ * names (`hash`). Found, it is read whole: its signer, the transaction's `from`, against the reference's payer and the
+ * option's payee, so that one the payee signed is no act of the payer's; what it moved, each `Transfer` from its signer
+ * by its log, with its token, amount and recipient, never the system emitter's log that Arc adds beside each USDC
+ * transfer; the account test, a transfer to the challenge's `recipient`, its token and amount compared with nothing,
+ * and for a reverted one, which moved nothing, the recipient of the `transfer` call that is the transaction's own; and
+ * its result, the payer's account nonce consumed by its inclusion. So a reverted one whose call pays the `recipient` is
+ * `failed`, `transaction-failed`, any other reverted one `failed`, `instrument-consumed`, and one that succeeded with no
+ * transfer to the `recipient` `failed`, `instrument-consumed`, `other-account`, each at the final mark, and `pending`,
+ * `below-mark`, under it. Not
+ * found, it is `pending`, `not-found`, where the reader shows it holds the history the transaction would be in: an
+ * endpoint the seller declares archival (`archival`), or one that answers a read at the position the caller gives;
+ * otherwise `unreadable`, `history-gap`. `settled` states `presented: "yes"`, the act being the transaction the
+ * credential names.
  */
-export async function transferPresent(
-  ref: EvmRef & { transaction: Hex; asset: Hex },
-  reader: EvmReader,
-  query: EvmQuery<EvmRef & { transaction: Hex; asset: Hex }>,
-): Promise<EvmBreadthStatus> {
-  return transferAnswer(ref, reader, query);
-}
-
-const transferAnswer = evmStatusOf(readTransfer, EIP155_TEMPO_MPP["mpp/charge/evm/transaction"].coverage);
-
-async function readTransfer(ref: EvmRef & { transaction: Hex; asset: Hex }, reader: EvmReader): Promise<EvmRead> {
-  if (typeof ref !== "object" || ref === null) return unreadable("unparseable");
-  if (typeof reader !== "object" || reader === null) return unreadable("transport");
-  const sender = ref.transferLog;
-  if (!identifiesSender(sender, ref.asset)) return unreadable("unparseable");
-  let seen: EvmReceipt | null = null;
-  const watching: EvmReader = {
-    network: reader.network,
-    receipt: async (tx) => (seen = await reader.receipt(tx)),
-    blockNumber: (tag) => reader.blockNumber(tag),
-    transaction: (tx) => reader.transaction(tx),
-    call: (to, data, block) => reader.call(to, data, block),
-  };
-  const s = await readEvm({ network: ref.network, transaction: ref.transaction, payee: ref.payee }, watching);
-  if (s.state !== "settled") return s;
-  const logs = (seen as EvmReceipt | null)?.logs ?? [];
-  const sent: EvmLog[] = [];
-  for (const l of logs) {
-    const parts = transferParts(l, ref.asset, TRANSFER_TOPIC);
-    if (parts === undefined) continue;
-    const digest = await transferDigest({ from: parts.from });
-    if (typeof digest === "string" && sameBytes(digest, sender.digest)) sent.push(l);
-  }
-  if (sent.some((l) => !isGuardTransfer(l, ref.asset))) return s;
-  if (sent.length > 0) return failedIfFinal(s, "receive-policy-blocked");
-  return failedIfFinal(s, "transfer-not-found");
-}
-
-/**
- * True for a `TransferLog` that identifies a `Transfer` from `asset` by its sender alone (identity `from`), where
- * `asset` and the log's `address` are both addresses and name the same token.
- */
-function identifiesSender(t: unknown, asset: unknown): t is TransferLog {
-  if (!isObject(t) || t["identity"] !== "from" || !sameBytes(t["topic0"], TRANSFER_TOPIC)) return false;
-  const address = t["address"];
-  return (
-    isAddress(address) &&
-    isAddress(asset) &&
-    address.toLowerCase() === asset.toLowerCase() &&
-    bytesOf(t["digest"])?.length === 32
-  );
+export async function transferPresent(ref: MppNamedRef, reader: MppEvmReader, query: EvmQuery<unknown>): Promise<MppEvmStatus> {
+  return mppNamedStatus(ref, reader, query);
 }
 
 // ── Shared steps.
@@ -365,6 +339,7 @@ export function network(challenge: MppChallenge): string | Refusal {
   const d = c.details;
   switch (`${c.intent}/${c.method}`) {
     case "charge/evm":
+    case "charge/tempo":
       return `eip155:${chainOf(c)}`;
     case "session/evm":
     case "session/tempo":
@@ -478,13 +453,21 @@ async function authorizationBound(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys of an EIP-3009 charge, with the payee of `option`, the issued challenge the payment answers
- * (`mppPayee`): a refusal of the payment first, then the challenge's.
+ * (`mppPayee`): a refusal of the payment first, then the challenge's, then `mpp/challenge-not-option` where `option`
+ * is not the challenge the credential echoes (`echoesOption`).
  */
-async function authorizationReference(input: unknown, option: MppChallenge): Promise<EvmRef | Refusal> {
-  return withPayee(await authorizationKeys(input), mppPayee(option));
+async function authorizationReference(input: unknown, option: MppChallenge): Promise<(EvmRef & MppEip3009Ref) | Refusal> {
+  return optionHeld(input, option, withPayee(await authorizationKeys(input), mppPayee(option)));
 }
 
-async function authorizationKeys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
+/** `ref` where `option` is the challenge the presented credential echoes, else the refusal of `ref` or of `option`. */
+async function optionHeld<R>(input: unknown, option: MppChallenge, ref: R | Refusal): Promise<R | Refusal> {
+  if (isRefusal(ref)) return ref;
+  const held = await echoesOption((input as MppCredential).challenge, option);
+  return held === true ? ref : held;
+}
+
+async function authorizationKeys(input: unknown): Promise<(Omit<EvmRef, "payee"> & Omit<MppEip3009Ref, "payee">) | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const b = authorizationBinding(presented);
@@ -509,6 +492,8 @@ async function authorizationKeys(input: unknown): Promise<Omit<EvmRef, "payee"> 
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
     search: { address: currency, topics: [AUTHORIZATION_USED_TOPIC, null, nonce] },
     authorization: { scheme: "eip3009", at: currency, nonce, deadline: validBefore.toString(), asset: currency },
+    payer: p["from"].toLowerCase() as Hex,
+    presented: eip3009Presented(currency, p["from"], p["to"], value, nonce),
   };
 }
 
@@ -589,6 +574,11 @@ function permit2Binding(presented: MppCredential): { h: AtrHash; checked: Echoed
   if (!isObject(w) || normalHash(w["challengeHash"]) === null) return refusal("mpp/credential-malformed");
   const expect = challengeHash(presented.challenge.id, presented.challenge.realm);
   if (!sameBytes(w["challengeHash"], expect)) return refusal("mpp/witness-not-challenge-hash");
+  // The read keys on the Permit2 bit at the challenge hash: a permit signed under any other nonce is refused.
+  const permit = e.payload["permit"];
+  const nonce = isObject(permit) ? uint256Of(permit["nonce"]) : undefined;
+  if (nonce === undefined) return refusal("mpp/credential-malformed");
+  if (nonce !== BigInt(expect)) return refusal("mpp/nonce-not-challenge-hash");
   return { h: e.h, checked: e.checked };
 }
 
@@ -603,11 +593,14 @@ async function permit2Bound(input: unknown): Promise<AtrHash | Refusal> {
  * The read keys of a Permit2 charge, with the payee of `option`, the issued challenge the payment answers
  * (`mppPayee`): a refusal of the payment first, then the challenge's.
  */
-async function permit2Reference(input: unknown, option: MppChallenge): Promise<EvmRef | Refusal> {
-  return withPayee(await permit2Keys(input), mppPayee(option));
+async function permit2Reference(input: unknown, option: MppChallenge): Promise<(EvmRef & MppPermit2Ref) | Refusal> {
+  return optionHeld(input, option, withPayee(await permit2Keys(input), mppPayee(option)));
 }
 
-async function permit2Keys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
+/** keccak256 of MPP's Permit2 witness type, `PaymentWitness(bytes32 challengeHash,string externalId)`. */
+const PAYMENT_WITNESS_TYPEHASH = keccakHex("PaymentWitness(bytes32 challengeHash,string externalId)");
+
+async function permit2Keys(input: unknown): Promise<(Omit<EvmRef, "payee"> & Omit<MppPermit2Ref, "payee">) | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const b = permit2Binding(presented);
@@ -631,16 +624,41 @@ async function permit2Keys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refu
   }
   const digest = await transferDigest({ from, to: first["to"], value });
   if (typeof digest !== "string") return digest;
+  const permitted = isObject(permit) && Array.isArray(permit["permitted"]) ? permit["permitted"] : undefined;
+  const signedNonce = isObject(permit) ? uint256Of(permit["nonce"]) : undefined;
+  const w = p["witness"] as { [k: string]: Json };
+  const pairs = (list: readonly unknown[] | undefined, a: string, b: string): string | undefined => {
+    if (list === undefined || list.length === 0) return undefined;
+    const out: string[] = [];
+    for (const x of list) {
+      const amount = isObject(x) ? uint256Of(x[b]) : undefined;
+      if (!isObject(x) || !isAddress(x[a]) || amount === undefined) return undefined;
+      out.push(`${(x[a] as string).toLowerCase()}:${amount}`);
+    }
+    return out.join(",");
+  };
+  const permittedText = pairs(permitted, "token", "amount");
+  const transfersText = pairs(details as unknown[], "to", "requestedAmount");
+  if (permittedText === undefined || transfersText === undefined || signedNonce === undefined || typeof w["externalId"] !== "string") {
+    return refusal("mpp/credential-malformed");
+  }
+  const witness = hexOf(
+    keccak(concat([bytesOf(PAYMENT_WITNESS_TYPEHASH)!, bytes32Word(w["challengeHash"] as Hex), keccak(w["externalId"])])),
+  );
+  const nonce = challengeHash(presented.challenge.id, presented.challenge.realm);
   return {
     network: `eip155:${chainId}`,
     settleBy: deadline.toString(),
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
-    authorization: {
-      scheme: "permit2",
-      at: permit2 ?? PERMIT2,
-      nonce: challengeHash(presented.challenge.id, presented.challenge.realm),
+    authorization: { scheme: "permit2", at: permit2 ?? PERMIT2, nonce, deadline: deadline.toString(), asset: currency },
+    payer: from.toLowerCase() as Hex,
+    presented: {
+      permitted: permittedText,
+      nonce: hexOf(uintWord(signedNonce)),
       deadline: deadline.toString(),
-      asset: currency,
+      owner: from.toLowerCase(),
+      transfers: transfersText,
+      witness,
     },
   };
 }
@@ -750,14 +768,31 @@ function noSignedPlace(pairing: typeof TRANSACTION | typeof HASH) {
  * comes after the payment's.
  */
 function networkReference(pairing: typeof TRANSACTION | typeof HASH) {
-  return async (presented: unknown, option: MppChallenge): Promise<(EvmRef & { asset: Hex }) | Refusal> =>
-    withPayee(await referenceFor(presented, pairing), mppPayee(option));
+  return async (presented: unknown, option: MppChallenge): Promise<(EvmRef & MppNamedRef & { asset: Hex }) | Refusal> =>
+    optionHeld(presented, option, withPayee(await referenceFor(presented, pairing), mppPayee(option)));
+}
+
+/**
+ * The transaction a credential of the `transaction` or `hash` charge names: a `hash` payload's `hash`, or the hash of
+ * a `transaction` payload's signed bytes (`signature`), keccak256 of the EIP-2718 envelope; else
+ * `mpp/credential-malformed`.
+ */
+function namedTransaction(payload: unknown): Hex | Refusal {
+  if (!isObject(payload)) return refusal("mpp/credential-malformed");
+  if (payload["type"] === "hash") {
+    const h = normalHash(payload["hash"]);
+    return h === null ? refusal("mpp/credential-malformed") : (h as Hex);
+  }
+  if (payload["type"] === "transaction" && isHexBytes(payload["signature"], 1, MAX_WIRE)) {
+    return keccakHex(bytesOf(payload["signature"])!);
+  }
+  return refusal("mpp/credential-malformed");
 }
 
 async function referenceFor(
   presented: unknown,
   pairing: typeof TRANSACTION | typeof HASH,
-): Promise<(Omit<EvmRef, "payee"> & { asset: Hex }) | Refusal> {
+): Promise<(Omit<EvmRef, "payee"> & Omit<MppNamedRef, "payee"> & { asset: Hex }) | Refusal> {
   if (!isObject(presented) || !isChallengeShape(presented["challenge"])) return refusal("mpp/credential-malformed");
   const c = presented["challenge"];
   if (c.method !== "evm" || c.intent !== "charge") return refusal("mpp/not-this-pairing");
@@ -775,10 +810,14 @@ async function referenceFor(
   if (from === undefined) return refusal("mpp/source-required");
   const digest = await transferDigest({ from });
   if (typeof digest !== "string") return digest;
+  const transaction = namedTransaction(presented["payload"]);
+  if (isRefusal(transaction)) return transaction;
   return {
     network: `eip155:${chainId}`,
     asset,
     transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: "from", digest },
+    payer: from.toLowerCase() as Hex,
+    transaction,
   };
 }
 
@@ -816,19 +855,19 @@ export const evmAuthorization = Object.freeze({
   broadcaster: mppBroadcaster(byType({ authorization: "payee" })),
   reference: authorizationReference,
   authorizer: authorizationAuthorizer,
-  status: boundStatus([AUTHORIZATION_USED_TOPIC], EIP155_TEMPO_MPP[AUTHORIZATION].coverage),
+  status: mppEip3009Status,
 }) satisfies Entry<
   typeof AUTHORIZATION,
   MppCredential,
-  EvmRef,
-  EvmReader,
+  EvmRef & MppEip3009Ref,
+  MppEvmReader,
   MppForms & {
     choice: MppChoice;
     unsigned: MppUnsigned;
-    landed: { transaction: Hex };
+    landed: { transaction?: Hex };
     network: never;
-    query: EvmQuery<EvmRef & { transaction: Hex }>;
-    answer: EvmBreadthStatus;
+    query: EvmQuery<unknown>;
+    answer: MppEvmStatus;
   }
 >;
 
@@ -854,19 +893,19 @@ export const evmPermit2 = Object.freeze({
   broadcaster: mppBroadcaster(byType({ permit2: "payee" })),
   reference: permit2Reference,
   authorizer: permit2Authorizer,
-  status: permit2Status(EIP155_TEMPO_MPP[PERMIT2_ID].coverage),
+  status: mppPermit2Status,
 }) satisfies Entry<
   typeof PERMIT2_ID,
   MppCredential,
-  EvmRef,
-  EvmReader,
+  EvmRef & MppPermit2Ref,
+  MppEvmReader,
   MppForms & {
     choice: MppChoice;
     unsigned: MppUnsigned;
-    landed: { transaction: Hex };
+    landed: { transaction?: Hex };
     network: never;
-    query: EvmQuery<EvmRef & { transaction: Hex }>;
-    answer: EvmBreadthStatus;
+    query: EvmQuery<unknown>;
+    answer: MppEvmStatus;
   }
 >;
 
@@ -897,15 +936,15 @@ export const evmTransaction = Object.freeze({
 }) satisfies Entry<
   typeof TRANSACTION,
   MppCredential,
-  EvmRef & { asset: Hex },
-  EvmReader,
+  EvmRef & MppNamedRef & { asset: Hex },
+  MppEvmReader,
   MppForms & {
     choice: MppChoice;
     unsigned: MppUnsigned;
-    landed: { transaction: Hex };
+    landed: unknown;
     network: never;
-    query: EvmQuery<EvmRef & { transaction: Hex; asset: Hex }>;
-    answer: EvmBreadthStatus;
+    query: EvmQuery<unknown>;
+    answer: MppEvmStatus;
   }
 >;
 
@@ -936,15 +975,15 @@ export const evmHash = Object.freeze({
 }) satisfies Entry<
   typeof HASH,
   MppCredential,
-  EvmRef & { asset: Hex },
-  EvmReader,
+  EvmRef & MppNamedRef & { asset: Hex },
+  MppEvmReader,
   MppForms & {
     choice: MppChoice;
     unsigned: MppUnsigned;
-    landed: { transaction: Hex };
+    landed: unknown;
     network: never;
-    query: EvmQuery<EvmRef & { transaction: Hex; asset: Hex }>;
-    answer: EvmBreadthStatus;
+    query: EvmQuery<unknown>;
+    answer: MppEvmStatus;
   }
 >;
 
@@ -954,6 +993,8 @@ export const MPP_BINDINGS = Object.freeze([
   evmPermit2,
   evmTransaction,
   evmHash,
+  tempoSplitMemo,
+  tempoSplitMemoPush,
   sessionEvm,
   sessionTempo,
   subscriptionTempo,

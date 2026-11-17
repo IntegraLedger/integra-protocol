@@ -66,6 +66,7 @@
    { "code": "hedera/wrong-reader", "expect": { "status": 500, "type": "https://paymentauth.org/problems/internal-payment-error" } },
    { "code": "svm/read-first", "expect": { "status": 500, "type": "https://paymentauth.org/problems/internal-payment-error" } },
    { "code": "xrpl/read-first", "expect": { "status": 500, "type": "https://paymentauth.org/problems/internal-payment-error" } },
+   { "code": "tempo/read-first", "expect": { "status": 500, "type": "https://paymentauth.org/problems/internal-payment-error" } },
    { "code": "mpp/nonce-not-challenge-hash", "expect": { "status": 402, "type": "https://paymentauth.org/problems/verification-failed" } },
    { "code": "tempo/reverted", "expect": { "status": 402, "type": "https://paymentauth.org/problems/verification-failed" } },
    { "code": "server/paid", "expect": { "status": 500, "type": "https://paymentauth.org/problems/internal-payment-error" } },

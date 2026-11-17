@@ -1,6 +1,6 @@
 /**
- * The signed Tempo `0x76` envelope: its items, the bytes its sender signed, its sender, and the signatures of its
- * authorization list. `../tempo.ts` reads the calls and the expiring nonce hash through these, and `../mpp-session.ts`
+ * The signed Tempo `0x76` envelope, and the `0x78` form a sender's client sends a fee payer: its items, the bytes its
+ * sender signed, its sender, and the signatures of its authorization list. `../tempo.ts` reads the calls and the expiring nonce hash through these, and `../mpp-session.ts`
  * reads the sender and the authorization list's signatures of a session's opening; no entry point exports these names.
  */
 import { secp256k1 } from "@noble/curves/secp256k1.js";
@@ -10,6 +10,12 @@ import { rlpDecode, rlpList, rlpUint, type RlpItem } from "../rlp.js";
 
 /** The type byte of a Tempo transaction. */
 export const TEMPO_TX_TYPE = 0x76;
+/**
+ * The type byte of the form a sender's client sends a fee payer: the `0x76` list with the sender's 20-byte address in
+ * the fee payer's slot, item 11 (ox 0.14.54 `tempo/TxEnvelopeTempo.js:15`, `feePayerMagic`, and `serialize` with
+ * `format: "feePayer"`, `:374-448`), which a stock signer sends where the challenge has the fee paid for the sender.
+ */
+export const TEMPO_FEE_PAYER_TX_TYPE = 0x78;
 const MAX_WIRE_BYTES = 65_536;
 const MAX_WIRE_DEPTH = 8;
 /** Envelope positions: calls, valid_before, fee_token and fee_payer_signature. */
@@ -31,13 +37,14 @@ const KEYCHAIN_V1 = 0x03;
 const KEYCHAIN_V2 = 0x04;
 
 /**
- * The envelope's items: `0x76`, then an RLP list of 14 items (13 fields and the sender's signature), or 15 when a
- * key authorization precedes the signature. At most 64 KiB and RLP depth 8.
+ * The envelope's items: `0x76` or `0x78`, then an RLP list of 14 items (13 fields and the sender's signature), or 15
+ * when a key authorization precedes the signature. A `0x78` envelope's item 11 is a 20-byte address, the sender's. At
+ * most 64 KiB and RLP depth 8.
  */
 export function decodeEnvelope(wire: unknown): RlpItem[] | Refusal {
   if (!(wire instanceof Uint8Array)) return refusal("tempo/tx-malformed");
   if (wire.length > MAX_WIRE_BYTES) return refusal("tempo/tx-too-large");
-  if (wire.length < 2 || wire[0] !== TEMPO_TX_TYPE) return refusal("tempo/tx-malformed");
+  if (wire.length < 2 || (wire[0] !== TEMPO_TX_TYPE && wire[0] !== TEMPO_FEE_PAYER_TX_TYPE)) return refusal("tempo/tx-malformed");
   const top = rlpDecode(wire.subarray(1), MAX_WIRE_DEPTH);
   if (top === undefined || top.kind !== "list") return refusal("tempo/tx-malformed");
   const items = top.items;
@@ -47,12 +54,17 @@ export function decodeEnvelope(wire: unknown): RlpItem[] | Refusal {
   if (items[FEE_TOKEN]!.kind !== "bytes") return refusal("tempo/tx-malformed");
   if (items.length === 15 && items[13]!.kind !== "list") return refusal("tempo/tx-malformed");
   if (items[items.length - 1]!.kind !== "bytes") return refusal("tempo/tx-malformed");
+  if (wire[0] === TEMPO_FEE_PAYER_TX_TYPE) {
+    const slot = items[FEE_PAYER_SIGNATURE]!;
+    if (slot.kind !== "bytes" || slot.bytes.length !== 20) return refusal("tempo/tx-malformed");
+  }
   return items;
 }
 
 /**
  * What the sender signed: `0x76` ‖ rlp(every envelope field before the sender's signature). When a fee payer has
- * signed, `fee_token` is written as `0x80` and the fee payer's signature as `0x00`.
+ * signed, or a `0x78` envelope names the sender in the fee payer's slot, `fee_token` is written as `0x80` and that slot
+ * as `0x00`, as the sender signed them (ox 0.14.54 `tempo/TxEnvelopeTempo.js:479-489`, `encodeForSigning`).
  */
 export function senderSigned(items: readonly RlpItem[]): Uint8Array {
   const fields = items.slice(0, -1).map((i) => i.raw);
@@ -97,8 +109,9 @@ function primitiveSigner(sig: Uint8Array, hash: Uint8Array): Hex | Refusal {
 }
 
 /**
- * The sender of a signed `0x76` transaction, as Tempo recovers it from the sender's signature over what the sender
- * signed (`senderSigned`): a primitive signature's signer, or for a keychain signature (`0x04`, a 20-byte account and a
+ * The sender of a signed `0x76` transaction, or of the `0x78` form, as Tempo recovers it from the sender's signature
+ * over what the sender signed (`senderSigned`), a `0x78` envelope whose item 11 names another account being
+ * `tempo/tx-malformed`: a primitive signature's signer, or for a keychain signature (`0x04`, a 20-byte account and a
  * primitive signature over keccak256(`0x04` ‖ that hash ‖ the account)) that account. A keychain signature of type
  * `0x03` is `tempo/tx-malformed`: Tempo's transaction specification rejects that format from T1C onward ("Keychain";
  * "Transaction Validation", step 1), and Tempo's node refuses it once T1C is active (tempoxyz/tempo `7d4fd03`,
@@ -115,6 +128,14 @@ function primitiveSigner(sig: Uint8Array, hash: Uint8Array): Hex | Refusal {
 export function tempoSender(wire: Uint8Array): Hex | Refusal {
   const items = decodeEnvelope(wire);
   if (isRefusal(items)) return items;
+  const sender = signerOf(items);
+  if (isRefusal(sender) || wire[0] !== TEMPO_FEE_PAYER_TX_TYPE) return sender;
+  const named = hexOf((items[FEE_PAYER_SIGNATURE] as Extract<RlpItem, { kind: "bytes" }>).bytes);
+  return named.toLowerCase() === sender.toLowerCase() ? sender : refusal("tempo/tx-malformed");
+}
+
+/** The sender recovered from the envelope's last item over the bytes the sender signed. */
+function signerOf(items: readonly RlpItem[]): Hex | Refusal {
   const sig = (items[items.length - 1] as Extract<RlpItem, { kind: "bytes" }>).bytes;
   const hash = keccak(senderSigned(items));
   if (sig.length !== SECP256K1_LENGTH && sig[0] === KEYCHAIN_V2) {
@@ -150,4 +171,30 @@ export function authorizationSignatures(wire: Uint8Array): Uint8Array[] | Refusa
     signatures.push(sig.bytes);
   }
   return signatures;
+}
+
+/**
+ * The signed key authorization a transaction carries, item 13 of a 15-item envelope, its RLP bytes whole: the
+ * authorization and the root key's signature, as `readKeyAuthorization` reads them. None where the envelope holds 14
+ * items, and `tempo/tx-malformed` where it does not decode.
+ */
+export function carriedKeyAuthorization(wire: Uint8Array): Hex | undefined | Refusal {
+  const items = decodeEnvelope(wire);
+  if (isRefusal(items)) return items;
+  return items.length === 15 ? hexOf(items[13]!.raw) : undefined;
+}
+
+/**
+ * The account whose root key signed a key authorization, rlp([authorization, signature]): the signature's signer over
+ * keccak256 of the authorization's bytes as received (`primitiveSigner`), the digest the root key signs
+ * (`KeyAuthorizationUnsigned`). Any other form is `tempo/key-authorization-malformed`.
+ */
+export function keyAuthorizationSigner(signed: Uint8Array): Hex | Refusal {
+  const bad = refusal("tempo/key-authorization-malformed");
+  const top = rlpDecode(signed, MAX_WIRE_DEPTH);
+  if (top === undefined || top.kind !== "list" || top.items.length !== 2) return bad;
+  const [auth, sig] = top.items as [RlpItem, RlpItem];
+  if (auth.kind !== "list" || sig.kind !== "bytes") return bad;
+  const signer = primitiveSigner(sig.bytes, keccak(auth.raw));
+  return isRefusal(signer) ? bad : (signer.toLowerCase() as Hex);
 }

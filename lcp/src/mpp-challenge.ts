@@ -17,7 +17,7 @@ import {
   type AtrHash,
   type Json,
 } from "./core.js";
-import { bytesOf, hexOf, keccak, keccakHex, type Hex } from "./evm-abi.js";
+import { bytesOf, hexOf, keccak, keccakHex, sameBytes, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
 import { broadcasterOf, type Broadcaster } from "./internal/broadcaster.js";
@@ -154,6 +154,8 @@ export type MppPairingId =
   | "mpp/charge/evm/transaction"
   | "mpp/charge/evm/hash"
   | "mpp/session/evm"
+  | "mpp/charge/tempo/split-memo"
+  | "mpp/charge/tempo/split-memo/push"
   | "mpp/session/tempo"
   | "mpp/subscription/tempo"
   | "mpp/charge/lightning"
@@ -576,19 +578,153 @@ function evmChargePairings(r: { [k: string]: Json }, d: { [k: string]: Json }, c
   return listed;
 }
 
+/**
+ * `charge` on `tempo` (profile `mpp/charge/tempo/split-memo`, rules 2 to 4): `currency` and `recipient` addresses and
+ * `amount` a decimal, else `mpp/request-malformed`; `methodDetails.chainId` a positive integer, else
+ * `mpp/chain-id-required`, since the draft reads an absent one as Moderato; `methodDetails.zones` present is
+ * `mpp/zones-not-served`, and `machineTokenEnabled` other than absent or `false` is `mpp/machine-token-enabled`; a zero
+ * `amount` names no pairing, its payment being an off-chain proof that moves nothing; `methodDetails.memo` present is
+ * `mpp/carrier-taken`. The forms are read from `supportedModes` alone, absent being pull and push: pull names
+ * `mpp/charge/tempo/split-memo`, push `mpp/charge/tempo/split-memo/push`; a list that is not of those two, or is empty,
+ * is `mpp/request-malformed`, as is a `feePayer` that is not a boolean. `splits` reads as `tempoSplits` reads them. The
+ * split carrying H is the one whose `memo` is the H the challenge's id carries: there is at most one, and it is
+ * `{recipient, amount: 1, memo: H}` with the request's own `recipient`, else `mpp/split-not-placed`; with `carried` (a
+ * challenge as placed, or echoed) it is required. Beside it the seller's own splits number at most nine, else
+ * `mpp/splits-malformed`, and the primary transfer, `amount` less every split and the one that carries H, must be above
+ * zero, else `mpp/input-malformed`.
+ */
+function tempoChargePairings(
+  r: { [k: string]: Json },
+  d: { [k: string]: Json },
+  c: MppChallenge,
+  carried: boolean,
+): readonly MppPairingId[] | Refusal {
+  if (!isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
+    return refusal("mpp/request-malformed");
+  }
+  if (!isPositiveInt(d["chainId"])) return refusal("mpp/chain-id-required");
+  if (d["zones"] !== undefined) return refusal("mpp/zones-not-served");
+  if (d["machineTokenEnabled"] !== undefined && d["machineTokenEnabled"] !== false) return refusal("mpp/machine-token-enabled");
+  if (BigInt(r["amount"] as string) === 0n) return [];
+  if (d["memo"] !== undefined) return refusal("mpp/carrier-taken");
+  const modes = d["supportedModes"];
+  if (modes !== undefined && (!Array.isArray(modes) || modes.length === 0 || !modes.every((m) => m === "pull" || m === "push"))) {
+    return refusal("mpp/request-malformed");
+  }
+  if (d["feePayer"] !== undefined && typeof d["feePayer"] !== "boolean") return refusal("mpp/request-malformed");
+  const splits = tempoSplits(d);
+  if (isRefusal(splits)) return splits;
+  const h = typeof c.id === "string" ? challengeIdH(c) : undefined;
+  const carrier = typeof h === "string" ? (splits ?? []).filter((s) => s.memo !== undefined && sameBytes(s.memo, h)) : [];
+  if (carrier.length > 1) return refusal("mpp/split-not-placed");
+  const placed = carrier[0];
+  if (placed !== undefined && (!sameBytes(placed.to, r["recipient"]) || placed.amount !== 1n)) return refusal("mpp/split-not-placed");
+  if (carried && placed === undefined) return refusal("mpp/split-not-placed");
+  const own = (splits ?? []).filter((s) => s !== placed);
+  if (own.length > MAX_TEMPO_SPLITS - 1) return refusal("mpp/splits-malformed");
+  const total = own.reduce((sum, s) => sum + s.amount, 1n);
+  if (BigInt(r["amount"] as string) - total <= 0n) return refusal("mpp/input-malformed");
+  const out: MppPairingId[] = [];
+  if (modes === undefined || modes.includes("pull")) out.push("mpp/charge/tempo/split-memo");
+  if (modes === undefined || modes.includes("push")) out.push("mpp/charge/tempo/split-memo/push");
+  return out;
+}
+
+const MAX_TEMPO_SPLITS = 10;
+const BYTES32_HEX = /^0x[0-9a-fA-F]{64}$/;
+
+/** A Tempo charge split: the recipient, the amount and, when present, the memo. */
+export interface TempoSplit {
+  to: Hex;
+  amount: bigint;
+  memo?: Hex;
+}
+
+/**
+ * A Tempo charge's `methodDetails.splits`, as draft-tempo-charge-00's Split Payments section gives them: absent, or 1 to
+ * 10 entries, each an address `recipient`, a decimal `amount` above zero and, when present, a `bytes32` hex `memo`;
+ * otherwise `mpp/splits-malformed`.
+ */
+export function tempoSplits(details: { [k: string]: Json }): TempoSplit[] | undefined | Refusal {
+  const splits = details["splits"];
+  if (splits === undefined) return undefined;
+  if (!Array.isArray(splits) || splits.length < 1 || splits.length > MAX_TEMPO_SPLITS) return refusal("mpp/splits-malformed");
+  const out: TempoSplit[] = [];
+  for (const s of splits) {
+    if (!isObject(s) || !isAddress(s["recipient"]) || !isDecimal(s["amount"])) return refusal("mpp/splits-malformed");
+    const amount = BigInt(s["amount"] as string);
+    if (amount === 0n) return refusal("mpp/splits-malformed");
+    const memo = s["memo"];
+    if (memo !== undefined && (typeof memo !== "string" || !BYTES32_HEX.test(memo))) return refusal("mpp/splits-malformed");
+    out.push(memo === undefined ? { to: s["recipient"] as Hex, amount } : { to: s["recipient"] as Hex, amount, memo: memo as Hex });
+  }
+  return out;
+}
+
+/**
+ * A Tempo charge's request without the split that carries H, the one whose `memo` is the H the challenge's id carries,
+ * and without `splits` where that leaves it empty: the request as the seller issued it (profile
+ * `mpp/charge/tempo/split-memo`, rule 1). The request itself where the id carries no H or no split carries it.
+ */
+function withoutSplitCarrier(c: MppChallenge, request: { [k: string]: Json }): { [k: string]: Json } {
+  const h = typeof c.id === "string" ? challengeIdH(c) : undefined;
+  const md = request["methodDetails"];
+  if (typeof h !== "string" || !isObject(md) || !Array.isArray(md["splits"])) return request;
+  const splits = md["splits"] as Json[];
+  const kept = splits.filter((s) => !(isObject(s) && typeof s["memo"] === "string" && sameBytes(s["memo"], h)));
+  if (kept.length === splits.length) return request;
+  const { splits: _, ...rest } = md as { [k: string]: Json };
+  return { ...request, methodDetails: kept.length === 0 ? rest : { ...rest, splits: kept } };
+}
+
+/**
+ * `place` for a Tempo charge (profile `mpp/charge/tempo/split-memo`, rule 1), then the split that carries H appended to
+ * the placed challenge's `methodDetails.splits`: `{recipient, amount: "1", memo: H}`, `recipient` the request's own, H
+ * as `0x` and 64 lowercase hex digits. The request is re-encoded as base64url of the core's `canonicalJson`, at most
+ * 8 KiB, else `mpp/request-malformed`. The placed challenge is held to the pairings' filter with the split required
+ * (`checkChallenge`), whose refusal it gives. Nothing else of the request is written: the seller's option names
+ * `supportedModes` and `feePayer` as issued, which the ATR's binding slot holds.
+ */
+export function placeSplit(
+  doc: readonly MppChallenge[],
+  h: AtrHash,
+  link: string,
+  option: MppChallenge,
+  position: number,
+  agreementUrl?: string,
+): MppChallenge[] | Refusal {
+  const placed = place(doc, h, link, option, position, agreementUrl);
+  if (isRefusal(placed)) return placed;
+  const i = doc.findIndex((c) => sameBound(c, option));
+  const request = decodeObject(placed[i]!.request);
+  if (request === undefined) return refusal("mpp/request-malformed");
+  const md = isObject(request["methodDetails"]) ? (request["methodDetails"] as { [k: string]: Json }) : {};
+  const own = Array.isArray(md["splits"]) ? (md["splits"] as Json[]) : [];
+  const split: Json = { recipient: request["recipient"] as Json, amount: "1", memo: normalHash(h)! };
+  const text = canonicalJson({ ...request, methodDetails: { ...md, splits: [...own, split] } });
+  if (typeof text !== "string") return refusal("mpp/request-malformed");
+  const bytes = new TextEncoder().encode(text);
+  if (bytes.length > MAX_DECODED) return refusal("mpp/request-malformed");
+  const out = { ...placed[i]!, request: toBase64Url(bytes) };
+  const checked = checkChallenge(out, true, true);
+  if (isRefusal(checked)) return checked;
+  placed[i] = out;
+  return placed;
+}
+
 function evmSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }): readonly MppPairingId[] | Refusal {
   if (d["channelId"] !== undefined || d["sessionSnapshot"] !== undefined) return refusal("mpp/channel-named");
   if (!isAddress(d["escrowContract"])) return refusal("mpp/escrow-malformed");
   if (!isPositiveInt(d["chainId"])) return refusal("mpp/chain-id-required");
   if (!isAddress(r["currency"]) || !isAddress(r["recipient"])) return refusal("mpp/request-malformed");
+  // The pairing is an opening the seller's settler submits, funded by an `authorization` or a `permit2`; an opening
+  // funded by a `hash`, a transaction the buyer's client broadcasts, is no part of it and is not offered. So the challenge
+  // names `credentialTypes`, without `hash`, since an absent member admits `hash` (draft-evm-session-00 reads it as
+  // `["hash"]`).
   const types = d["credentialTypes"];
-  if (types !== undefined) {
-    if (!Array.isArray(types) || types.length === 0) return refusal("mpp/credential-types");
-    if (!types.every((t) => t === "permit2" || t === "authorization" || t === "hash")) {
-      return refusal("mpp/credential-types");
-    }
-  }
-  // The Permit2 opening signs `permit2Contract` as the verifying contract; an absent `credentialTypes` is `["hash"]`.
+  if (!Array.isArray(types) || types.length === 0) return refusal("mpp/credential-types");
+  if (!types.every((t) => t === "permit2" || t === "authorization")) return refusal("mpp/credential-types");
+  // The Permit2 opening signs `permit2Contract` as the verifying contract.
   if (Array.isArray(types) && types.includes("permit2") && d["permit2Contract"] !== undefined && !isAddress(d["permit2Contract"])) {
     return refusal("mpp/request-malformed");
   }
@@ -685,6 +821,7 @@ function lightningPairings(pairing: "mpp/charge/lightning" | "mpp/session/lightn
 /** Each (intent, method) this entry point serves, and the check that names its pairings. */
 const PAIRING_CHECKS: { readonly [intentAndMethod: string]: PairingCheck } = Object.freeze({
   "charge/evm": evmChargePairings,
+  "charge/tempo": tempoChargePairings,
   "session/evm": evmSessionPairings,
   "session/tempo": tempoSessionPairings,
   "subscription/tempo": subscriptionPairings,
@@ -759,9 +896,15 @@ export async function issuedDigest(given: MppChallenge): Promise<Hex | Refusal> 
 
 /**
  * The intents and methods whose seller writes the quote or the invoice into the challenge after H, so that the ATR's
- * binding slot holds the challenge without it: NEAR Intents' charge, and Lightning's charge and session.
+ * binding slot holds the challenge without it: NEAR Intents' charge, and Lightning's charge and session; and the Tempo
+ * charge, whose split carrying H `placeSplit` writes after H (profile `mpp/charge/tempo/split-memo`, rule 1).
  */
-const WRITTEN_AFTER_H: ReadonlySet<string> = new Set(["charge/nearintents", "charge/lightning", "session/lightning"]);
+const WRITTEN_AFTER_H: ReadonlySet<string> = new Set([
+  "charge/nearintents",
+  "charge/lightning",
+  "session/lightning",
+  "charge/tempo",
+]);
 
 /**
  * The request members of a NEAR Intents charge written after H, at the quote (draft-nearintents-charge-01, Shared
@@ -934,6 +1077,7 @@ export function withoutCarrier(c: MppChallenge): MppChallenge {
  * removal empties removed too. The request itself is returned when it holds no carrier.
  */
 function asIssued(c: MppChallenge, request: { [k: string]: Json }): { [k: string]: Json } {
+  if (c.intent === "charge" && c.method === "tempo") return withoutSplitCarrier(c, request);
   const path = carrierOf(c, request);
   if (path === null || memberAt(request, path) === undefined) return request;
   return without(request, path);
@@ -1362,6 +1506,7 @@ const INVALID_CHALLENGE = ["mpp/id-not-ours"];
  */
 const CANNOT_READ = [
   "tempo/wrong-reader",
+  "tempo/read-first",
   "svm/wrong-reader",
   "xrpl/wrong-reader",
   "hedera/wrong-reader",

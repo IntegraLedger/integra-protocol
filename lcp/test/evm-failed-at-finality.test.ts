@@ -128,52 +128,8 @@ const witness = log(ACCOUNT_KEYCHAIN, [KEY_AUTHORIZATION_WITNESS_TOPIC, topic(PA
 const toPayee = digest({ to: PAYEE });
 
 const ROWS: Row[] = [
-  ["mpp/charge/evm/permit2", "the payment", BASE, permit2Ref, permit2Failures],
-  ["mpp/charge/evm/authorization", "the payment", BASE, pulled(NONCE), pulledFailures],
-  ["mpp/charge/usdc/evm", "the payment", BASE, pulled(NONCE), pulledFailures],
-  ...(["mpp/charge/evm/transaction", "mpp/charge/evm/hash"] as const).map(
-    (id): Row => [
-      id,
-      "the payment",
-      BASE,
-      { transaction: TX, asset: TOKEN, transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from", digest: digest({ from: PAYER }) } },
-      [
-        { why: "reverted", logs: [transfer(PAYER, PAYEE)], reverted: true },
-        { why: "transfer-not-found", logs: [transfer(STRANGER, PAYEE)] },
-        { why: "receive-policy-blocked", logs: [transfer(PAYER, RECEIVE_POLICY_GUARD)] },
-      ],
-    ],
-  ),
-  [
-    "mpp/session/evm",
-    "a hash opening",
-    BASE,
-    {
-      transaction: TX,
-      transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from,to", digest: digest({ from: PAYER, to: sessionEscrow }) },
-      opens: { escrow: sessionEscrow, channel: CHANNEL, h: H, chainId: 84532 },
-    },
-    [
-      { why: "reverted", logs: [transfer(PAYER, sessionEscrow)], reverted: true },
-      { why: "transfer-not-found", logs: [] },
-    ],
-  ],
-  [
-    "mpp/session/evm",
-    "an authorization opening",
-    BASE,
-    {
-      transaction: TX,
-      settleBy: "1790000060",
-      bindingLog: { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: NONCE },
-      transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: digest({ from: PAYER, to: sessionEscrow, value: VALUE }) },
-    },
-    [
-      { why: "reverted", logs: [used(NONCE), transfer(PAYER, sessionEscrow)], reverted: true },
-      { why: "binding-log-not-found", logs: [transfer(PAYER, sessionEscrow)] },
-      { why: "transfer-not-found", logs: [used(NONCE)] },
-    ],
-  ],
+  // The EVM session's opening is read by its funding's search (mpp-session-evm-open.test.ts), never by a named
+  // transaction alone, so only its close is a named read here.
   ["mpp/session/evm", "the close", BASE, { transaction: TX, closes: { escrow: sessionEscrow, channel: CHANNEL } }, [{ why: "reverted", logs: [], reverted: true }]],
   [
     "mpp/session/tempo",
@@ -319,7 +275,13 @@ describe("an EVM failed read answers pending search-incomplete, at or below the 
       "x402/auth-capture/eip155/permit2",
       "x402/batch-settlement/eip155",
     ]);
-    const evm = BINDINGS.filter((b) => /eip155|\/evm|tempo/.test(b.id) && "status" in b && b.status !== undefined && !searched.has(b.id));
+    // The MPP charges on EVM chains read by a search and by the named transaction's own facts, not by these reasons:
+    // the read kit's forms and test/eip155-tempo-mpp-evm.test.ts hold them. The Tempo split-memo charge reads through
+    // `decide` and the read kit (test/eip155-tempo-mpp-split-status.test.ts).
+    const mppSearched = /^mpp\/charge\/(evm\/|usdc\/evm$|tempo\/split-memo)/;
+    const evm = BINDINGS.filter(
+      (b) => /eip155|\/evm|tempo/.test(b.id) && "status" in b && b.status !== undefined && !searched.has(b.id) && !mppSearched.test(b.id),
+    );
     expect(new Set(ROWS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
     expect(new Set(ROWS.flatMap(([, , , , f]) => f.map((x) => x.why)))).toEqual(
       new Set([
@@ -327,7 +289,6 @@ describe("an EVM failed read answers pending search-incomplete, at or below the 
         "transfer-not-found",
         "binding-log-not-found",
         "receive-policy-blocked",
-        "nonce-not-used",
       ]),
     );
   });

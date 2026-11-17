@@ -157,9 +157,19 @@
       "source": "by credential type: see kinds"
     },
     {
+      "pairing": "mpp/charge/tempo/split-memo",
+      "broadcaster": "payee",
+      "source": "draft-tempo-charge-00 at tempoxyz/mpp-specs 08e7dd87, pull mode: the client signs the transaction and the server broadcasts it; mppx 0.17.6 dist/tempo/client/Charge.js signs it and returns a transaction credential"
+    },
+    {
+      "pairing": "mpp/charge/tempo/split-memo/push",
+      "broadcaster": "payer",
+      "source": "draft-tempo-charge-00 at tempoxyz/mpp-specs 08e7dd87, push mode: the client broadcasts the transaction and presents its hash; mppx 0.17.6 dist/tempo/client/Charge.js sends it and returns a hash credential"
+    },
+    {
       "pairing": "mpp/session/evm",
-      "broadcaster": null,
-      "source": "by action and type: see kinds"
+      "broadcaster": "payee",
+      "source": "every payment the pairing takes, by action and type (see kinds): an authorization or permit2 opening or top-up the seller submits, a voucher it redeems, a close it sends"
     },
     {
       "pairing": "mpp/session/tempo",
@@ -604,7 +614,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -640,7 +650,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -669,58 +679,6 @@
       "source": "draft-evm-session-00 at tempoxyz/mpp-specs 08e7dd87: feePayer true: the server submits the opening"
     },
     {
-      "case": "mpp/session/evm: a hash opening",
-      "pairing": "mpp/session/evm",
-      "presented": {
-        "challenge": {
-          "realm": "api.seller.example",
-          "method": "evm",
-          "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
-          "expires": "2026-09-21T14:14:20Z",
-          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
-          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
-        },
-        "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "payload": {
-          "action": "open",
-          "type": "hash",
-          "channelId": "0x4b7bf82cb18e1d03359e3f1aa2fb6a61d0fe2efed33a2999bb71ce5d856c0f08",
-          "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
-          "cumulativeAmount": "0",
-          "signature": "0x00",
-          "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-        }
-      },
-      "expect": "payer",
-      "source": "draft-evm-session-00 at tempoxyz/mpp-specs 08e7dd87: \"the client broadcasts the open() or approve + open() transaction themselves\""
-    },
-    {
-      "case": "mpp/session/evm: a hash top-up",
-      "pairing": "mpp/session/evm",
-      "presented": {
-        "challenge": {
-          "realm": "api.seller.example",
-          "method": "evm",
-          "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
-          "expires": "2026-09-21T14:14:20Z",
-          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
-          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
-        },
-        "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "payload": {
-          "action": "topUp",
-          "type": "hash",
-          "channelId": "0x4b7bf82cb18e1d03359e3f1aa2fb6a61d0fe2efed33a2999bb71ce5d856c0f08",
-          "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
-          "additionalDeposit": "1"
-        }
-      },
-      "expect": "payer",
-      "source": "draft-evm-session-00 at tempoxyz/mpp-specs 08e7dd87: topUp, \"When feePayer: false (client broadcasts)\""
-    },
-    {
       "case": "mpp/session/evm: an authorization top-up",
       "pairing": "mpp/session/evm",
       "presented": {
@@ -728,7 +686,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -761,7 +719,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -786,7 +744,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -810,7 +768,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -852,7 +810,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -1251,6 +1209,56 @@
       "expectRefusal": "mpp/credential-malformed"
     },
     {
+      "case": "mpp/session/evm: a hash opening, no part of the pairing",
+      "pairing": "mpp/session/evm",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "evm",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "payload": {
+          "action": "open",
+          "type": "hash",
+          "channelId": "0x4b7bf82cb18e1d03359e3f1aa2fb6a61d0fe2efed33a2999bb71ce5d856c0f08",
+          "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+          "cumulativeAmount": "0",
+          "signature": "0x00",
+          "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        }
+      },
+      "expectRefusal": "mpp/credential-type"
+    },
+    {
+      "case": "mpp/session/evm: a hash top-up, no part of the pairing",
+      "pairing": "mpp/session/evm",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "evm",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "payload": {
+          "action": "topUp",
+          "type": "hash",
+          "channelId": "0x4b7bf82cb18e1d03359e3f1aa2fb6a61d0fe2efed33a2999bb71ce5d856c0f08",
+          "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+          "additionalDeposit": "1"
+        }
+      },
+      "expectRefusal": "mpp/not-an-opening"
+    },
+    {
       "case": "mpp/session/lightning: not a credential",
       "pairing": "mpp/session/lightning",
       "presented": "x",
@@ -1316,7 +1324,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -1351,7 +1359,7 @@
           "realm": "api.seller.example",
           "method": "evm",
           "intent": "session",
-          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJoYXNoIiwiYXV0aG9yaXphdGlvbiIsInBlcm1pdDIiXSwiZXNjcm93Q29udHJhY3QiOiIweDEyMzQ1Njc4OTBBYmNkRUYxMjM0NTY3ODkwYUJjZGVmMTIzNDU2NzgifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"

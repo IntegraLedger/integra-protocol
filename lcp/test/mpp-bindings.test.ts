@@ -32,6 +32,8 @@ import {
   type MppChallenge,
   type MppCredential,
   type SessionUnsigned,
+  tempoSplitMemo,
+  tempoSplitMemoPush,
 } from "../src/mpp.js";
 import { chargeLightning, sessionLightning } from "../src/lightning.js";
 import type { KeyAuthorizationUnsigned } from "../src/tempo.js";
@@ -65,6 +67,8 @@ describe("MPP_BINDINGS", () => {
       "mpp/charge/evm/permit2",
       "mpp/charge/evm/transaction",
       "mpp/charge/evm/hash",
+      "mpp/charge/tempo/split-memo",
+      "mpp/charge/tempo/split-memo/push",
       "mpp/session/evm",
       "mpp/session/tempo",
       "mpp/subscription/tempo",
@@ -93,6 +97,8 @@ describe("MPP_BINDINGS", () => {
       evmPermit2,
       evmTransaction,
       evmHash,
+      tempoSplitMemo,
+      tempoSplitMemoPush,
               sessionEvm,
       sessionTempo,
       subscriptionTempo,
@@ -116,7 +122,7 @@ describe("MPP_BINDINGS", () => {
       chargeUsdcStacks,
       chargeUsdcGateway,
     ]);
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 26 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 28 })) {
       expect(Object.isFrozen(b)).toBe(true);
       expect(Object.isFrozen(b.pattern)).toBe(true);
     }
@@ -134,8 +140,9 @@ describe("MPP_BINDINGS", () => {
     if ("refused" in p2) throw new Error(p2.code);
     refs.push(await issued(evmPermit2.reference, p2.complete(A.MV5.expectSignature) as MppCredential));
     const chEH = challenge("evm", "charge", load("mpp-charge-evm-transaction.json").fixed.R_ENoTypes);
-    refs.push(await issued(evmTransaction.reference, { challenge: chEH, source: A.MV5.expectSource } as MppCredential));
-    refs.push(await issued(evmHash.reference, { challenge: chEH, source: A.MV5.expectSource } as MppCredential));
+    const named = { type: "hash", hash: `0x${"ab".repeat(32)}` };
+    refs.push(await issued(evmTransaction.reference, { challenge: chEH, source: A.MV5.expectSource, payload: named } as MppCredential));
+    refs.push(await issued(evmHash.reference, { challenge: chEH, source: A.MV5.expectSource, payload: named } as MppCredential));
     const chES = placed(challenge("evm", "session", E.fixed.request));
     const s = (await sessionEvm.build(
       { challenge: chES, from: E.fixed.payer, now: 0, deposit: 5000000n, credentialType: "authorization", tokenDomain: E.fixed.tokenDomain },
@@ -244,7 +251,7 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
       { ...challenge("usdc", "charge", "{}"), request: b64u(JSON.stringify(US.fixed.request)) },
     ];
     const placedBy = new Set<string>();
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 26 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 28 })) {
       for (const option of issued) {
         const offered = pairingsOf(option);
         if (!Array.isArray(offered) || !offered.includes(b.id as never)) continue;

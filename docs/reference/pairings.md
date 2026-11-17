@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 69 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 71 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -54,6 +54,8 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/solana/unsponsored` | `chargeSolanaUnsponsored` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/stripe` | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/tempo/split-memo` | `tempoSplitMemo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
+| `mpp/charge/tempo/split-memo/push` | `tempoSplitMemoPush` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
 | `mpp/charge/usdc/evm` | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/solana`](../../lcp/profiles/mpp-charge-usdc-solana.md) |
@@ -171,7 +173,7 @@ The payer signed an EIP-3009 transfer authorization whose nonce is keccak256 of 
 
 ### `mpp/charge/evm/hash`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction (`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, and the settlement transaction it reported succeeded and moved the token. This does not show that amount, payee, asset or timing match the ATR's content.
+Before this payment, an account signed an agreement carrying this ATR's hash on <network>, recorded in <transaction>; that shows neither that the account is the payer nor when this charge was taken. The payment is an ERC-20 transfer signed as a whole transaction (`transaction`), or broadcast by its signer and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the read found that the named transaction succeeded and moved a token to the challenge's recipient. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `mpp/charge/evm/permit2`
 
@@ -179,7 +181,7 @@ The payer signed a Permit2 transfer, single or batch, whose witness carries kecc
 
 ### `mpp/charge/evm/transaction`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an ERC-20 transfer the buyer signed as a whole transaction (`transaction`), or broadcast itself and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the seller's server bound the challenge, and the settlement transaction it reported succeeded and moved the token. This does not show that amount, payee, asset or timing match the ATR's content.
+Before this payment, an account signed an agreement carrying this ATR's hash on <network>, recorded in <transaction>; that shows neither that the account is the payer nor when this charge was taken. The payment is an ERC-20 transfer signed as a whole transaction (`transaction`), or broadcast by its signer and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the read found that the named transaction succeeded and moved a token to the challenge's recipient. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `mpp/charge/lightning`
 
@@ -200,6 +202,14 @@ The payer's own signed act carries this ATR's hash: a Solana transaction the buy
 ### `mpp/charge/stripe`
 
 An account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>, before this payment was taken or reported. This shows neither that the account is this payment's payer nor when this payment was taken, which nothing here reads. The seller's MPP challenge carried this ATR's hash in its id and its opaque reference, bound to the challenge by the seller's own server, and the credential presented echoed that challenge. The seller also placed the hash in the PaymentIntent's metadata under legal_context. Nothing the payer or its Stripe token signed carries the hash, and the payment is known from the seller's report alone. This does not show that the payer's approval carried the hash.
+
+### `mpp/charge/tempo/split-memo`
+
+The ATR's hash is in the MPP Tempo charge challenge the payer answered: its id is the hash in base64url with the challenge's position, and one of its splits carries the hash as its memo. The payer's own signed Tempo transaction carries all of the hash as the memo of a `transferWithMemo` call, and the chain verified the payer's signature when it executed the call. The record states "paid" where value moved, with the account it reached, and "signed" where nothing moved. This does not show that amount, payee, asset or timing match the ATR's content.
+
+### `mpp/charge/tempo/split-memo/push`
+
+The ATR's hash is in the MPP Tempo charge challenge the payer answered: its id is the hash in base64url with the challenge's position, and one of its splits carries the hash as its memo. The payer's own signed Tempo transaction carries all of the hash as the memo of a `transferWithMemo` call, and the chain verified the payer's signature when it executed the call. The record states "paid" where value moved, with the account it reached, and "signed" where nothing moved. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `mpp/charge/usdc/evm`
 
@@ -223,7 +233,7 @@ The payer signed an XRPL Payment whose InvoiceID is this ATR's hash, and it is i
 
 ### `mpp/session/evm`
 
-The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's deposit to the escrow. Where the payer sent the open call, or a relayer sent the escrow's Permit2 opening, the seller read that call: it is to the escrow, its salt is this ATR's hash, and its payer, payee, token and authorized signer give this channel id, so the payer is the account that signed the call or, on Permit2, the transfer. This does not show that amount, payee, asset or timing match the ATR's content. Each voucher in this channel signs a commitment to this ATR's hash.
+The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt. The seller read that the opening transaction succeeded and moved the payer's deposit to the escrow, and that the escrow ran the open call as the transaction shows it: an `openWithAuthorization` by its token's AuthorizationUsed of the payer and the nonce the escrow recomputes over the channel parameters and the salt, or an `openWithPermit2` as the transaction's own call to the escrow. Its salt is this ATR's hash, its payee is the channel's beneficiary, and the payer is the account its authorization or permit is signed by, whose deposit moved to the escrow. This does not show that amount, payee, asset or timing match the ATR's content. Each voucher in this channel signs a commitment to this ATR's hash.
 
 ### `mpp/session/hedera/stock`
 
@@ -243,7 +253,7 @@ Before this opening was taken, an account signed an agreement transaction carryi
 
 ### `mpp/session/tempo`
 
-The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer signed a Tempo transaction whose one call to the channel escrow opens a channel with this ATR's hash as its salt, and the chain verified that signature when it executed the call. The escrow's ChannelOpened event names the channel, whose id commits to the salt; on the TIP-1034 escrow the event also carries the salt itself. This does not show that amount, payee, asset or timing match the ATR's content. Each voucher in this channel signs a commitment to this ATR's hash.
+The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer signed a Tempo transaction whose one call to the channel escrow opens a channel with this ATR's hash as its salt, and the chain verified that signature when it executed the call. The escrow's ChannelOpened event names the channel, whose id commits to the salt, and carries the salt itself, on the v1 escrow as on the TIP-1034 escrow. This does not show that amount, payee, asset or timing match the ATR's content. Each voucher in this channel signs a commitment to this ATR's hash.
 
 ### `mpp/session/xrpl`
 
@@ -263,7 +273,7 @@ An account signed an agreement transaction carrying this ATR's hash on <network>
 
 ### `mpp/subscription/tempo`
 
-The ATR's hash is the MPP subscription challenge's id, in base64url. The payer's root key signed a Tempo key authorization whose witness is this ATR's hash, granting the seller's access key a per-period limit. The chain verified that signature when the activation transaction registered the key, and the account keychain's KeyAuthorizationWitness event carries the payer's account and this hash as topics. The same transaction transferred the token the payer's key authorization limits to the recipient it allows. This does not show that amount, period, payee, asset or timing match the ATR's content.
+The ATR's hash is the MPP subscription challenge's id, in base64url. The payer's root key signed a Tempo key authorization whose witness is this ATR's hash, granting the seller's access key a per-period limit. The chain verified that signature when the activation transaction registered the key, and the account keychain's KeyAuthorizationWitness event carries the payer's account and this hash as topics. The key authorization names one recipient the key may pay; what the same transaction transferred from the payer's account, if anything, is recorded as what moved, with its recipient. This does not show that amount, period, payee, asset or timing match the ATR's content.
 
 ### `ucp/booking/ap2-mandate`
 

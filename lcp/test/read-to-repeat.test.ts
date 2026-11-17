@@ -26,12 +26,12 @@ describe("readToRepeat", () => {
   });
 
   it("answers false for every other code the package returns, each wrong-reader and read-first code among them", () => {
-    const rows = rowsOf(others, "refusal-classes.ts NOT_READS_TO_REPEAT", { exact: 470 });
+    const rows = rowsOf(others, "refusal-classes.ts NOT_READS_TO_REPEAT", { exact: 479 });
     for (const code of rows) expect([code, readToRepeat(code)]).toEqual([code, false]);
     const calls = rowsOf(rows, "refusal-classes.ts NOT_READS_TO_REPEAT", {
       keep: ["wrong-reader and read-first codes", (c) => /\/(wrong-reader|read-first)$/.test(c)],
       leave: ["every other code", (c) => !/\/(wrong-reader|read-first)$/.test(c)],
-      exact: 18,
+      exact: 19,
     });
     for (const code of calls) expect([code, readToRepeat(code)]).toEqual([code, false]);
   });

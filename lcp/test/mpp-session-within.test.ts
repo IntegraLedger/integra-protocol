@@ -113,8 +113,11 @@ async function openWire(escrow: string, calldata: ViemHex): Promise<ViemHex> {
 describe("mpp/session/evm: buildWithin", async () => {
   const f = E.fixed;
   const ch = placed(challenge("evm", "session", f.request));
-  const u = (await sessionEvm.build({ challenge: ch, from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType: "hash" }, H)) as SessionUnsigned;
-  const funded = `0x${"55".repeat(32)}` as ViemHex;
+  const u = (await sessionEvm.build(
+    { challenge: ch, from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType: "authorization", tokenDomain: f.tokenDomain },
+    H,
+  )) as SessionUnsigned;
+  const funded = `0x${"55".repeat(65)}` as ViemHex;
   const opening = u.complete(funded, await payer.signTypedData(forViem(u.voucher(funded)))) as MppCredential;
   const within = { ...challenge("evm", "session", f.request), id: "seller-own-id" };
   const w = (cumulativeAmount: bigint, action: string = "voucher"): SessionWithin =>
@@ -309,9 +312,16 @@ describe("mpp-challenge.json withinChallenge: buildWithin reads the within chall
   };
   const hex65 = `0x${"11".repeat(65)}`;
   const f = E.fixed;
-  const evmChoice = { challenge: placed(challenge("evm", "session", f.request)), from: f.payer, now: f.now, deposit: BigInt(f.deposit), credentialType: "hash" as const };
+  const evmChoice = {
+    challenge: placed(challenge("evm", "session", f.request)),
+    from: f.payer,
+    now: f.now,
+    deposit: BigInt(f.deposit),
+    credentialType: "authorization" as const,
+    tokenDomain: f.tokenDomain,
+  };
   const evm = (await sessionEvm.build(evmChoice, H)) as SessionUnsigned;
-  const funded = `0x${"55".repeat(32)}` as ViemHex;
+  const funded = `0x${"55".repeat(65)}` as ViemHex;
   const evmOpening = evm.complete(funded, await payer.signTypedData(forViem(evm.voucher(funded)))) as MppCredential;
   const tempoOpening = async (request: string, escrow: string) => {
     const choice = { challenge: placed(challenge("tempo", "session", request)), from: T.fixed.payer, now: T.fixed.now, deposit: BigInt(T.fixed.deposit) };

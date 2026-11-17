@@ -247,6 +247,7 @@
     "esbuild": "0.28.2",
     "js-sha3": "0.13.0",
     "light-bolt11-decoder": "3.2.0",
+    "mppx": "0.17.6",
     "near-api-js": "7.3.1",
     "ripple-binary-codec": "2.11.0",
     "starknet": "10.7.6",

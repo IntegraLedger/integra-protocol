@@ -62,6 +62,7 @@ import {
   type TempoKeyAuthorization,
 } from "../src/tempo.js";
 import { H, challenge, link, load, readerFor, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
+import { viemRead } from "./eip155-tempo-mpp-split-oracle.js";
 import { rowsOf } from "./rows.js";
 
 const E = load("mpp-session-evm.json");
@@ -118,7 +119,7 @@ describe("mpp-session-evm.json", () => {
   const ES = challenge("evm", "session", f.request);
   const ch = placed(ES);
   const deposit = BigInt(f.deposit);
-  const build = async (credentialType: "hash" | "authorization" | "permit2") =>
+  const build = async (credentialType: "authorization" | "permit2") =>
     unsignedOf(
       await sessionEvm.build({ challenge: ch, from: f.payer, now: f.now, deposit, credentialType, tokenDomain: f.tokenDomain }, H),
     );
@@ -142,8 +143,9 @@ describe("mpp-session-evm.json", () => {
 
   // ES2's calldata is eth-abi 6.0.0's approve(address,uint256) and draft-evm-session-00's open(address payee, address
   // token, uint128 deposit, bytes32 salt, address authorizedSigner) (tempoxyz/mpp-specs 08e7dd87, L494 and L517-523);
-  // viem 2.57.4's encodeFunctionData re-derives each, and build's whole funding is held to them.
-  it("ES2: the hash open's calls, byte for byte as eth-abi and viem encode approve and the escrow's open", async () => {
+  // viem 2.57.4's encodeFunctionData re-derives each. An opening funded by a `hash`, which the buyer's client sends as
+  // these calls, is no part of the pairing (mpp-session-evm-tempo.md rule 2): `build` refuses to make it.
+  it("ES2: the hash open's calls are viem's encoding of the draft's open, and build makes no hash opening", async () => {
     const abi = parseAbi([
       "function approve(address spender, uint256 amount)",
       "function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)",
@@ -153,25 +155,8 @@ describe("mpp-session-evm.json", () => {
       E.ES2.expectOpenCalldata,
     );
     expect(E.ES9.cases[0].transaction.input).toBe(E.ES2.expectOpenCalldata);
-    const u = await build("hash");
-    expect(u.funding).toEqual({
-      kind: "evm-calls",
-      chainId: 84532,
-      calls: [
-        { to: f.usdc, data: E.ES2.expectApproveCalldata },
-        { to: f.escrow, data: E.ES2.expectOpenCalldata },
-      ],
-      broadcast: true,
-    });
-    if (u.funding.kind !== "evm-calls") throw new Error("not evm-calls");
-    const [approve, open] = u.funding.calls;
-    expect(approve!.to).toBe(f.usdc);
-    expect(approve!.data.slice(0, 10)).toBe(keccak256(toBytes("approve(address,uint256)")).slice(0, 10));
-    expect(open!.to).toBe(f.escrow);
-    expect(toBytes(open!.data).length).toBe(E.ES2.expectOpenLength);
-    expect(open!.data.slice(0, 10)).toBe(E.ES2.expectOpenSelector);
-    expect(open!.data.slice(2 + 8 + 128, 2 + 8 + 192)).toBe(wordOf(BigInt(E.ES2.expectDeposit)).slice(2));
-    expect(open!.data.split(H.slice(2)).length - 1).toBe(E.ES2.expectHOccurrences);
+    const choice = { challenge: ch, from: f.payer, now: f.now, deposit, credentialType: "hash" as never, tokenDomain: f.tokenDomain };
+    expect(await sessionEvm.build(choice, H)).toEqual({ refused: true, code: "mpp/credential-types" });
   });
 
   it("ES3 and ES4: the receive authorization, its nonce, digest and signature, then bound", async () => {
@@ -196,19 +181,23 @@ describe("mpp-session-evm.json", () => {
     expect(await sessionEvm.bound(cred)).toBe(H);
     expect(sessionEvm.channel.kind(cred)).toBe("open");
     expect(await sessionEvm.channel.ref(cred)).toEqual({ network: "eip155:84532", channel: E.ES1.expectChannelId });
+    // The opening's read keys: the funding's value, the EIP-3009 nonce on the currency, and its bound.
     const ref = (await echoedRef(sessionEvm.reference)(cred)) as SessionRef;
-    expect(ref.transferLog?.digest).toBe(E.ES7.expectIdentity);
+    // Another option than the challenge the credential echoes is refused: the payee the read tests is the option's.
+    expect(await sessionEvm.reference(cred, { ...cred.challenge, realm: "other.seller.example" })).toEqual({ refused: true, code: "mpp/challenge-not-option" });
+    const usdc = f.usdc.toLowerCase();
     expect(JSON.parse(JSON.stringify(ref))).toMatchObject({
       network: "eip155:84532",
-      settleBy: "1790000060",
-      bindingLog: { address: f.usdc, index: 2, value: E.ES3.expectNonce },
-      search: { address: f.usdc, topics: [expect.any(String), null, E.ES3.expectNonce] },
+      payer: f.payer.toLowerCase(),
+      opens: { escrow: f.escrow, channel: E.ES1.expectChannelId, h: H, chainId: 84532 },
+      funding: { type: "authorization", token: usdc, at: usdc, nonce: E.ES3.expectNonce, deadline: "1790000060" },
+      presented: { funding: "authorization", token: usdc, from: f.payer.toLowerCase(), to: f.escrow.toLowerCase(), value: deposit.toString(), nonce: E.ES3.expectNonce },
     });
   });
 
   it("ES5: the voucher", async () => {
-    const u = await build("hash");
-    const v = u.voucher(`0x${"44".repeat(32)}`);
+    const u = await build("authorization");
+    const v = u.voucher(`0x${"44".repeat(65)}`);
     expect(v).toMatchObject({ domain: { name: "EVM Payment Channel", version: "1", chainId: 84532, verifyingContract: f.escrow } });
     expect(hashTypedData(forViem(v))).toBe(E.ES5.expectVoucherDigest);
   });
@@ -224,26 +213,30 @@ describe("mpp-session-evm.json", () => {
     const signature = await payer.signTypedData(forViem(td));
     const cred = u.complete(signature, await voucherSig(u, signature)) as MppCredential;
     expect(await sessionEvm.bound(cred)).toBe(H);
+    // The opening's read keys: the payer's Permit2 bit at the nonce it signed, on the canonical Permit2, and its deadline.
     const ref = (await echoedRef(sessionEvm.reference)(cred)) as SessionRef;
-    expect(ref.transferLog?.digest).toBe(E.ES7.expectIdentity);
-    expect(ref.settleBy).toBe("1790000060");
+    expect(ref.funding).toEqual({
+      type: "permit2",
+      token: f.usdc.toLowerCase(),
+      at: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+      nonce: `0x${BigInt(E.ES6.expectNonce).toString(16).padStart(64, "0")}`,
+      deadline: "1790000060",
+    });
+    expect(ref.presented).toMatchObject({ funding: "permit2", spender: f.escrow.toLowerCase(), owner: f.payer.toLowerCase(), amount: deposit.toString() });
   });
 
-  it("ES7: the hash opening's identity is payer to escrow", async () => {
-    const u = await build("hash");
-    const hash = `0x${"55".repeat(32)}` as ViemHex;
-    const cred = u.complete(hash, await voucherSig(u, hash)) as MppCredential;
-    expect([(u.funding as { broadcast?: boolean }).broadcast, await sessionEvm.broadcaster(cred)]).toEqual([true, "payer"]);
-    expect(await sessionEvm.bound(cred)).toBe(H);
-    // The payer broadcast the opening before presenting it; the reference names the transaction the credential presents,
-    // so the opening is read without the seller's report.
-    const ref = (await echoedRef(sessionEvm.reference)(cred)) as SessionRef;
-    expect(ref.transferLog).toEqual({ address: f.usdc, topic0: TRANSFER_TOPIC, identity: "from,to", digest: E.ES7.expectFromTo });
-    expect(ref.transaction).toBe(hash);
-    expect(ref.settleBy).toBeUndefined();
-    expect(sessionEvm.landedTx(cred)).toBe(hash);
-    expect(sessionEvm.landedTx({ ...cred, payload: { ...cred.payload, type: "authorization" } })).toBeUndefined();
+  it("ES7: the opening's identity is payer to escrow; a hash opening is refused as no part of the pairing", async () => {
+    const u = await build("authorization");
+    if (u.funding.kind !== "eip712") throw new Error("not eip712");
+    const signature = await payer.signTypedData(forViem(u.funding.typedData));
+    const cred = u.complete(signature, await voucherSig(u, signature)) as MppCredential;
+    const { authorization: _a, signature: _s, voucherSignature, ...rest } = cred.payload;
+    const hashed: MppCredential = { ...cred, payload: { ...rest, type: "hash", hash: `0x${"55".repeat(32)}`, signature: voucherSignature! } };
+    expect(await sessionEvm.bound(hashed)).toEqual(E.ES8.expectHashOpening);
+    expect(await sessionEvm.broadcaster(hashed)).toEqual(E.ES8.expectHashOpening);
+    expect(await echoedRef(sessionEvm.reference)(hashed)).toEqual(E.ES8.expectHashOpening);
     expect(await transferDigest({ from: f.payer, to: f.escrow, value: deposit })).toBe(E.ES7.expectIdentity);
+    expect(await transferDigest({ from: f.payer, to: f.escrow })).toBe(E.ES7.expectFromTo);
   });
 
   it("the openings' complete takes signatures of 1 to 8192 bytes: EIP-2098's 64-byte form", async () => {
@@ -253,26 +246,23 @@ describe("mpp-session-evm.json", () => {
     const voucher = compact(await voucherSig(a, signature));
     expect(toBytes(signature).length).toBe(64);
     expect(a.complete(signature, voucher)).toMatchObject({ payload: { signature, voucherSignature: voucher } });
-    const u = await build("hash");
-    const hash = `0x${"55".repeat(32)}` as ViemHex;
-    const hashVoucher = compact(await voucherSig(u, hash));
-    expect(u.complete(hash, hashVoucher)).toMatchObject({ payload: { hash, signature: hashVoucher } });
     for (const bad of BAD_SIGNATURES) {
       expect(a.complete(bad, voucher)).toEqual(malformed);
       expect(a.complete(signature, bad)).toEqual(malformed);
-      expect(u.complete(hash, bad)).toEqual(malformed);
     }
   });
 
   it("ES8: refusals, the deposit merge, a voucher, and a named channel", async () => {
-    const u = await build("hash");
-    const hash = `0x${"55".repeat(32)}` as ViemHex;
-    const cred = u.complete(hash, await voucherSig(u, hash)) as MppCredential;
+    const u = await build("authorization");
+    if (u.funding.kind !== "eip712") throw new Error("not eip712");
+    const funded = await payer.signTypedData(forViem(u.funding.typedData));
+    const cred = u.complete(funded, await voucherSig(u, funded)) as MppCredential;
     const idH2 = evmChannelId({ payer: f.payer, payee: f.recipient, token: f.usdc, salt: H2, authorizedSigner: ZERO, escrow: f.escrow, chainId: f.chainId });
     expect(await sessionEvm.bound({ ...cred, payload: { ...cred.payload, salt: H2, channelId: idH2 as string } })).toEqual(E.ES8.expectSaltH2);
     expect(await sessionEvm.bound({ ...cred, payload: { ...cred.payload, channelId: idH2 as string } })).toEqual(E.ES8.expectChannelH2);
+    // The authorization's `from` is the payer; the credential's `source` is not read.
     const { source: _source, ...noSource } = cred;
-    expect(await sessionEvm.bound(noSource as MppCredential)).toEqual(E.ES8.expectNoSource);
+    expect(await sessionEvm.bound(noSource as MppCredential)).toBe(H);
 
     const a = await build("authorization");
     if (a.funding.kind !== "eip712") throw new Error("not eip712");
@@ -328,14 +318,19 @@ describe("mpp-session-evm.json", () => {
   });
 
   // `permit2Contract` is the verifying contract the Permit2 opening signs (draft-evm-session-00 L942); an absent
-  // `credentialTypes` defaults to `["hash"]` (L948). Its form is checked where `credentialTypes` lists `permit2`.
-  it("pairingsOf checks permit2Contract only where credentialTypes lists permit2", () => {
+  // `credentialTypes` defaults to `["hash"]` (L948), so a challenge that names none, or names `hash`, is refused: an
+  // opening funded by a `hash` is no part of the pairing (mpp-session-evm-tempo.md rule 2). The form of
+  // `permit2Contract` is checked where `credentialTypes` lists `permit2`.
+  it("pairingsOf refuses credentialTypes absent or naming hash, and checks permit2Contract only where it lists permit2", () => {
     const r = JSON.parse(E.fixed.request);
     const { credentialTypes: _listed, ...unlisted } = r.methodDetails;
     const withDetails = (md: object) => challenge("evm", "session", JSON.stringify({ ...r, methodDetails: { ...unlisted, ...md } }));
-    expect(pairingsOf(withDetails({ permit2Contract: "nope" }))).toEqual(["mpp/session/evm"]);
-    expect(pairingsOf(withDetails({ credentialTypes: ["hash", "authorization"], permit2Contract: "nope" }))).toEqual(["mpp/session/evm"]);
-    expect(pairingsOf(withDetails({ credentialTypes: ["hash", "permit2"], permit2Contract: "nope" }))).toEqual({
+    const types = { refused: true, code: "mpp/credential-types" };
+    expect(pairingsOf(withDetails({}))).toEqual(types);
+    expect(pairingsOf(withDetails({ credentialTypes: ["hash"] }))).toEqual(types);
+    expect(pairingsOf(withDetails({ credentialTypes: ["hash", "authorization"] }))).toEqual(types);
+    expect(pairingsOf(withDetails({ credentialTypes: ["authorization"], permit2Contract: "nope" }))).toEqual(["mpp/session/evm"]);
+    expect(pairingsOf(withDetails({ credentialTypes: ["permit2"], permit2Contract: "nope" }))).toEqual({
       refused: true,
       code: "mpp/request-malformed",
     });
@@ -357,6 +352,7 @@ async function signedWire(
   signer: (hash: ViemHex) => Promise<ViemHex> = sig65,
   chainId = 42431,
   authorizationList: readonly unknown[] = [],
+  nonce: { readonly key: bigint; readonly validBefore: number | null } = { key: (1n << 256n) - 1n, validBefore: 1790000060 },
 ): Promise<{ wire: Uint8Array; signing: ViemHex }> {
   const fields = [
     num(chainId),
@@ -365,9 +361,9 @@ async function signedWire(
     num(200000),
     calls,
     [],
-    toHex((1n << 256n) - 1n),
+    nonce.key === 0n ? "0x" : toHex(nonce.key),
     "0x",
-    num(1790000060),
+    nonce.validBefore === null ? "0x" : num(nonce.validBefore),
     "0x",
     T.fixed.pathUSD,
     "0x",
@@ -497,12 +493,19 @@ describe("mpp-session-tempo.json", () => {
     // The resource server broadcasts the opening once it is presented, so the reference carries the escrow's ChannelOpened filter
     // naming the channel in topic 1, and the opening is found without the seller's report.
     const ref = (await echoedRef(sessionTempo.reference)(cred)) as SessionRef;
+    expect(await sessionTempo.reference(cred, { ...cred.challenge, realm: "other.seller.example" })).toEqual({ refused: true, code: "mpp/challenge-not-option" });
     expect(JSON.parse(JSON.stringify(ref))).toEqual({
       network: "eip155:42431",
       settleBy: "1790000060",
       search: { address: f.escrowV2, topics: [typeHash(T.constants.CHANNEL_OPENED_V2), T.TS3.expectChannelId] },
       opened: { address: f.escrowV2, version: "v2", channel: T.TS3.expectChannelId, h: H, chainId: 42431 },
       payee: JSON.parse(f.requestV2).recipient,
+      // The payer, the sender of the opening, and what it signed: the descriptor's expiring nonce hash, by its definition.
+      payer: f.payer.toLowerCase(),
+      signed: (cred.payload["descriptor"] as { expiringNonceHash: string }).expiringNonceHash,
+      // The opening's single-use value, its nonce key and nonce, and its validBefore, as viem's Tempo deserializer reads the wire.
+      nonce: { key: viemRead(cred.payload["transaction"] as ViemHex).nonceKey, value: "0" },
+      validBefore: viemRead(cred.payload["transaction"] as ViemHex).validBefore,
     });
 
     const within = JSON.parse(f.requestV2);
@@ -548,6 +551,17 @@ describe("mpp-session-tempo.json", () => {
   // TS5.expectOpenCalldata is eth-abi 6.0.0's open(address payee, address token, uint128 deposit, bytes32 salt, address
   // authorizedSigner), the v1 escrow's (draft-tempo-session-00, tempoxyz/mpp-specs 08e7dd87, L429-435); viem 2.57.4's
   // encodeFunctionData re-derives it here, and build's whole funding is held to it.
+  it("an opening under the protocol nonce, which signs no validBefore, gives a reference with no bound", async () => {
+    const u = unsignedOf(await sessionTempo.build({ challenge: placed(V1), from: f.payer, now: f.now, deposit }, H));
+    if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+    const { wire } = await signedWire([[f.escrowV1, "0x", u.funding.call.data]], sig65, 42431, [], { key: 0n, validBefore: null });
+    const cred = u.complete(toHex(wire), await sig65(keccak256("0x00"))) as MppCredential;
+    const ref = (await echoedRef(sessionTempo.reference)(cred)) as SessionRef;
+    expect(ref).toMatchObject({ nonce: { key: "0", value: "0" } });
+    expect(ref).not.toHaveProperty("settleBy");
+    expect(ref).not.toHaveProperty("validBefore");
+  });
+
   it("TS5: v1's open, byte for byte as eth-abi and viem encode it, channel id and voucher", async () => {
     const v1Open = parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]);
     expect(encodeFunctionData({ abi: v1Open, functionName: "open", args: [f.recipient.toLowerCase(), f.pathUSD, deposit, H, ZERO] })).toBe(
@@ -595,11 +609,14 @@ describe("mpp-session-tempo.json", () => {
     const v1: EvmLog = {
       address: f.escrowV1,
       topics: [CHANNEL_OPENED_V1_TOPIC, T.TS5.expectChannelId, topicOf(f.payer), topicOf(f.recipient)],
-      data: concat([topicOf(f.pathUSD), wordOf(0n), wordOf(deposit)]),
+      data: concat([topicOf(f.pathUSD), wordOf(0n), H as ViemHex, wordOf(deposit)]),
     };
     const refV1 = { ...ref, opened: { address: f.escrowV1, version: "v1" as const, channel: T.TS5.expectChannelId, h: H, chainId: 42431 } };
     expect(await run(refV1, [v1])).toEqual(T.TS6.expectSettled);
     expect(await run({ ...refV1, opened: { ...refV1.opened, h: H2 } }, [v1])).toEqual(T.TS6.expectNotFound);
+    // The v1 event's salt word is read: the channel's own id with another salt there is not the opening.
+    const v1OtherSalt = { ...v1, data: concat([topicOf(f.pathUSD), wordOf(0n), H2 as ViemHex, wordOf(deposit)]) };
+    expect(await run(refV1, [v1OtherSalt])).toEqual(T.TS6.expectNotFound);
     // The opening is before a position at its own block, through sessionStatus and through the pairing's status.
     const before = { ...T.TS6.expectSettled, state: "failed", reason: "before-position" };
     expect(await run(ref, [opened(f.escrowV2, H)], { ...FINAL, after: 100n })).toEqual(before);
@@ -679,7 +696,7 @@ describe("mpp-session-tempo.json", () => {
 
   it("recover: only the channel reserve's ChannelOpened gives the salt; a v1 opening's event carries none", async () => {
     // ITIP20ChannelReserve's ChannelOpened (tempo tips/verify, TIP-1034): salt is data word 3. The v1 escrow's
-    // ChannelOpened (draft-tempo-session-00) carries no salt.
+    // The v2 ChannelOpened carries the salt as data word 3, the v1 escrow's as data word 2.
     const opened = (address: string, salt: `0x${string}`): EvmLog => ({
       address: address as `0x${string}`,
       topics: [CHANNEL_OPENED_V2_TOPIC, T.TS3.expectChannelId, topicOf(f.payer), topicOf(f.recipient)],
@@ -688,7 +705,7 @@ describe("mpp-session-tempo.json", () => {
     const v1: EvmLog = {
       address: f.escrowV1,
       topics: [CHANNEL_OPENED_V1_TOPIC, T.TS5.expectChannelId, topicOf(f.payer), topicOf(f.recipient)],
-      data: concat([topicOf(f.pathUSD), wordOf(0n), wordOf(deposit)]),
+      data: concat([topicOf(f.pathUSD), wordOf(0n), H as ViemHex, wordOf(deposit)]),
     };
     const ref = { network: "eip155:42431", tx: `0x${"77".repeat(32)}`, option: V2 };
     const run = (logs: EvmLog[], status: 0 | 1 = 1) => sessionTempo.recover(ref, readerFor("eip155:42431", { status, blockNumber: "100", logs }));
@@ -697,7 +714,13 @@ describe("mpp-session-tempo.json", () => {
     expect(await run([opened(f.escrowV2, H), opened(f.escrowV2, H)])).toBe(H);
     expect(await run([opened(f.escrowV2, H), opened(f.escrowV2, H2)])).toEqual({ refused: true, code: "tempo/ambiguous" });
     expect(await run([opened("0x20c0000000000000000000000000000000000001", H)])).toEqual({ refused: true, code: "tempo/open-not-found" });
+    // The v1 escrow's ChannelOpened carries the salt, read where the option names that escrow on v1.
     expect(await run([v1])).toEqual({ refused: true, code: "tempo/open-not-found" });
+    const refOnV1 = { ...ref, option: V1 };
+    expect(await sessionTempo.recover(refOnV1, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs: [v1] }))).toBe(H);
+    expect(
+      await sessionTempo.recover(refOnV1, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs: [{ ...v1, address: f.escrowV2 }] })),
+    ).toEqual({ refused: true, code: "tempo/open-not-found" });
     expect(await run([opened(f.escrowV2, H)], 0)).toEqual({ refused: true, code: "tempo/reverted" });
     expect(await sessionTempo.recover(ref, readerFor("eip155:42431", null))).toEqual({ refused: true, code: "tempo/not-found" });
     // A reader for another network, and a ref that is not an object, answer as the subscription's recover does.
@@ -1555,6 +1578,7 @@ describe("mpp-subscription-tempo.json", () => {
     expect(await subscriptionTempo.channel.boundWithin(cred)).toEqual({ refused: true, code: "mpp/not-bound-within" });
     expect(subscriptionTempo.channel.until(cred)).toBe(1797724800);
     const ref = (await echoedRef(subscriptionTempo.reference)(cred)) as SessionRef;
+    expect(await subscriptionTempo.reference(cred, { ...cred.challenge, realm: "other.seller.example" })).toEqual({ refused: true, code: "mpp/challenge-not-option" });
     expect(ref).toEqual({
       network: "eip155:42431",
       bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: H },
@@ -1562,6 +1586,9 @@ describe("mpp-subscription-tempo.json", () => {
       search: { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, H] },
       // The key's read keys: the signed authorization's key id, its token and its recipient's digest.
       accessKey: { keyId: f.accessKey.toLowerCase(), token: U.SUB3.expectToken, to: U.SUB3.expectTransferDigest },
+      // The payment presented: the account whose root key signed the key authorization, and its bytes' keccak-256.
+      payer: f.payer.toLowerCase(),
+      signed: keccak256(cred.payload["signature"] as ViemHex),
       payee: JSON.parse(f.request).recipient,
     });
     expect(subscriptionTempo.closeRef(SUB, U.SUB2.expectRefChannel, f.payer)).toEqual({

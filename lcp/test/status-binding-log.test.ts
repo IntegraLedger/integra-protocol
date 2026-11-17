@@ -1,21 +1,13 @@
-// The EVM pairings whose reference always names the log carrying H or its commitment, given a ref without that log, and
-// the MPP EVM and Tempo session and Tempo subscription pairings, given a ref without the key their own writers name for
+// The MPP EVM and Tempo session and Tempo subscription pairings, given a ref without the key their own writers name for
 // the opening or the close. A read that cannot check H, or the close, is unreadable `unparseable`, never failed or
-// settled: the ref is not one the pairing's writers give (the profile read-status, the reasons of `unreadable`). The transfer digest is SHA-256
-// over from, to and the uint256 value, by node:crypto.
+// settled: the ref is not one the pairing's writers give (the profile read-status, the reasons of `unreadable`). The
+// transfer digest is SHA-256 over from, to and the uint256 value, by node:crypto.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { BINDINGS } from "../src/index.js";
 import {
-  AUTHORIZATION_USED_TOPIC,
-  DELEGATION_MANAGER,
-  ESCROW,
-  PAYMENT_AUTHORIZED_TOPIC,
-  REDEEMED_DELEGATION_TOPIC,
   TRANSFER_TOPIC,
   type EvmLog,
   type EvmReader,
-  type EvmRef,
   type Hex,
 } from "../src/evm.js";
 import { sessionEvm, sessionTempo, subscriptionTempo, type SessionRef } from "../src/mpp.js";
@@ -45,60 +37,28 @@ const digest = ("0x" +
 const transferLog = { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from,to,value" as const, digest };
 const paid = { address: TOKEN, topics: ["0x" + word(TRANSFER_TOPIC), "0x" + word(PAYER), "0x" + word(PAYEE)] as Hex[], data: ("0x" + word("0x2710")) as Hex };
 
-/**
- * Each pairing, with the binding log its own reference names. The x402 eip155 pairings whose read is a search take a
- * reference of their own form, held by the read kit's forms (test/read-kit/forms/eip155-x402.ts).
- */
-const PAIRINGS: [string, NonNullable<EvmRef["bindingLog"]>][] = [
-  ["mpp/charge/evm/authorization", { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H }],
-  ["mpp/charge/usdc/evm", { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H }],
-];
-
 const FINAL = { act: "payment", finality: "finalized" } as const;
 const unreadable = { state: "unreadable", reason: "unparseable", foreign: [] };
 /** The read keys of a ref, which the calls below give the option's payee. */
 type Keys = Omit<SessionRef, "payee">;
 
-/** A reader holding one successful receipt with the payer's transfer and `logs`; it counts its calls. */
+/**
+ * A reader holding one successful receipt with the payer's transfer and `logs`; it counts its calls. Its blocks, logs
+ * and a zero word for every call serve the EVM session's opening read, a search (mpp-session-evm-open.test.ts).
+ */
 function reader(calls: string[], logs: EvmLog[] = []): EvmReader {
   return {
     network: NET,
     receipt: async () => (calls.push("receipt"), { status: 1, blockNumber: 100n, logs: [paid, ...logs] }),
     blockNumber: async () => (calls.push("blockNumber"), 100n),
     transaction: async () => (calls.push("transaction"), null),
-    call: async () => (calls.push("call"), "0x"),
-  };
+    call: async () => (calls.push("call"), ("0x" + "00".repeat(32)) as Hex),
+    ...{
+      block: async () => (calls.push("block"), { number: 100n, timestamp: 1_790_000_000n }),
+      logs: async () => (calls.push("logs"), []),
+    },
+  } as EvmReader;
 }
-
-describe("a ref without its pairing's binding log", () => {
-  for (const [id, own] of PAIRINGS) {
-    it(`${id}: unreadable unparseable, with nothing read; its own binding log is read`, async () => {
-      const b = BINDINGS.find((x) => x.id === id) as unknown as {
-        status: (ref: EvmRef & { transaction: Hex }, reader: EvmReader, query: typeof FINAL) => Promise<unknown>;
-      };
-      const tx = ("0x" + "ab".repeat(32)) as Hex;
-      const refs = [
-        { network: NET, payee: PAYEE, transaction: tx, transferLog },
-        { network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: { ...own, topic0: ("0x" + "22".repeat(32)) as Hex } },
-        { network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: { ...own, value: "0x12" as Hex } },
-        { network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: { address: own.address, topic0: own.topic0, value: H } },
-      ];
-      for (const ref of refs) {
-        const calls: string[] = [];
-        expect(await b.status(ref as EvmRef & { transaction: Hex }, reader(calls), FINAL)).toEqual(unreadable);
-        expect(calls).toEqual([]);
-      }
-      const calls: string[] = [];
-      const read = await b.status({ network: NET, payee: PAYEE, transaction: tx, transferLog, bindingLog: own }, reader(calls), FINAL);
-      // A receipt without the binding log is no act; with no search for H yet, pending search-incomplete (rule 24).
-      expect(read).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
-      expect(calls).toEqual(["receipt", "blockNumber"]);
-    });
-  }
-  it("covers each of the two pairings", () => {
-    expect(PAIRINGS.map(([id]) => rowsOf(BINDINGS, "BINDINGS, every pairing").some((b) => b.id === id))).toEqual(Array(2).fill(true));
-  });
-});
 
 // Each ref below has the shape a writer of these pairings gives it, with the key that ties the read to the opening or
 // the close: `reference` of an EVM `hash` or `permit2` opening (`opens`), of an EIP-3009 opening (`AuthorizationUsed`'s
@@ -111,17 +71,20 @@ describe("a session or subscription ref without the key its writer names", () =>
   const channel = ("0x" + "cd".repeat(32)) as Hex;
   const fromTo = { ...transferLog, identity: "from,to" as const };
   const opens = { escrow: ESCROW, channel, h: H, chainId: 84532 };
+  // The EVM opening's other read keys, as `reference` writes them for an `authorization` funding.
+  const NONCE = ("0x" + "ee".repeat(32)) as Hex;
+  const opening: Keys = {
+    network: NET,
+    opens,
+    payer: PAYER.toLowerCase() as Hex,
+    funding: { type: "authorization", token: TOKEN.toLowerCase() as Hex, at: TOKEN.toLowerCase() as Hex, nonce: NONCE, deadline: "1790000060" },
+    presented: { funding: "authorization", token: TOKEN.toLowerCase(), from: PAYER.toLowerCase(), to: ESCROW, value: "10000", nonce: NONCE },
+  };
   const accessKey = { keyId: PAYEE as Hex, token: TOKEN, to: digest };
   type Status = (ref: SessionRef & { transaction: Hex }, reader: EvmReader, query: typeof FINAL) => Promise<unknown>;
-  const CASES: [string, Status, Keys, keyof Keys | "accessKey.account"][] = [
-    ["mpp/session/evm hash opening", sessionEvm.status, { network: NET, transferLog: fromTo, opens }, "opens"],
-    ["mpp/session/evm permit2 opening", sessionEvm.status, { network: NET, settleBy: "1790000060", transferLog, opens }, "opens"],
-    [
-      "mpp/session/evm authorization opening",
-      sessionEvm.status,
-      { network: NET, settleBy: "1790000060", transferLog, bindingLog: { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H } },
-      "bindingLog",
-    ],
+  // The EVM opening is read by its funding's search, whose first call reads the heads (`block`).
+  const CASES: [string, Status, Keys, keyof Keys | "accessKey.account", string?][] = [
+    ["mpp/session/evm opening", sessionEvm.status, opening, "opens", "block"],
     ["mpp/session/evm close", sessionEvm.status, { network: NET, closes: { escrow: ESCROW, channel } }, "closes"],
     [
       "mpp/session/tempo opening",
@@ -144,7 +107,7 @@ describe("a session or subscription ref without the key its writer names", () =>
     ["mpp/subscription/tempo key search", subscriptionTempo.status, { network: NET, transferLog, accessKey: { ...accessKey, account: PAYER as Hex } }, "accessKey.account"],
     ["mpp/subscription/tempo close", subscriptionTempo.status, { network: NET, revokes: { account: PAYER as Hex, keyId: PAYEE as Hex } }, "revokes"],
   ];
-  for (const [label, status, ref, key] of CASES) {
+  for (const [label, status, ref, key, first = "receipt"] of CASES) {
     it(`${label}: without its ${key}, unreadable unparseable with nothing read; with it, the receipt is read`, async () => {
       const without: Keys =
         key === "accessKey.account" ? { ...ref, accessKey } : (Object.fromEntries(Object.entries(ref).filter(([k]) => k !== key)) as Keys);
@@ -153,7 +116,7 @@ describe("a session or subscription ref without the key its writer names", () =>
       expect(none).toEqual([]);
       const calls: string[] = [];
       expect(await status({ ...ref, payee: PAYEE, transaction: tx }, reader(calls), FINAL)).not.toEqual(unreadable);
-      expect(calls[0]).toBe("receipt");
+      expect(calls[0]).toBe(first);
     });
   }
   it("a binding log under an event none of these pairings writes is not their key", async () => {
@@ -171,14 +134,8 @@ describe("a session or subscription ref without the key its writer names", () =>
   const topic = (a: string) => ("0x" + word(a)) as Hex;
   const KEY = PAYEE as Hex;
   const KEYS: [string, string, Keys, EvmLog[]][] = [
-    ["opens", "mpp/session/evm", { network: NET, opens }, []],
+    ["opens", "mpp/session/evm", opening, []],
     ["closes", "mpp/session/evm", { network: NET, closes: { escrow: ESCROW, channel } }, []],
-    [
-      "AuthorizationUsed's binding log",
-      "mpp/session/evm",
-      { network: NET, bindingLog: { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H } },
-      [{ address: TOKEN, topics: [AUTHORIZATION_USED_TOPIC, topic(PAYER), H], data: "0x" }],
-    ],
     ["opened", "mpp/session/tempo", { network: NET, opened: { address: ESCROW, version: "v2", channel, h: H, chainId: 84532 } }, []],
     [
       "ChannelClosed v1's binding log",
@@ -211,6 +168,8 @@ describe("a session or subscription ref without the key its writer names", () =>
       [{ address: ACCOUNT_KEYCHAIN, topics: [KEY_REVOKED_TOPIC, topic(PAYER), topic(KEY)], data: "0x" }],
     ],
   ];
+  /** The keys the other two pairings write: the EVM session writes two, the Tempo session three, the subscription three. */
+  const FOREIGN: Record<string, number> = { "mpp/session/evm": 6, "mpp/session/tempo": 5, "mpp/subscription/tempo": 5 };
   const THREE: Record<string, Status> = {
     "mpp/session/evm": sessionEvm.status,
     "mpp/session/tempo": sessionTempo.status,
@@ -219,11 +178,11 @@ describe("a session or subscription ref without the key its writer names", () =>
   for (const [id, status] of rowsOf(Object.entries(THREE), "THREE, the three session and subscription pairings", { exact: 3 })) {
     it(`${id}: a ref whose one key another of these pairings writes is unreadable unparseable with nothing read; that pairing reads it`, async () => {
       const foreign = rowsOf(KEYS, "KEYS", {
-        exact: 6,
+        exact: FOREIGN[id]!,
         keep: ["the keys another of the three pairings writes", ([, writer]) => writer !== id],
         leave: [`the keys ${id} writes, which the next test sets beside these`, ([, writer]) => writer === id],
       });
-      expect(foreign.length).toBe(6);
+      expect(foreign.length).toBe(FOREIGN[id]);
       const got: unknown[] = [];
       const read: unknown[] = [];
       for (const [key, writer, member, logs] of foreign) {
@@ -235,7 +194,7 @@ describe("a session or subscription ref without the key its writer names", () =>
         read.push([key, answer.state === "unreadable" ? "unreadable" : "read", calls[0]]);
       }
       expect(got).toEqual(foreign.map(([key]) => [key, unreadable, []]));
-      expect(read).toEqual(foreign.map(([key]) => [key, "read", "receipt"]));
+      expect(read).toEqual(foreign.map(([key]) => [key, "read", key === "opens" ? "block" : "receipt"]));
     });
     it(`${id}: its own key beside a key another of these pairings writes is unreadable unparseable, with nothing read`, async () => {
       const own = rowsOf(KEYS, "KEYS", {
@@ -243,7 +202,7 @@ describe("a session or subscription ref without the key its writer names", () =>
         leave: ["the keys another of the three pairings writes, set beside each of these below", ([, writer]) => writer !== id],
       });
       const foreign = rowsOf(KEYS, "KEYS", {
-        exact: 6,
+        exact: FOREIGN[id]!,
         keep: ["the keys another of the three pairings writes", ([, writer]) => writer !== id],
         leave: [`the keys ${id} writes, the own keys above`, ([, writer]) => writer === id],
       });
@@ -258,7 +217,7 @@ describe("a session or subscription ref without the key its writer names", () =>
           got.push([`${ownKey} with ${key}`, await status(ref, reader(none, [...ownLogs, ...logs]), FINAL), none]);
         }
       }
-      expect(labels.length).toBeGreaterThanOrEqual(14);
+      expect(labels.length).toBeGreaterThanOrEqual(12);
       expect(got).toEqual(labels.map((label) => [label, unreadable, []]));
     });
   }

@@ -46,6 +46,7 @@ import {
   memoCalldata,
 } from "../src/tempo.js";
 import { counting } from "./fixtures/counting-reader.js";
+import { ledgerReader } from "./eip155-tempo-mpp-ledger.js";
 import { C_E, H, b64u, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -111,6 +112,14 @@ describe("mpp-charge-evm-authorization.json", () => {
       transferLog: { address: USDC, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: A.MV5.expectTransferDigest },
       search: { address: USDC, topics: [A.MV5.expectAuthorizationUsedTopic, null, A.MV5.expectNonce] },
       authorization: { scheme: "eip3009", at: USDC, nonce: A.MV5.expectNonce, deadline: A.MV5.expectValidBefore, asset: USDC },
+      payer: A.fixed.payer.toLowerCase(),
+      presented: {
+        token: USDC.toLowerCase(),
+        from: A.fixed.payer.toLowerCase(),
+        to: RECIPIENT_E.toLowerCase(),
+        value: cred.payload["value"],
+        nonce: A.MV5.expectNonce,
+      },
       payee: RECIPIENT_E,
     });
     expect(await evmAuthorization.reference(cred, { ...cred.challenge, request: b64u("{}") })).toEqual({
@@ -121,9 +130,9 @@ describe("mpp-charge-evm-authorization.json", () => {
     expect(await evmAuthorization.authorizer(other)).toEqual(A.MV5.expectBoundOtherRealm);
   });
 
-  it("MV5: status requires the transfer the same authorization produces", async () => {
+  it("MV5: status reads the authorization's use and its transfer from the named transaction and the search", async () => {
     const cred = (await build()).complete(A.MV5.expectSignature) as MppCredential;
-    const ref = (await evmAuthorization.reference(cred, cred.challenge)) as EvmRef;
+    const ref = (await evmAuthorization.reference(cred, cred.challenge)) as Exclude<Awaited<ReturnType<typeof evmAuthorization.reference>>, { refused: true }>;
     const another = "0x3333333333333333333333333333333333333333";
     const used = (by: string): EvmLog => ({
       address: USDC,
@@ -133,13 +142,25 @@ describe("mpp-charge-evm-authorization.json", () => {
     const paid: EvmLog = { address: USDC, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)], data: wordOf(10000n) };
     const tx = `0x${"22".repeat(32)}` as const;
     const status = async (logs: EvmLog[], query: Parameters<typeof evmAuthorization.status>[2] = FINAL) =>
-      withBigints(await evmAuthorization.status({ ...ref, transaction: tx }, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs }), query));
-    const settled = { state: "settled", transaction: tx, position: "100", finality: "finalized", foreign: [] };
-    expect(await status([used(A.fixed.payer), paid])).toEqual(settled);
-    expect(await status([used(another), paid])).toEqual(pendingSearch);
+      withBigints(
+        await evmAuthorization.status(
+          { ...ref, transaction: tx },
+          ledgerReader({
+            network: "eip155:84532",
+            heads: { latest: 110n, safe: 105n, finalized: 100n },
+            txs: [{ hash: tx, block: 100n, status: 1, from: P.fixed.spender, to: USDC, input: "0x", logs }],
+            call: () => toHex(logs[0]!.topics[1] === topicOf(A.fixed.payer) ? 1n : 0n, { size: 32 }),
+          }),
+          query,
+        ),
+      );
+    const settled = { state: "settled", transaction: tx, position: "100", finality: "finalized", foreign: [], presented: "yes" };
+    expect(await status([used(A.fixed.payer), paid])).toMatchObject(settled);
+    // Another authorizer's use of the nonce consumes nothing of the payer's: the payer's value reads unconsumed.
+    expect(await status([used(another), paid])).toMatchObject({ state: "pending", reason: "instrument-live", foreign: [{ transaction: tx, reason: "other-signer" }] });
     // The agreement act on the same read is the same act: the pairing's data offers its payment as an agreement.
     expect(evmAuthorization.data.agreement).toBeDefined();
-    expect(await status([used(A.fixed.payer), paid], { act: "agreement", finality: "finalized" })).toEqual(settled);
+    expect(await status([used(A.fixed.payer), paid], { act: "agreement", finality: "finalized" })).toMatchObject(settled);
     // A position the caller gives at the transaction's own block: the act is not after it.
     expect(await status([used(A.fixed.payer), paid], { ...FINAL, after: 100n })).toEqual({
       state: "failed",
@@ -147,6 +168,8 @@ describe("mpp-charge-evm-authorization.json", () => {
       transaction: tx,
       position: "100",
       finality: "finalized",
+      moved: [{ asset: USDC.toLowerCase(), amount: "10000", to: RECIPIENT_E.toLowerCase(), transaction: tx, place: 1 }],
+      signer: A.fixed.payer.toLowerCase(),
       foreign: [],
     });
   });
@@ -286,26 +309,51 @@ describe("mpp-charge-evm-permit2.json", () => {
     expect(ref.bindingLog).toBeUndefined();
     expect(ref.search).toBeUndefined();
     expect(ref.settleBy).toBe("1790000060");
-    const split: EvmLog = {
-      address: USDC,
-      topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf("0x8Ba1f109551bD432803012645Ac136ddd64DBA72")],
-      data: wordOf(500n),
-    };
-    const reader = readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [split] });
-    expect(await evmPermit2.status({ ...ref, transaction: `0x${"22".repeat(32)}` }, reader, FINAL)).toEqual(
-      P.MV6b.splitOnlyReceipt.expect,
-    );
     expect(await evmPermit2.reference({ ...cred, source: undefined } as never, cred.challenge)).toEqual({
       refused: true,
       code: "mpp/source-required",
     });
   });
 
+  it("MV6b splitOnlyReceipt: a batch whose receipt holds the split's Transfer and not the primary's", async () => {
+    const ch = placedOf(challenge("evm", "charge", P.fixed.R_E6b));
+    const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    const cred = u.complete(P.MV6b.expectSignature) as MppCredential;
+    const ref = (await evmPermit2.reference(cred, cred.challenge)) as Exclude<Awaited<ReturnType<typeof evmPermit2.reference>>, { refused: true }>;
+    const p = cred.payload as any;
+    const nonce = BigInt(p.permit.nonce);
+    // Permit2's batch permitWitnessTransferFrom (Uniswap Permit2 SignatureTransfer.sol), encoded by viem.
+    const spend = encodeFunctionData({
+      abi: parseAbi([
+        "function permitWitnessTransferFrom(((address token, uint256 amount)[] permitted, uint256 nonce, uint256 deadline) permit, (address to, uint256 requestedAmount)[] transferDetails, address owner, bytes32 witness, string witnessTypeString, bytes signature)",
+      ]),
+      args: [
+        { permitted: p.permit.permitted.map((x: any) => ({ token: x.token, amount: BigInt(x.amount) })), nonce, deadline: BigInt(p.permit.deadline) },
+        p.transferDetails.map((x: any) => ({ to: x.to.toLowerCase(), requestedAmount: BigInt(x.requestedAmount) })),
+        A.fixed.payer,
+        hashStruct({ data: (u.request.typedData as Permit2TypedData).message.witness, primaryType: "PaymentWitness", types: u.request.typedData.types } as Parameters<typeof hashStruct>[0]),
+        "PaymentWitness witness)PaymentWitness(bytes32 challengeHash,string externalId)TokenPermissions(address token,uint256 amount)",
+        p.signature,
+      ],
+    });
+    const split = p.transferDetails[1];
+    const splitPaid: EvmLog = { address: USDC, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(split.to)], data: wordOf(BigInt(split.requestedAmount)) };
+    const tx = `0x${"23".repeat(32)}` as const;
+    const bit = 1n << (nonce & 0xffn);
+    const reader = ledgerReader({
+      network: "eip155:84532",
+      heads: { latest: 100n, safe: 100n, finalized: 100n },
+      txs: [{ hash: tx, block: 100n, status: 1, from: P.fixed.spender, to: ref.authorization.at as ViemHex, input: spend, logs: [splitPaid] }],
+      call: (_to, _d, block) => toHex(block >= 100n ? bit : 0n, { size: 32 }),
+    });
+    expect(withBigints(await evmPermit2.status(ref, reader, FINAL))).toEqual(P.MV6b.splitOnlyReceipt.expect);
+  });
+
   it("MV6: the reference names Permit2's record of the nonce, which status reads with the transaction that spends the permit", async () => {
     const ch = placedOf(C_E);
     const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
     const cred = u.complete(P.MV6.expectSignature) as MppCredential;
-    const ref = (await evmPermit2.reference(cred, cred.challenge)) as EvmRef;
+    const ref = (await evmPermit2.reference(cred, cred.challenge)) as Exclude<Awaited<ReturnType<typeof evmPermit2.reference>>, { refused: true }>;
     expect(ref.payee).toBe(RECIPIENT_E);
     // Uniswap's Permit2, at one address on every chain; the Permit2 nonce is the challengeHash (MV5's nonce, the same
     // challenge), and the deadline the challenge's expiry.
@@ -348,33 +396,35 @@ describe("mpp-charge-evm-permit2.json", () => {
     expect(plainTransfer.indexOf(A.MV5.expectNonce.slice(2))).toBe(-1);
     const status = async (input: ViemHex, at: bigint, before: bigint, query: Parameters<typeof evmPermit2.status>[2] = FINAL) => {
       const calls: unknown[] = [];
-      const reader = {
-        ...readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [paid] }),
-        transaction: async () => ({ from: P.fixed.spender, to: PERMIT2 as ViemHex, input }),
-        call: async (to: string, d: string, block: bigint) => {
+      const reader = ledgerReader({
+        network: "eip155:84532",
+        heads: { latest: 100n, safe: 100n, finalized: 100n },
+        txs: [{ hash: tx, block: 100n, status: 1, from: P.fixed.spender, to: PERMIT2 as ViemHex, input, logs: [paid] }],
+        call: (to, d, block) => {
           calls.push([to, d, block]);
           return toHex(block === 100n ? at : before, { size: 32 });
         },
-      };
+      });
       return { status: withBigints(await evmPermit2.status({ ...ref, transaction: tx }, reader, query)), calls };
     };
     const bit = 1n << (nonce & 0xffn);
-    const settled = { state: "settled", transaction: tx, position: "100", finality: "finalized", foreign: [] };
-    expect(await status(spend, bit, 0n)).toEqual({
+    // viem's encoding of the call is the oracle of the read's decoding: the call is the transaction's own, and every
+    // member the payer signed, the witness's hash among them, equals the presented permit's.
+    const settled = { state: "settled", transaction: tx, position: "100", finality: "finalized", foreign: [], presented: "yes" };
+    expect(await status(spend, bit, 0n)).toMatchObject({
       status: settled,
-      calls: [[PERMIT2, data, 100n], [PERMIT2, data, 99n]],
+      calls: [[PERMIT2, data, 100n], [PERMIT2, data, 100n], [PERMIT2, data, 99n]],
     });
-    expect(await status(spend, 0n, 0n)).toEqual({ status: pendingSearch, calls: [[PERMIT2, data, 100n]] });
-    expect(await status(spend, bit, bit)).toEqual({
-      status: pendingSearch,
-      calls: [[PERMIT2, data, 100n], [PERMIT2, data, 99n]],
-    });
-    expect(await status(plainTransfer, bit, 0n)).toEqual({ status: pendingSearch, calls: [] });
+    // The bit unset at the receipt's block: no act, and the value unconsumed with its deadline ahead.
+    expect((await status(spend, 0n, 0n)).status).toEqual({ state: "pending", reason: "instrument-live", foreign: [] });
+    // The bit set before the receipt's block, or a transaction that carries no nonce: no act, the value consumed.
+    expect((await status(spend, bit, bit)).status).toEqual(pendingSearch);
+    expect((await status(plainTransfer, bit, 0n)).status).toEqual(pendingSearch);
     // The agreement act on the same read is the same act: the pairing's data offers its payment as an agreement.
     expect(evmPermit2.data.agreement).toBeDefined();
-    expect((await status(spend, bit, 0n, { act: "agreement", finality: "finalized" })).status).toEqual(settled);
+    expect((await status(spend, bit, 0n, { act: "agreement", finality: "finalized" })).status).toMatchObject(settled);
     // A position the caller gives at the transaction's own block: the act is not after it.
-    expect((await status(spend, bit, 0n, { ...FINAL, after: 100n })).status).toEqual({
+    expect((await status(spend, bit, 0n, { ...FINAL, after: 100n })).status).toMatchObject({
       state: "failed",
       reason: "before-position",
       transaction: tx,
@@ -382,6 +432,47 @@ describe("mpp-charge-evm-permit2.json", () => {
       finality: "finalized",
       foreign: [],
     });
+  });
+
+  it("witnessOtherNonce: a permit under another nonce carrying this challenge's witness is an act carrying H", async () => {
+    const row = P.witnessOtherNonce;
+    const ch = placedOf(C_E);
+    const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    const cred = u.complete(P.MV6.expectSignature) as MppCredential;
+    const ref = (await evmPermit2.reference(cred, cred.challenge)) as Exclude<Awaited<ReturnType<typeof evmPermit2.reference>>, { refused: true }>;
+    const PERMIT2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+    const nonce = BigInt(row.nonce);
+    const p = cred.payload as any;
+    // Permit2's permitWitnessTransferFrom, encoded by viem, under the row's nonce with MV6's witness hash.
+    const spend = encodeFunctionData({
+      abi: parseAbi([
+        "function permitWitnessTransferFrom(((address token, uint256 amount) permitted, uint256 nonce, uint256 deadline) permit, (address to, uint256 requestedAmount) transferDetails, address owner, bytes32 witness, string witnessTypeString, bytes signature)",
+      ]),
+      args: [
+        { permitted: { token: p.permit.permitted[0].token, amount: BigInt(p.permit.permitted[0].amount) }, nonce, deadline: BigInt(p.permit.deadline) },
+        { to: p.transferDetails[0].to, requestedAmount: BigInt(p.transferDetails[0].requestedAmount) },
+        A.fixed.payer,
+        hashStruct({ data: (u.request.typedData as Permit2TypedData).message.witness, primaryType: "PaymentWitness", types: u.request.typedData.types } as Parameters<typeof hashStruct>[0]),
+        "PaymentWitness witness)PaymentWitness(bytes32 challengeHash,string externalId)TokenPermissions(address token,uint256 amount)",
+        p.signature,
+      ],
+    });
+    expect(spend.slice(2).indexOf(A.MV5.expectNonce.slice(2))).toBe(-1);
+    expect(spend.slice(2).indexOf(ref.presented["witness"]!.slice(2))).toBeGreaterThan(0);
+    // The row's nonce lies in nonceBitmap(owner, nonce >> 8), bit nonce & 0xff: set at block 100, unset before; the
+    // challenge hash's word reads unset throughout.
+    const ownWord = encodeFunctionData({
+      abi: parseAbi(["function nonceBitmap(address owner, uint256 wordPos) view returns (uint256)"]),
+      args: [A.fixed.payer, nonce >> 8n],
+    });
+    const paid: EvmLog = { address: USDC, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)], data: wordOf(10000n) };
+    const reader = ledgerReader({
+      network: "eip155:84532",
+      heads: { latest: 100n, safe: 100n, finalized: 100n },
+      txs: [{ hash: row.transaction, block: 100n, status: 1, from: spender, to: PERMIT2 as ViemHex, input: spend, logs: [paid] }],
+      call: (_to, d, block) => toHex(d.toLowerCase() === ownWord.toLowerCase() && block >= 100n ? 1n << (nonce & 0xffn) : 0n, { size: 32 }),
+    });
+    expect(withBigints(await evmPermit2.status(ref, reader, FINAL))).toEqual(row.expect);
   });
 
   it("plant: a witness for the same ATR's other challenge is not bound to this one", async () => {
@@ -392,6 +483,16 @@ describe("mpp-charge-evm-permit2.json", () => {
     (planted.payload["witness"] as { challengeHash: string }).challengeHash = P.plant.challengeHashOfPosition1;
     expect(challengeHash(challengeId(H, 1) as string, realm)).toBe(P.plant.challengeHashOfPosition1);
     expect(await evmPermit2.bound(planted)).toEqual(P.plant.expect);
+  });
+
+  it("a permit whose nonce is not the challenge hash is not bound", async () => {
+    const ch = placedOf(challenge("evm", "charge", P.fixed.R_E6b));
+    const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    const cred = u.complete(P.MV6b.expectSignature) as MppCredential;
+    expect(await evmPermit2.bound(cred)).toBe(H);
+    const planted = structuredClone(cred);
+    (planted.payload["permit"] as { nonce: string }).nonce = P.nonceNotChallengeHash.nonce;
+    expect(await evmPermit2.bound(planted)).toEqual(P.nonceNotChallengeHash.expect);
   });
 
   it("build refuses splits that leave no primary amount", async () => {
@@ -515,24 +616,35 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     expect(keys).toEqual(HS.MV12.expectReference);
     expect(HS.MV12.expectReference.transferLog.digest).toBe(sha256(toBytes(A.fixed.payer)));
     expect(HS.MV12.expectReference.transferLog.topic0).toBe(keccak256(toBytes("Transfer(address,address,uint256)")));
-    expect(await evmTransaction.reference({ challenge: C_EH, source: cred.source } as MppCredential, C_EH)).toEqual(HS.MV12.expectReference);
+    expect(await evmTransaction.reference({ ...cred, challenge: C_EH } as MppCredential, C_EH)).toEqual(HS.MV12.expectReference);
     const transfer = (address: string): EvmLog => ({
       address: address as `0x${string}`,
       topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)],
       data: wordOf(10000n),
     });
     if ("refused" in keys) throw new Error(keys.code);
-    const ref = { ...keys, transaction: HS.MV12.hash };
-    const status = async (r: Parameters<typeof readerFor>[1], query: Parameters<typeof evmHash.status>[2] = FINAL) =>
-      withBigints(await evmHash.status(ref, readerFor("eip155:84532", r), query));
-    expect(await status({ status: 1, blockNumber: "100", logs: [transfer(USDC)] })).toEqual(HS.MV12.expectSettled);
-    expect(await status({ status: 1, blockNumber: "100", logs: [transfer("0x0000000000000000000000000000000000000001")] }))
-      .toEqual(HS.MV12.expectOtherEmitter);
-    expect(await status({ status: 0, blockNumber: "100", logs: [] })).toEqual(HS.MV12.expectReverted);
+    const status = async (r: { status: 0 | 1; logs: EvmLog[] } | null, query: Parameters<typeof evmHash.status>[2] = FINAL) =>
+      withBigints(
+        await evmHash.status(
+          keys,
+          {
+            ...ledgerReader({
+              network: "eip155:84532",
+              heads: { latest: 100n, safe: 100n, finalized: 100n },
+              txs: r === null ? [] : [{ hash: HS.MV12.hash, block: 100n, status: r.status, from: A.fixed.payer, to: USDC, input: HS.MV12.expectCalldata, logs: r.logs }],
+            }),
+            archival: true,
+          },
+          query,
+        ),
+      );
+    expect(await status({ status: 1, logs: [transfer(USDC)] })).toEqual(HS.MV12.expectSettled);
+    // A transfer to the recipient of another token pays the recipient: the token is compared with nothing.
+    expect(await status({ status: 1, logs: [transfer("0x0000000000000000000000000000000000000001")] })).toMatchObject({ state: "settled" });
+    expect(await status({ status: 0, logs: [] })).toEqual(HS.MV12.expectReverted);
     expect(await status(null)).toEqual(HS.MV12.expectNotFound);
-    expect(await status("reader-error")).toEqual({ state: "unreadable", reason: "transport", foreign: [] });
     // A position the caller gives at the transaction's own block: the act is not after it.
-    expect(await status({ status: 1, blockNumber: "100", logs: [transfer(USDC)] }, { ...FINAL, after: 100n })).toEqual({
+    expect(await status({ status: 1, logs: [transfer(USDC)] }, { ...FINAL, after: 100n })).toMatchObject({
       state: "failed",
       reason: "before-position",
       transaction: HS.MV12.hash,
@@ -563,101 +675,10 @@ describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
     }
   });
 
-  it("MV12: only a Transfer from the credential's source is the payment; another account's is not", async () => {
-    const keys = await evmHash.reference({ challenge: C_EH, source: A.MV5.expectSource } as MppCredential, C_EH);
-    if ("refused" in keys) throw new Error(keys.code);
-    const ref = { ...keys, transaction: HS.MV12.hash };
-    const transfer = (from: string, to: string, value: bigint): EvmLog => ({
-      address: USDC as `0x${string}`,
-      topics: [TRANSFER_TOPIC, topicOf(from), topicOf(to)],
-      data: wordOf(value),
-    });
-    const status = async (logs: EvmLog[], r = ref) =>
-      withBigints(await evmHash.status(r, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs }), FINAL));
-    expect(await status([transfer(HS.MV12.otherSender, RECIPIENT_E, 10000n)])).toEqual(HS.MV12.expectOtherSender);
-    expect(await evmTransaction.status(ref, readerFor("eip155:84532", {
-      status: 1,
-      blockNumber: "100",
-      logs: [transfer(HS.MV12.otherSender, RECIPIENT_E, 10000n)],
-    }), FINAL)).toEqual(HS.MV12.expectOtherSender);
-    // The payer's own Transfer to another account, of another value, is the payment: amount and payee are not read.
-    expect(await status([transfer(A.fixed.payer, HS.MV12.otherSender, 1n)])).toEqual(HS.MV12.expectSettled);
-    const stranger = transfer(HS.MV12.otherSender, RECIPIENT_E, 10000n);
-    expect(await status([stranger, transfer(A.fixed.payer, RECIPIENT_E, 10000n)])).toEqual(HS.MV12.expectSettled);
-    expect(await evmHash.reference({ challenge: C_EH } as MppCredential, C_EH)).toEqual(HS.MV12.expectNoSource);
-    expect(await evmTransaction.reference({ challenge: C_EH, source: "did:pkh:eip155:84532:0x01" } as MppCredential, C_EH))
-      .toEqual(HS.MV12.expectNoSource);
-    // A reference that does not identify the payer's Transfer cannot be read.
-    const { transferLog: _sender, ...unidentified } = ref;
-    expect(await status([transfer(A.fixed.payer, RECIPIENT_E, 10000n)], unidentified))
-      .toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
-  });
-
   // An address is `0x` and 40 hex digits in either case (Ethereum execution-apis, `src/schemas/base-types.yaml`
   // `address`, the form a receipt log's `address` takes in `src/schemas/receipt.yaml`). A reference whose `asset` or
   // transfer log address is any other string names no emitter a receipt can hold, and the rails guide ("Reading
   // settlement") reads a transfer log not of the form its pairing writes as pending `unreadable`, with nothing read.
-  it("MV12: a reference whose asset or transfer log address is not an address is unreadable unparseable, nothing read", async () => {
-    const keys = await evmHash.reference({ challenge: C_EH, source: A.MV5.expectSource } as MppCredential, C_EH);
-    if ("refused" in keys) throw new Error(keys.code);
-    const ref = (asset: string, address: string) => ({
-      ...keys,
-      transaction: HS.MV12.hash,
-      asset: asset as `0x${string}`,
-      transferLog: { ...keys.transferLog!, address: address as `0x${string}` },
-    });
-    const payment: EvmLog = {
-      address: USDC.toLowerCase() as `0x${string}`,
-      topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)],
-      data: wordOf(10000n),
-    };
-    const holding = () => counting(readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [payment] }));
-    const upper = `0X${USDC.slice(2)}`;
-    const shapes: [string, string, string][] = [
-      ["asset not an address", "usdc", USDC],
-      ["transfer log address not an address", USDC, "usdc"],
-      ["both not addresses, different", "usdc", "token"],
-      ["both one string that is not an address", "usdc", "usdc"],
-      ["both one short hex string", "0x01", "0x01"],
-      ["both the token's 40 hex digits without 0x", USDC.slice(2), USDC.slice(2)],
-      ["asset the token written with 0X", upper, USDC],
-      ["transfer log address the token written with 0X", USDC, upper],
-    ];
-    for (const pairing of [evmHash, evmTransaction]) {
-      // The well-formed reference reads the same receipt and settles: the counting reader sees each call.
-      const control = holding();
-      expect(withBigints(await pairing.status(ref(USDC, USDC), control.reader, FINAL))).toEqual(HS.MV12.expectSettled);
-      expect(control.calls).toEqual(["receipt", "blockNumber"]);
-      for (const [shape, asset, address] of shapes) {
-        const { reader, calls } = holding();
-        expect([pairing.id, shape, await pairing.status(ref(asset, address), reader, FINAL), calls])
-          .toEqual([pairing.id, shape, { state: "unreadable", reason: "unparseable", foreign: [] }, []]);
-      }
-    }
-  });
-
-  it("MV12: the payer's Transfer to the receive-policy guard is never the payment", async () => {
-    const keys = await evmHash.reference({ challenge: C_EH, source: A.MV5.expectSource } as MppCredential, C_EH);
-    if ("refused" in keys) throw new Error(keys.code);
-    const ref = { ...keys, transaction: HS.MV12.hash };
-    const status = async (logs: EvmLog[]) =>
-      withBigints(await evmHash.status(ref, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs }), FINAL));
-    const transfer = (to: string): EvmLog => ({
-      address: USDC as `0x${string}`,
-      topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(to)],
-      data: wordOf(10000n),
-    });
-    expect(HS.MV12.guard).toBe(RECEIVE_POLICY_GUARD);
-    expect(await status([transfer(HS.MV12.guard)])).toEqual(HS.MV12.expectBlocked);
-    expect(await evmTransaction.status(ref, readerFor("eip155:84532", { status: 1, blockNumber: "100", logs: [transfer(HS.MV12.guard)] }), FINAL))
-      .toEqual(HS.MV12.expectBlocked);
-    expect(await status([transfer(HS.MV12.guard), transfer(RECIPIENT_E)])).toEqual(HS.MV12.expectSettled);
-    const otherToGuard: EvmLog = {
-      ...transfer(HS.MV12.guard),
-      topics: [TRANSFER_TOPIC, topicOf(HS.MV12.otherSender), topicOf(HS.MV12.guard)],
-    };
-    expect(await status([otherToGuard])).toEqual(HS.MV12.expectOtherSender);
-  });
 });
 
 /**

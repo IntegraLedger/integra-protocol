@@ -19,8 +19,15 @@ import {
 } from "./evm.js";
 import { isAddress, normalHash, uint256Of } from "./fields.js";
 import { c32Address } from "./internal/c32.js";
-import { withPayee, type EvmBreadthStatus, type EvmQuery } from "./internal/evm.js";
-import { boundStatus } from "./internal/evm-status.js";
+import { withPayee, type EvmQuery } from "./internal/evm.js";
+import {
+  echoesOption,
+  eip3009Presented,
+  mppEip3009Status,
+  type MppEip3009Ref,
+  type MppEvmReader,
+  type MppEvmStatus,
+} from "./internal/mpp-evm-read.js";
 import { mppPayee } from "./internal/payee.js";
 import { memoArgument, originSigned } from "./internal/stacks.js";
 import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
@@ -292,15 +299,19 @@ async function evmBound(input: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The authorization's read keys: its `AuthorizationUsed` nonce, its transfer's digest, `validBefore`, and the
- * authorization as the token records its use; and the payee of `option`, the issued challenge the payment answers
- * (`mppPayee`), whose refusal comes after the payment's.
+ * The authorization's read keys: its `AuthorizationUsed` nonce, its transfer's digest, `validBefore`, the
+ * authorization as the token records its use, the payer (its `from`) and the members of the payment presented; and the
+ * payee of `option`, the issued challenge the payment answers (`mppPayee`), whose refusal comes after the payment's,
+ * then `mpp/challenge-not-option` where `option` is not the challenge the credential echoes.
  */
-async function evmReference(input: unknown, option: MppChallenge): Promise<EvmRef | Refusal> {
-  return withPayee(await evmKeys(input), mppPayee(option));
+async function evmReference(input: unknown, option: MppChallenge): Promise<(EvmRef & MppEip3009Ref) | Refusal> {
+  const ref = withPayee(await evmKeys(input), mppPayee(option));
+  if (isRefusal(ref)) return ref;
+  const held = await echoesOption((input as MppCredential).challenge, option);
+  return held === true ? ref : held;
 }
 
-async function evmKeys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
+async function evmKeys(input: unknown): Promise<(Omit<EvmRef, "payee"> & Omit<MppEip3009Ref, "payee">) | Refusal> {
   const b = await evmBinding(input);
   if (isRefusal(b)) return b;
   const p = (input as MppCredential).payload;
@@ -322,6 +333,8 @@ async function evmKeys(input: unknown): Promise<Omit<EvmRef, "payee"> | Refusal>
     transferLog: { address: currency, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
     search: { address: currency, topics: [AUTHORIZATION_USED_TOPIC, null, b.nonce] },
     authorization: { scheme: "eip3009", at: currency, nonce: b.nonce, deadline: validBefore.toString(), asset: currency },
+    payer: p["from"].toLowerCase() as Hex,
+    presented: eip3009Presented(currency, p["from"], p["to"], value, b.nonce),
   };
 }
 
@@ -357,19 +370,19 @@ export const chargeUsdcEvm = Object.freeze({
   broadcaster: mppBroadcaster(byType({ authorization: "payee" })),
   reference: evmReference,
   authorizer: evmAuthorizer,
-  status: boundStatus([AUTHORIZATION_USED_TOPIC], EIP155_TEMPO_MPP[EVM].coverage),
+  status: mppEip3009Status,
 }) satisfies Entry<
   typeof EVM,
   MppCredential,
-  EvmRef,
-  EvmReader,
+  EvmRef & MppEip3009Ref,
+  MppEvmReader,
   MppForms & {
     choice: MppChoice;
     unsigned: UsdcUnsigned;
-    landed: { transaction: Hex };
+    landed: { transaction?: Hex };
     network: never;
-    query: EvmQuery<EvmRef & { transaction: Hex }>;
-    answer: EvmBreadthStatus;
+    query: EvmQuery<unknown>;
+    answer: MppEvmStatus;
   }
 >;
 

@@ -26,6 +26,7 @@ import type { MppChallenge, MppCredential } from "./mpp-challenge.js";
 import type { RecoverInput } from "./internal/read.js";
 
 export { RECEIVE_POLICY_GUARD } from "./internal/evm.js";
+export type { TempoSearchReader } from "./internal/tempo-nonce.js";
 
 /** The first four bytes of keccak256("transferWithMemo(address,uint256,bytes32)"). */
 export const TRANSFER_WITH_MEMO_SELECTOR = "0x95777d59" as const;
@@ -41,8 +42,12 @@ export const OPEN_V2_SELECTOR = "0xedc53b00" as const;
 export const OPEN_V1_SELECTOR = "0xc79ea485" as const;
 /** ChannelOpened(bytes32,address,address,address,address,address,bytes32,bytes32,uint96) */
 export const CHANNEL_OPENED_V2_TOPIC = "0xdebaba36f0e9c7978f536fed432d9360b1f9646d7ca88531c34c3eae43f154a7" as const;
-/** ChannelOpened(bytes32,address,address,address,address,uint256) */
-export const CHANNEL_OPENED_V1_TOPIC = "0x4516edb7b2ea29d92a0dbb5ff857203558b677157f4115d582b66e07b90ac8a8" as const;
+/**
+ * ChannelOpened(bytes32,address,address,address,address,bytes32,uint256), the v1 escrow's event as it is deployed and as
+ * `mppx`'s legacy escrow ABI has it (0.15.0 `dist/tempo/legacy/session/escrow.abi.js:517-561`): the channel id, the payer
+ * and the payee indexed; the token, the authorized signer, the salt and the deposit, data words 0 to 3.
+ */
+export const CHANNEL_OPENED_V1_TOPIC = "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94" as const;
 /** ChannelClosed(bytes32,address,address,uint96,uint96) */
 export const CHANNEL_CLOSED_V2_TOPIC = "0x5613aed96d5bf39f928408dbe1d4143490b9bb5957eac2dd8e69b5dc4b2206e6" as const;
 /** ChannelClosed(bytes32,address,address,uint256,uint256), the v1 escrow's event. */

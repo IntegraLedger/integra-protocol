@@ -46,7 +46,7 @@ type Inputs = {
   sequence?: number;
   lastLedgerSequence?: number;
   deposit?: string;
-  credentialType?: "authorization" | "permit2" | "hash";
+  credentialType?: "authorization" | "permit2";
   xrpl?: { publicKey: string; settleDelay: number; fee: string; sequence: number; lastLedgerSequence: number };
 };
 /** A buyer row of an MPP vector file: B2's build inputs, or B6's payment. */

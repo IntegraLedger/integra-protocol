@@ -21,9 +21,9 @@ type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: st
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
 type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
-const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 69 });
-const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 38 });
-const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 23 });
+const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 71 });
+const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 36 });
+const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 25 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
 const answerOf = (id: string): Broadcaster | null => PAIRINGS.find((r) => r.pairing === id)!.broadcaster;
 
@@ -51,6 +51,8 @@ const MPP_IDS: { readonly [id in MppPairingId]: true } = {
   "mpp/charge/evm/authorization": true,
   "mpp/charge/evm/transaction": true,
   "mpp/charge/evm/hash": true,
+  "mpp/charge/tempo/split-memo": true,
+  "mpp/charge/tempo/split-memo/push": true,
   "mpp/session/evm": true,
   "mpp/session/tempo": true,
   "mpp/subscription/tempo": true,

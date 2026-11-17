@@ -22,7 +22,7 @@ const FILES = rowsOf(
   readdirSync(DIR).filter((n) => n.startsWith("mpp-")),
   "the MPP vector files",
   {
-    exact: 24,
+    exact: 25,
     keep: ["the files of the MPP pairings", (n) => !OF_THE_CHECKS.includes(n)],
     leave: [
       "mpp-server-checks.json and mpp-x402-mapping.json, whose credentials are changed for the check or the mapping each row names",
@@ -41,7 +41,7 @@ type Pairing = {
 const MPP = rowsOf(
   BINDINGS.filter((b) => b.id.startsWith("mpp/")) as unknown as Pairing[],
   "BINDINGS, the MPP pairings",
-  { exact: 26 },
+  { exact: 28 },
 );
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -66,7 +66,7 @@ function credentials(v: unknown, at: string, out: [string, MppCredential][]): [s
 const CREDENTIALS = rowsOf(
   FILES.flatMap((f) => credentials(vector(f), "", []).map(([at, c]) => ({ file: f, at, credential: c }))),
   "every credential the MPP vector files hold",
-  { exact: 20 },
+  { exact: 22 },
 );
 
 const decoded = (c: MppChallenge): Record<string, Json> => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
@@ -174,7 +174,8 @@ function filterCode(c: MppChallenge, pairing: string): string | null | "invoicel
   return pairingsOfPlaced(c).includes(pairing as never) ? null : "invoiceless";
 }
 /** The refusal of a challenge the filter refuses for `pairing`. */
-const codeOf = (code: string | null | "invoiceless") => (code === "invoiceless" ? "ln/invoice-malformed" : code);
+const codeOf = (code: string | null | "invoiceless", pairing?: string) =>
+  code === "invoiceless" ? (pairing?.startsWith("mpp/charge/tempo/") ? "mpp/split-not-placed" : "ln/invoice-malformed") : code;
 /** The MPP pairings whose `bound` never binds: nothing the payer signs carries H (`mpp/no-signed-place`). */
 const NO_SIGNED_PLACE = [
   "mpp/charge/card",
@@ -204,6 +205,14 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   "mpp/charge/xrpl": { "xrpl/carrier-mismatch": "the signed InvoiceID is the request's methodDetails.invoiceId" },
   "mpp/session/evm": { "mpp/channel-not-bound": "the channel id derives from the request's chain, escrow, recipient and currency" },
   "mpp/subscription/tempo": { "tempo/key-not-authorized": "the key authorization names the request's chain" },
+  "mpp/charge/tempo/split-memo": {
+    "tempo/memo-not-bound": "the transferWithMemo call carrying H goes to the request's currency",
+    "tempo/tx-malformed": "the transaction is for the request's chain",
+  },
+  "mpp/charge/tempo/split-memo/push": {
+    "tempo/memo-not-bound": "the transferWithMemo call carrying H goes to the request's currency",
+    "tempo/tx-malformed": "the transaction is for the request's chain",
+  },
   "mpp/session/tempo": {
     "tempo/open-not-found": "the opening calls the request's escrow with its session protocol's open",
     "tempo/tx-malformed": "the opening's transaction is for the request's chain",
@@ -256,41 +265,43 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("each credential is bound by one pairing, each pairing that binds binds one, and each change is presented to it", () => {
     expect(PRESENTED.map((p) => p.pairing.id).sort()).toEqual([...BINDING].sort());
-    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 3816 });
+    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 4376 });
   });
 
   it("pairingsOfPlaced names the pairing exactly where pairingsOf names it, with the Lightning invoice written", () => {
     expect(answers.filter((a) => a.named !== (a.code === null)).map((a) => [a.pairing, a.what, a.code])).toEqual([]);
     const invoiceless = rowsOf(answers, "every answer", {
-      exact: 2,
+      exact: 4,
       keep: ["the challenges pairingsOf names for a pairing whose invoice is missing", (a) => a.code === "invoiceless"],
       leave: ["the others", (a) => a.code !== "invoiceless"],
     });
     expect(invoiceless.map((a) => [a.pairing, a.what])).toEqual([
       ["mpp/charge/lightning", "methodDetails.invoice removed"],
+      ["mpp/charge/tempo/split-memo", "methodDetails.splits removed"],
+      ["mpp/charge/tempo/split-memo/push", "methodDetails.splits removed"],
       ["mpp/session/lightning", "depositInvoice removed"],
     ]);
   });
 
   it("under a challenge pairingsOfPlaced does not name, bound and reference refuse with the code pairingsOf gives", () => {
     const refused = rowsOf(answers, "every answer", {
-      exact: 1643,
+      exact: 1879,
       keep: ["the challenges pairingsOfPlaced does not name for the pairing", (a) => !a.named],
       leave: ["the challenges it names", (a) => a.named],
     });
     const differ = refused.filter(
       (a) =>
-        JSON.stringify(a.bound) !== JSON.stringify({ refused: true, code: codeOf(a.code) }) ||
+        JSON.stringify(a.bound) !== JSON.stringify({ refused: true, code: codeOf(a.code, a.pairing) }) ||
         (a.ownReference !== undefined &&
           !isRefusal(a.ownReference) &&
-          JSON.stringify(a.reference) !== JSON.stringify({ refused: true, code: codeOf(a.code) })),
+          JSON.stringify(a.reference) !== JSON.stringify({ refused: true, code: codeOf(a.code, a.pairing) })),
     );
     expect(differ.map((a) => [a.pairing, a.what, a.code, a.bound, a.reference])).toEqual([]);
   }, 0);
 
   it("under a challenge it names, bound gives H again or a refusal naming what it compares, and reference reads", () => {
     const named = rowsOf(answers, "every answer", {
-      exact: 2173,
+      exact: 2497,
       keep: ["the challenges pairingsOfPlaced names for the pairing", (a) => a.named],
       leave: ["the challenges it does not name", (a) => !a.named],
     });
@@ -312,7 +323,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([1912, 261]);
+    expect([bindings, named.length - bindings]).toEqual([2219, 278]);
     const listed = Object.entries(COMPARES).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);
@@ -346,7 +357,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundChallenge.rows, `${f} boundChallenge.rows`).map((row, i) => ({ file: f, i, row, credential: at(v, row.credential) as MppCredential }));
   }),
   "every MPP vector file's boundChallenge rows",
-  { exact: 35 },
+  { exact: 37 },
 );
 
 describe("the MPP vector files' boundChallenge rows", () => {
@@ -358,7 +369,7 @@ describe("the MPP vector files' boundChallenge rows", () => {
     const pairing = MPP.find((b) => b.id === row.pairing)!;
     expect(typeof (await pairing.bound(credential))).toBe("string");
     expect(pairingsOfPlaced(row.challenge).includes(row.pairing as never)).toBe(false);
-    expect(codeOf(filterCode(row.challenge, row.pairing))).toBe(row.expect);
+    expect(codeOf(filterCode(row.challenge, row.pairing), row.pairing)).toBe(row.expect);
     expect(await pairing.bound({ ...credential, challenge: row.challenge })).toEqual({ refused: true, code: row.expect });
   });
 });
@@ -388,6 +399,6 @@ describe("a placed challenge whose opaque does not read", () => {
         presented++;
       }
     }
-    expect(presented).toBe(18);
+    expect(presented).toBe(20);
   });
 });

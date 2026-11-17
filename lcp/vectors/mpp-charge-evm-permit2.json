@@ -50,7 +50,7 @@
   ],
   "expectPrimaryIdentity": "0xf7f1f06096f7cdde64f22bf2c057326a7db4e396226f9412084cfcbc7b553c19",
   "splitOnlyReceipt": {
-   "note": "the split's Transfer and no primary Transfer, from USDC at block 100, finalized 100",
+   "note": "MV6b's batch permitWitnessTransferFrom (viem's encoding of Permit2's SignatureTransfer.sol call) landed at block 100, finalized 100, the payer's bit set from that block, its receipt holding the split's Transfer from USDC and no primary Transfer to the recipient: a batch's transfers all execute in its one call, so a receipt without the primary's shows no act, and the value read consumed with no act found holds the read at search-incomplete",
    "expect": {
     "state": "pending",
     "reason": "search-incomplete",
@@ -64,6 +64,37 @@
   "expect": {
    "refused": true,
    "code": "mpp/witness-not-challenge-hash"
+  }
+ },
+ "nonceNotChallengeHash": {
+  "case": "MV6b's batch credential with permit.nonce \"1\", the value draft-evm-charge-00's example signs (its permit2 payload example; the nonce field, a stringified integer, :424): the read keys on the Permit2 bit at keccak256 of the challenge's id and realm, so a permit under any other nonce is refused",
+  "nonce": "1",
+  "expect": {
+   "refused": true,
+   "code": "mpp/nonce-not-challenge-hash"
+  }
+ },
+ "witnessOtherNonce": {
+  "case": "MV6's single credential spent by permitWitnessTransferFrom under permit.nonce \"1\" (the value draft-evm-charge-00's example signs, :424) with MV6's witness, the EIP-712 hash of PaymentWitness{challengeHash, externalId} that binds the permit to this challenge (draft-evm-charge-00 at tempoxyz/mpp-specs 08e7dd87, lines 449-483), encoded by viem 2.57.4: the read's search counts a call that carries the witness word as an act carrying H, its own nonce's bit set at its block and unset before (Uniswap Permit2 SignatureTransfer _useUnorderedNonce), while the reference's value, the bit at the challenge hash, stays unset. The act settles, signed by the payer (Anvil account 0), presented no, the permit's nonce differing from the one presented; what moved is its one transfer, to MV6's recipient.",
+  "nonce": "1",
+  "transaction": "0x2424242424242424242424242424242424242424242424242424242424242424",
+  "expect": {
+   "state": "settled",
+   "transaction": "0x2424242424242424242424242424242424242424242424242424242424242424",
+   "position": "100",
+   "finality": "finalized",
+   "presented": "no",
+   "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+   "moved": [
+    {
+     "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+     "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+     "amount": "10000",
+     "transaction": "0x2424242424242424242424242424242424242424242424242424242424242424",
+     "place": 0
+    }
+   ],
+   "foreign": []
   }
  },
  "pattern": {

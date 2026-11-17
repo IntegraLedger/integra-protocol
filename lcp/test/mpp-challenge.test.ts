@@ -278,9 +278,9 @@ describe("problem", () => {
   const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
 
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
-    // MV10's 500 rows: 10 reads to repeat, and 6 calls that cannot read the payment: four wrong-reader and two
+    // MV10's 500 rows: 10 reads to repeat, and 7 calls that cannot read the payment: four wrong-reader and three
     // read-first codes.
-    expect(answered500.length).toBe(16);
+    expect(answered500.length).toBe(17);
     for (const code of rowsOf([...REFUSAL_CODES], "REFUSAL_CODES, the codes the package returns")) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);

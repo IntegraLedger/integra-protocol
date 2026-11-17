@@ -25,6 +25,8 @@ describe("BINDINGS", () => {
       "mpp/charge/evm/permit2",
       "mpp/charge/evm/transaction",
       "mpp/charge/evm/hash",
+      "mpp/charge/tempo/split-memo",
+      "mpp/charge/tempo/split-memo/push",
       "mpp/session/evm",
       "mpp/session/tempo",
       "mpp/subscription/tempo",
@@ -96,7 +98,7 @@ describe("the record's members", () => {
     expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
   it("every pairing's record carries only those members, and every one but x402/exact/starknet's names its pattern", () => {
-    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 69 })) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 71 })) {
       for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
       expect(b.pattern.pattern === undefined, b.id).toBe(b.id === "x402/exact/starknet");
     }
