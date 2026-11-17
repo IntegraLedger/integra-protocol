@@ -87,6 +87,7 @@ const ROWS: readonly [id: string, file: string, option: string, h: string][] = [
   ["x402/exact/ccd", "x402-exact-ccd", "fixed.O", "fixed.H"],
   ["x402/exact/hedera", "x402-exact-hedera", "fixed.O", "fixed.H"],
   ["x402/exact/hedera/transfer-executor", "x402-exact-hedera-transfer-executor", "fixed.O", "fixed.H"],
+  ["x402/exact/lnbtc/payment-hash", "x402-exact-lnbtc", "fixed.O", "fixed.H"],
   ["x402/exact/near", "x402-exact-near", "fixed.O", "fixed.H"],
   ["x402/exact/polkadot/lcp-assets-remark", "x402-exact-polkadot-lcp-assets-remark", "fixed.O", "fixed.H"],
   ["x402/exact/solana", "x402-exact-solana", "fixed.option", "fixed.H"],

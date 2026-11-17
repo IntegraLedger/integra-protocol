@@ -565,6 +565,11 @@ export function choiceMembers(): { id: string; members: Record<string, unknown>;
       bad: [{ case: "a now below 0", member: "now", value: -1, expect: "hedera/option-malformed" }],
     },
     {
+      id: "x402/exact/lnbtc/payment-hash",
+      members: { now: 1_700_000_000 },
+      bad: [{ case: "a now below 0", member: "now", value: -1, expect: "ln/time-malformed" }],
+    },
+    {
       id: "x402/exact/casper",
       members: { from: CASPER.fixed.from, now: CASPER.fixed.now },
       bad: [

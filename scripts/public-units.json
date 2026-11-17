@@ -310,6 +310,14 @@
       "fixedBy": "BOLT 11; x402-exact-lnbtc.md; MPP's Lightning charge and session drafts."
     },
     {
+      "unit": "Lightning's payment-hash form on x402",
+      "exports": {
+        "./lightning": ["ExactLnbtcReason", "ExactLnbtcValidation", "LnChoice", "LnHeaderFields", "LnbtcRequest", "checkPreimage", "exactLnbtcPaymentHash", "validateExactLnbtc"]
+      },
+      "use": "Any resource server offers x402's exact scheme on Lightning with the ATR committing the invoice's payment hash, checks a presented proof by x402's validation and the preimage check before it serves, and any buyer's client makes x402's checks of the invoice before it pays; a settler's /settle for the scheme runs the same validation.",
+      "fixedBy": "x402's scheme_exact_lnbtc.md; BOLT 11; x402-exact-lnbtc.md."
+    },
+    {
       "unit": "The Solana transaction",
       "exports": {
         "./svm": ["ATA_PROGRAM", "COMPUTE_BUDGET", "MEMO_V3", "MEMO_V4", "RENT_SYSVAR", "SYSTEM", "TOKEN", "TOKEN_2022", "SolanaNetwork", "SvmBuildInput", "SvmTx", "SvmV1Header", "buildSvmMessage", "decodeSvmTx", "findPda", "isKey", "svmCarrier", "svmDigest", "SvmNonce"]

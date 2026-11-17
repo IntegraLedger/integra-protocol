@@ -87,6 +87,11 @@
       "source": "x402 v2 specification §2, step 4: \"Server verifies the payment authorization and initiates blockchain settlement\""
     },
     {
+      "pairing": "x402/exact/lnbtc/payment-hash",
+      "broadcaster": "payer",
+      "source": "specs/schemes/exact/scheme_exact_lnbtc.md at x402-foundation/x402 88b66dd4, Settlement and Replay Protection: \"Settlement does not move funds. The Lightning payment completed before the client received the preimage.\""
+    },
+    {
       "pairing": "x402/exact/near",
       "broadcaster": "payee",
       "source": "x402 v2 specification §2, step 4: \"Server verifies the payment authorization and initiates blockchain settlement\""

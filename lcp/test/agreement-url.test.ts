@@ -10,7 +10,7 @@ import { exactAptos } from "../src/aptos.js";
 import { agentPay, sellerReference, viAutonomous, viImmediate, visaTap, visaVic } from "../src/card.js";
 import { exactHederaExecutor } from "../src/hedera.js";
 import { BINDINGS, canonicalJson, type AtrHash, type Json } from "../src/index.js";
-import { chargeLightning, sessionLightning } from "../src/lightning.js";
+import { chargeLightning, exactLnbtcPaymentHash, sessionLightning } from "../src/lightning.js";
 import {
   chargeCard,
   chargeNearIntents,
@@ -119,6 +119,7 @@ const HX = load("x402-exact-hedera-transfer-executor.json");
 const BS = load("x402-batch-settlement.json");
 const GB = load("x402-exact-eip155-gateway-batched.json");
 const UX = load("x402-upto-xrpl.json");
+const LN = load("x402-exact-lnbtc.json");
 
 const X402_CASES: Case[] = [
   x402Case("x402/exact/eip155/erc7710", exactErc7710, ERC7710.fixed.H, ERC7710.fixed.link, ERC7710.fixed.resource, ERC7710.fixed.option),
@@ -127,6 +128,7 @@ const X402_CASES: Case[] = [
   x402Case("x402/batch-settlement/cloudflare", batchCloudflare, BS.fixed.H, BS.fixed.link, BS.fixed.resource, BS.EC1.payload.accepted),
   x402Case("x402/exact/eip155/gateway-batched", exactGatewayBatched, GB.fixed.H, GB.fixed.link, GB.fixed.resource, GB.fixed.O2),
   x402Case("x402/upto/xrpl", uptoXrpl, UX.fixed.H, UX.fixed.link, UX.fixed.resource, UX.fixed.O),
+  x402Case("x402/exact/lnbtc/payment-hash", exactLnbtcPaymentHash, LN.fixed.H, LN.fixed.link, LN.fixed.resource, LN.fixed.O),
 ];
 
 // ── MPP: `opaque` is base64url of RFC 8785 JSON with `legalContextAgreementUrl` beside `legalContextUrl`; the id is H

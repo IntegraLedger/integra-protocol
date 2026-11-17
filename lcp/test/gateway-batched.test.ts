@@ -12,6 +12,7 @@ import {
   exactEip3009,
   exactGatewayBatched,
   pairingOfPayment,
+  type GatewayBatchedPayment,
   type GatewayBatchedTypedData,
   type PaymentPayload,
   type PaymentRequired,
@@ -136,11 +137,28 @@ describe("W: the validity window", () => {
   );
 });
 
-describe("wallets: the Gateway Wallet on each network", () => {
-  const rows = rowsOf<{ name: string; network: string; gatewayWallet: string }>(V.wallets, "wallets", { exact: 24 });
+describe("wallets: the Gateway Wallet and USDC on each network", () => {
+  const rows = rowsOf<{ name: string; network: string; gatewayWallet: string; usdc: string }>(V.wallets, "wallets", { exact: 24 });
   it("is Circle's client's own table", () => {
-    const circle = Object.entries(CHAIN_CONFIGS).map(([name, c]) => ({ name, network: `eip155:${c.chain.id}`, gatewayWallet: c.gatewayWallet }));
+    const circle = Object.entries(CHAIN_CONFIGS).map(([name, c]) => ({
+      name,
+      network: `eip155:${c.chain.id}`,
+      gatewayWallet: c.gatewayWallet,
+      usdc: c.tokens.USDC?.address,
+    }));
     expect(circle).toEqual(rows);
+  });
+  it.each(rows.map((r) => [r.name, r] as const))("%s: version 1 is served for its USDC alone, as Circle's client signs it", async (_, row) => {
+    const usdc = { ...F.O1, network: row.network, asset: row.usdc, extra: { ...F.O1.extra, verifyingContract: row.gatewayWallet } };
+    const other = { ...usdc, asset: F.notUsdc };
+    const client = new BatchEvmScheme(privateKeyToAccount(F.payerKey));
+    await expect(client.createPaymentPayload(2, usdc)).resolves.toMatchObject({ x402Version: 2 });
+    await expect(client.createPaymentPayload(2, other)).rejects.toThrow("Gateway accepts version 1 for USDC only");
+    expect(isRefusal(exactGatewayBatched.read(docOf(usdc)))).toBe(false);
+    expect(exactGatewayBatched.advertise(bareOf(other), H, F.link, other)).toEqual({ refused: true, code: "x402/option-malformed" });
+    const v2 = { ...other, extra: { ...other.extra, version: "2" } };
+    await expect(client.createPaymentPayload(2, v2)).resolves.toMatchObject({ x402Version: 2 });
+    expect(isRefusal(exactGatewayBatched.read(docOf(v2)))).toBe(false);
   });
   it.each(rows.map((r) => [r.name, r] as const))("%s: its own wallet is served, the other refused", (_, row) => {
     const o = { ...F.O2, network: row.network, extra: { ...F.O2.extra, verifyingContract: row.gatewayWallet } };
@@ -155,7 +173,7 @@ describe("wallets: the Gateway Wallet on each network", () => {
 
 describe("filter: the option filter", () => {
   const LINK = F.link;
-  it.each(rowsOf<{ case: string; option: PaymentRequirements; expect: string; circle: boolean }>(V.filter, "filter", { exact: 18 }).map((r) => [r.case, r] as const))(
+  it.each(rowsOf<{ case: string; option: PaymentRequirements; expect: string; circle: boolean }>(V.filter, "filter", { exact: 21 }).map((r) => [r.case, r] as const))(
     "%s",
     (_, row) => {
       expect(supportsBatching(row.option as never)).toBe(row.circle);
@@ -223,6 +241,20 @@ describe("authorizer: the account the signature recovers to", () => {
     expect(await recoverTypedDataAddress({ ...other.typedData, signature: V.check.otherSigned })).toBe(V.check.otherAddress);
     const own = await circleSigns(F.payerKey, S1.payload.authorization, F.O2);
     expect(await recoverTypedDataAddress({ ...own.typedData, signature: V.check.highS })).toBe(V.check.highSRecovers);
+    expect(await recoverTypedDataAddress({ ...own.typedData, signature: V.check.v1SigUnderO2 })).toBe(V.check.v1SigUnderO2Recovers);
+    const changed = await circleSigns(F.payerKey, { ...(S1.payload.authorization as object), value: "10001" }, F.O2);
+    expect(await recoverTypedDataAddress({ ...changed.typedData, signature: V.S[1].signature })).toBe(V.check.value10001Recovers);
+  });
+});
+
+describe("signer: the account authorizer gives, beside the authorization's from and the agreement's signer", () => {
+  type Row = { case: string; payment: string; set: Record<string, unknown>; agreementSigner: string; signer: string; isFrom: boolean; isAgreementSigner: boolean };
+  it.each(rowsOf<Row>(V.signer, "signer", { exact: 4 }).map((r) => [r.case, r] as const))("%s", async (_, row) => {
+    const presented = withSet(at(row.payment), row.set) as GatewayBatchedPayment;
+    const signer = await exactGatewayBatched.authorizer(presented);
+    expect(signer).toBe(row.signer);
+    expect(signer === presented.payload.authorization.from.toLowerCase()).toBe(row.isFrom);
+    expect(signer === row.agreementSigner.toLowerCase()).toBe(row.isAgreementSigner);
   });
 });
 

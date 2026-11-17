@@ -71,6 +71,7 @@ describe("BINDINGS", () => {
       "x402/exact/eip155/permit2",
       "x402/exact/hedera",
       "x402/exact/hedera/transfer-executor",
+      "x402/exact/lnbtc/payment-hash",
       "x402/exact/near",
       "x402/exact/polkadot/lcp-assets-remark",
       "x402/exact/solana",
@@ -100,7 +101,7 @@ describe("the record's members", () => {
     expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
   it("every pairing's record carries only those members, and every one but x402/exact/starknet's names its pattern", () => {
-    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 73 })) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 74 })) {
       for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
       expect(b.pattern.pattern === undefined, b.id).toBe(b.id === "x402/exact/starknet");
     }

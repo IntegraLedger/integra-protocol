@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 73 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 74 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -105,6 +105,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/eip155/permit2` | `exactPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
 | `x402/exact/hedera` | `exactHedera` from `@integraledger/lcp/hedera` | `full` | no | `native-field` | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
 | `x402/exact/hedera/transfer-executor` | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `none` | no | `http-advisory` | no | no |  |
+| `x402/exact/lnbtc/payment-hash` | `exactLnbtcPaymentHash` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no |  |
 | `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `full` | no | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
 | `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | no | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
 | `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes | [`x402/exact/solana`](../../lcp/profiles/x402-exact-solana.md) |
@@ -187,7 +188,7 @@ Before this payment, an account signed an agreement carrying this ATR's hash on 
 
 ### `mpp/charge/lightning`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content.
+An account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>, before this payment was taken or reported. This shows neither that the account is this payment's payer nor when this payment was taken, which nothing here reads. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. The preimage, which every node on the payment's route learns, shows that the secret behind the hash left the seller's custody, never who paid, and to anyone but the seller's node not that the invoice was paid; no public ledger shows the payment. Settlement is the seller's report. This does not show that amount, payee or timing match the ATR's content.
 
 ### `mpp/charge/nearintents`
 
@@ -243,7 +244,7 @@ Before this session, an account signed an agreement transaction carrying this AT
 
 ### `mpp/session/lightning`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content. The close is the seller's report.
+An account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>, before this payment was taken or reported. This shows neither that the account is this payment's payer nor when this payment was taken, which nothing here reads. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. The preimage, which every node on the payment's route learns, shows that the secret behind the hash left the seller's custody, never who paid, and to anyone but the seller's node not that the invoice was paid; no public ledger shows the payment. Settlement is the seller's report. This does not show that amount, payee or timing match the ATR's content. The close is the seller's report.
 
 ### `mpp/session/solana/memo`
 
@@ -368,6 +369,10 @@ The payer's own signed act carries this ATR's hash: a Hedera crypto transfer who
 ### `x402/exact/hedera/transfer-executor`
 
 Before this payment was taken, an account signed an agreement carrying this ATR's hash on <network>, recorded in <transaction>; this does not show that the account is the payer. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The read of the named transaction's merged consensus record found that its one debited account is the payer recorded when the payment was presented, and that it credited the payee. It compares no amount, asset or time with the ATR's terms.
+
+### `x402/exact/lnbtc/payment-hash`
+
+An account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>, before this payment was taken or reported. This shows neither that the account is this payment's payer nor when this payment was taken, which nothing here reads. The ATR commits the payment hash of the BOLT11 invoice paid, whose signer is held to the option's payTo; the payer signed nothing that carries the hash. The preimage, which every node on the payment's route learns, shows that the secret behind the hash left the seller's custody, never who paid, and to anyone but the seller's node not that the invoice was paid; no public ledger shows the payment. Settlement is the seller's report. This does not show that amount, payee or timing match the ATR's content.
 
 ### `x402/exact/near`
 

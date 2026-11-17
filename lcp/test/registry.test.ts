@@ -53,7 +53,7 @@ import type { BatchPaymentPayload, CloudflarePaymentPayload } from "../src/inter
 import type { XrplCloseRef } from "../src/internal/xrpl-session.js";
 import type { XrplNetwork, XrplPaymentPayload, XrplQuery, XrplReader, XrplRef, XrplStatus } from "../src/internal/xrpl.js";
 import type { XrplChannelRef } from "../src/internal/xrpl-read.js";
-import { chargeLightning, sessionLightning, type LnRef } from "../src/lightning.js";
+import { chargeLightning, exactLnbtcPaymentHash, sessionLightning, type LnPaymentPayload, type LnRef } from "../src/lightning.js";
 import {
   CARRIER,
   chargeCard,
@@ -163,6 +163,7 @@ const OWN = {
   "x402/exact/ccd": exactCcd satisfies Entry<"x402/exact/ccd", CcdPaymentPayload, CcdRef, CcdReader, Own<typeof exactCcd>>,
   "x402/exact/hedera": exactHedera satisfies Entry<"x402/exact/hedera", HederaPaymentPayload, HederaRef, HederaReader, Own<typeof exactHedera>>,
   "x402/exact/hedera/transfer-executor": exactHederaExecutor satisfies Entry<"x402/exact/hedera/transfer-executor", ExecutorPaymentPayload, ExecutorRef, HederaReader, Own<typeof exactHederaExecutor>>,
+  "x402/exact/lnbtc/payment-hash": exactLnbtcPaymentHash satisfies Entry<"x402/exact/lnbtc/payment-hash", LnPaymentPayload, LnRef, never, Own<typeof exactLnbtcPaymentHash>>,
   "x402/exact/near": exactNear satisfies Entry<"x402/exact/near", NearPayment, NearRef, NearReader, Own<typeof exactNear>>,
   "x402/exact/polkadot/lcp-assets-remark": exactPolkadotRemark satisfies Entry<"x402/exact/polkadot/lcp-assets-remark", PolkadotPaymentPayload, PolkadotRef, PolkadotReader, Own<typeof exactPolkadotRemark>>,
   "x402/exact/solana": exactSvm satisfies Entry<"x402/exact/solana", SvmPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof exactSvm>>,
@@ -373,7 +374,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 73 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 74 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.

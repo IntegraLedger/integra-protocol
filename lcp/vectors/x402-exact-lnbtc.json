@@ -1,15 +1,24 @@
 {
- "about": "Vectors for the x402/exact/lnbtc pairing: the lightning entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. L1 is BOLT11's published example 'Now send $24 for an entire list of things (hashed)'. L4 was made by an encoder that reproduced L1 byte for byte (@scure/base, @noble/curves and @noble/hashes 2.4.0) and decoded by light-bolt11-decoder 3.2.0 and bolt11 1.4.1. The option is x402's lnbtc example with L4 as its invoice. Digests are GNU coreutils sha256sum over sorted JSON. The payee is the public key of x402's test-only key 1.",
+ "about": "Vectors for the x402/exact/lnbtc/payment-hash pairing: the lightning entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The option, its invoice (fixed.x402Invoice), the payment presented, the preimage, the payment hash, the request hashes of requestHashes, the validation time 1700000000, the clock-skew allowance of 60 s and every reason of validate are x402's scheme text, specs/schemes/exact/scheme_exact_lnbtc.md at x402-foundation/x402 88b66dd4 (PaymentRequirements, PaymentPayload, Request Binding Test Vectors, Facilitator Validation, Paid-but-expired Policy, Error Vocabulary), with extra.paymentHash, this form's member, set to x402's payment hash; payTo is the public key of x402's test-only key 1. Each invoice of invoices was written by bolt11 1.4.1's encode and signed by its sign with the key its encode names (key 1 or key 2, the secp256k1 private keys 1 and 2), which signs deterministically, and is read back by light-bolt11-decoder 3.2.0; bolt11 also writes its default feature bits. BOLT 11 at lightning/bolts 19146282 (11-payment-encoding.md) gives the field rules each refused invoice breaks. The ln/ and x402/ codes are lcp's own (docs/reference/refusals.md) and the order of the checks is the profile's (x402-exact-lnbtc.md): no outside oracle gives a refusal code, so each refusal row starts from the encoding its oracle gives and changes the one member its case names. L1 is BOLT11's published example 'Now send $24 for an entire list of things (hashed)'; L4, an invoice with x402's request hash in h and H in its m field, was made by an encoder that reproduced L1 byte for byte (@scure/base, @noble/curves and @noble/hashes 2.4.0) and is read by light-bolt11-decoder 3.2.0 and bolt11 1.4.1; L7 is L4 with a 4,301-digit amount and its checksum recomputed (BIP-173, in Python).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-  "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
-  "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
-  "preimage": "0001020304050607080900010203040506070809000102030405060708090102",
-  "payee": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
   "resource": {
    "url": "https://api.example.com/article/A"
   },
-  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+  "now": 1700000000,
+  "payee": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+  "other": "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+  "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+  "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+  "preimage": "0001020304050607080900010203040506070809000102030405060708090102",
+  "request": {
+   "profile": "http:1",
+   "method": "GET",
+   "url": "https://api.example.com/article/A",
+   "bodyHex": ""
+  },
+  "x402Invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f",
   "O": {
    "scheme": "exact",
    "network": "lnbtc:000000000019d6689c085ae165831e93",
@@ -25,10 +34,1092 @@
     "requestBindingParams": {
      "headers": []
     },
-    "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu"
+    "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+    "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
    }
   },
-  "x402ExampleInvoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+  "offer": {
+   "scheme": "exact",
+   "network": "lnbtc:000000000019d6689c085ae165831e93",
+   "amount": "25000",
+   "asset": "BTC",
+   "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+   "maxTimeoutSeconds": 300,
+   "extra": {
+    "assetTransferMethod": "bolt11",
+    "paymentFlow": "upfront",
+    "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+    "requestBindingProfile": "http:1",
+    "requestBindingParams": {
+     "headers": []
+    },
+    "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+   }
+  },
+  "required": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.example.com/article/A"
+   },
+   "accepts": [
+    {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    }
+   ],
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "P": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.example.com/article/A"
+   },
+   "accepted": {
+    "scheme": "exact",
+    "network": "lnbtc:000000000019d6689c085ae165831e93",
+    "amount": "25000",
+    "asset": "BTC",
+    "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+    "maxTimeoutSeconds": 300,
+    "extra": {
+     "assetTransferMethod": "bolt11",
+     "paymentFlow": "upfront",
+     "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+     "requestBindingProfile": "http:1",
+     "requestBindingParams": {
+      "headers": []
+     },
+     "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+     "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+    }
+   },
+   "payload": {
+    "preimage": "0001020304050607080900010203040506070809000102030405060708090102"
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  }
+ },
+ "invoices": {
+  "base": {
+   "case": "x402's example fields, written and signed by bolt11 with key 1: bolt11 also writes its default feature bits (9)",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsq5huuelnt934zk8rjfjtdzylws6swmfqqnr674z5s4dujcfrd232z5t3wa8vzfsv4ygn3yhcfpy7shar5ksgspnpcrxvh2mwnclgwyzcqaqrxse",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  },
+  "withD": {
+   "case": "base with a d field, \"x\", beside its h",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     },
+     {
+      "tagName": "description",
+      "data": "x"
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjdqz0q9qypqsqzkyca422y4e7dkjpehkmp53rcp36vda4qh3ru89eqyks9m4kd7z8rckvjmhgpeefsv5sgtfya7h7uc87r5xzxdslqha4anx3rts0rlspnefzsj",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  },
+  "twoH": {
+   "case": "base with a second h field, the same request hash",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjhp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvq9qypqsq9cv3rptyzx7mn89rhjqjdswsje3rkzmahnc2zy976xaxhx6nyce5qfvcmmmkk7hlatr6pyt3w6ya6nqemg9nlp62rpf9eh56vqwcyfqplt6dhg",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  },
+  "otherP": {
+   "case": "base with p 22 repeated 32 times, a payment hash the option does not commit",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "2222222222222222222222222222222222222222222222222222222222222222"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc250n1pj48ugqpp5yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsql2u5e8vg44vf45xvm7qdur5a9z2eu0rt3yq8ht5vpvxmysx5y4ns873wfxu6qsu9wwlhd20zuxr6yqejfqyc67947r0xl0k89t23unsq43d5qj",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  },
+  "key2": {
+   "case": "base signed with key 2, a key other than payTo's",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000002"
+   },
+   "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsqstz42wyfvky8w6x3vklkzcs0ppqz3e7e7vgvqt7nltp367tld20z5y8csvxtdvn9fylrd3mzcahs5md3x3e0f8h90kmmsgdzlwgwz0cq0c4ep0",
+   "signer": "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+  },
+  "noS": {
+   "case": "base without its s field",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qhp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjt3ya3ykhjna7hasyg83vfmdaz5ynpglgmhphfhxffyz8mpgjfkfyzr7m2c2ntx6tcua6cu3fmlza4w9sgs062yesemmnv044asvrsksp406fv4",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  },
+  "withN": {
+   "case": "base with an n field naming payTo's key, so the signature is verified by n",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     },
+     {
+      "tagName": "payee_node_key",
+      "data": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjnp4qfumuen7l8wthtz45p3ftn58pvrs9xlumvkuu2xet8egzkcklqtes9qypqsq0563jpq66m83pd87cv8taeqsvfacfzul2ht5yq43rfd3k47yqfqxscceddyq5cqe8y7nnsyrty492a36nh6n5a48l3npr8kkx6ntvysqkcphq4",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  },
+  "msat10": {
+   "case": "base for 10 millisatoshis",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "10",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 300
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc100p1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsq9jdf4jeapx2l5slmltj3zdvpnyd2ns025u8vn78xck4jszxu4sfx4hqncme846ejl4dyx58uag9c8xeluzkpq7eu3fes2gcjezljc4cpwjq6s0",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  },
+  "expiry60": {
+   "case": "base with an expiry of 60 s",
+   "encode": {
+    "bech32": "bc",
+    "millisatoshis": "25000",
+    "timestamp": 1700000000,
+    "tags": [
+     {
+      "tagName": "payment_hash",
+      "data": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     },
+     {
+      "tagName": "payment_secret",
+      "data": "1111111111111111111111111111111111111111111111111111111111111111"
+     },
+     {
+      "tagName": "purpose_commit_hash",
+      "data": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+     },
+     {
+      "tagName": "expire_time",
+      "data": 60
+     },
+     {
+      "tagName": "min_final_cltv_expiry",
+      "data": 18
+     }
+    ],
+    "key": "0000000000000000000000000000000000000000000000000000000000000001"
+   },
+   "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzpucqpj9qypqsqh6cfy20y582f069yp9w92grzeqzj6ngxpa905vemar4rcflyj4s42zjamn3gwcsgs3hhga989p4ssql5f96372xc0hcgu7kkz4d6txgpwcj6th",
+   "signer": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+  }
+ },
+ "requestHashes": {
+  "case": "x402's Request Binding Test Vectors: each request's hash under its profile and parameters",
+  "rows": [
+   {
+    "case": "GET article A, empty body, no bound headers",
+    "profile": "http:1",
+    "params": {
+     "headers": []
+    },
+    "request": {
+     "profile": "http:1",
+     "method": "GET",
+     "url": "https://api.example.com/article/A",
+     "bodyHex": ""
+    },
+    "expect": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018"
+   },
+   {
+    "case": "the URL changed to article B",
+    "profile": "http:1",
+    "params": {
+     "headers": []
+    },
+    "request": {
+     "profile": "http:1",
+     "method": "GET",
+     "url": "https://api.example.com/article/B",
+     "bodyHex": ""
+    },
+    "expect": "4a99860f75eed1ea8178a5db488e044173bc570c8a6210f2c8590cdf8622d509"
+   },
+   {
+    "case": "get_article with article A over MCP",
+    "profile": "mcp:1",
+    "params": {
+     "server": "https://api.example.com/mcp",
+     "metadata": []
+    },
+    "request": {
+     "profile": "mcp:1",
+     "server": "https://api.example.com/mcp",
+     "name": "get_article",
+     "arguments": {
+      "article": "A"
+     }
+    },
+    "expect": "03941bfedc6af8a09b2f459fe83470284a76a8c75801caa9e1487a9276a693f4"
+   },
+   {
+    "case": "arguments.article changed to B",
+    "profile": "mcp:1",
+    "params": {
+     "server": "https://api.example.com/mcp",
+     "metadata": []
+    },
+    "request": {
+     "profile": "mcp:1",
+     "server": "https://api.example.com/mcp",
+     "name": "get_article",
+     "arguments": {
+      "article": "B"
+     }
+    },
+    "expect": "b3e425970d64cd4f08fc4d57a11b76da59ce6a5760d92687398c91f063120678"
+   },
+   {
+    "case": "name changed to delete_article",
+    "profile": "mcp:1",
+    "params": {
+     "server": "https://api.example.com/mcp",
+     "metadata": []
+    },
+    "request": {
+     "profile": "mcp:1",
+     "server": "https://api.example.com/mcp",
+     "name": "delete_article",
+     "arguments": {
+      "article": "A"
+     }
+    },
+    "expect": "3a52bbf19dda8b5765a27246b12e805770298273b48526956c421f02fe043455"
+   },
+   {
+    "case": "server changed to https://other.example.com/mcp",
+    "profile": "mcp:1",
+    "params": {
+     "server": "https://other.example.com/mcp",
+     "metadata": []
+    },
+    "request": {
+     "profile": "mcp:1",
+     "server": "https://other.example.com/mcp",
+     "name": "get_article",
+     "arguments": {
+      "article": "A"
+     }
+    },
+    "expect": "96903c29186c6aabc95e48abafd8ce3ad32b4060f5d5bf22cf75f3fbfe816e45"
+   }
+  ]
+ },
+ "offers": {
+  "case": "advertiseBeforeCarrier places fixed.offer, the option without its invoice; each refused row is fixed.offer with the one change its case names",
+  "placed": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.example.com/article/A"
+   },
+   "accepts": [
+    {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     }
+    }
+   ],
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  },
+  "rows": [
+   {
+    "case": "with fixed.x402Invoice as its extra.invoice",
+    "offer": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/invoice-in-offer"
+   },
+   {
+    "case": "without extra.paymentHash",
+    "offer": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      }
+     }
+    },
+    "expect": "ln/payment-hash-required"
+   },
+   {
+    "case": "with extra.paymentHash in upper case",
+    "offer": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "A923C2C0E4FE77061FF1CB882171F6FDF926719BB7F5FFE2E05458438C52825E"
+     }
+    },
+    "expect": "ln/payment-hash-required"
+   },
+   {
+    "case": "with requestBindingProfile http:2",
+    "offer": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:2",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     }
+    },
+    "expect": "ln/request-binding-malformed"
+   },
+   {
+    "case": "with paymentFlow deferred",
+    "offer": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "deferred",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     }
+    },
+    "expect": "x402/option-malformed"
+   }
+  ]
+ },
+ "build": {
+  "case": "build of fixed.required's option with H at fixed.now and fixed.request, x402's example request: the invoice to pay is fixed.x402Invoice, and complete(fixed.preimage) is fixed.P; each refused row is that choice with the one change its case names, or complete given the preimage its row names",
+  "rows": [
+   {
+    "case": "now 1699999939, 61 s before the invoice's creation",
+    "set": {
+     "now": 1699999939
+    },
+    "expect": "ln/created-in-future"
+   },
+   {
+    "case": "now 1699999940, 60 s before the invoice's creation",
+    "set": {
+     "now": 1699999940
+    },
+    "expect": "served"
+   },
+   {
+    "case": "now 1700000299, a second before the invoice's end",
+    "set": {
+     "now": 1700000299
+    },
+    "expect": "served"
+   },
+   {
+    "case": "now 1700000300, the invoice's end",
+    "set": {
+     "now": 1700000300
+    },
+    "expect": "ln/invoice-expired"
+   },
+   {
+    "case": "now -1",
+    "set": {
+     "now": -1
+    },
+    "expect": "ln/time-malformed"
+   },
+   {
+    "case": "the request's URL article B, which is not the document's resource",
+    "set": {
+     "request.url": "https://api.example.com/article/B"
+    },
+    "expect": "ln/request-hash-mismatch"
+   },
+   {
+    "case": "the request's method POST",
+    "set": {
+     "request.method": "POST"
+    },
+    "expect": "ln/request-hash-mismatch"
+   },
+   {
+    "case": "the request's body the single byte 78",
+    "set": {
+     "request.bodyHex": "78"
+    },
+    "expect": "ln/request-hash-mismatch"
+   },
+   {
+    "case": "the request an MCP call",
+    "set": {
+     "request": {
+      "profile": "mcp:1",
+      "server": "https://api.example.com/mcp",
+      "name": "get_article",
+      "arguments": {
+       "article": "A"
+      }
+     }
+    },
+    "expect": "ln/request-hash-mismatch"
+   },
+   {
+    "case": "the request's URL with a fragment",
+    "set": {
+     "request.url": "https://api.example.com/article/A#x",
+     "required.resource.url": "https://api.example.com/article/A#x"
+    },
+    "expect": "ln/request-binding-malformed"
+   },
+   {
+    "case": "the document's H another hash",
+    "set": {
+     "required.extensions.legalContext.info.value": "0x1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "expect": "x402/legal-context-conflict"
+   }
+  ],
+  "complete": [
+   {
+    "case": "fixed.preimage with its last digit changed",
+    "preimage": "0001020304050607080900010203040506070809000102030405060708090103",
+    "expect": "ln/preimage-mismatch"
+   },
+   {
+    "case": "fixed.preimage with its last digit an upper-case A",
+    "preimage": "000102030405060708090001020304050607080900010203040506070809010A",
+    "expect": "ln/preimage-malformed"
+   }
+  ]
+ },
+ "bound": {
+  "case": "bound of fixed.P is H; each refused row is fixed.P with the one change its case names",
+  "rows": [
+   {
+    "case": "a preimage that does not hash to p, its last digit changed",
+    "set": {
+     "payload.preimage": "0001020304050607080900010203040506070809000102030405060708090103"
+    },
+    "expect": "ln/preimage-mismatch"
+   },
+   {
+    "case": "a preimage of 62 digits",
+    "set": {
+     "payload.preimage": "01020304050607080900010203040506070809000102030405060708090102"
+    },
+    "expect": "ln/preimage-malformed"
+   },
+   {
+    "case": "an echoed extra.paymentHash that differs from the invoice's p",
+    "set": {
+     "accepted.extra.paymentHash": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "expect": "ln/payment-hash-mismatch"
+   },
+   {
+    "case": "an invoice whose p is not the echoed hash",
+    "set": {
+     "accepted.extra.invoice": "lnbc250n1pj48ugqpp5yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsql2u5e8vg44vf45xvm7qdur5a9z2eu0rt3yq8ht5vpvxmysx5y4ns873wfxu6qsu9wwlhd20zuxr6yqejfqyc67947r0xl0k89t23unsq43d5qj"
+    },
+    "expect": "ln/payment-hash-mismatch"
+   },
+   {
+    "case": "no extensions",
+    "set": {
+     "extensions": null
+    },
+    "expect": "x402/no-legal-context"
+   }
+  ]
+ },
+ "reference": {
+  "case": "reference of fixed.P under fixed.O, or fixed.offer, is expect; under another sale's option, fixed.offer with another extra.paymentHash, it is refused",
+  "expect": {
+   "network": "lnbtc:000000000019d6689c085ae165831e93",
+   "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+   "settleBy": 1700000360
+  },
+  "other": {
+   "scheme": "exact",
+   "network": "lnbtc:000000000019d6689c085ae165831e93",
+   "amount": "25000",
+   "asset": "BTC",
+   "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+   "maxTimeoutSeconds": 300,
+   "extra": {
+    "assetTransferMethod": "bolt11",
+    "paymentFlow": "upfront",
+    "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+    "requestBindingProfile": "http:1",
+    "requestBindingParams": {
+     "headers": []
+    },
+    "paymentHash": "2222222222222222222222222222222222222222222222222222222222222222"
+   }
+  },
+  "otherExpect": "x402/accepted-not-option"
+ },
+ "validate": {
+  "case": "validateExactLnbtc of fixed.P against fixed.O as the requirements at fixed.now is valid; each row is that call with the one change its case names, a payload change under payload, a requirements change under requirements, and its time under at",
+  "valid": {
+   "valid": true,
+   "network": "lnbtc:000000000019d6689c085ae165831e93",
+   "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+  },
+  "rows": [
+   {
+    "case": "at the window's end, the invoice's end plus 60 s",
+    "at": {
+     "now": 1700000360
+    },
+    "expect": "valid"
+   },
+   {
+    "case": "an expired invoice past the window, a second after it",
+    "at": {
+     "now": 1700000361
+    },
+    "expect": "invalid_exact_lnbtc_invoice_expired"
+   },
+   {
+    "case": "a skew of 0, a second past the invoice's end",
+    "at": {
+     "now": 1700000301,
+     "skew": 0
+    },
+    "expect": "invalid_exact_lnbtc_invoice_expired"
+   },
+   {
+    "case": "a skew of 0 at the invoice's end",
+    "at": {
+     "now": 1700000300,
+     "skew": 0
+    },
+    "expect": "valid"
+   },
+   {
+    "case": "created more than the skew after the validation time",
+    "at": {
+     "now": 1699999939
+    },
+    "expect": "invalid_exact_lnbtc_invoice_created_in_future"
+   },
+   {
+    "case": "an echoed extra.paymentHash that differs from the requirements'",
+    "payload": {
+     "accepted.extra.paymentHash": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "expect": "invalid_exact_lnbtc_extra_mismatch"
+   },
+   {
+    "case": "an accepted invoice whose p is not the committed hash",
+    "payload": {
+     "accepted.extra.invoice": "lnbc250n1pj48ugqpp5yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsql2u5e8vg44vf45xvm7qdur5a9z2eu0rt3yq8ht5vpvxmysx5y4ns873wfxu6qsu9wwlhd20zuxr6yqejfqyc67947r0xl0k89t23unsq43d5qj"
+    },
+    "expect": "invalid_exact_lnbtc_invoice_payment_hash_mismatch"
+   },
+   {
+    "case": "an accepted invoice with a d field",
+    "payload": {
+     "accepted.extra.invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjdqz0q9qypqsqzkyca422y4e7dkjpehkmp53rcp36vda4qh3ru89eqyks9m4kd7z8rckvjmhgpeefsv5sgtfya7h7uc87r5xzxdslqha4anx3rts0rlspnefzsj"
+    },
+    "expect": "invalid_exact_lnbtc_invoice_description"
+   },
+   {
+    "case": "an accepted invoice with two h fields",
+    "payload": {
+     "accepted.extra.invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjhp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvq9qypqsq9cv3rptyzx7mn89rhjqjdswsje3rkzmahnc2zy976xaxhx6nyce5qfvcmmmkk7hlatr6pyt3w6ya6nqemg9nlp62rpf9eh56vqwcyfqplt6dhg"
+    },
+    "expect": "invalid_exact_lnbtc_invoice_description"
+   },
+   {
+    "case": "an accepted invoice signed by a key other than payTo's",
+    "payload": {
+     "accepted.extra.invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsqstz42wyfvky8w6x3vklkzcs0ppqz3e7e7vgvqt7nltp367tld20z5y8csvxtdvn9fylrd3mzcahs5md3x3e0f8h90kmmsgdzlwgwz0cq0c4ep0"
+    },
+    "expect": "invalid_exact_lnbtc_invoice_payee_mismatch"
+   },
+   {
+    "case": "an accepted invoice without its s field",
+    "payload": {
+     "accepted.extra.invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qhp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjt3ya3ykhjna7hasyg83vfmdaz5ynpglgmhphfhxffyz8mpgjfkfyzr7m2c2ntx6tcua6cu3fmlza4w9sgs062yesemmnv044asvrsksp406fv4"
+    },
+    "expect": "invalid_exact_lnbtc_invoice_decode_failed"
+   },
+   {
+    "case": "an accepted invoice with an n field naming payTo's key",
+    "payload": {
+     "accepted.extra.invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjnp4qfumuen7l8wthtz45p3ftn58pvrs9xlumvkuu2xet8egzkcklqtes9qypqsq0563jpq66m83pd87cv8taeqsvfacfzul2ht5yq43rfd3k47yqfqxscceddyq5cqe8y7nnsyrty492a36nh6n5a48l3npr8kkx6ntvysqkcphq4"
+    },
+    "expect": "valid"
+   },
+   {
+    "case": "a preimage that does not hash to p",
+    "payload": {
+     "payload.preimage": "0001020304050607080900010203040506070809000102030405060708090103"
+    },
+    "expect": "invalid_exact_lnbtc_preimage_hash_mismatch"
+   },
+   {
+    "case": "no preimage",
+    "payload": {
+     "payload": {}
+    },
+    "expect": "invalid_exact_lnbtc_preimage_missing"
+   },
+   {
+    "case": "a preimage with an upper-case digit",
+    "payload": {
+     "payload.preimage": "000102030405060708090001020304050607080900010203040506070809010A"
+    },
+    "expect": "invalid_exact_lnbtc_preimage_malformed"
+   },
+   {
+    "case": "a preimage of 62 digits",
+    "payload": {
+     "payload.preimage": "01020304050607080900010203040506070809000102030405060708090102"
+    },
+    "expect": "invalid_exact_lnbtc_preimage_length"
+   },
+   {
+    "case": "requirements for article B's request hash",
+    "requirements": {
+     "extra.requestHash": "4a99860f75eed1ea8178a5db488e044173bc570c8a6210f2c8590cdf8622d509"
+    },
+    "expect": "invalid_exact_lnbtc_request_mismatch"
+   },
+   {
+    "case": "an accepted amount that differs",
+    "payload": {
+     "accepted.amount": "26000"
+    },
+    "expect": "invalid_exact_lnbtc_amount_mismatch"
+   },
+   {
+    "case": "an accepted payTo that differs",
+    "payload": {
+     "accepted.payTo": "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
+    },
+    "expect": "invalid_exact_lnbtc_pay_to_mismatch"
+   },
+   {
+    "case": "requirements on the testnet",
+    "requirements": {
+     "network": "lnbtc:000000000933ea01ad0ee984209779ba"
+    },
+    "expect": "network_mismatch"
+   },
+   {
+    "case": "requirements with an empty invoice",
+    "requirements": {
+     "extra.invoice": ""
+    },
+    "expect": "invalid_exact_lnbtc_invoice_missing"
+   },
+   {
+    "case": "requirements whose assetTransferMethod is keysend",
+    "requirements": {
+     "extra.assetTransferMethod": "keysend"
+    },
+    "expect": "invalid_exact_lnbtc_asset_transfer_method"
+   }
+  ],
+  "refused": [
+   {
+    "case": "a validation time of -1",
+    "at": {
+     "now": -1
+    },
+    "expect": "ln/time-malformed"
+   }
+  ]
+ },
+ "checkPreimage": {
+  "case": "checkPreimage(fixed.preimage, fixed.paymentHash) is true; each refused row changes one argument",
+  "rows": [
+   {
+    "case": "the preimage's last digit changed",
+    "preimage": "0001020304050607080900010203040506070809000102030405060708090103",
+    "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+    "expect": "ln/preimage-mismatch"
+   },
+   {
+    "case": "the preimage with its last digit an upper-case A",
+    "preimage": "000102030405060708090001020304050607080900010203040506070809010A",
+    "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+    "expect": "ln/preimage-malformed"
+   },
+   {
+    "case": "the payment hash with a 0x prefix",
+    "preimage": "0001020304050607080900010203040506070809000102030405060708090102",
+    "paymentHash": "0xa923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+    "expect": "ln/payment-hash-required"
+   }
+  ]
  },
  "L1": {
   "case": "decodeBolt11 of BOLT11's h example",
@@ -37,7 +1128,7 @@
   "description": "One piece of chocolate cake, one icecream cone, one pickle, one slice of swiss cheese, one slice of salami, one lollypop, one piece of cherry pie, one sausage, one cupcake, and one slice of watermelon"
  },
  "L4": {
-  "case": "decodeBolt11 of the x402 invoice: h = request hash, m = H, x = 300",
+  "case": "decodeBolt11 of an x402 invoice whose m field carries H: h = request hash, m = H, x = 300",
   "invoice": "lnbc250n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqd3w7vu",
   "expect": {
    "currency": "bc",
@@ -55,5 +1146,692 @@
   "case": "decodeBolt11 of L4 with its amount written 1 followed by 4300 zeros of nanobitcoin, 4301 digits, and its checksum recomputed (BIP-173, in Python): the amount is that integer times 100 millisatoshi. The signature is not verified, so the other fields are L4's.",
   "invoice": "lnbc10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000n1p4tzwuqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqmp5hfupd0u0q8875s2pgr09mt3zywcqxcdrjcth4895zrlkrusqzkksxqzfv9q2sqqqqqqsqqln9aawyvsmemug3sx0f88sh5egrt9wm9sjzwad6sp8hkkd2pmjgj05rtzu8htjf76lex0t6j5lcp6cecydkap5adavlkg6ff4c744rcqjuye4a",
   "expectAmountMsat": "1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+ },
+ "buyer": {
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.example.com/article/A"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "lnbtc:000000000019d6689c085ae165831e93",
+        "amount": "25000",
+        "asset": "BTC",
+        "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "maxTimeoutSeconds": 300,
+        "extra": {
+         "assetTransferMethod": "bolt11",
+         "paymentFlow": "upfront",
+         "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+         "requestBindingProfile": "http:1",
+         "requestBindingParams": {
+          "headers": []
+         },
+         "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+         "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "lnbtc:000000000019d6689c085ae165831e93:0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "now": 1700000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.example.com/article/A"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "lnbtc:000000000019d6689c085ae165831e93",
+       "amount": "25000",
+       "asset": "BTC",
+       "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+       "maxTimeoutSeconds": 300,
+       "extra": {
+        "assetTransferMethod": "bolt11",
+        "paymentFlow": "upfront",
+        "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+        "requestBindingProfile": "http:1",
+        "requestBindingParams": {
+         "headers": []
+        },
+        "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+        "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+       }
+      },
+      "payload": {
+       "preimage": "0001020304050607080900010203040506070809000102030405060708090102"
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is fixed.P; the payer signs nothing on this rail, and bound gives the H its echoed legal context names."
+   }
+  ]
+ },
+ "boundAccepted": {
+  "case": "fixed.P presented under options this pairing's read does not offer, each fixed.O with the one change the row's case names: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option. payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "without extra.paymentHash",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/payment-hash-required"
+   },
+   {
+    "case": "extra.paymentHash another sale's, not the invoice's p",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/payment-hash-mismatch"
+   },
+   {
+    "case": "an invoice whose p is not extra.paymentHash",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp5yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsql2u5e8vg44vf45xvm7qdur5a9z2eu0rt3yq8ht5vpvxmysx5y4ns873wfxu6qsu9wwlhd20zuxr6yqejfqyc67947r0xl0k89t23unsq43d5qj"
+     }
+    },
+    "expect": "ln/payment-hash-mismatch"
+   },
+   {
+    "case": "an invoice with a d field",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjdqz0q9qypqsqzkyca422y4e7dkjpehkmp53rcp36vda4qh3ru89eqyks9m4kd7z8rckvjmhgpeefsv5sgtfya7h7uc87r5xzxdslqha4anx3rts0rlspnefzsj"
+     }
+    },
+    "expect": "ln/description-inline"
+   },
+   {
+    "case": "an invoice with two h fields",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjhp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvq9qypqsq9cv3rptyzx7mn89rhjqjdswsje3rkzmahnc2zy976xaxhx6nyce5qfvcmmmkk7hlatr6pyt3w6ya6nqemg9nlp62rpf9eh56vqwcyfqplt6dhg"
+     }
+    },
+    "expect": "ln/field-repeated"
+   },
+   {
+    "case": "an invoice signed by a key other than payTo's",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsqstz42wyfvky8w6x3vklkzcs0ppqz3e7e7vgvqt7nltp367tld20z5y8csvxtdvn9fylrd3mzcahs5md3x3e0f8h90kmmsgdzlwgwz0cq0c4ep0"
+     }
+    },
+    "expect": "ln/signer-not-payee"
+   },
+   {
+    "case": "an invoice without its s field",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qhp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjt3ya3ykhjna7hasyg83vfmdaz5ynpglgmhphfhxffyz8mpgjfkfyzr7m2c2ntx6tcua6cu3fmlza4w9sgs062yesemmnv044asvrsksp406fv4"
+     }
+    },
+    "expect": "ln/invoice-malformed"
+   },
+   {
+    "case": "without extra.invoice",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e"
+     }
+    },
+    "expect": "ln/invoice-malformed"
+   },
+   {
+    "case": "amount 26000, not the invoice's",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "26000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/amount-mismatch"
+   },
+   {
+    "case": "maxTimeoutSeconds 600, not the invoice's expiry",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 600,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/expiry-mismatch"
+   },
+   {
+    "case": "the testnet, whose currency is not the invoice's",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000933ea01ad0ee984209779ba",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/currency-network"
+   },
+   {
+    "case": "extra.requestHash article B's, not the invoice's h",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "4a99860f75eed1ea8178a5db488e044173bc570c8a6210f2c8590cdf8622d509",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/request-hash-mismatch"
+   },
+   {
+    "case": "requestBindingParams with its headers out of order",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": [
+        "b",
+        "a"
+       ]
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/request-binding-malformed"
+   },
+   {
+    "case": "requestBindingParams naming payment-signature",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": [
+        "payment-signature"
+       ]
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "ln/request-binding-malformed"
+   },
+   {
+    "case": "assetTransferMethod keysend",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "keysend",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "payTo 02 then ff repeated 32 times, no point on the curve",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "scheme upto",
+    "pairing": "x402/exact/lnbtc/payment-hash",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "upto",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjr4rx6ls6j5rpwknuea64evlk7yfx56wmqcer5eerekdsn9tlv6v4ex9mlz5dtm9qapl3svwlqcf7837dmjkru9z9w4h2rvm0md52w2sqxrwu5f"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ },
+ "options": {
+  "case": "options read offers: fixed.O with the invoice its row names, and its member changed to match, each a payment of one of invoices",
+  "rows": [
+   {
+    "case": "the invoice with an n field",
+    "option": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpjnp4qfumuen7l8wthtz45p3ftn58pvrs9xlumvkuu2xet8egzkcklqtes9qypqsq0563jpq66m83pd87cv8taeqsvfacfzul2ht5yq43rfd3k47yqfqxscceddyq5cqe8y7nnsyrty492a36nh6n5a48l3npr8kkx6ntvysqkcphq4"
+     }
+    }
+   },
+   {
+    "case": "bolt11's invoice of x402's example fields",
+    "option": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsq5huuelnt934zk8rjfjtdzylws6swmfqqnr674z5s4dujcfrd232z5t3wa8vzfsv4ygn3yhcfpy7shar5ksgspnpcrxvh2mwnclgwyzcqaqrxse"
+     }
+    }
+   },
+   {
+    "case": "amount 10 with the invoice for 10 millisatoshis",
+    "option": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "10",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc100p1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzfvcqpj9qypqsq9jdf4jeapx2l5slmltj3zdvpnyd2ns025u8vn78xck4jszxu4sfx4hqncme846ejl4dyx58uag9c8xeluzkpq7eu3fes2gcjezljc4cpwjq6s0"
+     }
+    }
+   },
+   {
+    "case": "maxTimeoutSeconds 60 with the invoice whose expiry is 60 s",
+    "option": {
+     "scheme": "exact",
+     "network": "lnbtc:000000000019d6689c085ae165831e93",
+     "amount": "25000",
+     "asset": "BTC",
+     "payTo": "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "bolt11",
+      "paymentFlow": "upfront",
+      "requestHash": "0d6623f775e025501fa7f0a30b54da25aad62b6ccfe35c85da38016711e6c018",
+      "requestBindingProfile": "http:1",
+      "requestBindingParams": {
+       "headers": []
+      },
+      "paymentHash": "a923c2c0e4fe77061ff1cb882171f6fdf926719bb7f5ffe2e05458438c52825e",
+      "invoice": "lnbc250n1pj48ugqpp54y3u9s8ylemsv8l3ewyzzu0klhujvuvmkl6llchq23vy8rzjsf0qsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygshp5p4nz8am4uqj4q8a87z3sk4x6yk4dv2mvel34epw68qqkwy0xcqvqxqzpucqpj9qypqsqh6cfy20y582f069yp9w92grzeqzj6ngxpa905vemar4rcflyj4s42zjamn3gwcsgs3hhga989p4ssql5f96372xc0hcgu7kkz4d6txgpwcj6th"
+     }
+    }
+   }
+  ]
  }
 }

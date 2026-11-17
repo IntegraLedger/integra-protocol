@@ -1,15 +1,18 @@
 /**
- * BOLT11 decoding, the x402 Lightning option checks and the option filters built on them. `../lightning.ts` decodes
- * with `decode` (its `decodeBolt11` returns the result) and reads an invoice's `h` or `m` field with `fieldHash` (its
- * `invoiceH`); `../mpp-challenge.ts` decodes with `decode` and reads `FIELD`. No pairing in this package uses the x402
- * option checks or filters, and no entry point exports these names.
+ * BOLT11 decoding, and the checks of `x402/exact/lnbtc/payment-hash`: the invoice's signature, the option's and the
+ * invoice's checks, x402's request binding for the scheme, and the scheme's validation. `../lightning.ts` decodes with
+ * `decode` (its `decodeBolt11` returns the result) and reads an invoice's `h` or `m` field with `fieldHash` (its
+ * `invoiceH`); `../mpp-challenge.ts` decodes with `decode` and reads `FIELD`.
  */
-import { fromRawBytes, type AtrHash, type Json } from "../core.js";
-import { isObject, normalHash } from "../fields.js";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { canonicalJson, fromRawBytes, type AtrHash, type Json } from "../core.js";
+import { isObject } from "../fields.js";
 import type { Bolt11, LnNetwork } from "../lightning.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequirements } from "../x402.js";
-import { isAmount, isTimeoutSeconds, type OptionFilter } from "./x402.js";
+import { MAX_REQUEST_BYTES } from "./bounds.js";
+import { isAmount, isTimeoutSeconds, sameJson } from "./x402.js";
 
 const MAX_INVOICE = 8192;
 const MAX_FIELDS = 64;
@@ -18,9 +21,6 @@ const CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 const GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3] as const;
 const CURRENCIES = ["bcrt", "tbs", "tb", "bc"] as const;
 const AMOUNT = /^([0-9]+)([munp]?)$/;
-const PAY_TO = /^[0-9a-f]{66}$/;
-const REQUEST_HASH = /^[0-9a-f]{64}$/;
-const POSITIVE = /^[1-9][0-9]{0,77}$/;
 /** Tagged field types, as the Bech32 value of their letter. */
 export const FIELD = { p: 1, s: 16, h: 23, m: 27, x: 6, d: 13 } as const;
 export const NETWORKS: { readonly [n in LnNetwork]: Bolt11["currency"] } = {
@@ -32,6 +32,18 @@ const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /** A BOLT11 invoice decoded, up to 8 KiB. The signature is not verified. */
 export function decode(invoice: string): Bolt11<ArrayBuffer> | Refusal {
+  const parts = decodeParts(invoice);
+  return isRefusal(parts) ? parts : parts.b;
+}
+
+/** An invoice decoded, with its human-readable part and its data words, the signature's 104 included. */
+interface Parts {
+  b: Bolt11<ArrayBuffer>;
+  hrp: string;
+  data: readonly number[];
+}
+
+function decodeParts(invoice: string): Parts | Refusal {
   if (typeof invoice !== "string") return refusal("ln/invoice-malformed");
   if (invoice.length > MAX_INVOICE) return refusal("ln/invoice-too-large");
   const lower = invoice.toLowerCase();
@@ -84,7 +96,7 @@ export function decode(invoice: string): Bolt11<ArrayBuffer> | Refusal {
       return refusal("ln/invoice-malformed");
     }
   }
-  return {
+  const b = {
     currency: prefix.currency,
     amountMsat: prefix.amountMsat,
     timestamp,
@@ -95,6 +107,7 @@ export function decode(invoice: string): Bolt11<ArrayBuffer> | Refusal {
     metadata: m === undefined ? null : toBytes(m),
     tags,
   };
+  return { b, hrp, data };
 }
 
 /** True when any `p`, `h` or `s` field is not 52 words long. */
@@ -177,15 +190,6 @@ function toBytes(words: readonly number[]): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-/** An `exact` option on a Lightning network with an invoice string. */
-export function isLnOption(o: unknown): o is PaymentRequirements & { extra: { invoice: string } } {
-  if (!isObject(o) || o["scheme"] !== "exact") return false;
-  const n = o["network"];
-  if (typeof n !== "string" || !Object.hasOwn(NETWORKS, n)) return false;
-  const extra = o["extra"];
-  return isObject(extra) && typeof extra["invoice"] === "string";
-}
-
 /** The one 32-byte `h` or `m` field of an invoice, as the hash it carries. */
 export function fieldHash(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
   if (!isObject(b) || !Array.isArray(b.tags)) return refusal("ln/invoice-malformed");
@@ -198,109 +202,522 @@ export function fieldHash(b: Bolt11, field: "h" | "m"): AtrHash | Refusal {
   return h ?? refusal("ln/field-length");
 }
 
+
+// ── x402/exact/lnbtc/payment-hash ──
+
+const PAY_TO = /^[0-9a-f]{66}$/;
+const HEX64 = /^[0-9a-f]{64}$/;
+const LOWER_HEX = /^[0-9a-f]*$/;
+const POSITIVE = /^[1-9][0-9]{0,77}$/;
+/** RFC 9110 §5.1's token, its letters lower-case: a bound header's name as the scheme's `http:1` writes it. */
+const LOWER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9a-z]+$/;
+/** RFC 9110 §9.1: a method is a token. */
+const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+/** The `n` field's type, as the Bech32 value of its letter, and its length in words: a 33-byte public key. */
+const FIELD_N = 19;
+const N_WORDS = 53;
+/** The most names lcp reads in one `requestBindingParams` list. The scheme sets no count. */
+const MAX_BOUND_NAMES = 64;
+/** The longest URL or URI lcp reads in a request binding, in characters. The scheme sets no length. */
+const MAX_URI = 8192;
+/** The scheme's default clock-skew allowance, in seconds. */
+export const SKEW_SECONDS = 60;
+const ascii = new TextEncoder();
+
+/** An invoice decoded strictly, with the compressed public key that signed it as 66 lowercase hex digits. */
+export interface Signed {
+  b: Bolt11<ArrayBuffer>;
+  signer: string;
+}
+
+/** The x402 option of this pairing as the checks read it: `exact` on a Lightning network, with an `extra` object. */
+export type LnOption = PaymentRequirements & { extra: { [k: string]: Json } };
+
 /**
- * The x402 option checks on an `exact` option on a Lightning network with an invoice, in
- * this order: the invoice decodes (else the decoder's refusal); its `m` field, where `m` is a hash or `"any"`, is one
- * 32-byte field (`ln/no-metadata`, `ln/field-repeated`, `ln/field-length`) carrying `m` when `m` is a hash
- * (`ln/no-metadata`), and where `m` is null the invoice has none (`ln/not-this-pairing`); its `h` field is one 32-byte
- * field (`ln/no-description-hash`, `ln/field-repeated`, `ln/field-length`) equal to `extra.requestHash`, 64 lowercase
- * hex digits (`ln/request-hash-mismatch`); its currency is the one x402 gives the option's `network`
- * (`ln/currency-network`); and x402's client checks on the option's own fields hold (`x402/option-malformed`).
+ * A BOLT11 invoice decoded strictly (BOLT 11 at 19146282): `decode`'s checks, exactly one `s` field, at most one `n`
+ * field of 53 words, and a signature that verifies over the human-readable part and the data part without the
+ * signature, padded with zero bits to a byte, hashed by SHA-256: by the `n` key where the invoice has one, a low `s`
+ * required, and otherwise by public-key recovery, either `s` accepted. Any failure is `ln/invoice-malformed`, or the
+ * decoder's refusal.
  */
-export function optionChecks(o: LnOption, m: AtrHash | "any" | null): Bolt11 | Refusal {
-  const b = decode(o.extra.invoice);
-  if (isRefusal(b)) return b;
-  if (m !== null) {
-    const carried = fieldHash(b, "m");
-    if (isRefusal(carried)) return carried;
-    if (m !== "any" && carried !== normalHash(m)) return refusal("ln/no-metadata");
-  } else if (b.tags.includes(FIELD.m)) {
-    return refusal("ln/not-this-pairing");
+export function decodeSigned(invoice: unknown): Signed | Refusal {
+  if (typeof invoice !== "string") return refusal("ln/invoice-malformed");
+  const parts = decodeParts(invoice);
+  if (isRefusal(parts)) return parts;
+  const { b, hrp, data } = parts;
+  if (b.tags.filter((t) => t === FIELD.s).length !== 1) return refusal("ln/invoice-malformed");
+  const body = data.slice(0, data.length - SIGNATURE_WORDS);
+  const n = fieldsOf(body, FIELD_N);
+  if (n.length > 1 || n.some((w) => w.length !== N_WORDS)) return refusal("ln/invoice-malformed");
+  const digest = sha256(concat(ascii.encode(hrp), padded(body)));
+  const sig = toBytes(data.slice(data.length - SIGNATURE_WORDS));
+  const compact = sig.subarray(0, 64);
+  const recovery = sig[64]!;
+  try {
+    if (n.length === 1) {
+      const key = toBytes(n[0]!);
+      if (!secp256k1.verify(compact, digest, key, { prehash: false, lowS: true })) return refusal("ln/invoice-malformed");
+      return { b, signer: hexOf(key) };
+    }
+    if (recovery > 3) return refusal("ln/invoice-malformed");
+    const key = secp256k1.Signature.fromBytes(compact, "compact").addRecoveryBit(recovery).recoverPublicKey(digest);
+    return { b, signer: hexOf(key.toBytes(true)) };
+  } catch {
+    return refusal("ln/invoice-malformed");
   }
-  const d = fieldHash(b, "h");
-  if (isRefusal(d)) return d;
-  const requestHash = requestHashOf(o);
-  if (requestHash === undefined || d !== `0x${requestHash}`) return refusal("ln/request-hash-mismatch");
-  if (NETWORKS[o.network as LnNetwork] !== b.currency) return refusal("ln/currency-network");
-  return optionFields(o) ?? b;
+}
+
+/** The data of every tagged field of `type`, in invoice order. */
+function fieldsOf(body: readonly number[], type: number): number[][] {
+  const out: number[][] = [];
+  for (let i = 7; i + 3 <= body.length; ) {
+    const length = body[i + 1]! * 32 + body[i + 2]!;
+    if (body[i] === type) out.push(body.slice(i + 3, i + 3 + length));
+    i += 3 + length;
+  }
+  return out;
+}
+
+/** 5-bit words as bytes, with zero bits appended to a byte boundary. */
+function padded(words: readonly number[]): Uint8Array {
+  const out = new Uint8Array(Math.ceil((words.length * 5) / 8));
+  let bit = 0;
+  for (const w of words) {
+    for (let k = 4; k >= 0; k--, bit++) if ((w >> k) & 1) out[bit >> 3]! |= 0x80 >> (bit & 7);
+  }
+  return out;
+}
+
+function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a);
+  out.set(b, a.length);
+  return out;
+}
+
+/** Lowercase hex digits, an even count of them, as bytes. */
+function bytesOfHex(v: string): Uint8Array {
+  const out = new Uint8Array(v.length >> 1);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(v.slice(2 * i, 2 * i + 2), 16);
+  return out;
+}
+
+export function hexOf(b: Uint8Array): string {
+  let s = "";
+  for (const x of b) s += x.toString(16).padStart(2, "0");
+  return s;
+}
+
+/** True when `v` is 66 lowercase hex digits encoding a valid compressed secp256k1 public key. */
+function isPayTo(v: unknown): v is string {
+  if (typeof v !== "string" || !PAY_TO.test(v)) return false;
+  try {
+    return secp256k1.utils.isValidPublicKey(bytesOfHex(v), true);
+  } catch {
+    return false;
+  }
+}
+
+/** True when `o` is an `exact` option on one of x402's two `lnbtc` networks. */
+export function isLnbtc(o: unknown): o is PaymentRequirements {
+  if (!isObject(o) || o["scheme"] !== "exact") return false;
+  const n = o["network"];
+  return typeof n === "string" && Object.hasOwn(NETWORKS, n);
 }
 
 /**
- * The checks on the offer the seller sends before its node writes the invoice, which carries no invoice to read: a
- * 64-lowercase-hex-digit `extra.requestHash` (`ln/request-hash-mismatch`), then x402's client checks.
+ * The checks of the option's own members (the profile's rule 6, a to c): `asset` `BTC`, `amount` a positive integer of
+ * at most 78 digits, `maxTimeoutSeconds` a positive safe integer, `payTo` a valid compressed secp256k1 key as 66
+ * lowercase hex digits, `extra` an object with `paymentFlow` `upfront` and `assetTransferMethod` absent or `bolt11`
+ * (`x402/option-malformed`); `extra.paymentHash` 64 lowercase hex digits (`ln/payment-hash-required`);
+ * `extra.requestHash` 64 lowercase hex digits (`ln/request-hash-mismatch`); and the request binding's profile and
+ * parameters in the scheme's form (`ln/request-binding-malformed`).
  */
-export function offerChecks(o: PaymentRequirements & { extra: { [k: string]: Json } }): Refusal | null {
-  if (requestHashOf(o) === undefined) return refusal("ln/request-hash-mismatch");
-  return optionFields(o);
-}
-
-/** `extra.requestHash` when it is 64 lowercase hex digits. */
-function requestHashOf(o: PaymentRequirements): string | undefined {
-  const requestHash = isObject(o.extra) ? o.extra["requestHash"] : undefined;
-  return typeof requestHash === "string" && REQUEST_HASH.test(requestHash) ? requestHash : undefined;
-}
-
-/**
- * x402's client checks on the option's own fields: `extra.paymentFlow` `upfront`, `asset` `BTC`, `payTo` 66 lowercase
- * hex digits, `amount` a positive decimal (`isAmount`) of at most 78 digits, `maxTimeoutSeconds` a positive safe
- * integer; else `x402/option-malformed`.
- */
-function optionFields(o: PaymentRequirements): Refusal | null {
+function optionMembers(o: PaymentRequirements): Refusal | null {
+  const extra = o.extra;
   if (
-    !isObject(o.extra) ||
-    o.extra["paymentFlow"] !== "upfront" ||
+    !isObject(extra) ||
+    extra["paymentFlow"] !== "upfront" ||
+    (Object.hasOwn(extra, "assetTransferMethod") && extra["assetTransferMethod"] !== "bolt11") ||
     o.asset !== "BTC" ||
-    typeof o.payTo !== "string" ||
-    !PAY_TO.test(o.payTo) ||
     !isAmount(o.amount) ||
     !POSITIVE.test(o.amount) ||
-    !isTimeoutSeconds(o.maxTimeoutSeconds)
+    !isTimeoutSeconds(o.maxTimeoutSeconds) ||
+    !isPayTo(o.payTo)
   ) {
     return refusal("x402/option-malformed");
   }
+  if (typeof extra["paymentHash"] !== "string" || !HEX64.test(extra["paymentHash"])) return refusal("ln/payment-hash-required");
+  if (typeof extra["requestHash"] !== "string" || !HEX64.test(extra["requestHash"])) return refusal("ln/request-hash-mismatch");
+  if (!bindingParams(extra["requestBindingProfile"], extra["requestBindingParams"])) return refusal("ln/request-binding-malformed");
   return null;
 }
 
-/** An `exact` option on a Lightning network with a string `extra.invoice`. */
-export type LnOption = PaymentRequirements & { extra: { invoice: string } };
-
-/** The option filter over `optionChecks` with `m`: an option they pass is served, else their refusal. */
-function filterWith(m: "any" | null): OptionFilter {
-  return (o) => {
-    if (!isLnOption(o)) return undefined;
-    const b = optionChecks(o, m);
-    return isRefusal(b) ? b : true;
-  };
+/**
+ * The offer before its invoice: one that carries `extra.invoice` is `ln/invoice-in-offer`; then the option's own
+ * members (`optionMembers`).
+ */
+export function offerChecks(o: PaymentRequirements): Refusal | null {
+  if (isObject(o.extra) && Object.hasOwn(o.extra, "invoice")) return refusal("ln/invoice-in-offer");
+  return optionMembers(o);
 }
 
-/** An `exact` option on a Lightning network whose `extra` is an object, with or without an invoice. */
-export function isLnOffer(o: unknown): o is PaymentRequirements & { extra: { [k: string]: Json } } {
-  if (!isObject(o) || o["scheme"] !== "exact") return false;
-  const n = o["network"];
-  return typeof n === "string" && Object.hasOwn(NETWORKS, n) && isObject(o["extra"]);
+/** The terms an invoice is held to: from the option, or in the scheme's validation from the requirements. */
+interface Terms {
+  network: string;
+  amount: string;
+  payTo: string;
+  maxTimeoutSeconds: number;
+  requestHash: string;
 }
 
 /**
- * The option filter over `optionChecks` with the invoice's `m` field read but not compared, so an invoice without one
- * is `ln/no-metadata`. No pairing in this package uses it.
+ * The invoice's checks against `t` (the profile's rule 6, e to j), in this order: exactly one `h` and no `d`
+ * (`ln/no-description-hash`, `ln/field-repeated`, `ln/description-inline`); the `h` field the request hash
+ * (`ln/request-hash-mismatch`); the signing key `payTo` (`ln/signer-not-payee`); the currency the network's
+ * (`ln/currency-network`); the amount `amount` (`ln/amount-mismatch`); the expiry `maxTimeoutSeconds`
+ * (`ln/expiry-mismatch`).
  */
-export const lnbtcFilter = filterWith("any");
-/**
- * The option filter over `optionChecks` with no `m` field allowed, so an invoice with one is `ln/not-this-pairing`. No
- * pairing in this package uses it.
- */
-export const namedFilter = filterWith(null);
+function invoiceTerms(s: Signed, t: Terms): Refusal | null {
+  const d = fieldHash(s.b, "h");
+  if (isRefusal(d)) return d;
+  if (s.b.tags.includes(FIELD.d)) return refusal("ln/description-inline");
+  if (d !== `0x${t.requestHash}`) return refusal("ln/request-hash-mismatch");
+  if (s.signer !== t.payTo) return refusal("ln/signer-not-payee");
+  if (NETWORKS[t.network as LnNetwork] !== s.b.currency) return refusal("ln/currency-network");
+  if (s.b.amountMsat === null || s.b.amountMsat.toString() !== t.amount) return refusal("ln/amount-mismatch");
+  if (s.b.expiry !== t.maxTimeoutSeconds) return refusal("ln/expiry-mismatch");
+  return null;
+}
 
 /**
- * An x402 Lightning option's id by whether its invoice has an `m` field, when the filter for it serves it; an option
- * whose `extra` has no `invoice` takes the first id when `offerChecks` passes. Neither id is a pairing in `BINDINGS`,
- * and nothing in this package calls it.
+ * The checks of an option with its invoice (the profile's rule 6, a to k): `optionMembers`; the invoice decoded
+ * strictly (`decodeSigned`); `invoiceTerms` against the option; and the invoice's `p` equal to `extra.paymentHash`
+ * (`ln/payment-hash-mismatch`). No clock and no request is read.
  */
-export function lnbtcPairingOf(option: unknown): "x402/exact/lnbtc" | "x402/exact/lnbtc/invoice-named" | undefined {
-  if (isLnOffer(option) && !Object.hasOwn(option.extra, "invoice")) {
-    return offerChecks(option) === null ? "x402/exact/lnbtc" : undefined;
+export function optionChecks(o: PaymentRequirements): Signed | Refusal {
+  const members = optionMembers(o);
+  if (members !== null) return members;
+  const extra = o.extra as { [k: string]: Json };
+  const s = decodeSigned(extra["invoice"]);
+  if (isRefusal(s)) return s;
+  const terms = invoiceTerms(s, {
+    network: o.network,
+    amount: o.amount,
+    payTo: o.payTo,
+    maxTimeoutSeconds: o.maxTimeoutSeconds,
+    requestHash: extra["requestHash"] as string,
+  });
+  if (terms !== null) return terms;
+  return hexOf(s.b.paymentHash) === extra["paymentHash"] ? s : refusal("ln/payment-hash-mismatch");
+}
+
+/** True when SHA-256 of the bytes `preimage` spells in lowercase hex is `paymentHash`, 64 lowercase hex digits. */
+export function preimageHashes(preimage: string, paymentHash: string): boolean {
+  return hexOf(sha256(bytesOfHex(preimage))) === paymentHash;
+}
+
+/**
+ * The preimage check: `true` where `preimage` is 64 lowercase hex digits whose SHA-256 is `paymentHash`, itself 64
+ * lowercase hex digits; else `ln/preimage-malformed`, `ln/payment-hash-required` or `ln/preimage-mismatch`, in that
+ * order.
+ */
+export function preimageCheck(preimage: unknown, paymentHash: unknown): true | Refusal {
+  if (typeof preimage !== "string" || !HEX64.test(preimage)) return refusal("ln/preimage-malformed");
+  if (typeof paymentHash !== "string" || !HEX64.test(paymentHash)) return refusal("ln/payment-hash-required");
+  return preimageHashes(preimage, paymentHash) ? true : refusal("ln/preimage-mismatch");
+}
+
+// ── the scheme's request binding ──
+
+/**
+ * True when `v` is an absolute URI in ASCII syntax of at most 8,192 characters with no fragment and no user
+ * information; with `http`, one whose scheme is `http` or `https` and whose authority is not empty.
+ */
+function absoluteUri(v: unknown, http: boolean): v is string {
+  if (typeof v !== "string" || v.length > MAX_URI || !/^[\x21-\x7e]+$/.test(v) || v.includes("#")) return false;
+  const m = /^([A-Za-z][A-Za-z0-9+.-]*):(.*)$/.exec(v);
+  if (m === null) return false;
+  const rest = m[2]!;
+  const authority = rest.startsWith("//") ? /^\/\/([^/?]*)/.exec(rest)![1]! : null;
+  if (authority !== null && authority.includes("@")) return false;
+  if (!http) return true;
+  return /^https?$/i.test(m[1]!) && authority !== null && authority.length > 0;
+}
+
+/** True when `names` holds at most 64 distinct strings, each `ok`, in ascending order of UTF-16 code units. */
+function sortedNames(names: unknown, ok: (n: string) => boolean): names is string[] {
+  if (!Array.isArray(names) || names.length > MAX_BOUND_NAMES) return false;
+  for (let i = 0; i < names.length; i++) {
+    const n: unknown = names[i];
+    if (typeof n !== "string" || !ok(n)) return false;
+    if (i > 0 && !((names[i - 1] as string) < n)) return false;
   }
-  if (lnbtcFilter(option as PaymentRequirements) === true) return "x402/exact/lnbtc";
-  if (namedFilter(option as PaymentRequirements) === true) return "x402/exact/lnbtc/invoice-named";
-  return undefined;
+  return true;
+}
+
+/**
+ * True when `profile` is `http:1` or `mcp:1` and `params` holds exactly that profile's parameters in the scheme's form:
+ * on `http:1`, `headers`, lower-case field names in ascending ASCII order, no duplicates, `payment-signature` not
+ * among them; on `mcp:1`, `server`, an absolute URI with no user information or fragment, and `metadata`, non-empty
+ * names in RFC 8785's member order, no duplicates, neither `x402/payment` nor `progressToken` among them.
+ */
+export function bindingParams(profile: unknown, params: unknown): boolean {
+  if (!isObject(params)) return false;
+  const keys = Object.keys(params).sort();
+  if (profile === "http:1") {
+    return keys.length === 1 && keys[0] === "headers" && sortedNames(params["headers"], (n) => LOWER_TOKEN.test(n) && n !== "payment-signature");
+  }
+  if (profile === "mcp:1") {
+    return (
+      keys.length === 2 &&
+      keys[0] === "metadata" &&
+      keys[1] === "server" &&
+      absoluteUri(params["server"], false) &&
+      sortedNames(params["metadata"], (n) => n.length > 0 && n !== "x402/payment" && n !== "progressToken")
+    );
+  }
+  return false;
+}
+
+/** A request's header fields as received: each field's name, in any case, with its lines in order, or its one line. */
+export type LnHeaderFields = Readonly<Record<string, string | readonly string[]>>;
+
+/** The buyer's intended request, which the scheme's request binding commits to. */
+export type LnbtcRequest =
+  | {
+      /** An HTTP request (the scheme's `http:1`). */
+      profile: "http:1";
+      /** The method, case kept. */
+      method: string;
+      /** The absolute URL the request is made to, its query included. */
+      url: string;
+      /** The content bytes after transfer decoding; empty where the request has no body. */
+      body: Uint8Array;
+      headers?: LnHeaderFields;
+    }
+  | {
+      /** An MCP `tools/call` (the scheme's `mcp:1`). */
+      profile: "mcp:1";
+      /** The MCP server the buyer means to call, as its own configuration spells it. */
+      server: string;
+      name: string;
+      /** `params.arguments`; absent is `{}`. */
+      arguments?: Json;
+      /** `params._meta`; absent is `{}`. */
+      meta?: Json;
+    };
+
+const hex256 = (bytes: Uint8Array): string => hexOf(sha256(bytes));
+
+/** SHA-256 of `0x01` and `bytes`, or of the single byte `0x00` where the value is absent, as 64 lowercase hex digits. */
+function valueHash(bytes: Uint8Array | null): string {
+  return bytes === null ? hex256(Uint8Array.of(0)) : hex256(concat(Uint8Array.of(1), bytes));
+}
+
+/**
+ * The field's value by RFC 9421 §2.1's default rules: each line without its leading and trailing spaces and tabs, the
+ * lines joined by a comma and a space; null where the field is absent. Undefined where two keys name the field, a
+ * value is not a string, it holds a character outside visible ASCII, the space and the tab, or the joined value is
+ * over 1 MiB.
+ */
+function fieldValue(record: LnHeaderFields, name: string): string | null | undefined {
+  const keys = Object.keys(record).filter((k) => k.toLowerCase() === name);
+  if (keys.length > 1) return undefined;
+  if (keys.length === 0) return null;
+  const v: unknown = record[keys[0]!];
+  const lines = typeof v === "string" ? [v] : Array.isArray(v) ? (v as unknown[]) : undefined;
+  if (lines === undefined || !lines.every((l): l is string => typeof l === "string")) return undefined;
+  if (lines.length === 0) return null;
+  if (!lines.every((l) => /^[\t\x20-\x7e]*$/.test(l))) return undefined;
+  const joined = lines.map((l) => l.replace(/^[ \t]+|[ \t]+$/g, "")).join(", ");
+  return joined.length > MAX_REQUEST_BYTES ? undefined : joined;
+}
+
+/**
+ * The scheme's request hash of `request` under `profile` and `params`, as 64 lowercase hex digits: SHA-256 of the UTF-8
+ * of RFC 8785's form of the profile's binding object. `ln/request-hash-mismatch` where the request is not of `profile`,
+ * where on `http:1` `resourceUrl` is not the request's URL, or on `mcp:1` the option's `server` is not the request's;
+ * `ln/request-binding-malformed` where `params` are not the profile's or the request cannot be bound: a method that is
+ * not a token, a URL that is not an absolute `http` or `https` URL in ASCII without user information or fragment, a
+ * body that is not bytes or is over 1 MiB, a header record that is not a record of strings or lists of strings or a
+ * bound field's value outside the scheme's form, a tool name that is empty, arguments or `_meta` that are not a JSON
+ * object, or a value RFC 8785 cannot write.
+ */
+export function requestHash(profile: unknown, params: unknown, request: unknown, resourceUrl: unknown): string | Refusal {
+  if (!bindingParams(profile, params)) return refusal("ln/request-binding-malformed");
+  if (!isObject(request) || request["profile"] !== profile) return refusal("ln/request-hash-mismatch");
+  const p = params as { [k: string]: Json };
+  let binding: Json;
+  if (profile === "http:1") {
+    const { method, url, body, headers } = request as { [k: string]: unknown };
+    if (typeof method !== "string" || !TOKEN.test(method) || !absoluteUri(url, true)) return refusal("ln/request-binding-malformed");
+    if (!(body instanceof Uint8Array) || body.length > MAX_REQUEST_BYTES) return refusal("ln/request-binding-malformed");
+    if (headers !== undefined && !isObject(headers)) return refusal("ln/request-binding-malformed");
+    if (resourceUrl !== url) return refusal("ln/request-hash-mismatch");
+    const bound: Json[] = [];
+    for (const name of p["headers"] as string[]) {
+      const value = fieldValue((headers ?? {}) as LnHeaderFields, name);
+      if (value === undefined) return refusal("ln/request-binding-malformed");
+      bound.push({ name, valueHash: valueHash(value === null ? null : ascii.encode(value)) });
+    }
+    binding = { bodyHash: hex256(body), domain: "x402:exact:lnbtc:bolt11:http:1", headers: bound, method, url };
+  } else {
+    const { server, name, arguments: args, meta } = request as { [k: string]: unknown };
+    if (server !== p["server"]) return refusal("ln/request-hash-mismatch");
+    if (typeof name !== "string" || name.length === 0) return refusal("ln/request-binding-malformed");
+    if ((args !== undefined && !isObject(args)) || (meta !== undefined && !isObject(meta))) return refusal("ln/request-binding-malformed");
+    const metaOf = (meta ?? {}) as { [k: string]: Json };
+    const bound: Json[] = [];
+    for (const n of p["metadata"] as string[]) {
+      if (!Object.hasOwn(metaOf, n)) {
+        bound.push({ name: n, valueHash: valueHash(null) });
+        continue;
+      }
+      const c = canonicalJson(metaOf[n]);
+      if (isRefusal(c)) return refusal("ln/request-binding-malformed");
+      bound.push({ name: n, valueHash: valueHash(ascii.encode(c)) });
+    }
+    binding = {
+      arguments: (args ?? {}) as Json,
+      domain: "x402:exact:lnbtc:bolt11:mcp:1",
+      metadata: bound,
+      method: "tools/call",
+      name,
+      server: p["server"]!,
+    };
+  }
+  const text = canonicalJson(binding);
+  if (isRefusal(text) || text.length > MAX_REQUEST_BYTES) return refusal("ln/request-binding-malformed");
+  return hex256(ascii.encode(text));
+}
+
+// ── the scheme's validation ──
+
+/** The scheme's `errorReason` strings its validation gives, and this form's one more. */
+export type ExactLnbtcReason =
+  | "unsupported_scheme"
+  | "network_mismatch"
+  | "unsupported_network"
+  | "invalid_exact_lnbtc_asset"
+  | "invalid_exact_lnbtc_amount"
+  | "invalid_exact_lnbtc_amount_mismatch"
+  | "invalid_exact_lnbtc_pay_to_mismatch"
+  | "invalid_exact_lnbtc_pay_to_malformed"
+  | "invalid_exact_lnbtc_max_timeout_mismatch"
+  | "invalid_exact_lnbtc_extra_mismatch"
+  | "invalid_exact_lnbtc_request_binding"
+  | "invalid_exact_lnbtc_request_mismatch"
+  | "invalid_exact_lnbtc_asset_transfer_method"
+  | "invalid_exact_lnbtc_payment_flow"
+  | "invalid_exact_lnbtc_invoice_missing"
+  | "invalid_exact_lnbtc_invoice_decode_failed"
+  | "invalid_exact_lnbtc_invoice_description"
+  | "invalid_exact_lnbtc_invoice_request_mismatch"
+  | "invalid_exact_lnbtc_invoice_payee_mismatch"
+  | "invalid_exact_lnbtc_invoice_currency_mismatch"
+  | "invalid_exact_lnbtc_invoice_amount_mismatch"
+  | "invalid_exact_lnbtc_max_timeout"
+  | "invalid_exact_lnbtc_invoice_expiry_mismatch"
+  | "invalid_exact_lnbtc_invoice_created_in_future"
+  | "invalid_exact_lnbtc_invoice_payment_hash_mismatch"
+  | "invalid_exact_lnbtc_preimage_missing"
+  | "invalid_exact_lnbtc_preimage_malformed"
+  | "invalid_exact_lnbtc_preimage_length"
+  | "invalid_exact_lnbtc_preimage_hash_mismatch"
+  | "invalid_exact_lnbtc_invoice_expired";
+
+/** The validation's answer: the network and payment hash of the scheme's consumption key, or the scheme's reason. */
+export type ExactLnbtcValidation =
+  | { valid: true; network: LnNetwork; paymentHash: string }
+  | { valid: false; reason: ExactLnbtcReason };
+
+/** The scheme's reason for each refusal of `invoiceTerms`. */
+const TERMS_REASON: Readonly<Record<string, ExactLnbtcReason>> = {
+  "ln/no-description-hash": "invalid_exact_lnbtc_invoice_description",
+  "ln/field-repeated": "invalid_exact_lnbtc_invoice_description",
+  "ln/field-length": "invalid_exact_lnbtc_invoice_decode_failed",
+  "ln/description-inline": "invalid_exact_lnbtc_invoice_description",
+  "ln/request-hash-mismatch": "invalid_exact_lnbtc_invoice_request_mismatch",
+  "ln/signer-not-payee": "invalid_exact_lnbtc_invoice_payee_mismatch",
+  "ln/currency-network": "invalid_exact_lnbtc_invoice_currency_mismatch",
+  "ln/amount-mismatch": "invalid_exact_lnbtc_invoice_amount_mismatch",
+  "ln/expiry-mismatch": "invalid_exact_lnbtc_invoice_expiry_mismatch",
+};
+
+const no = (reason: ExactLnbtcReason): ExactLnbtcValidation => ({ valid: false, reason });
+
+/**
+ * The scheme's Facilitator Validation, checks 1 to 7 with its Paid-but-expired Policy, in its order, over the payment
+ * presented and the requirements the resource server built from its own record, at validation time `now` with
+ * clock-skew allowance `skew`, both seconds. The check this form adds ends check 5: the accepted invoice's `p` is
+ * `requirements.extra.paymentHash`. Moves nothing and reads nothing.
+ */
+export function validate(payload: unknown, requirements: unknown, now: number, skew: number): ExactLnbtcValidation {
+  const a: Record<string, unknown> = isObject(payload) && isObject(payload["accepted"]) ? payload["accepted"] : {};
+  const r: Record<string, unknown> = isObject(requirements) ? requirements : {};
+  // 1
+  if (a["scheme"] !== r["scheme"]) return no("unsupported_scheme");
+  if (a["network"] !== r["network"]) return no("network_mismatch");
+  if (a["amount"] !== r["amount"]) return no("invalid_exact_lnbtc_amount_mismatch");
+  if (a["asset"] !== r["asset"]) return no("invalid_exact_lnbtc_asset");
+  if (a["payTo"] !== r["payTo"]) return no("invalid_exact_lnbtc_pay_to_mismatch");
+  if (a["maxTimeoutSeconds"] !== r["maxTimeoutSeconds"]) return no("invalid_exact_lnbtc_max_timeout_mismatch");
+  // 2
+  if (r["scheme"] !== "exact") return no("unsupported_scheme");
+  const network = r["network"];
+  if (typeof network !== "string" || !Object.hasOwn(NETWORKS, network)) return no("unsupported_network");
+  if (r["asset"] !== "BTC") return no("invalid_exact_lnbtc_asset");
+  if (!isAmount(r["amount"]) || !POSITIVE.test(r["amount"])) return no("invalid_exact_lnbtc_amount");
+  if (!isTimeoutSeconds(r["maxTimeoutSeconds"])) return no("invalid_exact_lnbtc_max_timeout");
+  if (!isPayTo(r["payTo"])) return no("invalid_exact_lnbtc_pay_to_malformed");
+  // 3
+  const ae: Record<string, unknown> = isObject(a["extra"]) ? a["extra"] : {};
+  const re: Record<string, unknown> = isObject(r["extra"]) ? r["extra"] : {};
+  const method = (e: Record<string, unknown>) => (Object.hasOwn(e, "assetTransferMethod") ? e["assetTransferMethod"] : "bolt11");
+  if (method(ae) !== "bolt11" || method(re) !== "bolt11") return no("invalid_exact_lnbtc_asset_transfer_method");
+  if (ae["paymentFlow"] !== "upfront" || re["paymentFlow"] !== "upfront") return no("invalid_exact_lnbtc_payment_flow");
+  for (const e of [ae, re]) {
+    if (typeof e["requestHash"] !== "string" || !HEX64.test(e["requestHash"])) return no("invalid_exact_lnbtc_request_binding");
+    if (!bindingParams(e["requestBindingProfile"], e["requestBindingParams"])) return no("invalid_exact_lnbtc_request_binding");
+  }
+  if (
+    ae["requestHash"] !== re["requestHash"] ||
+    ae["requestBindingProfile"] !== re["requestBindingProfile"] ||
+    !sameJson(ae["requestBindingParams"], re["requestBindingParams"])
+  ) {
+    return no("invalid_exact_lnbtc_request_mismatch");
+  }
+  const bindingMembers = ["invoice", "requestHash", "requestBindingProfile", "requestBindingParams"];
+  for (const k of Object.keys(re)) {
+    if (bindingMembers.includes(k)) continue;
+    if (!Object.hasOwn(ae, k) || !sameJson(ae[k], re[k])) return no("invalid_exact_lnbtc_extra_mismatch");
+  }
+  // 4
+  const nonEmpty = (v: unknown) => typeof v === "string" && v.length > 0;
+  if (!nonEmpty(re["invoice"]) || !nonEmpty(ae["invoice"])) return no("invalid_exact_lnbtc_invoice_missing");
+  // 5
+  const s = decodeSigned(ae["invoice"]);
+  if (isRefusal(s)) return no("invalid_exact_lnbtc_invoice_decode_failed");
+  const terms = invoiceTerms(s, {
+    network,
+    amount: r["amount"] as string,
+    payTo: r["payTo"] as string,
+    maxTimeoutSeconds: r["maxTimeoutSeconds"] as number,
+    requestHash: re["requestHash"] as string,
+  });
+  if (terms !== null) return no(TERMS_REASON[terms.code]!);
+  if (s.b.timestamp > now + skew) return no("invalid_exact_lnbtc_invoice_created_in_future");
+  const paymentHash = hexOf(s.b.paymentHash);
+  if (paymentHash !== re["paymentHash"]) return no("invalid_exact_lnbtc_invoice_payment_hash_mismatch");
+  // 6
+  const body = isObject(payload) && isObject(payload["payload"]) ? payload["payload"] : {};
+  if (!Object.hasOwn(body, "preimage") || body["preimage"] === undefined) return no("invalid_exact_lnbtc_preimage_missing");
+  const preimage = body["preimage"];
+  if (typeof preimage !== "string" || !LOWER_HEX.test(preimage)) return no("invalid_exact_lnbtc_preimage_malformed");
+  if (preimage.length !== 64) return no("invalid_exact_lnbtc_preimage_length");
+  if (!preimageHashes(preimage, paymentHash)) return no("invalid_exact_lnbtc_preimage_hash_mismatch");
+  // 7
+  if (now > s.b.timestamp + s.b.expiry + skew) return no("invalid_exact_lnbtc_invoice_expired");
+  return { valid: true, network: network as LnNetwork, paymentHash };
 }

@@ -44,7 +44,7 @@ describe("every x402 pairing's build checks H first", () => {
     BINDINGS.filter((b) => b.id.startsWith("x402/")) as unknown as { id: string; build?: (c: unknown, h: unknown) => Promise<unknown> }[],
     "BINDINGS, the x402 pairings",
     {
-      exact: 28,
+      exact: 29,
       keep: ["the x402 pairings with a build", (b) => b.build !== undefined],
       leave: ["x402/upto/xrpl, whose payer's own client opens the channel, so lcp builds nothing", (b) => b.build === undefined],
     },
@@ -67,7 +67,7 @@ describe("every x402 pairing's build checks H first", () => {
 });
 
 describe("every x402 pairing's build checks its choice's members after H and before the document", () => {
-  const MEMBERS = rowsOf(choiceMembers(), "peer-free-inputs.ts choiceMembers", { exact: 22 });
+  const MEMBERS = rowsOf(choiceMembers(), "peer-free-inputs.ts choiceMembers", { exact: 23 });
   const NONE = [
     "x402/exact/sui",
     "x402/exact/cardano",
@@ -80,7 +80,7 @@ describe("every x402 pairing's build checks its choice's members after H and bef
     BINDINGS.filter((b) => b.id.startsWith("x402/")) as unknown as { id: string; build: (c: unknown, h: unknown) => Promise<unknown> }[],
     "BINDINGS, the x402 pairings",
     {
-      exact: 22,
+      exact: 23,
       keep: ["each pairing whose build reads choice members beyond the document and the option", (b) => MEMBERS.some((m) => m.id === b.id)],
       leave: [
         "the pairings whose build reads only the document and the option, and x402/upto/xrpl, which has no build",

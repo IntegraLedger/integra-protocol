@@ -160,10 +160,10 @@ const batchModeOf = (o: PaymentRequirements): string | undefined => {
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 39823;
-const NOT_OFFERED = 1141897;
-const OFFERED_OWN_BINDS = 1549;
-const OFFERED_COUNTS = [1366, 183, 1164];
+const PRESENTED = 43463;
+const NOT_OFFERED = 1289858;
+const OFFERED_OWN_BINDS = 1593;
+const OFFERED_COUNTS = [1410, 183, 1203];
 const OTHER_MODE = 34;
 
 const PRESENTATIONS = rowsOf(
@@ -233,9 +233,9 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
     }
   }, 0);
 
-  it("each presentation is answered by each of the 29 x402 pairings", () => {
-    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 29 });
-    expect(answers.length).toBe(PRESENTATIONS.length * 29);
+  it("each presentation is answered by each of the 30 x402 pairings", () => {
+    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 30 });
+    expect(answers.length).toBe(PRESENTATIONS.length * 30);
   });
 
   it("under an option its read does not offer, each pairing's bound refuses the payment with the code its advertise gives", () => {
@@ -304,13 +304,13 @@ interface BoundAcceptedRow {
   accepted: PaymentRequirements;
   expect: string;
 }
-/** The vector files that hold no x402 pairing's vectors: the stellar and lightning entry points' decoders and reads. */
-const NO_PAIRING = ["x402-exact-lnbtc.json", "x402-exact-stellar.json"];
+/** The vector files that hold no x402 pairing's vectors: the stellar entry point's decoders and reads. */
+const NO_PAIRING = ["x402-exact-stellar.json"];
 const X402_FILES = rowsOf(
   FILES,
   "the x402 vector files",
   {
-    exact: 26,
+    exact: 27,
     keep: ["the x402 pairings' vector files", (f) => f.startsWith("x402-") && !NO_PAIRING.includes(f)],
     leave: ["buyer.json, and the x402 files that hold no x402 pairing's vectors", (f) => f === "buyer.json" || NO_PAIRING.includes(f)],
   },
@@ -321,7 +321,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 317 },
+  { exact: 334 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {

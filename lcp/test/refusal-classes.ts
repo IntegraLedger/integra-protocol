@@ -126,10 +126,11 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "tx-too-large", "valid-duration", "valid-start-future", "wrong-reader",
   ],
   ln: [
-    "currency-network", "description-inline", "description-present", "expires-after-invoice", "field-length",
-    "field-repeated", "invoice-malformed", "invoice-too-large", "no-description-hash", "no-metadata",
-    "no-payment-in-action", "not-this-pairing", "payment-hash-mismatch", "payment-hash-required", "preimage-malformed",
-    "request-hash-mismatch", "return-invoice-malformed",
+    "amount-mismatch", "created-in-future", "currency-network", "description-inline", "description-present",
+    "expires-after-invoice", "expiry-mismatch", "field-length", "field-repeated", "invoice-expired", "invoice-in-offer",
+    "invoice-malformed", "invoice-too-large", "no-description-hash", "no-metadata", "no-payment-in-action",
+    "payment-hash-mismatch", "payment-hash-required", "preimage-malformed", "preimage-mismatch",
+    "request-binding-malformed", "request-hash-mismatch", "return-invoice-malformed", "signer-not-payee", "time-malformed",
   ],
   mpp: [
     "access-key-malformed", "attribution-malformed", "attribution-mismatch", "carrier-not-challenge",
@@ -203,7 +204,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "nonce-not-payment", "not-an-opening", "not-bound-within", "not-v2", "option-malformed", "option-not-in-document",
     "option-not-this-pairing", "payload-malformed", "permission-context-malformed", "request-header-invalid", "request-target-invalid",
     "request-too-large", "salt-malformed", "salt-not-bound", "signature-malformed", "signed-not-bound",
-    "spender-not-proxy", "batched-not-eip3009", "nonce-not-agreement", "splits-not-carried", "signer-not-from", "no-signed-place",
+    "spender-not-proxy", "batched-not-eip3009", "nonce-not-agreement", "splits-not-carried", "no-signed-place",
   ],
   xrpl: [
     "blob-malformed", "blob-too-large", "carrier-mismatch", "carrier-not-lcp", "carrier-occupied", "currency-not-xrp",

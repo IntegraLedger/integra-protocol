@@ -105,7 +105,7 @@ import type { TronPayment } from "./internal/tron.js";
 import type { TvmPayment } from "./internal/tvm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
 import type { XrplPaymentPayload } from "./internal/xrpl.js";
-import type { LnPaymentPayload } from "./lightning.js";
+import { exactLnbtcPaymentHash, type LnPaymentPayload } from "./lightning.js";
 import { MPP_BINDINGS, type MppCredential } from "./mpp.js";
 import { exactNear } from "./near.js";
 import { exactPolkadotRemark } from "./polkadot.js";
@@ -140,6 +140,7 @@ export type X402Binding =
   | typeof exactPermit2
   | typeof exactHedera
   | typeof exactHederaExecutor
+  | typeof exactLnbtcPaymentHash
   | typeof exactNear
   | typeof exactPolkadotRemark
   | typeof exactSvm
@@ -281,6 +282,7 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   exactPermit2,
   exactHedera,
   exactHederaExecutor,
+  exactLnbtcPaymentHash,
   exactNear,
   exactPolkadotRemark,
   exactSvm,

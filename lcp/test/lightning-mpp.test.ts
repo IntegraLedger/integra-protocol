@@ -392,18 +392,21 @@ describe("the Lightning MPP pairings read no amount or currency", () => {
   }
 });
 
-// The pairings read the invoice, never a payment: settlement is the seller's report, the invoice and its preimage are
-// what the parties hold, and no signature is verified here. Each record whose invoice carries the hash says so, and
-// none says that the payer paid, that its node checked a signature, or that the seller did not verify one.
+// The pairings read the invoice, never a payment: an account signed the agreement, settlement is the seller's report, a
+// preimage shows only that the secret left the seller's custody, and no signature is verified here. Each record whose
+// invoice carries the hash says so, and none says that the buyer signed, that the payer paid, that the invoice was
+// shown paid, that its node checked a signature, or that the seller did not verify one.
 describe("the records of the Lightning pairings whose invoice carries the hash", () => {
   for (const b of [chargeLightning, sessionLightning]) {
-    it(`${b.id}: proves states that no signature is verified here and that settlement is the seller's report`, () => {
+    it(`${b.id}: proves states that an account signed the agreement, that no signature is verified here, what a preimage shows and that settlement is the seller's report`, () => {
+      expect(b.data.proves).toContain("An account signed an agreement transaction carrying this ATR's hash");
       expect(b.data.proves).toContain(
-        "Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the " +
-          "seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; " +
-          "they do not show who paid it, and no public ledger shows the payment.",
+        "Its signature is not verified here, and the payer signed nothing that carries the hash. The preimage, which " +
+          "every node on the payment's route learns, shows that the secret behind the hash left the seller's custody, " +
+          "never who paid, and to anyone but the seller's node not that the invoice was paid; no public ledger shows " +
+          "the payment. Settlement is the seller's report.",
       );
-      expect(b.data.proves).not.toMatch(/the payer paid|checked the node signature|did not verify/i);
+      expect(b.data.proves).not.toMatch(/the buyer signed|the payer paid|show that the invoice was paid|checked the node signature|did not verify/i);
     });
   }
 });

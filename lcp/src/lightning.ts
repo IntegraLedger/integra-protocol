@@ -1,10 +1,38 @@
 /**
- * BOLT11 invoices, the x402 Lightning payment's types, and the Lightning pairings on MPP. On MPP the seller's node writes
- * the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
+ * BOLT11 invoices and the Lightning pairings. On x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's
+ * `extra.paymentHash`, the payment hash of the invoice the seller's node issues after the agreement. On MPP the
+ * seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
-import { decode, fieldHash } from "./internal/lightning.js";
+import {
+  decode,
+  fieldHash,
+  hexOf,
+  isLnbtc,
+  offerChecks,
+  optionChecks,
+  preimageCheck,
+  requestHash,
+  SKEW_SECONDS,
+  validate,
+  type ExactLnbtcValidation,
+  type LnbtcRequest,
+  type Signed,
+} from "./internal/lightning.js";
+import {
+  advertiseFor,
+  chosen,
+  legalContextOf,
+  paymentWith,
+  presentedWith,
+  readFor,
+  sameJson,
+  x402Broadcaster,
+  type OptionFilter,
+  type X402Forms,
+  type X402Read,
+} from "./internal/x402.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
 import {
   credentialOf,
@@ -26,11 +54,12 @@ import {
   type MppForms,
 } from "./mpp-challenge.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import type { LcpPattern, PaymentRequired, PaymentRequirements } from "./x402.js";
+import { tie as x402Tie, type LcpPattern, type PaymentRequired, type PaymentRequirements } from "./x402.js";
 import { LIGHTNING } from "./internal/data/lightning.js";
 import type { Act } from "./internal/read.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { ExactLnbtcReason, ExactLnbtcValidation, LnbtcRequest, LnHeaderFields } from "./internal/lightning.js";
 
 /**
  * x402's `lnbtc` network ids, in CAIP-2 form: `lnbtc:` and the first 32 hex digits of the genesis block hash of
@@ -96,6 +125,184 @@ function hex(b: Uint8Array): string {
   let s = "";
   for (const x of b) s += x.toString(16).padStart(2, "0");
   return s;
+}
+
+// ── x402/exact/lnbtc/payment-hash ──
+
+const LNBTC = "x402/exact/lnbtc/payment-hash" as const;
+
+/** The buyer's choice: the 402 document, the option it pays, its validation time in Unix seconds, and its own request. */
+export interface LnChoice {
+  required: PaymentRequired;
+  accepted: PaymentRequirements;
+  now: number;
+  /** The request the buyer means to make, from which `build` computes the scheme's request hash. */
+  request: LnbtcRequest;
+}
+
+/**
+ * The option filter: an `exact` option on an `lnbtc` network is served where it carries its invoice and passes the
+ * checks of the option and its invoice (`optionChecks`), and refused with their refusal otherwise.
+ */
+const filter: OptionFilter = (o) => {
+  if (!isLnbtc(o)) return undefined;
+  const s = optionChecks(o);
+  return isRefusal(s) ? s : true;
+};
+
+/** The filter of the offer before its invoice: the option's own checks, no `extra.invoice` (`offerChecks`). */
+const offerFilter: OptionFilter = (o) => (!isLnbtc(o) ? undefined : (offerChecks(o) ?? true));
+
+/** True when `t` is a non-negative safe integer: a time or an allowance in seconds. */
+function isSeconds(t: unknown): t is number {
+  return Number.isSafeInteger(t) && (t as number) >= 0;
+}
+
+/**
+ * The option without `extra.invoice`, the member the seller's node writes after the agreement, so the ATR's slot holds
+ * the option with its `extra.paymentHash` and no invoice. An option that carries a `refused` member is
+ * `x402/option-malformed`; a value that is not an object, or an option with no invoice, comes back as it is.
+ */
+function withoutInvoice(option: PaymentRequirements): PaymentRequirements | Refusal {
+  if (isObject(option) && carriesRefused(option)) return refusal("x402/option-malformed");
+  if (!isObject(option) || !isObject(option.extra) || !Object.hasOwn(option.extra, "invoice")) return option;
+  const { invoice: _, ...extra } = option.extra;
+  return { ...option, extra };
+}
+
+/**
+ * What the buyer's node pays, after the scheme's client checks: H is a valid ATR hash (`x402/payload-malformed`);
+ * `now` is a non-negative safe integer (`ln/time-malformed`); the option is the document's and passes the filter; H is
+ * the document's (`x402/legal-context-conflict`); the
+ * request hash computed from `request` is `extra.requestHash` (`requestHash`'s refusals); the invoice's creation time
+ * is no later than `now` plus 60 s (`ln/created-in-future`) and its creation time plus its expiry is later than `now`
+ * (`ln/invoice-expired`). `complete` takes the preimage the node returned and refuses one that is not 64 lowercase hex
+ * digits (`ln/preimage-malformed`) or does not hash to the invoice's `p` (`ln/preimage-mismatch`).
+ */
+async function lnbtcBuild(c: LnChoice, h: AtrHash): Promise<LnUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("x402/payload-malformed");
+  if (!isObject(c)) return refusal("x402/not-v2");
+  if (!isSeconds(c.now)) return refusal("ln/time-malformed");
+  const ok = chosen(c.required, c.accepted, filter);
+  if (ok !== true) return ok;
+  const lc = legalContextOf(c.required.extensions);
+  if (isRefusal(lc)) return lc;
+  if (lc.h !== nh) return refusal("x402/legal-context-conflict");
+  const accepted = c.accepted;
+  const s = optionChecks(accepted) as Signed;
+  const extra = accepted.extra as { [k: string]: Json };
+  const want = requestHash(extra["requestBindingProfile"], extra["requestBindingParams"], c.request, c.required.resource?.url);
+  if (isRefusal(want)) return want;
+  if (want !== extra["requestHash"]) return refusal("ln/request-hash-mismatch");
+  if (s.b.timestamp > c.now + SKEW_SECONDS) return refusal("ln/created-in-future");
+  if (s.b.timestamp + s.b.expiry <= c.now) return refusal("ln/invoice-expired");
+  const paymentHash = hexOf(s.b.paymentHash);
+  return {
+    request: { kind: "bolt11-pay", invoice: extra["invoice"] as string },
+    complete(preimage: string): LnPaymentPayload | Refusal {
+      const checked = preimageCheck(preimage, paymentHash);
+      return isRefusal(checked) ? checked : paymentWith(c.required, accepted, { preimage });
+    },
+  };
+}
+
+/**
+ * The payment presented, held to the filter, with the invoice it accepted decoded and its preimage checked: the
+ * preimage is 64 lowercase hex digits (`ln/preimage-malformed`) whose SHA-256 is the invoice's `p`
+ * (`ln/preimage-mismatch`), which the filter holds equal to the echoed `extra.paymentHash`.
+ */
+function paid(presented: unknown): { accepted: PaymentRequirements; extensions: unknown; s: Signed } | Refusal {
+  const p = presentedWith(presented, filter);
+  if (isRefusal(p)) return p;
+  const s = optionChecks(p.accepted) as Signed;
+  const checked = preimageCheck(p.payload["preimage"], hexOf(s.b.paymentHash));
+  return isRefusal(checked) ? checked : { accepted: p.accepted, extensions: p.extensions, s };
+}
+
+/**
+ * The H the payment's echoed `extensions.legalContext` names, once `paid` holds: the echoed H only locates the sale,
+ * whose ATR commits the echoed `extra.paymentHash`. No ledger is read.
+ */
+async function lnbtcBound(presented: unknown): Promise<AtrHash | Refusal> {
+  const p = paid(presented);
+  if (isRefusal(p)) return p;
+  const lc = legalContextOf(p.extensions);
+  return isRefusal(lc) ? lc : lc.h;
+}
+
+/**
+ * The payment's keys: the option's network, the invoice's payment hash, and the latest time the scheme accepts its
+ * proof, the invoice's creation time plus its expiry plus 60 s. A payment whose `accepted`, without its invoice, is not
+ * `option` without its invoice is `x402/accepted-not-option`.
+ */
+async function lnbtcReference(presented: unknown, option: PaymentRequirements): Promise<LnRef | Refusal> {
+  const p = paid(presented);
+  if (isRefusal(p)) return p;
+  if (!isObject(option) || !sameJson(withoutInvoice(p.accepted), withoutInvoice(option))) return refusal("x402/accepted-not-option");
+  const { b } = p.s;
+  return { network: p.accepted.network, paymentHash: hexOf(b.paymentHash), settleBy: b.timestamp + b.expiry + SKEW_SECONDS };
+}
+
+/**
+ * `x402/exact/lnbtc/payment-hash`. The payer broadcasts (`broadcaster` answers `"payer"`): its node pays the invoice
+ * before the preimage is presented. No ledger shows the payment, and no `status` reads it. `advertiseBeforeCarrier`
+ * places the offer the seller issues before its node writes the invoice; `advertise` the option with the invoice.
+ */
+export const exactLnbtcPaymentHash = Object.freeze({
+  id: LNBTC,
+  data: LIGHTNING[LNBTC],
+  pattern: deepFreeze({
+    pattern: "native-field",
+    onChain: false,
+    zeroPartyRecoverable: false,
+    forwardIndexable: false,
+  } satisfies LcpPattern) as LcpPattern,
+  claims: true as boolean,
+  unplaced: withoutInvoice,
+  tie: x402Tie,
+  advertise: advertiseFor(filter),
+  advertiseBeforeCarrier: advertiseFor(offerFilter),
+  read: (doc: PaymentRequired): X402Read | Refusal => readFor(filter)(doc),
+  build: lnbtcBuild,
+  bound: lnbtcBound,
+  broadcaster: x402Broadcaster("payer"),
+  reference: lnbtcReference,
+}) satisfies Entry<
+  typeof LNBTC,
+  LnPaymentPayload,
+  LnRef,
+  never,
+  X402Forms & NoRead & { choice: LnChoice; unsigned: LnUnsigned }
+>;
+
+/**
+ * The preimage check: `true` where `preimage` is 64 lowercase hex digits whose SHA-256 is `paymentHash`, itself 64
+ * lowercase hex digits; else `ln/preimage-malformed`, `ln/payment-hash-required` or `ln/preimage-mismatch`, in that
+ * order. A resource server makes it before it serves a Lightning payment.
+ */
+export function checkPreimage(preimage: string, paymentHash: string): true | Refusal {
+  return preimageCheck(preimage, paymentHash);
+}
+
+/**
+ * x402's validation of `exact` on `lnbtc` (the scheme's Facilitator Validation, checks 1 to 7 and its Paid-but-expired
+ * Policy), in the scheme's order, with this form's one check added at the end of check 5: the accepted invoice's `p`
+ * is `requirements.extra.paymentHash` (`invalid_exact_lnbtc_invoice_payment_hash_mismatch`). `payload` is the payment
+ * presented; `requirements` the ones the resource server built from its own record of the sale; `now` the validation
+ * time and `skew` the clock-skew allowance, in seconds, 60 by default. A failure answers the scheme's `errorReason`; a
+ * success answers the network and the payment hash of the scheme's consumption key. It moves nothing, reads nothing,
+ * and records nothing: the resource server or a settler records the key once after it. A `now` or `skew` that is not a
+ * non-negative safe integer is `ln/time-malformed`.
+ */
+export function validateExactLnbtc(
+  payload: unknown,
+  requirements: unknown,
+  at: { now: number; skew?: number },
+): ExactLnbtcValidation | Refusal {
+  const skew = isObject(at) ? (at.skew ?? SKEW_SECONDS) : undefined;
+  if (!isObject(at) || !isSeconds(at.now) || !isSeconds(skew)) return refusal("ln/time-malformed");
+  return validate(payload, requirements, at.now, skew);
 }
 
 // ── mpp/charge/lightning and mpp/session/lightning ──

@@ -45,13 +45,40 @@ const SIGNATURE_BYTES = 65;
 const MAINNET_WALLET = "0x77777777dcc4d5a8b6e418fd04d8997ef11000ee";
 const TESTNET_WALLET = "0x0077777d7eba4688bdef3e311b846f25870a19b9";
 
-/** The Gateway Wallet on each network, by chain id, as `@circle-fin/x402-batching` 4.0.0 configures it. */
-const GATEWAY_WALLET: ReadonlyMap<number, string> = new Map([
-  ...[1, 10, 130, 137, 146, 480, 999, 1329, 5042, 8453, 42161, 43114].map((id) => [id, MAINNET_WALLET] as const),
-  ...[998, 1301, 1328, 4801, 14601, 43113, 80002, 84532, 421614, 5042002, 11155111, 11155420].map(
-    (id) => [id, TESTNET_WALLET] as const,
-  ),
-]);
+/** A network's Gateway Wallet and its USDC, lowercase. */
+type Network = { wallet: string; usdc: string };
+
+/** The Gateway Wallet and USDC on each network, by chain id, as `@circle-fin/x402-batching` 4.0.0 configures them. */
+const NETWORKS: ReadonlyMap<number, Network> = new Map(
+  (
+    [
+      [1, MAINNET_WALLET, "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
+      [10, MAINNET_WALLET, "0x0b2c639c533813f4aa9d7837caf62653d097ff85"],
+      [130, MAINNET_WALLET, "0x078d782b760474a361dda0af3839290b0ef57ad6"],
+      [137, MAINNET_WALLET, "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"],
+      [146, MAINNET_WALLET, "0x29219dd400f2bf60e5a23d13be72b486d4038894"],
+      [480, MAINNET_WALLET, "0x79a02482a880bce3f13e09da970dc34db4cd24d1"],
+      [999, MAINNET_WALLET, "0xb88339cb7199b77e23db6e890353e22632ba630f"],
+      [1329, MAINNET_WALLET, "0xe15fc38f6d8c56af07bbcbe3baf5708a2bf42392"],
+      [5042, MAINNET_WALLET, "0x3600000000000000000000000000000000000000"],
+      [8453, MAINNET_WALLET, "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"],
+      [42161, MAINNET_WALLET, "0xaf88d065e77c8cc2239327c5edb3a432268e5831"],
+      [43114, MAINNET_WALLET, "0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e"],
+      [998, TESTNET_WALLET, "0x2b3370ee501b4a559b57d449569354196457d8ab"],
+      [1301, TESTNET_WALLET, "0x31d0220469e10c4e71834a79b1f276d740d3768f"],
+      [1328, TESTNET_WALLET, "0x4fcf1784b31630811181f670aea7a7bef803eaed"],
+      [4801, TESTNET_WALLET, "0x66145f38cbac35ca6f1dfb4914df98f1614aea88"],
+      [14601, TESTNET_WALLET, "0x0ba304580ee7c9a980cf72e55f5ed2e9fd30bc51"],
+      [43113, TESTNET_WALLET, "0x5425890298aed601595a70ab815c96711a31bc65"],
+      [80002, TESTNET_WALLET, "0x41e94eb019c0762f9bfcf9fb1e58725bfb0e7582"],
+      [84532, TESTNET_WALLET, "0x036cbd53842c5426634e7929541ec2318f3dcf7e"],
+      [421614, TESTNET_WALLET, "0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d"],
+      [5042002, TESTNET_WALLET, "0x3600000000000000000000000000000000000000"],
+      [11155111, TESTNET_WALLET, "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238"],
+      [11155420, TESTNET_WALLET, "0x5fd84259d66cd46123540766be93dfe6d43130d7"],
+    ] as const
+  ).map(([id, wallet, usdc]) => [id, { wallet, usdc }] as const),
+);
 
 /** The buyer's choice: x402's, with the `minValiditySeconds` Circle Gateway's `/supported` serves for the network. */
 export interface GatewayBatchedChoice extends X402Choice {
@@ -111,8 +138,9 @@ function versionOf(extra: Record<string, unknown>): "1" | "2" | undefined {
  * The option filter: `true` for an `exact` option on an `eip155` network whose `extra.name` is `GatewayWalletBatched`
  * and whose `extra.assetTransferMethod` is absent or `eip3009`, where it can be paid; undefined for any other option.
  * Of those, it refuses a non-empty `extra.splits` (`x402/splits-not-carried`), and an `extra.version` other than `"1"`
- * and `"2"`, an `extra.verifyingContract` that is not the Gateway Wallet on the option's network, or an asset, `payTo`,
- * `amount` or `maxTimeoutSeconds` the payment cannot carry (`x402/option-malformed`).
+ * and `"2"`, an `extra.verifyingContract` that is not the Gateway Wallet on the option's network, at version `"1"` an
+ * asset other than the network's USDC, or an asset, `payTo`, `amount` or `maxTimeoutSeconds` the payment cannot carry
+ * (`x402/option-malformed`).
  */
 const filter: OptionFilter = (o) => {
   if (!isObject(o) || o.scheme !== "exact") return undefined;
@@ -124,11 +152,15 @@ const filter: OptionFilter = (o) => {
   const splits = extra["splits"];
   if (splits !== undefined && !(Array.isArray(splits) && splits.length === 0)) return refusal("x402/splits-not-carried");
   const wallet = extra["verifyingContract"];
+  const network = NETWORKS.get(chainId);
+  const version = versionOf(extra);
   const payable =
-    versionOf(extra) !== undefined &&
+    network !== undefined &&
+    version !== undefined &&
     isAddress(wallet) &&
-    wallet.toLowerCase() === GATEWAY_WALLET.get(chainId) &&
+    wallet.toLowerCase() === network.wallet &&
     isAddress(o.asset) &&
+    (version === "2" || o.asset.toLowerCase() === network.usdc) &&
     isAddress(o.payTo) &&
     isAmount(o.amount) &&
     uint256Of(o.amount) !== undefined &&
@@ -264,9 +296,9 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The account whose signature authorises the payment, lowercase: the address recovered from the 65-byte signature over
- * the presented authorization's EIP-712 digest in the domain its option names. A signature that is not 65 bytes with a
- * low `s` and a `v` of 27, 28, 0 or 1 is `x402/signature-malformed`; one that recovers to another account than the
- * authorization's `from` is `x402/signer-not-from`.
+ * the presented authorization's EIP-712 digest in the domain its option names, whether or not it is the authorization's
+ * `from`. A signature that is not 65 bytes with a low `s` and a `v` of 27, 28, 0 or 1, from which no account is
+ * recovered, is `x402/signature-malformed`.
  */
 async function authorizer(presented: unknown): Promise<Hex | Refusal> {
   const h = await bound(presented);
@@ -285,17 +317,14 @@ async function authorizer(presented: unknown): Promise<Hex | Refusal> {
   const parity = v === 27 || v === 28 ? v - 27 : v === 0 || v === 1 ? v : -1;
   if (parity < 0) return refusal("x402/signature-malformed");
   const digest = digestOf(typedDataOf(accepted, { from: a.from, to: a.to, value, validAfter, validBefore, nonce: h }));
-  let signer: Hex;
   try {
     const s = secp256k1.Signature.fromBytes(sig.subarray(0, 64), "compact");
     if (s.hasHighS()) return refusal("x402/signature-malformed");
     const key = s.addRecoveryBit(parity).recoverPublicKey(digest).toBytes(false).subarray(1);
-    signer = hexOf(keccak(key).subarray(12));
+    return hexOf(keccak(key).subarray(12));
   } catch {
     return refusal("x402/signature-malformed");
   }
-  const from = a.from.toLowerCase() as Hex;
-  return signer === from ? from : refusal("x402/signer-not-from");
 }
 
 /** The option unchanged: the pairing carries no hash inside the option. One that carries a `refused` member is refused. */

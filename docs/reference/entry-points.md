@@ -26,7 +26,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/discovery`](#integraledgerlcpdiscovery) | The discovery document of LCP §2, served at `/.well-known/legal-context.json`. `parse` reads one; `emit` writes one, members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check the members LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at most 65,536 bytes, and JSON nested at most 64 levels. Neither throws or does I/O. |
 | [`@integraledger/lcp/evm`](#integraledgerlcpevm) | eip155 rail pieces: EIP-3009 and Permit2 typed data, the identity digest of a transfer, the settlement read from the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use before any transaction is named; the ERC-7710 permission-context decoder and MetaMask's DelegationManager address; the commerce-payments escrow's payment hash and the salt commitment to a receiver authorizer and policy; and x402's Permit2 proxy addresses. |
 | [`@integraledger/lcp/hedera`](#integraledgerlcphedera) | Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); the escrow channel pieces `hederaChannelId` and `hederaVoucher`; and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
-| [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices, the x402 Lightning payment's types, and the Lightning pairings on MPP. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice. |
+| [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices and the Lightning pairings. On x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, the payment hash of the invoice the seller's node issues after the agreement. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice. |
 | [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents and `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
 | [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of the payer's account for H. |
 | [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and decoded here for these shapes only. |
@@ -250,17 +250,17 @@ import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, decodeHederaTx, … } from 
 
 ## `@integraledger/lcp/lightning`
 
-BOLT11 invoices, the x402 Lightning payment's types, and the Lightning pairings on MPP. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
+BOLT11 invoices and the Lightning pairings. On x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, the payment hash of the invoice the seller's node issues after the agreement. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
 
 ```ts no-check
-import { chargeLightning, decodeBolt11, invoiceH, … } from "@integraledger/lcp/lightning";
+import { chargeLightning, checkPreimage, decodeBolt11, … } from "@integraledger/lcp/lightning";
 ```
 
-**Pairings:** `mpp/charge/lightning`, `mpp/session/lightning`.
+**Pairings:** `mpp/charge/lightning`, `mpp/session/lightning`, `x402/exact/lnbtc/payment-hash`.
 
-**Values (4):** `chargeLightning`, `decodeBolt11`, `invoiceH`, `sessionLightning`.
+**Values (7):** `chargeLightning`, `checkPreimage`, `decodeBolt11`, `exactLnbtcPaymentHash`, `invoiceH`, `sessionLightning`, `validateExactLnbtc`.
 
-**Types (8):** `Bolt11`, `Broadcaster`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
+**Types (13):** `Bolt11`, `Broadcaster`, `ExactLnbtcReason`, `ExactLnbtcValidation`, `LnbtcRequest`, `LnChoice`, `LnHeaderFields`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
 
 ## `@integraledger/lcp/mpp`
 

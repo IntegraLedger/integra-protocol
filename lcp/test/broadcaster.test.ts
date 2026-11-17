@@ -21,7 +21,7 @@ type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: st
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
 type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
-const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 73 });
+const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 74 });
 const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 36 });
 const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 27 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);

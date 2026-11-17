@@ -322,6 +322,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "x402/batch-settlement/solana",
     "x402/exact/xrpl",
     "x402/exact/tvm",
+    "x402/exact/lnbtc/payment-hash",
   ];
   for (const id of carrierX402) {
     it(`${id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
@@ -441,9 +442,9 @@ describe("no entry point passes a caller's value back as a refusal", () => {
 
   // The pairings of the two carrier blocks above are exactly those whose unplaced gives the advertised option or
   // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
-  it("the x402 and MPP pairings whose unplaced removes a carrier are these eighteen", () => {
+  it("the x402 and MPP pairings whose unplaced removes a carrier are these nineteen", () => {
     const pairings = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 29 + 28,
+      exact: 30 + 28,
       keep: ["the x402 and MPP pairings", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
       leave: ["the ACK, ACP, AP2, card and UCP pairings, whose unplaced the checkout tests above take", (b) => options[b.id.split("/")[0]!] !== undefined],
     });
@@ -453,7 +454,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
       return (b.unplaced as (o: unknown) => unknown)(advertised) !== advertised;
     });
     expect(removing.map((b) => b.id).sort()).toEqual([...carrierX402, ...carrierMpp].sort());
-    expect(carrierX402.length + carrierMpp.length).toBe(18);
+    expect(carrierX402.length + carrierMpp.length).toBe(19);
   });
 
   // So no pairing hands back a value that carries a refused member: every unplaced refuses one, with
@@ -526,12 +527,12 @@ describe("every placement function refuses a seller document carrying a refused 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
   // the carrier (unplaced).
   const x402 = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 29,
+    exact: 30,
     keep: ["the x402 pairings", (b) => b.id.startsWith("x402/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("x402/")],
   });
-  it("the x402 pairings are twenty-nine, each with an advertised document of one option", () => {
-    expect(x402.length).toBe(29);
+  it("the x402 pairings are thirty, each with an advertised document of one option", () => {
+    expect(x402.length).toBe(30);
     for (const b of x402) expect((advertisedDoc.get(b.id) as { accepts: unknown[] }).accepts.length, b.id).toBe(1);
   });
   // The Cardano address method takes coinsPerUtxoByte after the offer, before the agreement URL: V8's parameter.
@@ -540,7 +541,12 @@ describe("every placement function refuses a seller document carrying a refused 
     b.id === "x402/exact/cardano"
       ? (doc, h, link, offer, url) => (b.advertise as (...a: unknown[]) => unknown)(doc, h, link, offer, cardanoFloorArg, url)
       : (b.advertise as Place);
-  const x402Calls = x402.map((b) => [b.id, "advertise", placeOf(b), true] as const);
+  // The Lightning invoice, which the seller's node writes after the agreement, exists when advertise is called, so
+  // advertise takes the option with it, and advertiseBeforeCarrier takes it without.
+  const x402Calls = [
+    ...x402.map((b) => [b.id, "advertise", placeOf(b), b.advertiseBeforeCarrier === undefined] as const),
+    ...x402.filter((b) => b.advertiseBeforeCarrier !== undefined).map((b) => [b.id, "advertiseBeforeCarrier", b.advertiseBeforeCarrier as Place, true] as const),
+  ];
   const issuedX402 = (id: string, asIssued: boolean) => {
     const b = BINDINGS.find((p) => p.id === id)!;
     const advertised = advertisedDoc.get(id) as { accepts: unknown[]; extensions: { legalContext: { info: Record<string, string> } } };

@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/exact/eip155/gateway-batched (lcp/profiles/x402-exact-eip155-gateway-batched.md). Oracle: Circle's own client, @circle-fin/x402-batching 4.0.0 (npm, published 2026-10-22, sha512 KLdHz85N...), run as this workspace's pinned devDependency on 2026-11-17: S's typed data, domain and signature are what BatchEvmScheme's signing step (src/client/BatchEvmScheme.ts:317-355, the domain at :330-338, the versions at src/constants.ts:14-19) handed its signer and the signature it returned, given the authorization with nonce H, its own nonce being random (src/nonce.ts:6-12); W's window is createPaymentPayload's (src/client/BatchEvmScheme.ts:234-247, src/constants.ts:37-49) with its clock at fixed.now; wallets is CHAIN_CONFIGS (src/config.ts:110-116, :121-360); filter's circle column is supportsBatching (src/detection.ts:35-48). S's digest is viem 2.57.4's hashTypedData of the typed data Circle's client handed its signer, the independent EIP-712 check. The keys are the published Anvil development keys #0 (the payer) and #1 (another account). check.highS is S[1]'s signature with s replaced by the curve order less s and v flipped, computed with BigInt; viem's recoverTypedDataAddress reads it as the payer's (check.highSRecovers). H is SHA-256(\"abc\") (FIPS 180-2 B.1). The refusal rows (filter, eip3009Filter, build, bound, authorizer, boundAccepted) are each a good input with one member changed and the code the profile gives it; no outside oracle states lcp's codes, and each row's input starts from the outputs above.",
+ "about": "Vectors for x402/exact/eip155/gateway-batched (lcp/profiles/x402-exact-eip155-gateway-batched.md). Oracle: Circle's own client, @circle-fin/x402-batching 4.0.0 (npm, published 2026-10-22, sha512 KLdHz85N...), run as this workspace's pinned devDependency on 2026-11-17: S's typed data, domain and signature are what BatchEvmScheme's signing step (src/client/BatchEvmScheme.ts:317-355, the domain at :330-338, the versions at src/constants.ts:14-19) handed its signer and the signature it returned, given the authorization with nonce H, its own nonce being random (src/nonce.ts:6-12); W's window is createPaymentPayload's (src/client/BatchEvmScheme.ts:234-247, src/constants.ts:37-49) with its clock at fixed.now; wallets is CHAIN_CONFIGS (src/config.ts:110-116, :121-360), each network's Gateway Wallet and USDC, and the test has createPaymentPayload sign each network's version 1 option for its USDC and refuse it for fixed.notUsdc, Base Sepolia's EURC (isVersionAllowed, src/detection.ts:104-115, called at src/client/BatchEvmScheme.ts:222-227); filter's circle column is supportsBatching (src/detection.ts:35-48). S's digest is viem 2.57.4's hashTypedData of the typed data Circle's client handed its signer, the independent EIP-712 check. The keys are the published Anvil development keys #0 (the payer) and #1 (another account). check.highS is S[1]'s signature with s replaced by the curve order less s and v flipped, computed with BigInt; viem's recoverTypedDataAddress reads it as the payer's (check.highSRecovers), and reads check.v1SigUnderO2Recovers and check.value10001Recovers from the typed data Circle's client hands its signer for S[1]'s authorization under O2, with S[0]'s signature and with the value 10001, which the authorizer rows expect. signer's rows give the account authorizer gives beside the authorization's from and an agreement's signer, the account each recovers being viem's (check). H is SHA-256(\"abc\") (FIPS 180-2 B.1). The refusal rows (filter, eip3009Filter, build, bound, authorizer, boundAccepted) are each a good input with one member changed and the code the profile gives it; no outside oracle states lcp's codes, and each row's input starts from the outputs above.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
@@ -81,128 +81,153 @@
     "version": "2",
     "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
    }
-  }
+  },
+  "notUsdc": "0x808456652fdb597867f38412077A9182bf77359F"
  },
  "wallets": [
   {
    "name": "arbitrumSepolia",
    "network": "eip155:421614",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
   },
   {
    "name": "arcTestnet",
    "network": "eip155:5042002",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x3600000000000000000000000000000000000000"
   },
   {
    "name": "avalancheFuji",
    "network": "eip155:43113",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x5425890298aed601595a70AB815c96711a31Bc65"
   },
   {
    "name": "baseSepolia",
    "network": "eip155:84532",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
   },
   {
    "name": "sepolia",
    "network": "eip155:11155111",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
   },
   {
    "name": "hyperEvmTestnet",
    "network": "eip155:998",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x2B3370eE501B4a559b57D449569354196457D8Ab"
   },
   {
    "name": "optimismSepolia",
    "network": "eip155:11155420",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x5fd84259d66Cd46123540766Be93DFE6D43130D7"
   },
   {
    "name": "polygonAmoy",
    "network": "eip155:80002",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582"
   },
   {
    "name": "seiAtlantic",
    "network": "eip155:1328",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x4fCF1784B31630811181f670Aea7A7bEF803eaED"
   },
   {
    "name": "sonicTestnet",
    "network": "eip155:14601",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x0BA304580ee7c9a980CF72e55f5Ed2E9fd30Bc51"
   },
   {
    "name": "unichainSepolia",
    "network": "eip155:1301",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x31d0220469e10c4E71834a79b1f276d740d3768F"
   },
   {
    "name": "worldChainSepolia",
    "network": "eip155:4801",
-   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+   "usdc": "0x66145f38cBAC35Ca6F1Dfb4914dF98F1614aeA88"
   },
   {
    "name": "arbitrum",
    "network": "eip155:42161",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
   },
   {
    "name": "avalanche",
    "network": "eip155:43114",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"
   },
   {
    "name": "base",
    "network": "eip155:8453",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
   },
   {
    "name": "ethereum",
    "network": "eip155:1",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
   },
   {
    "name": "hyperEvm",
    "network": "eip155:999",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
   },
   {
    "name": "optimism",
    "network": "eip155:10",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"
   },
   {
    "name": "polygon",
    "network": "eip155:137",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
   },
   {
    "name": "sei",
    "network": "eip155:1329",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0xe15fC38F6D8c56aF07bbCBe3BAf5708A2Bf42392"
   },
   {
    "name": "sonic",
    "network": "eip155:146",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0x29219dd400f2Bf60E5a23d13Be72B486D4038894"
   },
   {
    "name": "unichain",
    "network": "eip155:130",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0x078D782b760474a361dDA0AF3839290b0EF57AD6"
   },
   {
    "name": "worldChain",
    "network": "eip155:480",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0x79A02482A880bCE3F13e09Da970dC34db4CD24d1"
   },
   {
    "name": "arc",
    "network": "eip155:5042",
-   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+   "usdc": "0x3600000000000000000000000000000000000000"
   }
  ],
  "S": [
@@ -466,7 +491,9 @@
    "O3": true,
    "version 3": false,
    "no version": true
-  }
+  },
+  "v1SigUnderO2Recovers": "0xB15bd2671ac61CC86Bc11879dE9CEF510DBf74D5",
+  "value10001Recovers": "0xD17cef48253aC1bd6B0f2a5e03ac04563b7d1393"
  },
  "filter": [
   {
@@ -799,6 +826,59 @@
    },
    "expect": "x402/option-not-this-pairing",
    "circle": true
+  },
+  {
+   "case": "O1 with Base Sepolia's EURC as its asset, version 1, which names no token and which Circle's client does not sign for an asset other than the network's USDC",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x808456652fdb597867f38412077A9182bf77359F",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "1",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": true
+  },
+  {
+   "case": "O1 with Base Sepolia's EURC as its asset and no extra.version, read as version 1",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x808456652fdb597867f38412077A9182bf77359F",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": true
+  },
+  {
+   "case": "O1 with Base Sepolia's EURC as its asset at version 2, whose domain names the token as its salt",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x808456652fdb597867f38412077A9182bf77359F",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "offered",
+   "circle": true
   }
  ],
  "eip3009Filter": [
@@ -981,7 +1061,7 @@
    "set": {
     "payload.signature": "0x65b90e153861ac006ce12ebdffcb93ee323e487bdff0e5cd3a4bc7d854addf3821e6f31b8c10af44359a7cb18d2d66852b15808dcff7c7a0f2cdcca1bd957fc11b"
    },
-   "expect": "x402/signer-not-from"
+   "expect": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8"
   },
   {
    "case": "S[0]'s version 1 signature presented under the version 2 option",
@@ -989,7 +1069,7 @@
    "set": {
     "payload.signature": "0xc12150966d98cd1a45e6dbb93cff3f7d41d1a220e306c88f1ec3dc78d0aeeeee01d91fd0f5d3de2b4475435d71e2bb8a729e1f52ee3b0842e300f231e286769c1c"
    },
-   "expect": "x402/signer-not-from"
+   "expect": "0xb15bd2671ac61cc86bc11879de9cef510dbf74d5"
   },
   {
    "case": "S[1]'s value changed to 10001 after signing",
@@ -997,7 +1077,7 @@
    "set": {
     "payload.authorization.value": "10001"
    },
-   "expect": "x402/signer-not-from"
+   "expect": "0xd17cef48253ac1bd6b0f2a5e03ac04563b7d1393"
   },
   {
    "case": "S[1]'s signature with s replaced by n - s and v flipped, which viem's recoverTypedDataAddress still reads as the payer's",
@@ -1030,6 +1110,48 @@
     "extensions.legalContext.info.value": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
    },
    "expect": "x402/signed-not-bound"
+  }
+ ],
+ "signer": [
+  {
+   "case": "the signer is the authorization's from and the agreement's signer",
+   "payment": "/S/1/payment",
+   "set": {},
+   "agreementSigner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+   "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+   "isFrom": true,
+   "isAgreementSigner": true
+  },
+  {
+   "case": "the signer is the authorization's from, and another account signed the agreement",
+   "payment": "/S/1/payment",
+   "set": {},
+   "agreementSigner": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+   "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+   "isFrom": true,
+   "isAgreementSigner": false
+  },
+  {
+   "case": "the signer is not the authorization's from, and the from signed the agreement",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.signature": "0x65b90e153861ac006ce12ebdffcb93ee323e487bdff0e5cd3a4bc7d854addf3821e6f31b8c10af44359a7cb18d2d66852b15808dcff7c7a0f2cdcca1bd957fc11b"
+   },
+   "agreementSigner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+   "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+   "isFrom": false,
+   "isAgreementSigner": false
+  },
+  {
+   "case": "the signer is not the authorization's from, and the signer signed the agreement",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.signature": "0x65b90e153861ac006ce12ebdffcb93ee323e487bdff0e5cd3a4bc7d854addf3821e6f31b8c10af44359a7cb18d2d66852b15808dcff7c7a0f2cdcca1bd957fc11b"
+   },
+   "agreementSigner": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+   "signer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+   "isFrom": false,
+   "isAgreementSigner": true
   }
  ],
  "buyer": {
