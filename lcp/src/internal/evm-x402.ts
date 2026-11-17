@@ -395,12 +395,14 @@ async function factsOf<R extends EvmReadRefBase>(
 /**
  * The first block at or below `at` at which the value reads consumed, `read` giving the value in the state after a
  * block: the value read at `at`, then the range from the network's first block to `at` halved by reads of the value at
- * blocks. Undefined where the value reads unconsumed at `at`; unreadable where a read fails, `history-gap` where the
- * endpoint does not hold a block's state.
+ * blocks. Where `from`, a block below `at`, is given, the value is read there first: unconsumed there, the range halved
+ * is from `from` to `at`; consumed there, from the network's first block to `from`. Undefined where the value reads
+ * unconsumed at `at`; unreadable where a read fails, `history-gap` where the endpoint does not hold a block's state.
  */
 export async function firstConsumed(
   read: (block: bigint) => Promise<boolean | { readonly unreadable: UnreadableReason }>,
   at: bigint,
+  from?: bigint,
 ): Promise<bigint | undefined | { unreadable: UnreadableReason }> {
   const there = await read(at);
   if (typeof there !== "boolean") return { unreadable: there.unreadable };
@@ -408,6 +410,12 @@ export async function firstConsumed(
   // Consumed at `b`; unconsumed at `a`, or `a` lies below the network's first block.
   let a = -1n;
   let b = at;
+  if (from !== undefined && from >= 0n && from < at) {
+    const r = await read(from);
+    if (typeof r !== "boolean") return { unreadable: r.unreadable };
+    if (r) b = from;
+    else a = from;
+  }
   while (b - a > 1n) {
     const m = a + (b - a) / 2n;
     const r = await read(m);

@@ -272,6 +272,20 @@ describe("mpp/charge/tempo/split-memo status on a constructed ledger", () => {
     expect(await tempoSplitMemo.status(ref, lost, query())).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
   });
 
+  it("rule 10, a read that fails while finding the value's consumer below the head: unreadable by its reason", async () => {
+    const pay = await pulled();
+    const ref = await pullRef(pay.credential);
+    const heads = { latest: 200_000n, safe: 200_000n, finalized: 200_000n };
+    // The search has not reached the payment, and the value reads consumed at the heads: its consumer is looked for below.
+    const base = ledgerReader(ledger([tx("pay", 170_000n, pay.raw, paidLogs(pay.raw))], heads, 6_000n));
+    const answers = [];
+    for (const error of [new ReaderError("history", "state pruned"), new ReaderError("transport", "connection reset")]) {
+      const reader = { ...base, storageAt: async (a: Hex, slot: Hex, block: bigint) => (block < heads.latest ? Promise.reject(error) : base.storageAt(a, slot, block)) };
+      answers.push(await tempoSplitMemo.status(ref, reader, query()));
+    }
+    expect(answers).toEqual(["history-gap", "transport"].map((reason) => ({ state: "unreadable", reason, foreign: [] })));
+  });
+
   it("rule 6, a transfer the payee's receive policy held: found by the guard's TransferBlocked, moved to the guard", async () => {
     const pay = await pulled();
     const ref = await pullRef(pay.credential);

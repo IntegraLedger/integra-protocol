@@ -123,6 +123,26 @@ describe("the activation read by the key slot", () => {
     });
   });
 
+  it("answers the reason of a read that fails while finding the slot's consumer below the position given", async () => {
+    const after = BLOCK + 2n;
+    const failing = (error: ReaderError) => {
+      const base = ledger();
+      return {
+        ...base,
+        call: async (to: Hex, data: Hex, block: bigint) => {
+          if (block < after) throw error;
+          return base.call(to, data, block);
+        },
+      };
+    };
+    // The slot's state below the position given pruned, the slot's read refused, and the first block's transactions the
+    // endpoint does not list.
+    const readers = [failing(new ReaderError("history", "state pruned")), failing(new ReaderError("transport", "connection reset")), ledger({ unlisted: [BLOCK] })];
+    const answers = [];
+    for (const reader of readers) answers.push(await subscriptionTempo.status(ref() as never, reader as never, { ...query, after }));
+    expect(answers).toEqual(["history-gap", "transport", "transport"].map((reason) => ({ state: "unreadable", reason, foreign: [] })));
+  });
+
   it("answers instrument-live while the slot is unconsumed, and instrument-unused once its signed expiry has passed", async () => {
     const empty = ledger({ txs: [] });
     expect(await subscriptionTempo.status(ref() as never, empty as never, query)).toEqual({ state: "pending", reason: "instrument-live", foreign: [] });

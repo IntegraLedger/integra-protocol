@@ -10,7 +10,10 @@ import { addressWord, bytesOf, concat, hexOf, keccakHex, sameBytes, uintOf, uint
 import { isRefusal } from "../refusal.js";
 import { rlpDecode, rlpUint } from "../rlp.js";
 import { decodeTempoTx, expiringNonceHash } from "../tempo.js";
+import { ReaderError, rejected } from "./evm.js";
 import type { EvmSearchReader } from "./evm-search.js";
+import { firstConsumed } from "./evm-x402.js";
+import type { UnreadableReason } from "./read.js";
 import { decodeEnvelope, tempoSender } from "./tempo-envelope.js";
 
 /** The nonce precompile, which keeps 2D nonce lanes and the expiring nonces seen. */
@@ -84,23 +87,23 @@ export function sameValue(a: TempoValue, b: TempoValue): boolean {
 /**
  * Whether `v` is consumed in the state after `block`: the expiring nonce's slot `keccak256(hash ‖ uint256(1))` of the
  * nonce precompile non-zero; the protocol nonce's count, or the 2D lane's `getNonce`, above the signed nonce. An answer
- * that is not a 32-byte word rejects.
+ * that is not a 32-byte word, or a count that is not an integer, rejects `malformed`.
  */
 export async function consumedAt(v: TempoValue, reader: TempoSearchReader, block: bigint): Promise<boolean> {
   if (v.key === EXPIRING_NONCE_KEY) {
     const slot = keccakHex(concat([bytesOf(v.signed)!, uintWord(1n)]));
     const word = bytesOf(await reader.storageAt(NONCE_PRECOMPILE, slot, block));
-    if (word === undefined || word.length !== 32) throw new Error("ill-formed storage word");
+    if (word === undefined || word.length !== 32) throw new ReaderError("malformed", "ill-formed storage word");
     return word.some((x) => x !== 0);
   }
   if (v.key === 0n) {
     const n = await reader.nonceAt(v.sender, block);
-    if (typeof n !== "bigint") throw new Error("ill-formed nonce");
+    if (typeof n !== "bigint") throw new ReaderError("malformed", "ill-formed nonce");
     return n > v.nonce;
   }
   const data = hexOf(concat([bytesOf(GET_NONCE_SELECTOR)!, addressWord(v.sender), uintWord(v.key)]));
   const word = bytesOf(await reader.call(NONCE_PRECOMPILE, data, block));
-  if (word === undefined || word.length !== 32) throw new Error("ill-formed getNonce answer");
+  if (word === undefined || word.length !== 32) throw new ReaderError("malformed", "ill-formed getNonce answer");
   return uintOf(word) > v.nonce;
 }
 
@@ -167,34 +170,42 @@ export async function readValue(v: TempoValue, reader: TempoSearchReader, final:
 }
 
 /**
- * The transaction that consumed `v`, read consumed at `hi` (`read-status` rule 23): the first block in
- * `(lo, hi]` at which the value reads consumed, found by halving the range (one read of the value a halving), then in
- * that block's transactions the one whose signed bytes take the value (`sameValue`), or, on the protocol nonce, a
- * transaction of another type that takes it (`takesProtocolNonce`). A value already consumed at `lo`,
- * the position given, was consumed at or before it: the range halved is then `[0, lo]`, so that the answer,
- * `before-position`, names that transaction. Undefined where no transaction of the block found takes the value.
+ * The transaction that consumed `v`, read consumed at `hi` (`read-status` rule 23): the first block at or below `hi` at
+ * which the value reads consumed (`firstConsumed`), read at `lo`, the position given, and then by halving `(lo, hi]`
+ * where it reads unconsumed there, or `[0, lo]` where it reads consumed there, so that the answer, `before-position`,
+ * names that transaction; then in that block's transactions the one whose signed bytes take the value (`sameValue`),
+ * or, on the protocol nonce, a transaction of another type that takes it (`takesProtocolNonce`). Undefined where no
+ * transaction of the block found takes the value. A read that fails is unreadable: a read of the value, below the
+ * latest head, by the reason the reader names (`rejected`), and `history-gap` where it names none, since the endpoint
+ * then does not hold that block's state; a read of the block's transactions by the reason the reader names.
  */
-export async function consumerOf(v: TempoValue, reader: TempoSearchReader, lo: bigint, hi: bigint): Promise<Hex | undefined> {
-  let a = lo;
-  let b = hi;
-  // Invariant: consumed at b; at a unconsumed, or a is block 0 consumed (b = a). Consumed at `hi` = `lo` is consumed
-  // at the position given.
-  if (a === b || (await consumedAt(v, reader, a))) {
-    b = a;
-    a = 0n;
-  }
-  if (a < b && (await consumedAt(v, reader, a))) b = a;
-  while (b - a > 1n) {
-    const m = (a + b) / 2n;
-    if (await consumedAt(v, reader, m)) b = m;
-    else a = m;
-  }
-  for (const hash of await reader.blockTransactions(b)) {
-    const raw = await reader.raw(hash);
-    const wire = raw === null ? undefined : bytesOf(raw);
-    const other = wire === undefined ? undefined : tempoValueOf(wire);
-    if (other !== undefined && sameValue(v, other)) return hash.toLowerCase() as Hex;
-    if (other === undefined && wire !== undefined && (await takesProtocolNonce(v, wire, hash, reader))) return hash.toLowerCase() as Hex;
+export async function consumerOf(
+  v: TempoValue,
+  reader: TempoSearchReader,
+  lo: bigint,
+  hi: bigint,
+): Promise<Hex | undefined | { readonly unreadable: UnreadableReason }> {
+  const at = async (block: bigint): Promise<boolean | { readonly unreadable: UnreadableReason }> => {
+    if (block === hi) return true;
+    try {
+      return await consumedAt(v, reader, block);
+    } catch (e) {
+      return { unreadable: e instanceof ReaderError ? rejected(e) : "history-gap" };
+    }
+  };
+  const b = await firstConsumed(at, hi, lo);
+  if (typeof b === "object") return b;
+  if (b === undefined) return undefined;
+  try {
+    for (const hash of await reader.blockTransactions(b)) {
+      const raw = await reader.raw(hash);
+      const wire = raw === null ? undefined : bytesOf(raw);
+      const other = wire === undefined ? undefined : tempoValueOf(wire);
+      if (other !== undefined && sameValue(v, other)) return hash.toLowerCase() as Hex;
+      if (other === undefined && wire !== undefined && (await takesProtocolNonce(v, wire, hash, reader))) return hash.toLowerCase() as Hex;
+    }
+  } catch (e) {
+    return { unreadable: rejected(e) };
   }
   return undefined;
 }

@@ -759,7 +759,8 @@ async function tempoTxOf(
  * The value: the opening transaction's nonce, read by its key at the final mark and at the latest head (`readValue`),
  * where the reference holds it (`nonce`) and the reader reads a block's state (`TempoSearchReader`); a value read
  * consumed whose transaction the search did not meet is looked for in the first block it reads consumed at
- * (`consumerOf`). A transaction met that took the value is the consumer. The channel id is a digest over the payee and
+ * (`consumerOf`), a read there that fails being unreadable by its reason. A transaction met that took the value is
+ * the consumer. The channel id is a digest over the payee and
  * the token as well as H, so the search is no search for H, and none is made for an opening: it is never read
  * whole, and the answer is never `failed` but `before-position`. The history is shown where the reader serves the block
  * the search starts at; a value read below the latest head that fails without it is `history-gap`. A ref that is not of
@@ -931,8 +932,9 @@ async function tempoOpeningFacts(
     if (r !== undefined) return r;
   }
   if (value !== undefined && read?.consumedAt !== undefined && !seen.some((x) => x.consumed)) {
-    // A read of a block's state or transactions that fails leaves the consumer unfound: search-incomplete.
-    const c = await consumerOf(value, reader as TempoSearchReader, lo, read.consumedAt).catch(() => undefined);
+    // A read of a block's state or transactions that fails is unreadable by its reason (`consumerOf`).
+    const c = await consumerOf(value, reader as TempoSearchReader, lo, read.consumedAt);
+    if (typeof c === "object") return c;
     if (c !== undefined && !hashes.has(c.toLowerCase())) {
       const r = await readOne(c);
       if (r !== undefined) return r;
@@ -971,7 +973,8 @@ async function tempoOpeningFacts(
  * block it reads burned at (`burnConsumer`), an act of another kind carrying H that consumed the value. A slot read consumed whose transaction the search did not meet is found in the first block at which
  * it reads consumed, by halving, as the payer's transaction there whose key authorization names the key id or whose own
  * call to the keychain authorizes it (`slotConsumer`); a transaction of that block the read cannot decode, where none is
- * found, holds the search. The transaction so found is read as the search's are, its receipt deciding: a reverted
+ * found, holds the search. A read of the slot, the mark or that block's transactions there that fails is unreadable by
+ * its reason, `history-gap` where the endpoint does not hold that block's state. The transaction so found is read as the search's are, its receipt deciding: a reverted
  * activation carrying H is the act asked about but for its result, any other the consumer of the value.
  *
  * The search: the account keychain's `KeyAuthorizationWitness` logs whose witness topic is H, from the position the
@@ -1159,8 +1162,9 @@ async function activationFacts(
     if (r !== undefined) return r;
   }
   if (read.consumedAt !== undefined && !seen.some((x) => x.consumed)) {
-    // A read of a block's state or transactions that fails leaves the consumer unfound: search-incomplete.
-    const c = await slotConsumer(slot, reader, lo, read.consumedAt).catch(() => undefined);
+    // A read of a block's state or transactions that fails is unreadable by its reason (`slotConsumer`).
+    const c = await slotConsumer(slot, reader, lo, read.consumedAt);
+    if (c !== undefined && "unreadable" in c) return c;
     if (c !== undefined && "transaction" in c) {
       const met = seen.findIndex((x) => sameBytes(x.transaction, c.transaction));
       if (met !== -1) seen[met] = { ...seen[met]!, consumed: true };

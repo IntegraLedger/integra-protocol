@@ -19,7 +19,7 @@ import { addressWord, bytesOf, concat, hexOf, keccakHex, sameBytes, uintOf, type
 import { isRefusal } from "../refusal.js";
 import { ACCOUNT_KEYCHAIN, decodeTempoTx } from "../tempo.js";
 import { ReaderError, rejected, type EvmReader } from "./evm.js";
-import { addressTopic, search } from "./evm-x402.js";
+import { addressTopic, firstConsumed, search } from "./evm-x402.js";
 import type { UnreadableReason } from "./read.js";
 import { readKeyAuthorization } from "./key-authorization.js";
 import { carriedKeyAuthorization, tempoSender } from "./tempo-envelope.js";
@@ -132,24 +132,25 @@ export async function readSlot(slot: KeySlot, reader: Pick<EvmReader, "call">, f
 }
 
 /**
- * The first block in `(lo, hi]` at which `consumed` holds, read so at `hi`, found by halving the range (one read a
- * halving), or, where it holds at `lo`, the position given, the first block in `[0, lo]`.
+ * The first block at or below `hi` at which `consumed` holds, read so at `hi` (`firstConsumed`): read at `lo`, the
+ * position given, then found by halving `(lo, hi]` where it does not hold there, or `[0, lo]` where it does (one read a
+ * halving). A read that fails is unreadable by the reason the reader names (`rejected`), `history-gap` where the
+ * endpoint does not hold that block's state.
  */
-async function firstBlock(consumed: (block: bigint) => Promise<boolean>, lo: bigint, hi: bigint): Promise<bigint> {
-  let a = lo;
-  let b = hi;
-  // Invariant: consumed at b; at a unconsumed, or a is block 0 consumed (b = a).
-  if (a === b || (await consumed(a))) {
-    b = a;
-    a = 0n;
-  }
-  if (a < b && (await consumed(a))) b = a;
-  while (b - a > 1n) {
-    const m = (a + b) / 2n;
-    if (await consumed(m)) b = m;
-    else a = m;
-  }
-  return b;
+function firstBlock(
+  consumed: (block: bigint) => Promise<boolean>,
+  lo: bigint,
+  hi: bigint,
+): Promise<bigint | undefined | { readonly unreadable: UnreadableReason }> {
+  const at = async (block: bigint): Promise<boolean | { readonly unreadable: UnreadableReason }> => {
+    if (block === hi) return true;
+    try {
+      return await consumed(block);
+    } catch (e) {
+      return { unreadable: rejected(e) };
+    }
+  };
+  return firstConsumed(at, hi, lo);
 }
 
 /**
@@ -164,12 +165,9 @@ export async function burnConsumer(
   lo: bigint,
   hi: bigint,
 ): Promise<{ readonly transaction?: Hex } | { readonly unreadable: UnreadableReason }> {
-  let b: bigint;
-  try {
-    b = await firstBlock((block) => witnessBurnedAt(slot, reader, block), lo, hi);
-  } catch (e) {
-    return { unreadable: rejected(e) };
-  }
+  const b = await firstBlock((block) => witnessBurnedAt(slot, reader, block), lo, hi);
+  if (typeof b === "object") return b;
+  if (b === undefined) return {};
   const filter = { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_BURNED_TOPIC, addressTopic(slot.account), slot.witness] };
   const found = await search(reader, [filter], b, b);
   if ("unreadable" in found) return found;
@@ -181,20 +179,33 @@ export async function burnConsumer(
 export type SlotConsumer = { readonly transaction: Hex; readonly sender: Hex } | { readonly undecoded: readonly Hex[] };
 
 /**
- * The transaction that consumed the slot, read consumed at `hi`: the first block in `(lo, hi]` at which the slot reads
- * consumed, found by halving the range (one read of the slot a halving), or, where it reads consumed at `lo`, the
- * position given, the first block in `[0, lo]`; then, in that block's transactions in their order, the first of the
- * account's whose key authorization names the key id, or whose own call to the keychain authorizes it, read from the
- * transaction's signed bytes. A transaction whose bytes the node does not return, or that do not decode, is named
- * `undecoded` where no transaction of the block is found. Undefined where none is found and every one decodes.
+ * The transaction that consumed the slot, read consumed at `hi`: the first block at which the slot reads consumed,
+ * located by `firstBlock` (one read of the slot a halving), the range `(lo, hi]` where it reads unconsumed at `lo`, the
+ * position given, and `[0, lo]` where it reads consumed there; then, in that block's transactions in their order, the
+ * first of the account's whose key authorization names the key id, or whose own call to the keychain authorizes it,
+ * read from the transaction's signed bytes. A transaction whose bytes the node does not return, or that do not decode,
+ * is named `undecoded` where no transaction of the block is found. Undefined where none is found and every one decodes.
+ * A read that fails, of the slot or of the block's transactions, is unreadable by the reason the reader names
+ * (`rejected`), `history-gap` where the endpoint does not hold that block's state.
  */
-export async function slotConsumer(slot: KeySlot, reader: TempoSearchReader, lo: bigint, hi: bigint): Promise<SlotConsumer | undefined> {
+export async function slotConsumer(
+  slot: KeySlot,
+  reader: TempoSearchReader,
+  lo: bigint,
+  hi: bigint,
+): Promise<SlotConsumer | undefined | { readonly unreadable: UnreadableReason }> {
   const b = await firstBlock((block) => slotConsumedAt(slot, reader, block), lo, hi);
+  if (typeof b === "object") return b;
+  if (b === undefined) return undefined;
   const undecoded: Hex[] = [];
-  for (const hash of await reader.blockTransactions(b)) {
-    const found = await registers(slot, hash, reader);
-    if (found === "undecodable") undecoded.push(hash.toLowerCase() as Hex);
-    else if (found) return { transaction: hash.toLowerCase() as Hex, sender: slot.account.toLowerCase() as Hex };
+  try {
+    for (const hash of await reader.blockTransactions(b)) {
+      const found = await registers(slot, hash, reader);
+      if (found === "undecodable") undecoded.push(hash.toLowerCase() as Hex);
+      else if (found) return { transaction: hash.toLowerCase() as Hex, sender: slot.account.toLowerCase() as Hex };
+    }
+  } catch (e) {
+    return { unreadable: rejected(e) };
   }
   return undecoded.length === 0 ? undefined : { undecoded };
 }

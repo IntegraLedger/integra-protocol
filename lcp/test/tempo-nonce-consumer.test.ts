@@ -7,6 +7,7 @@ import { concat, keccak256, toHex, toRlp, type Hex } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
 import { describe, expect, it } from "vitest";
 import { bytesOf } from "../src/evm-abi.js";
+import { ReaderError } from "../src/evm.js";
 import { consumerOf, tempoValueOf, type TempoValue } from "../src/internal/tempo-nonce.js";
 import { tempoLedgerReader } from "./eip155-tempo-mpp-tempo-ledger.js";
 
@@ -55,5 +56,37 @@ describe("consumerOf", () => {
       consumed: [{ value: v, from: 6n }],
     });
     expect(await consumerOf(v, reader, 2n, 9n)).toBe(hash.toLowerCase());
+  });
+
+  it("answers a read below the head that fails by its reason: history-gap, transport, unparseable, and history-gap where none is named", async () => {
+    const raw = await signedTransfer();
+    const hash = keccak256(raw);
+    const v = tempoValueOf(bytesOf(raw)!)!;
+    const base = tempoLedgerReader({
+      network: "eip155:42431",
+      heads: { latest: 10n, safe: 10n, finalized: 10n },
+      txs: [{ hash, block: 3n, status: 1, from: PAYER, to: "0x20c0000000000000000000000000000000000000", input: "0x", logs: [], raw }],
+    });
+    const failing = (fail: () => Promise<never>) => ({
+      ...base,
+      call: (to: Hex, data: Hex, block: bigint) => (block < 5n ? fail() : base.call(to, data, block)),
+    });
+    const cases: [() => Promise<never>, string][] = [
+      [() => Promise.reject(new ReaderError("history", "state pruned")), "history-gap"],
+      [() => Promise.reject(new ReaderError("transport", "connection reset")), "transport"],
+      [() => Promise.resolve("0x01" as never), "unparseable"],
+      [() => Promise.reject(new Error("missing trie node")), "history-gap"],
+    ];
+    const answers = [];
+    for (const [fail] of cases) answers.push(await consumerOf(v, failing(fail), 5n, 9n));
+    expect(answers).toEqual(cases.map(([, reason]) => ({ unreadable: reason })));
+    // The block's transactions the endpoint does not list: transport, as the reader names it.
+    const unlisted = tempoLedgerReader({
+      network: "eip155:42431",
+      heads: { latest: 10n, safe: 10n, finalized: 10n },
+      txs: [{ hash, block: 3n, status: 1, from: PAYER, to: "0x20c0000000000000000000000000000000000000", input: "0x", logs: [], raw }],
+      unlisted: [3n],
+    });
+    expect(await consumerOf(v, unlisted, 5n, 9n)).toEqual({ unreadable: "transport" });
   });
 });

@@ -373,7 +373,8 @@ const isBlock = (v: unknown): v is bigint => typeof v === "bigint" && v >= 0n;
  * as memo, and the receive-policy guard's `TransferBlocked` logs, each receipt decoded (`heldTransferOf`) and kept where
  * its originator is the payer and its memo H, one that does not decode holding the search at its block. Each transaction
  * found, the act's own where the caller gives it or the credential names it, and, where the value reads consumed and no
- * transaction read takes it, the one found in the first block it reads consumed at (`consumerOf`), is read whole: an
+ * transaction read takes it, the one found in the first block it reads consumed at (`consumerOf`, a read there that
+ * fails being unreadable by its reason, `history-gap` where the reader names none), is read whole: an
  * item whose receipt or signed bytes the reader does not hold, or that does not decode, is named among the undecoded
  * items. Each is classed against the reference: its sender against the payer and the payee; whether it carries H (a
  * succeeded one by a `TransferWithMemo` from the payer with memo H or a guard receipt naming the payer and H, a failed
@@ -497,8 +498,9 @@ async function splitFacts(
     for (const item of reads) await readOne(item);
     // The transaction that consumed the value, where none read takes it.
     if (v !== undefined && read?.consumedAt !== undefined && !seen.some((s) => s.consumed)) {
-      // A read of a block's state or transactions that fails leaves the consumer unfound: search-incomplete, never failed.
-      const c = await consumerOf(v, reader, lo, read.consumedAt).catch(() => undefined);
+      // A read of a block's state or transactions that fails is unreadable by its reason (`consumerOf`).
+      const c = await consumerOf(v, reader, lo, read.consumedAt);
+      if (typeof c === "object") return nothing(c.unreadable);
       if (c !== undefined) await readOne({ transaction: c, at: undefined });
     }
     undecoded.sort((a, b) => (a.at! < b.at! ? -1 : a.at! > b.at! ? 1 : 0));
