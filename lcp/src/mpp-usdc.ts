@@ -458,12 +458,16 @@ export type UsdcUnsigned =
       /**
        * The salt's preimage from the chosen challenge, and the `maxBlockHeight` the burn intent signs, a decimal
        * string. `complete` refuses a burn intent whose `maxBlockHeight`, read as a decimal, is not that value, with
-       * `mpp/max-block-height-changed`.
+       * `mpp/max-block-height-changed`. `challengeRequest` is the chosen challenge's `request` parameter as issued
+       * (base64url): `usdcRequestHash(challengeRequest)` is `preimage.requestHash`, and it holds the amount, the currency,
+       * the destination network and the `maxFee` the burn intent grants, so a client can show them and hold the hash to
+       * them.
        */
       request: {
         kind: "gateway-burn-intent";
         preimage: GatewayPreimage;
         maxBlockHeight: string;
+        challengeRequest: string;
       };
       complete(c: {
         source: string;
@@ -812,7 +816,7 @@ async function gatewayBuild(choice: GatewayChargeChoice, h: AtrHash) {
   const challenge = o.challenge;
   const preimage: GatewayPreimage = { id: challenge.id, realm: challenge.realm, requestHash, recipient: str(o.request["recipient"]) };
   return {
-    request: { kind: "gateway-burn-intent" as const, preimage, maxBlockHeight },
+    request: { kind: "gateway-burn-intent" as const, preimage, maxBlockHeight, challengeRequest: challenge.request },
     complete(c: {
       source: string;
       sourceNetwork: string;

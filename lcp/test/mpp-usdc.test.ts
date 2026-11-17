@@ -408,7 +408,9 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
     const u = await chargeUsdcGateway.build({ challenge, ...served }, G.H);
     if ("refused" in u) throw new Error(u.code);
     const preimage = { id: G.MV1, realm: G.realm, requestHash: GW.M5.expectRequestHash, recipient: GW.M5.saltInput.recipient };
-    expect(u.request).toEqual({ kind: "gateway-burn-intent", preimage, maxBlockHeight: expectMaxBlockHeight });
+    expect(u.request).toEqual({ kind: "gateway-burn-intent", preimage, maxBlockHeight: expectMaxBlockHeight, challengeRequest: challenge.request });
+    // The request carries the challenge's request as issued, so a client recomputes the hash the salt commits to.
+    expect(await usdcRequestHash(u.request.challengeRequest)).toBe(GW.M5.expectRequestHash);
     expect(GW.M5.payload.authorization.transfer.burnIntent.maxBlockHeight).toBe(expectMaxBlockHeight);
     expect(JSON.parse(JSON.stringify(u.request))).toEqual(u.request);
     const { recipient: _r, ...own } = GW.M5.saltInput;
