@@ -761,7 +761,7 @@
    }
   },
   {
-   "case": "a named field's two lines whose joined value is 1 MiB and one character",
+   "case": "a named field's two lines whose joined value, with its comma and space, is 1 MiB and two characters",
    "request": {
     "method": "GET",
     "target": "/v1/report",
@@ -782,5 +782,10 @@
     "lines": 2
    }
   }
- ]
+ ],
+ "bound": {
+  "about": "lcp's own bound on what the HTTP and MCP commitments read, exported as MAX_REQUEST_BYTES: a body, the RFC 8785 form of a tool call's arguments, and a named header field's value, its lines joined, each at most this many bytes; a larger one is x402/request-too-large. x402 sets no size.",
+  "name": "MAX_REQUEST_BYTES",
+  "bytes": 1048576
+ }
 }

@@ -75,6 +75,7 @@ export {
   MAX_JSON_DEPTH,
   MAX_LINK_LENGTH,
   MAX_OPTIONS,
+  MAX_REQUEST_BYTES,
   MAX_SIGNATURE_BYTES,
 } from "./internal/bounds.js";
 

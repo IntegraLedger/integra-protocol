@@ -1,5 +1,5 @@
 {
- "about": "The cases common to every pairing's read, the public half of the read kit, for the profile read-status (lcp/profiles/read-status.md). Each case states what a read observed, in the profile's own terms: the transactions it met, each with its position, the mark it was read at, its result, whether it consumed the act's single-use value, whether it carries H, its signer against the payer and the option's payee, its pairing and kind, and the account it names; the single-use value as read at the final mark, with whether it is consumed at the latest head where the read read it there (head), absent where the read has no means to read it; whether the search or lookup was read whole, and its position where it was not; the items the search met and could not decode (undecoded), each with the search position held at it; and whether the reader showed its history. Positions are integers; marks are 'included', 'safe' and 'final', in that order. Each expected answer was derived by hand from the rules of read-status.md the case names, for the act 'payment' and for the act 'agreement', and none was taken from the package's output. An expected answer lists the members the answer must hold; foreign items are listed with their transaction and reason, and the items a search-incomplete answer names as ones its search could not decode by their transactions (undecoded). A pairing's own vectors run each case through its reader, mapping each transaction and position to its ledger's, or state that the case cannot arise on its ledger.",
+ "about": "The cases common to every pairing's read, the public half of the read kit, for the profile read-status (lcp/profiles/read-status.md). Each case states what a read observed, in the profile's own terms: the transactions it met, each with its position, the mark it was read at, what it moved (each transfer with its asset, amount, recipient, and where given its transaction and place in it), its result, whether it consumed the act's single-use value, whether it carries H, its signer against the payer and the option's payee, its pairing and kind, and the account it names; the single-use value as read at the final mark, with whether it is consumed at the latest head where the read read it there (head), absent where the read has no means to read it; whether the search or lookup was read whole, and its position where it was not; the items the search met and could not decode (undecoded), each with the search position held at it; and whether the reader showed its history. Positions are integers; marks are 'included', 'safe' and 'final', in that order. Each expected answer was derived by hand from the rules of read-status.md the case names, for the act 'payment' and for the act 'agreement', and none was taken from the package's output. A transaction may also state presented, whether the message the payer signed in it equals what was presented (yes, no or unshown), absent where the read made no comparison; a settled answer states it where the facts give it, and none where they do not. An expected answer lists the members the answer must hold; foreign items are listed with their transaction and reason, and the items a search-incomplete answer names as ones its search could not decode by their transactions (undecoded). A pairing's own vectors run each case through its reader, mapping each transaction and position to its ledger's, or state that the case cannot arise on its ledger.",
  "marks": [
   "included",
   "safe",
@@ -28,7 +28,8 @@
         "amount": "0",
         "to": "payee"
        }
-      ]
+      ],
+      "presented": "yes"
      }
     ],
     "search": {
@@ -44,6 +45,7 @@
      "state": "settled",
      "transaction": "t1",
      "finality": "final",
+     "presented": "yes",
      "foreign": [],
      "moved": [
       {
@@ -57,6 +59,7 @@
      "state": "settled",
      "transaction": "t1",
      "finality": "final",
+     "presented": "yes",
      "foreign": [],
      "moved": [
       {
@@ -125,6 +128,201 @@
        "asset": "B",
        "amount": "7",
        "to": "payee"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": "an act whose signed message differs in a member from the payment presented is settled all the same: presented no",
+   "rules": "10, 13",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "t1",
+      "position": 10,
+      "mark": "final",
+      "result": "succeeded",
+      "consumed": true,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "payee",
+      "presented": "no",
+      "moved": [
+       {
+        "asset": "A",
+        "amount": "5",
+        "to": "payee"
+       }
+      ]
+     }
+    ],
+    "search": {
+     "whole": true
+    },
+    "history": true
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "presented": "no",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "A",
+       "amount": "5",
+       "to": "payee"
+      }
+     ]
+    },
+    "agreement": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "presented": "no",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "A",
+       "amount": "5",
+       "to": "payee"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": "a read that made no comparison with the payment presented states no presented, never yes",
+   "rules": "13",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "t1",
+      "position": 10,
+      "mark": "final",
+      "result": "succeeded",
+      "consumed": true,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "payee"
+     }
+    ],
+    "search": {
+     "whole": true
+    },
+    "history": true
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "each transfer of what moved is named by its transaction and its place in it, in the pairing's own spelling",
+   "rules": "13",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "t1",
+      "position": 10,
+      "mark": "final",
+      "result": "succeeded",
+      "consumed": true,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "payee",
+      "moved": [
+       {
+        "asset": "A",
+        "amount": "5",
+        "to": "payee",
+        "transaction": "t1",
+        "place": 1
+       },
+       {
+        "asset": "A",
+        "amount": "2",
+        "to": "payee",
+        "transaction": "t1",
+        "place": 4
+       }
+      ]
+     }
+    ],
+    "search": {
+     "whole": true
+    },
+    "history": true
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "A",
+       "amount": "5",
+       "to": "payee",
+       "transaction": "t1",
+       "place": 1
+      },
+      {
+       "asset": "A",
+       "amount": "2",
+       "to": "payee",
+       "transaction": "t1",
+       "place": 4
+      }
+     ]
+    },
+    "agreement": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "A",
+       "amount": "5",
+       "to": "payee",
+       "transaction": "t1",
+       "place": 1
+      },
+      {
+       "asset": "A",
+       "amount": "2",
+       "to": "payee",
+       "transaction": "t1",
+       "place": 4
       }
      ]
     }
@@ -874,7 +1072,8 @@
       "carries": true,
       "party": "payer",
       "kind": "same",
-      "account": "payee"
+      "account": "payee",
+      "presented": "unshown"
      }
     ],
     "search": {
@@ -891,12 +1090,14 @@
      "state": "settled",
      "transaction": "t1",
      "finality": "safe",
+     "presented": "unshown",
      "foreign": []
     },
     "agreement": {
      "state": "settled",
      "transaction": "t1",
      "finality": "safe",
+     "presented": "unshown",
      "foreign": []
     }
    }
@@ -1158,6 +1359,118 @@
     "agreement": {
      "state": "pending",
      "reason": "search-incomplete",
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "an act the read cannot place against the position given holds a failed answer on a lapsed value: search-incomplete",
+   "rules": "16, 24",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "a1",
+      "mark": "final",
+      "result": "succeeded",
+      "consumed": false,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "payee"
+     }
+    ],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": true,
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
+    }
+   },
+   "query": {
+    "finality": "final",
+    "after": 5
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "an act the read cannot place against the position given holds a failed answer on a consumer found after it: search-incomplete",
+   "rules": "16, 24",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "a1",
+      "mark": "final",
+      "result": "succeeded",
+      "consumed": false,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "payee"
+     },
+     {
+      "transaction": "c1",
+      "mark": "final",
+      "result": "succeeded",
+      "consumed": true,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "other",
+      "position": 20
+     }
+    ],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": true,
+     "lapsed": false,
+     "mark": "final",
+     "head": {
+      "consumed": true
+     }
+    }
+   },
+   "query": {
+    "finality": "final",
+    "after": 5
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "c1",
+       "reason": "other-account"
+      }
+     ]
+    },
+    "agreement": {
+     "state": "settled",
+     "transaction": "c1",
+     "finality": "final",
+     "position": 20,
      "foreign": []
     }
    }
@@ -2149,6 +2462,59 @@
      "search": 15,
      "undecoded": [
       "u1"
+     ]
+    }
+   }
+  },
+  {
+   "case": "an item the search could not decode that gives no position to hold at: the answer gives no search position, so the next call reads its range again",
+   "rules": "19",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": false,
+     "at": 42
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": true,
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
+    },
+    "undecoded": [
+     {
+      "transaction": "u1"
+     },
+     {
+      "transaction": "u2",
+      "at": 30
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "undecoded": [
+      "u1",
+      "u2"
+     ]
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "undecoded": [
+      "u1",
+      "u2"
      ]
     }
    }

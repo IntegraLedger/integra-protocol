@@ -118,11 +118,11 @@
     {
       "unit": "The resource bounds",
       "exports": {
-        ".": ["MAX_CHALLENGES", "MAX_CHALLENGE_DEPTH", "MAX_CREDENTIAL_BYTES", "MAX_HEADER_BYTES", "MAX_JSON_DEPTH", "MAX_LINK_LENGTH", "MAX_OPTIONS", "MAX_SIGNATURE_BYTES"],
+        ".": ["MAX_CHALLENGES", "MAX_CHALLENGE_DEPTH", "MAX_CREDENTIAL_BYTES", "MAX_HEADER_BYTES", "MAX_JSON_DEPTH", "MAX_LINK_LENGTH", "MAX_OPTIONS", "MAX_REQUEST_BYTES", "MAX_SIGNATURE_BYTES"],
         "./card": ["MAX_CHECKOUT_ID", "MAX_CHECKOUT_JWT", "MAX_TAP_COMPONENTS", "MAX_TAP_FIELD", "MAX_TAP_HASH_LINE", "MAX_TAP_MEMBERS", "MAX_VI_DISCLOSURES", "MAX_VI_LAYER"]
       },
       "use": "Any server sizes its own limits from the largest input the package's decoders accept, a card agent's signed headers and Verifiable Intent layers among them.",
-      "fixedBy": "Each bound's stated reason, against the format it bounds: MPP's challenge and credential, x402's accepts, JSON, the ATR's link, TAP's signed headers and Verifiable Intent's layers; decoder-caps.json."
+      "fixedBy": "Each bound's stated reason, against the format it bounds: MPP's challenge and credential, x402's accepts and request commitment, JSON, the ATR's link, TAP's signed headers and Verifiable Intent's layers; decoder-caps.json."
     },
     {
       "unit": "A2A",

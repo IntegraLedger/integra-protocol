@@ -74,7 +74,7 @@ export async function runCase(declared: DeclaredForm, c: ReadCase, act: Act): Pr
   const want = c.expect[act];
   expect(answer).toMatchObject(want);
   expect(foreignOf(answer)).toEqual(foreignOf(want));
-  for (const key of ["transaction", "carries", "search", "undecoded"] as const) {
+  for (const key of ["transaction", "carries", "search", "undecoded", "presented"] as const) {
     expect(key in answer, `${key} in the answer`).toBe(key in want);
   }
   return stated === undefined ? "ran" : "ran-stated";

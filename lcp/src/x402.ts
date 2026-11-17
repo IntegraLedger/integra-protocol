@@ -77,7 +77,7 @@ import {
   type X402Forms,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
+import { MAX_REQUEST_BYTES, MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_X402 } from "./internal/data/eip155-x402.js";
 import { headerDigests, type HeaderDigest, type HeaderFields } from "./internal/request-headers.js";
 import type { Entry, NoRead, PairingData } from "./internal/registry.js";
@@ -223,7 +223,7 @@ export interface Unsigned {
 
 const ID = "x402/exact/eip155/eip3009" as const;
 const MAX_TARGET = 8192;
-const MAX_BODY = 1_048_576;
+const MAX_BODY = MAX_REQUEST_BYTES;
 const MIN_SIGNED_BYTES = 65;
 const HEX_BODY = /^0x[0-9a-fA-F]*$/;
 

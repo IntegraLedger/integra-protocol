@@ -59,6 +59,22 @@ describe("the read kit's cases", () => {
   });
 });
 
+describe("the read kit's settled cases", () => {
+  it("state presented yes, no and unshown as the act's facts give it, and none where they give none", () => {
+    const settled = READ_STATUS.cases.flatMap((c) =>
+      ACTS.flatMap((act) => {
+        const want = c.expect[act];
+        if (want.state !== "settled") return [];
+        const seen = c.facts.seen.find((s) => s.transaction === want.transaction);
+        return [{ want: want.presented, given: seen?.presented }];
+      }),
+    );
+    for (const p of ["yes", "no", "unshown"] as const) expect(settled.some((s) => s.want === p && s.given === p), p).toBe(true);
+    expect(settled.some((s) => s.given === undefined && s.want === undefined), "absent, none").toBe(true);
+    expect(settled.filter((s) => s.want !== s.given)).toEqual([]);
+  });
+});
+
 describe("the read kit's harness", () => {
   const cases = rowsOf(READ_STATUS.cases, "read-status.json cases");
   const belowMark = cases.find((c) => c.case === "an act found above the final head answers below-mark") as ReadCase;

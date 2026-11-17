@@ -3,6 +3,7 @@
 // is the file's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import * as root from "../src/index.js";
 import { requestCommitment, tie, toolCallCommitment, type HeaderFields, type ToolCall } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 
@@ -35,6 +36,16 @@ describe("x402-request-commitment.json", () => {
       expect(await requestCommitment({ method, target, body: new TextEncoder().encode(bodyUtf8), headers }, row.fields)).toEqual(row.expect);
     });
   }
+  it("the bound on what a commitment reads is exported once, and the refusal rows sit one byte past it", () => {
+    expect((root as Record<string, unknown>)[V.bound.name]).toBe(V.bound.bytes);
+    const fills = V.httpHeaderRefusals.filter((r: { fill?: unknown }) => r.fill !== undefined);
+    const joined = (r: { fill: { length: number; lines?: number } }): number => {
+      const lines = r.fill.lines ?? 1;
+      return r.fill.length * lines + 2 * (lines - 1);
+    };
+    for (const r of fills) expect(joined(r)).toBeGreaterThan(V.bound.bytes);
+    expect(fills.some((r: { fill: { length: number; lines?: number } }) => joined(r) === V.bound.bytes + 1)).toBe(true);
+  });
   it("HTTP header fields: a value of exactly 1 MiB, its lines joined, is read", async () => {
     const line = "a".repeat(524_287);
     const c = await requestCommitment({ method: "GET", target: "/", body: new Uint8Array(), headers: { "x-tier": [line, line] } }, ["x-tier"]);

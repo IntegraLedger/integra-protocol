@@ -3,6 +3,7 @@
  * resource server names, in the order named, its lower-cased name and SHA-256 of its value as received, never the value.
  */
 import { hash, type AtrHash } from "./core.js";
+import { MAX_REQUEST_BYTES } from "./bounds.js";
 
 /**
  * A request's header fields as received: each field's name, in any case, with its field lines in the order received,
@@ -19,8 +20,6 @@ export interface HeaderDigest {
 
 /** RFC 9110 §5.1: a field name is a token. */
 const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
-/** The longest value of one field, its lines joined, that the commitment reads: 1 MiB, the body's bound. */
-const MAX_VALUE = 1_048_576;
 
 const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
 
@@ -78,7 +77,7 @@ export async function headerDigests(names: unknown, fields: unknown): Promise<He
       continue;
     }
     const length = given.reduce((sum, x) => sum + x.length, 0) + (given.length - 1) * 2;
-    if (length > MAX_VALUE) return "too-large";
+    if (length > MAX_REQUEST_BYTES) return "too-large";
     if (!given.every(fieldText)) return "invalid";
     lines.push(given.map(trimmed));
   }

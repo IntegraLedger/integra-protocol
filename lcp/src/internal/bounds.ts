@@ -32,6 +32,12 @@ export const MAX_CREDENTIAL_BYTES = 65_536;
 export const MAX_HEADER_BYTES = 65_536;
 
 /**
+ * The most bytes the x402 request commitment reads of one part of a request: the body, the RFC 8785 form of an MCP tool
+ * call's arguments, and a named header field's value, its lines joined. x402 sets no size; a larger part is refused.
+ */
+export const MAX_REQUEST_BYTES = 1_048_576;
+
+/**
  * The deepest nesting of arrays and objects in any JSON lcp writes or reads, an ATR's among it. RFC 8259 permits any
  * depth; a parser's recursion is bounded by it.
  */

@@ -16,12 +16,22 @@ export type UnreadableReason = "history-gap" | "transport" | "unparseable" | "to
 /** Why a transaction that carries H is not the act asked about, in the order in which they are tried. */
 export type ForeignReason = "payee-signed" | "other-signer" | "given" | "other-kind" | "other-account";
 
-/** One transfer or deposit an act made, as the read observed it. */
+/**
+ * One transfer or deposit an act made, as the read observed it, named by its transaction and its place in it, so that
+ * two answers that name one transfer are told from two transfers.
+ */
 export interface Moved {
   readonly asset: string;
   readonly amount: string;
   /** The account it reached, or the beneficiary a contract names. */
   readonly to: string;
+  /** The transaction it was read from. */
+  readonly transaction?: string;
+  /**
+   * Its place in that transaction, in the pairing's own spelling: on EVM the position of its `Transfer` log among the
+   * receipt's logs; elsewhere the position of the instruction, operation, output or event it was read from.
+   */
+  readonly place?: number | string;
 }
 
 /** A transaction that carries H, succeeded, and is not the act asked about. */
@@ -65,6 +75,13 @@ export type StatusAnswer<Position, Mark, Cursor = Position> =
       readonly state: "settled";
       readonly transaction: string;
       readonly finality: Mark;
+      /**
+       * Whether the act is the payment the reference was built from: `yes` where every member its form names of the
+       * message the payer signed equals the one presented, `no` where one differs, `unshown` where the read could not
+       * read every member. Stated where the pairing's read compared the act with what was presented, and never `yes`
+       * without that comparison. It decides no answer.
+       */
+      readonly presented?: "yes" | "no" | "unshown";
       readonly foreign: readonly ForeignItem<Position>[];
     })
   | (Named<Position, Mark> & {
@@ -111,6 +128,12 @@ export interface Seen<Position, Mark> {
   readonly account: "payee" | "other" | "none";
   /** True where the pairing's read matched it to an other act the caller gave by its reference. */
   readonly given?: boolean;
+  /**
+   * Whether the message the payer signed in it equals, member by member as the pairing's form names them, what was
+   * presented: `yes`, `no`, or `unshown` where the read could not read every member. Absent where the read made no
+   * comparison, and the answer then states none.
+   */
+  readonly presented?: "yes" | "no" | "unshown";
   readonly moved?: readonly Moved[];
   readonly signer?: string;
   readonly authority?: string;
@@ -143,12 +166,16 @@ export interface Facts<Position, Mark, Cursor = Position> {
    * The search, or the lookup at coverage `none`: `whole` where its range was read to its end and the endpoint answered
    * in the form it documents; `at`, the position to resume from where it was not. On a pairing whose single-use value
    * is H's own carrier (read-status rule 26), the read of the value at the final mark and at the latest head is the
-   * search, read whole by those two reads.
+   * search, read whole by those two reads, and such a read reports no item it could not decode, the value admitting no
+   * act but one that consumed it.
    */
   readonly search: { readonly whole: boolean; readonly at?: Cursor };
   /**
-   * The items the search met and could not decode, in the order of its range, however it found them. Each one the
-   * caller did not give by its transaction holds the search; one the caller gave holds none, and is named `given`.
+   * The items the search met and could not decode, however it found them, in the order of their `at`, the earliest
+   * first. Each one the caller did not give by its transaction holds the search; one the caller gave holds none, and is
+   * named `given`. `at` is the search position held at the item, at or before `search.at` where the search has one, so
+   * that the next call reads every item again; where an item that holds the search gives none, the answer gives no
+   * search position, and the next call reads the range again from its start.
    */
   readonly undecoded?: readonly Undecoded<Cursor>[];
   /** Whether the reader showed that it holds the history the act would be in. */
@@ -177,7 +204,9 @@ const PENDING_ORDER: readonly PendingReason[] = ["below-mark", "instrument-live"
  * holding it; a value read consumed, at the final mark or at the latest head, with no transaction found as
  * `search-incomplete`; `instrument-live` only where the value reads unconsumed at the final mark and at the latest
  * head; `not-found` only where the reader showed its history, and `history-gap` otherwise; and the `pending` reasons in
- * their order, `search-incomplete` held at the first item it could not decode and naming each. Every transaction that
+ * their order, `search-incomplete` held at the first item it could not decode and naming each. A `settled` answer
+ * states `presented` as the read compared the act with what was presented, and none where it made no comparison; it
+ * never changes which state is answered. Every transaction that
  * carries H, succeeded, is not the act and is not named as the consumer of the value is a foreign item where a reason
  * holds, named with the first; and an item the caller gave by its transaction that the read could not decode is named
  * `given`.
@@ -201,7 +230,8 @@ export function decide<Ref, Position, Mark, Cursor>(
   const holding = undecoded.filter((u) => !givenTx.has(u.transaction));
   const givenUndecoded = undecoded.filter((u) => givenTx.has(u.transaction));
   const whole = facts.search.whole && holding.length === 0;
-  const searchAt = holding[0]?.at ?? facts.search.at;
+  // Held at the first item that holds the search; at none where such an item gives no position, so nothing is skipped.
+  const searchAt = holding.length === 0 ? facts.search.at : holding.some((u) => u.at === undefined) ? undefined : holding[0]!.at;
   const bindsAct = (s: Seen<Position, Mark>): boolean => ledger.coverage === "none" || s.carries;
   const isAct = (s: Seen<Position, Mark>): boolean =>
     s.result === "succeeded" &&
@@ -253,7 +283,14 @@ export function decide<Ref, Position, Mark, Cursor>(
   const act = placed[0];
   if (act !== undefined) {
     if (ledger.markOrder(act.mark, query.finality) >= 0) {
-      return { state: "settled", ...namedOf(act), transaction: act.transaction, finality: act.mark, foreign: foreignOf(act) };
+      return {
+        state: "settled",
+        ...namedOf(act),
+        transaction: act.transaction,
+        finality: act.mark,
+        ...(act.presented === undefined ? {} : { presented: act.presented }),
+        foreign: foreignOf(act),
+      };
     }
     return pending("below-mark", act);
   }
@@ -265,7 +302,8 @@ export function decide<Ref, Position, Mark, Cursor>(
     if (!isFinal(mark)) {
       pendingReasons.add("below-mark");
       below ??= by;
-    } else if (facts.value === undefined || (ledger.coverage === "full" && !whole)) {
+    } else if (facts.value === undefined || (ledger.coverage === "full" && !whole) || acts.length > placed.length) {
+      // No failed where the value is unread, the search not whole, or an act was found that cannot be placed (rule 16).
       pendingReasons.add("search-incomplete");
     } else {
       failed = by === undefined ? { reason } : { reason, by };
