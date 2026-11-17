@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/ccd pairing: the ccd entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The accounts are version byte 01 plus SHA-256 of a label, base58check-encoded with bs58check; x402's example addresses fail base58check. D1 was produced by cborg 6.1.3; D2 was hand-assembled to the steward's PLT encoder; the digests are GNU coreutils sha256sum. D3's CCD signedTransaction is the output of @concordium/web-sdk 12.0.2's Transaction.toJSONString for Transaction.transfer(payee, 1000000 microCCD, memo D1) with sender payer, nonce 7, expiry 1790000060 and sponsor with one signature, signed by Transaction.sign with buildBasicAccountSigner of the seed 0x00…01; its memo is DataBlob.toJSON, a 2-byte big-endian length then the bytes, and the refusal rows' memos are DataBlob.toJSON of their bytes. D3's PLT signedTransaction is the output of the same SDK's Transaction.toJSONString for Transaction.tokenUpdate(createTokenUpdatePayload(EURR, {transfer: {amount: TokenAmount.create(5000000, 6), recipient: CborAccountAddress.fromBase58(payee), memo: CborMemo.fromString(H's LCP string)}})) with the same sender, nonce, expiry, sponsor and seed; its operations are Cbor.toJSON, plain hex with no length, and its recipient is the SDK's tag-40307 map with the coin info (key 1, tag 40305 {1: 919}) beside the address (key 3). bound verifies no signature. Byte strings are hex; amounts are decimal strings. A memo carries H only as ccdMemo(H) exactly: LCP's string form with lowercase hex, as one CBOR text string under RFC 8949 §4.1's preferred serialization (cborg 6.1.3's strict decode refuses the non-preferred head), so bound, status and recover read it alike. A map with a repeated key is malformed (RFC 8949 §5.6; cborg 6.1.3 with rejectDuplicateMapKeys refuses the repeated memo). D3's wireForm rows hold x402's wire form, JSON.parse(Transaction.toJSONString(tx)), against the SDK's object before serialization, whose header holds bigints (a row names the paths the test makes bigints), and against the unparsed JSON text; each is refused ccd/transaction-malformed. D4's rows change only the signed transfer's receiver or amount, which bound does not read: bound gives H, and reference, whose idDigest reads both, refuses them. Their changed toAddress fails bs58check 4.0.0's checksum; 2^64 is one past the largest u64, the type of a Concordium amount; and cborg 6.1.3 decodes the changed PLT operations with the recipient under tag 40306, where the steward's encoder writes an account address under tag 40307, and the amount under tag 5, RFC 8949 §3.4.4's bigfloat, where a token amount is tag 4, its decimal fraction. D5's rows give status's answer under the profile read-status, asked about the act payment at the mark finalized unless a row's query says otherwise; the read gives no ledger position. The rows read failed (rejected, or not this act) and pending (not found, received, committed) answer pending search-incomplete: at coverage full, failed comes only once the search for H is read whole, and the read has no search (rules 18 and 24).",
+ "about": "Vectors for the x402/exact/ccd pairing: the ccd entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The accounts are version byte 01 plus SHA-256 of a label, base58check-encoded with bs58check; x402's example addresses fail base58check. D1 was produced by cborg 6.1.3; D2 was hand-assembled to the steward's PLT encoder; the digests are GNU coreutils sha256sum. D3's CCD signedTransaction is the output of @concordium/web-sdk 12.0.2's Transaction.toJSONString for Transaction.transfer(payee, 1000000 microCCD, memo D1) with sender payer, nonce 7, expiry 1790000060 and sponsor with one signature, signed by Transaction.sign with buildBasicAccountSigner of the seed 0x00…01; its memo is DataBlob.toJSON, a 2-byte big-endian length then the bytes, and the refusal rows' memos are DataBlob.toJSON of their bytes. D3's PLT signedTransaction is the output of the same SDK's Transaction.toJSONString for Transaction.tokenUpdate(createTokenUpdatePayload(EURR, {transfer: {amount: TokenAmount.create(5000000, 6), recipient: CborAccountAddress.fromBase58(payee), memo: CborMemo.fromString(H's LCP string)}})) with the same sender, nonce, expiry, sponsor and seed; its operations are Cbor.toJSON, plain hex with no length, and its recipient is the SDK's tag-40307 map with the coin info (key 1, tag 40305 {1: 919}) beside the address (key 3). bound verifies no signature. Byte strings are hex; amounts are decimal strings. A memo carries H only as ccdMemo(H) exactly: LCP's string form with lowercase hex, as one CBOR text string under RFC 8949 §4.1's preferred serialization (cborg 6.1.3's strict decode refuses the non-preferred head), so bound, status and recover read it alike. A map with a repeated key is malformed (RFC 8949 §5.6; cborg 6.1.3 with rejectDuplicateMapKeys refuses the repeated memo). D3's wireForm rows hold x402's wire form, JSON.parse(Transaction.toJSONString(tx)), against the SDK's object before serialization, whose header holds bigints (a row names the paths the test makes bigints), and against the unparsed JSON text; each is refused ccd/transaction-malformed. D4's rows change a member bound does not read, the signed transfer's receiver or amount or a member of the header whose energy the sender signed: bound gives H, and reference, which reads each, refuses them. Their changed toAddress fails bs58check 4.0.0's checksum; 2^64 is one past the largest u64, the type of a Concordium amount; and cborg 6.1.3 decodes the changed PLT operations with the recipient under tag 40306, where the steward's encoder writes an account address under tag 40307, and the amount under tag 5, RFC 8949 §3.4.4's bigfloat, where a token amount is tag 4, its decimal fraction. D5's rows give status's answer under the profile read-status through a constructed node, as D5's own about states it, with the answers the read gives while the facts its search rests on are not yet shown. D3.signedEnergy states the energy the sender signed, and stockOptions the options the stock facilitator takes, each with its source.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
@@ -415,6 +415,14 @@
      }
     }
    ]
+  },
+  "signedEnergy": {
+   "case": "the energy in the version-1 header the sender signs, which no wire-form member holds",
+   "source": "@concordium/web-sdk 12.0.2 writes the header energy at signing (src/transactions/Transaction/finalized.ts:12-16) as getEnergyCost (src/transactions/Transaction/builder.ts:620-631): for a sponsored transaction AccountTransactionV1.calculateEnergyCost (src/transactions/AccountTransactionV1.ts:220-249), 100 for each signature, header.numSignatures and header.sponsor.numSignatures, plus 1 for each byte of the 94-byte header (a 2-byte bitmap, the 60-byte account transaction header and the sponsor's 32 bytes) and of the payload, plus executionEnergyAmount, the transaction-specific cost (constants A = 100 and B = 1, src/energyCost.ts:16-17). The sign digest is SHA-256 of 31 zero bytes and a byte 1, the serialized header and the payload (AccountTransactionV1.signDigest, src/transactions/AccountTransactionV1.ts:288-292), signed with Ed25519 by buildBasicAccountSigner. D3's two sender signatures verify under the Ed25519 public key of the seed 0x00…01 over the header with these energies, and not with executionEnergyAmount (node:crypto's Ed25519 verify). gRPC v2 gives a node's block item with that signed energy as AccountTransactionHeaderV1.energy_amount (concordium-grpc-api 30c79ca0, v2/concordium/types.proto:3303-3309).",
+   "seed": "0000000000000000000000000000000000000000000000000000000000000001",
+   "publicKey": "4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29",
+   "ccd": "716",
+   "plt": "877"
   }
  },
  "D4": {
@@ -422,19 +430,23 @@
   "ccd": {
    "expect": {
     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
-    "asset": "CCD",
-    "idDigest": "0x0a5d3a6cca5dede00c20607c7b45d383b08292c5feb016ad1fc10666c76c33d8",
-    "settleBy": 1790000060,
-    "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx"
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+    "nonce": "7",
+    "expiry": 1790000060,
+    "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+    "signed": "0xaaed35d5cc5b1c230baba9d7083243cb2b68b1992b3ad50ddf697d9bbe3360bd"
    }
   },
   "plt": {
    "expect": {
     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
-    "asset": "EURR",
-    "idDigest": "0x541e5a8c6e0876791d50ed0bf8611e36dc5ee8d94f03a14068dce965ebc3f4a6",
-    "settleBy": 1790000060,
-    "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx"
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+    "nonce": "7",
+    "expiry": 1790000060,
+    "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+    "signed": "0x631deb06301dfc4d393abcc25f6872cdb6a2ce6ccdedbeffbae62a212aa22f5f"
    }
   },
   "rows": [
@@ -509,322 +521,2805 @@
      "refused": true,
      "code": "ccd/operations-malformed"
     }
+   },
+   {
+    "case": "header.numSignatures null: the header energy the sender signed counts the sender's signatures, and @concordium/web-sdk 12.0.2 reads no signable header without them (src/transactions/Transaction/signable.ts:304-313)",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.header.numSignatures": null
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "refused": true,
+     "code": "ccd/transaction-malformed"
+    }
+   },
+   {
+    "case": "header.sponsor.numSignatures null: the header energy counts the sponsor's signatures too, which the same SDK requires of a sponsor (src/transactions/Transaction/shared.ts:57-60)",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.header.sponsor.numSignatures": null
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "refused": true,
+     "code": "ccd/transaction-malformed"
+    }
+   },
+   {
+    "case": "header.sponsor null: the pairing's transaction is the sponsored form, and the stock facilitator refuses a header with no sponsor (@x402/concordium 2.30.0, dist/esm/exact/facilitator/index.mjs:302-303)",
+    "base": "ccd",
+    "set": {
+     "payload.signedTransaction.header.sponsor": null
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "refused": true,
+     "code": "ccd/transaction-malformed"
+    }
    }
   ]
  },
  "D5": {
+  "about": "Constructed fixtures, marked so: a node written by hand, not recorded from a running node. Its last finalized height is final and that block's slot_time slot (milliseconds); the sender's items are listed with their height, number and signed header, their payload in the protocol's binary form (raw_payload) and their outcome (GetBlockItemStatus). A header's energy is the whole energy its sender signed, as D3.signedEnergy states the rule: the item's executionEnergyAmount, 300 for a transfer and 400 for a token update as D3's are, plus 200 for the two signatures and the 94-byte header and the payload's bytes. The account's next number at a finalized height is one past the highest number of its items at or below it, first where none, and at the latest head one past every item's; below created the account does not exist; any other account's next number is others at every height, or none where others is absent; a height in missing is a block the node does not hold. An undecoded item is one the reader gives by its hash alone; a hidden one is counted in the account's numbers and absent from its block's items. A hint is an item GetBlockItemStatus answers committed, with the height and number the reader read it at. Each row's ref is ref with refSet applied; the query asks the act payment at the mark finalized unless it says otherwise. The read's search is not yet shown by a run (the profile's rule 15), so a search read to its end answers pending, search-incomplete, where it would answer failed.",
   "reader": {
    "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27"
   },
   "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
   "ref": {
    "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
-   "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-   "asset": "CCD",
-   "idDigest": "0x0a5d3a6cca5dede00c20607c7b45d383b08292c5feb016ad1fc10666c76c33d8",
-   "settleBy": 1790000060,
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx"
+   "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+   "nonce": "7",
+   "expiry": 1790000060,
+   "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+   "signed": "0xaaed35d5cc5b1c230baba9d7083243cb2b68b1992b3ad50ddf697d9bbe3360bd"
   },
   "refPlt": {
    "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
-   "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-   "asset": "EURR",
-   "idDigest": "0x541e5a8c6e0876791d50ed0bf8611e36dc5ee8d94f03a14068dce965ebc3f4a6",
-   "settleBy": 1790000060,
    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx"
+   "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+   "nonce": "7",
+   "expiry": 1790000060,
+   "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+   "signed": "0x631deb06301dfc4d393abcc25f6872cdb6a2ce6ccdedbeffbae62a212aa22f5f"
   },
   "rows": [
    {
-    "case": "finalized, successful, one CCD transfer to the payee of 1000000 with memo D1, sender the payer",
-    "ref": "ref",
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
+    "case": "the item at the signed number, a CCD transfer carrying H to the payee, successful: settled, presented yes",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
       {
-       "kind": "ccd",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
-       "amount": "1000000",
-       "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
       }
      ]
     },
-    "expectStatus": {
+    "expect": {
      "state": "settled",
-     "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+     "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+     "position": "60",
      "finality": "finalized",
+     "presented": "yes",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
      "foreign": []
-    },
-    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
    },
    {
-    "case": "finalized, successful, one PLT transfer with memo tag 24 around D1",
+    "case": "the same, asked about on the act agreement: settled",
+    "query": {
+     "after": "50",
+     "act": "agreement"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+     "position": "60",
+     "finality": "finalized",
+     "presented": "yes",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a token transfer carrying H in its memo, tag 24, to the payee: settled, what moved in the token",
     "ref": "refPlt",
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
       {
-       "kind": "plt",
-       "tokenId": "EURR",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "hash": "bb0658ef3b98011753b0db57689213692d3943fc5a34fc82c0d23722c060aba9",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "877",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "1b0445555252000000ad81a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a201d99d71a101190397035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "plt",
+          "tokenId": "EURR",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "5000000",
+          "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "bb0658ef3b98011753b0db57689213692d3943fc5a34fc82c0d23722c060aba9",
+     "position": "60",
+     "finality": "finalized",
+     "presented": "yes",
+     "moved": [
+      {
+       "asset": "EURR",
        "amount": "5000000",
-       "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "bb0658ef3b98011753b0db57689213692d3943fc5a34fc82c0d23722c060aba9",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the item at the signed number at the position given: failed, before-position, naming it",
+    "query": {
+     "after": "60"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
       }
      ]
     },
-    "expectStatus": {
-     "state": "settled",
-     "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+     "position": "60",
      "finality": "finalized",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
      "foreign": []
-    },
-    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-   },
-   {
-    "case": "committed",
-    "ref": "ref",
-    "item": {
-     "state": "committed"
-    },
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/not-finalized"
     }
    },
    {
-    "case": "received",
-    "ref": "ref",
-    "item": {
-     "state": "received"
+    "case": "the number not passed at the last finalized height or at the latest head, the expiry not passed: instrument-live",
+    "query": {
+     "after": "50"
     },
-    "expectStatus": {
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": []
+    },
+    "expect": {
      "state": "pending",
-     "reason": "search-incomplete",
+     "reason": "instrument-live",
      "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/not-finalized"
     }
    },
    {
-    "case": "finalized, rejected",
-    "ref": "ref",
-    "item": {
-     "state": "finalized",
-     "success": false,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": []
+    "case": "the number not passed, the last finalized block past the expiry, nothing sent since the issue: search-incomplete, the search's facts not yet shown",
+    "query": {
+     "after": "50"
     },
-    "expectStatus": {
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": []
+    },
+    "expect": {
      "state": "pending",
      "reason": "search-incomplete",
+     "search": {
+      "next": "7"
+     },
      "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/rejected"
     }
    },
    {
-    "case": "the node does not know it",
-    "ref": "ref",
-    "item": null,
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+    "case": "a lapse whose search finds the payer's payment signed again at the next number: settled on it, presented no",
+    "query": {
+     "after": "50"
     },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/not-found"
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "5917a61fb9223a4b93593929f30fb93e6a39a73c1f9e75b3cd04f691cadceb24",
+       "height": "70",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "5917a61fb9223a4b93593929f30fb93e6a39a73c1f9e75b3cd04f691cadceb24",
+     "position": "70",
+     "finality": "finalized",
+     "presented": "no",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "5917a61fb9223a4b93593929f30fb93e6a39a73c1f9e75b3cd04f691cadceb24",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
     }
    },
    {
-    "case": "the reader fails",
-    "ref": "ref",
-    "item": "reader-error",
-    "expectStatus": {
+    "case": "the signed number consumed by a plain transfer, the search reading no other number: search-incomplete, never instrument-consumed while the search's facts are not shown",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "the item at the signed number is this payment, rejected: search-incomplete, never transaction-failed while the search's facts are not shown",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "21d38f046ff5b01aaf10dd6f4179ff199099657257c7d76e0b3d56150db77059",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": false,
+        "transfers": []
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "on a charge, the item at the signed number carries H to another account: search-incomplete, and a foreign item other-account",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "1603f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": [
+      {
+       "transaction": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
+       "position": "60",
+       "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+       "moved": [
+        {
+         "asset": "CCD",
+         "amount": "1000000",
+         "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
+         "transaction": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
+         "place": 0
+        }
+       ],
+       "reason": "other-account"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the same on the act agreement: settled, an agreement held to no account, presented no",
+    "query": {
+     "after": "50",
+     "act": "agreement"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "1603f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
+     "position": "60",
+     "finality": "finalized",
+     "presented": "no",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
+       "transaction": "5a3a2b1b38be0ce4dabda3716108c6ce8d28087b66bdb5b2135f85545e812531",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the sender and the receiver under aliases of the payer's and the payee's accounts (the first 29 bytes): settled, presented no",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "3dc30e6000ef3e4b0f53e0a1826e022475c93b400e978c80ffcb744404fdb25e",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d0627886e9",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79157669004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79157669",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "3dc30e6000ef3e4b0f53e0a1826e022475c93b400e978c80ffcb744404fdb25e",
+     "position": "60",
+     "finality": "finalized",
+     "presented": "no",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD5xFFikFaU",
+       "transaction": "3dc30e6000ef3e4b0f53e0a1826e022475c93b400e978c80ffcb744404fdb25e",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeSrK5wmYep",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a sender whose account was created after the position given, its first number signed: settled",
+    "refSet": {
+     "nonce": "1",
+     "signed": "0x4833d10e9f57c873a4b0d967c7073cd124d5baeacc4b001d77ff22efff700c3b"
+    },
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "1",
+     "items": [
+      {
+       "hash": "e9a7b11ff55237edbdd74a746fdeaa63c06be932b5b079573fc1fadc6a9af3d0",
+       "height": "60",
+       "nonce": "1",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ],
+     "created": "55"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "e9a7b11ff55237edbdd74a746fdeaa63c06be932b5b079573fc1fadc6a9af3d0",
+     "position": "60",
+     "finality": "finalized",
+     "presented": "yes",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "e9a7b11ff55237edbdd74a746fdeaa63c06be932b5b079573fc1fadc6a9af3d0",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the account absent at the position given, whose block the node does not hold: history-gap",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ],
+     "created": "55",
+     "missing": [
+      "50"
+     ]
+    },
+    "expect": {
      "state": "unreadable",
-     "reason": "transport",
+     "reason": "history-gap",
      "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/unreadable"
     }
    },
    {
-    "case": "a transfer without a memo",
-    "ref": "ref",
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
-      {
-       "kind": "ccd",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
-       "amount": "1000000",
-       "memo": null
-      }
-     ]
-    },
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/no-carrier"
-    }
-   },
-   {
-    "case": "a landed CCD transfer whose memo in LCP's string form with upper-case hex digits",
-    "ref": "ref",
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
-      {
-       "kind": "ccd",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
-       "amount": "1000000",
-       "memo": "784d6c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144"
-      }
-     ]
-    },
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/no-carrier"
-    }
-   },
-   {
-    "case": "a landed CCD transfer whose memo text under a non-preferred CBOR head (79 00 4d, RFC 8949 §4.1's preferred serialization is 78 4d)",
-    "ref": "ref",
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
-      {
-       "kind": "ccd",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
-       "amount": "1000000",
-       "memo": "79004d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
-      }
-     ]
-    },
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/no-carrier"
-    }
-   },
-   {
-    "case": "a landed CCD transfer whose memo text with a leading U+FEFF, a character of the text string (RFC 8949 §3.1)",
-    "ref": "ref",
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
-      {
-       "kind": "ccd",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
-       "amount": "1000000",
-       "memo": "7850efbbbf6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
-      }
-     ]
-    },
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "expectRecover": {
-     "refused": true,
-     "code": "ccd/no-carrier"
-    }
-   },
-   {
-    "case": "finalized, successful, one CCD transfer to the payee with memo D1, asked about on the act agreement: an agreement is held to no account, and the same item settles it",
-    "ref": "ref",
+    "case": "the number passed at the latest head only, its item above the last finalized height: search-incomplete, never instrument-live",
     "query": {
-     "act": "agreement",
-     "finality": "finalized"
+     "after": "50"
     },
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
       {
-       "kind": "ccd",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
-       "amount": "1000000",
-       "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "110",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
       }
      ]
     },
-    "expectStatus": {
-     "state": "settled",
-     "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-     "finality": "finalized",
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
      "foreign": []
-    },
-    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
    },
    {
-    "case": "finalized, successful, one CCD transfer with memo D1, asked about at the mark committed: settled, the item read at finalized",
-    "ref": "ref",
-    "query": {
-     "act": "payment",
-     "finality": "committed"
+    "case": "the same, the item named by a hint and committed: below-mark, naming it at committed",
+    "refSet": {
+     "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8"
     },
-    "item": {
-     "state": "finalized",
-     "success": true,
-     "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "transfers": [
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
       {
-       "kind": "ccd",
-       "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "110",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ],
+     "hint": {
+      "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+      "state": "committed",
+      "height": "110",
+      "nonce": "7",
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "success": true,
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+     "position": "110",
+     "finality": "committed",
+     "moved": [
+      {
+       "asset": "CCD",
        "amount": "1000000",
-       "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the payer's act carrying H at the next number, given by the caller by its reference: never settled, a foreign item given",
+    "query": {
+     "after": "50",
+     "others": [
+      {
+       "ref": {
+        "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+        "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+        "nonce": "8",
+        "expiry": 1790000060,
+        "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+        "signed": "0xcafa9455634c492909a0afaa6dea793244738ab9cd58c1ac06e0fa9de59bd286"
+       }
       }
      ]
     },
-    "expectStatus": {
-     "state": "settled",
-     "transaction": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-     "finality": "finalized",
-     "foreign": []
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "c1af47f5ff422a704cc1966285cbd032e914584e7c69f64d3b730c1156bfa70c",
+       "height": "70",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
     },
-    "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "9"
+     },
+     "foreign": [
+      {
+       "transaction": "c1af47f5ff422a704cc1966285cbd032e914584e7c69f64d3b730c1156bfa70c",
+       "position": "70",
+       "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+       "moved": [
+        {
+         "asset": "CCD",
+         "amount": "1000000",
+         "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+         "transaction": "c1af47f5ff422a704cc1966285cbd032e914584e7c69f64d3b730c1156bfa70c",
+         "place": 0
+        }
+       ],
+       "reason": "given"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the search meets an item of the sender's it cannot decode: search-incomplete, held at its number and naming it",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "1c93dc09f66e78222eb0e9d955cc1625bcee5a72dd6fda37b034704532d0a8dd",
+       "height": "70",
+       "nonce": "8",
+       "undecoded": true
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "undecoded": [
+      "1c93dc09f66e78222eb0e9d955cc1625bcee5a72dd6fda37b034704532d0a8dd"
+     ],
+     "foreign": []
+    }
+   },
+   {
+    "case": "the item at the signed number, its outcome naming an event kind the reader does not know: unparseable",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ],
+        "unknown": true
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a number located with no item of the sender's at it: search-incomplete, held at that number",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "bdc8b509787d134e24d6e113e2e001412fb72df7caf18b5997edc1a56d84f43c",
+       "height": "70",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "hidden": true
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "a search past the read's bound of sixteen numbers: search-incomplete, with the next number to locate",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "277ee910f724f397811220e336076dcbe06dcae8a16e5a49aaf08827a51a1138",
+       "height": "63",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000008",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "8",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "12b269028eac46d89114e1760b157da08cded1fcbff1ea6074fd44c1d8c096fb",
+       "height": "64",
+       "nonce": "9",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000009",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "9",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "0082d6a511fc57476b13cafa51d82238a521ddc78d4b387f596d9b6e60d498ed",
+       "height": "65",
+       "nonce": "10",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000a",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "10",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "fefc97009863c25e1be3d416a580f68e9d370b73c2ea4f9294def0f40a0cfaa3",
+       "height": "66",
+       "nonce": "11",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000b",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "11",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "5b5d45ad90b35a285258850330f95a15b7cb32578360cba8e5cc11cdd89a18a1",
+       "height": "67",
+       "nonce": "12",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000c",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "12",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "b37a1015442b978e62c658e9aa6f1a327807fecd02677a2603469d50058a969b",
+       "height": "68",
+       "nonce": "13",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000d",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "13",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "cd694d6a044e3e22957d38aeac524631ea8a86598049919e004623bf3f0277c6",
+       "height": "69",
+       "nonce": "14",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000e",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "14",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "905a2bbdfc509ec41cc51f3181099b70b807b7f6aee25c464a7695629b0a5ede",
+       "height": "70",
+       "nonce": "15",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000f",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "15",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "b73e606582622607506e6c69a877b81d82b2475ab04582789e3c75f78948ffc0",
+       "height": "71",
+       "nonce": "16",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000010",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "16",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "58639dfaa1feafab059123f05f6d15500c1ac4daa84cedacc17c7d6bce04e35b",
+       "height": "72",
+       "nonce": "17",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000011",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "17",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "c115d8af3a3ee26ec8200f2d21ffa555e37d0e5c8d25f01623da0ffd2d33a91a",
+       "height": "73",
+       "nonce": "18",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000012",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "18",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "8231e6cc468630a628cfc9239a51d582947295f65e547e84c8215ad365d73e8e",
+       "height": "74",
+       "nonce": "19",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000013",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "19",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "710d55a990c501baa480ee701f029163c8cdf078a5b987a98088653cf816fc66",
+       "height": "75",
+       "nonce": "20",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000014",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "20",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "7379f47f1dca6233aa6781e4733e7afab61bf7f4eabeb32e9541e537215e46b7",
+       "height": "76",
+       "nonce": "21",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000015",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "21",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "85b136f63a410eaaebdb7a931f37c428da9aa154e75b2a8cdae3e10da86a4c26",
+       "height": "77",
+       "nonce": "22",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000016",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "22",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "88107edfb49061cf32498c6ad3649e234d97b67bfdf8d35c9208fe23242c9e3f",
+       "height": "78",
+       "nonce": "23",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000017",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "23",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "5cb525127adbead6797acd0f57b3e70b88b7ca6501a570ac237bfc9d663da5d1",
+       "height": "90",
+       "nonce": "24",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "24"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "the next call, given that position, finds the payer's act at it: settled, presented no",
+    "query": {
+     "after": "50",
+     "search": {
+      "next": "24"
+     }
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "277ee910f724f397811220e336076dcbe06dcae8a16e5a49aaf08827a51a1138",
+       "height": "63",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000008",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "8",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "12b269028eac46d89114e1760b157da08cded1fcbff1ea6074fd44c1d8c096fb",
+       "height": "64",
+       "nonce": "9",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000009",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "9",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "0082d6a511fc57476b13cafa51d82238a521ddc78d4b387f596d9b6e60d498ed",
+       "height": "65",
+       "nonce": "10",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000a",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "10",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "fefc97009863c25e1be3d416a580f68e9d370b73c2ea4f9294def0f40a0cfaa3",
+       "height": "66",
+       "nonce": "11",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000b",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "11",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "5b5d45ad90b35a285258850330f95a15b7cb32578360cba8e5cc11cdd89a18a1",
+       "height": "67",
+       "nonce": "12",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000c",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "12",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "b37a1015442b978e62c658e9aa6f1a327807fecd02677a2603469d50058a969b",
+       "height": "68",
+       "nonce": "13",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000d",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "13",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "cd694d6a044e3e22957d38aeac524631ea8a86598049919e004623bf3f0277c6",
+       "height": "69",
+       "nonce": "14",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000e",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "14",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "905a2bbdfc509ec41cc51f3181099b70b807b7f6aee25c464a7695629b0a5ede",
+       "height": "70",
+       "nonce": "15",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca000000000000000f",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "15",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "b73e606582622607506e6c69a877b81d82b2475ab04582789e3c75f78948ffc0",
+       "height": "71",
+       "nonce": "16",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000010",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "16",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "58639dfaa1feafab059123f05f6d15500c1ac4daa84cedacc17c7d6bce04e35b",
+       "height": "72",
+       "nonce": "17",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000011",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "17",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "c115d8af3a3ee26ec8200f2d21ffa555e37d0e5c8d25f01623da0ffd2d33a91a",
+       "height": "73",
+       "nonce": "18",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000012",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "18",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "8231e6cc468630a628cfc9239a51d582947295f65e547e84c8215ad365d73e8e",
+       "height": "74",
+       "nonce": "19",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000013",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "19",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "710d55a990c501baa480ee701f029163c8cdf078a5b987a98088653cf816fc66",
+       "height": "75",
+       "nonce": "20",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000014",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "20",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "7379f47f1dca6233aa6781e4733e7afab61bf7f4eabeb32e9541e537215e46b7",
+       "height": "76",
+       "nonce": "21",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000015",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "21",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "85b136f63a410eaaebdb7a931f37c428da9aa154e75b2a8cdae3e10da86a4c26",
+       "height": "77",
+       "nonce": "22",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000016",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "22",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "88107edfb49061cf32498c6ad3649e234d97b67bfdf8d35c9208fe23242c9e3f",
+       "height": "78",
+       "nonce": "23",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000017",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "23",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "5cb525127adbead6797acd0f57b3e70b88b7ca6501a570ac237bfc9d663da5d1",
+       "height": "90",
+       "nonce": "24",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "5cb525127adbead6797acd0f57b3e70b88b7ca6501a570ac237bfc9d663da5d1",
+     "position": "90",
+     "finality": "finalized",
+     "presented": "no",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "1000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "5cb525127adbead6797acd0f57b3e70b88b7ca6501a570ac237bfc9d663da5d1",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a charge its option's payee signed under an alias of its account, named by a hint and finalized, beside the payer's number not passed: instrument-live, and a foreign item payee-signed",
+    "refSet": {
+     "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54"
+    },
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [],
+     "hint": {
+      "hash": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
+      "state": "finalized",
+      "height": "70",
+      "nonce": "3",
+      "sender": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79157669",
+      "success": true,
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": [
+      {
+       "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
+       "position": "70",
+       "signer": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD5xFFikFaU",
+       "moved": [
+        {
+         "asset": "CCD",
+         "amount": "1000000",
+         "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+         "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
+         "place": 0
+        }
+       ],
+       "reason": "payee-signed"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the same on the act agreement: an agreement its option's payee signed is a foreign item payee-signed",
+    "refSet": {
+     "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54"
+    },
+    "query": {
+     "after": "50",
+     "act": "agreement"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [],
+     "hint": {
+      "hash": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
+      "state": "finalized",
+      "height": "70",
+      "nonce": "3",
+      "sender": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79157669",
+      "success": true,
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": [
+      {
+       "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
+       "position": "70",
+       "signer": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD5xFFikFaU",
+       "moved": [
+        {
+         "asset": "CCD",
+         "amount": "1000000",
+         "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+         "transaction": "e00638fb841cdae264a0a194365929c7204905f73d2406c54a6d0bf3f17abf54",
+         "place": 0
+        }
+       ],
+       "reason": "payee-signed"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the search meets the payer's rejected item carrying H at the next number: no foreign item, and the search reads on",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "1825d471c2331a23d9c08135c4e832bd8522bf8fbf8e8c599d9d2adfdf7c1d3c",
+       "height": "70",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": false,
+        "transfers": []
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "9"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "a rejected item at the signed number that is not this payment: search-incomplete, never instrument-consumed while the search's facts are not shown",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "2b43ea6f54ec76d44fa42b31b0de9647be403b5ec2362dc0fb84001752b1b30c",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": false,
+        "transfers": []
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "a transfer carrying H of zero to the payee at the signed number: settled, what moved zero, presented no",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "0ee1a5c6b5e132d9961ca99fa974c96c382a12882298138fbebdf5bc356b19cd",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561640000000000000000",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "0",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0ee1a5c6b5e132d9961ca99fa974c96c382a12882298138fbebdf5bc356b19cd",
+     "position": "60",
+     "finality": "finalized",
+     "presented": "no",
+     "moved": [
+      {
+       "asset": "CCD",
+       "amount": "0",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "0ee1a5c6b5e132d9961ca99fa974c96c382a12882298138fbebdf5bc356b19cd",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a token transfer carrying H to the payee at the signed number, where the payment presented is in CCD: settled, what moved in the token, presented no",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "b9264a1bfd8716e8ffcddaa265387d1675b0c0b19b91d923689212cfd8d3fd41",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "877",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "1b0445555252000000ad81a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a201d99d71a101190397035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "plt",
+          "tokenId": "EURR",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "5000000",
+          "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "b9264a1bfd8716e8ffcddaa265387d1675b0c0b19b91d923689212cfd8d3fd41",
+     "position": "60",
+     "finality": "finalized",
+     "presented": "no",
+     "moved": [
+      {
+       "asset": "EURR",
+       "amount": "5000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "b9264a1bfd8716e8ffcddaa265387d1675b0c0b19b91d923689212cfd8d3fd41",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the payer's act carrying H at the signed number, given by the caller by its hash: never settled, search-incomplete and a foreign item given",
+    "query": {
+     "after": "50",
+     "others": [
+      {
+       "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8"
+      }
+     ]
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": [
+      {
+       "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+       "position": "60",
+       "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+       "moved": [
+        {
+         "asset": "CCD",
+         "amount": "1000000",
+         "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+         "transaction": "f0b1eaa6c10ba6adec5c825c3faf15f70fb1d919c6ea9f2337e1d8796d8e6ff8",
+         "place": 0
+        }
+       ],
+       "reason": "given"
+      }
+     ]
+    }
+   },
+   {
+    "case": "on a charge, the item at the signed number carries H to another account, zero: search-incomplete, and a foreign item other-account",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "1bd2dd330385606d92cb3af02b48d08e7ce349817addfaafa5d93e1a2d8e9aa2",
+       "height": "60",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "1603f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca004f784d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561640000000000000000",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "0",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": [
+      {
+       "transaction": "1bd2dd330385606d92cb3af02b48d08e7ce349817addfaafa5d93e1a2d8e9aa2",
+       "position": "60",
+       "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+       "moved": [
+        {
+         "asset": "CCD",
+         "amount": "0",
+         "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
+         "transaction": "1bd2dd330385606d92cb3af02b48d08e7ce349817addfaafa5d93e1a2d8e9aa2",
+         "place": 0
+        }
+       ],
+       "reason": "other-account"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the search finds the payer's token transfer carrying H to the payee at the next number: settled on it, presented no",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "b80be2c4ddccea7f927c9248547336eca733f36202ea5505e6e0a311708b05ac",
+       "height": "70",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "877",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "1b0445555252000000ad81a1687472616e73666572a3646d656d6fd818584f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616466616d6f756e74c482251a004c4b4069726563697069656e74d99d73a201d99d71a101190397035820bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "plt",
+          "tokenId": "EURR",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "5000000",
+          "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "b80be2c4ddccea7f927c9248547336eca733f36202ea5505e6e0a311708b05ac",
+     "position": "70",
+     "finality": "finalized",
+     "presented": "no",
+     "moved": [
+      {
+       "asset": "EURR",
+       "amount": "5000000",
+       "to": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+       "transaction": "b80be2c4ddccea7f927c9248547336eca733f36202ea5505e6e0a311708b05ac",
+       "place": 0
+      }
+     ],
+     "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the search meets the payer's item carrying H to another account at the next number: a foreign item other-account, which settles nothing",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "b58aea6bd5834853b5b8231b9e1dcf3d1bc568922687f79a51323dcb5523d29c",
+       "height": "70",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "1603f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "9"
+     },
+     "foreign": [
+      {
+       "transaction": "b58aea6bd5834853b5b8231b9e1dcf3d1bc568922687f79a51323dcb5523d29c",
+       "position": "70",
+       "signer": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+       "moved": [
+        {
+         "asset": "CCD",
+         "amount": "1000000",
+         "to": "2yVAJDueEMQ5YBAk9yktkxneRHYf1RfffhaaaXKrhyuyJEmUyL",
+         "transaction": "b58aea6bd5834853b5b8231b9e1dcf3d1bc568922687f79a51323dcb5523d29c",
+         "place": 0
+        }
+       ],
+       "reason": "other-account"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the search meets the payer's item at the next number above the last finalized height: search-incomplete, held at that number",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "010a72de1932eadc6019318de078277ebb9f0ffd681d5dd8900dd636116b462b",
+       "height": "110",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "716",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "16bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696004f784d6c63703a7368613235363a30786261373831366266386630316366656134313431343064653564616532323233623030333631613339363137376139636234313066663631663230303135616400000000000f4240",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+          "amount": "1000000",
+          "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+         }
+        ]
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "the search meets an item of the payer's whose payload type the reader does not know: search-incomplete, held at its number and naming it",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000061000",
+     "first": "7",
+     "items": [
+      {
+       "hash": "ff85c0a0cebf9140406876ff9dec7063077191134743157f0f01b54ad211759d",
+       "height": "55",
+       "nonce": "7",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "635",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "0303f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca0000000000000005",
+       "outcome": {
+        "success": true,
+        "transfers": [
+         {
+          "kind": "ccd",
+          "receiver": "03f410f422a5654d7c7b86adaaa393c51f1ae393ee52a2ac1b6bcd419c895dca",
+          "amount": "5",
+          "memo": null
+         }
+        ]
+       }
+      },
+      {
+       "hash": "4544e96569c909b916fbf92ca9fc32aae74840ebf2ff690de84b16cfa53344fe",
+       "height": "70",
+       "nonce": "8",
+       "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+       "expiry": "1790000060",
+       "energy": "598",
+       "sponsor": "c4a8710dc6641b10ed1048855ee472629589d18d404850b9083aedef9b93c2c7",
+       "payload": "63010203"
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "next": "8"
+     },
+     "undecoded": [
+      "4544e96569c909b916fbf92ca9fc32aae74840ebf2ff690de84b16cfa53344fe"
+     ],
+     "foreign": []
+    }
+   },
+   {
+    "case": "the sender's number not passed, where every other account's next number has passed it: instrument-live, the numbers read for the sender alone",
+    "query": {
+     "after": "50"
+    },
+    "node": {
+     "final": "100",
+     "slot": "1790000000000",
+     "first": "7",
+     "items": [],
+     "others": "40"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    }
    }
   ],
+  "recover": {
+   "rows": [
+    {
+     "case": "finalized, successful, one CCD transfer to the payee of 1000000 with memo D1, sender the payer",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     },
+     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+     "case": "finalized, successful, one PLT transfer with memo tag 24 around D1",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "plt",
+        "tokenId": "EURR",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "5000000",
+        "memo": "d818584f784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     },
+     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+     "case": "committed",
+     "item": {
+      "state": "committed",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": []
+     },
+     "expect": {
+      "refused": true,
+      "code": "ccd/not-finalized"
+     }
+    },
+    {
+     "case": "received",
+     "item": {
+      "state": "received"
+     },
+     "expect": {
+      "refused": true,
+      "code": "ccd/not-finalized"
+     }
+    },
+    {
+     "case": "finalized, rejected",
+     "item": {
+      "state": "finalized",
+      "success": false,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": []
+     },
+     "expect": {
+      "refused": true,
+      "code": "ccd/rejected"
+     }
+    },
+    {
+     "case": "the node does not know it",
+     "item": null,
+     "expect": {
+      "refused": true,
+      "code": "ccd/not-found"
+     }
+    },
+    {
+     "case": "the reader fails",
+     "item": "reader-error",
+     "expect": {
+      "refused": true,
+      "code": "ccd/unreadable"
+     }
+    },
+    {
+     "case": "a transfer without a memo",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": null
+       }
+      ]
+     },
+     "expect": {
+      "refused": true,
+      "code": "ccd/no-carrier"
+     }
+    },
+    {
+     "case": "a landed CCD transfer whose memo in LCP's string form with upper-case hex digits",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "784d6c63703a7368613235363a307842413738313642463846303143464541343134313430444535444145323232334230303336314133393631373741394342343130464636314632303031354144"
+       }
+      ]
+     },
+     "expect": {
+      "refused": true,
+      "code": "ccd/no-carrier"
+     }
+    },
+    {
+     "case": "a landed CCD transfer whose memo text under a non-preferred CBOR head (79 00 4d, RFC 8949 §4.1's preferred serialization is 78 4d)",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "79004d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     },
+     "expect": {
+      "refused": true,
+      "code": "ccd/no-carrier"
+     }
+    },
+    {
+     "case": "a landed CCD transfer whose memo text with a leading U+FEFF, a character of the text string (RFC 8949 §3.1)",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "7850efbbbf6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     },
+     "expect": {
+      "refused": true,
+      "code": "ccd/no-carrier"
+     }
+    },
+    {
+     "case": "finalized, successful, one CCD transfer to the payee with memo D1, asked about on the act agreement: an agreement is held to no account, and the same item settles it",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     },
+     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+     "case": "finalized, successful, one CCD transfer with memo D1, asked about at the mark committed: settled, the item read at finalized",
+     "item": {
+      "state": "finalized",
+      "success": true,
+      "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
+      "transfers": [
+       {
+        "kind": "ccd",
+        "receiver": "bed0c8a8868fe009c7d12fb3e94e63e5f0232b5dac35115e83260bbb79147696",
+        "amount": "1000000",
+        "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+       }
+      ]
+     },
+     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    }
+   ]
+  },
   "wrongReader": {
    "network": "ccd:9dd9ca4d19e9393877d2c44b70f89acb",
    "expectStatus": {
@@ -838,26 +3333,82 @@
    }
   }
  },
- "plant": {
-  "case": "a finalized, successful transfer with memo D1 whose receiver is the payer itself",
-  "item": {
-   "state": "finalized",
-   "success": true,
-   "sender": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-   "transfers": [
-    {
-     "kind": "ccd",
-     "receiver": "5dab188684c61ac98af4faf30ac944fe73fb022944a2d888046948d062798616",
-     "amount": "1000000",
-     "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+ "stockOptions": {
+  "case": "the options of the profile's rule 3 that the stock facilitator takes: an amount of \"0\", and CCD named in another case",
+  "source": "@x402/concordium 2.30.0 (its npm tarball, integrity sha512-FbDFSztoCf3X5eYy9UiEMVVt0PhgAhyhqXhBMiFeRKPM5Ya4EQE7gRdzBYSO70W+WHgUVVOrvAc6Wb749Wiacw==), dist/esm/exact/facilitator/index.mjs: verify reads the asset as (requirements.asset ?? \"CCD\").toUpperCase() (:138), and for CCD takes a payload of type transfer or transferWithMemo (:334-341) whose toAddress is payTo (:361-367); checkAmount takes a required amount of decimal digits, \"0\" among them, and compares a CCD transfer's amount with it by equality (:382-409). The expected requests are the profile's rule 3 for D3's option at the file's now; the zero payment's digest is rule 14's, over D3's members with the amount 0 and the header energy 716 (D3.signedEnergy), computed with Python's hashlib.",
+  "rows": [
+   {
+    "case": "O at amount \"0\": read offers it, build writes a CCD transfer of \"0\" with the CCD memo, and bound and reference read D3's CCD payment with its amount set to \"0\"",
+    "option": {
+     "scheme": "exact",
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "amount": "0",
+     "asset": "CCD",
+     "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+     }
+    },
+    "presentedSet": {
+     "payload.signedTransaction.payload.amount": "0"
+    },
+    "expectRequest": {
+     "kind": "ccd-transfer",
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "sponsor": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd",
+     "toAddress": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "asset": "CCD",
+     "amount": "0",
+     "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+     "expiresBy": 1790000055
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "nonce": "7",
+     "expiry": 1790000060,
+     "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "signed": "0x3188f10da5183184fd062fb85abc9eff5821ae80ba098fb22a3ef7eef631055c"
     }
-   ]
-  },
-  "expectStatus": {
-   "state": "pending",
-   "reason": "search-incomplete",
-   "foreign": []
-  }
+   },
+   {
+    "case": "O with its asset named ccd in lowercase: read offers it, build writes the CCD memo (a SimpleTransferWithMemo, not the token memo), and bound and reference read D3's CCD payment under it",
+    "option": {
+     "scheme": "exact",
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "amount": "1000000",
+     "asset": "ccd",
+     "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd"
+     }
+    },
+    "expectRequest": {
+     "kind": "ccd-transfer",
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "sponsor": "4SMYM3fzSqs6DBqMgPDWnq4XTiT2YXFCUD2dV3rPmtG42ocYtd",
+     "toAddress": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "asset": "ccd",
+     "amount": "1000000",
+     "memo": "784d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+     "expiresBy": 1790000055
+    },
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "expectReference": {
+     "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "sender": "3ezotrLdEJLzM7cwvpkGtxGcmSFJ8MZMySUvQynXeV3P8s8wcg",
+     "nonce": "7",
+     "expiry": 1790000060,
+     "payee": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
+     "signed": "0xaaed35d5cc5b1c230baba9d7083243cb2b68b1992b3ad50ddf697d9bbe3360bd"
+    }
+   }
+  ]
  },
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
@@ -1038,13 +3589,13 @@
     "expect": "x402/option-not-this-pairing"
    },
    {
-    "case": "the option with amount \"0\", which is zero",
+    "case": "the option with amount \"00\", which has a leading zero",
     "pairing": "x402/exact/ccd",
     "payment": "/buyer/rows/1/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "ccd:4221332d34e1694168c2a0c0b3fd0f27",
-     "amount": "0",
+     "amount": "00",
      "asset": "CCD",
      "payTo": "4PnJd77jiMZB3HheYkrynfUGzZtpSERjpzy954eDD3krRf1Wpx",
      "maxTimeoutSeconds": 60,

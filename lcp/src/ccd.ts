@@ -7,13 +7,25 @@
  * `@concordium/web-sdk`, `JSON.parse(Transaction.toJSONString(tx))`. Any other value, such as the SDK's object
  * before serialization, whose header holds bigints, is `ccd/transaction-malformed`.
  */
-import { sha256 } from "@noble/hashes/sha2.js";
-import { canonicalJson, fromLcpString, hash, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
+import { canonicalJson, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";
-import { deepFreeze, isObject, normalHash, UINT256_LIMIT } from "./fields.js";
+import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { decodeCbor, isMap, isTag, mapGet, type Cbor, type CborMap } from "./cbor.js";
-import type { CcdPaymentPayload } from "./internal/ccd.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
+import {
+  accountBytes,
+  CCD_MAX_MEMO,
+  ccdMemo,
+  memoCarrier,
+  pltMemo,
+  signedDigest,
+  signedEnergy,
+  transferMemo,
+  type CcdPaymentPayload,
+} from "./internal/ccd.js";
+export { accountBytes, CCD_MAX_ADDRESS, CCD_MAX_MEMO, ccdMemo, memoCarrier, pltMemo } from "./internal/ccd.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, sameJson, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
+import { ccdRead, isItem } from "./internal/ccd-read.js";
+export { CCD_SEARCH_NUMBERS } from "./internal/ccd-read.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -23,7 +35,7 @@ import {
 } from "./x402.js";
 import { CCD } from "./internal/data/ccd.js";
 import { x402Payee } from "./internal/payee.js";
-import { decide, type Facts, type Ledger, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import type { RecoverInput, StatusAnswer, StatusQuery } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
@@ -39,41 +51,97 @@ export interface CcdTransfer {
   memo: Uint8Array | null;
 }
 
+/**
+ * An answer of gRPC v2 `GetBlockItemStatus` in the reader's form: received; or in a block, `committed` or `finalized`,
+ * with its outcome: whether it succeeded, its sender, each transfer its effects or events list in their order, and
+ * `unknown`, set where an effect or event kind is one the reader does not know (never read as "no transfer"). For an
+ * item in a block the reader may add the height of the block that holds it and its header's sequence number, read
+ * with `GetBlockInfo` and `GetBlockItems` on that block; `status` takes an item a hint names only with its height.
+ */
 export type CcdItem =
   | { state: "received" }
-  | { state: "committed" }
-  | { state: "finalized"; success: boolean; sender: Uint8Array | null; transfers: readonly CcdTransfer[] };
+  | {
+      state: "committed" | "finalized";
+      success: boolean;
+      sender: Uint8Array | null;
+      transfers: readonly CcdTransfer[];
+      unknown?: boolean;
+      height?: bigint;
+      nonce?: bigint;
+    };
 
 /**
- * Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
- * `@integraledger/lcp/evm`: a `ReaderError` reads by its kind (`too-large` as `too-large`, `malformed` as
- * `unparseable`), and any other rejection as `transport`.
+ * One item of gRPC v2 `GetBlockItems` on a finalized block, as the reader gives it: an account transaction's hash, its
+ * signed header (the sender's 32 bytes, its sequence number, `expiry` in seconds, the energy and, on a sponsored
+ * transaction, the sponsor's 32 bytes) and its payload in the protocol's binary form, `raw_payload`, which lcp decodes;
+ * or an item the reader cannot read as one, by its hash.
+ */
+export type CcdBlockItem =
+  | {
+      hash: string;
+      sender: Uint8Array;
+      nonce: bigint;
+      expiry: bigint;
+      energy: bigint;
+      sponsor: Uint8Array | null;
+      payload: Uint8Array;
+    }
+  | { hash: string; undecoded: true };
+
+/**
+ * Bounded, read-only calls against one network's node (gRPC v2). Every failure rejects, for example with
+ * `ReaderError` from `@integraledger/lcp/evm`: a `ReaderError` reads by its kind (`too-large` as `too-large`,
+ * `malformed` as `unparseable`), and any other rejection as `transport`.
  */
 export interface CcdReader {
   readonly network: CcdNetwork;
-  /** gRPC v2 `GetBlockItemStatus`; null when the node does not know the item. */
+  /** `GetConsensusInfo`'s last finalized block height. */
+  lastFinal(): Promise<bigint>;
+  /** `GetBlockInfo` at a finalized height: its `slot_time`, in milliseconds; null where the node does not hold it. */
+  block(height: bigint): Promise<{ slotTime: bigint } | null>;
+  /**
+   * `GetAccountInfo(account, block).sequence_number`, the account's next sequence number, at a finalized height or at
+   * the latest head (`best`); null where the node answers that it has no such account at that block, or no such block,
+   * which the read tells apart with `block`.
+   */
+  nextNonce(account: string, at: bigint | "best"): Promise<bigint | null>;
+  /** `GetBlockItems` on a finalized height, every item of the block. */
+  items(height: bigint): Promise<readonly CcdBlockItem[]>;
+  /** `GetBlockItemStatus`; null when the node does not know the item. */
   item(hash: string): Promise<CcdItem | null>;
 }
 
-/** The read keys `reference` returns. */
+/**
+ * The read keys `reference` returns: the network, H, the header's sender and its signed sequence number (a decimal
+ * string), the signed `expiry` in seconds, the option's `payTo`, and the digest of what the sender signed. The caller
+ * may add `transaction`, a hash a settler named, which the read takes as a hint.
+ */
 export interface CcdRef {
   network: CcdNetwork;
-  transaction?: string;
-  asset: string;
-  idDigest: Hex;
-  settleBy: number;
+  h: AtrHash;
+  sender: string;
+  nonce: string;
+  expiry: number;
   /** The option's `payTo`. */
   payee: string;
+  /** SHA-256 over the members the sender signed (the profile's rule 14). */
+  signed: Hex;
+  transaction?: string;
 }
 
-/** The marks of a block item that is in a block, ascending: `committed`, then `finalized`, the final one. */
+/** The search's position: the next of the sender's sequence numbers to locate. */
+export interface CcdSearch {
+  next: bigint;
+}
+
+/** The marks of a block item in a block, ascending: `committed`, below the one mark, and `finalized`. */
 type CcdMark = "committed" | "finalized";
 
 /**
- * The answer of `ccdStatus`. Its marks are `committed` and `finalized`, the final one; the read gives no ledger
- * position, so the answer names none and the query takes no `after`.
+ * The answer of `ccdStatus`. Positions are finalized block heights; the one mark is `finalized`, and an item read
+ * above the last finalized block is at `committed`, below it; the search's position is `CcdSearch`.
  */
-export type CcdStatus = StatusAnswer<never, CcdMark, never>;
+export type CcdStatus = StatusAnswer<bigint, CcdMark, CcdSearch>;
 
 interface CcdChoice {
   required: PaymentRequired;
@@ -106,155 +174,41 @@ const DECIMAL = /^[0-9]{1,20}$/;
 const HEX = /^(?:[0-9a-fA-F]{2})*$/;
 /** A block item hash: 32 bytes as hex digits. */
 const ITEM_HASH = /^[0-9a-fA-F]{64}$/;
-const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const MAX_ADDRESS = 64;
-const MAX_MEMO = 256;
-const MAX_OPERATIONS = 4096;
-const MAX_TRANSACTION = 16384;
+/**
+ * lcp's own resource bound on a PLT `tokenUpdate`'s operations, in bytes: one `transfer` operation with a memo at the
+ * chain's bound is far below it.
+ */
+export const CCD_MAX_OPERATIONS = 4096;
+/**
+ * lcp's own resource bound on the presented signed transaction's canonical JSON, in bytes: one transfer with a memo
+ * at the chain's bound and its signatures is far below it.
+ */
+export const CCD_MAX_TRANSACTION = 16384;
+/**
+ * The margin the stock client takes off an expiry, in seconds: it signs `now` plus `maxTimeoutSeconds` less this, so
+ * that the stock facilitator, which refuses an expiry past its own clock plus `maxTimeoutSeconds`, takes the payment.
+ */
+export const CCD_EXPIRY_MARGIN = 5;
+const MAX_MEMO = CCD_MAX_MEMO;
+const MAX_OPERATIONS = CCD_MAX_OPERATIONS;
+const MAX_TRANSACTION = CCD_MAX_TRANSACTION;
 const UINT64_LIMIT = 1n << 64n;
-const TEXT_PREFIX = new Uint8Array([0x78, 0x4d]);
-const TAG24_PREFIX = new Uint8Array([0xd8, 0x18, 0x58, 0x4f]);
 const utf8 = new TextEncoder();
 
-/**
- * The CBOR text string of `toLcpString(h)`: `78 4d` and the 77 ASCII bytes. Throws TypeError when `h` is not a 32-byte
- * hash.
- */
-export function ccdMemo(h: AtrHash): Uint8Array<ArrayBuffer> {
-  return concat(TEXT_PREFIX, utf8.encode(toLcpString(h)));
-}
 
-/** CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 bytes. Throws as `ccdMemo` does. */
-export function pltMemo(h: AtrHash): Uint8Array<ArrayBuffer> {
-  return concat(TAG24_PREFIX, ccdMemo(h));
-}
+
 
 /**
- * The hash a memo carries: exactly one CBOR text string, nothing after it, whose bytes are `ccdMemo` of the hash it
- * names (LCP's string form with lowercase hex, under the preferred two-byte head). `bound`, `status` and `recover` all
- * read a memo through this one function.
- */
-export function memoCarrier(memo: Uint8Array): AtrHash | Refusal {
-  const v = memo instanceof Uint8Array && memo.length <= MAX_MEMO ? decodeCbor(memo) : null;
-  if (typeof v !== "string") return refusal("ccd/memo-not-cbor-text");
-  const h = fromLcpString(v);
-  return h !== null && equalBytes(memo, ccdMemo(h)) ? h : refusal("ccd/memo-not-lcp");
-}
-
-/**
- * The 32 bytes of a base58check account address whose version byte is 1: its last four bytes are the first four of
- * the double SHA-256 of the 33 before them.
- */
-export function accountBytes(address: string): Uint8Array<ArrayBuffer> | Refusal {
-  const raw = accountShape(address);
-  if (raw === null) return refusal("ccd/address-malformed");
-  const twice = sha256(sha256(raw.subarray(0, 33)));
-  for (let i = 0; i < 4; i++) if (twice[i] !== raw[33 + i]) return refusal("ccd/address-malformed");
-  return raw.slice(1, 33);
-}
-
-/** SHA-256 over the 32 + 32 bytes of the two accounts and the amount as a 32-byte big-endian integer. */
-export async function ccdIdDigest(sender: Uint8Array, receiver: Uint8Array, amount: bigint): Promise<Hex | Refusal> {
-  if (!(sender instanceof Uint8Array) || sender.length !== 32) return refusal("ccd/address-malformed");
-  if (!(receiver instanceof Uint8Array) || receiver.length !== 32) return refusal("ccd/address-malformed");
-  if (typeof amount !== "bigint" || amount < 0n || amount >= UINT256_LIMIT) return refusal("ccd/transaction-malformed");
-  const packed = new Uint8Array(96);
-  packed.set(sender, 0);
-  packed.set(receiver, 32);
-  let rest = amount;
-  for (let i = 95; i >= 64; i--) {
-    packed[i] = Number(rest & 0xffn);
-    rest >>= 8n;
-  }
-  return hash(packed);
-}
-
-/** What the read of a block item observed, before the profile's rules choose the answer. */
-type CcdRead =
-  | { state: "settled" }
-  | { state: "pending"; why: "not-found" | "received" | "committed" }
-  | { state: "failed"; why: "rejected" | "not-this-instrument" }
-  | { state: "unreadable"; why: UnreadableReason };
-
-/** The reason a rejected read gives: a `ReaderError` by its kind, any other rejection `transport`. */
-function rejected(e: unknown): UnreadableReason {
-  const kind = e instanceof Error && e.name === "ReaderError" ? (e as { kind?: unknown }).kind : undefined;
-  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
-}
-
-/**
- * Reads the named block item. Settled when it is finalized and successful, with exactly one transfer whose memo
- * `memoCarrier` reads as `ref.h` (a PLT memo with tag 24 unwrapped) and whose sender, receiver and amount hash to
- * `ref.idDigest`; a finalized item that does not is not this act, and a finalized rejected item is its own failed
- * result. A ref that is not an object, or whose `h` or `idDigest` is not `0x` and 64 hex digits, is `unparseable`,
- * with nothing read; hashes compare in either case. Then a reader for another network is `chain-mismatch`, and an
- * answer that is not a block item `unparseable`. `ref.asset` is not read, and the transfer's kind (which decides only
- * whether a PLT memo's tag 24 is unwrapped) and token id are compared with nothing: a transfer of another token, or
- * of CCD, with the same sender, receiver, amount and memo reads as settled.
- */
-async function readCcd(ref: CcdRef & { transaction: string; h: AtrHash }, reader: CcdReader): Promise<CcdRead> {
-  if (!isObject(ref) || normalHash(ref.h) === null || normalHash(ref.idDigest) === null) {
-    return { state: "unreadable", why: "unparseable" };
-  }
-  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
-  let it: CcdItem | null;
-  try {
-    it = await reader.item(ref.transaction);
-  } catch (e) {
-    return { state: "unreadable", why: rejected(e) };
-  }
-  if (it === null) return { state: "pending", why: "not-found" };
-  if (!isItem(it)) return { state: "unreadable", why: "unparseable" };
-  if (it.state === "received" || it.state === "committed") return { state: "pending", why: it.state };
-  if (!it.success) return { state: "failed", why: "rejected" };
-  const carrying = it.transfers.filter((t) => t.memo !== null && carries(innerMemo(t), ref.h));
-  if (carrying.length !== 1 || it.sender === null) return { state: "failed", why: "not-this-instrument" };
-  const t = carrying[0]!;
-  const digest = await ccdIdDigest(it.sender, t.receiver, t.amount);
-  if (isRefusal(digest) || !hashEquals(digest, ref.idDigest)) return { state: "failed", why: "not-this-instrument" };
-  return { state: "settled" };
-}
-
-/**
- * The facts of a read of the named block item. A settled item is the payer's act at `finalized`; a rejected one is
- * a failed transaction that consumed the sender's sequence number, though the read names no value, since the item is
- * not tied to the payer's own signed sequence number; an item that is not this act, one only received or committed,
- * and one the node does not know are no act the read identified.
- */
-function factsOfCcd(read: CcdRead, ref: CcdRef & { transaction: string }): Facts<never, CcdMark, never> {
-  const none = { seen: [], search: { whole: false }, history: false } as const;
-  if (read.state === "unreadable") return { ...none, unreadable: read.why };
-  const row = { transaction: ref.transaction, mark: "finalized", consumed: true, carries: true, party: "payer", kind: "same", account: "payee" } as const;
-  switch (read.state) {
-    case "settled":
-      return { ...none, seen: [{ ...row, result: "succeeded" }] };
-    case "pending":
-      return none;
-    case "failed":
-      return read.why === "rejected" ? { ...none, seen: [{ ...row, result: "failed" }] } : none;
-  }
-}
-
-const CCD_MARKS: readonly CcdMark[] = ["committed", "finalized"];
-const CCD_LEDGER: Ledger<never, CcdMark> = {
-  coverage: CCD[ID].coverage,
-  final: "finalized",
-  markOrder: (a, b) => CCD_MARKS.indexOf(a) - CCD_MARKS.indexOf(b),
-  positionOrder: () => 0,
-};
-
-/**
- * The read of the payment by its block item, as the profile `read-status` answers it: the finalized transfer that
- * carries `ref.h` under the recorded digest is the act, settled at `finalized`. A rejected item, an item that is not
- * this act, one not yet finalized and one the node does not know answer `pending`, `search-incomplete`, since the read
- * has no search for H.
+ * The read of the act asked about, as the profiles `read-status` and `x402/exact/ccd` answer it: by the sender's signed
+ * sequence number, the item that consumed it, and the search for H over the sender's numbers (the profile's rules 8 to
+ * 15). A hash the reference names is a hint.
  */
 export async function ccdStatus(
-  ref: CcdRef & { transaction: string; h: AtrHash },
+  ref: CcdRef,
   reader: CcdReader,
-  query: StatusQuery<CcdRef & { transaction: string; h: AtrHash }, never, CcdMark, never>,
+  query: StatusQuery<CcdRef, bigint, "finalized", CcdSearch>,
 ): Promise<CcdStatus> {
-  return decide(factsOfCcd(await readCcd(ref, reader), ref), query, CCD_LEDGER);
+  return ccdRead(ref, reader, query);
 }
 
 /**
@@ -281,49 +235,17 @@ export async function ccdRecover(
   if (it.state !== "finalized") return refusal("ccd/not-finalized");
   if (!it.success) return refusal("ccd/rejected");
   const carried = it.transfers.flatMap((t) => {
-    const h = t.memo === null ? null : memoCarrier(innerMemo(t));
+    const memo = transferMemo(t);
+    const h = memo === null ? null : memoCarrier(memo);
     return h === null || isRefusal(h) ? [] : [h];
   });
   return carried.length === 1 ? carried[0]! : refusal("ccd/no-carrier");
 }
 
-/** Whether `memoCarrier` reads the memo as `h`. */
-function carries(memo: Uint8Array, h: AtrHash): boolean {
-  const got = memoCarrier(memo);
-  return !isRefusal(got) && hashEquals(got, h);
-}
-
-/** A transfer's memo bytes, with a PLT memo's tag 24 around a byte string removed. */
-function innerMemo(t: CcdTransfer): Uint8Array {
-  const m = t.memo!;
-  if (t.kind !== "plt") return m;
-  const v = decodeCbor(m);
-  return v !== null && isTag(v, 24n) && v.value instanceof Uint8Array ? v.value : m;
-}
-
-function isItem(v: unknown): v is CcdItem {
-  if (!isObject(v)) return false;
-  if (v["state"] === "received" || v["state"] === "committed") return true;
-  if (v["state"] !== "finalized" || typeof v["success"] !== "boolean") return false;
-  const sender = v["sender"];
-  if (sender !== null && !(sender instanceof Uint8Array)) return false;
-  const transfers = v["transfers"];
-  return (
-    Array.isArray(transfers) &&
-    transfers.every(
-      (t: unknown) =>
-        isObject(t) &&
-        (t["kind"] === "ccd" || t["kind"] === "plt") &&
-        t["receiver"] instanceof Uint8Array &&
-        typeof t["amount"] === "bigint" &&
-        (t["memo"] === null || t["memo"] instanceof Uint8Array),
-    )
-  );
-}
-
 /**
  * The pairing's filter: an `exact` option on a `ccd:` network, for CCD or a token symbol, whose `payTo` and
- * `extra.feePayer` are base58check account addresses.
+ * `extra.feePayer` are base58check account addresses, and whose amount is `"0"` or a positive decimal below 2^64: the
+ * scheme asks strict equality and sets no floor, and the pairing's agreement floor is zero.
  */
 function ccdOption(o: unknown): o is PaymentRequirements {
   if (!isObject(o)) return false;
@@ -338,7 +260,7 @@ function ccdOption(o: unknown): o is PaymentRequirements {
     isAccount(o["payTo"]) &&
     isObject(extra) &&
     isAccount(extra["feePayer"]) &&
-    isAmount(amount) &&
+    (isAmount(amount) || amount === "0") &&
     DECIMAL.test(amount) &&
     BigInt(amount) < UINT64_LIMIT &&
     isTimeoutSeconds(o["maxTimeoutSeconds"])
@@ -351,8 +273,10 @@ const advertise = advertiseFor(filter);
 const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filter);
 
 /**
- * What the buyer's wallet assembles and signs: one transfer to `payTo` whose memo carries the hash. H is checked first,
- * then the form of the choice's `now`, then its document and option.
+ * What the buyer's wallet assembles and signs: one transfer to `payTo` whose memo carries the hash, the CCD memo where
+ * the asset is CCD in any case and the PLT memo otherwise, expiring at `now` plus `maxTimeoutSeconds` less
+ * `CCD_EXPIRY_MARGIN`, as the stock client sets it. H is checked first, then the form of the choice's `now`, then its
+ * document and option.
  */
 async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("ccd/memo-not-lcp");
@@ -362,7 +286,8 @@ async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
   const wrong = chosen(required, accepted, filter);
   if (wrong !== true) return wrong;
   const sponsor = accepted.extra!["feePayer"] as string;
-  const memo = accepted.asset === "CCD" ? ccdMemo(h) : pltMemo(h);
+  // CCD is named without regard to case, as the stock facilitator reads the asset.
+  const memo = accepted.asset.toLowerCase() === "ccd" ? ccdMemo(h) : pltMemo(h);
   return {
     request: {
       kind: "ccd-transfer",
@@ -372,7 +297,7 @@ async function build(c: CcdChoice, h: AtrHash): Promise<CcdUnsigned | Refusal> {
       asset: accepted.asset,
       amount: accepted.amount,
       memo,
-      expiresBy: now + accepted.maxTimeoutSeconds,
+      expiresBy: now + accepted.maxTimeoutSeconds - CCD_EXPIRY_MARGIN,
     },
     complete(signedTransaction: unknown): CcdPaymentPayload | Refusal {
       if (!isObject(signedTransaction) || jsonSize(signedTransaction) === undefined) {
@@ -392,6 +317,10 @@ interface Signed {
   expiry: number;
   carrier: AtrHash;
   transfer: { kind: "ccd"; body: Record<string, unknown> } | { kind: "plt"; body: CborMap };
+  /** The signed header and payload as presented, and a token update's operations. */
+  header: Record<string, unknown>;
+  body: Record<string, unknown>;
+  ops?: Uint8Array;
 }
 
 /**
@@ -406,21 +335,73 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys for finding this payment later: network, asset, the expiry and the transfer's digest over the sender,
- * the receiver and the amount; and the payee, the `payTo` of the option the payment answers. A receiver or amount
- * that cannot be read is refused here, and not by `bound`.
+ * The read keys for finding this payment later (the profile's rule 8): the network, H, the header's sender, its signed
+ * sequence number and `expiry`, the option's `payTo` for the two party tests, and the digest of the members the sender
+ * signed (rule 14), its payload written in the protocol's binary form and its energy the header's whole energy, which
+ * the sender signed and the wire form does not hold (`signedEnergy`, from `executionEnergyAmount`, the two signature
+ * counts and the payload's size). A presented payment whose `accepted` is not the option given, compared as RFC 8785
+ * JSON, is `x402/accepted-not-option`; a header whose sequence number or signature counts are not positive integers,
+ * whose `executionEnergyAmount` is not a non-negative one, that names no sponsor, or whose sponsor is not an account,
+ * and a receiver, amount or token id that cannot be read, are refused here, and not by `bound`.
  */
 async function reference(presented: unknown, option: PaymentRequirements): Promise<CcdRef | Refusal> {
   const s = await signed(presented);
   if (isRefusal(s)) return s;
   const t = transferOf(s.transfer);
   if (isRefusal(t)) return t;
+  const { accepted } = presented as CcdPaymentPayload;
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
-  const idDigest = await ccdIdDigest(s.sender, t.receiver, t.amount);
-  if (isRefusal(idDigest)) return idDigest;
-  const { accepted } = presented as CcdPaymentPayload;
-  return { network: accepted.network as CcdNetwork, asset: accepted.asset, idDigest, settleBy: s.expiry, payee };
+  if (!sameJson(accepted, option)) return refusal("x402/accepted-not-option");
+  const nonce = s.header["nonce"];
+  const execution = s.header["executionEnergyAmount"];
+  const sponsorField = s.header["sponsor"];
+  const signatures = [s.header["numSignatures"], isObject(sponsorField) ? sponsorField["numSignatures"] : undefined];
+  if (!isCount(nonce, 1) || !isCount(execution, 0) || !signatures.every((n) => isCount(n, 1))) return refusal("ccd/transaction-malformed");
+  if (!isObject(sponsorField)) return refusal("ccd/transaction-malformed");
+  const sponsor = typeof sponsorField["account"] === "string" ? accountBytes(sponsorField["account"]) : refusal("ccd/address-malformed");
+  if (isRefusal(sponsor)) return sponsor;
+  const payload = payloadBytes(s, t);
+  if (isRefusal(payload)) return payload;
+  const energy = signedEnergy(BigInt(execution as number), BigInt(signatures[0] as number) + BigInt(signatures[1] as number), payload.length);
+  const digest = await signedDigest({ sender: s.sender, nonce: BigInt(nonce as number), expiry: BigInt(s.expiry), energy, sponsor, payload });
+  return {
+    network: accepted.network as CcdNetwork,
+    h: s.carrier,
+    sender: s.header["sender"] as string,
+    nonce: String(nonce),
+    expiry: s.expiry,
+    payee,
+    signed: digest,
+  };
+}
+
+/**
+ * The signed payload in the protocol's binary form: `transferWithMemo` (22), the receiver's 32 bytes, the memo with its
+ * 2-byte length and the amount as 8 bytes big-endian; `tokenUpdate` (27), the token id with a 1-byte length and the
+ * operations with a 4-byte big-endian length (`concordium-base` `Execution.hs:776-780`, `:829-832`).
+ */
+function payloadBytes(s: Signed, t: { receiver: Uint8Array; amount: bigint }): Uint8Array | Refusal {
+  if (s.transfer.kind === "ccd") {
+    const memo = hexToBytes(s.body["memo"] as string);
+    const out = new Uint8Array(1 + 32 + memo.length + 8);
+    out[0] = 22;
+    out.set(t.receiver, 1);
+    out.set(memo, 33);
+    new DataView(out.buffer).setBigUint64(33 + memo.length, t.amount);
+    return out;
+  }
+  const id = s.body["tokenId"];
+  const idBytes = typeof id === "string" ? utf8.encode(id) : new Uint8Array(0);
+  if (idBytes.length === 0 || idBytes.length > 255) return refusal("ccd/transaction-malformed");
+  const ops = s.ops!;
+  const out = new Uint8Array(2 + idBytes.length + 4 + ops.length);
+  out[0] = 27;
+  out[1] = idBytes.length;
+  out.set(idBytes, 2);
+  new DataView(out.buffer).setUint32(2 + idBytes.length, ops.length);
+  out.set(ops, 2 + idBytes.length + 4);
+  return out;
 }
 
 async function signed(presented: unknown): Promise<Signed | Refusal> {
@@ -450,12 +431,13 @@ async function signed(presented: unknown): Promise<Signed | Refusal> {
       if (isRefusal(memo)) return memo;
       const carrier = memoCarrier(memo);
       if (isRefusal(carrier)) return carrier;
-      return { sender, expiry, carrier, transfer: { kind: "ccd", body } };
+      return { sender, expiry, carrier, transfer: { kind: "ccd", body }, header, body };
     }
     case "tokenUpdate": {
       const ops = hexBytes(body["operations"], MAX_OPERATIONS);
       if (isRefusal(ops)) return ops;
-      return tokenTransfer(ops, sender, expiry);
+      const t = tokenTransfer(ops, sender, expiry);
+      return isRefusal(t) ? t : { ...t, header, body, ops };
     }
     case "transfer":
       return refusal("ccd/no-memo");
@@ -465,7 +447,7 @@ async function signed(presented: unknown): Promise<Signed | Refusal> {
 }
 
 /** The one `transfer` operation of a PLT `TokenUpdate` and its memo's carrier. */
-function tokenTransfer(ops: Uint8Array, sender: Uint8Array, expiry: number): Signed | Refusal {
+function tokenTransfer(ops: Uint8Array, sender: Uint8Array, expiry: number): Omit<Signed, "header" | "body" | "ops"> | Refusal {
   const v = decodeCbor(ops);
   if (v === null || !Array.isArray(v)) return refusal("ccd/operations-malformed");
   const list = v as readonly Cbor[];
@@ -526,30 +508,15 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
   return option;
 }
 
+/** A JSON number that is a safe integer at or above `min`. */
+function isCount(v: unknown, min: number): v is number {
+  return typeof v === "number" && Number.isSafeInteger(v) && v >= min;
+}
+
 function isAccount(v: unknown): boolean {
   return typeof v === "string" && !isRefusal(accountBytes(v));
 }
 
-/** The 37 bytes a base58 account address decodes to, when their version byte is 1; the checksum is not checked. */
-function accountShape(s: unknown): Uint8Array<ArrayBuffer> | null {
-  if (typeof s !== "string" || s.length === 0 || s.length > MAX_ADDRESS) return null;
-  let n = 0n;
-  for (const c of s) {
-    const d = BASE58.indexOf(c);
-    if (d < 0) return null;
-    n = n * 58n + BigInt(d);
-  }
-  let zeros = 0;
-  while (zeros < s.length && s[zeros] === "1") zeros++;
-  const body: number[] = [];
-  while (n > 0n) {
-    body.push(Number(n & 0xffn));
-    n >>= 8n;
-  }
-  const out = new Uint8Array(zeros + body.length);
-  for (let i = 0; i < body.length; i++) out[out.length - 1 - i] = body[i]!;
-  return out.length === 37 && out[0] === 0x01 ? out : null;
-}
 
 /**
  * The memo bytes of a transfer-with-memo payload in the SDK's JSON form: hex of a 2-byte big-endian length, then
@@ -578,18 +545,6 @@ function hexToBytes(s: string): Uint8Array {
   return out;
 }
 
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array<ArrayBuffer> {
-  const out = new Uint8Array(a.length + b.length);
-  out.set(a, 0);
-  out.set(b, a.length);
-  return out;
-}
-
-function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-  return true;
-}
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
@@ -626,9 +581,9 @@ export const exactCcd = Object.freeze({
   X402Forms & {
     choice: CcdChoice;
     unsigned: CcdUnsigned;
-    landed: { transaction: string; h: AtrHash };
+    landed: unknown;
     network: CcdNetwork;
-    query: StatusQuery<CcdRef & { transaction: string; h: AtrHash }, never, CcdMark, never>;
+    query: StatusQuery<CcdRef, bigint, "finalized", CcdSearch>;
     answer: CcdStatus;
   }
 >;

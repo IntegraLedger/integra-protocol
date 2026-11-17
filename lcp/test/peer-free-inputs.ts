@@ -270,7 +270,13 @@ export function avmCarrierRows(): { case: string; presented: unknown; expect: un
     {
       case: "V2's payment",
       presented: { paymentIndex: AVM.V2.expectPaymentIndex, paymentGroup: AVM.V2.expectPaymentGroup },
-      expect: { h: AVM.V3.expectBound, txid: AVM.V3.expectReference.txid, lastValid: BigInt(AVM.V3.expectReference.lastValid) },
+      expect: {
+        h: AVM.V3.expectBound,
+        txid: AVM.V3.expectReference.txid,
+        lastValid: BigInt(AVM.V3.expectReference.lastValid),
+        sender: AVM.V3.expectReference.sender,
+        signer: AVM.V3.expectReference.signer,
+      },
     },
     ...(AVM.V3.refusals as { case: string; paymentGroup: unknown; paymentIndex: unknown; expect: string }[]).map((r) => ({
       case: r.case,

@@ -4,18 +4,9 @@ import { describe, expect, it } from "vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { base32 } from "@scure/base";
-import {
-  decodeAddress,
-  decodeSignedTransaction,
-  encodeAddress,
-  encodeMsgpack,
-  isValidAddress,
-  LogicSig,
-  msgpackRawDecodeAsMap,
-  SignedTransaction,
-} from "algosdk";
+import { decodeSignedTransaction, encodeAddress, isValidAddress, msgpackRawDecodeAsMap } from "algosdk";
 import { pairingOf, type AtrHash } from "../src/index.js";
-import { avmCarrier, avmStatus, exactAvm, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
+import { avmCarrier, avmStatus, exactAvm, type AvmIndexed, type AvmParams, type AvmReader, type AvmUnsigned } from "../src/avm.js";
 import { isAlgorandAddress } from "../src/internal/avm.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
@@ -35,27 +26,86 @@ const params: AvmParams = {
 const txidOf = (toSign: Uint8Array) => base32.encode(sha512_256(toSign)).replace(/=+$/, "");
 const publicKeyOf = (address: string) => base32.decode(address + "======").slice(0, 32);
 
-type Answer = { currentRound: string; found: null | { confirmedRound: string } } | "reader-error";
-function readerOf(byTxid: Record<string, Answer>, fallback: Answer, note = V.V4.note): AvmReader & { searchNote(): Promise<unknown> } {
-  const toAnswer = (a: Answer) => {
-    if (a === "reader-error") throw new Error("transport");
-    return {
-      currentRound: BigInt(a.currentRound),
-      found: a.found === null ? null : { confirmedRound: BigInt(a.found.confirmedRound), note: Buffer.from(note, "base64") },
-    };
-  };
+/** A transaction of V4's fixtures, as the Indexer reports it; `note` is "H" for H's LCP string, else base64. */
+type Fx = {
+  id: string;
+  round: string;
+  type: string;
+  sender: string;
+  authAddr: string | null;
+  signature: AvmIndexed["signature"];
+  note: string;
+  transfer: null | { assetId: string; receiver: string; amount: string; closeTo: string | null; closeAmount: string; assetSender: string | null };
+  inner: Fx[];
+};
+type Lookup = { currentRound: string; found: Fx | null } | "reader-error";
+type PageFx = { asks: { minRound: string; maxRound?: string; next?: string }; answer: "reader-error" | { currentRound: string; transactions: (Fx | { unparseable: true; id: string })[]; next?: string } };
+type V4Row = { case: string; query?: QueryFx; archival?: boolean; header?: Record<string, boolean> | "reader-error"; lookup: Lookup; pages?: PageFx[]; expect: unknown };
+const H_NOTE = Buffer.from(`lcp:sha256:${V.fixed.H}`, "ascii");
+function indexed(t: Fx): AvmIndexed {
   return {
-    network: V.V4.readerNetwork,
-    search: async (txid) => toAnswer(byTxid[txid] ?? fallback),
-    // A note-prefix search: what the Indexer answers for H's LCP string. Settlement never reads it.
-    searchNote: async () => ({ txid: V.plant.otherTxid, ...toAnswer(V.plant.otherAnswer) }),
+    id: t.id,
+    confirmedRound: BigInt(t.round),
+    type: t.type,
+    sender: t.sender,
+    authAddr: t.authAddr,
+    signature: t.signature,
+    note: t.note === "H" ? Uint8Array.from(H_NOTE) : Uint8Array.from(Buffer.from(t.note, "base64")),
+    transfer:
+      t.transfer === null
+        ? null
+        : { ...t.transfer, assetId: BigInt(t.transfer.assetId), amount: BigInt(t.transfer.amount), closeAmount: BigInt(t.transfer.closeAmount) },
+    inner: t.inner.map(indexed),
   };
 }
-/** The query a row asks: the act payment at the one mark unless the row's query says otherwise, its position a round. */
+/**
+ * A reader over one row's fixtures: the lookup for any id, the header by round, and the account's pages in the order
+ * listed, each call held to the parameters the page says the read asks. `left` counts the pages not asked.
+ */
+function readerOf(row: Pick<V4Row, "archival" | "header" | "lookup" | "pages">, network = V.V4.readerNetwork): AvmReader & { left(): number } {
+  const pages = [...(row.pages ?? [])];
+  return {
+    network,
+    ...(row.archival === true ? { archival: true } : {}),
+    transaction: async () => {
+      const a = row.lookup;
+      if (a === "reader-error") throw new Error("transport");
+      return { currentRound: BigInt(a.currentRound), found: a.found === null ? null : indexed(a.found) };
+    },
+    header: async (round) => {
+      if (row.header === "reader-error") throw new Error("transport");
+      return row.header?.[round.toString()] === true;
+    },
+    accountPage: async (account, q) => {
+      expect(account).toBe(V.fixed.payer);
+      const p = pages.shift();
+      if (p === undefined) throw new Error("no page left");
+      expect(withStrings(q)).toEqual(p.asks);
+      if (p.answer === "reader-error") throw new Error("transport");
+      return {
+        currentRound: BigInt(p.answer.currentRound),
+        transactions: p.answer.transactions.map((t) => ("unparseable" in t ? t : indexed(t))),
+        ...(p.answer.next === undefined ? {} : { next: p.answer.next }),
+      };
+    },
+    left: () => pages.length,
+  };
+}
+type QueryFx = { act?: "payment" | "agreement"; after?: string; search?: { through: string; top?: string; next?: string }; others?: unknown[] };
+/** The query a row asks: the act payment at the one mark unless the row's query says otherwise, its positions rounds. */
 const paymentAct = { act: "payment", finality: "final" } as const;
-function queryOf(q?: { act: "payment" | "agreement"; finality: "final"; after?: string }) {
+function queryOf(q?: QueryFx) {
   if (q === undefined) return paymentAct;
-  return q.after === undefined ? { act: q.act, finality: q.finality } : { act: q.act, finality: q.finality, after: BigInt(q.after) };
+  const s = q.search;
+  return {
+    act: q.act ?? "payment",
+    finality: "final",
+    ...(q.after === undefined ? {} : { after: BigInt(q.after) }),
+    ...(s === undefined
+      ? {}
+      : { search: { through: BigInt(s.through), ...(s.top === undefined ? {} : { top: BigInt(s.top) }), ...(s.next === undefined ? {} : { next: s.next }) } }),
+    ...(q.others === undefined ? {} : { others: q.others }),
+  } as const;
 }
 const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };
 const withStrings = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
@@ -294,42 +344,38 @@ describe("x402-exact-algorand.json", () => {
     }
   });
 
-  it("V4: status and recover", async () => {
+  it("V4: status, as the read answers while the facts the search rests on are not yet shown, and recover", async () => {
     const ref = V.V4.reference;
-    for (const row of rowsOf(V.V4.rows, "x402-exact-algorand.json V4.rows")) {
-      expect(withStrings(await avmStatus(ref, readerOf({}, row.answer), queryOf(row.query))), row.case).toEqual(row.expect);
+    for (const row of rowsOf(V.V4.rows as V4Row[], "x402-exact-algorand.json V4.rows")) {
+      const reader = readerOf(row);
+      expect(withStrings(await avmStatus(ref, reader, queryOf(row.query) as never)), row.case).toEqual(row.expect);
+      expect(reader.left(), `${row.case}: every page read`).toBe(0);
     }
     const input = { network: ref.network, tx: ref.txid, option: O };
-    expect(await exactAvm.recover(input, readerOf({}, V.V4.recover.answer))).toBe(V.V4.recover.expect);
+    expect(await exactAvm.recover(input, readerOf({ lookup: V.V4.recover.answer }))).toBe(V.V4.recover.expect);
   });
 
   it("V4: status of a reader for another network is unreadable chain-mismatch", async () => {
-    const reader = { ...readerOf({}, V.V4.rows[0].answer), network: "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k" as const };
+    const reader = readerOf(V.V4.rows[0], "algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k" as never);
     expect(await avmStatus(V.V4.reference, reader, paymentAct)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
   });
 
   // An Algorand transaction id is the base32 of its SHA-512/256 hash, without padding: 52 characters (the file's
-  // txids, from py-algorand-sdk). Each ref below holds V4's id or last valid round in another form, beside a reader
-  // that answers V4's expired row for any id; none is read.
-  it("V4: a ref whose txid or lastValid is not in the form reference writes is unreadable unparseable, with nothing read", async () => {
+  // txids, from py-algorand-sdk). Each ref below holds V4's id or last valid round in another form, or another member
+  // out of its form, beside a reader that answers V4's first row for any id; none is read.
+  it("V4: a ref whose members are not in the form reference writes is unreadable unparseable, with nothing read", async () => {
     const ref = V.V4.reference;
-    type Row = { answer: Answer; expect: unknown };
-    const expired = (V.V4.rows as Row[]).find(
-      (r) => r.answer !== "reader-error" && r.answer.found === null && BigInt(r.answer.currentRound) > BigInt(ref.lastValid),
-    )!;
+    const row = (V.V4.rows as V4Row[])[0]!;
     const searched: unknown[] = [];
     const reader: AvmReader = {
-      network: V.V4.readerNetwork,
-      search: async (txid) => {
+      ...readerOf(row),
+      transaction: async (txid) => {
         searched.push(txid);
-        return readerOf({}, expired.answer).search(txid);
+        return readerOf(row).transaction(txid);
       },
     };
-    // Ids in the written form are read: V4's, and the fee payer's, whose last character is Q.
-    for (const txid of [ref.txid, V.V2.expectFeePayerTxid]) {
-      expect(withStrings(await avmStatus({ ...ref, txid }, reader, paymentAct))).toEqual(expired.expect);
-    }
-    expect(searched).toEqual([ref.txid, V.V2.expectFeePayerTxid]);
+    expect(withStrings(await avmStatus(ref, reader, paymentAct))).toEqual(row.expect);
+    expect(searched).toEqual([ref.txid]);
     searched.length = 0;
     const digest = base32.decode(ref.txid + "====");
     const txids = [
@@ -350,6 +396,14 @@ describe("x402-exact-algorand.json", () => {
     for (const lastValid of ["18446744073709551616", "99999999999999999999", "067634796", "-1", 67634796, null]) {
       expect(await avmStatus({ ...ref, lastValid }, reader, paymentAct)).toEqual(unparseable);
     }
+    for (const member of ["h", "sender", "signer", "payee"]) {
+      expect(await avmStatus({ ...ref, [member]: null }, reader, paymentAct)).toEqual(unparseable);
+    }
+    expect(await avmStatus({ ...ref, sender: ref.payee.slice(0, 57) + "A" }, reader, paymentAct)).toEqual(unparseable);
+    expect(await avmStatus({ ...ref, payee: ref.payee.slice(0, 57) + "A" }, reader, paymentAct)).toEqual(unparseable);
+    for (const query of [{ ...paymentAct, after: 5 }, { ...paymentAct, search: { through: "5" } }, null]) {
+      expect(await avmStatus(ref, reader, query as never)).toEqual(unparseable);
+    }
     expect(searched).toEqual([]);
   });
 
@@ -358,10 +412,10 @@ describe("x402-exact-algorand.json", () => {
     const ref = { network: V.V4.reference.network, tx: V.V4.reference.txid, option: O };
     const searched: unknown[] = [];
     const reader: AvmReader = {
-      network: V.V4.readerNetwork,
-      search: async (txid) => {
+      ...readerOf({ lookup: V.V4.recover.answer }),
+      transaction: async (txid) => {
         searched.push(txid);
-        return readerOf({}, V.V4.recover.answer).search(txid);
+        return readerOf({ lookup: V.V4.recover.answer }).transaction(txid);
       },
     };
     for (const tx of [ref.tx, V.V2.expectFeePayerTxid]) {
@@ -392,32 +446,54 @@ describe("x402-exact-algorand.json", () => {
 
   // x402's Algorand scheme (x402-foundation/x402, specs/schemes/exact/scheme_exact_algo.md, "Signature Scheme") lets
   // a top-level transaction be authorized by an Ed25519 signature (sig), a k-of-n multisignature (msig) or a logic
-  // signature (lsig). V2's payment transaction under each gives the file's H (FIPS 180-2's "abc") and V3's reference
-  // (py-algorand-sdk's txid, which covers the transaction and not its authorization).
-  it("bound and reference read the note under a signature, a multisignature or a logic signature", async () => {
-    const payment = await completed();
-    const [feePayerEntry, paymentEntry] = V.V2.expectPaymentGroup as string[];
-    const { txn, sig } = decodeSignedTransaction(Buffer.from(paymentEntry!, "base64"));
-    if (sig === undefined) throw new Error("V2's payment entry carries no sig");
-    // A 1-of-2 multisignature: the payer's key with V2's signature, and payTo's key unsigned.
-    const subsig = [{ pk: decodeAddress(V.fixed.payer).publicKey, s: sig }, { pk: decodeAddress(O.payTo).publicKey }];
-    const msig = { v: 1, thr: 1, subsig };
-    // A logic signature whose program, in TEAL version 6, pushes 1.
-    const lsig = new LogicSig(Uint8Array.from([0x06, 0x81, 0x01]));
-    for (const authorized of [new SignedTransaction({ txn, msig }), new SignedTransaction({ txn, lsig })]) {
-      const entry = Buffer.from(encodeMsgpack(authorized)).toString("base64");
-      const presented = { ...payment, payload: { paymentIndex: 1, paymentGroup: [feePayerEntry!, entry] } };
-      expect(await exactAvm.bound(presented)).toBe(V.V3.expectBound);
-      expect(await exactAvm.reference(presented, O)).toEqual(V.V3.expectReference);
-    }
-    expect(exactAvm.data.proves).toContain("with a signature, a multisignature or a logic signature");
-    expect(exactAvm.data.proves).not.toContain("payer signed");
+  // signature (lsig). V3.authorities holds V2's payment transaction under each authority, written by algosdk 3.8.0: under
+  // a multisignature, or rekeyed (to the fee payer's key, or to the payee's), bound gives the file's H and reference
+  // V3's, with the signer the payment entry names. Under a logic signature, whatever key delegated it, no key signs the
+  // transaction, and a transfer that names asnd is a clawback by the asset's clawback address: the profile's rule 4
+  // refuses both before anything moves.
+  type AuthorityRow = { case: string; authority: string; paymentIndex: number; paymentGroup: string[]; expectBound?: string; expectReference?: unknown; expect?: string };
+  const AUTHORITIES = rowsOf(V.V3.authorities.rows as AuthorityRow[], "x402-exact-algorand.json V3.authorities.rows", { exact: 9 });
+  it.each(AUTHORITIES.map((r) => [r.case, r] as const))("V3.authorities: %s", async (_, row) => {
+    const presented = { ...(await completed()), payload: { paymentIndex: row.paymentIndex, paymentGroup: row.paymentGroup } };
+    const refused = row.expect === undefined ? undefined : { refused: true, code: row.expect };
+    expect(await exactAvm.bound(presented)).toEqual(refused ?? row.expectBound);
+    expect(await exactAvm.reference(presented, O)).toEqual(refused ?? row.expectReference);
   });
 
-  it("plant: a note search is never a settlement", async () => {
-    const ref = V.V4.reference;
-    const reader = readerOf({ [V.plant.otherTxid]: V.plant.otherAnswer, [ref.txid]: V.plant.claimedAnswer }, V.plant.claimedAnswer);
-    expect(withStrings(await avmStatus(ref, reader, paymentAct))).toEqual(V.plant.expect);
+  it("V3.authorities: each entry is V2's transaction under the authority its row names, as algosdk 3.8.0 reads it", () => {
+    const v2 = decodeSignedTransaction(Buffer.from(V.V2.expectPaymentGroup[1], "base64"));
+    const program = Uint8Array.from([0x06, 0x81, 0x01]);
+    const feePayer = O.extra!["feePayer"] as string;
+    const read = new Map(AUTHORITIES.map((r) => [r.authority, decodeSignedTransaction(Buffer.from(r.paymentGroup[1]!, "base64"))]));
+    for (const r of AUTHORITIES) {
+      expect([r.case, r.paymentIndex, r.paymentGroup[0]]).toEqual([r.case, 1, V.V2.expectPaymentGroup[0]]);
+      const s = read.get(r.authority)!;
+      if (r.authority !== "clawback") expect([r.case, s.txn.txID()]).toEqual([r.case, v2.txn.txID()]);
+      const logic = s.lsig === undefined ? null : Buffer.from(s.lsig.logic).toString("hex");
+      expect([r.case, logic]).toEqual([r.case, r.authority.startsWith("lsig") ? Buffer.from(program).toString("hex") : null]);
+    }
+    expect(read.get("msig")!.msig!.subsig.map((x) => encodeAddress(x.pk))).toEqual([V.fixed.payer, O.payTo]);
+    expect(read.get("rekeyedFeePayer")!.sgnr!.toString()).toBe(feePayer);
+    expect(read.get("rekeyedPayee")!.sgnr!.toString()).toBe(O.payTo);
+    const lsigs = ["lsig", "lsigSig", "lsigMsig", "lsigLmsig", "lsigPqsig"].map((k) => read.get(k)!.lsig!);
+    expect(lsigs.map((l) => [l.sig !== undefined, l.msig !== undefined, l.lmsig !== undefined, l.pqsig !== undefined])).toEqual([
+      [false, false, false, false],
+      [true, false, false, false],
+      [false, true, false, false],
+      [false, false, true, false],
+      [false, false, false, true],
+    ]);
+    const clawback = read.get("clawback")!.txn;
+    expect([clawback.sender.toString(), clawback.assetTransfer!.assetSender!.toString()]).toEqual([feePayer, V.fixed.payer]);
+    expect(Buffer.from(clawback.note).toString()).toBe(Buffer.from(v2.txn.note).toString());
+    expect(exactAvm.data.proves).toContain("a key's signature, a multisignature or a Falcon signature");
+    expect(exactAvm.data.proves).toContain("a logic signature, or a transfer that names an asset sender, is no such act");
+  });
+
+  it("reference refuses a payment whose accepted is not the option it is given", async () => {
+    const payment = await completed();
+    expect(await exactAvm.reference(payment, O)).toEqual(V.V3.expectReference);
+    expect(await exactAvm.reference(payment, { ...O, amount: "10001" })).toEqual({ refused: true, code: "x402/accepted-not-option" });
   });
 
   it("the option filter, advertise and read", () => {
@@ -469,27 +545,27 @@ describe("x402-exact-algorand.json", () => {
   // names one. A refused row gives its code. Row 1's group id and payment txid are the file's, derived by hand from the
   // canonical form; bytesToSign is "TX" and the payment's encoding, so its SHA-512/256 is the payment's id, and bound
   // reads the payment build writes. Rows 2 and 3 pin the order: the genesis id is checked before the genesis hash.
-  it("build: the rows' genesis ids and genesis hashes", async () => {
-    for (const row of rowsOf(V.build.rows, "x402-exact-algorand.json build.rows", { exact: 5 })) {
+  it("build: the rows' genesis ids and genesis hashes, and the option at amount \"0\"", async () => {
+    for (const row of rowsOf(V.build.rows, "x402-exact-algorand.json build.rows", { exact: 6 })) {
       const p = { ...params, genesisId: row.genesisId, genesisHash: row.genesisHash ?? params.genesisHash };
-      const u = await exactAvm.build({ required: required(O), accepted: O, payer: V.fixed.payer, params: p }, H);
+      const o: PaymentRequirements = row.amount === undefined ? O : { ...O, amount: row.amount };
+      const u = await exactAvm.build({ required: required(o), accepted: o, payer: V.fixed.payer, params: p }, H);
       if (row.expect !== undefined) {
         expect(u, row.case).toEqual({ refused: true, code: row.expect });
         continue;
       }
       if ("refused" in u) throw new Error(`${row.case}: ${u.code}`);
       expect(txidOf(u.request.bytes), row.case).toBe(row.expectPaymentTxid);
+      if (row.expectBytesToSign !== undefined) expect(hex(u.request.bytes), row.case).toBe(row.expectBytesToSign);
       const payment = u.complete(Buffer.from(V.fixed.signature, "hex"));
       if ("refused" in payment) throw new Error(payment.code);
       const entry = decodeSignedTransaction(Buffer.from(payment.payload.paymentGroup[1]!, "base64"));
       expect(Buffer.from(entry.txn.group!).toString("base64"), row.case).toBe(row.expectGroupId);
+      if (row.expectFeePayerTxid !== undefined) {
+        expect(decodeSignedTransaction(Buffer.from(payment.payload.paymentGroup[0]!, "base64")).txn.txID(), row.case).toBe(row.expectFeePayerTxid);
+      }
       expect(await exactAvm.bound(payment), row.case).toBe(row.expectBound);
-      expect(await exactAvm.reference(payment, O), row.case).toEqual({
-        network: O.network,
-        txid: row.expectPaymentTxid,
-        lastValid: V.V3.expectReference.lastValid,
-        payee: O.payTo,
-      });
+      expect(await exactAvm.reference(payment, o), row.case).toEqual({ ...V.V3.expectReference, txid: row.expectPaymentTxid });
     }
     expect([V.build.rows[0].genesisId.isWellFormed(), V.build.rows[2].genesisId.isWellFormed()]).toEqual([false, false]);
   });

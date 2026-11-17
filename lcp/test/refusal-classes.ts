@@ -78,7 +78,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "chain-mismatch", "network-malformed", "not-an-x402-transfer", "not-entry-function", "tx-malformed", "tx-too-large",
   ],
   avm: [
-    "group-too-large", "index-out-of-range", "network-malformed", "network-mismatch", "not-axfer", "note-not-lcp",
+    "clawback", "group-too-large", "index-out-of-range", "logic-signature", "network-malformed", "network-mismatch", "not-axfer", "note-not-lcp",
     "option-malformed", "peer-missing", "signature-malformed", "txn-malformed", "wrong-reader",
   ],
   card: [

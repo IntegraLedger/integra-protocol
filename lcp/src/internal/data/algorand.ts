@@ -40,8 +40,11 @@ export const ALGORAND = /* @__PURE__ */ freeze({
     },
     proves:
       "The payer's account authorized an Algorand asset transfer whose note is this ATR's hash in LCP string " +
-      "form, with a signature, a multisignature or a logic signature. The ledger verified that authorization " +
-      "when it confirmed the transaction, which is final on confirmation, and the note is on chain in it. This " +
-      "does not show that amount, receiver, asset or timing match the ATR's content.",
+      "form, with a key's signature, a multisignature or a Falcon signature, by the account's own key or the key " +
+      "it is rekeyed to; a logic signature, or a transfer that names an asset sender, is no such act. The ledger " +
+      "verified that authorization when it confirmed the transaction, which is final on confirmation, and the note " +
+      "is on chain in it. Where the transfer moved an amount, zero included, the payer paid it to the account the " +
+      "transfer names (`arcv`). As an agreement, it shows that this account signed the transfer carrying the hash. " +
+      "It does not show that amount, asset or timing match the ATR's content.",
   },
 });

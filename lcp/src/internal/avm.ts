@@ -8,6 +8,8 @@
  * algokit-utils' `decodeSignedTransaction`, then submits the entry's own bytes, which algod decodes with go-codec and
  * checks with `Transaction.WellFormed`. `readEntry` follows both, from the same bytes, and gives the transaction only
  * when both readers accept the entry and both read the same signed transaction, its id being the one algod computes.
+ * An entry a Falcon signature (`pqsig`) authorises, which the facilitator's decoder does not read, is read by algod's
+ * reader alone: a settler submits it as lcp read it, so the node is its second reader.
  */
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { base32 } from "@scure/base";
@@ -641,6 +643,15 @@ function addressKey(codes: ArrayLike<number>): Uint8Array | null {
 }
 
 /**
+ * The text of the address whose public key is `key`: the base32 of the 32 bytes and the last four bytes of their
+ * SHA-512/256, unpadded, 58 characters.
+ */
+export function addressOf(key: Uint8Array): string {
+  const sum = sha512_256(key).subarray(28);
+  return base32.encode(Uint8Array.from([...key, ...sum])).replace(/=+$/, "");
+}
+
+/**
  * True for an Algorand address's text: 58 characters of the base32 alphabet whose last 4 bytes are the checksum of the
  * first 32 (`addressKey`). It needs no algosdk.
  */
@@ -773,6 +784,14 @@ export interface AvmEntry {
   txid: string;
   note: Uint8Array;
   lastValid: bigint;
+  /** The transaction's sender, `snd`, as an address's text. */
+  sender: string;
+  /** The signer the payment entry names, `sgnr`, as an address's text; null where it names none: the signer is `snd`. */
+  authAddr: string | null;
+  /** True where a logic signature authorises the entry: its `lsig` holds a program, which algod reads as not blank. */
+  logicSig: boolean;
+  /** True where the transfer names an asset sender, `asnd`: a clawback by the asset's clawback address. */
+  clawback: boolean;
 }
 
 const TX = ENC.encode("TX");
@@ -782,8 +801,9 @@ const TX = ENC.encode("TX");
  * deep. algod's reader (go-codec under go-algorand's handle) must decode it as a signed transaction whose type algod
  * knows, with no other type's member at a non-zero value; the facilitator's reader (algokit-utils' decoder) must
  * decode it as one asset transfer; and the canonical encodings of the two signed transactions must be equal, so both
- * read the same transaction. Gives "not-axfer" for an entry algod reads as a transaction of another type, and
- * "malformed" for every other entry either reader refuses or the two read differently.
+ * read the same transaction. An entry that sets `pqsig` is read by algod's reader alone (`falconAlone`). Gives
+ * "not-axfer" for an entry algod reads as a transaction of another type, and "malformed" for every other entry either
+ * reader refuses or the two read differently.
  */
 export function readEntry(b: Uint8Array, maxDepth: number): AvmEntry | "malformed" | "not-axfer" {
   const root = parse(b, maxDepth);
@@ -793,19 +813,61 @@ export function readEntry(b: Uint8Array, maxDepth: number): AvmEntry | "malforme
     const txn = stxn["txn"] as Fields;
     if (wellTyped(txn) !== "axfer") return "not-axfer";
     if (!keysReadable(root)) return "malformed";
-    const algod = marshal(SIGNED_TXN, stxn);
-    const facilitator = facilitatorEncoding(root);
-    if (algod.length !== facilitator.length || algod.some((x, j) => x !== facilitator[j])) return "malformed";
+    if (!isZero(pqsig, stxn["pqsig"]!)) {
+      if (!falconAlone(stxn)) return "malformed";
+    } else {
+      const algod = marshal(SIGNED_TXN, stxn);
+      const facilitator = facilitatorEncoding(root);
+      if (algod.length !== facilitator.length || algod.some((x, j) => x !== facilitator[j])) return "malformed";
+    }
     const hash = sha512_256(Uint8Array.from([...TX, ...marshal(TRANSACTION, txn)]));
+    const sgnr = stxn["sgnr"] as Uint8Array;
+    const lsig = stxn["lsig"] as Fields;
     return {
       txid: base32.encode(hash).replace(/=+$/, ""),
       note: (txn["note"] as Uint8Array | null) ?? new Uint8Array(0),
       lastValid: txn["lv"] as bigint,
+      sender: addressOf(txn["snd"] as Uint8Array),
+      authAddr: sgnr.every((x) => x === 0) ? null : addressOf(sgnr),
+      logicSig: ((lsig["l"] as Uint8Array | null) ?? new Uint8Array(0)).length > 0,
+      clawback: !(txn["asnd"] as Uint8Array).every((x) => x === 0),
     };
   } catch (e) {
     if (e instanceof Refused) return "malformed";
     throw e;
   }
+}
+
+/** Falcon-1024's scheme identifier, `f1`, the one `pqsig` scheme algod verifies (go-algorand v5.0.3, `protocol/pq_scheme.go:33`, `crypto/pq_scheme.go:56-63`). */
+const FALCON_1024 = [0x66, 0x31];
+/**
+ * go-codec's bounds on `pqsig`'s key and signature (`data/transactions/pqsig.go:46-47` at v5.0.3): a Falcon-1024
+ * public key, 1,793 bytes, and its longest signature in constant-time form, 1,538 (algorand/falcon v0.1.0,
+ * `deterministic.h:13`, `:19`; `falcon.h:317-321`, `:343-344`).
+ */
+const FALCON_PUBLIC_KEY = 1793;
+const FALCON_SIGNATURE = 1538;
+
+/**
+ * Whether a signed transaction that sets `pqsig` is one algod takes as a Falcon signature: no other signature member
+ * set, since algod refuses a signed transaction of more than one signature category (`checkTxnSigTypeCounts`,
+ * `data/transactions/verify/txn.go:321-352` at v5.0.3), the scheme Falcon-1024's, and a key and signature within
+ * go-codec's bounds. No signature is verified here; the node takes the transaction only with a valid one.
+ */
+function falconAlone(stxn: Fields): boolean {
+  const pq = stxn["pqsig"] as Fields;
+  const sch = pq["sch"] as Uint8Array;
+  const pk = (pq["pk"] as Uint8Array | null) ?? new Uint8Array(0);
+  const sig = (pq["sig"] as Uint8Array | null) ?? new Uint8Array(0);
+  return (
+    isZero(fixed(64), stxn["sig"]!) &&
+    isZero(multisig, stxn["msig"]!) &&
+    isZero(logicsig, stxn["lsig"]!) &&
+    sch[0] === FALCON_1024[0] &&
+    sch[1] === FALCON_1024[1] &&
+    pk.length <= FALCON_PUBLIC_KEY &&
+    sig.length <= FALCON_SIGNATURE
+  );
 }
 
 /**

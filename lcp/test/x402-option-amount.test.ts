@@ -3,7 +3,7 @@
 // atomic token units, and its examples give "10000". For each x402 pairing, an option the vector files hold, set to "10",
 // is one its `read` offers; the same option set to "0" (zero), "010" (a leading zero), "1.5" (not an integer), "-1"
 // (negative), "" (empty) or 10000 (a number, not a string) is not, and a document that holds all seven offers the one
-// set to "10" alone. Six pairings define the member otherwise, and keep that definition:
+// set to "10" alone. Eight pairings define the member otherwise, and keep that definition:
 // - batch-settlement on EVM and Solana takes a zero price: "`requirements.amount` ... the facilitator MUST validate it as
 //   a non-negative base-10 integer string" (specs/schemes/batch-settlement/scheme_batch_settlement_evm.md, "Not below
 //   claimed"), and both scheme texts name "a zero-price route" (scheme_batch_settlement_svm.md, "Monotonic amount"), so
@@ -13,7 +13,9 @@
 //   the transfer's amount with the option's by equality (`dist/esm/chunk-RCDWMK2L.mjs:1010-1011`), so its `read` offers
 //   "0" and refuses the other five;
 // - a pairing whose payment can be an agreement with a floor of zero offers "0", as the agreement's floor admits it:
-//   `x402/exact/casper`, whose floor is zero by the token (x402-exact-casper.md, rule 24);
+//   `x402/exact/casper`, whose floor is zero by the token (x402-exact-casper.md, rule 24), and Algorand's and
+//   Concordium's `exact`, whose schemes set no floor, their facilitators comparing the amount by equality
+//   (x402-exact-algorand-note.md, rule 3; x402-exact-ccd.md, rule 3);
 // - Sui `exact` takes "0" as an agreement's floor where a sponsor or the buyer pays gas (lcp/profiles/x402-exact-sui.md,
 //   rule 16), so its `read` offers "0" on those paths and refuses the other five;
 // - TON `exact` takes "0" as an agreement's floor: its scheme asks the transfer to equal the amount with no floor, and the
@@ -49,7 +51,9 @@ const ZERO_PRICE = X402.map((b) => b.id).filter((id) =>
   [
     "x402/batch-settlement/eip155",
     "x402/batch-settlement/solana",
+    "x402/exact/algorand",
     "x402/exact/casper",
+    "x402/exact/ccd",
     "x402/exact/solana",
     "x402/exact/sui",
     "x402/exact/tvm",
@@ -90,13 +94,13 @@ describe("every x402 pairing's read offers an option's amount only as the canoni
     expect(offered(pairing, all)).toEqual(zero ? [withAmount(option!, "0"), option] : [option]);
   });
 
-  it("27 options set to \"10\" are offered, 156 set outside are not, and 6 set to \"0\" on a zero-price scheme or a zero floor are", () => {
+  it("27 options set to \"10\" are offered, 154 set outside are not, and 8 set to \"0\" on a zero-price scheme or a zero floor are", () => {
     const answers = ROWS.flatMap(({ pairing, option }) => [
       [pairing.id, '"10"', offered(pairing, [option!])],
       ...OUTSIDE.map(([what, amount]) => [pairing.id, what, offered(pairing, [withAmount(option!, amount)])]),
     ]);
     const refused = rowsOf(answers, "each pairing's read of its option at each amount", {
-      exact: 156,
+      exact: 154,
       keep: ["the options its read does not offer", ([, , a]) => isRefusal(a)],
       leave: ["the options its read offers", ([, , a]) => !isRefusal(a)],
     });

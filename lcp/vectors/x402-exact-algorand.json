@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/algorand pairing of @integraledger/lcp's avm entry point. H is SHA-256(\"abc\") from FIPS 180-2. The values were computed with py-algorand-sdk 2.12.0 and PyNaCl 1.6.2 on Python 3.12.3, with hashlib's sha512_256 as a second path, 2026-09-25; the seeds are not recorded here. Rounds are decimal strings. The SignedTxn rows of V3's refusals are V2's payment entry decoded and re-encoded with algosdk 3.8.0's msgpackRawDecodeAsMap and msgpackRawEncode (which give V2's entry back unchanged) with one member replaced, and algosdk 3.8.0's decodeSignedTransaction refuses each. The rows of V3's refusals whose case ends \"a string that is not well-formed UTF-8 (RFC 3629 §4)\" are V2's payment entry with one msgpack string written by hand, its length set to its bytes: in place of one of V2's own strings, a map key or a value, or as the key of one member appended, with the value 5, to the entry's map or to its transaction's map, whose count rises by one; RFC 3629 §4's syntax and Python 3.12.3's strict UTF-8 codec refuse each such string. Rows 12 to 16 of V3's refusals are refused as the x402 path reads them: rows 12, 14 and 15 key a member algod does not know, and rows 13 and 16 write a gen whose bytes the x402 facilitator reads as other text. Rows 17 to 39 of V3's refusals are V2's payment entry written by hand in the msgpack specification's formats, with the member each case names written, appended to the payment transaction's map or added to the entry's, whose count rises by one, or the entry followed by one byte. Each is refused by go-algorand v5.0.3's decoder (go-codec v1.1.10 under go-algorand's CodecHandle) or by Transaction.WellFormed's type rules, or is read by algokit-utils 10.0.0-alpha.46's decodeSignedTransaction, the x402 reference facilitator's decoder, as another signed transaction than algod reads, or refused by it or by its transaction id. The x402 reference facilitator's reading is at x402-foundation/x402 e95b0666 (typescript/packages/mechanisms/avm): it decodes each entry's base64 with Node's Buffer.from(entry, \"base64\"), which takes other spellings of the same bytes than the canonical one, and lcp reads the canonical form only (RFC 4648 §3.5), so row 11 of V3's refusals is refused. The V4 rows give status's answer under the profile read-status at the one mark, final, asked about the act payment unless a row's query says otherwise; positions are confirmed rounds. The rows read pending not-found and failed expired answer pending search-incomplete: at coverage full, failed comes only once the search for H is read whole, and the read has no search (rules 18 and 24).",
+ "about": "Vectors for the x402/exact/algorand pairing of @integraledger/lcp's avm entry point. H is SHA-256(\"abc\") from FIPS 180-2. The values were computed with py-algorand-sdk 2.12.0 and PyNaCl 1.6.2 on Python 3.12.3, with hashlib's sha512_256 as a second path, 2026-09-25; the seeds are not recorded here. Rounds are decimal strings. The SignedTxn rows of V3's refusals are V2's payment entry decoded and re-encoded with algosdk 3.8.0's msgpackRawDecodeAsMap and msgpackRawEncode (which give V2's entry back unchanged) with one member replaced, and algosdk 3.8.0's decodeSignedTransaction refuses each. The rows of V3's refusals whose case ends \"a string that is not well-formed UTF-8 (RFC 3629 §4)\" are V2's payment entry with one msgpack string written by hand, its length set to its bytes: in place of one of V2's own strings, a map key or a value, or as the key of one member appended, with the value 5, to the entry's map or to its transaction's map, whose count rises by one; RFC 3629 §4's syntax and Python 3.12.3's strict UTF-8 codec refuse each such string. Rows 12 to 16 of V3's refusals are refused as the x402 path reads them: rows 12, 14 and 15 key a member algod does not know, and rows 13 and 16 write a gen whose bytes the x402 facilitator reads as other text. Rows 17 to 39 of V3's refusals are V2's payment entry written by hand in the msgpack specification's formats, with the member each case names written, appended to the payment transaction's map or added to the entry's, whose count rises by one, or the entry followed by one byte. Each is refused by go-algorand v5.0.3's decoder (go-codec v1.1.10 under go-algorand's CodecHandle) or by Transaction.WellFormed's type rules, or is read by algokit-utils 10.0.0-alpha.46's decodeSignedTransaction, the x402 reference facilitator's decoder, as another signed transaction than algod reads, or refused by it or by its transaction id. The x402 reference facilitator's reading is at x402-foundation/x402 e95b0666 (typescript/packages/mechanisms/avm): it decodes each entry's base64 with Node's Buffer.from(entry, \"base64\"), which takes other spellings of the same bytes than the canonical one, and lcp reads the canonical form only (RFC 4648 §3.5), so row 11 of V3's refusals is refused. The V4 rows give status's answer under the profile read-status at the one mark, final, asked about the act payment unless a row's query says otherwise; positions are confirmed rounds; V4's own about states the lookup, the search for H and the answers it gives while the facts the search rests on are not yet shown. V3.authorities holds V2's transaction under each authority, and build's row 6 the option at amount \"0\", each with its source.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
@@ -61,7 +61,10 @@
    "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
    "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
    "lastValid": "67634796",
-   "payee": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M"
+   "payee": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+   "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE"
   },
   "presentedOptions": [
    {
@@ -459,7 +462,7 @@
     "expect": "avm/txn-malformed"
    },
    {
-    "case": "V2's group with pqsig {slt: 1} added to the payment entry: a member algod reads and the x402 facilitator does not",
+    "case": "V2's group with pqsig {slt: 1} added to the payment entry beside its sig: a second signature category, which algod refuses (go-algorand v5.0.3, data/transactions/verify/txn.go:321-352)",
     "paymentIndex": 1,
     "paymentGroup": [
      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
@@ -512,24 +515,165 @@
     ],
     "expect": "avm/txn-malformed"
    }
-  ]
+  ],
+  "authorities": {
+   "about": "V2's payment transaction under each authority a payment entry can carry, at paymentIndex 1 beside V2's fee payer entry. Each entry is algosdk 3.8.0's encodeMsgpack of a SignedTransaction over V2's decoded transaction (the clawback's transaction written by makeAssetTransferTxnWithSuggestedParamsFromObject with V2's members, the fee payer as sender and the payer as asset sender). The logic signatures' program is TEAL version 6's pushint 1, 06 81 01; their delegating key is the Ed25519 key of the seed 0x00…01, public key 4cb5abf6ad79fbf5abbccafcc269d85cd2651ed4b885b5869f241aedf0a5ba29, which is not the payer's: lcp verifies no signature. lsig.sig and lsig.lmsig are algosdk's LogicSig.sign without and with a 1-of-2 multisignature of that key and payTo's, lsig.msig is that multisignature with LogicSig.signProgram's signature, and lsig.pqsig is algosdk's EncodedPQSig of the scheme f1 with a key of 1,793 bytes 0x11, the salt addressFromPQKey derives for it and a signature of 1,538 bytes 0x22. go-algorand v5.0.3 counts a logic signature by its program (LogicSig.HasProgram, data/transactions/logicsig.go:58-61) and reads sig, msig, lmsig and pqsig as its delegations (:36-50). The answers are the profile's: rules 4, 8, 10 and 12.",
+   "rows": [
+    {
+     "case": "a 1-of-2 multisignature, msig: the payer's key with V2's signature, and payTo's key unsigned",
+     "authority": "msig",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "gqRtc2lng6ZzdWJzaWeSgqJwa8Qgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1yhc8RAnYjXmFbDjhOSYdq6evHlyyNln4oSQf2DsEuQIFbVsdecsKEzUdfJmbX1W28E2joS3DGrVJwSXYb8OgIPNTRYCYGicGvEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRo3RocgGhdgGjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz0="
+     ],
+     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "expectReference": {
+      "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+      "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "lastValid": "67634796",
+      "payee": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE"
+     }
+    },
+    {
+     "case": "the payer's account rekeyed to the fee payer's key: sgnr names it, with V2's signature",
+     "authority": "rekeyedFeePayer",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "g6RzZ25yxCA34WihLhoEEZvJBW7VHbMSphTkN5yEaC5MvISFET2TSqNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz0="
+     ],
+     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "expectReference": {
+      "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+      "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "lastValid": "67634796",
+      "payee": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "signer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ"
+     }
+    },
+    {
+     "case": "the payer's account rekeyed to the payee's key: sgnr names payTo; reference gives the payee as the signer, an act the read never settles on (rule 12)",
+     "authority": "rekeyedPayee",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "g6RzZ25yxCDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30aNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz0="
+     ],
+     "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "expectReference": {
+      "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
+      "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "lastValid": "67634796",
+      "payee": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "signer": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M"
+     }
+    },
+    {
+     "case": "a logic signature with no delegation, a contract account's program: no key signs the transaction (rule 4)",
+     "authority": "lsig",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "gqRsc2lngaFsxAMGgQGjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRomZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKjZ3JwxCBbX9kJGvikeYJ7/67rmHcuthIM7dlh/mS6a2TpKUj8gqJsds4ECAZspG5vdGXETWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFko3NuZMQgiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1ykdHlwZaVheGZlcqR4YWlkzgCflz0="
+     ],
+     "expect": "avm/logic-signature"
+    },
+    {
+     "case": "a logic signature a key delegated, lsig.sig",
+     "authority": "lsigSig",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "gqRsc2lngqFsxAMGgQGjc2lnxEAT6gz6fdaB/mD6ZW/lFjwpuHWfcHJJGTf2szUMOwnonh6FGEy5sYFrCvOz9wQk3/2sFbpp6Gfzlmlhu8gFg/MMo3R4boukYWFtdM0nEKRhcmN2xCDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30aJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKRub3RlxE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZKNzbmTEIIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cpHR5cGWlYXhmZXKkeGFpZM4An5c9"
+     ],
+     "expect": "avm/logic-signature"
+    },
+    {
+     "case": "a logic signature a multisignature delegated, lsig.msig",
+     "authority": "lsigMsig",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "gqRsc2lngqFsxAMGgQGkbXNpZ4Omc3Vic2lnkoKicGvEIEy1q/atefv1q7zK/MJp2FzSZR7UuIW1hp8kGu3wpbopoXPEQBPqDPp91oH+YPplb+UWPCm4dZ9wckkZN/azNQw7CeieHoUYTLmxgWsK87P3BCTf/awVumnoZ/OWaWG7yAWD8wyBonBrxCDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30aN0aHIBoXYBo3R4boukYWFtdM0nEKRhcmN2xCDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30aJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKRub3RlxE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZKNzbmTEIIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cpHR5cGWlYXhmZXKkeGFpZM4An5c9"
+     ],
+     "expect": "avm/logic-signature"
+    },
+    {
+     "case": "a logic signature a multisignature delegated bound to its address, lsig.lmsig",
+     "authority": "lsigLmsig",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "gqRsc2lngqFsxAMGgQGlbG1zaWeDpnN1YnNpZ5KConBrxCBMtav2rXn79au8yvzCadhc0mUe1LiFtYafJBrt8KW6KaFzxEDCTt3N4il9Effx1N52diqvCvGyieyZi1qKo6Bv5lP+AdJ6gqi4Q7UQvN1FvuRKF6SrwixlbeBmAHYfhnZv/+0NgaJwa8Qg7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9GjdGhyAaF2AaN0eG6LpGFhbXTNJxCkYXJjdsQg7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9GiZnbOBAgGMKNnZW6sdGVzdG5ldC12MS4womdoxCBIY7UYpLPITsgQ8i1PEIHLD3HwWaesIN7GL39w5Qk6IqNncnDEIFtf2Qka+KR5gnv/ruuYdy62Egzt2WH+ZLprZOkpSPyComx2zgQIBmykbm90ZcRNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWSjc25kxCCKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXKR0eXBlpWF4ZmVypHhhaWTOAJ+XPQ=="
+     ],
+     "expect": "avm/logic-signature"
+    },
+    {
+     "case": "a logic signature a Falcon key delegated, lsig.pqsig: the x402 facilitator's decoder reads no pqsig, in a logic signature as in the entry, so its reader and algod's read two transactions (rule 8), refused as malformed before it is read as a logic signature",
+     "authority": "lsigPqsig",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "gqRsc2lngqFsxAMGgQGlcHFzaWeEonBrxQcBERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERERGjc2NoxAJmMaNzaWfFBgIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIqNzbHQCo3R4boukYWFtdM0nEKRhcmN2xCDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30aJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKRub3RlxE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZKNzbmTEIIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cpHR5cGWlYXhmZXKkeGFpZM4An5c9"
+     ],
+     "expect": "avm/txn-malformed"
+    },
+    {
+     "case": "V2's transfer naming the payer as its asset sender, asnd, sent by the fee payer: a clawback by the asset's clawback address, with V2's signature (rule 4)",
+     "authority": "clawback",
+     "paymentIndex": 1,
+     "paymentGroup": [
+      "gaN0eG6Jo2ZlZc0H0KJmds4ECAYwo2dlbqx0ZXN0bmV0LXYxLjCiZ2jEIEhjtRiks8hOyBDyLU8QgcsPcfBZp6wg3sYvf3DlCToio2dycMQgW1/ZCRr4pHmCe/+u65h3LrYSDO3ZYf5kumtk6SlI/IKibHbOBAgGbKNyY3bEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKo3NuZMQgN+FooS4aBBGbyQVu1R2zEqYU5DechGguTLyEhRE9k0qkdHlwZaNwYXk=",
+      "gqNzaWfEQJ2I15hWw44TkmHaunrx5csjZZ+KEkH9g7BLkCBW1bHXnLChM1HXyZm19VtvBNo6Etwxq1ScEl2G/DoCDzU0WAmjdHhui6RhYW10zScQpGFyY3bEIO1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRpGFzbmTEIIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29comZ2zgQIBjCjZ2VurHRlc3RuZXQtdjEuMKJnaMQgSGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiKibHbOBAgGbKRub3RlxE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZKNzbmTEIDfhaKEuGgQRm8kFbtUdsxKmFOQ3nIRoLky8hIURPZNKpHR5cGWlYXhmZXKkeGFpZM4An5c9"
+     ],
+     "expect": "avm/clawback"
+    }
+   ]
+  }
  },
  "V4": {
-  "case": "status and recover on reader fixtures",
+  "case": "status and recover on Indexer fixtures",
+  "about": "Constructed fixtures, marked so: each is an answer of the Algorand Indexer's API (api/indexer.oas2.json at algorand/indexer 748ac404), written by hand, not recorded from a running Indexer; the records owed are listed in the profile. A transaction is written with its id, confirmed round, tx-type, sender, auth-addr, the one member of its signature that is set, its note (\"H\" for H's LCP string, else base64), its asset transfer and its inner transactions. lookup is GET /v2/transactions?txid=; header is GET /v2/blocks/{round}?header-only=true, true where the Indexer answers the header; pages are GET /v2/accounts/{account}/transactions in the order asked, each with the parameters the read must ask. The query asks the act payment at the one mark, final, unless the row says otherwise. expect is status's answer as the read gives it: the facts the search rests on are not yet shown by a run (the profile's rule 16), so a search read to its end answers pending, search-incomplete, at the round it reached, where it would answer failed. Every expected answer was derived by hand from read-status.md and x402-exact-algorand-note.md. The other transaction ids are base32 of SHA-512/256 of a label (Python hashlib).",
   "reference": {
    "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
    "txid": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
    "lastValid": "67634796",
-   "payee": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M"
+   "payee": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+   "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE"
   },
   "readerNetwork": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
-  "note": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
   "rows": [
    {
-    "answer": {
+    "case": "the claimed id confirmed, the payer's key signature, arcv the payee, note H: settled, presented yes",
+    "lookup": {
      "currentRound": "67634741",
      "found": {
-      "confirmedRound": "67634740"
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
      }
     },
     "expect": {
@@ -537,49 +681,45 @@
      "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
      "position": "67634740",
      "finality": "final",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "yes"
     }
    },
    {
-    "answer": {
-     "currentRound": "67634796",
-     "found": null
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "answer": {
-     "currentRound": "67634797",
-     "found": null
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "answer": "reader-error",
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the confirmed transaction, asked about on the act agreement: an agreement is held to no account, and the same transaction settles it",
+    "case": "the same, asked about on the act agreement: settled",
     "query": {
-     "act": "agreement",
-     "finality": "final"
+     "act": "agreement"
     },
-    "answer": {
+    "lookup": {
      "currentRound": "67634741",
      "found": {
-      "confirmedRound": "67634740"
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
      }
     },
     "expect": {
@@ -587,20 +727,45 @@
      "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
      "position": "67634740",
      "finality": "final",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "yes"
     }
    },
    {
-    "case": "the confirmed transaction, asked about after its own round: failed before-position",
+    "case": "the same, asked about after its own round: failed before-position",
     "query": {
-     "act": "payment",
-     "finality": "final",
      "after": "67634740"
     },
-    "answer": {
+    "lookup": {
      "currentRound": "67634741",
      "found": {
-      "confirmedRound": "67634740"
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
      }
     },
     "expect": {
@@ -609,6 +774,3056 @@
      "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
      "position": "67634740",
      "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig"
+    }
+   },
+   {
+    "case": "the claimed id confirmed under a rekeyed account's key, sgnr another address: settled, the signer sgnr",
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "position": "67634740",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+     "authority": "sig",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the claimed id confirmed under a multisignature: settled",
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "multisig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "position": "67634740",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "multisig",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the claimed id confirmed under a Falcon signature: settled",
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "pqsig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "position": "67634740",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "pqsig",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the claimed id confirmed with amount 0 to the payee: settled, what moved recorded",
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "0",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "position": "67634740",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "0",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the claimed id confirmed moving another asset to the payee, with a close: settled, both transfers recorded",
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "31566704",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "closeAmount": "7",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "position": "67634740",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "31566704",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      },
+      {
+       "asset": "31566704",
+       "amount": "7",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "aclose"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the id not found before lastValid, the Indexer declared archival: instrument-live",
+    "archival": true,
+    "lookup": {
+     "currentRound": "67634741",
+     "found": null
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the id not found before lastValid, the header answered at the position given: instrument-live",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634741",
+     "found": null
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the id not found, no position given and no archival declaration: history-gap",
+    "lookup": {
+     "currentRound": "67634741",
+     "found": null
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the id not found past lastValid, the header not held at the position given: history-gap",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": false
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the header read fails: transport",
+    "query": {
+     "after": "67634700"
+    },
+    "header": "reader-error",
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a lapse whose search reads one sub-range, a short page with a token then the empty page, and finds no note H: search-incomplete at the round it reached, the facts it rests on not yet shown",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634750",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": {
+      "through": "67634800"
+     }
+    }
+   },
+   {
+    "case": "a lapse whose search reads two sub-ranges, the first topped below the lookup's round: search-incomplete at the round it reached, the facts it rests on not yet shown",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634795",
+       "transactions": []
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634796"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": {
+      "through": "67634800"
+     }
+    }
+   },
+   {
+    "case": "a lapse whose search finds the payer's act signed again under another id: settled on it, presented no",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+     "position": "67634790",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "that act given by the caller as another act under the same H: never settled, a foreign item given",
+    "query": {
+     "after": "67634700",
+     "others": [
+      {
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA"
+      }
+     ]
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "position": "67634790",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "given"
+      }
+     ],
+     "search": {
+      "through": "67634800"
+     }
+    }
+   },
+   {
+    "case": "that act given by its reference: the same",
+    "query": {
+     "after": "67634700",
+     "others": [
+      {
+       "ref": {
+        "txid": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA"
+       }
+      }
+     ]
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "position": "67634790",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "given"
+      }
+     ],
+     "search": {
+      "through": "67634800"
+     }
+    }
+   },
+   {
+    "case": "on a charge, the search finds the payer's act carrying H that moved another asset, and one of zero, to the payee: settled on the first found",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "31566704",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        },
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634780",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "0",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+     "position": "67634790",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "31566704",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "on a charge, the payer's act carrying H to another receiver is a foreign item, other-account, and the search reads on",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634795",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        },
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+     "position": "67634790",
+     "finality": "final",
+     "foreign": [
+      {
+       "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+       "position": "67634795",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+         "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "other-account"
+      }
+     ],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "on an agreement, the payer's act carrying H to another receiver is the act: an agreement is held to no account",
+    "query": {
+     "after": "67634700",
+     "act": "agreement"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+     "position": "67634790",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "the search meets a transaction carrying H that the payee signed, one under a logic signature, one that names asnd, an inner transaction and the payer's payment of ALGO: each a foreign item",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634799",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        },
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634798",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "logicsig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        },
+        {
+         "id": "LGQX7ZCEJDKYV2BP5SVZNYPAZMJP3KVTVY4YF43OS2S4WVNGGI2Q",
+         "round": "67634797",
+         "type": "axfer",
+         "sender": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE"
+         },
+         "inner": []
+        },
+        {
+         "id": "FW5NQL5QD4MF6V6C5VGOFKOROOX2ULKS3GYKATJT25G2YEYYEXEQ",
+         "round": "67634796",
+         "type": "appl",
+         "sender": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "",
+         "transfer": null,
+         "inner": [
+          {
+           "id": "FW5NQL5QD4MF6V6C5VGOFKOROOX2ULKS3GYKATJT25G2YEYYEXEQ",
+           "round": "67634796",
+           "type": "axfer",
+           "sender": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+           "authAddr": null,
+           "signature": "none",
+           "note": "H",
+           "transfer": {
+            "assetId": "10458941",
+            "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+            "amount": "10000",
+            "closeTo": null,
+            "closeAmount": "0",
+            "assetSender": null
+           },
+           "inner": []
+          }
+         ]
+        },
+        {
+         "id": "MPOC3JAS2EHCERRYBE2CDYDVILZY4QBUMU4BWYFG6VHESMKQG5ZQ",
+         "round": "67634795",
+         "type": "pay",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": null,
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "through": "67634800"
+     },
+     "foreign": [
+      {
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "position": "67634799",
+       "signer": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "payee-signed"
+      },
+      {
+       "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+       "position": "67634798",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "other-signer"
+      },
+      {
+       "transaction": "LGQX7ZCEJDKYV2BP5SVZNYPAZMJP3KVTVY4YF43OS2S4WVNGGI2Q",
+       "position": "67634797",
+       "signer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "LGQX7ZCEJDKYV2BP5SVZNYPAZMJP3KVTVY4YF43OS2S4WVNGGI2Q",
+         "place": "arcv"
+        }
+       ],
+       "reason": "other-signer"
+      },
+      {
+       "transaction": "FW5NQL5QD4MF6V6C5VGOFKOROOX2ULKS3GYKATJT25G2YEYYEXEQ",
+       "position": "67634796",
+       "signer": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "FW5NQL5QD4MF6V6C5VGOFKOROOX2ULKS3GYKATJT25G2YEYYEXEQ",
+         "place": "inner-txns/0/arcv"
+        }
+       ],
+       "reason": "other-signer"
+      },
+      {
+       "transaction": "MPOC3JAS2EHCERRYBE2CDYDVILZY4QBUMU4BWYFG6VHESMKQG5ZQ",
+       "position": "67634795",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "reason": "other-kind"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the claimed id landed with arcv another account, on a charge: search-incomplete, the facts the search rests on not yet shown",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634745",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "position": "67634740",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+         "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "other-account"
+      }
+     ],
+     "search": {
+      "through": "67634745"
+     }
+    }
+   },
+   {
+    "case": "the same on the act agreement: settled, an agreement held to no account",
+    "query": {
+     "after": "67634700",
+     "act": "agreement"
+    },
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "position": "67634740",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "G7QWRIJODICBDG6JAVXNKHNTCKTBJZBXTSCGQLSMXSCIKEJ5SNFPEJSFQQ",
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the claimed id landed under a logic signature, the search finding the payer's act signed again: settled on it, the claimed id named as a foreign item, other-signer",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634795",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "logicsig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+     "position": "67634790",
+     "finality": "final",
+     "foreign": [
+      {
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "position": "67634740",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "other-signer"
+      }
+     ],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "the claimed id landed under a logic signature, the search read to its end and finding none: search-incomplete, the facts it rests on not yet shown",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634795",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "logicsig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "position": "67634740",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "other-signer"
+      }
+     ],
+     "search": {
+      "through": "67634800"
+     }
+    }
+   },
+   {
+    "case": "the claimed id landed signed by the payee's key, sgnr the payee: search-incomplete, the facts the search rests on not yet shown",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634795",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "position": "67634740",
+       "signer": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "payee-signed"
+      }
+     ],
+     "search": {
+      "through": "67634800"
+     }
+    }
+   },
+   {
+    "case": "the claimed id landed under a logic signature, the search meeting an item the reader cannot parse: search-incomplete, held at that item's page and naming it",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634795",
+     "found": {
+      "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "logicsig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "unparseable": true,
+         "id": "HGS6YAGQVESBFQJXCJRS4VNLOBNULSVCNMMSH5NYFDVMW2GKRCXA"
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+       "position": "67634740",
+       "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+       "moved": [
+        {
+         "asset": "10458941",
+         "amount": "10000",
+         "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+         "transaction": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+         "place": "arcv"
+        }
+       ],
+       "reason": "other-signer"
+      }
+     ],
+     "search": {
+      "through": "67634700"
+     },
+     "undecoded": [
+      "HGS6YAGQVESBFQJXCJRS4VNLOBNULSVCNMMSH5NYFDVMW2GKRCXA"
+     ]
+    }
+   },
+   {
+    "case": "a page that answers a current-round below its sub-range's top: search-incomplete, its position held at that page",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634750",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634799",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": {
+      "through": "67634700",
+      "top": "67634800",
+      "next": "p1"
+     }
+    }
+   },
+   {
+    "case": "a page with an item the reader cannot parse and the payer's act after it: settled",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634750",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "unparseable": true,
+         "id": "HGS6YAGQVESBFQJXCJRS4VNLOBNULSVCNMMSH5NYFDVMW2GKRCXA"
+        },
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p2"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p2"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+     "position": "67634790",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "a page with an item the reader cannot parse and nothing of the act asked about: the rest of the range read, search-incomplete held at that page and naming the item",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634750",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "unparseable": true,
+         "id": "HGS6YAGQVESBFQJXCJRS4VNLOBNULSVCNMMSH5NYFDVMW2GKRCXA"
+        },
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634749",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p2"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p2"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": {
+      "through": "67634700",
+      "top": "67634800",
+      "next": "p1"
+     },
+     "undecoded": [
+      "HGS6YAGQVESBFQJXCJRS4VNLOBNULSVCNMMSH5NYFDVMW2GKRCXA"
+     ]
+    }
+   },
+   {
+    "case": "the search's next call, given the position the last answer carried, reads the page again and settles on the act",
+    "query": {
+     "after": "67634700",
+     "search": {
+      "through": "67634700",
+      "top": "67634800",
+      "next": "p1"
+     }
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "H",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p2"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p2"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+     "position": "67634790",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "10458941",
+       "amount": "10000",
+       "to": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "transaction": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+       "place": "arcv"
+      }
+     ],
+     "signer": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authority": "sig",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "the read's bound reached with a token left: search-incomplete, with the position",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634799",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p1"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p1"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634798",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p2"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p2"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634797",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p3"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p3"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634796",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p4"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p4"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634795",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p5"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p5"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634794",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p6"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p6"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634793",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p7"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p7"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634792",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p8"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p8"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634791",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p9"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p9"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634790",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p10"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p10"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634789",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p11"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p11"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634788",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p12"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p12"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634787",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p13"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p13"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634786",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p14"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p14"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634785",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p15"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p15"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634784",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p16"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p16"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634783",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p17"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p17"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634782",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p18"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p18"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634781",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p19"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p19"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634780",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p20"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p20"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634779",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p21"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p21"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634778",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p22"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p22"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634777",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p23"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p23"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634776",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p24"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p24"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634775",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p25"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p25"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634774",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p26"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p26"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634773",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p27"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p27"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634772",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p28"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p28"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634771",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p29"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p29"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634770",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p30"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p30"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634769",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p31"
+      }
+     },
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p31"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": [
+        {
+         "id": "X7QV2JEUBEZ3NXIEBSMWRJ4BPEYTBEJOLZGIPH5DAHNCQQ632LUA",
+         "round": "67634768",
+         "type": "axfer",
+         "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+         "authAddr": null,
+         "signature": "sig",
+         "note": "b3RoZXI=",
+         "transfer": {
+          "assetId": "10458941",
+          "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+          "amount": "10000",
+          "closeTo": null,
+          "closeAmount": "0",
+          "assetSender": null
+         },
+         "inner": []
+        }
+       ],
+       "next": "p32"
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": {
+      "through": "67634700",
+      "top": "67634800",
+      "next": "p32"
+     }
+    }
+   },
+   {
+    "case": "the next call, given that position, reads to the end: search-incomplete at the round it reached, the facts it rests on not yet shown",
+    "query": {
+     "after": "67634700",
+     "search": {
+      "through": "67634700",
+      "top": "67634800",
+      "next": "p32"
+     }
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701",
+       "maxRound": "67634800",
+       "next": "p32"
+      },
+      "answer": {
+       "currentRound": "67634800",
+       "transactions": []
+      }
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": {
+      "through": "67634800"
+     }
+    }
+   },
+   {
+    "case": "a page refused, as an Indexer answers 400 for a disabled call or 503 on a timeout: transport",
+    "query": {
+     "after": "67634700"
+    },
+    "header": {
+     "67634700": true
+    },
+    "lookup": {
+     "currentRound": "67634797",
+     "found": null
+    },
+    "pages": [
+     {
+      "asks": {
+       "minRound": "67634701"
+      },
+      "answer": "reader-error"
+     }
+    ],
+    "expect": {
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the lookup fails: transport",
+    "lookup": "reader-error",
+    "expect": {
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the lookup answers another id than the one asked: unparseable",
+    "lookup": {
+     "currentRound": "67634741",
+     "found": {
+      "id": "6U5D5VFUXM4TYJUJHYEUVY4DYYBWSGSXTSQ2LARBHZ3N2W2L6CGA",
+      "round": "67634740",
+      "type": "axfer",
+      "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+      "authAddr": null,
+      "signature": "sig",
+      "note": "H",
+      "transfer": {
+       "assetId": "10458941",
+       "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+       "amount": "10000",
+       "closeTo": null,
+       "closeAmount": "0",
+       "assetSender": null
+      },
+      "inner": []
+     }
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "unparseable",
      "foreign": []
     }
    }
@@ -617,7 +3832,22 @@
    "answer": {
     "currentRound": "67634741",
     "found": {
-     "confirmedRound": "67634740"
+     "id": "ZBMB34JLQ3R57S5NSFP4WEAJF5V6DX43VWZJWO7RB4NPN67FQTUA",
+     "round": "67634740",
+     "type": "axfer",
+     "sender": "RKEOHXLUBHYZL7KS3MWTZOS5OLFGOCN7DWKBEG7TOSEADNAPN5OOTUNSLE",
+     "authAddr": null,
+     "signature": "sig",
+     "note": "H",
+     "transfer": {
+      "assetId": "10458941",
+      "receiver": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
+      "amount": "10000",
+      "closeTo": null,
+      "closeAmount": "0",
+      "assetSender": null
+     },
+     "inner": []
     }
    },
    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
@@ -817,7 +4047,7 @@
   ]
  },
  "build": {
-  "about": "build's answers for the file's option O, payer and parameters, with the genesis id, and the genesis hash where a row names one, replaced by the row's. \\ud800 in a genesis id is a lone surrogate, which UTF-8 cannot encode (RFC 3629 §3). Row 1's group id and payment txid were derived by hand from the signed transaction's canonical form (sorted keys, shortest formats, members at their zero value left out), the group id as SHA-512/256 of \"TG\" and {txlist: [each transaction's id]}, and each id as SHA-512/256 of \"TX\" and the transaction; the same derivation gives V2's expectGroupId and expectPaymentTxid from the file's own genesis id. Both readers of the x402 path read row 1's gen with its mark, so bound reads the payment build writes. The mainnet genesis hash is go-algorand v5.0.3's (cmd/algokey/keyreg.go:94). Rows 2 and 3 pin the order of build's checks: the genesis id before the genesis hash. Row 4's genesis id is written as a str 16 (the msgpack specification's formats), so V2's payment entry of 374 bytes, its gen testnet-v1.0 a fixstr of 13, becomes 374 - 13 + 3 + 5,781 = 6,145 bytes, whose base64 is 8,196 characters (RFC 4648 §4), past the 8,192 the carrier reads: build refuses it. A genesis id of 5,780 x gives 6,144 bytes and 8,192 characters, which build writes.",
+  "about": "build's answers for the file's option O, payer and parameters, with the genesis id, and the genesis hash where a row names one, replaced by the row's. \\ud800 in a genesis id is a lone surrogate, which UTF-8 cannot encode (RFC 3629 §3). Row 1's group id and payment txid were derived by hand from the signed transaction's canonical form (sorted keys, shortest formats, members at their zero value left out), the group id as SHA-512/256 of \"TG\" and {txlist: [each transaction's id]}, and each id as SHA-512/256 of \"TX\" and the transaction; the same derivation gives V2's expectGroupId and expectPaymentTxid from the file's own genesis id. Both readers of the x402 path read row 1's gen with its mark, so bound reads the payment build writes. The mainnet genesis hash is go-algorand v5.0.3's (cmd/algokey/keyreg.go:94). Rows 2 and 3 pin the order of build's checks: the genesis id before the genesis hash. Row 4's genesis id is written as a str 16 (the msgpack specification's formats), so V2's payment entry of 374 bytes, its gen testnet-v1.0 a fixstr of 13, becomes 374 - 13 + 3 + 5,781 = 6,145 bytes, whose base64 is 8,196 characters (RFC 4648 §4), past the 8,192 the carrier reads: build refuses it. A genesis id of 5,780 x gives 6,144 bytes and 8,192 characters, which build writes. Row 6 is the file's option at amount \"0\", which the scheme admits (no floor; the facilitator compares the amount by equality): its group id, payment txid, fee payer's txid and bytes to sign were derived by hand the same way from V2's two transactions, the payment transaction's aamt, at its zero value, left out of its canonical form and its map's count one less (Python's hashlib).",
   "rows": [
    {
     "case": "a genesis id of testnet-v1. and the lone surrogate U+D800",
@@ -847,6 +4077,16 @@
     "case": "a genesis id of 5,781 x: the payment entry it gives is 6,145 bytes, 8,196 base64 characters, longer than the 8,192 the carrier reads",
     "genesisId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "expect": "avm/option-malformed"
+   },
+   {
+    "case": "the file's option at amount \"0\", with the file's genesis id: the payment transaction leaves aamt out at its zero value, so the group id, its id and the fee payer's change",
+    "amount": "0",
+    "genesisId": "testnet-v1.0",
+    "expectGroupId": "GRGCl1ZOfMRcyLyjibWaNmrQQ5EupHvbFYoY5C8K6Hg=",
+    "expectPaymentTxid": "Z6AEQU7K3IBCSSIHZPQNPEJLFFPHLYTDRPP76RBWLXMA4UZQJJVA",
+    "expectFeePayerTxid": "VWSF6PN7ONRTI5UQN4U2VVQIQOTHZC3APWXT4NCSVR75FQXPFQ2Q",
+    "expectBytesToSign": "54588aa461726376c420ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1a26676ce04080630a367656eac746573746e65742d76312e30a26768c4204863b518a4b3c84ec810f22d4f1081cb0f71f059a7ac20dec62f7f70e5093a22a3677270c42019118297564e7cc45cc8bca389b59a366ad043912ea47bdb158a18e42f0ae878a26c76ce0408066ca46e6f7465c44d6c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164a3736e64c4208a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5ca474797065a56178666572a478616964ce009f973d",
+    "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    }
   ]
  },
@@ -905,13 +4145,13 @@
     "expect": "x402/option-not-this-pairing"
    },
    {
-    "case": "the option with amount \"0\", which is zero",
+    "case": "the option with amount \"00\", which has a leading zero",
     "pairing": "x402/exact/algorand",
     "payment": "/buyer/rows/1/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe",
-     "amount": "0",
+     "amount": "00",
      "asset": "10458941",
      "payTo": "5VESRRRI2HBMN2XJAM4JAWMVMEUVSJZ2LRR7SNRWYFDBJLEHG7I2572N4M",
      "maxTimeoutSeconds": 60,

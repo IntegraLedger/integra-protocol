@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 505 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 507 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -41,7 +41,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`stellar`](#stellar) | 8 | Stellar (`@integraledger/lcp/stellar` and the Stellar pairings). |
 | [`xrpl`](#xrpl) | 23 | The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings). |
 | [`hedera`](#hedera) | 17 | Hedera (`@integraledger/lcp/hedera`, and the MPP Hedera pairings and challenges in `@integraledger/lcp/mpp`). |
-| [`avm`](#avm) | 13 | Algorand (`@integraledger/lcp/avm`). |
+| [`avm`](#avm) | 15 | Algorand (`@integraledger/lcp/avm`). |
 | [`aptos`](#aptos) | 6 | Aptos (`@integraledger/lcp/aptos`). |
 | [`cardano`](#cardano) | 15 | Cardano (`@integraledger/lcp/cardano`). |
 | [`casper`](#casper) | 14 | Casper (`@integraledger/lcp/casper`). |
@@ -498,8 +498,10 @@ Algorand (`@integraledger/lcp/avm`).
 
 | Code | Meaning |
 |---|---|
+| `avm/clawback` | The Algorand payment transaction names an asset sender, `asnd`: a clawback by the asset's clawback address, which is not the payer's signed act. |
 | `avm/group-too-large` | The Algorand payment group is empty or larger than the group bound. |
 | `avm/index-out-of-range` | The Algorand `paymentIndex` does not name a transaction in the payment group. |
+| `avm/logic-signature` | A logic signature authorises the Algorand payment transaction: no key signs it, so it is not the payer's signed act. |
 | `avm/network-malformed` | An Algorand option's network starts with `algorand:` but does not name a genesis hash in CAIP-2 form. |
 | `avm/network-mismatch` | The suggested parameters' genesis hash given to `build` is not base64 of 32 bytes or is not the network the option names. |
 | `avm/not-axfer` | The Algorand payment transaction is not an asset transfer. |

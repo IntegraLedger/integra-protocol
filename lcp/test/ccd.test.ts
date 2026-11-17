@@ -1,7 +1,7 @@
-// Runs vectors/x402-exact-ccd.json through the ccd entry point. Every expected value is the file's (D1–D5 and the
-// plant, each naming its source there); D1, D2 and the accounts are also re-derived with cborg and bs58check.
+// Runs vectors/x402-exact-ccd.json through the ccd entry point. Every expected value is the file's (D1 to D5, each
+// naming its source there); D1, D2 and the accounts are also re-derived with cborg and bs58check.
 import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, verify } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import * as cborg from "cborg";
 import bs58check from "bs58check";
@@ -18,6 +18,7 @@ import {
   type CcdReader,
   type CcdUnsigned,
 } from "../src/ccd.js";
+import { signedDigest } from "../src/internal/ccd.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { rowsOf } from "./rows.js";
 
@@ -29,8 +30,6 @@ type Payment = Exclude<ReturnType<CcdUnsigned["complete"]>, Refusal>;
 const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const bytes = (h: string) => Uint8Array.from(Buffer.from(h, "hex"));
 const required = (o: PaymentRequirements = O): PaymentRequired => ({ x402Version: 2, resource: V.fixed.resource, accepts: [o] });
-/** status's query: the act payment at the final mark. */
-const ASKED = { act: "payment", finality: "finalized" } as const;
 /** recover's input: the network, D5's block item hash and the option the payment answers. */
 const recoverInput = { network: V.D5.ref.network, tx: V.D5.transaction, option: O };
 
@@ -50,31 +49,112 @@ function set(base: unknown, changes: Record<string, unknown>): unknown {
 }
 
 type FixtureTransfer = { kind: "ccd" | "plt"; tokenId?: string; receiver: string; amount: string; memo: string | null };
-type FixtureItem = null | "reader-error" | { state: "received" | "committed" } | {
-  state: "finalized"; success: boolean; sender: string | null; transfers: FixtureTransfer[];
-};
+type FixtureOutcome = { success: boolean; transfers: FixtureTransfer[]; unknown?: boolean };
+type FixtureItem = null | "reader-error" | { state: "received" } | ({
+  state: "committed" | "finalized"; sender: string | null; height?: string; nonce?: string;
+} & FixtureOutcome);
+const transfersOf = (ts: FixtureTransfer[]) =>
+  ts.map((t) => ({
+    kind: t.kind,
+    ...(t.tokenId !== undefined ? { tokenId: t.tokenId } : {}),
+    receiver: bytes(t.receiver),
+    amount: BigInt(t.amount),
+    memo: t.memo === null ? null : bytes(t.memo),
+  }));
+function itemOf(f: Exclude<FixtureItem, null | "reader-error">): CcdItem {
+  if (f.state === "received") return { state: "received" };
+  return {
+    state: f.state,
+    success: f.success,
+    sender: f.sender === null ? null : bytes(f.sender),
+    transfers: transfersOf(f.transfers),
+    ...(f.unknown === undefined ? {} : { unknown: f.unknown }),
+    ...(f.height === undefined ? {} : { height: BigInt(f.height) }),
+    ...(f.nonce === undefined ? {} : { nonce: BigInt(f.nonce) }),
+  };
+}
+/** A reader of one item by its hash, for recover, which reads nothing else. */
 function readerFor(f: FixtureItem, network: string = V.D5.reader.network): CcdReader {
+  const none = async (): Promise<never> => {
+    throw new Error("recover reads the item by its hash alone");
+  };
   return {
     network: network as CcdReader["network"],
+    lastFinal: none,
+    block: none,
+    nextNonce: none,
+    items: none,
     async item(): Promise<CcdItem | null> {
       if (f === "reader-error") throw new ReaderError("transport");
-      if (f === null) return null;
-      if (f.state !== "finalized") return { state: f.state };
-      return {
-        state: "finalized",
-        success: f.success,
-        sender: f.sender === null ? null : bytes(f.sender),
-        transfers: f.transfers.map((t) => ({
-          kind: t.kind,
-          ...(t.tokenId !== undefined ? { tokenId: t.tokenId } : {}),
-          receiver: bytes(t.receiver),
-          amount: BigInt(t.amount),
-          memo: t.memo === null ? null : bytes(t.memo),
-        })),
-      };
+      return f === null ? null : itemOf(f);
     },
   };
 }
+
+/** One of the sender's items on D5's constructed node. */
+type NodeItem = {
+  hash: string; height: string; nonce: string; sender?: string; expiry?: string; energy?: string; sponsor?: string | null;
+  payload?: string; outcome?: FixtureOutcome; undecoded?: true; hidden?: true;
+};
+type Node = {
+  final: string; slot: string; first: string; created?: string; missing?: string[]; items: NodeItem[]; others?: string;
+  hint?: Exclude<FixtureItem, null | "reader-error" | { state: "received" }> & { hash: string };
+};
+/**
+ * The reader of D5's constructed node, as its `about` states it: its numbers are the sender's, `sender`, and any other
+ * account's next number is `others` at every height, or none. Each account the read asks is pushed to `asked`.
+ */
+function nodeReader(n: Node, network: string = V.D5.reader.network, sender: string = V.D5.ref.sender, asked: string[] = []): CcdReader {
+  const final = BigInt(n.final);
+  const missing = new Set(n.missing ?? []);
+  const held = (h: bigint) => h >= 0n && h <= final && !missing.has(h.toString());
+  return {
+    network: network as CcdReader["network"],
+    lastFinal: async () => final,
+    block: async (h) => (held(h) ? { slotTime: h === final ? BigInt(n.slot) : 0n } : null),
+    nextNonce: async (account, at) => {
+      asked.push(account);
+      if (account !== sender) return n.others === undefined ? null : BigInt(n.others);
+      if (at !== "best" && !held(at)) return null;
+      if (at !== "best" && n.created !== undefined && at < BigInt(n.created)) return null;
+      const used = n.items.filter((i) => at === "best" || BigInt(i.height) <= at).map((i) => BigInt(i.nonce));
+      return used.length === 0 ? BigInt(n.first) : used.reduce((a, b) => (a > b ? a : b)) + 1n;
+    },
+    items: async (h) =>
+      n.items
+        .filter((i) => BigInt(i.height) === h && i.hidden !== true)
+        .map((i) =>
+          i.undecoded === true
+            ? { hash: i.hash, undecoded: true as const }
+            : {
+                hash: i.hash,
+                sender: bytes(i.sender!),
+                nonce: BigInt(i.nonce),
+                expiry: BigInt(i.expiry!),
+                energy: BigInt(i.energy!),
+                sponsor: i.sponsor === null || i.sponsor === undefined ? null : bytes(i.sponsor),
+                payload: bytes(i.payload!),
+              },
+        ),
+    item: async (hash) => {
+      if (n.hint !== undefined && n.hint.hash === hash) return itemOf(n.hint);
+      const i = n.items.find((x) => x.hash === hash && x.outcome !== undefined);
+      return i === undefined ? null : itemOf({ state: BigInt(i.height) <= final ? "finalized" : "committed", sender: i.sender!, ...i.outcome! });
+    },
+  };
+}
+/** A query in the vector file's spelling, its positions decimal strings, as status takes it. */
+function queryOf(q: Record<string, unknown> = {}): never {
+  return {
+    act: q["act"] ?? "payment",
+    finality: "finalized",
+    ...(q["after"] === undefined ? {} : { after: BigInt(q["after"] as string) }),
+    ...(q["search"] === undefined ? {} : { search: { next: BigInt((q["search"] as { next: string }).next) } }),
+    ...(q["others"] === undefined ? {} : { others: q["others"] }),
+  } as never;
+}
+/** An answer with its bigints written as decimal strings, as the vector file writes them. */
+const withStrings = (a: unknown): unknown => JSON.parse(JSON.stringify(a, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
 describe("x402/exact/ccd", () => {
   it("the fixed accounts are base58check of version byte 01 and SHA-256 of their labels", async () => {
@@ -123,6 +203,78 @@ describe("x402/exact/ccd", () => {
     expect(await exactCcd.bound(V.D3.plt.payment)).toBe(V.D3.plt.expect);
   });
 
+  // The header the sender signs holds the transaction's whole energy, which no member of x402's wire form holds: the
+  // wallet computes it at signing from executionEnergyAmount, the signature counts and the sizes (D3.signedEnergy's
+  // source). D3's own sender signatures are the oracle: each verifies over the header with that energy alone.
+  describe("D3: the energy the sender signed", () => {
+    const E = V.D3.signedEnergy;
+    const seed = bytes(E.seed);
+    const key = createPublicKey(
+      createPrivateKey({ key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), seed]), format: "der", type: "pkcs8" }),
+    );
+    const u64 = (n: bigint | number) => {
+      const b = Buffer.alloc(8);
+      b.writeBigUInt64BE(BigInt(n));
+      return b;
+    };
+    const u32 = (n: number) => {
+      const b = Buffer.alloc(4);
+      b.writeUInt32BE(n);
+      return b;
+    };
+    const account = (a: string) => accountBytes(a) as Uint8Array;
+    /** The payload in the protocol's binary form (`concordium-base` `Execution.hs:776-780`, `:829-832`), from the wire form. */
+    const payloadOf = (p: Record<string, string>): Buffer =>
+      p["type"] === "transferWithMemo"
+        ? Buffer.concat([Buffer.from([22]), account(p["toAddress"]!), Buffer.from(p["memo"]!, "hex"), u64(BigInt(p["amount"]!))])
+        : Buffer.concat([
+            Buffer.from([27, Buffer.byteLength(p["tokenId"]!)]),
+            Buffer.from(p["tokenId"]!),
+            u32(p["operations"]!.length / 2),
+            Buffer.from(p["operations"]!, "hex"),
+          ]);
+    for (const kind of ["ccd", "plt"] as const) {
+      it(`${kind}: the sender's signature verifies over the header energy ${E[kind]}, not over executionEnergyAmount, and reference digests ${E[kind]}`, async () => {
+        expect(key.export({ format: "der", type: "spki" }).subarray(12).toString("hex")).toBe(E.publicKey);
+        const tx = V.D3[kind].payment.payload.signedTransaction;
+        const h = tx.header;
+        const payload = payloadOf(tx.payload);
+        const signDigest = (energy: bigint) => {
+          const header = Buffer.concat([
+            Buffer.from([0, 1]), account(h.sender), u64(h.nonce), u64(energy), u32(payload.length), u64(h.expiry), account(h.sponsor.account),
+          ]);
+          return createHash("sha256").update(Buffer.concat([Buffer.alloc(31), Buffer.from([1]), header, payload])).digest();
+        };
+        const signature = Buffer.from(tx.signatures.sender["0"]["0"], "hex");
+        expect(verify(null, signDigest(BigInt(E[kind])), key, signature)).toBe(true);
+        expect(verify(null, signDigest(BigInt(h.executionEnergyAmount)), key, signature)).toBe(false);
+        const ref = await exactCcd.reference(V.D3[kind].payment, kind === "ccd" ? O : V.fixed.OPlt);
+        const members = { sender: account(h.sender), nonce: BigInt(h.nonce), expiry: BigInt(h.expiry), sponsor: account(h.sponsor.account), payload };
+        expect((ref as { signed: string }).signed).toBe(await signedDigest({ ...members, energy: BigInt(E[kind]) }));
+        expect((ref as { signed: string }).signed).not.toBe(await signedDigest({ ...members, energy: BigInt(h.executionEnergyAmount) }));
+      });
+    }
+
+    it("the reference D3's payments give, read where the node holds the item as the sender signed it: settled, presented yes", async () => {
+      type Row = { case: string; ref?: string; refSet?: unknown; node: Node; expect: { presented?: string } };
+      const rows = rowsOf(V.D5.rows as Row[], "x402-exact-ccd.json D5.rows", {
+        exact: 3,
+        keep: ["the rows whose item is D3's own payment, presented yes", (r) => r.expect.presented === "yes" && r.refSet === undefined],
+        leave: [
+          "every other row, whose answer states no presented payment or presented no, or whose ref changes D3's; the D5 tests run them",
+          (r) => r.expect.presented !== "yes" || r.refSet !== undefined,
+        ],
+      });
+      for (const row of rows) {
+        const plt = row.ref === "refPlt";
+        expect(row.node.items[0]!.energy).toBe(E[plt ? "plt" : "ccd"]);
+        const ref = await exactCcd.reference(plt ? V.D3.plt.payment : V.D3.ccd.payment, plt ? V.fixed.OPlt : O);
+        expect(withStrings(await exactCcd.status(ref as never, nodeReader(row.node), queryOf((row as { query?: Record<string, unknown> }).query)))).toEqual(row.expect);
+        expect(ref).toEqual(V.D5[row.ref ?? "ref"]);
+      }
+    });
+  });
+
   describe("D3: bound's refusals", () => {
     for (const row of rowsOf(V.D3.rows, "x402-exact-ccd.json D3.rows")) {
       it(row.case, async () => {
@@ -158,9 +310,11 @@ describe("x402/exact/ccd", () => {
     expect(await exactCcd.reference(V.D3.ccd.payment, O)).toEqual(V.D4.ccd.expect);
     expect(await exactCcd.reference(V.D3.plt.payment, V.fixed.OPlt)).toEqual(V.D4.plt.expect);
     expect(await exactCcd.reference(V.D3.ccd.payment, {} as PaymentRequirements)).toEqual({ refused: true, code: "x402/option-malformed" });
+    // A payment that answers another option than the one given: the CCD payment given the token option.
+    expect(await exactCcd.reference(V.D3.ccd.payment, V.fixed.OPlt)).toEqual({ refused: true, code: "x402/accepted-not-option" });
   });
 
-  describe("D4: a receiver or amount bound does not read gives H from bound and a refusal from reference", () => {
+  describe("D4: a receiver, an amount or a header member bound does not read gives H from bound and a refusal from reference", () => {
     type Row = { case: string; base: "ccd" | "plt"; set: Record<string, unknown>; expectBound: string; expectReference: unknown };
     const rows = rowsOf(V.D4.rows as Row[], "x402-exact-ccd.json D4.rows");
     for (const row of rows) {
@@ -200,18 +354,20 @@ describe("x402/exact/ccd", () => {
     });
   });
 
-  describe("D5: status and recover", () => {
+  describe("D5: status through a constructed node", () => {
+    // Each row's read asks the sequence numbers of the reference's sender alone, by its text.
     for (const row of rowsOf(V.D5.rows, "x402-exact-ccd.json D5.rows")) {
       it(row.case, async () => {
-        const reader = readerFor(row.item);
-        expect(await exactCcd.status(V.D5[row.ref], reader, row.query ?? ASKED)).toEqual(row.expectStatus);
-        expect(await exactCcd.recover(recoverInput, reader)).toEqual(row.expectRecover);
+        const ref = { ...V.D5[row.ref ?? "ref"], ...(row.refSet ?? {}) };
+        const asked: string[] = [];
+        expect(withStrings(await exactCcd.status(ref, nodeReader(row.node, undefined, ref.sender, asked), queryOf(row.query)))).toEqual(row.expect);
+        expect(asked.filter((a) => a !== ref.sender)).toEqual([]);
       });
     }
     it("a reader for another network", async () => {
-      const reader = readerFor(V.D5.rows[0].item, V.D5.wrongReader.network);
-      expect(await exactCcd.status(V.D5.ref, reader, ASKED)).toEqual(V.D5.wrongReader.expectStatus);
-      expect(await exactCcd.recover(recoverInput, reader)).toEqual(V.D5.wrongReader.expectRecover);
+      const reader = nodeReader(V.D5.rows[0].node, V.D5.wrongReader.network);
+      expect(await exactCcd.status(V.D5.ref, reader, queryOf())).toEqual(V.D5.wrongReader.expectStatus);
+      expect(await exactCcd.recover(recoverInput, readerFor(V.D5.recover.rows[0].item, V.D5.wrongReader.network))).toEqual(V.D5.wrongReader.expectRecover);
     });
     it("a reader that rejects reads by the ReaderError's kind, and any other rejection as transport", async () => {
       for (const [error, reason] of [
@@ -220,75 +376,66 @@ describe("x402/exact/ccd", () => {
         [new ReaderError("malformed"), "unparseable"],
         [new Error("x"), "transport"],
       ] as const) {
-        const reader: CcdReader = { network: V.D5.reader.network, item: async () => { throw error; } };
-        expect(await exactCcd.status(V.D5.ref, reader, ASKED)).toEqual({ state: "unreadable", reason, foreign: [] });
+        const reader: CcdReader = { ...nodeReader(V.D5.rows[0].node), lastFinal: async () => { throw error; } };
+        expect(await exactCcd.status(V.D5.ref, reader, queryOf())).toEqual({ state: "unreadable", reason, foreign: [] });
       }
     });
-    it("recover refuses an input whose tx is not 64 hex digits or whose option is not an object, with nothing read", async () => {
-      for (const input of [{ ...recoverInput, tx: "x" }, { ...recoverInput, option: null }, null]) {
-        const { reader, calls } = counting(readerFor(V.D5.rows[0].item));
-        expect(await exactCcd.recover(input as never, reader)).toEqual({ refused: true, code: "ccd/wrong-reader" });
-        expect(calls).toEqual([]);
-      }
-    });
-    // One block item can hold several transfers, as a PLT TokenUpdate holds a list of operations. status settles on the
-    // one transfer whose memo carries ref.h, and recover gives H from the one transfer whose memo memoCarrier reads,
-    // whatever memos the others hold; more than one such transfer is ccd/no-carrier. The other memo is the CBOR text
-    // string "IETF", 64 49 45 54 46 (RFC 8949 Appendix A), wrapped for a PLT in tag 24 around a 5-byte string, d8 18 45
-    // (RFC 8949 §3.4.5.1, §3.1); the second hash is SHA-256 of the empty string (GNU coreutils sha256sum), its memo written by cborg.
-    describe("recover reads the one transfer whose memo memoCarrier reads, beside the item's other transfers", () => {
-      const H2 = "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-      const ccdH: FixtureTransfer = V.D5.rows[0].item.transfers[0];
-      const pltH: FixtureTransfer = V.D5.rows[1].item.transfers[0];
-      const ietf: FixtureTransfer = { kind: "ccd", receiver: V.fixed.payerBytes, amount: "1", memo: "6449455446" };
-      const ietfPlt: FixtureTransfer = { ...pltH, receiver: V.fixed.payerBytes, amount: "1", memo: "d818456449455446" };
-      const noCarrier = { refused: true, code: "ccd/no-carrier" };
-      const settled = V.D5.rows[0].expectStatus;
-      const cases: [string, "ref" | "refPlt", FixtureTransfer[], unknown, unknown][] = [
-        ['the H transfer, then a transfer whose memo is "IETF"', "ref", [ccdH, ietf], settled, H],
-        ['a transfer whose memo is "IETF", then the H transfer', "ref", [ietf, ccdH], settled, H],
-        ['a PLT H transfer beside a PLT transfer whose memo is "IETF"', "refPlt", [ietfPlt, pltH], settled, H],
-        ["the H transfer beside a transfer without a memo", "ref", [ccdH, { ...ietf, memo: null }], settled, H],
-        [
-          "the H transfer beside a transfer whose memo carries another hash",
-          "ref",
-          [ccdH, { ...ietf, memo: hex(cborg.encode(`lcp:sha256:${H2}`)) }],
-          settled,
-          noCarrier,
-        ],
-        ['one transfer, whose memo is "IETF"', "ref", [ietf], { state: "pending", reason: "search-incomplete", foreign: [] }, noCarrier],
-      ];
-      for (const [name, ref, transfers, status, recovered] of cases) {
-        it(name, async () => {
-          const reader = readerFor({ state: "finalized", success: true, sender: V.fixed.payerBytes, transfers });
-          expect(await exactCcd.status(V.D5[ref], reader, ASKED)).toEqual(status);
-          expect(await exactCcd.recover(recoverInput, reader)).toEqual(recovered);
-        });
-      }
-    });
-    // A missing or malformed ref field cannot name the landed transfer, so the read is unreadable unparseable, never
-    // failed; a hash in either case is the same 32 bytes.
-    it("a ref whose h or idDigest is malformed is unreadable unparseable, with nothing read", async () => {
+    // A ref not in the form reference writes cannot name the act, so the read is unreadable unparseable, never failed.
+    it("a ref whose members are not in the form reference writes is unreadable unparseable, with nothing read", async () => {
       const ref = V.D5.ref;
-      const landed = V.D5.rows[0];
       const malformed = [
-        { h: undefined }, { h: "0x1234" }, { h: `0X${ref.h.slice(2)}` }, { h: ref.h.slice(2) },
-        { idDigest: undefined }, { idDigest: ref.idDigest.slice(2) }, { idDigest: `0x${ref.idDigest.slice(2, -1)}g` },
+        { h: undefined }, { h: "0x1234" }, { h: ref.h.slice(2) }, { sender: "x" }, { nonce: "0" }, { nonce: "07" }, { nonce: 7 },
+        { expiry: -1 }, { expiry: "1790000060" }, { signed: undefined }, { signed: ref.signed.slice(2) }, { transaction: 1 },
+        { payee: "x" }, { payee: `${ref.payee.slice(0, -1)}${ref.payee.endsWith("x") ? "y" : "x"}` },
       ];
       for (const change of malformed) {
-        const { reader, calls } = counting(readerFor(landed.item));
-        expect(await exactCcd.status({ ...ref, ...change }, reader, ASKED)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
+        const { reader, calls } = counting(nodeReader(V.D5.rows[0].node));
+        expect(await exactCcd.status({ ...ref, ...change }, reader, queryOf())).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
         expect(calls).toEqual([]);
-      }
-      const upper = (s: string) => `0x${s.slice(2).toUpperCase()}`;
-      for (const change of [{ h: upper(ref.h) }, { idDigest: upper(ref.idDigest) }]) {
-        expect(await exactCcd.status({ ...ref, ...change }, readerFor(landed.item), ASKED)).toEqual(landed.expectStatus);
       }
     });
   });
 
-  it("plant: a self-transfer carrying the same memo is never the settlement", async () => {
-    expect(await exactCcd.status(V.D5.ref, readerFor(V.plant.item), ASKED)).toEqual(V.plant.expectStatus);
+  describe("D5: recover", () => {
+    for (const row of rowsOf(V.D5.recover.rows, "x402-exact-ccd.json D5.recover.rows")) {
+      it(row.case, async () => {
+        expect(await exactCcd.recover(recoverInput, readerFor(row.item))).toEqual(row.expect);
+      });
+    }
+    it("recover refuses an input whose tx is not 64 hex digits or whose option is not an object, with nothing read", async () => {
+      for (const input of [{ ...recoverInput, tx: "x" }, { ...recoverInput, option: null }, null]) {
+        const { reader, calls } = counting(readerFor(V.D5.recover.rows[0].item));
+        expect(await exactCcd.recover(input as never, reader)).toEqual({ refused: true, code: "ccd/wrong-reader" });
+        expect(calls).toEqual([]);
+      }
+    });
+    // One block item can hold several transfers, as a PLT TokenUpdate holds a list of operations. recover gives H from
+    // the one transfer whose memo memoCarrier reads, whatever memos the others hold; more than one such transfer is
+    // ccd/no-carrier. The other memo is the CBOR text string "IETF", 64 49 45 54 46 (RFC 8949 Appendix A), wrapped for a
+    // PLT in tag 24 around a 5-byte string, d8 18 45 (RFC 8949 §3.4.5.1, §3.1); the second hash is SHA-256 of the empty
+    // string (GNU coreutils sha256sum), its memo written by cborg.
+    describe("recover reads the one transfer whose memo memoCarrier reads, beside the item's other transfers", () => {
+      const H2 = "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+      const ccdH: FixtureTransfer = V.D5.recover.rows[0].item.transfers[0];
+      const pltH: FixtureTransfer = V.D5.recover.rows[1].item.transfers[0];
+      const ietf: FixtureTransfer = { kind: "ccd", receiver: V.fixed.payerBytes, amount: "1", memo: "6449455446" };
+      const ietfPlt: FixtureTransfer = { ...pltH, receiver: V.fixed.payerBytes, amount: "1", memo: "d818456449455446" };
+      const noCarrier = { refused: true, code: "ccd/no-carrier" };
+      const cases: [string, FixtureTransfer[], unknown][] = [
+        ['the H transfer, then a transfer whose memo is "IETF"', [ccdH, ietf], H],
+        ['a transfer whose memo is "IETF", then the H transfer', [ietf, ccdH], H],
+        ['a PLT H transfer beside a PLT transfer whose memo is "IETF"', [ietfPlt, pltH], H],
+        ["the H transfer beside a transfer without a memo", [ccdH, { ...ietf, memo: null }], H],
+        ["the H transfer beside a transfer whose memo carries another hash", [ccdH, { ...ietf, memo: hex(cborg.encode(`lcp:sha256:${H2}`)) }], noCarrier],
+        ['one transfer, whose memo is "IETF"', [ietf], noCarrier],
+      ];
+      for (const [name, transfers, recovered] of cases) {
+        it(name, async () => {
+          const reader = readerFor({ state: "finalized", success: true, sender: V.fixed.payerBytes, transfers });
+          expect(await exactCcd.recover(recoverInput, reader)).toEqual(recovered);
+        });
+      }
+    });
   });
 
   it("build: the transfer the wallet signs, and complete wraps what it returns", async () => {
@@ -301,7 +448,9 @@ describe("x402/exact/ccd", () => {
       asset: "CCD",
       amount: "1000000",
       memo: bytes(V.D1.expectCcdMemo),
-      expiresBy: 1790000060,
+      // The stock client signs now plus maxTimeoutSeconds less 5 seconds (@x402/concordium 2.30.0,
+      // src/exact/client/scheme.ts:120-129), so that its facilitator takes a payment built at the bound.
+      expiresBy: V.fixed.now + O.maxTimeoutSeconds - 5,
     });
     const tx = V.D3.ccd.payment.payload.signedTransaction;
     const payment = u.complete(tx);
@@ -314,29 +463,52 @@ describe("x402/exact/ccd", () => {
     expect(hex(plt.request.memo)).toBe(V.D1.expectPltMemo);
   });
 
+  // The stock facilitator takes an option at "0" and an asset named CCD in any case (stockOptions' source). The lowercase
+  // row holds build to the CCD memo, a transfer with memo, where the token memo would be another payload type.
+  describe("stockOptions: the options of rule 3 that the stock facilitator takes", () => {
+    type Row = { case: string; option: PaymentRequirements; presentedSet?: Record<string, unknown>; expectRequest: unknown; expectBound: string; expectReference: unknown };
+    for (const row of rowsOf(V.stockOptions.rows as Row[], "x402-exact-ccd.json stockOptions.rows", { exact: 2 })) {
+      it(row.case, async () => {
+        const o = row.option;
+        const doc = exactCcd.advertise(required(o), H, V.fixed.link, o);
+        expect(exactCcd.read(doc as PaymentRequired)).toEqual({ h: H, link: V.fixed.link, offer: { required: doc, options: [o] } });
+        const u = (await exactCcd.build({ required: required(o), accepted: o, now: V.fixed.now }, H)) as CcdUnsigned;
+        expect({ ...u.request, memo: hex(u.request.memo) }).toEqual(row.expectRequest);
+        const payment = set({ ...V.D3.ccd.payment, accepted: o }, row.presentedSet ?? {});
+        expect(await exactCcd.bound(payment)).toBe(row.expectBound);
+        expect(await exactCcd.reference(payment, o)).toEqual(row.expectReference);
+      });
+    }
+    it("the lowercase row's memo is the CCD memo, not the token memo", () => {
+      const lower = (V.stockOptions.rows as Row[]).find((r) => r.option.asset === "ccd")!;
+      expect((lower.expectRequest as { memo: string }).memo).toBe(V.D1.expectCcdMemo);
+      expect(V.D1.expectCcdMemo).not.toBe(V.D1.expectPltMemo);
+    });
+  });
+
   describe("one reading of the memo: a memo bound refuses is one status never settles, and one bound reads settles", () => {
     const blob = (m: string) => (m.length / 2).toString(16).padStart(4, "0") + m;
-    const landed = (memo: string): CcdReader => ({
-      network: V.D5.reader.network,
-      item: async () => ({
-        state: "finalized",
-        success: true,
-        sender: bytes(V.fixed.payerBytes),
-        transfers: [{ kind: "ccd", receiver: bytes(V.fixed.payeeBytes), amount: 1000000n, memo: bytes(memo) }],
-      }),
-    });
-    const memos: [string, string][] = rowsOf(V.D5.rows, "x402-exact-ccd.json D5.rows", {
-      keep: ["the rows whose item's first transfer carries a memo", (r) => typeof r.item?.transfers?.[0]?.memo === "string"],
+    // D5's first row with the memo of its item at the signed number, in its payload and its outcome, replaced.
+    const landed = (memo: string): Node => {
+      const node: Node = structuredClone(V.D5.rows[0].node);
+      const it = node.items[0]!;
+      const p = bytes(it.payload!);
+      it.payload = hex(p.subarray(0, 33)) + blob(memo) + hex(p.subarray(p.length - 8));
+      it.outcome!.transfers[0]!.memo = memo;
+      return node;
+    };
+    const memos: [string, string][] = rowsOf(V.D5.recover.rows, "x402-exact-ccd.json D5.recover.rows", {
+      keep: ["the rows whose item's first transfer is a CCD transfer with a memo", (r) => r.item?.transfers?.[0]?.kind === "ccd" && typeof r.item.transfers[0].memo === "string"],
       leave: [
-        "the rows with no item, a reader error, an item not finalized, or no memo on a first transfer; D5's status and recover tests above run them",
-        (r) => r.item === null || r.item === "reader-error" || r.item.state !== "finalized" || (r.item.transfers[0]?.memo ?? null) === null,
+        "the rows with no item, a reader error, no transfer, a token transfer, or no memo on a first transfer; D5's recover tests above run them",
+        (r) => r.item === null || r.item === "reader-error" || r.item.transfers?.[0]?.kind !== "ccd" || (r.item.transfers[0]?.memo ?? null) === null,
       ],
     }).map((r: { case: string; item: { transfers: { memo: string | null }[] } }) => [r.case, r.item.transfers[0]?.memo]) as [string, string][];
     for (const [name, memo] of memos) {
       it(name, async () => {
         const payment = set(V.D3.ccd.payment, { "payload.signedTransaction.payload.memo": blob(memo) });
         const b = await exactCcd.bound(payment);
-        const s = await exactCcd.status(V.D5.ref, landed(memo), ASKED);
+        const s = await exactCcd.status(V.D5.ref, nodeReader(landed(memo)), queryOf({ after: "50" }));
         expect(b === H).toBe(s.state === "settled");
       });
     }

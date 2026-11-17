@@ -10,7 +10,7 @@ import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import { isAlgorandAddress, readEntry, type AvmEntry, type AvmPaymentPayload } from "./internal/avm.js";
-import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, sameJson, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -21,7 +21,9 @@ import {
 } from "./x402.js";
 import { ALGORAND } from "./internal/data/algorand.js";
 import { x402Payee } from "./internal/payee.js";
-import { decide, type Facts, type Ledger, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import type { RecoverInput, StatusAnswer, StatusQuery } from "./internal/read.js";
+import { avmRead } from "./internal/avm-read.js";
+export { AVM_SEARCH_PAGES } from "./internal/avm-read.js";
 import type { Entry } from "./internal/registry.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
@@ -49,37 +51,103 @@ export interface AvmPresented {
   paymentGroup: readonly string[];
 }
 
+/** An asset transfer's members, as the Indexer reports them under `asset-transfer-transaction`. */
+export interface AvmAssetTransfer {
+  /** `xaid`: `asset-id`. */
+  assetId: bigint;
+  /** `arcv`: `receiver`. */
+  receiver: string;
+  /** `aamt`: `amount`. */
+  amount: bigint;
+  /** `aclose`: `close-to`; null where unset. */
+  closeTo: string | null;
+  /** `close-amount`: what the close moved to `closeTo`; 0 where there is no close. */
+  closeAmount: bigint;
+  /** `asnd`: the asset transfer's `sender`, set only on a clawback; null where unset. */
+  assetSender: string | null;
+}
+
+/** A transaction as the Indexer reports it, with the members the read needs. */
+export interface AvmIndexed {
+  /** `id`, the transaction id. An inner transaction carries its root's. */
+  id: string;
+  /** `confirmed-round`. */
+  confirmedRound: bigint;
+  /** `tx-type`: `axfer` for an asset transfer. */
+  type: string;
+  /** `sender`: `snd`. */
+  sender: string;
+  /** `auth-addr`: `sgnr`, the signer where it is not the sender; null where the signer is the sender. */
+  authAddr: string | null;
+  /** The member of `signature` that is set: `sig`, `multisig`, `logicsig` or `pqsig`; `none` on an inner transaction. */
+  signature: "sig" | "multisig" | "logicsig" | "pqsig" | "none";
+  /** `note`, decoded from its base64. */
+  note: Uint8Array;
+  /** `asset-transfer-transaction`, where `type` is `axfer`; null otherwise. */
+  transfer: AvmAssetTransfer | null;
+  /** `inner-txns`. */
+  inner: readonly AvmIndexed[];
+}
+
+/** One page of an account's transactions, as the Indexer answers it. */
+export interface AvmPage {
+  /** The answer's `current-round`. */
+  currentRound: bigint;
+  /** The page's transactions, newest first; one the reader cannot parse is `{ unparseable: true, id }`, by its id. */
+  transactions: readonly (AvmIndexed | { unparseable: true; id: string })[];
+  /** `next-token`; absent on the page that holds no transaction. */
+  next?: string;
+}
+
 /** Bounded, read-only calls against one network's Indexer. Every failure rejects. */
 export interface AvmReader {
   readonly network: AlgorandNetwork;
-  /** `GET /v2/transactions?txid=…` */
-  search(txid: string): Promise<{ currentRound: bigint; found: null | { confirmedRound: bigint; note: Uint8Array } }>;
+  /** True where the Indexer is declared archival: it holds every round, so the history is shown without a read. */
+  readonly archival?: boolean;
+  /** `GET /v2/transactions?txid=…`: the answer's `current-round`, and the transaction, or null where it holds none. */
+  transaction(txid: string): Promise<{ currentRound: bigint; found: AvmIndexed | null }>;
+  /** `GET /v2/blocks/{round}?header-only=true`: true where it answers the block's header, false where it holds none. */
+  header(round: bigint): Promise<boolean>;
+  /** `GET /v2/accounts/{account}/transactions` with `min-round`, and `max-round` and `next` where given. */
+  accountPage(account: string, q: { minRound: bigint; maxRound?: bigint; next?: string }): Promise<AvmPage>;
 }
 
 /**
- * The read keys `reference` returns, computed from the signed bytes. `lastValid` is a decimal string, so the reference
- * is JSON-serialisable.
+ * The read keys `reference` returns, computed from the signed bytes with no network: the network, the transaction id,
+ * its last valid round as a decimal string, H, the payer `snd`, the signer the payment entry names (`sgnr` where set,
+ * else `snd`), and the option's payee.
  */
 export interface AvmRef {
   network: AlgorandNetwork;
   txid: string;
   lastValid: string;
+  /** The hash the payment's note carries: the search for H's key. */
+  h: AtrHash;
+  /** The payer, `snd`: the account whose transactions the search for H reads. */
+  sender: string;
+  /** The signer the presented entry names: `sgnr` where set, else `snd`. */
+  signer: string;
   /** The option's `payTo`. */
   payee: string;
 }
 
 /**
- * The answer of `avmStatus`: positions are confirmed rounds, and the one mark is `final`, a transaction the Indexer
- * serves as confirmed, which is final.
+ * The search's position: the round through which it is read whole, and, for a sub-range under way, its top and the
+ * `next` token of the last page read.
  */
-export type AvmStatus = StatusAnswer<bigint, "final", bigint>;
+export interface AvmSearch {
+  through: bigint;
+  top?: bigint;
+  next?: string;
+}
 
-/** What the read by transaction id observed, before the profile's rules choose the answer. */
-type AvmRead =
-  | { state: "settled"; round: bigint }
-  | { state: "pending"; why: "not-found" }
-  | { state: "failed"; why: "expired" }
-  | { state: "unreadable"; why: UnreadableReason };
+/**
+ * The answer of `avmStatus`: positions are confirmed rounds, the one mark is `final`, and the search's position is
+ * `AvmSearch`. A `settled` answer states `presented`: `yes` where the act is the transaction the reference was built
+ * from, `no` where it is another. Each transfer of what moved is named by its transaction id and its place, the member
+ * naming the account it reached (`arcv`, or `aclose` for a holding closed to it).
+ */
+export type AvmStatus = StatusAnswer<bigint, "final", AvmSearch>;
 
 /** The bytes the payer signs, and how the signature completes the payment. */
 export interface AvmUnsigned {
@@ -101,10 +169,27 @@ const UINT64_LIMIT = 1n << 64n;
  * holding one bit of the hash and four zero bits.
  */
 const TXID = /^[A-Z2-7]{51}[AQ]$/;
-const MAX_GROUP = 16;
-const MAX_ENTRY = 8192;
-const MAX_NOTE = 4096;
-const MAX_TXN_LIFE = 1000n;
+/** The most transactions a payment group holds: x402's Algorand scheme's bound, the chain's own group size. */
+export const AVM_MAX_GROUP = 16;
+/**
+ * lcp's own resource bound on one payment entry: at most 8,192 base64 characters, so that no entry costs more to read
+ * than a signed asset transfer with the largest note the chain admits and a multisignature of many keys.
+ */
+export const AVM_MAX_ENTRY = 8192;
+/**
+ * lcp's own resource bound on a payment entry's note, 4,096 bytes, above the chain's 1,024, so that the reader refuses
+ * no note algod could take and reads no unbounded one.
+ */
+export const AVM_MAX_NOTE = 4096;
+/**
+ * The longest a signed transaction stays payable, in rounds after its first valid round: the chain's maximum
+ * transaction life, which lcp's client never exceeds when it sets the last valid round.
+ */
+export const AVM_MAX_LIFE = 1000;
+const MAX_GROUP = AVM_MAX_GROUP;
+const MAX_ENTRY = AVM_MAX_ENTRY;
+const MAX_NOTE = AVM_MAX_NOTE;
+const MAX_TXN_LIFE = BigInt(AVM_MAX_LIFE);
 /**
  * A 64-byte signature that is not all zero bytes, which the encoding writes in full: the entry `build` checks is as
  * long as any `complete` writes.
@@ -127,7 +212,8 @@ function uint64Of(s: unknown): bigint | undefined {
 
 /**
  * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra` (its fee payer, no transfer
- * method, and no flow other than `"authorization"`), the amount a positive decimal (`isAmount`) below 2^64 and
+ * method, and no flow other than `"authorization"`), the amount `"0"` or a positive decimal (`isAmount`) below 2^64,
+ * since the scheme sets no floor and the pairing's agreement floor is zero, and
  * `maxTimeoutSeconds` a positive safe integer, which `build` writes into the asset transfer and its last valid round.
  * `pairingOf`, `advertise`, `read` and `build` apply it, and `bound` and `reference` hold the option a presented payment
  * echoes to it. An `exact` option on an `algorand:` network is this pairing's; any other option is not. The `payTo` and
@@ -145,7 +231,7 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
   if (flow !== undefined && flow !== "authorization") return refusal("avm/option-malformed");
   if (
     uint64Of(o.asset) === undefined ||
-    !isAmount(o.amount) ||
+    !(isAmount(o.amount) || o.amount === "0") ||
     uint64Of(o.amount) === undefined ||
     !isTimeoutSeconds(o.maxTimeoutSeconds)
   ) {
@@ -165,8 +251,10 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
  * entry's own. The entry is read only when it is one msgpack value nesting at most `MSGPACK_MAX_DEPTH` deep, algod's
  * decoder takes it as a signed transaction of a type algod knows with no member of another type set, the
  * facilitator's decoder takes it as an asset transfer, and both read the same signed transaction: their canonical
- * encodings are equal, and the facilitator can compute its id (it has a genesis hash). Any other entry is
- * `avm/txn-malformed`, and one algod reads as another type is `avm/not-axfer`. So a repeated scalar key, keys out of
+ * encodings are equal, and the facilitator can compute its id (it has a genesis hash). An entry a Falcon signature
+ * (`pqsig`) authorises, which the facilitator's decoder does not read, is read by algod's decoder alone, where `pqsig` is
+ * its one signature, Falcon-1024's, within go-codec's bounds. Any other entry is `avm/txn-malformed`, and one algod reads
+ * as another type is `avm/not-axfer`. So a repeated scalar key, keys out of
  * order, a member written at its default, an integer or length in a longer format than it needs, a nil member, or a
  * binary and a string in each other's place reads as algod reads it, and the transaction id is the one algod computes,
  * from the transaction's canonical encoding. Where the two read different transactions the entry is refused: a
@@ -175,9 +263,15 @@ function check(o: PaymentRequirements): true | Refusal | undefined {
  * fixed-length byte member of another length. A byte member written as a msgpack string is read as its
  * bytes, whatever they are; a string member (`type`, `gen`) is refused when its bytes are not UTF-8, which the
  * facilitator reads as other text. Each answer is a function of the entry's bytes alone. Both readers are the package's
- * own (`readEntry`), so nothing here needs algosdk: every answer is the same without it.
+ * own (`readEntry`), so nothing here needs algosdk: every answer is the same without it. Then, the note carrying H, an
+ * entry a logic signature authorises is `avm/logic-signature` and one that names an asset sender, `asnd`, is
+ * `avm/clawback`: under a logic signature no key signs the transaction, and a transfer that names `asnd` is the act of
+ * the asset's clawback address, so neither is the payer's signed act. Gives H, the transaction id, the last valid
+ * round, the sender `snd` and the signer, `sgnr` where the payment entry names one and `snd` otherwise.
  */
-export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
+export function avmCarrier(
+  p: AvmPresented,
+): { h: AtrHash; txid: string; lastValid: bigint; sender: string; signer: string } | Refusal {
   if (!isObject(p) || !Array.isArray(p.paymentGroup)) return refusal("avm/txn-malformed");
   const group = p.paymentGroup;
   if (group.length < 1 || group.length > MAX_GROUP) return refusal("avm/group-too-large");
@@ -193,7 +287,9 @@ export function avmCarrier(p: AvmPresented): { h: AtrHash; txid: string; lastVal
   }
   const h = fromLcpString(note);
   if (h === null) return refusal("avm/note-not-lcp");
-  return { h, txid: read.txid, lastValid: read.lastValid };
+  if (read.logicSig) return refusal("avm/logic-signature");
+  if (read.clawback) return refusal("avm/clawback");
+  return { h, txid: read.txid, lastValid: read.lastValid, sender: read.sender, signer: read.authAddr ?? read.sender };
 }
 
 /**
@@ -349,102 +445,36 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The network, the payment's transaction id and its last valid round, from the signed bytes, with the echoed option
- * checked as `bound` checks it; and the payee, the `payTo` of the option the payment answers.
+ * The read keys of the presented payment, from the signed bytes with no network: the network, the transaction id, the
+ * last valid round, H, the payer `snd` and the signer, with the echoed option checked as `bound` checks it; and the
+ * payee, the `payTo` of the option the payment answers. A payment whose `accepted` is not that option, compared as
+ * RFC 8785 JSON, is `x402/accepted-not-option`.
  */
 async function reference(presented: unknown, option: PaymentRequirements): Promise<AvmRef | Refusal> {
   const carried = carriedOf(presented);
   if (isRefusal(carried)) return carried;
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
-  const network = (presented as { accepted: PaymentRequirements }).accepted.network as AlgorandNetwork;
-  return { network, txid: carried.txid, lastValid: carried.lastValid.toString(), payee };
+  const accepted = (presented as { accepted: PaymentRequirements }).accepted;
+  if (!sameJson(accepted, option)) return refusal("x402/accepted-not-option");
+  const network = accepted.network as AlgorandNetwork;
+  const { h, txid, lastValid, sender, signer } = carried;
+  return { network, txid, lastValid: lastValid.toString(), h, sender, signer, payee };
 }
 
-function carriedOf(presented: unknown): { h: AtrHash; txid: string; lastValid: bigint } | Refusal {
+function carriedOf(presented: unknown): ReturnType<typeof avmCarrier> {
   const p = presentedWith(presented, check);
   if (isRefusal(p)) return p;
   return avmCarrier(p.payload as unknown as AvmPresented);
 }
 
 /**
- * Reads the payment by its id. Found is the confirmed transaction; absent after the last valid round, the id can no
- * longer land; otherwise not found. A ref whose `txid` is not the 52 base32 characters of a 32-byte hash, as
- * `reference` writes it, or whose `lastValid` is not a decimal below 2^64, is `unparseable`, with nothing read; a
- * reader for another network is `chain-mismatch`, a rejected read `transport`, or by a `ReaderError`'s kind `too-large`
- * or `unparseable`, and an answer of another shape `unparseable`.
+ * The read of the payment by the transaction id and, where it decides, the search for H, as the profiles
+ * `read-status` and `x402/exact/algorand/note` answer it. The facts the search rests on are not yet shown by a run, so
+ * a search read whole answers `pending`, `search-incomplete`, where it would answer `failed`.
  */
-async function readAvm(ref: AvmRef, reader: AvmReader): Promise<AvmRead> {
-  if (!isObject(ref)) return { state: "unreadable", why: "unparseable" };
-  const lastValid = uint64Of(ref.lastValid);
-  if (lastValid === undefined || !isTxid(ref.txid)) return { state: "unreadable", why: "unparseable" };
-  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
-  let answer: Awaited<ReturnType<AvmReader["search"]>>;
-  try {
-    answer = await reader.search(ref.txid);
-  } catch (e) {
-    return { state: "unreadable", why: rejected(e) };
-  }
-  if (!isAnswer(answer)) return { state: "unreadable", why: "unparseable" };
-  if (answer.found !== null) return { state: "settled", round: answer.found.confirmedRound };
-  if (answer.currentRound > lastValid) return { state: "failed", why: "expired" };
-  return { state: "pending", why: "not-found" };
-}
-
-/** A rejected read: a `ReaderError` by its kind, anything else `transport`. */
-function rejected(e: unknown): UnreadableReason {
-  const kind = e instanceof Error && e.name === "ReaderError" ? (e as { kind?: unknown }).kind : undefined;
-  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
-}
-
-/** The Indexer's ledger: one mark, and positions ordered by round. */
-const AVM_LEDGER: Ledger<bigint, "final"> = {
-  coverage: ALGORAND[ID].coverage,
-  final: "final",
-  markOrder: () => 0,
-  positionOrder: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
-};
-
-/**
- * The facts of a read of the transaction id, the single-use value the signed bytes fix: a confirmed transaction under
- * it is the act, and none after the last valid round leaves it unconsumed with its validity passed.
- */
-function factsOfAvm(read: AvmRead, ref: AvmRef): Facts<bigint, "final", bigint> {
-  const none = { seen: [], search: { whole: false }, history: false } as const;
-  switch (read.state) {
-    case "unreadable":
-      return { ...none, unreadable: read.why };
-    case "settled":
-      return {
-        ...none,
-        seen: [
-          {
-            transaction: ref.txid,
-            position: read.round,
-            mark: "final",
-            result: "succeeded",
-            consumed: true,
-            carries: true,
-            party: "payer",
-            kind: "same",
-            account: "payee",
-          },
-        ],
-      };
-    case "pending":
-      return none;
-    case "failed":
-      return { ...none, value: { consumed: false, lapsed: true, mark: "final" } };
-  }
-}
-
-/**
- * The read of the payment by its transaction id, as the profile `read-status` answers it: the confirmed transaction is
- * the act, settled at `final`; an id not found, or not found after its last valid round, is `pending`,
- * `search-incomplete`, since the read has no search for H.
- */
-export async function avmStatus(ref: AvmRef, reader: AvmReader, query: StatusQuery<AvmRef, bigint, "final", bigint>): Promise<AvmStatus> {
-  return decide(factsOfAvm(await readAvm(ref, reader), ref), query, AVM_LEDGER);
+export async function avmStatus(ref: AvmRef, reader: AvmReader, query: StatusQuery<AvmRef, bigint, "final", AvmSearch>): Promise<AvmStatus> {
+  return avmRead(ref, reader, query);
 }
 
 /**
@@ -458,14 +488,15 @@ export async function avmRecover(
 ): Promise<AtrHash | Refusal> {
   if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("avm/wrong-reader");
   if (!isTxid(input.tx) || !isObject(input.option)) return refusal("avm/wrong-reader");
-  let answer: Awaited<ReturnType<AvmReader["search"]>>;
+  let answer: Awaited<ReturnType<AvmReader["transaction"]>>;
   try {
-    answer = await reader.search(input.tx);
+    answer = await reader.transaction(input.tx);
   } catch {
     return refusal("avm/unreadable");
   }
-  if (!isAnswer(answer)) return refusal("avm/unreadable");
+  if (!isObject(answer) || typeof answer.currentRound !== "bigint") return refusal("avm/unreadable");
   if (answer.found === null) return refusal("avm/not-found");
+  if (!isObject(answer.found) || !(answer.found.note instanceof Uint8Array)) return refusal("avm/unreadable");
   let note: string;
   try {
     note = UTF8.decode(answer.found.note);
@@ -477,13 +508,6 @@ export async function avmRecover(
 
 function isTxid(t: unknown): t is string {
   return typeof t === "string" && TXID.test(t);
-}
-
-function isAnswer(a: unknown): a is Awaited<ReturnType<AvmReader["search"]>> {
-  if (!isObject(a) || typeof a["currentRound"] !== "bigint") return false;
-  const found = a["found"];
-  if (found === null) return true;
-  return isObject(found) && typeof found["confirmedRound"] === "bigint" && found["note"] instanceof Uint8Array;
 }
 
 /**
@@ -532,7 +556,7 @@ export const exactAvm = Object.freeze({
     unsigned: AvmUnsigned;
     landed: unknown;
     network: AlgorandNetwork;
-    query: StatusQuery<AvmRef, bigint, "final", bigint>;
+    query: StatusQuery<AvmRef, bigint, "final", AvmSearch>;
     answer: AvmStatus;
   }
 >;

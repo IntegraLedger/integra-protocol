@@ -132,14 +132,14 @@ import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integrale
 Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes. `algosdk` is an optional peer: this module loads it when present, and `build` writes the transactions with it. The addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`, `reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs none.
 
 ```ts no-check
-import { avmCarrier, avmRecover, avmStatus, … } from "@integraledger/lcp/avm";
+import { AVM_MAX_ENTRY, AVM_MAX_GROUP, AVM_MAX_LIFE, … } from "@integraledger/lcp/avm";
 ```
 
 **Pairings:** `x402/exact/algorand`.
 
-**Values (5):** `avmCarrier`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
+**Values (10):** `AVM_MAX_ENTRY`, `AVM_MAX_GROUP`, `AVM_MAX_LIFE`, `AVM_MAX_NOTE`, `AVM_SEARCH_PAGES`, `avmCarrier`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
 
-**Types (8):** `AlgorandNetwork`, `AvmParams`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmStatus`, `AvmUnsigned`, `Broadcaster`.
+**Types (12):** `AlgorandNetwork`, `AvmAssetTransfer`, `AvmIndexed`, `AvmPage`, `AvmParams`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmSearch`, `AvmStatus`, `AvmUnsigned`, `Broadcaster`.
 
 ## `@integraledger/lcp/card`
 
@@ -188,14 +188,14 @@ import { CASPER_DOMAIN_TYPEHASH, CASPER_MAX_NAME_LENGTH, CASPER_MAX_PAGE_CALLS, 
 Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer event.
 
 ```ts no-check
-import { accountBytes, ccdIdDigest, ccdMemo, … } from "@integraledger/lcp/ccd";
+import { accountBytes, CCD_EXPIRY_MARGIN, CCD_MAX_ADDRESS, … } from "@integraledger/lcp/ccd";
 ```
 
 **Pairings:** `x402/exact/ccd`.
 
-**Values (8):** `accountBytes`, `ccdIdDigest`, `ccdMemo`, `ccdRecover`, `ccdStatus`, `exactCcd`, `memoCarrier`, `pltMemo`.
+**Values (13):** `accountBytes`, `CCD_EXPIRY_MARGIN`, `CCD_MAX_ADDRESS`, `CCD_MAX_MEMO`, `CCD_MAX_OPERATIONS`, `CCD_MAX_TRANSACTION`, `CCD_SEARCH_NUMBERS`, `ccdMemo`, `ccdRecover`, `ccdStatus`, `exactCcd`, `memoCarrier`, `pltMemo`.
 
-**Types (8):** `Broadcaster`, `CcdItem`, `CcdNetwork`, `CcdReader`, `CcdRef`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
+**Types (10):** `Broadcaster`, `CcdBlockItem`, `CcdItem`, `CcdNetwork`, `CcdReader`, `CcdRef`, `CcdSearch`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
 
 ## `@integraledger/lcp/core`
 

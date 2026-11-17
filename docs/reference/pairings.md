@@ -302,7 +302,7 @@ The payer's own signed act carries this ATR's hash: a Solana transaction the buy
 
 ### `x402/exact/algorand`
 
-The payer's account authorized an Algorand asset transfer whose note is this ATR's hash in LCP string form, with a signature, a multisignature or a logic signature. The ledger verified that authorization when it confirmed the transaction, which is final on confirmation, and the note is on chain in it. This does not show that amount, receiver, asset or timing match the ATR's content.
+The payer's account authorized an Algorand asset transfer whose note is this ATR's hash in LCP string form, with a key's signature, a multisignature or a Falcon signature, by the account's own key or the key it is rekeyed to; a logic signature, or a transfer that names an asset sender, is no such act. The ledger verified that authorization when it confirmed the transaction, which is final on confirmation, and the note is on chain in it. Where the transfer moved an amount, zero included, the payer paid it to the account the transfer names (`arcv`). As an agreement, it shows that this account signed the transfer carrying the hash. It does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/exact/aptos`
 
@@ -322,7 +322,7 @@ The payer's own signed CEP-3009 authorization carries this ATR's hash as its non
 
 ### `x402/exact/ccd`
 
-The payer signed a Concordium transaction one of whose transfers carries this ATR's hash, in LCP string form, as its memo. The chain accepted the transaction only with the sender's valid signature, and the memo is on chain in the finalized transfer event. This does not show that amount, payee, token or timing match the ATR's content.
+The payer signed a Concordium transaction one of whose transfers carries this ATR's hash, in LCP string form, as its memo. The chain accepted the transaction only with the sender's valid signature, and the memo is on chain in the finalized transfer event. Where the transfer moved an amount, zero included, the payer paid it to the account the transfer names. As an agreement, it shows that this account signed the transfer carrying the hash. It does not show that amount, token or timing match the ATR's content.
 
 ### `x402/exact/eip155/eip3009`
 

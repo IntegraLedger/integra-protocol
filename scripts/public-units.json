@@ -385,7 +385,7 @@
     {
       "unit": "Algorand",
       "exports": {
-        "./avm": ["AlgorandNetwork", "AvmParams", "AvmPresented", "AvmReader", "AvmRef", "AvmStatus", "AvmUnsigned", "MSGPACK_MAX_DEPTH", "avmCarrier", "avmRecover", "avmStatus", "exactAvm"]
+        "./avm": ["AVM_MAX_ENTRY", "AVM_MAX_GROUP", "AVM_MAX_LIFE", "AVM_MAX_NOTE", "AVM_SEARCH_PAGES", "AlgorandNetwork", "AvmAssetTransfer", "AvmIndexed", "AvmPage", "AvmParams", "AvmPresented", "AvmReader", "AvmRef", "AvmSearch", "AvmStatus", "AvmUnsigned", "MSGPACK_MAX_DEPTH", "avmCarrier", "avmRecover", "avmStatus", "exactAvm"]
       },
       "use": "Any Algorand buyer's client builds an asset transfer whose note is H, any server checks it before it is relayed, and anyone holding the transaction id reads H back.",
       "fixedBy": "x402-exact-algorand-note.md; the Algorand Indexer API."
@@ -409,7 +409,7 @@
     {
       "unit": "Concordium",
       "exports": {
-        "./ccd": ["CcdItem", "CcdNetwork", "CcdReader", "CcdRef", "CcdStatus", "CcdTransfer", "CcdUnsigned", "accountBytes", "ccdIdDigest", "ccdMemo", "ccdRecover", "ccdStatus", "exactCcd", "memoCarrier", "pltMemo"]
+        "./ccd": ["CCD_EXPIRY_MARGIN", "CCD_MAX_ADDRESS", "CCD_MAX_MEMO", "CCD_MAX_OPERATIONS", "CCD_MAX_TRANSACTION", "CCD_SEARCH_NUMBERS", "CcdBlockItem", "CcdItem", "CcdNetwork", "CcdReader", "CcdRef", "CcdSearch", "CcdStatus", "CcdTransfer", "CcdUnsigned", "accountBytes", "ccdMemo", "ccdRecover", "ccdStatus", "exactCcd", "memoCarrier", "pltMemo"]
       },
       "use": "Any Concordium buyer's client builds the one transfer whose memo carries H, any server checks it, and anyone reads H back from the finalized transfer.",
       "fixedBy": "x402-exact-ccd.md."

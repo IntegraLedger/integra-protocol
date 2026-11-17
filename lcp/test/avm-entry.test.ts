@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { base32 } from "@scure/base";
-import { decodeSignedTransaction, encodeMsgpack } from "algosdk";
+import { addressFromPQKey, addressFromPQSig, decodeSignedTransaction, encodeMsgpack, SignedTransaction, type EncodedPQSig } from "algosdk";
 import type { AtrHash } from "../src/index.js";
 import { exactAvm, type AvmParams, type AvmReader } from "../src/avm.js";
 import type { PaymentRequired } from "../src/x402.js";
@@ -90,13 +90,31 @@ const presentedWith = (entry: Uint8Array, base: object) => ({
 /** An Indexer that holds V2's note under one id and nothing under any other. */
 const readerHolding = (txid: string): AvmReader => ({
   network: V.V4.readerNetwork,
-  search: async (t) => ({
+  transaction: async (t) => ({
     currentRound: 1n,
-    found: t === txid ? { confirmedRound: 1n, note: Buffer.from(V.V4.note, "base64") } : null,
+    found:
+      t === txid
+        ? {
+            id: t,
+            confirmedRound: 1n,
+            type: "axfer",
+            sender: V.fixed.payer,
+            authAddr: null,
+            signature: "sig",
+            note: Uint8Array.from(Buffer.from(`lcp:sha256:${V.fixed.H}`, "ascii")),
+            transfer: null,
+            inner: [],
+          }
+        : null,
   }),
+  header: async () => false,
+  accountPage: async () => {
+    throw new Error("no search");
+  },
 });
 
-type Case = { case: string; entry: Uint8Array; expect: string };
+/** A case, and where its entry names another sender than V2's, that sender, which reference gives as the payer and signer. */
+type Case = { case: string; entry: Uint8Array; expect: string; sender?: string };
 const SELF_SPELLED = "JJFEMRKNKJFU4S2KIZKTIUZSJNEVUS2UJFKVUU2KJZCVMVKTGJKVMRC77Q";
 
 /** Each case through bound, reference and recover: an id gives H, the reference and H recovered under it. */
@@ -112,7 +130,8 @@ async function check(rows: Case[], source: string) {
     }
     expect(await exactAvm.bound(p), row.case).toBe(H);
     const ref = await exactAvm.reference(p, O);
-    expect(ref, row.case).toEqual({ network: O.network, txid: row.expect, lastValid: V.V3.expectReference.lastValid, payee: O.payTo });
+    const sender = row.sender ?? V.V3.expectReference.sender;
+    expect(ref, row.case).toEqual({ ...V.V3.expectReference, txid: row.expect, sender, signer: sender });
     if ("refused" in ref) continue;
     expect(await exactAvm.recover({ network: ref.network, tx: ref.txid, option: O }, readerHolding(row.expect)), row.case).toBe(H);
   }
@@ -371,6 +390,7 @@ describe("x402-exact-algorand.json V2's payment entry, each form as algod and th
           case: `snd as the 58 characters of ${SELF_SPELLED}, whose key is its own first 32 characters`,
           entry: entryOf(replaced("snd", str(SELF_SPELLED))),
           expect: sdkTxid(canonical("snd", bin(ascii(SELF_SPELLED.slice(0, 32))))),
+          sender: SELF_SPELLED,
         },
       ],
       "another length",
@@ -416,14 +436,15 @@ describe("x402-exact-algorand.json V2's payment entry, each form as algod and th
   });
 
   // algokit reads a multisignature's version and threshold as written: an integer in a 64-bit format is a bigint,
-  // which its encoder writes back even at 0, and it has no post-quantum signature member, which algod reads.
+  // which its encoder writes back even at 0. A post-quantum signature member beside V2's sig is a second signature
+  // category, which algod refuses (go-algorand v5.0.3, data/transactions/verify/txn.go:321-352).
   it("a member the facilitator reads otherwise than algod", async () => {
     await check(
       [
         { case: "msig {v: 0}", entry: entryOf(TXN, [["msig", map(keyed([["v", uint(0)]]))]]), expect: V2_TXID },
         { case: "msig {v: 0 as a uint 64}", entry: entryOf(TXN, [["msig", map(keyed([["v", cat([0xcf], new Uint8Array(8))]]))]]), expect: "avm/txn-malformed" },
         { case: "pqsig {}", entry: entryOf(TXN, [["pqsig", map([])]]), expect: V2_TXID },
-        { case: "pqsig {slt: 1}", entry: entryOf(TXN, [["pqsig", map(keyed([["slt", uint(1)]]))]]), expect: "avm/txn-malformed" },
+        { case: "pqsig {slt: 1} beside sig", entry: entryOf(TXN, [["pqsig", map(keyed([["slt", uint(1)]]))]]), expect: "avm/txn-malformed" },
       ],
       "the facilitator's reading",
     );
@@ -433,6 +454,60 @@ describe("x402-exact-algorand.json V2's payment entry, each form as algod and th
 // x402-exact-algorand.json build row 1: a genesis id of the byte-order mark and 198 x. Both readers read a string
 // member's bytes as written: algod as bytes, the facilitator as UTF-8 text through Node's Buffer, which keeps a leading
 // mark. build writes that gen, and bound, reference and recover read the payment under the row's hand-derived id.
+// A Falcon signature, `pqsig`, which algosdk 3.8.0 writes as go-algorand's PQSig struct (sch, slt, pk, sig;
+// go-algorand v5.0.3, data/transactions/pqsig.go:41-48) and the x402 facilitator's decoder does not read: lcp reads such an
+// entry by algod's reader alone, its id the transaction's own, which no signature member changes (algosdk's txID). It
+// admits one whose scheme is Falcon-1024's, "f1", the one algod verifies (crypto/pq_scheme.go:56-63), alone or under
+// sgnr, with a key and a signature within go-codec's bounds of 1,793 and 1,538 bytes (pqsig.go:46-47; algorand/falcon
+// v0.1.0, deterministic.h:13, :19). Whether the node takes such a payment under that id is not yet shown by a run
+// (the profile's rule 16).
+describe("a Falcon signature, read by algod's reader alone", () => {
+  const stxn = decodeSignedTransaction(V2);
+  const KEY = new Uint8Array(1793).fill(0x11);
+  // The salt algosdk derives for the key, which its address function takes alone.
+  const { salt } = addressFromPQKey(ascii("f1"), KEY);
+  const falcon = (pq: Partial<EncodedPQSig> = {}): EncodedPQSig => ({
+    sch: ascii("f1"),
+    slt: salt,
+    pk: KEY,
+    sig: new Uint8Array(1538).fill(0x22),
+    ...pq,
+  });
+  const entry = (pq: EncodedPQSig, sgnr?: SignedTransaction["sgnr"]) =>
+    encodeMsgpack(new SignedTransaction({ txn: stxn.txn, pqsig: pq, ...(sgnr === undefined ? {} : { sgnr }) }));
+
+  it("algosdk's id for the transaction is V2's", () => {
+    expect(stxn.txn.txID()).toBe(V2_TXID);
+  });
+
+  it("an entry a Falcon-1024 signature authorises gives H, V2's id, and the sender as signer", async () => {
+    await check([{ case: "pqsig f1 alone", entry: entry(falcon()), expect: V2_TXID }], "the Falcon entry");
+  });
+
+  it("under sgnr, a rekeyed account's Falcon key, the signer is the address it names", async () => {
+    const payment = await completedPayment();
+    const signer = addressFromPQSig(falcon());
+    const p = presentedWith(entry(falcon(), signer), payment);
+    expect(await exactAvm.bound(p)).toBe(H);
+    expect(await exactAvm.reference(p, O)).toEqual({ ...V.V3.expectReference, txid: V2_TXID, signer: signer.toString() });
+  });
+
+  it("refuses another scheme, a key or signature past go-codec's bounds, and pqsig beside another signature", async () => {
+    expect(entry(falcon())[0], "algosdk writes the Falcon entry as a map of two members, pqsig and txn").toBe(0x82);
+    await check(
+      [
+        { case: "pqsig f2, the scheme v5.0.3 reserves and does not verify", entry: entry(falcon({ sch: ascii("f2") })), expect: "avm/txn-malformed" },
+        { case: "pqsig with no scheme", entry: entry(falcon({ sch: new Uint8Array(2) })), expect: "avm/txn-malformed" },
+        { case: "a key of 1,794 bytes", entry: entry(falcon({ pk: new Uint8Array(1794).fill(0x11) })), expect: "avm/txn-malformed" },
+        { case: "a signature of 1,539 bytes", entry: entry(falcon({ sig: new Uint8Array(1539).fill(0x22) })), expect: "avm/txn-malformed" },
+        // algosdk writes no entry with two signatures, so V2's sig is put before the Falcon entry's two members.
+        { case: "pqsig f1 beside sig", entry: cat([0x83], str("sig"), bin(SIG), entry(falcon()).subarray(1)), expect: "avm/txn-malformed" },
+      ],
+      "the Falcon entry's refusals",
+    );
+  });
+});
+
 describe("a genesis id that begins with the byte-order mark", () => {
   it("is written by build and read by bound, reference and recover with the mark", async () => {
     const row = rowsOf(V.build.rows as { case: string; genesisId: string; expectPaymentTxid?: string }[], "x402-exact-algorand.json build.rows", {
@@ -449,7 +524,7 @@ describe("a genesis id that begins with the byte-order mark", () => {
     const entry = Buffer.from(payment.payload.paymentGroup[1]!, "base64");
     expect(entry.includes(Buffer.from([0xd9, 201, 0xef, 0xbb, 0xbf]))).toBe(true);
     expect(await exactAvm.bound(payment)).toBe(H);
-    expect(await exactAvm.reference(payment, O)).toEqual({ network: O.network, txid, lastValid: V.V3.expectReference.lastValid, payee: O.payTo });
+    expect(await exactAvm.reference(payment, O)).toEqual({ ...V.V3.expectReference, txid });
     expect(await exactAvm.recover({ network: O.network, tx: txid, option: O }, readerHolding(txid))).toBe(H);
   });
 });
