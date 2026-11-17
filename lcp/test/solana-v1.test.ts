@@ -60,6 +60,7 @@ interface Payload {
   transaction?: string;
   openTransaction?: string;
   deposit?: { amount: string; transaction: string };
+  voucher?: { signature: string };
 }
 const load = (f: string) => JSON.parse(readFileSync(new URL(`../vectors/${f}`, import.meta.url), "utf8"));
 const E = load("x402-exact-solana.json");
@@ -153,6 +154,9 @@ function messageOf(u: unknown): Uint8Array {
   return b.request?.message ?? b.requests!.find((r) => r.kind === "solana-message")!.message;
 }
 
+/** A completed payment's payload, or the refusal complete answered. */
+const payloadOf = (r: unknown): unknown => (typeof r === "object" && r !== null && "payload" in r ? r.payload : r);
+
 type Codec = {
   bound(p: unknown): Promise<unknown>;
   reference(p: unknown, option: unknown): Promise<unknown>;
@@ -168,7 +172,8 @@ const cases: {
   wireOf: (payload: Payload) => string;
   withWire: (payload: Payload, wire: string) => Payload;
   stock: (v: V1) => Promise<Stock>;
-  build: (v: V1) => Promise<Uint8Array>;
+  build: (v: V1) => Promise<unknown>;
+  complete: (built: unknown, payerSignature: Uint8Array, payload: Payload) => unknown;
 }[] = [
   {
     file: "x402-exact-solana.json",
@@ -184,8 +189,9 @@ const cases: {
         { ...offeredAlone(v), payer: i.payer, decimals: i.decimals, tokenProgram: i.tokenProgram, recentBlockhash: i.recentBlockhash, computeUnitLimit: i.computeUnitLimit, computeUnitPrice: BigInt(i.computeUnitPrice!) } as never,
         E.fixed.H,
       );
-      return messageOf(u);
+      return u;
     },
+    complete: (u, sig) => payloadOf((u as { complete(s: Uint8Array): unknown }).complete(sig)),
   },
   {
     file: "x402-upto-solana.json",
@@ -201,8 +207,9 @@ const cases: {
         { ...offeredAlone(v), payer: i.payer, nonce: BigInt(i.nonce!), openSlot: BigInt(i.openSlot!), now: i.now, tokenProgram: i.tokenProgram, recentBlockhash: i.recentBlockhash } as never,
         U.fixed.H,
       );
-      return messageOf(u);
+      return u;
     },
+    complete: (u, sig) => payloadOf((u as { complete(s: Uint8Array): unknown }).complete(sig)),
   },
   {
     file: "x402-batch-settlement.json",
@@ -218,12 +225,14 @@ const cases: {
         { ...offeredAlone(v), payer: i.payer, payerAuthorizer: i.payerAuthorizer, deposit: BigInt(i.deposit!), salt: BigInt(i.salt!), openSlot: BigInt(i.openSlot!), tokenProgram: i.tokenProgram, recentBlockhash: i.recentBlockhash } as never,
         B.fixed.H,
       );
-      return messageOf(u);
+      return u;
     },
+    complete: (u, sig, payload) =>
+      payloadOf((u as { complete(s: readonly string[]): unknown }).complete([base58.encode(sig), payload.voucher!.signature])),
   },
 ];
 
-describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, withWire, stock, build }) => {
+describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, withWire, stock, build, complete }) => {
   const presented = v.presented;
   const wire = b64(wireOf(presented.payload));
   const presentedWith = (w: string) => ({ ...presented, payload: withWire(presented.payload, w) });
@@ -238,9 +247,16 @@ describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, wi
 
   it("lcp's build of the stock client's inputs asks the payer to sign the stock client's message, byte for byte", async () => {
     const stockMessage = Uint8Array.from(getTransactionDecoder().decode(wire).messageBytes);
-    const message = await build(v);
+    const message = messageOf(await build(v));
     expect(message[0]).toBe(0x81);
     expect(Buffer.from(message).equals(Buffer.from(stockMessage))).toBe(true);
+  });
+
+  it("lcp's build, completed with the payer's signature from the stock client's wire, writes the stock client's wire, byte for byte", async () => {
+    const signature = getTransactionDecoder().decode(wire).signatures[v.build.input.payer as Address];
+    expect(signature).toBeTruthy();
+    const out = complete(await build(v), Uint8Array.from(signature!), presented.payload) as Payload;
+    expect("refused" in out ? out : wireOf(out)).toBe(wireOf(presented.payload));
   });
 
   it("lcp's message is the one @solana/kit decodes and the payer signed, and its digest is messageSha256", () => {

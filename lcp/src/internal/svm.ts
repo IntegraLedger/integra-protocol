@@ -613,8 +613,10 @@ export function staticNonce(tx: SvmTx): Refusal | null {
 }
 
 /**
- * The wire for a message and one signer's signature: the compact-u16 signature count, one 64-byte slot per required
- * signer in key order with `signature` in the signer's slot and zeros in every other, then the message. A message under
+ * The wire for a message and one signer's signature, one 64-byte slot per required signer in key order with
+ * `signature` in the signer's slot and zeros in every other. A legacy or v0 message takes the compact-u16 signature
+ * count and the slots before it; a version-1 message (first byte 129) takes the slots after it, with no count and no
+ * byte following, as SIMD-0385 lays it out and @solana/kit 8.4.0's `getTransactionEncoder` writes it. A message under
  * 2 bytes, too short to hold a v0 prefix and its signature count, is `svm/tx-malformed`.
  */
 export function signedWire(message: Uint8Array, signer: string, signature: Uint8Array): Uint8Array | Refusal {
@@ -622,12 +624,18 @@ export function signedWire(message: Uint8Array, signer: string, signature: Uint8
   const signerKey = keyBytes(signer);
   if (signerKey === null) return refusal("svm/input-malformed");
   if (message.length < 2) return refusal("svm/tx-malformed");
+  const v1 = message[0] === V1_VERSION_BYTE;
   const required = (message[0]! & 0x80) !== 0 ? message[1]! : message[0]!;
-  const withSlots = new Uint8Array(compactLength(required) + 64 * required + message.length);
-  let at = writeCompact(withSlots, 0, required);
-  const slotsAt = at;
-  at += 64 * required;
-  withSlots.set(message, at);
+  const prefix = v1 ? 0 : compactLength(required);
+  const withSlots = new Uint8Array(prefix + 64 * required + message.length);
+  let slotsAt: number;
+  if (v1) {
+    withSlots.set(message, 0);
+    slotsAt = message.length;
+  } else {
+    slotsAt = writeCompact(withSlots, 0, required);
+    withSlots.set(message, slotsAt + 64 * required);
+  }
   const d = decode(withSlots);
   if (isRefusal(d)) return d;
   const slot = d.keys.slice(0, d.requiredSignatures).findIndex((k) => sameBytes(k, signerKey));

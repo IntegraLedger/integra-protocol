@@ -4,7 +4,8 @@
 // with the same fee payer and blockhash whose header carries the budget through kit's own setters
 // (setTransactionMessageComputeUnitLimit, setTransactionMessagePriorityFeeLamports,
 // setTransactionMessageLoadedAccountsDataSizeLimit), then encoded (compileTransactionMessage,
-// getCompiledTransactionMessageEncoder). No code of this package runs.
+// getCompiledTransactionMessageEncoder). No code of this package runs. `kitWire` is @solana/kit 8.4.0's wire for a
+// message and one signer's signature (getTransactionEncoder), the other signers' slots zero.
 import {
   appendTransactionMessageInstructions,
   compileTransactionMessage,
@@ -13,6 +14,7 @@ import {
   getCompiledTransactionMessageDecoder,
   getCompiledTransactionMessageEncoder,
   getTransactionDecoder,
+  getTransactionEncoder,
   pipe,
   setTransactionMessageComputeUnitLimit,
   setTransactionMessageFeePayer,
@@ -20,6 +22,8 @@ import {
   setTransactionMessageLoadedAccountsDataSizeLimit,
   setTransactionMessagePriorityFeeLamports,
   type Blockhash,
+  type SignatureBytes,
+  type Transaction,
 } from "@solana/kit";
 
 const COMPUTE_BUDGET = "ComputeBudget111111111111111111111111111111";
@@ -53,4 +57,12 @@ export function kitV1Message(wireBase64: string, h: KitV1Header): Uint8Array {
   );
   const message = h.priorityFeeLamports === undefined ? base : setTransactionMessagePriorityFeeLamports(h.priorityFeeLamports, base);
   return Uint8Array.from(getCompiledTransactionMessageEncoder().encode(compileTransactionMessage(message)));
+}
+
+/** @solana/kit's wire for `message` signed by `signer` alone: each other signer's signature is absent. */
+export function kitWire(message: Uint8Array, signer: string, signature: Uint8Array): Uint8Array {
+  const compiled = getCompiledTransactionMessageDecoder().decode(message);
+  const signers = compiled.staticAccounts.slice(0, compiled.header.numSignerAccounts);
+  const signatures = Object.fromEntries(signers.map((a) => [a, a === signer ? (signature as SignatureBytes) : null]));
+  return Uint8Array.from(getTransactionEncoder().encode({ messageBytes: message, signatures } as unknown as Transaction));
 }

@@ -3,7 +3,8 @@
 // absent. A row that holds 1 is built as version 1, one that holds 0 alone or none as version 0, and any other is
 // refused by the option filter before anything is signed, by advertise as by build. The version-1 opening is the stock
 // client's (transactionV1.messageSha256), and the version-1 request_close the message @solana/kit writes alone
-// (test/kit-v1.ts). Every expected value is the file's.
+// (test/kit-v1.ts). A version-1 request_close, completed, is the wire @solana/kit writes for that message and the
+// payer's signature (kitWire). Every expected value is the file's.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -12,7 +13,8 @@ import { batchSvm } from "../src/x402-batch-settlement.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { uptoSvm } from "../src/x402-upto-solana.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
-import { kitV1Message } from "./kit-v1.js";
+import { base58 } from "@scure/base";
+import { kitV1Message, kitWire } from "./kit-v1.js";
 import { rowsOf } from "./rows.js";
 
 const load = (f: string) => JSON.parse(readFileSync(new URL(`../vectors/${f}`, import.meta.url), "utf8"));
@@ -175,6 +177,25 @@ describe("x402-batch-settlement.json transactionVersions", () => {
       }
       if ("refused" in u) throw new Error(u.code);
       expect(u.requests.map((r) => r.kind)).toEqual(["ed25519-raw"]);
+    }
+  });
+
+  it("a version-1 refund, completed with the payer's signature, carries the wire @solana/kit writes for its message and that signature", async () => {
+    const txSig = Uint8Array.from({ length: 64 }, (_, i) => i + 1);
+    const voucherSig = Uint8Array.from({ length: 64 }, (_, i) => 64 - i);
+    const ones = (B.transactionVersions.refundRows as Row[]).filter((row) => (row.expect as { messageFirstByte?: number }).messageFirstByte === 129);
+    expect(ones.length).toBeGreaterThan(0);
+    for (const row of ones) {
+      const u = await batchSvm.buildWithin(
+        { ...offered(B.ES4.accepted, row), channelConfig: B.ES4.config, maxClaimableAmount: 1000n, refund: {}, recentBlockhash: S.blockhash },
+        H,
+      );
+      if ("refused" in u) throw new Error(u.code);
+      const message = u.requests.find((r) => r.kind === "solana-message")!.message;
+      const out = u.complete([base58.encode(txSig), base58.encode(voucherSig)]);
+      if ("refused" in out) throw new Error(out.code);
+      const wire = Buffer.from(out.payload["transaction"] as string, "base64");
+      expect(wire.equals(Buffer.from(kitWire(message, B.ES4.config.payer, txSig))), JSON.stringify(row.transactionVersions)).toBe(true);
     }
   });
 });

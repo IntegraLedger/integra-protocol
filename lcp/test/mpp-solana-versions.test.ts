@@ -2,13 +2,14 @@
 // build on a challenge whose Solana details hold transactionVersions as each row's value, or none for a row without the
 // member. A row that holds 1 is built as version 1, the message @solana/kit writes alone from build's instructions with
 // pay-kit's header (test/kit-v1.ts); one that holds 0 alone or none as mpp-charge-solana.json's build message; any other
-// is refused by the challenge's checks, pairingsOf and advertise, before the challenge is placed. Every expected value
-// is the files'.
+// is refused by the challenge's checks, pairingsOf and advertise, before the challenge is placed. A version-1 build,
+// completed, carries the wire @solana/kit writes for its message and the payer's signature (kitWire). Every expected
+// value is the files'.
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { canonicalJson, type AtrHash, type Json } from "../src/index.js";
 import { chargeSolana, chargeUsdcSolana, pairingsOf, type MppChallenge } from "../src/mpp.js";
-import { kitV1Message } from "./kit-v1.js";
+import { kitV1Message, kitWire } from "./kit-v1.js";
 import { b64u, load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -97,5 +98,19 @@ describe.each(cases)("$file transactionVersions", ({ file, rows, build }) => {
     const ones = rows.filter((row) => (row.expect as { messageFirstByte?: number }).messageFirstByte === 129);
     expect(ones).toHaveLength(3);
     for (const row of ones) expect((row.expect as { buildMessageSha256: string }).buildMessageSha256).toBe(V1);
+  });
+
+  it("a version-1 build, completed with the payer's signature, carries the wire @solana/kit writes for its message and that signature", async () => {
+    const signature = Uint8Array.from({ length: 64 }, (_, i) => i + 1);
+    const ones = rows.filter((row) => (row.expect as { messageFirstByte?: number }).messageFirstByte === 129);
+    expect(ones.length).toBeGreaterThan(0);
+    for (const row of ones) {
+      const u = await (build(row) as ReturnType<Pairing["build"]>);
+      if ("refused" in u) throw new Error(u.code);
+      const out = u.complete(signature);
+      if ("refused" in out) throw new Error(out.code);
+      const wire = Buffer.from((out.payload as { transaction: string }).transaction, "base64");
+      expect(wire.equals(Buffer.from(kitWire(u.request.message, choice.payer, signature))), JSON.stringify(row.transactionVersions)).toBe(true);
+    }
   });
 });
