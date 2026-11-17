@@ -81,6 +81,7 @@ describe("BINDINGS", () => {
       "x402/exact/xrpl",
       "x402/upto/eip155/permit2",
       "x402/upto/solana",
+      "x402/exact/eip155/gateway-batched",
     ]);
     expect(BINDINGS[0]).toBe(exactEip3009);
     expect(BINDINGS).toContain(exactTronMemo);
@@ -98,7 +99,7 @@ describe("the record's members", () => {
     expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
   it("every pairing's record carries only those members, and every one but x402/exact/starknet's names its pattern", () => {
-    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 71 })) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 72 })) {
       for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
       expect(b.pattern.pattern === undefined, b.id).toBe(b.id === "x402/exact/starknet");
     }

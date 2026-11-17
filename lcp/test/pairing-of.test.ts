@@ -15,6 +15,7 @@ const ROWS: readonly [file: string, path: string, id: string][] = [
   ["x402-exact-eip155-eip3009", "fixed.O", "x402/exact/eip155/eip3009"],
   ["x402-exact-eip155-permit2", "fixed.option", "x402/exact/eip155/permit2"],
   ["x402-exact-eip155-erc7710", "fixed.option", "x402/exact/eip155/erc7710"],
+  ["x402-exact-eip155-gateway-batched", "fixed.O2", "x402/exact/eip155/gateway-batched"],
   ["x402-upto-eip155-permit2", "fixed.option", "x402/upto/eip155/permit2"],
   ["x402-auth-capture-eip155-eip3009", "fixed.option", "x402/auth-capture/eip155/eip3009"],
   ["x402-auth-capture-eip155-permit2", "fixed.option", "x402/auth-capture/eip155/permit2"],

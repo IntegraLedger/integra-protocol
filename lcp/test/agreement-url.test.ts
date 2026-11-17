@@ -26,7 +26,7 @@ import {
   sessionHederaStock,
 } from "../src/mpp.js";
 import { agentSigned, ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "../src/ucp.js";
-import { exactErc7710 } from "../src/x402.js";
+import { exactErc7710, exactGatewayBatched } from "../src/x402.js";
 import { batchCloudflare } from "../src/x402-batch-settlement.js";
 import { rowsOf } from "./rows.js";
 
@@ -116,12 +116,14 @@ const ERC7710 = load("x402-exact-eip155-erc7710.json");
 const AP = load("x402-exact-aptos.json");
 const HX = load("x402-exact-hedera-transfer-executor.json");
 const BS = load("x402-batch-settlement.json");
+const GB = load("x402-exact-eip155-gateway-batched.json");
 
 const X402_CASES: Case[] = [
   x402Case("x402/exact/eip155/erc7710", exactErc7710, ERC7710.fixed.H, ERC7710.fixed.link, ERC7710.fixed.resource, ERC7710.fixed.option),
   x402Case("x402/exact/aptos", exactAptos, AP.fixed.H, AP.fixed.link, AP.fixed.resource, AP.fixed.O),
   x402Case("x402/exact/hedera/transfer-executor", exactHederaExecutor, HX.fixed.H, HX.fixed.link, HX.fixed.resource, HX.fixed.O),
   x402Case("x402/batch-settlement/cloudflare", batchCloudflare, BS.fixed.H, BS.fixed.link, BS.fixed.resource, BS.EC1.payload.accepted),
+  x402Case("x402/exact/eip155/gateway-batched", exactGatewayBatched, GB.fixed.H, GB.fixed.link, GB.fixed.resource, GB.fixed.O2),
 ];
 
 // ── MPP: `opaque` is base64url of RFC 8785 JSON with `legalContextAgreementUrl` beside `legalContextUrl`; the id is H

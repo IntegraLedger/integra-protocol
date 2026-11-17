@@ -500,6 +500,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "x402/salt-not-bound",
   "x402/signature-malformed",
   "x402/signed-not-bound",
+  "x402/signer-not-from",
   "x402/spender-not-proxy",
   "x402/splits-not-carried",
   "x402/tool-call-malformed",

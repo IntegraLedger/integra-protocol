@@ -221,6 +221,14 @@
       "fixedBy": "x402-exact-eip155-eip3009.md; x402-exact-eip155-permit2.md; x402-exact-eip155-erc7710-salt.md; x402-exact-eip155-erc7710.md; x402-upto-eip155-permit2.md; x402-auth-capture-eip155.md."
     },
     {
+      "unit": "Circle Gateway's batched payment on eip155 chains",
+      "exports": {
+        "./x402": ["exactGatewayBatched", "GatewayBatchedChoice", "GatewayBatchedPayment", "GatewayBatchedTypedData", "GatewayBatchedUnsigned"]
+      },
+      "use": "Any buyer's client signs Circle Gateway's batched authorization for an x402 option with the ATR hash as its nonce, after the sale's agreement is recorded on the same network, and any resource server reads the hash and the signer back before it hands the payment to Circle.",
+      "fixedBy": "x402-exact-eip155-gateway-batched.md."
+    },
+    {
       "unit": "EVM signing and the transfer's identity",
       "exports": {
         "./evm": ["AUTHORIZATION_STATE_SELECTOR", "AUTHORIZATION_USED_TOPIC", "NONCE_BITMAP_SELECTOR", "TRANSFER_TOPIC", "TRANSFER_WITH_AUTHORIZATION_TYPEHASH", "Eip3009TypedData", "eip3009TypedData", "Permit2TypedData", "permit2TypedData", "PERMIT2", "EXACT_PERMIT2_PROXY", "UPTO_PERMIT2_PROXY", "authorizationIdDigest", "transferDigest", "TransferIdentity", "TransferLog", "Hex", "Field", "Eip155"]

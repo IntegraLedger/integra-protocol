@@ -462,6 +462,16 @@ export function choiceMembers(): { id: string; members: Record<string, unknown>;
       "x402/auth-capture/eip155/permit2",
     ].map((id) => ({ id, members: evm, bad: evmBad })),
     {
+      id: "x402/exact/eip155/gateway-batched",
+      members: { ...evm, minValiditySeconds: 604_800 },
+      bad: [
+        ...evmBad,
+        { case: "a now of 599, below the 600 seconds validAfter precedes it by", member: "now", value: 599, expect: malformed },
+        { case: "no served minimum validity", member: "minValiditySeconds", value: undefined, expect: malformed },
+        { case: "a served minimum validity of 0", member: "minValiditySeconds", value: 0, expect: malformed },
+      ],
+    },
+    {
       id: "x402/batch-settlement/eip155",
       members: { ...evm, payerAuthorizer: `0x${"22".repeat(20)}`, authSalt: `0x${"33".repeat(32)}`, deposit: 1n },
       bad: [

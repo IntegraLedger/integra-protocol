@@ -1,6 +1,7 @@
 /**
  * x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and
- * ERC-7710 (with its salt level), `upto` over Permit2, and `auth-capture` over EIP-3009 and Permit2. The ATR hash is
+ * ERC-7710 (with its salt level), `upto` over Permit2, `auth-capture` over EIP-3009 and Permit2, and `exact` in Circle
+ * Gateway's batched domain. The ATR hash is
  * advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds
  * it.
  */
@@ -82,11 +83,19 @@ import { sameJson } from "./fields.js";
 import { MAX_REQUEST_BYTES, MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_X402 } from "./internal/data/eip155-x402.js";
 import { headerDigests, type HeaderDigest, type HeaderFields } from "./internal/request-headers.js";
+import { isGatewayBatched } from "./internal/evm-gateway-batched.js";
 import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 export type { Eip3009TypedData } from "./evm.js";
 export type { HeaderDigest, HeaderFields } from "./internal/request-headers.js";
+export {
+  exactGatewayBatched,
+  type GatewayBatchedChoice,
+  type GatewayBatchedPayment,
+  type GatewayBatchedTypedData,
+  type GatewayBatchedUnsigned,
+} from "./internal/evm-gateway-batched.js";
 export { LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA } from "./internal/x402.js";
 export {
   PAYMENT_REQUIRED,
@@ -714,15 +723,16 @@ function deploymentOf(extra: Record<string, unknown>): (typeof ESCROW)["v1.1"] |
 
 /**
  * The eip155 pairing of this entry point that serves a presented payment: the `exact`, `upto` or `auth-capture` pairing
- * its `accepted` names, except that an `erc7710` payment is the salt level only where its delegation manager is
+ * its `accepted` names, Circle Gateway's batched `exact` option being `x402/exact/eip155/gateway-batched`, except that an `erc7710` payment is the salt level only where its delegation manager is
  * `DELEGATION_MANAGER`, on a chain in `DELEGATION_MANAGER_CHAINS`, and the leaf delegation of its permission context
  * carries as its salt the H its echoed `extensions.legalContext.info` names. Every other delegation, a stock client's
  * whose leaf salt is drawn at random among them, or one whose context or extension does not decode, is the level that
  * signs no H. Undefined for any other option, an option on another rail included; the root `pairingOf` names the x402
  * pairing of an option on any rail.
  */
-export function pairingOfPayment(p: PaymentPayload): X402PairingId | undefined {
+export function pairingOfPayment(p: PaymentPayload): X402PairingId | "x402/exact/eip155/gateway-batched" | undefined {
   if (!isObject(p) || !isObject(p.accepted)) return undefined;
+  if (isGatewayBatched(p.accepted)) return "x402/exact/eip155/gateway-batched";
   const id = evmPairingOf(p.accepted);
   if (id !== ERC7710) return id;
   const payload: unknown = p.payload;
@@ -1546,7 +1556,10 @@ function record(p: LcpPattern): LcpPattern {
 }
 
 /** The x402 EVM breadth pairings: those with data in the EVM family's module but EIP-3009 `exact`. */
-type BreadthId = Exclude<keyof typeof EIP155_X402, typeof ID | "x402/batch-settlement/eip155" | "x402/batch-settlement/cloudflare">;
+type BreadthId = Exclude<
+  keyof typeof EIP155_X402,
+  typeof ID | "x402/batch-settlement/eip155" | "x402/batch-settlement/cloudflare" | "x402/exact/eip155/gateway-batched"
+>;
 
 /** The members every x402 EVM breadth pairing shares. */
 type BreadthBase<Id extends BreadthId> = {

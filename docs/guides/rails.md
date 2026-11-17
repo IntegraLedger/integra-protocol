@@ -437,7 +437,8 @@ mark).
 On some pairings the settlement leaves no public record that commits to H: `data.coverage` is `none`. H still
 rides in the challenge, and each pairing's record says what its payment shows. On most of them nothing the buyer signs
 carries H either. On the MPP Lightning pairings the invoice carries H; the invoice and its preimage are held by the
-parties, and no public ledger shows them.
+parties, and no public ledger shows them. On `x402/exact/eip155/gateway-batched` the nonce of the authorization the
+payer signs is H; Circle Gateway settles it in batches, and no public ledger shows it.
 
 For these pairings the seller advertises an [agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the
 link, and the buyer gate declines such an offer without one: the buyer first pays that URL, whose payment is a public
@@ -466,6 +467,7 @@ mpp/subscription/stripe
 x402/batch-settlement/cloudflare
 x402/exact/aptos
 x402/exact/eip155/erc7710
+x402/exact/eip155/gateway-batched
 x402/exact/hedera/transfer-executor
 ```
 

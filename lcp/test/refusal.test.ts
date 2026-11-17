@@ -214,17 +214,18 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // so it refuses one that carries a refused member with x402/option-malformed, the code their option checks give; a
   // value that is not an object comes back as it is. Each option is its pairing's vector file's.
   const evm = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 7,
+    exact: 8,
     keep: ["the x402 EVM pairings", (b) => /^x402\/[a-z-]+\/eip155\//.test(b.id)],
     leave: ["every other pairing, which the other unplaced tests here take", (b) => !/^x402\/[a-z-]+\/eip155\//.test(b.id)],
   });
-  it("the x402 EVM pairings are seven", () => {
+  it("the x402 EVM pairings are eight", () => {
     expect(evm.map((b) => b.id).sort()).toEqual([
       "x402/auth-capture/eip155/eip3009",
       "x402/auth-capture/eip155/permit2",
       "x402/exact/eip155/eip3009",
       "x402/exact/eip155/erc7710",
       "x402/exact/eip155/erc7710-salt",
+      "x402/exact/eip155/gateway-batched",
       "x402/exact/eip155/permit2",
       "x402/upto/eip155/permit2",
     ]);
@@ -233,7 +234,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     it(`${b.id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
       const file = new URL(`${b.id.replaceAll("/", "-")}.json`, dir);
       const fixed = (JSON.parse(readFileSync(file, "utf8")) as { fixed: Record<string, object> }).fixed;
-      const option = fixed["O"] ?? fixed["option"];
+      const option = fixed["O"] ?? fixed["option"] ?? fixed["O2"];
       expect(option).toBeTypeOf("object");
       const unplaced = b.unplaced as (o: unknown) => unknown;
       expect(unplaced(option)).toBe(option);
@@ -441,7 +442,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
   it("the x402 and MPP pairings whose unplaced removes a carrier are these eighteen", () => {
     const pairings = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 27 + 28,
+      exact: 28 + 28,
       keep: ["the x402 and MPP pairings", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
       leave: ["the ACK, ACP, AP2, card and UCP pairings, whose unplaced the checkout tests above take", (b) => options[b.id.split("/")[0]!] !== undefined],
     });
@@ -524,12 +525,12 @@ describe("every placement function refuses a seller document carrying a refused 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
   // the carrier (unplaced).
   const x402 = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 27,
+    exact: 28,
     keep: ["the x402 pairings", (b) => b.id.startsWith("x402/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("x402/")],
   });
-  it("the x402 pairings are twenty-seven, each with an advertised document of one option", () => {
-    expect(x402.length).toBe(27);
+  it("the x402 pairings are twenty-eight, each with an advertised document of one option", () => {
+    expect(x402.length).toBe(28);
     for (const b of x402) expect((advertisedDoc.get(b.id) as { accepts: unknown[] }).accepts.length, b.id).toBe(1);
   });
   // The Cardano address method takes coinsPerUtxoByte after the offer, before the agreement URL: V8's parameter.

@@ -43,7 +43,7 @@ describe("every x402 pairing's build checks H first", () => {
   const X402 = rowsOf(
     BINDINGS.filter((b) => b.id.startsWith("x402/")) as unknown as { id: string; build: (c: unknown, h: unknown) => Promise<unknown> }[],
     "BINDINGS, the x402 pairings",
-    { exact: 27 },
+    { exact: 28 },
   );
   for (const p of X402) {
     it(`${p.id}: a malformed H with no choice, another pairing's option or a document that is not v2 is ${hCodeOf(p.id)}`, async () => {
@@ -63,7 +63,7 @@ describe("every x402 pairing's build checks H first", () => {
 });
 
 describe("every x402 pairing's build checks its choice's members after H and before the document", () => {
-  const MEMBERS = rowsOf(choiceMembers(), "peer-free-inputs.ts choiceMembers", { exact: 21 });
+  const MEMBERS = rowsOf(choiceMembers(), "peer-free-inputs.ts choiceMembers", { exact: 22 });
   const NONE = [
     "x402/exact/sui",
     "x402/exact/cardano",
@@ -76,7 +76,7 @@ describe("every x402 pairing's build checks its choice's members after H and bef
     BINDINGS.filter((b) => b.id.startsWith("x402/")) as unknown as { id: string; build: (c: unknown, h: unknown) => Promise<unknown> }[],
     "BINDINGS, the x402 pairings",
     {
-      exact: 21,
+      exact: 22,
       keep: ["each pairing whose build reads choice members beyond the document and the option", (b) => MEMBERS.some((m) => m.id === b.id)],
       leave: [
         "the pairings whose build reads only the document and the option",

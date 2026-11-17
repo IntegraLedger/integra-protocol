@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 71 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 72 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -101,6 +101,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
 | `x402/exact/eip155/erc7710` | `exactErc7710` from `@integraledger/lcp/x402` | `none` | no | `http-advisory` | no | no |  |
 | `x402/exact/eip155/erc7710-salt` | `exactErc7710Salt` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/erc7710-salt`](../../lcp/profiles/x402-exact-eip155-erc7710-salt.md) |
+| `x402/exact/eip155/gateway-batched` | `exactGatewayBatched` from `@integraledger/lcp/x402` | `none` | no | `native-field` | no | no | [`x402/exact/eip155/gateway-batched`](../../lcp/profiles/x402-exact-eip155-gateway-batched.md) |
 | `x402/exact/eip155/permit2` | `exactPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
 | `x402/exact/hedera` | `exactHedera` from `@integraledger/lcp/hedera` | `full` | no | `native-field` | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
 | `x402/exact/hedera/transfer-executor` | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `none` | no | `http-advisory` | no | no |  |
@@ -350,6 +351,10 @@ Before this payment was taken, an account signed an agreement transaction carryi
 ### `x402/exact/eip155/erc7710-salt`
 
 The leaf delegation of the permission context redeemed for this payment, made through MetaMask's DelegationManager, carries this ATR's hash as its signed salt. The manager verified every delegation's signature when it redeemed them, and the leaf, with its salt, is in a RedeemedDelegation event in the settlement transaction. The leaf's signer is its delegator, which may be an account the paying account authorised rather than the paying account itself. This does not show that amount, payee, asset or timing match the ATR's content.
+
+### `x402/exact/eip155/gateway-batched`
+
+Before this payment was reported, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>; this shows neither that the account is the payer nor when the payment was taken. The payment presented was a Circle Gateway batched authorization whose nonce is this ATR's hash, signed under the Gateway Wallet's domain; no public ledger records it, since a batch carries each depositor's net change and no payment's nonce, and Circle's transfers API listing it by its nonce is Circle's statement, not a ledger's. The seller reported it paid. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/eip155/permit2`
 

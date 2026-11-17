@@ -101,7 +101,7 @@ import { exactSui, type SuiReader, type SuiRef } from "../src/sui.js";
 import { exactTronMemo, type TronReader, type TronRef } from "../src/tron.js";
 import { exactTvm, type TvmReader, type TvmRef } from "../src/tvm.js";
 import { agentSigned, ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned, type AgentSignedPresented } from "../src/ucp.js";
-import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, uptoPermit2, type Eip3009Payment, type PaymentPayload } from "../src/x402.js";
+import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactGatewayBatched, exactPermit2, uptoPermit2, type Eip3009Payment, type GatewayBatchedPayment, type PaymentPayload } from "../src/x402.js";
 import { batchCloudflare, batchEvm, batchSvm } from "../src/x402-batch-settlement.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -153,6 +153,7 @@ const OWN = {
   "x402/batch-settlement/eip155": batchEvm satisfies Entry<"x402/batch-settlement/eip155", BatchPaymentPayload, EvmRef, EvmReader, Own<typeof batchEvm>>,
   "x402/batch-settlement/solana": batchSvm satisfies Entry<"x402/batch-settlement/solana", BatchPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof batchSvm>>,
   "x402/batch-settlement/cloudflare": batchCloudflare satisfies Entry<"x402/batch-settlement/cloudflare", CloudflarePaymentPayload, never, never, Own<typeof batchCloudflare>>,
+  "x402/exact/eip155/gateway-batched": exactGatewayBatched satisfies Entry<"x402/exact/eip155/gateway-batched", GatewayBatchedPayment, never, never, Own<typeof exactGatewayBatched>>,
   "x402/exact/algorand": exactAvm satisfies Entry<"x402/exact/algorand", AvmPaymentPayload, AvmRef, AvmReader, Own<typeof exactAvm>>,
   "x402/exact/aptos": exactAptos satisfies Entry<"x402/exact/aptos", AptosPaymentPayload, AptosRef, AptosReader, Own<typeof exactAptos>>,
   "x402/exact/cardano": exactCardano satisfies Entry<"x402/exact/cardano", CardanoPaymentPayload, CardanoRef, CardanoReader, Own<typeof exactCardano>>,
@@ -370,7 +371,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 71 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 72 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.

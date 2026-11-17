@@ -1,0 +1,1281 @@
+{
+ "about": "Vectors for x402/exact/eip155/gateway-batched (lcp/profiles/x402-exact-eip155-gateway-batched.md). Oracle: Circle's own client, @circle-fin/x402-batching 4.0.0 (npm, published 2026-10-22, sha512 KLdHz85N...), run as this workspace's pinned devDependency on 2026-11-17: S's typed data, domain and signature are what BatchEvmScheme's signing step (src/client/BatchEvmScheme.ts:317-355, the domain at :330-338, the versions at src/constants.ts:14-19) handed its signer and the signature it returned, given the authorization with nonce H, its own nonce being random (src/nonce.ts:6-12); W's window is createPaymentPayload's (src/client/BatchEvmScheme.ts:234-247, src/constants.ts:37-49) with its clock at fixed.now; wallets is CHAIN_CONFIGS (src/config.ts:110-116, :121-360); filter's circle column is supportsBatching (src/detection.ts:35-48). S's digest is viem 2.57.4's hashTypedData of the typed data Circle's client handed its signer, the independent EIP-712 check. The keys are the published Anvil development keys #0 (the payer) and #1 (another account). check.highS is S[1]'s signature with s replaced by the curve order less s and v flipped, computed with BigInt; viem's recoverTypedDataAddress reads it as the payer's (check.highSRecovers). H is SHA-256(\"abc\") (FIPS 180-2 B.1). The refusal rows (filter, eip3009Filter, build, bound, authorizer, boundAccepted) are each a good input with one member changed and the code the profile gives it; no outside oracle states lcp's codes, and each row's input starts from the outputs above.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "extensions": {
+   "legalContext": {
+    "info": {
+     "type": "sha256",
+     "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+    },
+    "schema": {
+     "$schema": "https://json-schema.org/draft/2020-12/schema",
+     "type": "object",
+     "properties": {
+      "type": {
+       "const": "sha256"
+      },
+      "value": {
+       "type": "string",
+       "pattern": "^0x[0-9a-f]{64}$"
+      },
+      "legalContextUrl": {
+       "type": "string",
+       "pattern": "^https://"
+      }
+     },
+     "required": [
+      "type",
+      "value",
+      "legalContextUrl"
+     ]
+    }
+   }
+  },
+  "payerKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "otherKey": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
+  "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+  "now": 1790000000,
+  "minValiditySeconds": 604800,
+  "O1": {
+   "scheme": "exact",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 604900,
+   "extra": {
+    "name": "GatewayWalletBatched",
+    "version": "1",
+    "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   }
+  },
+  "O2": {
+   "scheme": "exact",
+   "network": "eip155:84532",
+   "amount": "10000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 604900,
+   "extra": {
+    "name": "GatewayWalletBatched",
+    "version": "2",
+    "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   }
+  },
+  "O3": {
+   "scheme": "exact",
+   "network": "eip155:8453",
+   "amount": "10000",
+   "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 604900,
+   "extra": {
+    "name": "GatewayWalletBatched",
+    "version": "2",
+    "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+   }
+  }
+ },
+ "wallets": [
+  {
+   "name": "arbitrumSepolia",
+   "network": "eip155:421614",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "arcTestnet",
+   "network": "eip155:5042002",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "avalancheFuji",
+   "network": "eip155:43113",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "baseSepolia",
+   "network": "eip155:84532",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "sepolia",
+   "network": "eip155:11155111",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "hyperEvmTestnet",
+   "network": "eip155:998",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "optimismSepolia",
+   "network": "eip155:11155420",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "polygonAmoy",
+   "network": "eip155:80002",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "seiAtlantic",
+   "network": "eip155:1328",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "sonicTestnet",
+   "network": "eip155:14601",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "unichainSepolia",
+   "network": "eip155:1301",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "worldChainSepolia",
+   "network": "eip155:4801",
+   "gatewayWallet": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+  },
+  {
+   "name": "arbitrum",
+   "network": "eip155:42161",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "avalanche",
+   "network": "eip155:43114",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "base",
+   "network": "eip155:8453",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "ethereum",
+   "network": "eip155:1",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "hyperEvm",
+   "network": "eip155:999",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "optimism",
+   "network": "eip155:10",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "polygon",
+   "network": "eip155:137",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "sei",
+   "network": "eip155:1329",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "sonic",
+   "network": "eip155:146",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "unichain",
+   "network": "eip155:130",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "worldChain",
+   "network": "eip155:480",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  },
+  {
+   "name": "arc",
+   "network": "eip155:5042",
+   "gatewayWallet": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+  }
+ ],
+ "S": [
+  {
+   "case": "O1: version 1 on eip155:84532",
+   "option": "O1",
+   "domain": {
+    "name": "GatewayWalletBatched",
+    "version": "1",
+    "chainId": 84532,
+    "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+   },
+   "digest": "0xc8bbbc6b6d26a47805e2cad9445b2354cfe5dc16d0907a2c4a7206d3f425b149",
+   "signature": "0xc12150966d98cd1a45e6dbb93cff3f7d41d1a220e306c88f1ec3dc78d0aeeeee01d91fd0f5d3de2b4475435d71e2bb8a729e1f52ee3b0842e300f231e286769c1c",
+   "payment": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 604900,
+     "extra": {
+      "name": "GatewayWalletBatched",
+      "version": "1",
+      "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+     }
+    },
+    "payload": {
+     "authorization": {
+      "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "value": "10000",
+      "validAfter": "1789999400",
+      "validBefore": "1790604900",
+      "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     "signature": "0xc12150966d98cd1a45e6dbb93cff3f7d41d1a220e306c88f1ec3dc78d0aeeeee01d91fd0f5d3de2b4475435d71e2bb8a729e1f52ee3b0842e300f231e286769c1c"
+    },
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "case": "O2: version 2 on eip155:84532",
+   "option": "O2",
+   "domain": {
+    "name": "GatewayWalletBatched",
+    "version": "2",
+    "chainId": 84532,
+    "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+    "salt": "0x000000000000000000000000036CbD53842c5426634e7929541eC2318f3dCF7e"
+   },
+   "digest": "0xbd32eb6013374bc1ec40d6a5d24e9a8f51511f163aeccc0124582b328b394543",
+   "signature": "0x1ab70c5a4b94d6245fc4e08eb118c91a00d00432c45ec40418c45d611a8b616a28df9e396bfa84f36e1351a39aff5d836ba9dbf14a1138da6ac87b154ca38ea11b",
+   "payment": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 604900,
+     "extra": {
+      "name": "GatewayWalletBatched",
+      "version": "2",
+      "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+     }
+    },
+    "payload": {
+     "authorization": {
+      "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "value": "10000",
+      "validAfter": "1789999400",
+      "validBefore": "1790604900",
+      "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     "signature": "0x1ab70c5a4b94d6245fc4e08eb118c91a00d00432c45ec40418c45d611a8b616a28df9e396bfa84f36e1351a39aff5d836ba9dbf14a1138da6ac87b154ca38ea11b"
+    },
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "case": "O3: version 2 on eip155:8453",
+   "option": "O3",
+   "domain": {
+    "name": "GatewayWalletBatched",
+    "version": "2",
+    "chainId": 8453,
+    "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE",
+    "salt": "0x000000000000000000000000833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+   },
+   "digest": "0xcbd0e98f0921d659dadabda1203856317620c5c3a315ba35d562df45d6a4470d",
+   "signature": "0x8e04d9faf4125aa4baa717da6175ab92142334dec8c34b3048c3998b13043fc60bf468fef0a84ff274afbe7f86f047ac7c2f4905fb0bdd9df365f21ef2dfcae51b",
+   "payment": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:8453",
+     "amount": "10000",
+     "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 604900,
+     "extra": {
+      "name": "GatewayWalletBatched",
+      "version": "2",
+      "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+     }
+    },
+    "payload": {
+     "authorization": {
+      "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "value": "10000",
+      "validAfter": "1789999400",
+      "validBefore": "1790604900",
+      "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     "signature": "0x8e04d9faf4125aa4baa717da6175ab92142334dec8c34b3048c3998b13043fc60bf468fef0a84ff274afbe7f86f047ac7c2f4905fb0bdd9df365f21ef2dfcae51b"
+    },
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   }
+  }
+ ],
+ "W": [
+  {
+   "case": "maxTimeoutSeconds 60",
+   "maxTimeoutSeconds": 60,
+   "validAfter": "1789999400",
+   "validBefore": "1790604900",
+   "now": 1790000000,
+   "minValiditySeconds": 604800
+  },
+  {
+   "case": "maxTimeoutSeconds 604900",
+   "maxTimeoutSeconds": 604900,
+   "validAfter": "1789999400",
+   "validBefore": "1790604900",
+   "now": 1790000000,
+   "minValiditySeconds": 604800
+  },
+  {
+   "case": "maxTimeoutSeconds 700000",
+   "maxTimeoutSeconds": 700000,
+   "validAfter": "1789999400",
+   "validBefore": "1790700000",
+   "now": 1790000000,
+   "minValiditySeconds": 604800
+  }
+ ],
+ "check": {
+  "otherSigned": "0x65b90e153861ac006ce12ebdffcb93ee323e487bdff0e5cd3a4bc7d854addf3821e6f31b8c10af44359a7cb18d2d66852b15808dcff7c7a0f2cdcca1bd957fc11b",
+  "otherAddress": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "v1SigUnderO2": "0xc12150966d98cd1a45e6dbb93cff3f7d41d1a220e306c88f1ec3dc78d0aeeeee01d91fd0f5d3de2b4475435d71e2bb8a729e1f52ee3b0842e300f231e286769c1c",
+  "highS": "0x1ab70c5a4b94d6245fc4e08eb118c91a00d00432c45ec40418c45d611a8b616ad72061c694057b0c91ecae5c6500a27b4f0500f5653767615509e3778392b2a01c",
+  "highSRecovers": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "supportsBatching": {
+   "O1": true,
+   "O2": true,
+   "O3": true,
+   "version 3": false,
+   "no version": true
+  }
+ },
+ "filter": [
+  {
+   "case": "O1, version 1 on Base Sepolia",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "1",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "offered",
+   "circle": true
+  },
+  {
+   "case": "O2, version 2 on Base Sepolia",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "offered",
+   "circle": true
+  },
+  {
+   "case": "O3, version 2 on Base",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:8453",
+    "amount": "10000",
+    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+    }
+   },
+   "expect": "offered",
+   "circle": true
+  },
+  {
+   "case": "O1 with no extra.version, which Circle's client reads as version 1",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "offered",
+   "circle": true
+  },
+  {
+   "case": "O2 with extra.verifyingContract in lowercase",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7eba4688bdef3e311b846f25870a19b9"
+    }
+   },
+   "expect": "offered",
+   "circle": true
+  },
+  {
+   "case": "O2 with extra.assetTransferMethod eip3009",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+     "assetTransferMethod": "eip3009"
+    }
+   },
+   "expect": "offered",
+   "circle": true
+  },
+  {
+   "case": "O2 with an empty extra.splits",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+     "splits": []
+    }
+   },
+   "expect": "offered",
+   "circle": true
+  },
+  {
+   "case": "O2 with extra.version \"3\", which Circle's client does not sign",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "3",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": false
+  },
+  {
+   "case": "O2 with extra.version 2, a number, which Circle's client does not sign",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": 2,
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": false
+  },
+  {
+   "case": "O2 with no extra.verifyingContract, which Circle's client does not sign",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": false
+  },
+  {
+   "case": "O2 with extra.verifyingContract the main networks' Gateway Wallet, on Base Sepolia",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": true
+  },
+  {
+   "case": "O2 with extra.verifyingContract the asset",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": true
+  },
+  {
+   "case": "O2 on eip155:42431, a network with no Gateway Wallet",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:42431",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": true
+  },
+  {
+   "case": "O2 with extra.splits holding one split",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+     "splits": [
+      {
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "amount": "1"
+      }
+     ]
+    }
+   },
+   "expect": "x402/splits-not-carried",
+   "circle": true
+  },
+  {
+   "case": "O2 with amount \"0\"",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "0",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-malformed",
+   "circle": true
+  },
+  {
+   "case": "O2 with extra.name USDC: no batched option",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "USDC",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-not-this-pairing",
+   "circle": false
+  },
+  {
+   "case": "O2 with extra.assetTransferMethod permit2",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+     "assetTransferMethod": "permit2"
+    }
+   },
+   "expect": "x402/option-not-this-pairing",
+   "circle": true
+  },
+  {
+   "case": "O2 with scheme upto",
+   "option": {
+    "scheme": "upto",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/option-not-this-pairing",
+   "circle": true
+  }
+ ],
+ "eip3009Filter": [
+  {
+   "case": "O1",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "1",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/batched-not-eip3009"
+  },
+  {
+   "case": "O2",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/batched-not-eip3009"
+  },
+  {
+   "case": "O3",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:8453",
+    "amount": "10000",
+    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "GatewayWalletBatched",
+     "version": "2",
+     "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+    }
+   },
+   "expect": "x402/batched-not-eip3009"
+  },
+  {
+   "case": "O2 with extra.name USDC: the token's name, the Gateway Wallet still the verifying contract",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "10000",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 604900,
+    "extra": {
+     "name": "USDC",
+     "version": "2",
+     "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+    }
+   },
+   "expect": "x402/batched-not-eip3009"
+  }
+ ],
+ "build": [
+  {
+   "case": "no served minimum validity",
+   "set": {
+    "minValiditySeconds": null
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a served minimum validity of 0",
+   "set": {
+    "minValiditySeconds": 0
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a served minimum validity of 1.5",
+   "set": {
+    "minValiditySeconds": 1.5
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a served minimum validity given as the string \"604800\"",
+   "set": {
+    "minValiditySeconds": "604800"
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a now of 599, from which no validAfter 600 seconds earlier is written",
+   "set": {
+    "now": 599
+   },
+   "expect": "x402/option-malformed"
+  }
+ ],
+ "bound": [
+  {
+   "case": "S[1]'s payment as presented",
+   "payment": "/S/1/payment",
+   "set": {},
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  {
+   "case": "S[1]'s payment with no echoed extensions: the nonce alone",
+   "payment": "/S/1/payment",
+   "set": {
+    "extensions": null
+   },
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  {
+   "case": "the echoed legal context names SHA-256(\"abd\"), not the nonce",
+   "payment": "/S/1/payment",
+   "set": {
+    "extensions.legalContext.info.value": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+   },
+   "expect": "x402/signed-not-bound"
+  },
+  {
+   "case": "the nonce is SHA-256(\"abd\"), not the echoed H",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.authorization.nonce": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+   },
+   "expect": "x402/signed-not-bound"
+  },
+  {
+   "case": "a nonce of one byte",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.authorization.nonce": "0x12"
+   },
+   "expect": "x402/payload-malformed"
+  },
+  {
+   "case": "under extra.version \"3\"",
+   "payment": "/S/1/payment",
+   "set": {
+    "accepted.extra.version": "3"
+   },
+   "expect": "x402/option-malformed"
+  }
+ ],
+ "authorizer": [
+  {
+   "case": "S[0]'s payment, version 1",
+   "payment": "/S/0/payment",
+   "set": {},
+   "expect": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+  },
+  {
+   "case": "S[1]'s payment, version 2",
+   "payment": "/S/1/payment",
+   "set": {},
+   "expect": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+  },
+  {
+   "case": "S[2]'s payment, version 2 on Base",
+   "payment": "/S/2/payment",
+   "set": {},
+   "expect": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+  },
+  {
+   "case": "S[1]'s authorization signed by another account, the second development key, with Circle's client",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.signature": "0x65b90e153861ac006ce12ebdffcb93ee323e487bdff0e5cd3a4bc7d854addf3821e6f31b8c10af44359a7cb18d2d66852b15808dcff7c7a0f2cdcca1bd957fc11b"
+   },
+   "expect": "x402/signer-not-from"
+  },
+  {
+   "case": "S[0]'s version 1 signature presented under the version 2 option",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.signature": "0xc12150966d98cd1a45e6dbb93cff3f7d41d1a220e306c88f1ec3dc78d0aeeeee01d91fd0f5d3de2b4475435d71e2bb8a729e1f52ee3b0842e300f231e286769c1c"
+   },
+   "expect": "x402/signer-not-from"
+  },
+  {
+   "case": "S[1]'s value changed to 10001 after signing",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.authorization.value": "10001"
+   },
+   "expect": "x402/signer-not-from"
+  },
+  {
+   "case": "S[1]'s signature with s replaced by n - s and v flipped, which viem's recoverTypedDataAddress still reads as the payer's",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.signature": "0x1ab70c5a4b94d6245fc4e08eb118c91a00d00432c45ec40418c45d611a8b616ad72061c694057b0c91ecae5c6500a27b4f0500f5653767615509e3778392b2a01c"
+   },
+   "expect": "x402/signature-malformed"
+  },
+  {
+   "case": "S[1]'s signature with v 29",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.signature": "0x1ab70c5a4b94d6245fc4e08eb118c91a00d00432c45ec40418c45d611a8b616a28df9e396bfa84f36e1351a39aff5d836ba9dbf14a1138da6ac87b154ca38ea11d"
+   },
+   "expect": "x402/signature-malformed"
+  },
+  {
+   "case": "S[1]'s signature without its last byte",
+   "payment": "/S/1/payment",
+   "set": {
+    "payload.signature": "0x1ab70c5a4b94d6245fc4e08eb118c91a00d00432c45ec40418c45d611a8b616a28df9e396bfa84f36e1351a39aff5d836ba9dbf14a1138da6ac87b154ca38ea1"
+   },
+   "expect": "x402/signature-malformed"
+  },
+  {
+   "case": "S[1]'s payment whose echoed legal context names SHA-256(\"abd\")",
+   "payment": "/S/1/payment",
+   "set": {
+    "extensions.legalContext.info.value": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
+   },
+   "expect": "x402/signed-not-bound"
+  }
+ ],
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairing, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over S[1]'s payment: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. The ATR is abc, H its SHA-256 (FIPS 180-2 B.1), the planted ATR abd. SHA-256 values are GNU coreutils sha256sum. Bytes are hex. B2's input names the account, the time and the served minimum validity its build needs.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/eip155/gateway-batched",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "eip155:84532",
+        "amount": "10000",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "maxTimeoutSeconds": 604900,
+        "extra": {
+         "name": "GatewayWalletBatched",
+         "version": "2",
+         "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "now": 1790000000,
+     "minValiditySeconds": 604800,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/eip155/gateway-batched",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "eip155:84532",
+       "amount": "10000",
+       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+       "maxTimeoutSeconds": 604900,
+       "extra": {
+        "name": "GatewayWalletBatched",
+        "version": "2",
+        "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+       }
+      },
+      "payload": {
+       "authorization": {
+        "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "value": "10000",
+        "validAfter": "1789999400",
+        "validBefore": "1790604900",
+        "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       },
+       "signature": "0x1ab70c5a4b94d6245fc4e08eb118c91a00d00432c45ec40418c45d611a8b616a28df9e396bfa84f36e1351a39aff5d836ba9dbf14a1138da6ac87b154ca38ea11b"
+      },
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is S[1]'s payment, signed by Circle's client."
+   }
+  ]
+ },
+ "boundAccepted": {
+  "case": "S[1]'s payment presented under options this pairing's read does not offer, each S[1]'s option changed as the row's case names: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option. payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with extra.name USDC: no batched option",
+    "pairing": "x402/exact/eip155/gateway-batched",
+    "payment": "/S/1/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 604900,
+     "extra": {
+      "name": "USDC",
+      "version": "2",
+      "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the option with extra.version \"3\"",
+    "pairing": "x402/exact/eip155/gateway-batched",
+    "payment": "/S/1/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 604900,
+     "extra": {
+      "name": "GatewayWalletBatched",
+      "version": "3",
+      "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with extra.verifyingContract the main networks' Gateway Wallet",
+    "pairing": "x402/exact/eip155/gateway-batched",
+    "payment": "/S/1/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 604900,
+     "extra": {
+      "name": "GatewayWalletBatched",
+      "version": "2",
+      "verifyingContract": "0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with extra.splits holding one split",
+    "pairing": "x402/exact/eip155/gateway-batched",
+    "payment": "/S/1/payment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "eip155:84532",
+     "amount": "10000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 604900,
+     "extra": {
+      "name": "GatewayWalletBatched",
+      "version": "2",
+      "verifyingContract": "0x0077777d7EBA4688BDeF3E311b846F25870A19B9",
+      "splits": [
+       {
+        "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+        "amount": "1"
+       }
+      ]
+     }
+    },
+    "expect": "x402/splits-not-carried"
+   }
+  ]
+ }
+}

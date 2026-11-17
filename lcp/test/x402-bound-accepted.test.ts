@@ -158,10 +158,10 @@ const batchModeOf = (o: PaymentRequirements): string | undefined => {
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 32284;
-const NOT_OFFERED = 861617;
-const OFFERED_OWN_BINDS = 1405;
-const OFFERED_COUNTS = [1231, 174, 1153];
+const PRESENTED = 36842;
+const NOT_OFFERED = 1019714;
+const OFFERED_OWN_BINDS = 1547;
+const OFFERED_COUNTS = [1366, 181, 1164];
 const OTHER_MODE = 34;
 
 const PRESENTATIONS = rowsOf(
@@ -231,9 +231,9 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
     }
   }, 0);
 
-  it("each presentation is answered by each of the 27 x402 pairings", () => {
-    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 27 });
-    expect(answers.length).toBe(PRESENTATIONS.length * 27);
+  it("each presentation is answered by each of the 28 x402 pairings", () => {
+    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 28 });
+    expect(answers.length).toBe(PRESENTATIONS.length * 28);
   });
 
   it("under an option its read does not offer, each pairing's bound refuses the payment with the code its advertise gives", () => {
@@ -308,7 +308,7 @@ const X402_FILES = rowsOf(
   FILES,
   "the x402 vector files",
   {
-    exact: 24,
+    exact: 25,
     keep: ["the x402 pairings' vector files", (f) => f.startsWith("x402-") && !NO_PAIRING.includes(f)],
     leave: ["buyer.json, and the x402 files that hold no x402 pairing's vectors", (f) => f === "buyer.json" || NO_PAIRING.includes(f)],
   },
@@ -319,7 +319,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 308 },
+  { exact: 312 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {

@@ -137,6 +137,11 @@
       "source": "Cloudflare verifies the agent's signed request and bills its registered identity; the payer sends nothing"
     },
     {
+      "pairing": "x402/exact/eip155/gateway-batched",
+      "broadcaster": "payee",
+      "source": "@circle-fin/x402-batching 4.0.0 src/server/BatchFacilitatorClient.ts:116: the resource server posts the authorization to Circle Gateway's /v1/x402/settle, which settles it in batches; the payer sends nothing"
+    },
+    {
       "pairing": "mpp/charge/evm/authorization",
       "broadcaster": "payee",
       "source": "draft-evm-charge-00 at tempoxyz/mpp-specs 08e7dd87: \"The server submits it to the token contract, paying gas from its own balance.\""

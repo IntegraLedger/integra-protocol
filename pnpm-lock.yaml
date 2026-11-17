@@ -197,6 +197,9 @@ importers:
       '@casper-ecosystem/casper-eip-712':
         specifier: 1.2.1
         version: 1.2.1
+      '@circle-fin/x402-batching':
+        specifier: 4.0.0
+        version: 4.0.0(@x402/core@2.31.0)(@x402/evm@2.31.0(typescript@7.0.2))(viem@2.57.4(typescript@7.0.2)(zod@4.6.7))
       '@mysten/sui':
         specifier: 2.35.0
         version: 2.35.0(typescript@7.0.2)
@@ -306,6 +309,17 @@ packages:
 
   '@casper-ecosystem/casper-eip-712@1.2.1':
     resolution: {integrity: sha512-qhrpaISByIoOnbELH7hhLMVBinIP1vOc4Z+6ZI5aItcc1O3SrDXNu0fdKm5qRSLLb5p94JxaS+jGegiIAwiKDA==}
+
+  '@circle-fin/x402-batching@4.0.0':
+    resolution: {integrity: sha512-KLdHz85NdF9uBf4muRLnUW84z+ro1oBD/YfNvwpqSQAc7Q5vuRRj2SMrm5B8fyiP3v+t1HkO5qbIrRb34yvkXA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@x402/core': ^2.3.0
+      '@x402/evm': ^2.3.0
+      viem: ^2.0.0
+    peerDependenciesMeta:
+      '@x402/evm':
+        optional: true
 
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
@@ -2727,6 +2741,13 @@ snapshots:
     dependencies:
       '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
+
+  '@circle-fin/x402-batching@4.0.0(@x402/core@2.31.0)(@x402/evm@2.31.0(typescript@7.0.2))(viem@2.57.4(typescript@7.0.2)(zod@4.6.7))':
+    dependencies:
+      '@x402/core': 2.31.0
+      viem: 2.57.4(typescript@7.0.2)(zod@4.6.7)
+    optionalDependencies:
+      '@x402/evm': 2.31.0(typescript@7.0.2)
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true

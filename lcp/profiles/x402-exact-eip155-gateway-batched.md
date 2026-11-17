@@ -1,0 +1,69 @@
+**LCP profile `x402/exact/eip155/gateway-batched`: Circle Gateway's batched payment, its nonce the ATR hash, taken after its agreement.**
+
+This pairing serves x402's `exact` scheme in Circle Gateway's `GatewayWalletBatched` domain, as lcp's client writes it. The payer signs an EIP-3009 `TransferWithAuthorization` under the Gateway Wallet's EIP-712 domain, with H as its nonce, and the resource server hands it to Circle Gateway, which settles it in batches from the payer's Gateway balance. No public ledger shows the authorization, so H in its nonce is a link and no proof: the pairing is at coverage `none` (`link` `h`), each payment is its own sale, and it is taken only after an agreement carrying H is recorded on the payment's own network (`agreementOn` `same-network`). Circle's client, `@circle-fin/x402-batching` 4.0.0, draws the nonce at random (`src/nonce.ts:6-12`, called at `src/client/BatchEvmScheme.ts:233`) and writes no H.
+
+**The agreement first**
+
+1. Each payment is its own sale. Before the resource server offers this option, the buyer makes the sale's agreement on the payment's own network: an agreement option the resource server declares there, such as `x402/exact/eip155/eip3009` at its floor, paying the option's payee.
+2. The resource server offers the batched option only once that agreement's transaction has been read and recorded for this H, and an agreement whose signer is the option's payee is no agreement. This pairing's payment is never itself an agreement: it is no public act.
+
+**The option**
+
+3. The option filter takes an `exact` option on an `eip155` network whose `extra.name` is `GatewayWalletBatched`, whose `extra.assetTransferMethod` is absent or `eip3009`, and which names an asset, a `payTo`, an `amount` that is the canonical decimal string of a positive integer below 2^256 and a `maxTimeoutSeconds` that is a positive safe integer. It refuses an option whose `extra.splits` is present and not empty, since `exact` pays one payee (`x402/splits-not-carried`).
+4. **The domain's version.** Circle signs under two domains, chosen by `extra.version` (`src/client/BatchEvmScheme.ts:330-338`; `src/constants.ts:12-27`): `"1"`, whose members are `name` (`GatewayWalletBatched`), `version`, `chainId` and `verifyingContract`; and `"2"`, those four and `salt`, the asset's address left-padded to 32 bytes. An option with no `extra.version` is version `"1"`, as Circle's client reads it (`src/detection.ts:46`, `:98-102`). An option of any other version is refused (`x402/option-malformed`).
+5. **The verifying contract.** `extra.verifyingContract` is the Gateway Wallet on the option's network, compared without regard to case: `0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE` on Ethereum (1), OP (10), Unichain (130), Polygon (137), Sonic (146), World Chain (480), HyperEVM (999), Sei (1329), Arc (5042), Base (8453), Arbitrum (42161) and Avalanche (43114); and `0x0077777d7EBA4688BDeF3E311b846F25870A19B9` on Sepolia (11155111), OP Sepolia (11155420), Unichain Sepolia (1301), Polygon Amoy (80002), Sonic Testnet (14601), World Chain Sepolia (4801), HyperEVM Testnet (998), Sei Atlantic (1328), Arc Testnet (5042002), Base Sepolia (84532), Arbitrum Sepolia (421614) and Avalanche Fuji (43113), as `@circle-fin/x402-batching` 4.0.0 configures each network (`src/config.ts:110-116`, `:121-360`). An option whose `extra.verifyingContract` is not the Gateway Wallet on its network, or that names a network with none, is refused (`x402/option-malformed`).
+6. The filter of `x402/exact/eip155/eip3009` refuses this option, and any `exact` option whose `extra.verifyingContract` is present and not its asset (`x402/batched-not-eip3009`): signed under the token's domain it would be valid nowhere. So no `exact` option on an `eip155` network is served by both pairings.
+
+**What the payer signs**
+
+7. The client fetches the ATR's link, computes SHA-256 over the bytes received, and compares the result with H; on a mismatch it does not sign. On a match it signs `TransferWithAuthorization{from, to, value, validAfter, validBefore, nonce}` (`from` `address`, `to` `address`, `value` `uint256`, `validAfter` `uint256`, `validBefore` `uint256`, `nonce` `bytes32`, in that order; `src/client/BatchEvmScheme.ts:31-40`) under the domain of rule 4, with `to` the option's `payTo`, `value` its `amount`, and `nonce` = H, all of H. It echoes `extensions` unchanged.
+8. **The validity.** `validAfter` is the signing time less 600 seconds. `validBefore` is the signing time plus the greater of the option's `maxTimeoutSeconds` and the served minimum plus 100 seconds, where the served minimum is the `minValiditySeconds` that Circle Gateway's `/supported` serves for the network and 100 seconds is Circle's own margin for clock differences and latency (`src/constants.ts:34-49`). Circle's client signs the same window from its own constants, 604,800 seconds and the same margin (`src/client/BatchEvmScheme.ts:234-247`), and Circle's seller offers `maxTimeoutSeconds` 604,900 (`src/server/gatewayMiddleware.ts:121`). lcp calls no network, so the caller reads the served minimum and gives it to `build`, which refuses a choice that gives none, or one that is not a positive safe integer (`x402/option-malformed`). Circle refuses an authorization whose validity is shorter than it serves (`authorization_validity_too_short`).
+9. **The payer** is an externally owned account: by Circle's Gateway documentation, Circle takes a batched payment's signature from no contract account. The signature is 65 bytes, `r ‖ s ‖ v`.
+
+**The payment presented**
+
+10. The payment is x402's `PaymentPayload`: the option as `accepted`, and `payload` `{signature, authorization}`, the authorization's members strings, as Circle's client writes them (`src/client/BatchEvmScheme.ts:240-262`).
+11. **`bound`** returns the authorization's nonce as H. Where the payment echoes an `extensions.legalContext` that decodes, its H must be the nonce, else `x402/signed-not-bound`. `bound` verifies no signature; Circle verifies it when it takes the authorization.
+12. **`authorizer`** gives the account whose signature authorises the payment: the address recovered, by secp256k1 public-key recovery, from the 65-byte signature over the EIP-712 digest of the presented authorization in the domain the presented option names (rule 4). A signature that is not 65 bytes with a low `s` and a `v` of 27, 28, 0 or 1 is `x402/signature-malformed`; one that recovers to an account other than the authorization's `from` is `x402/signer-not-from`. Any holder of the payment compares the account it gives with the agreement's signer: the record names the two apart, and states that they are one account only where they are.
+13. **`broadcaster`** answers `payee`: the resource server, or a facilitator acting for it, hands the authorization to Circle Gateway, and the payer sends nothing.
+
+**What the resource server checks, before it calls Circle**
+
+14. The agreement for this H is recorded on the payment's network (rule 2); `bound`'s H is an H it issued for this request and has not seen used; and `authorizer`'s account is recorded beside the agreement's signer (rule 12).
+
+**What a settler checks**
+
+15. Circle Gateway settles: the resource server calls its `/v1/x402/verify` and `/v1/x402/settle`, as `@circle-fin/x402-batching` 4.0.0's `BatchFacilitatorClient` does. Circle's answer of success to `settle` names a transfer it has accepted, which can still end `failed`; its transfers move through `received`, `batched`, `confirmed`, `completed` and `failed`. The resource server takes the payment as paid only once Circle's transfers API reads the transfer `completed`. Where Circle answers a settle `nonce_already_used`, a retry after a lost answer or another holder's submission, the resource server looks the nonce up (`GET /v1/x402/transfers?nonce=`) and takes the transfer whose payer, payee and amount are those of the payment it holds, as paid once it reads `completed`, and otherwise as refused.
+
+**The single-use value and the instrument**
+
+16. The single-use value is the nonce, H, which Circle Gateway keeps for each payer. The instrument is the network, the payer and the nonce. Whether one authorization can be taken more than once is not shown by any vector or run, so the pairing's `nonce` is `unshown`.
+
+**H is a link, never proof**
+
+17. No chain shows the authorization: Circle settles in batches from the payer's Gateway balance, and a batch's transaction carries each depositor's net change and no payment's nonce (`src/modules/wallet/Batches.sol:119-152` at `circlefin/evm-gateway-contracts@c21d2d2e`). Circle's transfers API shows each payment by its nonce, with no key (`GET /v1/x402/transfers?nonce=`), so every H used this way is listed there in public beside the payer's and the payee's addresses and the amount: Circle's statement, which is no ledger's and no proof. The deposit into the payer's Gateway balance names no payee, carries no H, and is no part of the sale's proof.
+18. **No read.** Nothing public shows the payment, so the pairing has no `reference`, no `status` and no `recover`, and the agreement's transaction never stands for the payment. The payment is settled by the resource server's own report of Circle's transfer.
+
+**What a record proves**
+
+19. That an account signed an agreement transaction carrying this ATR's hash on the payment's network before this payment was reported, which shows neither that the account is the payer nor when the payment was taken; that the payment presented was a Circle Gateway batched authorization whose nonce is this ATR's hash, under the Gateway Wallet's domain; and that the resource server reported it paid. No public ledger records the payment. Not that the amount, payee, asset or timing match the ATR's content.
+
+**The agreement**
+
+20. This pairing is no agreement option: no public ledger shows its payment, so it can never stand for the sale's agreement, which is a separate payment of an agreement option on the same network (rules 1 and 2), with that option's floor, fee and test of success.
+
+**The read kit**
+
+21. The pairing has no read, so it has no read-kit form and declares no case.
+
+**Vectors**
+
+22. `x402-exact-eip155-gateway-batched.json`, whose oracle is Circle's own client, `@circle-fin/x402-batching` 4.0.0, with viem 2.57.4's `hashTypedData` as the independent EIP-712 check. `S`: the typed data, the domain and the signature Circle's signing step (`src/client/BatchEvmScheme.ts:317-355`) gives an authorization with nonce H, under version `"1"` and version `"2"` on Base Sepolia and version `"2"` on Base, signed with the published Anvil development key #0; `build` gives the same typed data, its `complete` the same payment, `bound` H and `authorizer` the payer. `W`: the window Circle's `createPaymentPayload` signs with its clock fixed, for a `maxTimeoutSeconds` below, at and above 604,900, which `build` signs given the served minimum 604,800. `wallets`: Circle's client's network table, against rule 5's. The refusal rows, each a good input with one member changed and its code: `filter` (with Circle's `supportsBatching` beside each), `eip3009Filter`, `build`, `bound`, `authorizer` and `boundAccepted`. No outside oracle states lcp's codes, and each refusal row starts from the outputs above.
+
+**Costs**
+
+23. The signed authorization stays payable through Circle for its whole validity, and nothing cancels it: no module of the Gateway Wallet has a call that cancels an authorization (`src/modules/wallet/` at `circlefin/evm-gateway-contracts@c21d2d2e`), so the payer cannot make it lapse sooner.
+24. Every H paid this way is listed in public by Circle's transfers API beside the payer's and the payee's addresses and the amount.
+25. A payment Circle refuses, or fails after its answer of success, is not paid, and only Circle's transfers API shows which: the resource server reports what Circle's transfer shows, and no ledger corrects a report made before the transfer reads `completed`.
+26. A payee paid this way holds a balance in the Gateway Wallet under its address, not tokens in its account. It takes them out through Circle by a burn intent signed for that balance, whose fee covers the burn's gas and Circle's transfer fee, or without Circle by the wallet's own `initiateWithdrawal` and, `withdrawalDelay` blocks later, `withdraw`, each sent from the payee's address (`src/modules/wallet/Withdrawals.sol:76-117` at `circlefin/evm-gateway-contracts@c21d2d2e`), so the payee is an account that can sign or send them. A batch moves no token, changing balances inside the Gateway Wallet (`src/modules/wallet/Batches.sol:119-152`, `:192-241`), so a token's blocklist does not screen a batched payment, which Circle's service alone screens.
+27. The filter takes the Gateway Wallet of each network Circle's client 4.0.0 configures (rule 5), and refuses an option on any other network until the table names it.

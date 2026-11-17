@@ -327,4 +327,28 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       "agreement's position, holding a transfer from the payment's delegator to the payee. The delegation does not " +
       "sign the hash, and the settlement transaction does not carry it.",
   },
+  "x402/exact/eip155/gateway-batched": {
+    coverage: "none",
+    carrier: {
+      signed:
+        "the nonce of the `TransferWithAuthorization` signed in Circle Gateway's `GatewayWalletBatched` domain, which is " +
+        "H, all of H; no public ledger shows it",
+    },
+    link: "h",
+    source:
+      "lcp's client; stock `@circle-fin/x402-batching` 4.0.0 draws the nonce at random (`src/nonce.ts:6-12`), so it " +
+      "writes no H",
+    nonce: "unshown",
+    broadcasts: "payee",
+    agreementOn: "same-network",
+    confirmed: "no",
+    proves:
+      "Before this payment was reported, an account signed an agreement transaction carrying this ATR's hash on " +
+      "<network>, recorded in <transaction>; this shows neither that the account is the payer nor when the payment " +
+      "was taken. The payment presented was a Circle Gateway batched authorization whose nonce is this ATR's hash, " +
+      "signed under the Gateway Wallet's domain; no public ledger records it, since a batch carries each depositor's " +
+      "net change and no payment's nonce, and Circle's transfers API listing it by its nonce is Circle's statement, " +
+      "not a ledger's. The seller reported it paid. This does not show that amount, payee, asset or timing match the " +
+      "ATR's content.",
+  },
 });

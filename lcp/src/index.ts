@@ -114,7 +114,7 @@ import { exactSui } from "./sui.js";
 import { exactTronMemo } from "./tron.js";
 import { exactTvm } from "./tvm.js";
 import { agentSigned, ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned, type AgentSignedPresented } from "./ucp.js";
-import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA, type PaymentPayload, type PaymentRequired, type PaymentRequirements, uptoPermit2 } from "./x402.js";
+import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactGatewayBatched, exactPermit2, LEGAL_CONTEXT, LEGAL_CONTEXT_SCHEMA, type PaymentPayload, type PaymentRequired, type PaymentRequirements, uptoPermit2 } from "./x402.js";
 import { batchCloudflare, batchEvm, batchSvm } from "./x402-batch-settlement.js";
 import { exactSvm } from "./x402-exact-solana.js";
 import { exactXrpl } from "./x402-exact-xrpl.js";
@@ -148,7 +148,8 @@ export type X402Binding =
   | typeof exactTvm
   | typeof exactXrpl
   | typeof uptoPermit2
-  | typeof uptoSvm;
+  | typeof uptoSvm
+  | typeof exactGatewayBatched;
 /** An MPP pairing of intent and method. */
 export type MppBinding = (typeof MPP_BINDINGS)[number];
 /** The optional member of a push-mode pairing: the transaction its credential names, or undefined. */
@@ -287,6 +288,7 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   exactXrpl,
   uptoPermit2,
   uptoSvm,
+  exactGatewayBatched,
 ]))();
 
 /** Whether a pairing is an x402 pairing. */
