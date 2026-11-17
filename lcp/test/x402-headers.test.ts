@@ -35,6 +35,12 @@ describe("x402-headers.json", () => {
     });
   }
 
+  for (const row of rowsOf(V.stock, "x402-headers.json stock", { exact: 2 })) {
+    it(`${row.case}: decodes to the specification's object`, () => {
+      expect(DECODE[row.kind]!(row.value)).toEqual(row.decoded);
+    });
+  }
+
   it(V.composed.case, () => {
     const c = V.composed;
     const advertised = exactEip3009.advertise(c.required, c.h, c.link, c.required.accepts[0]);
@@ -45,7 +51,7 @@ describe("x402-headers.json", () => {
     expect(decodePaymentRequired(header)).toEqual(c.expectAdvertised);
   });
 
-  for (const row of rowsOf(V.refusals, "x402-headers.json refusals", { exact: 14 })) {
+  for (const row of rowsOf(V.refusals, "x402-headers.json refusals", { exact: 16 })) {
     it(`refuses ${row.case}`, () => {
       expect(DECODE[row.kind]!(row.value)).toEqual(row.expect);
     });

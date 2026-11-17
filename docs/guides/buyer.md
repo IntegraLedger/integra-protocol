@@ -176,7 +176,8 @@ payment for this ATR is settling: sign nothing, and call again later without app
 Where the sale's charge is offered only once its agreement is recorded, the buyer's agent repeats its request after it
 pays the agreement, with the sale's H in the `Legal-Context` request header (`legal-context-return.md`).
 `toLegalContextHeader(h, returnValue?)` writes it, an RFC 9651 Item whose token is H's LCP string, with the sale's
-32-byte return value as the parameter `rv` where the first response gave one; `fromLegalContextHeader(value)` reads it.
+32-byte return value as the parameter `rv` where the first response gave one; `fromLegalContextHeader(value)` reads it as
+RFC 9651 parses an Item, an `rv` given twice counting as the last and its base64 read with or without its padding.
 `servesOf(option)` names the charge options an agreement option serves, each `x402/<i>` or `mpp/<i>`, the option at
 that index of the ATR's binding slot, so the buyer pays an agreement that serves the charge it means to pay.
 

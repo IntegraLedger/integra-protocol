@@ -15,7 +15,7 @@ describe("legal-context-return.json", () => {
       expect(toLegalContextHeader(row.h, bytes(row.returnValueHex))).toEqual(row.expect);
     });
   }
-  for (const row of rowsOf(V.read, "legal-context-return.json read", { exact: 3 })) {
+  for (const row of rowsOf(V.read, "legal-context-return.json read", { exact: 8 })) {
     it(`fromLegalContextHeader: ${row.case}`, () => {
       const got = fromLegalContextHeader(row.value);
       if (row.expect !== undefined) expect(got).toEqual(row.expect);
@@ -26,7 +26,7 @@ describe("legal-context-return.json", () => {
       }
     });
   }
-  for (const row of rowsOf(V.readRefusals, "legal-context-return.json readRefusals", { exact: 14 })) {
+  for (const row of rowsOf(V.readRefusals, "legal-context-return.json readRefusals", { exact: 30 })) {
     it(`fromLegalContextHeader refuses ${row.case}`, () => {
       expect(fromLegalContextHeader(row.value)).toEqual(row.expect);
     });
@@ -39,7 +39,7 @@ describe("legal-context-return.json", () => {
       if (!isRefusal(got)) expect([got.h, hex(got.returnValue)]).toEqual([row.h.toLowerCase(), row.returnValueHex]);
     }
   });
-  for (const row of rowsOf([...V.serves, ...V.servesRefusals], "legal-context-return.json serves and servesRefusals", { exact: 14 })) {
+  for (const row of rowsOf([...V.serves, ...V.servesRefusals], "legal-context-return.json serves and servesRefusals", { exact: 16 })) {
     it(`servesOf: ${row.case}`, () => {
       expect(servesOf(row.option) ?? null).toEqual(row.expect);
     });

@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402's three HTTP headers, PAYMENT-REQUIRED, PAYMENT-SIGNATURE and PAYMENT-RESPONSE: padded standard base64 (RFC 4648 §4) of the UTF-8 of JSON.stringify of the object, as the x402 specification's HTTP transport states it and its examples give it (x402 d6d2c58, specs/transports-v2/http.md), and as @x402/core 2.30.0 writes it (src/http/index.ts, encodePaymentRequiredHeader, encodePaymentSignatureHeader and encodePaymentResponseHeader: safeBase64Encode(JSON.stringify(value)), src/utils/index.ts). The spec rows are the specification's four example headers, each decoded with Python 3.12.3's base64.b64decode(validate=True) and json.loads, and each re-encoded byte for byte by base64.b64encode of json.dumps(separators=(',',':')). The composed row's expected document and header were written from the rule and the legalContext extension's schema with the same tools; bazaar's members are a placeholder extension the package does not declare. The refusals are values no stock client writes.",
+ "about": "Vectors for x402's three HTTP headers, PAYMENT-REQUIRED, PAYMENT-SIGNATURE and PAYMENT-RESPONSE: padded standard base64 (RFC 4648 §4) of the UTF-8 of JSON.stringify of the object, as the x402 specification's HTTP transport states it and its examples give it (x402 d6d2c58, specs/transports-v2/http.md), and as @x402/core 2.30.0 writes it (src/http/index.ts, encodePaymentRequiredHeader, encodePaymentSignatureHeader and encodePaymentResponseHeader: safeBase64Encode(JSON.stringify(value)), src/utils/index.ts). The spec rows are the specification's four example headers, each decoded with Python 3.12.3's base64.b64decode(validate=True) and json.loads, and each re-encoded byte for byte by base64.b64encode of json.dumps(separators=(',',':')). The composed row's expected document and header were written from the rule and the legalContext extension's schema with the same tools; bazaar's members are a placeholder extension the package does not declare. The refusals are values no stock client writes. The stock rows are the specification's two settlement responses as x402's Python server writes PAYMENT-RESPONSE (x402 88b66dd4, python/x402/http/utils.py:73-76: base64.b64encode of json.dumps of the model's dump, its members in python/x402/schemas/responses.py:75-82's order, with json.dumps's ', ' and ': ' separators), computed with Python 3.12.3; each decodes to the specification's object. The specification's example headers are byte-equal at 88b66dd4 and d6d2c58.",
  "spec": [
   {
    "case": "the specification's example, Payment Required Signaling",
@@ -84,6 +84,31 @@
    "header": "PAYMENT-RESPONSE",
    "kind": "response",
    "value": "eyJzdWNjZXNzIjpmYWxzZSwiZXJyb3JSZWFzb24iOiJpbnN1ZmZpY2llbnRfZnVuZHMiLCJ0cmFuc2FjdGlvbiI6IiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiJ9",
+   "decoded": {
+    "success": false,
+    "errorReason": "insufficient_funds",
+    "transaction": "",
+    "network": "eip155:84532",
+    "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66"
+   }
+  }
+ ],
+ "stock": [
+  {
+   "case": "the specification's example as x402's Python server writes it, json.dumps with its spaces and the model's member order, Settlement Response Delivery (Success)",
+   "kind": "response",
+   "value": "eyJzdWNjZXNzIjogdHJ1ZSwgInBheWVyIjogIjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiIsICJ0cmFuc2FjdGlvbiI6ICIweDEyMzQ1Njc4OTBhYmNkZWYxMjM0NTY3ODkwYWJjZGVmMTIzNDU2Nzg5MGFiY2RlZjEyMzQ1Njc4OTBhYmNkZWYiLCAibmV0d29yayI6ICJlaXAxNTU6ODQ1MzIifQ==",
+   "decoded": {
+    "success": true,
+    "transaction": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "network": "eip155:84532",
+    "payer": "0x857b06519E91e3A54538791bDbb0E22373e36b66"
+   }
+  },
+  {
+   "case": "the specification's example as x402's Python server writes it, json.dumps with its spaces and the model's member order, Settlement Response Delivery (Failure)",
+   "kind": "response",
+   "value": "eyJzdWNjZXNzIjogZmFsc2UsICJlcnJvclJlYXNvbiI6ICJpbnN1ZmZpY2llbnRfZnVuZHMiLCAicGF5ZXIiOiAiMHg4NTdiMDY1MTlFOTFlM0E1NDUzODc5MWJEYmIwRTIyMzczZTM2YjY2IiwgInRyYW5zYWN0aW9uIjogIiIsICJuZXR3b3JrIjogImVpcDE1NTo4NDUzMiJ9",
    "decoded": {
     "success": false,
     "errorReason": "insufficient_funds",
@@ -328,6 +353,24 @@
    "case": "a value that is not a string",
    "kind": "required",
    "value": 7,
+   "expect": {
+    "refused": true,
+    "code": "x402/header-malformed"
+   }
+  },
+  {
+   "case": "a JSON object nested 65 deep, past MAX_JSON_DEPTH",
+   "kind": "required",
+   "value": "eyJ4NDAyVmVyc2lvbiI6MiwiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6eyJhIjp7ImEiOnsiYSI6e319fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19",
+   "expect": {
+    "refused": true,
+    "code": "x402/header-malformed"
+   }
+  },
+  {
+   "case": "a settlement response whose success is a string",
+   "kind": "response",
+   "value": "eyJzdWNjZXNzIjoidHJ1ZSIsInRyYW5zYWN0aW9uIjoiIiwibmV0d29yayI6ImVpcDE1NTo4NDUzMiJ9",
    "expect": {
     "refused": true,
     "code": "x402/header-malformed"

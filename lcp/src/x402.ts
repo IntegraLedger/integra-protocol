@@ -270,7 +270,7 @@ export async function toolCallCommitment(call: ToolCall): Promise<ToolCallCommit
   if (typeof name !== "string" || name.length === 0 || name.length > MAX_TARGET || !name.isWellFormed()) {
     return refusal("x402/tool-call-malformed");
   }
-  const args: unknown = call.arguments ?? {};
+  const args: unknown = call.arguments === undefined ? {} : call.arguments;
   if (!isObject(args)) return refusal("x402/tool-call-malformed");
   const text = canonicalJson(args);
   if (typeof text !== "string") return refusal("x402/tool-call-malformed");

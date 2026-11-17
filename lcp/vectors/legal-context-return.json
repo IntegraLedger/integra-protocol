@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the return after an agreement (legal-context-return.md): the Legal-Context header, an RFC 9651 Item whose token is H's LCP string and whose one parameter is rv, the sale's 32-byte return value as a byte sequence; and the member by which an agreement option names the charge options it serves. H is mpp-challenge.json's; the return value is the bytes 0x00 to 0x1f; the x402 option and the MPP challenge are mpp-challenge.json's C_E and the x402 specification's example option. Expected values were written from the profile with Python 3.12.3's base64 and json, the MPP opaque as base64url without padding of RFC 8785's form.",
+ "about": "Vectors for the return after an agreement (legal-context-return.md): the Legal-Context header, an RFC 9651 Item whose token is H's LCP string and whose one parameter is rv, the sale's 32-byte return value as a byte sequence; and the member by which an agreement option names the charge options it serves. H is mpp-challenge.json's; the return value is the bytes 0x00 to 0x1f; the x402 option and the MPP challenge are mpp-challenge.json's C_E and the x402 specification's example option. Expected values were written from the profile with Python 3.12.3's base64 and json, the MPP opaque as base64url without padding of RFC 8785's form. The read and readRefusals rows follow RFC 9651's parsing algorithm (section 4.2, the Item; 4.2.3.2, parameters, a repeated key overwriting the value before it; 4.2.4 to 4.2.10, the bare items; 4.2.7, a byte sequence read with its padding absent and with bits set past its last byte, which a parser should not refuse), each rv's bytes decoded by Python 3.12.3's base64.b64decode with the padding restored; the bare items given before an overwritten rv are RFC 9651 section 3.3's own examples, and each refused one breaks one step of section 4.2.",
  "write": [
   {
    "case": "H alone",
@@ -56,6 +56,36 @@
    "value": "  lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad; rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:  ",
    "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
    "expectReturnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  {
+   "case": "rv of 32 bytes without its padding, which RFC 9651 section 4.2.7 says a parser should not refuse",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8:",
+   "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReturnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  {
+   "case": "rv whose last character sets a bit past the last byte, which RFC 9651 section 4.2.7 says a parser should not refuse",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh9=:",
+   "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReturnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  {
+   "case": "rv given twice: the second overwrites the first (RFC 9651 section 4.2.3.2)",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:;rv=:ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=:",
+   "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReturnValueHex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+  },
+  {
+   "case": "rv given first as a token, then as 32 bytes: the second overwrites the first",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=abc;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReturnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+  },
+  {
+   "case": "rv given first as each other kind of bare item, RFC 9651 section 3.3's examples of an integer, a decimal, a string, a Boolean, a date and a display string, then as 32 bytes: the last overwrites the others",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=42; rv=4.5; rv=\"hello world\"; rv=?1; rv=@1659578233; rv=%\"This is intended for display to %c3%bcsers.\";rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expectH": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectReturnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
   }
  ],
  "readRefusals": [
@@ -108,7 +138,7 @@
    }
   },
   {
-   "case": "rv without its padding",
+   "case": "rv of 31 bytes without its padding",
    "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHg:",
    "expect": {
     "refused": true,
@@ -166,6 +196,134 @@
   {
    "case": "a value that is not a string",
    "value": 7,
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given twice, the second of 31 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHg==:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv with no value, which RFC 9651 reads as the Boolean true",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "the key RV in upper case, which no RFC 9651 key admits",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;RV=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv with one = more than its padding",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8==:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "an = inside rv",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAEC=AwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv followed by a parameter whose key does not parse",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:;Rv",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv with no closing colon",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as an integer of 16 digits, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=1234567890123456;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a decimal with 4 digits after its point, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=1.2345;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a decimal with 13 digits before its point, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=1234567890123.5;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a date that is a decimal, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=@1.5;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a string holding a tab, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=\"a\tb\";rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a string with an escape other than \\\" and \\\\, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=\"a\\nb\";rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a display string with an escape in upper case hex, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=%\"%C3%BC\";rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a display string whose bytes are not UTF-8, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=%\"%ff\";rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "rv given first as a string with no closing quote, which RFC 9651 section 4.2 does not parse, then as 32 bytes",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=\"abc;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
    "expect": {
     "refused": true,
     "code": "return/header-malformed"
@@ -452,6 +610,32 @@
       "mpp/0"
      ]
     }
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "an option that is not an object",
+   "option": [
+    "x402/0"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "an x402 option whose extra is not an object",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": "x402/0"
    },
    "expect": {
     "refused": true,

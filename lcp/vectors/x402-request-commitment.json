@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the request an x402 challenge commits to in the ATR's binding slot (x402-request-commitment.md). HTTP: the method as received, the target split at its first ?, SHA-256 over the body bytes. MCP: the tool's name and SHA-256 over the RFC 8785 form of its arguments, _meta not committed. The MCP calls are the x402 MCP transport's own example tools/call request (x402 d6d2c58, specs/transports-v2/mcp.md, Payment Payload Transmission) and the changes each row's case names. Expected values were computed with Python 3.12.3's hashlib.sha256 and, for RFC 8785, json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False), which is RFC 8785's form for these values (keys of ASCII, numbers that are integers or 0.5); bodyUtf8 is the body's bytes as UTF-8. Header fields (httpHeaders, httpHeaderRefusals): where the resource server names request header fields, the HTTP commitment also holds headers, for each field named, in the order named, its lower-cased name and SHA-256 of its value, the field's lines as received, each without its leading and trailing spaces and tabs, joined in the order received by a comma and a space, cookie's by a semicolon and a space, and null for a field the request lacks; with none named it has no headers member. Each httpHeaders row gives the field lines as received on the wire (received), the record requestCommitment is given (request.headers) and the names (fields). Its expected digests were computed 2026-11-16 (the tilde row 2026-11-17, the same way) by sending received, as one HTTP/1.1 request, to a node:http 26.11.1 server created with joinDuplicateHeaders: true, whose req.headers gives each field's lines trimmed and joined, cookie's by '; ' (as @types/node 26.6.5 http.d.ts states), and hashing that value with node:crypto's SHA-256, checked with Python's hashlib; none was taken from the package's output. A refusal row's fill, where present, sets the named field to char repeated length times, on lines lines (1 where absent).",
+ "about": "Vectors for the request an x402 challenge commits to in the ATR's binding slot (x402-request-commitment.md). HTTP: the method as received, the target split at its first ?, SHA-256 over the body bytes. MCP: the tool's name and SHA-256 over the RFC 8785 form of its arguments, _meta not committed. The MCP calls are the x402 MCP transport's own example tools/call request (x402 d6d2c58, specs/transports-v2/mcp.md, Payment Payload Transmission) and the changes each row's case names. Expected values were computed with Python 3.12.3's hashlib.sha256 and, for RFC 8785, json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False), which is RFC 8785's form for these values (keys of ASCII, numbers that are integers or 0.5); bodyUtf8 is the body's bytes as UTF-8. Header fields (httpHeaders, httpHeaderRefusals): where the resource server names request header fields, the HTTP commitment also holds headers, for each field named, in the order named, its lower-cased name and SHA-256 of its value, the field's lines as received, each without its leading and trailing spaces and tabs, joined in the order received by a comma and a space, cookie's by a semicolon and a space, and null for a field the request lacks; with none named it has no headers member. Each httpHeaders row gives the field lines as received on the wire (received), the record requestCommitment is given (request.headers) and the names (fields). Its expected digests were computed 2026-11-16 (the tilde row 2026-11-17, the same way) by sending received, as one HTTP/1.1 request, to a node:http 26.11.1 server created with joinDuplicateHeaders: true, whose req.headers gives each field's lines trimmed and joined, cookie's by '; ' (as @types/node 26.6.5 http.d.ts states), and hashing that value with node:crypto's SHA-256, checked with Python's hashlib; none was taken from the package's output. A refusal row's fill, where present, sets the named field to char repeated length times, on lines lines (1 where absent). Refusals (httpRefusals, mcpRefusals) each change one member of a good request or call; an httpRefusals row's fill sets target to / and char to length characters, or body to char repeated length bytes; the 8192-character target and 1 MiB body bounds are the profile's, x402 setting none. Every mcp row's digest is also recomputed by the test with canonicalize 5.1.0, an RFC 8785 implementation independent of this package, and node:crypto's SHA-256; the row whose keys sort differently by UTF-16 code units than by code points, and whose numbers take ECMAScript's exponent forms, was computed that way on 2026-11-17 (Python's sort_keys and float forms give another digest for it). The paid retry repeats the first call's name and arguments with the payment in _meta, as @x402/mcp 2.30.0's client sends them (src/client/x402MCPClient.ts:562-580, the first call {name, arguments: args}, args {} by default; :684-707, the retry {name, arguments: args, _meta: {[MCP_PAYMENT_META_KEY]: paymentPayload}}).",
  "http": [
   {
    "case": "a POST with a query and a JSON body",
@@ -41,6 +41,146 @@
     "path": "/a",
     "query": "b?c",
     "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+   }
+  }
+ ],
+ "httpRefusals": [
+  {
+   "case": "a target in asterisk-form, which does not start with /",
+   "request": {
+    "method": "GET",
+    "target": "*",
+    "bodyUtf8": ""
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a target in absolute-form",
+   "request": {
+    "method": "GET",
+    "target": "https://api.example.com/v1/report",
+    "bodyUtf8": ""
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "an empty target",
+   "request": {
+    "method": "GET",
+    "target": "",
+    "bodyUtf8": ""
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a target holding a space",
+   "request": {
+    "method": "GET",
+    "target": "/v1/a report",
+    "bodyUtf8": ""
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a target holding a character outside ASCII",
+   "request": {
+    "method": "GET",
+    "target": "/café",
+    "bodyUtf8": ""
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a target holding DEL",
+   "request": {
+    "method": "GET",
+    "target": "/a\u007fb",
+    "bodyUtf8": ""
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a method that is not a string",
+   "request": {
+    "method": 7,
+    "target": "/v1/report",
+    "bodyUtf8": ""
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a body that is a string, not bytes",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "body": "{}"
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a request that is not an object",
+   "request": "GET /v1/report",
+   "expect": {
+    "refused": true,
+    "code": "x402/request-target-invalid"
+   }
+  },
+  {
+   "case": "a target of 8193 characters: / and fill",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": ""
+   },
+   "fill": {
+    "member": "target",
+    "char": "a",
+    "length": 8193
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-too-large"
+   }
+  },
+  {
+   "case": "a body of 1 MiB and one byte of fill",
+   "request": {
+    "method": "POST",
+    "target": "/v1/report",
+    "bodyUtf8": ""
+   },
+   "fill": {
+    "member": "body",
+    "char": "a",
+    "length": 1048577
+   },
+   "expect": {
+    "refused": true,
+    "code": "x402/request-too-large"
    }
   }
  ],
@@ -160,6 +300,27 @@
     "tool": "convert",
     "argumentsDigest": "0xf6ee6c053bc5756bc6de06b14830af7d59f3bd0613bd5c5c34c5a1aecdc66ca6"
    }
+  },
+  {
+   "case": "arguments whose keys sort differently by UTF-16 code units, as RFC 8785 sorts them, than by code points, and whose numbers take ECMAScript forms",
+   "call": {
+    "name": "convert",
+    "arguments": {
+     "": 1,
+     "😀": 2,
+     "n": [
+      1e+21,
+      1e-07,
+      100,
+      0.1,
+      -5e-324
+     ]
+    }
+   },
+   "expect": {
+    "tool": "convert",
+    "argumentsDigest": "0xc7ede2fee9cba47ef93c225eb9b505e84e2ba13ab3935f38c79f8fa94017a8ca"
+   }
   }
  ],
  "mcpRefusals": [
@@ -232,6 +393,17 @@
   {
    "case": "a call that is not an object",
    "call": "financial_analysis",
+   "expect": {
+    "refused": true,
+    "code": "x402/tool-call-malformed"
+   }
+  },
+  {
+   "case": "arguments that are null, which is present and not an object",
+   "call": {
+    "name": "t",
+    "arguments": null
+   },
    "expect": {
     "refused": true,
     "code": "x402/tool-call-malformed"

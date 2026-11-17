@@ -787,5 +787,5 @@ The return after an agreement: the `Legal-Context` header and the charge options
 
 | Code | Meaning |
 |---|---|
-| `return/header-malformed` | `fromLegalContextHeader` is given a value that is not an RFC 9651 Item whose token is H's LCP string in lowercase hex with no parameter but `rv`, a byte sequence of 32 bytes in canonical padded base64; or `toLegalContextHeader` is given an H that is not a 32-byte hash or a return value that is not 32 bytes. |
+| `return/header-malformed` | `fromLegalContextHeader` is given a value that is not an RFC 9651 Item whose token is H's LCP string in lowercase hex with no parameter but `rv`, a byte sequence of 32 bytes, its padding absent or present and bits past its last byte read as RFC 9651 section 4.2.7 reads them, the last `rv` given counting where it is repeated; or `toLegalContextHeader` is given an H that is not a 32-byte hash or a return value that is not 32 bytes. |
 | `return/serves-malformed` | `servesOf` is given a value that is not an object, an x402 option whose `extra` is not an object or whose `extra.legalContextServes` is not an array of 1 to 32 distinct names `x402/<i>` or `mpp/<i>`, `i` from 0 to 31 without a leading zero, or an MPP challenge whose `opaque` is not a map of strings or whose `legalContextServes` is not such names joined by one space. |
