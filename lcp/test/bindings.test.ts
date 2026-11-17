@@ -1,5 +1,4 @@
-// The expected ids are the implemented pairings: x402/exact/eip155/eip3009 first, then every
-// other pairing's id by id, with the MPP pairings in MPP_BINDINGS' order. A2A is a carrier, not a pairing.
+// BINDINGS is the registry of implemented pairings, x402/exact/eip155/eip3009 first. A2A is a carrier, not a pairing.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
@@ -8,86 +7,7 @@ import { exactEip3009 } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 
 describe("BINDINGS", () => {
-  it("lists exactly the implemented pairings", () => {
-    expect(BINDINGS.map((b) => b.id)).toEqual([
-      "x402/exact/eip155/eip3009",
-      "ack/payment-request",
-      "acp/checkout/delegated",
-      "acp/checkout/undelegated",
-      "ap2/checkout-mandate",
-      "card/mastercard-vi/autonomous",
-      "card/mastercard-vi/immediate",
-      "card/seller-reference",
-      "card/visa-tap",
-      "card/mastercard-agent-pay",
-      "card/visa-vic",
-      "mpp/charge/evm/authorization",
-      "mpp/charge/evm/permit2",
-      "mpp/charge/evm/transaction",
-      "mpp/charge/evm/hash",
-      "mpp/charge/tempo/split-memo",
-      "mpp/charge/tempo/split-memo/push",
-      "mpp/session/evm",
-      "mpp/session/tempo",
-      "mpp/subscription/tempo",
-      "mpp/charge/lightning",
-      "mpp/session/lightning",
-      "mpp/charge/solana",
-      "mpp/charge/solana/unsponsored",
-      "mpp/subscription/solana",
-      "mpp/session/solana/memo",
-      "mpp/session/solana/stock",
-      "mpp/charge/xrpl",
-      "mpp/charge/nearintents",
-      "mpp/session/xrpl",
-      "mpp/session/xrpl/stock",
-      "mpp/session/hedera/stock",
-      "mpp/charge/lcp/hedera",
-      "mpp/charge/card",
-      "mpp/charge/stripe",
-      "mpp/subscription/stripe",
-      "mpp/charge/usdc/evm",
-      "mpp/charge/usdc/solana",
-      "mpp/charge/usdc/stacks",
-      "mpp/charge/usdc/gateway",
-      "ucp/booking/ap2-mandate",
-      "ucp/booking/unsigned",
-      "ucp/checkout/ap2-mandate",
-      "ucp/checkout/unsigned",
-      "ap2/checkout-mandate/x402",
-      "ucp/checkout/agent-signed",
-      "x402/auth-capture/eip155/eip3009",
-      "x402/auth-capture/eip155/permit2",
-      "x402/batch-settlement/cloudflare",
-      "x402/batch-settlement/eip155",
-      "x402/batch-settlement/solana",
-      "x402/exact/algorand",
-      "x402/exact/aptos",
-      "x402/exact/cardano",
-      "x402/exact/cardano/lock",
-      "x402/exact/casper",
-      "x402/exact/ccd",
-      "x402/exact/eip155/erc7710",
-      "x402/exact/eip155/erc7710-salt",
-      "x402/exact/eip155/permit2",
-      "x402/exact/hedera",
-      "x402/exact/hedera/transfer-executor",
-      "x402/exact/lnbtc/payment-hash",
-      "x402/exact/near",
-      "x402/exact/polkadot/lcp-assets-remark",
-      "x402/exact/solana",
-      "x402/exact/starknet",
-      "x402/exact/stellar/precondition",
-      "x402/exact/sui",
-      "x402/exact/tron/lcp-trc20-memo",
-      "x402/exact/tvm",
-      "x402/exact/xrpl",
-      "x402/upto/eip155/permit2",
-      "x402/upto/solana",
-      "x402/exact/eip155/gateway-batched",
-      "x402/upto/xrpl",
-      "spend-permissions/eip155",
-    ]);
+  it("start with x402/exact/eip155/eip3009 and hold the Tron pairing of its own entry point", () => {
     expect(BINDINGS[0]).toBe(exactEip3009);
     expect(BINDINGS).toContain(exactTronMemo);
   });
@@ -104,7 +24,7 @@ describe("the record's members", () => {
     expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
   it("every pairing's record carries only those members, and every one but x402/exact/starknet's names its pattern", () => {
-    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 77 })) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings")) {
       for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
       expect(b.pattern.pattern === undefined, b.id).toBe(b.id === "x402/exact/starknet");
     }

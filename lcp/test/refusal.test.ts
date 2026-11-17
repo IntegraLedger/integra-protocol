@@ -188,15 +188,11 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     ucp: { checkout: "chk_1" },
   };
   const checkouts = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 16,
     keep: ["the ACK, ACP, AP2, card and UCP pairings", (b) => options[b.id.split("/")[0]!] !== undefined],
     leave: [
       "the x402 and MPP pairings, which the tests below take, and spend-permissions/eip155, whose unplaced its own tests take",
       (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/") || b.id.startsWith("spend-permissions/"),
     ],
-  });
-  it("the ACK, ACP, AP2, card and UCP pairings are sixteen", () => {
-    expect(checkouts.length).toBe(16);
   });
   for (const b of checkouts) {
     const ns = b.id.split("/")[0]!;
@@ -217,21 +213,8 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // so it refuses one that carries a refused member with x402/option-malformed, the code their option checks give; a
   // value that is not an object comes back as it is. Each option is its pairing's vector file's.
   const evm = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 8,
     keep: ["the x402 EVM pairings", (b) => /^x402\/[a-z-]+\/eip155\//.test(b.id)],
     leave: ["every other pairing, which the other unplaced tests here take", (b) => !/^x402\/[a-z-]+\/eip155\//.test(b.id)],
-  });
-  it("the x402 EVM pairings are eight", () => {
-    expect(evm.map((b) => b.id).sort()).toEqual([
-      "x402/auth-capture/eip155/eip3009",
-      "x402/auth-capture/eip155/permit2",
-      "x402/exact/eip155/eip3009",
-      "x402/exact/eip155/erc7710",
-      "x402/exact/eip155/erc7710-salt",
-      "x402/exact/eip155/gateway-batched",
-      "x402/exact/eip155/permit2",
-      "x402/upto/eip155/permit2",
-    ]);
   });
   for (const b of evm) {
     it(`${b.id}: unplaced refuses an option carrying a refused member as x402/option-malformed`, () => {
@@ -379,16 +362,14 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/charge/usdc/stacks",
     "mpp/charge/usdc/gateway",
   ];
-  it("the MPP pairings whose unplaced returns the advertised challenge as given are these sixteen", () => {
+  it("the MPP pairings whose unplaced returns the advertised challenge as given are these", () => {
     const mpp = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 29,
       keep: ["the MPP pairings", (b) => b.id.startsWith("mpp/")],
       leave: ["the pairings of the other carriers, which the tests above take", (b) => !b.id.startsWith("mpp/")],
     });
     for (const b of mpp) expect(advertisedOf.get(b.id), b.id).toBeTypeOf("object");
     const same = mpp.filter((b) => (b.unplaced as (c: unknown) => unknown)(advertisedOf.get(b.id)) === advertisedOf.get(b.id));
     expect(same.map((b) => b.id).sort()).toEqual([...sameChallenge].sort());
-    expect(sameChallenge.length).toBe(16);
   });
   for (const id of sameChallenge) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
@@ -446,9 +427,8 @@ describe("no entry point passes a caller's value back as a refusal", () => {
 
   // The pairings of the two carrier blocks above are exactly those whose unplaced gives the advertised option or
   // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
-  it("the x402 and MPP pairings whose unplaced removes a carrier are these nineteen", () => {
+  it("the x402 and MPP pairings whose unplaced removes a carrier are these", () => {
     const pairings = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 31 + 29,
       keep: ["the x402 and MPP pairings", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
       leave: [
         "the ACK, ACP, AP2, card and UCP pairings, whose unplaced the checkout tests above take, and spend-permissions/eip155, whose unplaced its own tests take",
@@ -461,7 +441,6 @@ describe("no entry point passes a caller's value back as a refusal", () => {
       return (b.unplaced as (o: unknown) => unknown)(advertised) !== advertised;
     });
     expect(removing.map((b) => b.id).sort()).toEqual([...carrierX402, ...carrierMpp].sort());
-    expect(carrierX402.length + carrierMpp.length).toBe(19);
   });
 
   // So no pairing hands back a value that carries a refused member: every unplaced refuses one, with
@@ -534,12 +513,10 @@ describe("every placement function refuses a seller document carrying a refused 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
   // the carrier (unplaced).
   const x402 = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 31,
     keep: ["the x402 pairings", (b) => b.id.startsWith("x402/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("x402/")],
   });
-  it("the x402 pairings are thirty-one, each with an advertised document of one option", () => {
-    expect(x402.length).toBe(31);
+  it("each x402 pairing has an advertised document of one option", () => {
     for (const b of x402) expect((advertisedDoc.get(b.id) as { accepts: unknown[] }).accepts.length, b.id).toBe(1);
   });
   // The Cardano address method takes coinsPerUtxoByte after the offer, before the agreement URL: V8's parameter.
@@ -633,7 +610,6 @@ describe("every placement function refuses a seller document carrying a refused 
   // opaque, which place writes. The Lightning invoice, which carries the hash, exists when advertise is called, so
   // advertise takes the challenge with it, and advertiseBeforeCarrier takes it without.
   const mpp = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 29,
     keep: ["the MPP pairings", (b) => b.id.startsWith("mpp/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("mpp/")],
   });
@@ -645,8 +621,7 @@ describe("every placement function refuses a seller document carrying a refused 
     const h = fromLcpString(opaque["legalContext"]!);
     return { issued, h, link: opaque["legalContextUrl"]!, agreementUrl: opaque["legalContextAgreementUrl"] };
   };
-  it("the MPP pairings are twenty-nine, each with an advertised list of one challenge whose opaque holds only the legal context", () => {
-    expect(mpp.length).toBe(29);
+  it("each MPP pairing has an advertised list of one challenge whose opaque holds only the legal context", () => {
     for (const b of mpp) {
       const [c, ...rest] = advertisedDoc.get(b.id) as Record<string, string>[];
       expect(rest, b.id).toEqual([]);

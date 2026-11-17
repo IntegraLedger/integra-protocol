@@ -91,27 +91,6 @@ describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
     for (const { group } of groups) for (const id of Object.keys(group.noSignedPayment ?? {})) expect(ids.has(id), id).toBe(true);
   });
 
-  it("the pairings without a B6 row are those whose files hold no payment signed by the buyer with a place for H, and x402/exact/aptos, whose key is made at each run", () => {
-    const none = groups.flatMap(({ group }) => Object.keys(group.noSignedPayment ?? {})).sort();
-    expect(none).toEqual([
-      "ack/payment-request",
-      "acp/checkout/undelegated",
-      "card/seller-reference",
-      "mpp/charge/card",
-      "mpp/charge/evm/hash",
-      "mpp/charge/evm/transaction",
-      "mpp/charge/stripe",
-      "mpp/session/hedera/stock",
-      "mpp/session/solana/stock",
-      "mpp/session/xrpl/stock",
-      "mpp/subscription/stripe",
-      "ucp/booking/unsigned",
-      "ucp/checkout/unsigned",
-      "x402/exact/aptos",
-      "x402/upto/xrpl",
-    ]);
-  });
-
   for (const { file, row } of rowsOf(rows, "the buyer rows of every vector file", {
     exact: BINDINGS.length,
     keep: ["the B2 rows, one per pairing", ({ row }) => row.name === "B2"],

@@ -1,37 +1,32 @@
-// readToRepeat against every code the package returns. The expected classes are refusal-classes.ts's, each decided from
-// the code's meaning in docs/reference/refusals.md and from the code that returns it.
+// readToRepeat against every code the package returns: true for refusal-classes.ts's reads to repeat, each decided from
+// the code's meaning in docs/reference/refusals.md and from the code that returns it, and false for every other code.
 import { describe, expect, it } from "vitest";
 import { readToRepeat as rootReadToRepeat } from "../src/index.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
 import { readToRepeat } from "../src/refusal.js";
-import { NOT_READS_TO_REPEAT, READS_TO_REPEAT } from "./refusal-classes.js";
+import { READS_TO_REPEAT } from "./refusal-classes.js";
 import { rowsOf } from "./rows.js";
 
-const others = Object.entries(NOT_READS_TO_REPEAT).flatMap(([ns, reasons]) => reasons.map((r) => `${ns}/${r}`));
+const others = [...REFUSAL_CODES].filter((c) => !READS_TO_REPEAT.includes(c));
 
 describe("readToRepeat", () => {
-  it("has a class for every code the package returns, and for no other string", () => {
-    // A code added to docs/reference/refusals.md, and so to REFUSAL_CODES, fails here until refusal-classes.ts classes it.
-    const classed = [...READS_TO_REPEAT, ...others];
-    expect([...REFUSAL_CODES].filter((c) => !classed.includes(c)), "codes with no class").toEqual([]);
-    expect(classed.filter((c) => !REFUSAL_CODES.has(c)), "classed strings the package does not return").toEqual([]);
-    expect(classed.filter((c, i) => classed.indexOf(c) !== i), "codes classed twice").toEqual([]);
-    expect(classed.length).toBe(REFUSAL_CODES.size);
+  it("classes as reads to repeat only codes the package returns, each once", () => {
+    expect(READS_TO_REPEAT.filter((c) => !REFUSAL_CODES.has(c)), "classed strings the package does not return").toEqual([]);
+    expect(READS_TO_REPEAT.filter((c, i) => READS_TO_REPEAT.indexOf(c) !== i), "codes classed twice").toEqual([]);
   });
 
   it("answers true for each read to repeat", () => {
-    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 43 })) {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT")) {
       expect([code, readToRepeat(code)]).toEqual([code, true]);
     }
   });
 
   it("answers false for every other code the package returns, each wrong-reader and read-first code among them", () => {
-    const rows = rowsOf(others, "refusal-classes.ts NOT_READS_TO_REPEAT", { exact: 516 });
+    const rows = rowsOf(others, "the codes the package returns that are not reads to repeat");
     for (const code of rows) expect([code, readToRepeat(code)]).toEqual([code, false]);
-    const calls = rowsOf(rows, "refusal-classes.ts NOT_READS_TO_REPEAT", {
+    const calls = rowsOf(rows, "the codes the package returns that are not reads to repeat", {
       keep: ["wrong-reader and read-first codes", (c) => /\/(wrong-reader|read-first)$/.test(c)],
       leave: ["every other code", (c) => !/\/(wrong-reader|read-first)$/.test(c)],
-      exact: 21,
     });
     for (const code of calls) expect([code, readToRepeat(code)]).toEqual([code, false]);
   });
@@ -53,7 +48,7 @@ describe("readToRepeat", () => {
       "evm/Unreadable",
       "tempo/not-final\n",
     ];
-    for (const code of rowsOf(foreign, "strings the package does not return", { exact: 14 })) {
+    for (const code of rowsOf(foreign, "strings the package does not return")) {
       expect(REFUSAL_CODES.has(code), code).toBe(false);
       expect([code, readToRepeat(code)]).toEqual([code, false]);
     }

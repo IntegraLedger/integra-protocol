@@ -48,6 +48,7 @@ type Inputs = {
   deposit?: string;
   credentialType?: "authorization" | "permit2";
   xrpl?: { publicKey: string; settleDelay: number; fee: string; sequence: number; lastLedgerSequence: number };
+  sourceNetwork?: string;
   burnIntentExpirationHeight?: string;
   withdrawalDelay?: string;
 };
@@ -207,7 +208,7 @@ const P: Record<string, Pairing> = {
     bound: chargeUsdcGateway.bound,
     run: async (challenge, b2, b6) => {
       const i = b2.input.inputs!;
-      const choice = { challenge, burnIntentExpirationHeight: i.burnIntentExpirationHeight!, withdrawalDelay: i.withdrawalDelay! };
+      const choice = { challenge, sourceNetwork: i.sourceNetwork!, burnIntentExpirationHeight: i.burnIntentExpirationHeight!, withdrawalDelay: i.withdrawalDelay! };
       const u = built(await chargeUsdcGateway.build(choice, b2.advertised)) as {
         complete(c: unknown): unknown;
       };

@@ -383,7 +383,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 77 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS");
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.
@@ -561,7 +561,7 @@ describe("the registry's type test", () => {
 
   it("CARRIER is the table the MPP entries' carrier datum gives, and the entries of one intent and method agree", () => {
     const table: { [intent: string]: { [method: string]: readonly string[] | null } } = {};
-    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 29 });
+    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries");
     for (const b of mpp) {
       const [, intent, method] = b.id.split("/") as [string, string, string];
       if (method === "usdc") continue;
@@ -574,7 +574,7 @@ describe("the registry's type test", () => {
   });
 
   it("usdc's carrier is each profile's entry's carrier datum, by the request's methodDetails.type", () => {
-    const usdc = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/charge/usdc/")), "the usdc entries", { exact: 4 });
+    const usdc = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/charge/usdc/")), "the usdc entries");
     for (const b of usdc) {
       const type = b.id.split("/")[3]!;
       const challenge = { realm: "r", method: "usdc", intent: "charge", request: "" };

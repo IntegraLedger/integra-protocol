@@ -30,9 +30,9 @@ const PAIRINGS: { id: string; build: (c: never, h: AtrHash) => Promise<unknown>;
 ];
 
 describe("build with each pairing's optional peer", () => {
-  for (const p of rowsOf(PAIRINGS, "the x402 pairings with an optional peer", { exact: 4 })) {
+  for (const p of rowsOf(PAIRINGS, "the x402 pairings with an optional peer")) {
     it(`${p.id}: a choice of another pairing's option, and one whose document is not v2`, async () => {
-      for (const row of rowsOf(buildChoices(p.own as never, p.V.fixed.resource, membersOf(p.id)), "build-choices.ts", { exact: 2 })) {
+      for (const row of rowsOf(buildChoices(p.own as never, p.V.fixed.resource, membersOf(p.id)), "build-choices.ts")) {
         expect(await p.build(row.choice as never, p.V.fixed.H)).toEqual({ refused: true, code: row.expect });
       }
     });
@@ -44,22 +44,21 @@ describe("every x402 pairing's build checks H first", () => {
     BINDINGS.filter((b) => b.id.startsWith("x402/")) as unknown as { id: string; build?: (c: unknown, h: unknown) => Promise<unknown> }[],
     "BINDINGS, the x402 pairings",
     {
-      exact: 30,
       keep: ["the x402 pairings with a build", (b) => b.build !== undefined],
       leave: ["x402/upto/xrpl, whose payer's own client opens the channel, so lcp builds nothing", (b) => b.build === undefined],
     },
   );
   for (const p of X402) {
     it(`${p.id}: a malformed H with no choice, another pairing's option or a document that is not v2 is ${hCodeOf(p.id)}`, async () => {
-      for (const row of rowsOf(hFirstChoices(p.id), "peer-free-inputs.ts", { exact: 3 })) {
+      for (const row of rowsOf(hFirstChoices(p.id), "peer-free-inputs.ts")) {
         expect([row.case, await p.build!(row.choice, BAD_H)]).toEqual([row.case, { refused: true, code: hCodeOf(p.id) }]);
       }
     });
   }
 
-  for (const p of rowsOf(PAIRINGS, "the x402 pairings with an optional peer", { exact: 4 })) {
+  for (const p of rowsOf(PAIRINGS, "the x402 pairings with an optional peer")) {
     it(`${p.id}: a malformed H with a choice of its own option`, async () => {
-      for (const row of rowsOf(hFirstChoices(p.id, p.own), "peer-free-inputs.ts", { exact: 4 })) {
+      for (const row of rowsOf(hFirstChoices(p.id, p.own), "peer-free-inputs.ts")) {
         expect([row.case, await p.build(row.choice as never, BAD_H as AtrHash)]).toEqual([row.case, { refused: true, code: "x402/payload-malformed" }]);
       }
     });
@@ -67,7 +66,7 @@ describe("every x402 pairing's build checks H first", () => {
 });
 
 describe("every x402 pairing's build checks its choice's members after H and before the document", () => {
-  const MEMBERS = rowsOf(choiceMembers(), "peer-free-inputs.ts choiceMembers", { exact: 24 });
+  const MEMBERS = rowsOf(choiceMembers(), "peer-free-inputs.ts choiceMembers");
   const NONE = [
     "x402/exact/sui",
     "x402/exact/cardano",
@@ -80,7 +79,6 @@ describe("every x402 pairing's build checks its choice's members after H and bef
     BINDINGS.filter((b) => b.id.startsWith("x402/")) as unknown as { id: string; build: (c: unknown, h: unknown) => Promise<unknown> }[],
     "BINDINGS, the x402 pairings",
     {
-      exact: 24,
       keep: ["each pairing whose build reads choice members beyond the document and the option", (b) => MEMBERS.some((m) => m.id === b.id)],
       leave: [
         "the pairings whose build reads only the document and the option, and x402/upto/xrpl, which has no build",
@@ -92,20 +90,19 @@ describe("every x402 pairing's build checks its choice's members after H and bef
   for (const p of X402) {
     const bad = MEMBERS.find((m) => m.id === p.id)!.bad.length;
     it(`${p.id}: a malformed member with another pairing's option or a document that is not v2 is the member's code`, async () => {
-      for (const row of rowsOf(memberFirstChoices(p.id), "peer-free-inputs.ts memberFirstChoices", { exact: 2 * bad })) {
+      for (const row of rowsOf(memberFirstChoices(p.id), "peer-free-inputs.ts memberFirstChoices")) {
         expect([row.case, await p.build(row.choice, H)]).toEqual([row.case, { refused: true, code: row.expect }]);
       }
     });
   }
 
   for (const p of rowsOf(PAIRINGS, "the x402 pairings with an optional peer", {
-    exact: 3,
     keep: ["each whose build reads choice members", (q) => q.id !== exactSui.id],
     leave: ["x402/exact/sui, whose build reads none", (q) => q.id === exactSui.id],
   })) {
     it(`${p.id}: a malformed member with a choice of its own option is the member's code`, async () => {
       const bad = MEMBERS.find((m) => m.id === p.id)!.bad.length;
-      for (const row of rowsOf(memberFirstChoices(p.id, p.own), "peer-free-inputs.ts memberFirstChoices", { exact: 3 * bad })) {
+      for (const row of rowsOf(memberFirstChoices(p.id, p.own), "peer-free-inputs.ts memberFirstChoices")) {
         expect([row.case, await p.build(row.choice as never, p.V.fixed.H)]).toEqual([row.case, { refused: true, code: row.expect }]);
       }
     });

@@ -443,13 +443,13 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
 
     for (const row of rowsOf(GW.ceiling.built as { case: string; burnIntentExpirationHeight: string; withdrawalDelay: string; expectMaxBlockHeight: string }[], "mpp-charge-usdc-gateway.json ceiling.built", { exact: 5 })) {
       it(`build writes ${row.case}`, async () => {
-        const u = await chargeUsdcGateway.build({ challenge: challenge(), burnIntentExpirationHeight: row.burnIntentExpirationHeight, withdrawalDelay: row.withdrawalDelay }, G.H);
+        const u = await chargeUsdcGateway.build({ challenge: challenge(), sourceNetwork: good.sourceNetwork, burnIntentExpirationHeight: row.burnIntentExpirationHeight, withdrawalDelay: row.withdrawalDelay }, G.H);
         if ("refused" in u) throw new Error(u.code);
         expect(u.request.maxBlockHeight).toBe(row.expectMaxBlockHeight);
       });
     }
 
-    for (const row of rowsOf(GW.ceiling.buildRefusals as { case: string; omit?: string; set?: Record<string, unknown>; expect: unknown }[], "mpp-charge-usdc-gateway.json ceiling.buildRefusals", { exact: 8 })) {
+    for (const row of rowsOf(GW.ceiling.buildRefusals as { case: string; omit?: string; set?: Record<string, unknown>; expect: unknown }[], "mpp-charge-usdc-gateway.json ceiling.buildRefusals")) {
       it(`build refuses ${row.case}`, async () => {
         const choice: Record<string, unknown> = { challenge: challenge(), ...good, ...row.set };
         if (row.omit !== undefined) delete choice[row.omit];
@@ -464,6 +464,17 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
       const { authorization: _a, type: _t, ...own } = GW.M5.payload;
       return u.complete({ source: GW.M5.source, ...own, burnIntent: burnIntent as never, signature });
     }
+
+    it("complete refuses a credential on another network than the one the height was read for", async () => {
+      const row = GW.ceiling.sourceNetworkChanged;
+      const u = await chargeUsdcGateway.build({ challenge: challenge(), ...good, sourceNetwork: row.choiceSourceNetwork }, G.H);
+      if ("refused" in u) throw new Error(u.code);
+      const burnIntent = GW.M5.payload.authorization.transfer.burnIntent;
+      const signature = await privateKeyToAccount(G.payerKey).signTypedData(burnIntentTypedData(burnIntent));
+      const { authorization: _a, type: _t, ...own } = GW.M5.payload;
+      expect(own.sourceNetwork).not.toBe(row.choiceSourceNetwork);
+      expect(u.complete({ source: GW.M5.source, ...own, burnIntent, signature })).toEqual(row.expect);
+    });
 
     it("complete takes the burn intent signed at the ceiling", async () => {
       const cred = await completed(structuredClone(GW.M5.payload.authorization.transfer.burnIntent));

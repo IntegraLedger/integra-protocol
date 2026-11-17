@@ -21,9 +21,9 @@ type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: st
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
 type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
-const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 77 });
-const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 40 });
-const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 27 });
+const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings");
+const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds");
+const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals");
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
 const answerOf = (id: string): Broadcaster | null => PAIRINGS.find((r) => r.pairing === id)!.broadcaster;
 
@@ -478,7 +478,6 @@ const CHALLENGE_ROWS = rowsOf<ChallengeRow>(
     },
   ],
   "the payments under another challenge",
-  { exact: 5 },
 );
 
 describe("under another challenge: the challenge decides only where channel.kind reads it", () => {

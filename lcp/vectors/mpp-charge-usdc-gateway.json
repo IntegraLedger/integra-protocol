@@ -111,6 +111,7 @@
      "servesHex": "616264",
      "account": "eip155:5042002:0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
      "inputs": {
+      "sourceNetwork": "eip155:5042002",
       "burnIntentExpirationHeight": "39349999",
       "withdrawalDelay": "1234567"
      },
@@ -228,8 +229,9 @@
   ]
  },
  "ceiling": {
-  "case": "build is given the served burnIntentExpirationHeight and the source wallet's withdrawalDelay, each a decimal string below 2^256, and writes maxBlockHeight, their ceiling, into the request; complete refuses a signed burn intent whose maxBlockHeight is not that value read as a decimal. good is the choice's inputs for M5's burn intent, whose maxBlockHeight is 39350204; each refusal changes one member of good, or of M5's burn intent.",
+  "case": "build is given the served burnIntentExpirationHeight and the source wallet's withdrawalDelay, each a decimal string below 2^256, and writes maxBlockHeight, their ceiling, into the request; complete refuses a signed burn intent whose maxBlockHeight is not that value read as a decimal. good is the choice's inputs for M5's burn intent, whose maxBlockHeight is 39350204; each refusal changes one member of good, or of M5's burn intent; sourceNetworkChanged builds with another sourceNetwork than the one M5's credential names.",
   "good": {
+   "sourceNetwork": "eip155:5042002",
    "burnIntentExpirationHeight": "39349999",
    "withdrawalDelay": "1234567",
    "expectMaxBlockHeight": "39350204"
@@ -267,6 +269,14 @@
    }
   ],
   "buildRefusals": [
+  {
+   "case": "sourceNetwork absent: no network the height was read for",
+   "omit": "sourceNetwork",
+   "expect": {
+    "refused": true,
+    "code": "mpp/input-malformed"
+   }
+  },
    {
     "case": "burnIntentExpirationHeight absent",
     "omit": "burnIntentExpirationHeight",
@@ -345,7 +355,15 @@
     }
    }
   ],
-  "completeRefusals": [
+   "sourceNetworkChanged": {
+   "case": "the choice's height read for eip155:84532, and M5's burn intent, signed to spend on eip155:5042002, given to complete",
+   "choiceSourceNetwork": "eip155:84532",
+   "expect": {
+    "refused": true,
+    "code": "mpp/input-malformed"
+   }
+  },
+ "completeRefusals": [
    {
     "case": "the stock client's own maxBlockHeight, 2^256 - 1, an intent that never lapses: createBurnIntent's output with its salt set to M5's",
     "stock": true,

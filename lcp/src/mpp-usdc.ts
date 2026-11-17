@@ -673,12 +673,14 @@ export const chargeUsdcStacks = Object.freeze({
 // ── mpp/charge/usdc/gateway.
 
 /**
- * The buyer's inputs to the Gateway build: the chosen challenge, the `burnIntentExpirationHeight` Circle Gateway's
- * `GET /v1/info` serves for the source network, and the source network's Gateway Wallet's `withdrawalDelay()`, in
- * blocks, each a decimal string below 2^256.
+ * The buyer's inputs to the Gateway build: the chosen challenge; `sourceNetwork`, the CAIP-2 network the burn intent
+ * spends from, for which the next two were read; the `burnIntentExpirationHeight` Circle Gateway's `GET /v1/info`
+ * serves for that network; and that network's Gateway Wallet's `withdrawalDelay()`, in blocks, each of the two a
+ * decimal string below 2^256.
  */
 export interface GatewayChargeChoice {
   challenge: MppChallenge & { id: string };
+  sourceNetwork: string;
   burnIntentExpirationHeight: string;
   withdrawalDelay: string;
 }
@@ -791,14 +793,18 @@ async function gatewayBound(input: unknown): Promise<AtrHash | Refusal> {
  * The chosen challenge's values of the salt's preimage, as data, and the `maxBlockHeight` the burn intent signs,
  * `gatewayMaxBlockHeight` of the choice's `burnIntentExpirationHeight` and `withdrawalDelay`: the buyer's Gateway client
  * adds its own values, computes `usdcGatewaySalt`, sets the result as `spec.salt` and `maxBlockHeight` as given, then
- * signs. An input that is absent, not a decimal string below 2^256, or whose ceiling exceeds 2^256 − 1 is
- * `mpp/input-malformed`. `complete` wraps the signed burn intent, and refuses one whose `maxBlockHeight`, read as a
- * decimal string or a safe integer, is not the one built, `mpp/max-block-height-changed`.
+ * signs. A `sourceNetwork` that is absent or empty, or a height or delay that is absent, not a decimal string below
+ * 2^256, or whose ceiling exceeds 2^256 − 1, is `mpp/input-malformed`. `complete` wraps the signed burn intent; it
+ * refuses a `sourceNetwork` other than the choice's, the network the height was read for, `mpp/input-malformed`, and a
+ * burn intent whose `maxBlockHeight`, read as a decimal string or a safe integer, is not the one built,
+ * `mpp/max-block-height-changed`.
  */
 async function gatewayBuild(choice: GatewayChargeChoice, h: AtrHash) {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
   const o = chosenFor(choice.challenge, h, GATEWAY);
   if (isRefusal(o)) return o;
+  const sourceNetwork = choice.sourceNetwork;
+  if (typeof sourceNetwork !== "string" || sourceNetwork === "") return refusal("mpp/input-malformed");
   const maxBlockHeight = gatewayMaxBlockHeight(choice.burnIntentExpirationHeight, choice.withdrawalDelay);
   if (maxBlockHeight === undefined) return refusal("mpp/input-malformed");
   const requestHash = await usdcRequestHash(o.challenge.request);
@@ -821,6 +827,7 @@ async function gatewayBuild(choice: GatewayChargeChoice, h: AtrHash) {
       for (const k of ["source", "sourceNetwork", "destinationNetwork", "maxFee"] as const) {
         if (typeof c[k] !== "string" || c[k] === "") return refusal("mpp/credential-malformed");
       }
+      if (c.sourceNetwork !== sourceNetwork) return refusal("mpp/input-malformed");
       if (decimalOf(c.burnIntent["maxBlockHeight"]) !== maxBlockHeight) return refusal("mpp/max-block-height-changed");
       return measured({
         challenge,
