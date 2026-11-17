@@ -124,7 +124,10 @@ export interface Seen<Position, Mark> {
   readonly party: "payer" | "payee" | "other";
   /** Whether it is an act of the reference's pairing and of the act's kind. */
   readonly kind: "same" | "other";
-  /** The account it names against the option's payee's: `none` where it names no account. */
+  /**
+   * The account it names against the option's payee's: `none` where it names no account. For a transaction with a
+   * failed result, which moved nothing, the destination in what the payer signed, as the pairing identifies it.
+   */
   readonly account: "payee" | "other" | "none";
   /** True where the pairing's read matched it to an other act the caller gave by its reference. */
   readonly given?: boolean;
@@ -227,10 +230,11 @@ export function decide<Ref, Position, Mark, Cursor>(
     (query.others ?? []).flatMap((o) => ("transaction" in o && typeof o.transaction === "string" ? [o.transaction] : [])),
   );
   const isGiven = (s: Seen<Position, Mark>): boolean => s.given === true || givenTx.has(s.transaction);
-  // An item the search could not decode holds it, unless the caller gave it by its transaction.
-  const undecoded = facts.undecoded ?? [];
+  // An item the search could not decode holds it, unless the caller gave it by its transaction; one met twice, by two
+  // keys, is one item; and one given that the read also decoded is named once, from what it read.
+  const undecoded = (facts.undecoded ?? []).filter((u, i, all) => all.findIndex((v) => v.transaction === u.transaction) === i);
   const holding = undecoded.filter((u) => !givenTx.has(u.transaction));
-  const givenUndecoded = undecoded.filter((u) => givenTx.has(u.transaction));
+  const givenUndecoded = undecoded.filter((u) => givenTx.has(u.transaction) && !facts.seen.some((s) => s.transaction === u.transaction));
   const whole = facts.search.whole && holding.length === 0;
   // Held at the first item that holds the search; at none where such an item gives no position, so nothing is skipped.
   const searchAt = holding.length === 0 ? facts.search.at : holding.some((u) => u.at === undefined) ? undefined : holding[0]!.at;
@@ -243,7 +247,7 @@ export function decide<Ref, Position, Mark, Cursor>(
     s.kind === "same" &&
     (query.act === "agreement" || s.account === "payee");
   // The act asked about but for its result (rules 7 to 9): at coverage `full` it carries H, and an act `payment` names
-  // the payee's account. Only such a transaction answers `transaction-failed`.
+  // the payee's account, the destination in what the payer signed. Only such a transaction answers `transaction-failed`.
   const ownFailed = (s: Seen<Position, Mark>): boolean =>
     s.result === "failed" &&
     bindsAct(s) &&

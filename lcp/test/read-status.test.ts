@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import type { CaseAnswer, DeclaredForm, ReadCase, ReadKitForm } from "./read-kit/form.js";
 import { formModules, loadForms, pairingsWithRead, pairingsWithoutForm, subjectFaults } from "./read-kit/forms.js";
-import { ACTS, READ_STATUS, answering, declarationFaults, readKit, runCase } from "./read-kit/harness.js";
+import { ACTS, READ_STATUS, answering, declarationFaults, giving, opening, readKit, runCase } from "./read-kit/harness.js";
 import { rowsOf } from "./rows.js";
 
 const loaded = await loadForms();
@@ -56,6 +56,14 @@ describe("the read kit's cases", () => {
       "payee-signed", "other-signer", "given", "other-kind", "other-account",
     ];
     expect(every.filter((r) => !named.has(r))).toEqual([]);
+  });
+});
+
+describe("the read kit's failed transactions", () => {
+  it("move nothing: the account each names is the destination in what the payer signed (rule 9)", () => {
+    const failed = READ_STATUS.cases.flatMap((c) => c.facts.seen.filter((s) => s.result === "failed").map((s) => ({ c: c.case, s })));
+    expect(failed.length).toBeGreaterThan(0);
+    expect(failed.filter(({ s }) => (s.moved ?? []).length > 0).map(({ c }) => c)).toEqual([]);
   });
 });
 
@@ -187,6 +195,24 @@ describe("the read kit's harness", () => {
     }
   });
 
+  it("states by the opening words of its text every case they open, on the acts named, and refuses words that open none", () => {
+    const stated = opening("a failed result that", "the profile", ["payment"]);
+    expect(stated.map((d) => d.case)).toEqual(cases.filter((c) => c.case.startsWith("a failed result that")).map((c) => c.case));
+    expect(stated.length).toBeGreaterThan(1);
+    expect(stated.every((d) => d.acts?.join() === "payment")).toBe(true);
+    expect(() => opening("no case opens so", "the profile")).toThrow(/no case of read-status.json opens with/);
+  });
+
+  it("states by a fact every case whose facts give it: a single-use value, or a validity passed", () => {
+    const value = giving("a single-use value", "the profile").map((d) => d.case);
+    const lapsed = giving("a validity passed", "the profile").map((d) => d.case);
+    expect(value).toEqual(cases.filter((c) => c.facts.value !== undefined).map((c) => c.case));
+    expect(lapsed).toEqual(cases.filter((c) => c.facts.value?.lapsed === true).map((c) => c.case));
+    expect(lapsed.length).toBeGreaterThan(0);
+    expect(lapsed.every((c) => value.includes(c))).toBe(true);
+    expect(value.length).toBeGreaterThan(lapsed.length);
+  });
+
   it("finds a form's subject that is no pairing, has no status, or is named twice", () => {
     const f = (subject: string): DeclaredForm => ({ form: { subject: subject as never, arrange: () => ({ inapplicable: "x" }) }, inapplicable: [] });
     expect(subjectFaults([f("decide"), f("decide"), f("x402/no-such"), f("mpp/charge/lightning")])).toEqual([
@@ -194,6 +220,24 @@ describe("the read kit's harness", () => {
       "x402/no-such is no pairing of the registry",
       "mpp/charge/lightning has no status",
     ]);
+  });
+});
+
+describe("decide on items the search could not decode", () => {
+  const ledger = { coverage: "full" as const, final: 1, markOrder: (a: number, b: number) => a - b, positionOrder: (a: number, b: number) => a - b };
+
+  it("names an item met twice once", async () => {
+    const { decide } = await import("../src/internal/read.js");
+    const facts = { seen: [], search: { whole: true }, undecoded: [{ transaction: "u1", at: 5 }, { transaction: "u1", at: 5 }], history: true };
+    expect(decide(facts, { act: "payment", finality: 1 }, ledger)).toMatchObject({ reason: "search-incomplete", search: 5, undecoded: ["u1"] });
+  });
+
+  it("names a given item the read also decoded once, from what it read", async () => {
+    const { decide } = await import("../src/internal/read.js");
+    const g = { transaction: "g", position: 3, mark: 1, result: "succeeded" as const, consumed: false, carries: true, party: "payer" as const, kind: "same" as const, account: "payee" as const };
+    const facts = { seen: [g], search: { whole: true }, undecoded: [{ transaction: "g", at: 3 }], history: true };
+    const answer = decide(facts, { act: "payment", finality: 1, others: [{ transaction: "g" }] }, ledger);
+    expect(answer.foreign).toEqual([{ transaction: "g", position: 3, reason: "given" }]);
   });
 });
 

@@ -22,7 +22,9 @@ function foreignOf(a: CaseAnswer): string[] {
 
 /**
  * The cases whose expected answer on an act carries `reason`, as the statement that they cannot arise on a ledger
- * where that reason cannot be answered: one entry per case, naming the acts on which the case answers it.
+ * where that reason cannot be answered: one entry per case, naming the acts on which the case answers it. A statement
+ * names a case by its reason (here), by the opening words of its text (`opening`), or by a fact its facts give
+ * (`giving`), as read-status.md rule 28 states.
  */
 export function answering(reason: string, stated: string): Inapplicable[] {
   return READ_STATUS.cases.flatMap((c) => {
@@ -32,6 +34,26 @@ export function answering(reason: string, stated: string): Inapplicable[] {
     });
     return acts.length === 0 ? [] : [{ case: c.case, acts, stated }];
   });
+}
+
+/**
+ * The cases whose text in read-status.json opens with `words`, as the statement that they cannot arise: every such case,
+ * on both acts or on the acts named. Words that open no case throw, so that a statement never names nothing.
+ */
+export function opening(words: string, stated: string, acts?: readonly Act[]): Inapplicable[] {
+  const found = READ_STATUS.cases.filter((c) => c.case.startsWith(words));
+  if (found.length === 0) throw new Error(`no case of read-status.json opens with "${words}"`);
+  return found.map((c) => ({ case: c.case, stated, ...(acts === undefined ? {} : { acts }) }));
+}
+
+/** A fact a case's facts can give, by which a statement names every case that gives it (read-status.md rule 28). */
+export type GivenFact = "a single-use value" | "a validity passed";
+
+/** The cases whose facts give `fact`, as the statement that they cannot arise, on both acts. */
+export function giving(fact: GivenFact, stated: string): Inapplicable[] {
+  return READ_STATUS.cases
+    .filter((c) => (fact === "a single-use value" ? c.facts.value !== undefined : c.facts.value?.lapsed === true))
+    .map((c) => ({ case: c.case, stated }));
 }
 
 /**

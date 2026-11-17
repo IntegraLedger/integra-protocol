@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the request an x402 challenge commits to in the ATR's binding slot (x402-request-commitment.md). HTTP: the method as received, the target split at its first ?, SHA-256 over the body bytes. MCP: the tool's name and SHA-256 over the RFC 8785 form of its arguments, _meta not committed. The MCP calls are the x402 MCP transport's own example tools/call request (x402 d6d2c58, specs/transports-v2/mcp.md, Payment Payload Transmission) and the changes each row's case names. Expected values were computed with Python 3.12.3's hashlib.sha256 and, for RFC 8785, json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False), which is RFC 8785's form for these values (keys of ASCII, numbers that are integers or 0.5); bodyUtf8 is the body's bytes as UTF-8. Header fields (httpHeaders, httpHeaderRefusals): where the resource server names request header fields, the HTTP commitment also holds headers, for each field named, in the order named, its lower-cased name and SHA-256 of its value, the field's lines as received, each without its leading and trailing spaces and tabs, joined in the order received by a comma and a space, cookie's by a semicolon and a space, and null for a field the request lacks; with none named it has no headers member. Each httpHeaders row gives the field lines as received on the wire (received), the record requestCommitment is given (request.headers) and the names (fields). Its expected digests were computed 2026-11-16 by sending received, as one HTTP/1.1 request, to a node:http 26.11.1 server created with joinDuplicateHeaders: true, whose req.headers gives each field's lines trimmed and joined, cookie's by '; ' (as @types/node 26.6.5 http.d.ts states), and hashing that value with node:crypto's SHA-256, checked with Python's hashlib; none was taken from the package's output. A refusal row's fill, where present, sets the named field to char repeated length times, on lines lines (1 where absent).",
+ "about": "Vectors for the request an x402 challenge commits to in the ATR's binding slot (x402-request-commitment.md). HTTP: the method as received, the target split at its first ?, SHA-256 over the body bytes. MCP: the tool's name and SHA-256 over the RFC 8785 form of its arguments, _meta not committed. The MCP calls are the x402 MCP transport's own example tools/call request (x402 d6d2c58, specs/transports-v2/mcp.md, Payment Payload Transmission) and the changes each row's case names. Expected values were computed with Python 3.12.3's hashlib.sha256 and, for RFC 8785, json.dumps(sort_keys=True, separators=(',',':'), ensure_ascii=False), which is RFC 8785's form for these values (keys of ASCII, numbers that are integers or 0.5); bodyUtf8 is the body's bytes as UTF-8. Header fields (httpHeaders, httpHeaderRefusals): where the resource server names request header fields, the HTTP commitment also holds headers, for each field named, in the order named, its lower-cased name and SHA-256 of its value, the field's lines as received, each without its leading and trailing spaces and tabs, joined in the order received by a comma and a space, cookie's by a semicolon and a space, and null for a field the request lacks; with none named it has no headers member. Each httpHeaders row gives the field lines as received on the wire (received), the record requestCommitment is given (request.headers) and the names (fields). Its expected digests were computed 2026-11-16 (the tilde row 2026-11-17, the same way) by sending received, as one HTTP/1.1 request, to a node:http 26.11.1 server created with joinDuplicateHeaders: true, whose req.headers gives each field's lines trimmed and joined, cookie's by '; ' (as @types/node 26.6.5 http.d.ts states), and hashing that value with node:crypto's SHA-256, checked with Python's hashlib; none was taken from the package's output. A refusal row's fill, where present, sets the named field to char repeated length times, on lines lines (1 where absent).",
  "http": [
   {
    "case": "a POST with a query and a JSON body",
@@ -554,6 +554,38 @@
     "query": "",
     "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
    }
+  },
+  {
+   "case": "a value holding a tilde, the last visible ASCII character, is read as received",
+   "received": [
+    [
+     "X-Tier",
+     "~gold~"
+    ]
+   ],
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "~gold~"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "method": "GET",
+    "path": "/v1/report",
+    "query": "",
+    "bodyDigest": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "headers": [
+     {
+      "name": "x-tier",
+      "digest": "0x47d7a8918b6bb38666be8feb9ab3fe962deae789ebe896e8f865cc382baa7fb6"
+     }
+    ]
+   }
   }
  ],
  "httpHeaderRefusals": [
@@ -583,6 +615,24 @@
     "bodyUtf8": "",
     "headers": {
      "x-tier": "go\u0001ld"
+    }
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "a named field's value holding DEL, the character after the tilde",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": "",
+    "headers": {
+     "x-tier": "go\u007fld"
     }
    },
    "fields": [
@@ -694,6 +744,21 @@
     "target": "/v1/report",
     "bodyUtf8": "",
     "headers": "x-tier: gold"
+   },
+   "fields": [
+    "x-tier"
+   ],
+   "expect": {
+    "refused": true,
+    "code": "x402/request-header-invalid"
+   }
+  },
+  {
+   "case": "fields named with no header fields given, which would commit null for fields nobody read",
+   "request": {
+    "method": "GET",
+    "target": "/v1/report",
+    "bodyUtf8": ""
    },
    "fields": [
     "x-tier"

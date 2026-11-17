@@ -16,7 +16,7 @@ describe("x402-request-commitment.json", () => {
       expect(await requestCommitment({ method, target, body: new TextEncoder().encode(bodyUtf8) })).toEqual(row.expect);
     });
   }
-  for (const row of rowsOf(V.httpHeaders, "x402-request-commitment.json httpHeaders", { exact: 9 })) {
+  for (const row of rowsOf(V.httpHeaders, "x402-request-commitment.json httpHeaders", { exact: 10 })) {
     it(`HTTP header fields: ${row.case}`, async () => {
       const { method, target, bodyUtf8, headers } = row.request;
       const c = await requestCommitment({ method, target, body: new TextEncoder().encode(bodyUtf8), headers }, row.fields);
@@ -25,7 +25,7 @@ describe("x402-request-commitment.json", () => {
       expect(tie([], row.expect)).toEqual(["x402", { accepts: [], request: row.expect }]);
     });
   }
-  for (const row of rowsOf(V.httpHeaderRefusals, "x402-request-commitment.json httpHeaderRefusals", { exact: 12 })) {
+  for (const row of rowsOf(V.httpHeaderRefusals, "x402-request-commitment.json httpHeaderRefusals", { exact: 14 })) {
     it(`HTTP header fields: refuses ${row.case}`, async () => {
       const { method, target, bodyUtf8 } = row.request;
       let headers = row.request.headers as HeaderFields;

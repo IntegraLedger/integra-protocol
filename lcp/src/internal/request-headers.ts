@@ -43,13 +43,14 @@ function trimmed(s: string): string {
 
 /**
  * The named fields' digests, in the order named: `invalid` where the names are not a list of distinct field names
- * (compared lower-cased), the fields are not a record of strings or lists of strings, two of its keys name one named
- * field in different case, or a named field's value holds a character outside visible ASCII, the space and the tab;
+ * (compared lower-cased), the record is absent or is not a record of strings or lists of strings, two of its keys
+ * name one named field in different case, or a named field's value holds a character outside visible ASCII, the space
+ * and the tab;
  * `too-large` where a named field's value, its lines joined, is over 1 MiB. Only the named fields are read. A field's
  * lines are joined in the order given by a comma and a space, `cookie`'s by a semicolon and a space; a field with no
  * line, or none in the record, has `digest` null.
  */
-export async function headerDigests(names: unknown, fields: unknown): Promise<HeaderDigest[] | "invalid" | "too-large"> {
+export async function headerDigests(names: unknown, record: unknown): Promise<HeaderDigest[] | "invalid" | "too-large"> {
   if (!Array.isArray(names)) return "invalid";
   const lower: string[] = [];
   for (const n of names as unknown[]) {
@@ -58,9 +59,10 @@ export async function headerDigests(names: unknown, fields: unknown): Promise<He
     if (lower.includes(l)) return "invalid";
     lower.push(l);
   }
-  if (fields !== undefined && (typeof fields !== "object" || fields === null || Array.isArray(fields))) return "invalid";
-  const record = (fields ?? {}) as Record<string, unknown>;
-  const keys = Object.keys(record);
+  // Fields named with no record given are refused: a commitment never holds null for a field nobody read.
+  if (typeof record !== "object" || record === null || Array.isArray(record)) return "invalid";
+  const values = record as Record<string, unknown>;
+  const keys = Object.keys(values);
   const lines: (readonly string[] | null)[] = [];
   for (const name of lower) {
     const matching = keys.filter((k) => asciiLower(k) === name);
@@ -69,7 +71,7 @@ export async function headerDigests(names: unknown, fields: unknown): Promise<He
       lines.push(null);
       continue;
     }
-    const v = record[matching[0]!];
+    const v = values[matching[0]!];
     const given = typeof v === "string" ? [v] : Array.isArray(v) ? (v as unknown[]) : undefined;
     if (given === undefined || !given.every((x): x is string => typeof x === "string")) return "invalid";
     if (given.length === 0) {

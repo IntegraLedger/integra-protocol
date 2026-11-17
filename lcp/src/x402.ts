@@ -233,9 +233,9 @@ const HEX_BODY = /^0x[0-9a-fA-F]*$/;
  * fields, `headers`: for each, in the order named, its lower-cased name and SHA-256 of its value as `r.headers` gives
  * it, the lines of a field given more than once joined by a comma and a space, `cookie`'s by a semicolon and a space,
  * and `null` for a field the request lacks. With no field named the commitment has no `headers` member. Names that are
- * not distinct field names, header fields that are not a record of strings or lists of strings, two keys naming one
- * named field, or a named field's value holding a character outside visible ASCII, the space and the tab, are
- * `x402/request-header-invalid`; a named field's value over 1 MiB is `x402/request-too-large`.
+ * not distinct field names, fields named with no `r.headers`, header fields that are not a record of strings or lists
+ * of strings, two keys naming one named field, or a named field's value holding a character outside visible ASCII, the
+ * space and the tab, are `x402/request-header-invalid`; a named field's value over 1 MiB is `x402/request-too-large`.
  */
 export async function requestCommitment(r: HttpRequest, fields?: readonly string[]): Promise<RequestCommitment | Refusal> {
   if (!isObject(r) || typeof r.method !== "string" || typeof r.target !== "string") {
