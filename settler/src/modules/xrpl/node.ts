@@ -192,7 +192,13 @@ export function xrplNode(url: string, waitMs: number): XrplNode {
       return { quorum, weights };
     },
     async simulate(blob) {
-      const r = await call("simulate", { tx_blob: blob });
+      // rippled simulates only an unsigned transaction and answers `transactionSigned` to a signed one, so the signing fields
+      // go before the call, as the published class's own default strips them (@x402/xrpl 2.31.0).
+      const { TxnSignature, SigningPubKey, Signers, ...unsigned } = decode(blob) as Record<string, unknown>;
+      void TxnSignature;
+      void SigningPubKey;
+      void Signers;
+      const r = await call("simulate", { tx_json: unsigned });
       if (typeof r["engine_result"] !== "string") return failedOf("simulate", r);
       return {
         engineResult: r["engine_result"],

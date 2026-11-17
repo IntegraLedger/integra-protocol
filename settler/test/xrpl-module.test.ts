@@ -46,8 +46,13 @@ function answer(method: string, p: Record<string, unknown>, quorum: number): unk
         ],
         status: "success",
       };
-    case "simulate":
+    case "simulate": {
+      // rippled refuses to simulate a signed transaction, answering `transactionSigned` (xrpl.org, the simulate method: "The
+      // simulated transaction must be unsigned"); rippled 3.4.1 on the XRPL testnet answered so to a signed blob.
+      const tx = p["tx_json"] ?? (typeof p["tx_blob"] === "string" ? decode(p["tx_blob"]) : undefined);
+      if (typeof tx !== "object" || tx === null || "TxnSignature" in tx || "Signers" in tx) return { error: "transactionSigned", status: "error" };
       return { engine_result: "tesSUCCESS", status: "success" };
+    }
     case "submit":
       return { engine_result: "tesSUCCESS", tx_json: { hash: hashes.hashSignedTx(p["tx_blob"] as string) }, status: "success" };
     case "tx":
