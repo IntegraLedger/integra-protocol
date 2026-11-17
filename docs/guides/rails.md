@@ -407,6 +407,10 @@ x402/upto/eip155/permit2
 x402/upto/solana
 ```
 
+Two pairings that keep no H on chain have a `recover` that returns the value the transaction carries in H's place,
+which a holder of the ATR computes from its own H and compares: `x402/exact/starknet` returns the outside execution's
+nonce, H's low 250 bits, and `x402/exact/xrpl` the `Payment`'s `InvoiceID`, the SHA-256 of H's LCP string.
+
 Where H is only in calldata, `recover` reads the transaction as well as its receipt:
 
 - `x402/exact/eip155/permit2` and `x402/upto/eip155/permit2` read the Permit2 nonce of the scheme's x402 proxy call

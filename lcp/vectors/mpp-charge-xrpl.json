@@ -433,21 +433,21 @@
   ]
  },
  "completeBlob": {
-  "about": "complete reads the signed blob it is given as bound reads the credential it makes, in bound's order: the credential's size (mpp-challenge.json credentialSize), then the blob as decodeBlob reads it: hex bytes, else xrpl/blob-malformed, of at most 32,768 hex digits (XRPL_MAX_BLOB_BYTES, 16,384 bytes), else xrpl/blob-too-large, that decode as a transaction, else xrpl/blob-malformed. A row's blob, unless the row is padded, is the row's blobBytes zero bytes in hex, and its credential is B6's payment with that blob and source, the payer's account as did:pkh:xrpl:{network}:{address}, which complete writes as the stock client does (xrpl-mpp-sdk 0.1.0-beta.4 dist/client/index.js:376-385). complete refuses such a blob with the row's code, and bound refuses the credential with it: zero bytes within both bounds do not decode as a transaction. At 32,367 bytes the credential, its source included, measures 65,535 and at 32,368 bytes 65,537, so the credential bound is read first there. A row with padded true is a blob that decodes: B6's transaction, decoded and re-encoded with ripple-binary-codec 2.11.0, its TxnSignature replaced by as many bytes of 0x11 as bring the blob to the row's blobBytes bytes. bound does not verify the signature, so at a row marked taken complete returns the credential, B6's payment with that blob, and bound gives H for it; at a row with expect, complete refuses with the row's code, and bound refuses the credential with it.",
+  "about": "complete reads the signed blob it is given as bound reads the credential it makes, in bound's order: the credential's size (mpp-challenge.json credentialSize), then the blob's length, at most 8,192 hex digits, 4,096 bytes, the stock server's bound (xrpl-mpp-sdk 0.1.0-beta.4, dist/chunk-L6LVAN2P.js:16, :24, its schema's maxLength on the transaction credential's blob), else xrpl/blob-too-large, then the blob as decodeBlob reads it: hex bytes, else xrpl/blob-malformed, that decode as a transaction, else xrpl/blob-malformed. A row's blob, unless the row is padded, is the row's blobBytes zero bytes in hex, and its credential is B6's payment with that blob and source, the payer's account as did:pkh:xrpl:{network}:{address}, which complete writes as the stock client does (xrpl-mpp-sdk 0.1.0-beta.4 dist/client/index.js:376-385). complete refuses such a blob with the row's code, and bound refuses the credential with it: zero bytes within both bounds do not decode as a transaction. At 32,367 bytes the credential, its source included, measures 65,535 and at 32,368 bytes 65,537, so the credential bound is read first there. A row with padded true is a blob that decodes: B6's transaction, decoded and re-encoded with ripple-binary-codec 2.11.0, its TxnSignature replaced by as many bytes of 0x11 as bring the blob to the row's blobBytes bytes. bound does not verify the signature, so at a row marked taken complete returns the credential, B6's payment with that blob, and bound gives H for it; at a row with expect, complete refuses with the row's code, and bound refuses the credential with it.",
   "rows": [
    {
-    "case": "a blob of 16,383 bytes, one under the blob bound",
-    "blobBytes": 16383,
+    "case": "a blob of 4,095 bytes, one under the stock server's bound",
+    "blobBytes": 4095,
     "expect": "xrpl/blob-malformed"
    },
    {
-    "case": "a blob of 16,384 bytes, 32,768 hex digits, at the blob bound",
-    "blobBytes": 16384,
+    "case": "a blob of 4,096 bytes, 8,192 hex digits, at the stock server's bound",
+    "blobBytes": 4096,
     "expect": "xrpl/blob-malformed"
    },
    {
-    "case": "a blob of 16,385 bytes, one over the blob bound",
-    "blobBytes": 16385,
+    "case": "a blob of 4,097 bytes, one over the stock server's bound",
+    "blobBytes": 4097,
     "expect": "xrpl/blob-too-large"
    },
    {
@@ -461,20 +461,20 @@
     "expect": "mpp/credential-malformed"
    },
    {
-    "case": "a blob of 16,383 bytes that decodes, one under the blob bound",
-    "blobBytes": 16383,
+    "case": "a blob of 4,095 bytes that decodes, one under the stock server's bound",
+    "blobBytes": 4095,
     "padded": true,
     "taken": true
    },
    {
-    "case": "a blob of 16,384 bytes that decodes, 32,768 hex digits, at the blob bound",
-    "blobBytes": 16384,
+    "case": "a blob of 4,096 bytes that decodes, 8,192 hex digits, at the stock server's bound",
+    "blobBytes": 4096,
     "padded": true,
     "taken": true
    },
    {
-    "case": "a blob of 16,385 bytes that decodes, one over the blob bound",
-    "blobBytes": 16385,
+    "case": "a blob of 4,097 bytes that decodes, one over the stock server's bound",
+    "blobBytes": 4097,
     "padded": true,
     "expect": "xrpl/blob-too-large"
    }

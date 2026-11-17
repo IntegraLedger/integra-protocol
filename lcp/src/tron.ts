@@ -159,7 +159,8 @@ export interface TronCursor {
  * The answer of `tronStatus`, as the profile `read-status` gives it. Its marks are `head` and `solidified`, in that
  * order, its position the block number and its search position a `TronCursor`. A `settled` answer states `presented`:
  * `yes` where the settled transaction's id is the reference's, the id being the SHA-256 of the `raw_data` the owner
- * signed, and `no` otherwise.
+ * signed, and `no` otherwise; its `signer` is the transaction's owner in base58check, and its `authority` the
+ * contract's `Permission_id`, as `Permission_id 0`, 0 where the transaction names none.
  */
 export type TronStatus = StatusAnswer<bigint, TronMark, TronCursor>;
 
@@ -525,10 +526,11 @@ const markOf = (level: TronLevel): TronMark => (level === "solid" ? "solidified"
  * holds whole as the payment presented. The read takes the latest solidified block first, then the transaction by id at
  * the solidified level and at the head, each lookup naming its own node's latest block time. Found, the transaction
  * consumed the id: it is the payer's act where its owner is the reference's payer and not the option's payee, it
- * succeeded where its receipt's result is `SUCCESS`, and what it moved is each `Transfer` log of its receipt, named by
- * the id and the log's place among the receipt's logs, or, where it holds none and its signed call is a transfer of
- * zero, that call's transfer of zero to its `to`; on the act `payment` it is the payment only where one of those names
- * `payTo`. Absent from both lookups, each lookup's node at or past the solidified head's time, and the node holding the
+ * succeeded where its receipt's result is `SUCCESS`, and what it moved is each `Transfer` log of its receipt whose
+ * sender is the owner, named by the id and the log's place among the receipt's logs, or, where the receipt holds no
+ * `Transfer` log and its signed call is a transfer of zero, that call's transfer of zero to its `to`; on the act
+ * `payment` it is the payment only where one of those names `payTo`. Its owner is the answer's signer, and its
+ * `Permission_id` the answer's authority. Absent from both lookups, each lookup's node at or past the solidified head's time, and the node holding the
  * block at the position the caller gave (or declared archival where it gave none), the id is unconsumed: before the
  * lapse, two slots past `expiration`, `instrument-live`. Only a `failed` answer needs the search for H, which the read
  * makes only then: it reads every block after the position given, or after the search position an earlier answer
@@ -874,29 +876,41 @@ async function scan(
 
 /**
  * The owner of a transaction that is not the form's: field 1 of its one contract's parameter, the `owner_address` every
- * contract of `Tron.proto` names first; empty where it has not exactly one contract or names none.
+ * contract of `Tron.proto` names first; empty where it has not exactly one contract or names none. With it, the
+ * contract's `Permission_id`, its field 5 (java-tron at `4e8389f1`, `protocol/src/main/protos/core/Tron.proto:384`), 0
+ * where absent.
  */
-function ownerOnly(fields: readonly Field[]): { owner: Uint8Array; callData: Uint8Array; contractAddress: Uint8Array } {
-  const none = { owner: new Uint8Array(0), callData: new Uint8Array(0), contractAddress: new Uint8Array(0) };
+function ownerOnly(fields: readonly Field[]): { owner: Uint8Array; callData: Uint8Array; contractAddress: Uint8Array; permission: bigint } {
+  const none = { owner: new Uint8Array(0), callData: new Uint8Array(0), contractAddress: new Uint8Array(0), permission: 0n };
   const contracts = fields.filter((f) => f.no === 11 && f.wire === 2);
   if (contracts.length !== 1) return none;
-  const any = fieldsOf(contracts[0]!.value as Uint8Array)?.find((f) => f.no === 2 && f.wire === 2);
+  const contract = fieldsOf(contracts[0]!.value as Uint8Array);
+  const permission = contract?.find((f) => f.no === 5 && f.wire === 0)?.value;
+  const any = contract?.find((f) => f.no === 2 && f.wire === 2);
   const value = any === undefined ? undefined : fieldsOf(any.value as Uint8Array)?.find((f) => f.no === 2 && f.wire === 2);
   const owner = value === undefined ? undefined : fieldsOf(value.value as Uint8Array)?.find((f) => f.no === 1 && f.wire === 2);
-  return owner === undefined ? none : { ...none, owner: Uint8Array.from(owner.value as Uint8Array) };
+  const held = { ...none, permission: typeof permission === "bigint" ? permission : 0n };
+  return owner === undefined ? held : { ...held, owner: Uint8Array.from(owner.value as Uint8Array) };
 }
 
-/** A Transfer log's recipient, `0x41` and the topic's last 20 bytes, and its amount in decimal; null for another log. */
-function transferOf(log: unknown): { emitter: string; to: string; amount: string } | null {
+/**
+ * A Transfer log's sender and recipient, each `0x41` and its topic's last 20 bytes (TRC-20's `Transfer(address indexed
+ * _from, address indexed _to, uint256 _value)`, tronprotocol/tips at `c29d7363`, `tip-20.md:159`), and its amount in
+ * decimal; null for another log.
+ */
+function transferOf(log: unknown): { emitter: string; from: string; to: string; amount: string } | null {
   if (!isObject(log) || typeof log["address"] !== "string" || !Array.isArray(log["topics"])) return null;
   const topics = log["topics"] as unknown[];
-  if (typeof topics[0] !== "string" || bare(topics[0]) !== TRANSFER_TOPIC || typeof topics[2] !== "string") return null;
+  if (typeof topics[0] !== "string" || bare(topics[0]) !== TRANSFER_TOPIC) return null;
+  if (typeof topics[1] !== "string" || typeof topics[2] !== "string") return null;
+  const from = bare(topics[1]);
   const to = bare(topics[2]);
-  if (!/^[0-9a-f]{64}$/.test(to)) return null;
+  if (!/^[0-9a-f]{64}$/.test(from) || !/^[0-9a-f]{64}$/.test(to)) return null;
   const emitter = bare(log["address"]);
   const data = typeof log["data"] === "string" ? bare(log["data"]) : "";
   return {
     emitter: `0x${emitter.length === 42 ? emitter : `41${emitter}`}`,
+    from: `0x41${from.slice(24)}`,
     to: `0x41${to.slice(24)}`,
     amount: /^[0-9a-f]{1,64}$/.test(data) ? BigInt(`0x${data}`).toString() : "",
   };
@@ -904,14 +918,15 @@ function transferOf(log: unknown): { emitter: string; to: string; amount: string
 
 /**
  * A transaction carrying H as the read classifies it, from its landed bytes and its receipt: its owner against the
- * reference's payer and the option's payee; what it moved, each `Transfer` log of its receipt named by the id and the
- * log's place among the receipt's logs, or, where it holds none and its signed call is the form's transfer of zero,
- * that transfer to the call's `to`, named by the call; the account it names against `payTo`; and whether it is the
+ * reference's payer and the option's payee; what it moved, each `Transfer` log of its receipt whose sender is the
+ * owner, named by the id and the log's place among the receipt's logs, or, where the receipt holds no `Transfer` log
+ * and its signed call is the form's transfer of zero, that transfer to the call's `to`, named by the call; the account
+ * it names against `payTo`; its owner as the signer and its `Permission_id` as the authority; and whether it is the
  * payment presented, by its id.
  */
 function seenOf(
   id: Hex,
-  raw: { owner: Uint8Array; callData: Uint8Array; contractAddress: Uint8Array },
+  raw: { owner: Uint8Array; callData: Uint8Array; contractAddress: Uint8Array; permission?: bigint },
   info: TronInfo,
   mark: TronMark,
   ref: TronRef,
@@ -921,15 +936,17 @@ function seenOf(
 ): Seen<bigint, TronMark> {
   const payee = `0x${hexDigits(payTo)}`;
   const succeeded = info.result === "SUCCESS";
+  const sender = `0x${hexDigits(raw.owner)}`;
+  const transfers = info.logs.map((log, place) => ({ t: transferOf(log), place }));
   const moved: Moved[] = succeeded
-    ? info.logs.flatMap((log, place) => {
-        const t = transferOf(log);
-        return t === null ? [] : [{ asset: t.emitter, amount: t.amount, to: t.to, transaction: id, place }];
-      })
+    ? transfers.flatMap(({ t, place }) =>
+        t === null || t.from !== sender ? [] : [{ asset: t.emitter, amount: t.amount, to: t.to, transaction: id, place }],
+      )
     : [];
   const call = raw.callData;
   const signedTo = call.length === CALL_DATA_BYTES && hexDigits(call.subarray(0, 4)) === TRANSFER_SELECTOR ? `0x41${hexDigits(call.subarray(16, 36))}` : null;
-  if (succeeded && moved.length === 0 && signedTo !== null && call.subarray(36).every((x) => x === 0)) {
+  const logsNone = transfers.every(({ t }) => t === null);
+  if (succeeded && logsNone && signedTo !== null && call.subarray(36).every((x) => x === 0)) {
     moved.push({ asset: `0x${hexDigits(raw.contractAddress)}`, amount: "0", to: signedTo, transaction: id, place: "call" });
   }
   // A failed receipt's transfers are reverted with it: the account it names is the one its signed call names.
@@ -951,6 +968,7 @@ function seenOf(
     ...(others.has(id) ? { given: true } : {}),
     moved,
     signer: owner,
+    authority: `Permission_id ${raw.permission ?? 0n}`,
     presented: id === normalHash(ref.txid) ? "yes" : "no",
   };
 }

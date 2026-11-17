@@ -327,6 +327,14 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     }
   });
 
+  it("owner: what moved is each Transfer log whose sender is the owner; a transfer of zero only where no Transfer log is held", async () => {
+    for (const row of rowsOf(V.owner.rows, "x402-exact-tron-lcp-trc20-memo.json owner.rows", { exact: 3 })) {
+      const tx = row.raw === "V4" ? { raw: REF.raw, txid: REF.txid } : V.zero.transactions[row.raw];
+      const ref: TronRef = { ...REF, raw: tx.raw, txid: tx.txid };
+      expect([row.case, plain(await exactTronMemo.status(ref, readerFor(row), Q))]).toEqual([row.case, row.expect]);
+    }
+  });
+
   it("plant: a Transfer log to another account than payTo is never the settlement", async () => {
     expect(plain(await exactTronMemo.status(REF, readerFor({ solid: V.plant.solid, solidHead: V.plant.solidHead }), Q))).toEqual(V.plant.expect);
   });
@@ -358,6 +366,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
       finality: "head",
       moved: [],
       signer: REF.payer,
+      authority: "Permission_id 0",
       foreign: [],
     });
     expect(await exactTronMemo.recover({ ...INPUT, option: undefined } as never, readerFor(solid))).toEqual({ refused: true, code: "tron/wrong-reader" });

@@ -64,6 +64,13 @@ const DROPS = /^(0|[1-9][0-9]{0,18})$/;
  */
 export const MPP_SOURCE_TAG = 593_184_257;
 
+/**
+ * The most hex digits of a `transaction` credential's blob the stock server's schema takes: 8,192, 4,096 bytes
+ * (`xrpl-mpp-sdk` 0.1.0-beta.4, `dist/chunk-L6LVAN2P.js:16`, `:24`). A longer blob is `xrpl/blob-too-large` before
+ * anything moves, under `XRPL_MAX_BLOB_BYTES`.
+ */
+const CHARGE_BLOB_HEX = 8192;
+
 const UTF8 = new TextEncoder();
 /** A memo member's UTF-8 bytes in upper-case hex, as the stock `utf8ToHex` writes them. */
 const hexOf = (s: string): string => hexOfBytes(UTF8.encode(s)).slice(2).toUpperCase();
@@ -85,16 +92,17 @@ export interface XrplChargeUnsigned {
    * reads it first (`xrpl-mpp-sdk` 0.1.0-beta.4, `dist/client/index.js:376-385`, `dist/chunk-ZKD7D3D6.js:149-170`). It
    * is read as `bound` reads the credential, in its order: a credential over the credential size bound, 64 KiB, its
    * echoed challenge and `source` included, is `mpp/credential-malformed`; a blob that does not decode gets the refusal
-   * `bound` gives it (one that is not hex bytes is `xrpl/blob-malformed`, and one over 32,768 hex digits is
-   * `xrpl/blob-too-large`); and one whose `NetworkID` the challenge's network does not take is `xrpl/network-mismatch`.
+   * `bound` gives it (one over 8,192 hex digits, the stock server's bound, is `xrpl/blob-too-large`, and one that is
+   * not hex bytes `xrpl/blob-malformed`); and one whose `NetworkID` the challenge's network does not take is
+   * `xrpl/network-mismatch`.
    */
   complete(signedBlob: string): Promise<MppCredential | Refusal>;
 }
 
 /**
- * The signed blob a credential presents: its `blob` for `type="transaction"`, or for `type="hash"` the one
- * `fetchPresented` wrote under `FETCHED`, read by that hash, else `xrpl/read-first`. A `hash` credential's own `blob`
- * member is not read.
+ * The signed blob a credential presents: its `blob` for `type="transaction"`, of at most 8,192 hex digits, the stock
+ * server's bound, else `xrpl/blob-too-large`; or for `type="hash"` the one `fetchPresented` wrote under `FETCHED`, read
+ * by that hash, else `xrpl/read-first`. A `hash` credential's own `blob` member is not read.
  */
 function presentedBlob(credential: MppCredential, payload: { [k: string]: Json }): string | Refusal {
   const type = payload["type"];
@@ -105,7 +113,8 @@ function presentedBlob(credential: MppCredential, payload: { [k: string]: Json }
     return typeof landed === "string" ? landed : refusal("xrpl/read-first");
   }
   const blob = payload["blob"];
-  return typeof blob === "string" ? blob : refusal("xrpl/blob-malformed");
+  if (typeof blob !== "string") return refusal("xrpl/blob-malformed");
+  return blob.length > CHARGE_BLOB_HEX ? refusal("xrpl/blob-too-large") : blob;
 }
 
 /**
@@ -302,6 +311,7 @@ async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUn
       const payload = { type: "transaction", blob: signedBlob };
       const credential = measured({ challenge, payload, source });
       if (isRefusal(credential)) return credential;
+      if (typeof signedBlob === "string" && signedBlob.length > CHARGE_BLOB_HEX) return refusal("xrpl/blob-too-large");
       if (typeof signedBlob !== "string" || !HEX.test(signedBlob)) return refusal("xrpl/blob-malformed");
       const decoded = await decodePresented(payload, signedBlob);
       if (isRefusal(decoded)) return decoded;

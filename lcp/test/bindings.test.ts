@@ -105,16 +105,20 @@ describe("the record's members", () => {
 
 // LCP §8.3's Zero-party recoverable property, atrHash reconstructed from the settlement transaction hash alone: a
 // pairing declares zeroPartyRecoverable exactly where it has the recover that does so, save x402/exact/starknet, whose
-// recover gives the 250 of H's bits the chain holds (x402-exact-starknet.md, rule 23), which reconstruct no H.
+// recover gives the 250 of H's bits the chain holds (x402-exact-starknet.md, rule 23), and x402/exact/xrpl, whose recover
+// gives the InvoiceID, the SHA-256 of H's LCP string (x402-exact-xrpl.md, rule 5): neither reconstructs H.
 describe("recover and zeroPartyRecoverable", () => {
-  it("every pairing has recover exactly where its pattern says H is recoverable from the chain alone, save Starknet's low bits", () => {
+  it("every pairing has recover exactly where its pattern says H is recoverable from the chain alone, save Starknet's low bits and XRPL's digest", () => {
+    const carriedInPlace = ["x402/exact/starknet", "x402/exact/xrpl"];
     const differ = BINDINGS.filter(
       (b) =>
-        b.id !== "x402/exact/starknet" &&
+        !carriedInPlace.includes(b.id) &&
         ("recover" in b && typeof b.recover === "function") !== ("pattern" in b && b.pattern.zeroPartyRecoverable),
     );
-    const starknet = BINDINGS.find((b) => b.id === "x402/exact/starknet")!;
-    expect(["recover" in starknet && typeof starknet.recover === "function", starknet.pattern.zeroPartyRecoverable]).toEqual([true, false]);
+    for (const id of carriedInPlace) {
+      const b = BINDINGS.find((x) => x.id === id)!;
+      expect(["recover" in b && typeof b.recover === "function", "pattern" in b && b.pattern.zeroPartyRecoverable], id).toEqual([true, false]);
+    }
     expect(differ.map((b) => b.id)).toEqual([]);
     for (const id of ["x402/exact/eip155/permit2", "x402/upto/eip155/permit2", "mpp/session/evm", "mpp/session/tempo"]) {
       const b = BINDINGS.find((x) => x.id === id)!;

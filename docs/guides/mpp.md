@@ -196,7 +196,7 @@ given a signed transaction returns it as given.
 The `complete` of each `build` that makes a credential measures it as `bound` measures every credential, its echoed
 challenge included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code
 `bound` gives it, whatever the challenge's own size. It holds the payment it carries to the size `bound` reads it at
-too: the XRP Ledger charge's signed blob to 4,096 hex digits (`xrpl/blob-too-large`). So no `build`'s `complete` returns
+too: the XRP Ledger charge's signed blob to 8,192 hex digits, the stock server's bound (`xrpl/blob-too-large`). So no `build`'s `complete` returns
 a credential `bound` refuses for its size. It checks in `bound`'s order, measuring the credential before it reads the
 payment: a payment fault in a credential over the bound, such as a `usdc` Stacks transaction over 16,384 bytes or a
 Tempo key authorization over 8,192 bytes, is `mpp/credential-malformed`, as `bound` gives it. One rule covers the

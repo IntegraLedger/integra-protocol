@@ -12,7 +12,6 @@ import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 import { landed, xrplReader } from "./fixtures/xrpl-reader.js";
-import { chargeXrpl } from "../src/mpp.js";
 import { vi } from "vitest";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-xrpl.json", import.meta.url), "utf8"));
@@ -129,6 +128,15 @@ describe("x402-exact-xrpl.json", () => {
     expect(three.hash).not.toBe(two.hash);
   });
 
+  it("recover: the InvoiceID the landed Payment carries, which a holder of the ATR computes from its own H", async () => {
+    const r = landed(V.V2.blob);
+    const input = { network: "xrpl:1" as const, tx: r.hash, option: V.V2.accepted as PaymentRequirements };
+    const got = await exactXrpl.recover(input, xrplReader({ tx: async () => r }));
+    expect(got).toBe(`0x${V.V1.x402InvoiceId.toLowerCase()}`);
+    expect(got).toBe(`0x${createHash("sha256").update(`lcp:sha256:${H}`).digest("hex")}`);
+    expect(got).not.toBe(H);
+  });
+
   it("plant: a memo is never read as the carrier", async () => {
     const d = await decodeBlob(V.plant.blob);
     if ("refused" in d) throw new Error(d.code);
@@ -139,8 +147,7 @@ describe("x402-exact-xrpl.json", () => {
 
 // x402-exact-xrpl.json's agreedRefusals rows state each refusal in words. Each case below calls the entry points its row
 // names, once for each condition the row lists, with inputs built from the file's V2 payment and choice, its
-// strictEncoding blobs and V2's reference, and every result is the row's code. The recover row's function is the XRPL rail's
-// recover, which mpp/charge/xrpl exports: x402/exact/xrpl has none.
+// strictEncoding blobs and V2's reference, and every result is the row's code.
 describe("x402-exact-xrpl.json agreedRefusals: every row runs", () => {
   const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [V.V2.accepted] };
   /** build with V2's choice for H, the option given and any of the choice's fields replaced. */
@@ -186,9 +193,9 @@ describe("x402-exact-xrpl.json agreedRefusals: every row runs", () => {
     "recover when the reader fails or answers malformed": async () => {
       const ref = { network: V.V2.expectReference.network, tx: V.V2.expectReference.transaction, option: V.V2.accepted as PaymentRequirements };
       return [
-        await chargeXrpl.recover(ref, readerFor("reader-error")),
-        await chargeXrpl.recover(ref, readerFor(null)),
-        await chargeXrpl.recover(ref, readerFor("tesSUCCESS")),
+        await exactXrpl.recover(ref, readerFor("reader-error")),
+        await exactXrpl.recover(ref, readerFor(null)),
+        await exactXrpl.recover(ref, readerFor("tesSUCCESS")),
       ];
     },
     "build with a malformed fee, sequence, ticket sequence or LastLedgerSequence, or an amount build cannot write": async () => {

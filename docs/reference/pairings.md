@@ -359,7 +359,7 @@ Paid: the payer's account signed a NEP-366 delegate action whose one ft_transfer
 
 ### `x402/exact/polkadot/lcp-assets-remark`
 
-The payer signed one Polkadot Asset Hub extrinsic whose bytes hold this ATR's hash in LCP string form as a remark, at the account nonce its reference holds. The chain verified the signature and dispatched the extrinsic with a Remarked event for that remark, at the finality recorded. Where the record shows a transfer event, or the call is a transfer of zero, it states that the extrinsic paid, with each recipient and what moved; where it shows neither, it states that the payer signed. The signer is named. This does not show a transfer's sender, nor that amount, asset or timing match the ATR's content.
+The payer signed one Polkadot Asset Hub extrinsic whose bytes hold this ATR's hash in LCP string form as a remark, at the account nonce its reference holds, or an account acting for the payer through a `proxy.proxy` or `multisig.as_multi_threshold_1` wrapper signed one. The chain verified the signature and dispatched the extrinsic with a Remarked event for that remark, at the finality recorded. Where the record shows a transfer event from the payer, or the call is a transfer of zero that runs as the payer, it states that the extrinsic paid, with each recipient and what moved; where it shows neither, it states that the payer signed. The signer is named, with the wrapper as its authority where it acted for the payer. This does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/exact/solana`
 
@@ -375,7 +375,7 @@ The payer, the sender, signed a Sui transaction whose one unused Pure input is t
 
 ### `x402/exact/tron/lcp-trc20-memo`
 
-The payer, the transaction's owner, signed a Tron transaction whose memo is this ATR's hash in LCP string form, and whose one contract calls transfer on the token. The network verified the signature, which covers the memo through the transaction id, and the receipt's result is SUCCESS, at the finality recorded. Where the receipt holds Transfer logs, the transaction paid, with each recipient and what moved; where it holds none and the signed call is a transfer of zero, it paid zero to that call's recipient; where it holds neither, the payer signed, and no account is named. The owner is named as the signer. This does not show a log's sender, nor that amount, token or timing match the ATR's content.
+The payer, the transaction's owner, signed a Tron transaction whose memo is this ATR's hash in LCP string form, and whose one contract calls transfer on the token. The network verified the signature, which covers the memo through the transaction id, and the receipt's result is SUCCESS, at the finality recorded. Where the receipt holds Transfer logs from the owner, the transaction paid, with each recipient and what moved; where it holds no Transfer log and the signed call is a transfer of zero, it paid zero to that call's recipient; where it holds neither, the payer signed, and no account is named. The owner is named as the signer, and its Permission_id as the authority. This does not show that amount, token or timing match the ATR's content.
 
 ### `x402/exact/tvm`
 

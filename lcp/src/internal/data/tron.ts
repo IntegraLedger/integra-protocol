@@ -25,9 +25,10 @@ export const TRON = /* @__PURE__ */ freeze({
       lapse: "the signed `expiration` (milliseconds)",
     },
     destination:
-      "each `Transfer` log's `to` topic (0x41 and the topic's last 20 bytes), or, where a signed `transfer(to, 0)` logs " +
-      "nothing, that call's `to`; compared with `payTo` on a charge",
-    asset: "the `Transfer` log's emitter, compared with nothing",
+      "the `to` topic (0x41 and the topic's last 20 bytes) of each `Transfer` log whose `from` topic is the owner, or, " +
+      "where the receipt holds no `Transfer` log and the signed call is a `transfer(to, 0)`, that call's `to`; compared " +
+      "with `payTo` on a charge",
+    asset: "each such `Transfer` log's emitter, compared with nothing",
     payer: "the transaction's owner, read from its signed bytes, against the payer lcp's reference names",
     confirmed: "no",
     agreement: {
@@ -35,15 +36,15 @@ export const TRON = /* @__PURE__ */ freeze({
       fee: "the buyer; the seller has no option",
       succeeded:
         "the receipt's result is `SUCCESS`, `raw_data.data` is H, and the owner is the payer lcp's reference names; the " +
-        "`Transfer` logs are recorded as what moved",
+        "owner's `Transfer` logs are recorded as what moved",
     },
     proves:
       "The payer, the transaction's owner, signed a Tron transaction whose memo is this ATR's hash in LCP string form, " +
       "and whose one contract calls transfer on the token. The network verified the signature, which covers the memo " +
       "through the transaction id, and the receipt's result is SUCCESS, at the finality recorded. Where the receipt holds " +
-      "Transfer logs, the transaction paid, with each recipient and what moved; where it holds none and the signed call " +
-      "is a transfer of zero, it paid zero to that call's recipient; where it holds neither, the payer signed, and no " +
-      "account is named. The owner is named as the signer. This does not show a log's sender, nor that amount, token " +
-      "or timing match the ATR's content.",
+      "Transfer logs from the owner, the transaction paid, with each recipient and what moved; where it holds no " +
+      "Transfer log and the signed call is a transfer of zero, it paid zero to that call's recipient; where it holds " +
+      "neither, the payer signed, and no account is named. The owner is named as the signer, and its Permission_id as " +
+      "the authority. This does not show that amount, token or timing match the ATR's content.",
   },
 });

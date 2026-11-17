@@ -129,7 +129,9 @@ export type PolkadotLanded = PolkadotRef & { h: AtrHash; transaction?: string };
  * `settled` answer states `presented`: `yes` where the landed extrinsic's signed body, its signature apart, is the
  * presented one's, `no` where it is not. Each transfer of what moved is named by the timepoint and its place: the
  * event's index among the extrinsic's events, or `call 0` for a transfer of zero, the first call of the profile's
- * batch, which emits no event. A `pending` answer that holds the head at which the chain's validation of the presented
+ * batch, which emits no event, after a `0` for each wrapper that leads to it. Its `signer` is the extrinsic's signer,
+ * and its `authority` the wrapper it acted through for the payer, `proxy.proxy` or `multisig.as_multi_threshold_1`,
+ * absent where it signed as the payer. A `pending` answer that holds the head at which the chain's validation of the presented
  * extrinsic answered valid keeps it in its search position, `validated`, for the next call.
  */
 export type PolkadotStatus = StatusAnswer<bigint, PolkadotMark, PolkadotCursor>;
@@ -606,37 +608,104 @@ function accountOf(v: unknown): Uint8Array | null {
 }
 
 const ASSET_INSTANCES = ["assets", "foreignAssets", "poolAssets"] as const;
-/** The place of a transfer of zero, which emits no event: the first call of the profile's `batch_all`. */
-const ZERO_CALL_PLACE = "call 0";
+/**
+ * The place of a transfer of zero, which emits no event: the index of each call that leads to it from the extrinsic's
+ * own call, one `0` for each wrapper's one call, then the first call of the profile's `batch_all`.
+ */
+function zeroCallPlace(wrappers: number): string {
+  return `call ${"0 ".repeat(wrappers)}0`;
+}
 
 /**
- * What the extrinsic moved, as observed: every `balances.Transfer` and every `Transferred` of the assets pallet's
- * instances, each with its asset, amount and recipient (`0x` and its 32 bytes), named by the extrinsic's timepoint and
- * the event's index among its events; and, where the extrinsic ends with the profile call of zero, which emits no
- * event, a transfer of zero to the account that call names, named by that call's place in the batch.
+ * What the extrinsic moved from the payer, as observed: every `balances.Transfer` and every `Transferred` of the assets
+ * pallet's instances whose `from` is the payer (polkadot-sdk at 23b84ba4, `substrate/frame/balances/src/lib.rs:349`,
+ * `substrate/frame/assets/src/lib.rs:701-706`), each with its asset, amount and recipient (`0x` and its 32 bytes),
+ * named by the extrinsic's timepoint and the event's index among its events, no sender recorded; and, where the
+ * extrinsic ends with the profile call of zero, which emits no event, and that call runs as the payer, a transfer of
+ * zero to the account it names, named by its call's place.
  */
-function movedOf(x: PolkadotExtrinsic, call: ProfileCall | null, transaction: string): Moved[] {
+function movedOf(
+  x: PolkadotExtrinsic,
+  payer: Uint8Array,
+  zero: { call: ProfileCall; wrappers: number } | null,
+  transaction: string,
+): Moved[] {
   const moved: Moved[] = [];
   for (const [place, e] of x.events.entries()) {
     if (!isObject(e) || !Array.isArray(e.data)) continue;
     const d = e.data;
     let asset: string | undefined;
+    let from: unknown;
     let to: unknown;
     let amount: unknown;
-    if (e.pallet === "balances" && e.method === "Transfer") [asset, to, amount] = ["native", d[1], d[2]];
+    if (e.pallet === "balances" && e.method === "Transfer") [asset, from, to, amount] = ["native", d[0], d[1], d[2]];
     else if ((ASSET_INSTANCES as readonly string[]).includes(e.pallet) && e.method === "Transferred") {
       const id = d[0];
-      [asset, to, amount] = [`${e.pallet}:${typeof id === "string" || typeof id === "number" ? String(id) : JSON.stringify(id)}`, d[2], d[3]];
+      [asset, from, to, amount] = [`${e.pallet}:${typeof id === "string" || typeof id === "number" ? String(id) : JSON.stringify(id)}`, d[1], d[2], d[3]];
     }
+    const sender = accountOf(from);
     const account = accountOf(to);
-    if (asset === undefined || account === null) continue;
+    if (asset === undefined || account === null || sender === null || !equalBytes(sender, payer)) continue;
     if (typeof amount !== "string" && typeof amount !== "number") continue;
     moved.push({ asset, amount: String(amount), to: toHex(account), transaction, place });
   }
-  if (call !== null && call.amount === 0n) {
-    moved.push({ asset: `assets:${call.assetId}`, amount: "0", to: toHex(call.dest), transaction, place: ZERO_CALL_PLACE });
+  if (zero !== null && zero.call.amount === 0n) {
+    moved.push({ asset: `assets:${zero.call.assetId}`, amount: "0", to: toHex(zero.call.dest), transaction, place: zeroCallPlace(zero.wrappers) });
   }
   return moved;
+}
+
+/**
+ * The account a signed call runs as, and the wrappers it runs through: from the signer, each `proxy.proxy` (42; 0) runs
+ * its call as its `real`, and each `multisig.as_multi_threshold_1` (41; 0) as the multisig account of its
+ * `other_signatories` with the sender, threshold 1: BLAKE2b-256 of `modlpy/utilisuba`, the sorted accounts and the
+ * threshold, SCALE-encoded (polkadot-sdk at 23b84ba4, `substrate/frame/multisig/src/lib.rs:311-337`, `:645-648`,
+ * `:789-808`; Multisig is pallet 41 of Polkadot Asset Hub, polkadot-fellows/runtimes at 30696143,
+ * `system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1767`). `start` is where the call begins, `inner` where
+ * the call the wrappers lead to begins.
+ */
+function originOf(xt: Uint8Array, start: number, signer: Uint8Array): { origin: Uint8Array; wrappers: string[]; inner: number } {
+  let origin = signer;
+  let at = start;
+  const wrappers: string[] = [];
+  for (let depth = 0; depth <= 4; depth++) {
+    const pallet = xt[at];
+    const index = xt[at + 1];
+    const args = at + 2;
+    if (pallet === 42 && index === 0 && xt[args] === 0x00 && args + 34 <= xt.length) {
+      const kind = xt[args + 33];
+      if (kind !== 0x00 && kind !== 0x01) break;
+      origin = xt.subarray(args + 1, args + 33);
+      wrappers.push("proxy.proxy");
+      at = args + 34 + kind;
+    } else if (pallet === 41 && index === 0) {
+      const count = compactAt(xt, args);
+      if (count === null || count.value > 100n || count.next + 32 * Number(count.value) > xt.length) break;
+      const others: Uint8Array[] = [];
+      for (let i = 0; i < Number(count.value); i++) others.push(xt.subarray(count.next + 32 * i, count.next + 32 * (i + 1)));
+      const all = [...others, origin].sort(compareBytes);
+      origin = blake256(concat(MULTISIG_SEED, compact(BigInt(all.length)), ...all, [1, 0]));
+      wrappers.push("multisig.as_multi_threshold_1");
+      at = count.next + 32 * Number(count.value);
+    } else break;
+  }
+  return { origin, wrappers, inner: at };
+}
+
+const MULTISIG_SEED = new TextEncoder().encode("modlpy/utilisuba");
+
+function compareBytes(a: Uint8Array, b: Uint8Array): number {
+  for (let i = 0; i < a.length && i < b.length; i++) if (a[i] !== b[i]) return a[i]! - b[i]!;
+  return a.length - b.length;
+}
+
+/** Where the call an extrinsic ends with begins, at or after `from`: the longest suffix `transfersAt` decodes whole. */
+function callStart(xt: Uint8Array, from: number): number | null {
+  for (let start = from; start < xt.length; start++) {
+    const call = transfersAt(xt, start, 0);
+    if (call !== null && call.next === xt.length) return start;
+  }
+  return null;
 }
 
 /** Whether `needle` occurs in `bytes`. */
@@ -817,18 +886,26 @@ async function readPolkadot(
     const succeeded = x.success && hasEvent(x, "system", "Remarked", (d) => typeof d[1] === "string" && hashEquals(d[1], remarkHash));
     if (!succeeded && !instrument) return "ok";
     const split = splitSigned(xt);
-    const call0 = isRefusal(split) ? null : endingProfileCall(xt, split.end);
+    const start = isRefusal(split) ? null : callStart(xt, split.end);
+    // The account the call runs as, the payer where the signer signed as the payer or acted for it through a wrapper.
+    const runs = item.kind === "signed" && item.signer !== null && start !== null ? originOf(xt, start, item.signer) : null;
+    const forPayer = runs !== null && equalBytes(runs.origin, signer);
+    // The profile call the wrappers lead to, which a transfer of zero is read from.
+    const call0 = runs === null || !forPayer ? null : decodeProfileCall(xt.subarray(runs.inner));
+    const zero = call0 === null || isRefusal(call0) ? null : { call: call0, wrappers: runs!.wrappers.length };
     const signedTo = isRefusal(split) || succeeded ? null : signedTransfers(xt, split.end);
     const transaction = `${x.at.hash.toLowerCase()}-${index}`;
     // What it moved where it dispatched: an extrinsic that did not meet the profile's success keeps what its events show.
-    const moved = succeeded ? movedOf(x, call0, transaction) : x.success ? movedOf(x, null, transaction) : [];
+    const moved = succeeded ? movedOf(x, signer, zero, transaction) : x.success ? movedOf(x, signer, null, transaction) : [];
     const signerHex = item.kind === "signed" && item.signer !== null ? toHex(item.signer) : undefined;
-    const party = item.kind === "signed" && item.signer !== null && equalBytes(item.signer, payee) ? "payee" : mine ? "payer" : "other";
+    const party = item.kind === "signed" && item.signer !== null && equalBytes(item.signer, payee) ? "payee" : mine || forPayer ? "payer" : "other";
+    // The wrapper the signer acted through for the payer; none where it signed as the payer.
+    const authority = forPayer && !mine && runs.wrappers.length > 0 ? runs.wrappers.join(", ") : undefined;
     const given = item.kind === "signed" && signerHex !== undefined && others.some((o) => o.signer === signerHex && o.nonce === String(item.nonce));
-    // The payment presented: the signer's extrinsic compared with the presented one by its signed body, its signature
+    // The payment presented: the payer's extrinsic compared with the presented one by its signed body, its signature
     // apart, the members the payer signed that its bytes hold.
-    const body = mine ? bodyOf(xt) : null;
-    const presented = !mine ? undefined : body === null || presentedBody === null ? "unshown" : equalBytes(body, presentedBody) ? "yes" : "no";
+    const body = party === "payer" ? bodyOf(xt) : null;
+    const presented = party !== "payer" ? undefined : body === null || presentedBody === null ? "unshown" : equalBytes(body, presentedBody) ? "yes" : "no";
     const seen: Seen<bigint, PolkadotMark> = {
       transaction,
       position: x.at.height,
@@ -848,6 +925,7 @@ async function readPolkadot(
       ...(given ? { given: true } : {}),
       ...(x.success ? { moved } : {}),
       ...(signerHex === undefined ? {} : { signer: signerHex }),
+      ...(authority === undefined ? {} : { authority }),
       ...(presented === undefined ? {} : { presented }),
     };
     found.set(transaction, { seen, raw: xt });
@@ -941,7 +1019,8 @@ async function readPolkadot(
  * The accounts a signed call transfers to, decoded from its bytes: `assets.transfer` and `transfer_keep_alive` (pallet
  * 50, calls 8 and 9), `balances.transfer_allow_death` and `transfer_keep_alive` (10; 0 and 3), each to a
  * `MultiAddress::Id`; `system.remark` and `remark_with_event` (0; 0 and 7), which transfer nothing; and, holding these,
- * `utility.batch`, `batch_all` and `force_batch` (40; 0, 2 and 4) and `proxy.proxy` (42; 0) over a `MultiAddress::Id`.
+ * `utility.batch`, `batch_all` and `force_batch` (40; 0, 2 and 4), `proxy.proxy` (42; 0) over a `MultiAddress::Id`, and
+ * `multisig.as_multi_threshold_1` (41; 0).
  * Pallet and call indices are Polkadot Asset Hub's (polkadot-fellows/runtimes at 30696143, asset-hub-polkadot's
  * `construct_runtime`; polkadot-sdk at 23b84ba4, each pallet's `call_index`). Null where the bytes at `at` are no such
  * call.
@@ -970,6 +1049,11 @@ function transfersAt(b: Uint8Array, at: number, depth: number): { to: Uint8Array
     const kind = b[args + 33];
     if (kind !== 0x00 && kind !== 0x01) return null;
     return transfersAt(b, args + 34 + kind, depth + 1);
+  }
+  if (pallet === 41 && index === 0) {
+    const count = compactAt(b, args);
+    if (count === null || count.value > 100n || count.next + 32 * Number(count.value) > b.length) return null;
+    return transfersAt(b, count.next + 32 * Number(count.value), depth + 1);
   }
   if (pallet === 50 && (index === 8 || index === 9)) {
     const asset = compactAt(b, args);

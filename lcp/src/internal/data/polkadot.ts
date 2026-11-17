@@ -35,7 +35,9 @@ export const POLKADOT = /* @__PURE__ */ freeze({
       "the `to` of every transfer event the extrinsic emitted from the payer, or the account a transfer call of zero " +
       "names; compared on a charge with `payTo`'s 32-byte account",
     asset: "each transfer event's asset, recorded as observed and compared with nothing",
-    payer: "the extrinsic's signer, read from its signed bytes, against the signer lcp's reference names",
+    payer:
+      "the account the extrinsic's call runs as, its signer, a `proxy.proxy`'s `real` or an `as_multi_threshold_1`'s " +
+      "multisig account, read from its signed bytes, against the signer lcp's reference names",
     confirmed: "no",
     agreement: {
       floor: "1",
@@ -46,10 +48,12 @@ export const POLKADOT = /* @__PURE__ */ freeze({
     },
     proves:
       "The payer signed one Polkadot Asset Hub extrinsic whose bytes hold this ATR's hash in LCP string form as a " +
-      "remark, at the account nonce its reference holds. The chain verified the signature and dispatched the extrinsic " +
-      "with a Remarked event for that remark, at the finality recorded. Where the record shows a transfer event, or the " +
-      "call is a transfer of zero, it states that the extrinsic paid, with each recipient and what moved; where it shows " +
-      "neither, it states that the payer signed. The signer is named. This does not show a transfer's sender, nor that " +
-      "amount, asset or timing match the ATR's content.",
+      "remark, at the account nonce its reference holds, or an account acting for the payer through a `proxy.proxy` or " +
+      "`multisig.as_multi_threshold_1` wrapper signed one. The chain verified the signature and dispatched the " +
+      "extrinsic with a Remarked event for that remark, at the finality recorded. Where the record shows a transfer " +
+      "event from the payer, or the call is a transfer of zero that runs as the payer, it states that the extrinsic " +
+      "paid, with each recipient and what moved; where it shows neither, it states that the payer signed. The signer is " +
+      "named, with the wrapper as its authority where it acted for the payer. This does not show that amount, asset or " +
+      "timing match the ATR's content.",
   },
 });

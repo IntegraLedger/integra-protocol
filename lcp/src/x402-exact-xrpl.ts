@@ -29,6 +29,7 @@ import {
   sameInvoice,
   signedOf,
   x402InvoiceId,
+  xrplInvoiceOf,
   type XrplNetwork,
   type XrplPaymentPayload,
   type XrplReader,
@@ -296,7 +297,10 @@ const pattern: LcpPattern = Object.freeze({
 
 /**
  * `x402/exact/xrpl`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
- * signed `Payment` blob; `status` reads it by the payer's instrument (`xrplStatus`).
+ * signed `Payment` blob; `status` reads it by the payer's instrument (`xrplStatus`). `recover` returns the value the
+ * landed `Payment` carries in H's place, its `InvoiceID`, the SHA-256 of H's LCP string, as `0x` and 64 lowercase hex
+ * digits (`xrplInvoiceOf`): a digest is not read back to H, so a holder of the ATR computes the SHA-256 of its own
+ * H's LCP string and compares the two.
  */
 export const exactXrpl = Object.freeze({
   id: ID,
@@ -312,6 +316,7 @@ export const exactXrpl = Object.freeze({
   broadcaster: x402Broadcaster("payee"),
   reference,
   status: xrplStatus,
+  recover: xrplInvoiceOf,
 }) satisfies Entry<
   typeof ID,
   XrplPaymentPayload,
@@ -321,7 +326,7 @@ export const exactXrpl = Object.freeze({
     choice: XrplChoice;
     unsigned: XrplUnsigned<XrplPaymentPayload>;
     landed: Pick<XrplRef, "fromLedger">;
-    network: never;
+    network: XrplNetwork;
     query: XrplQuery<XrplRef>;
     answer: XrplStatus;
   }
