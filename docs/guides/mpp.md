@@ -224,10 +224,14 @@ The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states where ea
 A resource server makes two checks a stock MPP server does not make, and makes them before anything can move money
 (`mpp-charge.md`, rule 10):
 
-1. **The challenge belongs to this agreement.** `challengeBound(credential)` gives H where the echoed challenge's id and
-   `opaque` name it, and `issuedDigest` of the echoed challenge equals the digest the server recorded for H: from the
-   ATR's binding slot (`tie`), or, for an agreement challenge, which no slot holds, the digest it recorded for its
-   agreement option.
+1. **The challenge belongs to this agreement.** `challengeBound(credential, recorded)` gives H where the echoed
+   challenge's id and `opaque` name it and the id is, whole, `recorded`, the id the server recorded when it issued that
+   challenge (else `mpp/id-not-ours`); and `issuedDigest` of the echoed challenge equals the digest the server recorded
+   for H: from the ATR's binding slot (`tie`), or, for an agreement challenge, which no slot holds, the digest it
+   recorded for its agreement option. `place(doc, h, link, option, position, agreementUrl, "agreement")` composes an
+   agreement challenge only where it states `expires` (else `mpp/expires-required`); composed anew once that `expires`
+   has passed, in the position of the one it replaces, it keeps that challenge's id, and a credential of the replaced
+   challenge is refused at `issuedDigest`.
 2. **The payment carries H.** The pairing's `bound`, which checks how the credential carries H, or its link, and never
    what the payment pays. For a credential whose payer already broadcast the payment, `fetchPresented` reads the landed
    transaction first, and `bound` refuses `<rail>/read-first` until then. Where the payer signs nothing that carries H
@@ -238,10 +242,12 @@ Then validation that moves nothing, where the method's library separates it; the
 agreement or payment is now taken, once for each H and act; and only then any call that can move money. The vectors are
 `mpp-server-checks.json`.
 
-`toX402(credential, token)` maps an `evm` `authorization` credential or a `usdc` EVM credential to x402's `exact`
-EIP-3009 `PaymentPayload` and `PaymentRequirements`, so a resource server that already runs an x402 facilitator settles
-it there as step 4 (`mpp-charge.md`, rule 12). `token` is the token's EIP-712 `{name, version}`, which no MPP challenge
-carries. Any other credential is `mpp/no-x402-twin`.
+`toX402(credential, token, issued)` maps an `evm` `authorization` credential or a `usdc` EVM credential to x402's
+`exact` EIP-3009 `PaymentPayload` and `PaymentRequirements`, so a resource server that already runs an x402 facilitator
+settles it there as step 4 (`mpp-charge.md`, rule 12). `token` is the token's EIP-712 `{name, version}`, which no MPP
+challenge carries, and `issued` the Unix second at which the server issued the challenge: `maxTimeoutSeconds` is the
+challenge's `expires` less `issued`. Any other credential is `mpp/no-x402-twin`; a challenge with no `expires` is
+`mpp/expires-required`.
 
 ## Answering the buyer
 

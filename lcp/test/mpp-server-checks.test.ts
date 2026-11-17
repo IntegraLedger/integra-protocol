@@ -1,8 +1,10 @@
 // mpp-server-checks.json: the two checks an MPP resource server makes before anything moves, in mpp-charge.md's
-// order. `place` takes the challenge's position; `tie` and `issuedDigest` read a challenge as its pairing's `unplaced`
-// gives it; check 1 (`challengeBound`, then `issuedDigest` against the digest the resource server recorded) comes before
-// check 2 (the pairing's `bound`); and an echoed `opaque` that is an object is read by its members. Every expected value
-// is the file's.
+// order. `place` takes the challenge's position and act, and refuses an agreement challenge without `expires`; `tie` and
+// `issuedDigest` read a challenge as its pairing's `unplaced` gives it; `challengeBound` holds the echoed id whole to the
+// id recorded at issue; check 1 (`challengeBound`, then `issuedDigest` against the digest the resource server recorded)
+// comes before check 2 (the pairing's `bound`); an agreement challenge composed anew keeps the replaced one's id, and a
+// credential of the replaced one is refused at `issuedDigest`; and an echoed `opaque` that is an object is read by its
+// members. Every expected value is the file's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isRefusal } from "../src/index.js";
@@ -39,6 +41,12 @@ describe("mpp-server-checks.json: place takes the challenge's position", () => {
       expect(place([issued], H, link, issued, row.position)).toEqual(row.expect);
     });
   }
+  for (const row of rowsOf(V.place.agreement.rows, "mpp-server-checks.json place.agreement.rows", { exact: 4 })) {
+    it(`${V.place.agreement.case}: ${row.case}`, () => {
+      const issued = structuredClone(row.issued);
+      expect(place([issued], H, link, issued, row.position, undefined, row.act)).toEqual(row.expect);
+    });
+  }
   it(V.place.again.case, async () => {
     const issued = V.place.issued as MppChallenge;
     const first = place([issued], H, link, issued, 5) as MppChallenge[];
@@ -59,9 +67,18 @@ describe("mpp-server-checks.json: tie and issuedDigest over the challenge as unp
   }
 });
 
+describe("mpp-server-checks.json: challengeBound holds the echoed id whole to the id recorded at issue", () => {
+  for (const row of rowsOf(V.id.rows, "mpp-server-checks.json id.rows", { exact: 4 })) {
+    it(row.case, () => {
+      const bound = challengeBound(row.credential, row.recorded);
+      expect(isRefusal(bound) ? bound : bound.h).toEqual(row.expect);
+    });
+  }
+});
+
 /** Check 1, then check 2, as mpp-charge.md orders them: the first step that refuses, or null. */
 async function inOrder(id: string, recorded: string, credential: unknown) {
-  const bound = challengeBound(credential);
+  const bound = challengeBound(credential, V.order.recordedId);
   const echoed = (credential as { challenge?: unknown }).challenge as MppChallenge;
   const digest = isRefusal(bound) ? undefined : await issuedDigest(echoed);
   const pays = await pairing(id).bound(credential);
@@ -88,7 +105,7 @@ describe("mpp-server-checks.json: lcp's two checks, in mpp-charge.md's order", (
 describe("mpp-server-checks.json: an echoed opaque that is an object is read by its members", () => {
   for (const row of rowsOf(V.opaqueObject.rows, "mpp-server-checks.json opaqueObject.rows", { exact: 4 })) {
     it(`${row.case}`, async () => {
-      const bound = challengeBound(row.credential);
+      const bound = challengeBound(row.credential, V.opaqueObject.recordedId);
       expect(isRefusal(bound) ? bound : bound.h).toEqual(row.expect.challengeBound);
       if (row.expect.digestEqual !== undefined) {
         expect(await issuedDigest((row.credential as MppCredential).challenge)).toBe(V.opaqueObject.recorded);
@@ -96,4 +113,24 @@ describe("mpp-server-checks.json: an echoed opaque that is an object is read by 
       expect(await pairing("mpp/charge/evm/authorization").bound(row.credential)).toEqual(row.expect.bound);
     });
   }
+});
+
+describe("mpp-server-checks.json: an agreement challenge composed anew in the position of the one it replaces", () => {
+  const R = V.recompose;
+  it(R.case, async () => {
+    const replaced = place([R.replaced], H, link, R.replaced, R.position, undefined, "agreement") as MppChallenge[];
+    const recomposed = place([R.recomposed], H, link, R.recomposed, R.position, undefined, "agreement") as MppChallenge[];
+    expect(replaced[0]!.id).toBe(R.expectId);
+    expect(recomposed[0]!.id).toBe(R.expectId);
+    expect(replaced[0]).toEqual(R.credential.challenge);
+    expect(await issuedDigest(replaced[0]!)).toBe(R.expectDigestReplaced);
+    const recorded = await issuedDigest(recomposed[0]!);
+    expect(recorded).toBe(R.expectDigestRecomposed);
+    const bound = challengeBound(R.credential, recomposed[0]!.id!);
+    expect(isRefusal(bound) ? bound : bound.h).toEqual(R.expect.challengeBound);
+    const digest = await issuedDigest((R.credential as MppCredential).challenge);
+    expect(digest === recorded).toBe(R.expect.digestEqual);
+    const first = isRefusal(bound) ? "challengeBound" : digest !== recorded ? "issuedDigest" : null;
+    expect(first).toBe(R.expect.first);
+  });
 });

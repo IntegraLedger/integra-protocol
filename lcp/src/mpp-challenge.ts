@@ -20,6 +20,7 @@ import {
 import { bytesOf, hexOf, keccak, keccakHex, sameBytes, type Hex } from "./evm-abi.js";
 import { isAddress, normalHash } from "./fields.js";
 import { agreementFault, agreementUrlFault } from "./internal/agreement.js";
+import type { Act } from "./internal/read.js";
 import { broadcasterOf, type Broadcaster } from "./internal/broadcaster.js";
 import { REFUSAL_CODES } from "./internal/codes.js";
 import { decode as decodeInvoice, FIELD } from "./internal/lightning.js";
@@ -955,7 +956,10 @@ function withoutQuote(c: MppChallenge): MppChallenge {
  * base64url of H. A position out of that range, a number for a Tempo subscription challenge or `null` for any other is
  * `mpp/challenge-malformed`, and a position whose id another challenge of `doc` already carries is
  * `mpp/position-taken`. A `doc` holding a challenge that carries a `refused` member is `mpp/challenge-malformed`, as one
- * holding a challenge without the required members is.
+ * holding a challenge without the required members is. `act` names what the challenge asks for: `payment`, the
+ * default, or `agreement`; any other value is `mpp/input-malformed`. An agreement challenge states `expires`, else
+ * `mpp/expires-required`: composed again for a re-challenge, it takes the position, and so the id, of the challenge it
+ * replaces.
  */
 export function place(
   doc: readonly MppChallenge[],
@@ -964,6 +968,7 @@ export function place(
   option: MppChallenge,
   position: number | null,
   agreementUrl?: string,
+  act: Act = "payment",
 ): MppChallenge[] | Refusal {
   if (
     !Array.isArray(doc) ||
@@ -980,8 +985,10 @@ export function place(
   const agreementFaulted = agreementUrlFault(agreementUrl);
   if (agreementFaulted?.fault === "link-not-https") return refusal("mpp/link-not-https");
   if (agreementFaulted !== undefined) return refusal("mpp/legal-context-malformed");
+  if (act !== "payment" && act !== "agreement") return refusal("mpp/input-malformed");
   const checked = checkChallenge(option, false);
   if (isRefusal(checked)) return checked;
+  if (act === "agreement" && checked.expires === undefined) return refusal("mpp/expires-required");
   const i = doc.findIndex((c) => sameBound(c, option));
   if (i === -1) return refusal("mpp/not-this-pairing");
   const target = doc[i]!;
@@ -1270,21 +1277,28 @@ export function sessionBroadcaster(
 }
 
 /**
- * H from an echoed challenge: its id derives from H in the form its intent and method take, its `opaque` names H, and
- * its `request` decodes.
+ * H from an echoed challenge: its id derives from H in the form its intent and method take and equals, whole, `recorded`,
+ * the id the resource server recorded when it issued that challenge, else `mpp/id-not-ours`; its `opaque` names H; and
+ * its `request` decodes. A `recorded` that is not an id in a form `challengeId` writes, or the bare base64url of H, is
+ * `mpp/input-malformed`, before the credential is read.
  */
-export function challengeBound(c: unknown): { h: AtrHash; request: { [k: string]: Json } } | Refusal {
-  const read = echoedRead(c, true);
+export function challengeBound(c: unknown, recorded: string): { h: AtrHash; request: { [k: string]: Json } } | Refusal {
+  if (typeof recorded !== "string" || isRefusal(challengeH(recorded))) return refusal("mpp/input-malformed");
+  const read = echoedRead(c, true, recorded);
   return isRefusal(read) ? read : { h: read.h!, request: read.request };
 }
 
 /**
  * The checks `challengeBound` makes, in its order, the first of them `credentialShape`'s gate. With `bound`, the
- * challenge has an id, the id derives from H and `opaque` names H. Without it, as `issuedFor` reads an issued
- * challenge, which need not carry H, the id is not read and an `opaque` that is present must decode as a map of
- * strings.
+ * challenge has an id, the id derives from H, equals `recorded` where one is given, and `opaque` names H. Without it, as
+ * `issuedFor` reads an issued challenge, which need not carry H, the id is not read and an `opaque` that is present must
+ * decode as a map of strings.
  */
-function echoedRead(c: unknown, bound: boolean): { h: AtrHash | undefined; request: { [k: string]: Json } } | Refusal {
+function echoedRead(
+  c: unknown,
+  bound: boolean,
+  recorded?: string,
+): { h: AtrHash | undefined; request: { [k: string]: Json } } | Refusal {
   const credential = shapeGate(c, bound);
   if (isRefusal(credential)) return credential;
   if (!hasHashableRealm(credential.challenge)) return refusal("mpp/challenge-malformed");
@@ -1292,6 +1306,7 @@ function echoedRead(c: unknown, bound: boolean): { h: AtrHash | undefined; reque
   if (bound) {
     const fromId = challengeIdH(credential.challenge);
     if (typeof fromId !== "string") return fromId;
+    if (recorded !== undefined && credential.challenge.id !== recorded) return refusal("mpp/id-not-ours");
     if (credential.challenge.opaque === undefined) return refusal("mpp/opaque-not-this-hash");
     const map = opaqueMembers(credential.challenge.opaque);
     if (map === undefined) return refusal("mpp/opaque-malformed");

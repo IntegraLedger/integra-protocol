@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the mapping of an MPP payment that is an x402 payment (mpp-charge.md, rule 12): the evm method's authorization credential and the usdc method's EVM credential, each to x402's exact scheme with EIP-3009. The credentials are buyer B6 of mpp-charge-evm-authorization.json and mpp-charge-usdc-evm.json, whose signatures eth-account 0.14.0 made; the token domain is the former's fixed tokenDomain. Each expected PaymentPayload and PaymentRequirements was written from the rule with Python 3.12.3's json and base64, in the shape the x402 specification's HTTP transport example gives (x402 d6d2c58, specs/transports-v2/http.md, Payment Payload Transmission) and @x402/core 2.30.0's PaymentRequirementsV2Schema and PaymentPayloadV2Schema (src/schemas/index.ts) require. signedDigest is the EIP-712 digest the payer signed, from those files: x402's verification (@x402/evm 2.30.0, src/exact/facilitator/eip3009.ts, verifyEIP3009) builds TransferWithAuthorization over the domain {name, version, chainId of network, verifyingContract asset} and the payload's authorization, and the mapped payment must give that digest and recover the payer. That function reads no maxTimeoutSeconds, and the schema requires a positive number; the mapping writes the window the payer signed, validBefore less validAfter.",
+ "about": "Vectors for the mapping of an MPP payment that is an x402 payment (mpp-charge.md, rule 12): the evm method's authorization credential and the usdc method's EVM credential, each to x402's exact scheme with EIP-3009. The credentials are buyer B6 of mpp-charge-evm-authorization.json and mpp-charge-usdc-evm.json, whose signatures eth-account 0.14.0 made; the token domain is the former's fixed tokenDomain. Each refusal row changes one member of a good input, its case naming it. Each expected PaymentPayload and PaymentRequirements was written from the rule with Python 3.12.3's json and base64, in the shape the x402 specification's HTTP transport example gives (x402 d6d2c58, specs/transports-v2/http.md, Payment Payload Transmission) and @x402/core 2.30.0's PaymentRequirementsV2Schema and PaymentPayloadV2Schema (src/schemas/index.ts) require. signedDigest is the EIP-712 digest the payer signed, from those files: x402's verification (@x402/evm 2.31.0, src/exact/facilitator/eip3009.ts, verifyEIP3009) builds TransferWithAuthorization over the domain {name, version, chainId of network, verifyingContract asset} and the payload's authorization, and the mapped payment must give that digest and recover the payer. That function reads no maxTimeoutSeconds, and the schema requires a positive number; the mapping writes the challenge's expires less issued, the Unix second at which the resource server issued the challenge, here 300 seconds before expires, and never the window the payer signed, which lcp's builds open at 0 and close at expires. Each row's verifyAt is the answer of that verification, ExactEvmScheme's verify (@x402/evm 2.31.0, a devDependency of this package, src/exact/facilitator/eip3009.ts, verifyEIP3009), over the expected PaymentPayload and PaymentRequirements at the Unix second now, with a facilitator signer that reads no chain: it answers getCode with code at the asset and none at the payer, and the transfer's simulation without a revert. The payment verifies from issued until validBefore is less than now plus 6, the margin that function allows; its invalidReason past that is its ErrValidBeforeExpired.",
  "rows": [
   {
    "case": "mpp/charge/evm/authorization: buyer B6 of mpp-charge-evm-authorization.json",
@@ -38,7 +38,7 @@
       "amount": "10000",
       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
-      "maxTimeoutSeconds": 1790000060,
+      "maxTimeoutSeconds": 300,
       "extra": {
        "name": "USDC",
        "version": "2"
@@ -62,14 +62,39 @@
      "amount": "10000",
      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
-     "maxTimeoutSeconds": 1790000060,
+     "maxTimeoutSeconds": 300,
      "extra": {
       "name": "USDC",
       "version": "2"
      }
     }
    },
-   "signedDigest": "0x2d301c86ab3ef8b3ef3d7296fbe09bbb768108bdc1134b50c941f6c50bedad0c"
+   "signedDigest": "0x2d301c86ab3ef8b3ef3d7296fbe09bbb768108bdc1134b50c941f6c50bedad0c",
+   "issued": 1789999760,
+   "verifyAt": [
+    {
+     "now": 1789999760,
+     "expect": {
+      "isValid": true,
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+     }
+    },
+    {
+     "now": 1790000054,
+     "expect": {
+      "isValid": true,
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+     }
+    },
+    {
+     "now": 1790000055,
+     "expect": {
+      "isValid": false,
+      "invalidReason": "invalid_exact_evm_payload_authorization_valid_before",
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+     }
+    }
+   ]
   },
   {
    "case": "mpp/charge/usdc/evm: buyer B6 of mpp-charge-usdc-evm.json",
@@ -108,7 +133,7 @@
       "amount": "10000",
       "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
       "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
-      "maxTimeoutSeconds": 1790000060,
+      "maxTimeoutSeconds": 300,
       "extra": {
        "name": "USDC",
        "version": "2"
@@ -132,14 +157,39 @@
      "amount": "10000",
      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
      "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
-     "maxTimeoutSeconds": 1790000060,
+     "maxTimeoutSeconds": 300,
      "extra": {
       "name": "USDC",
       "version": "2"
      }
     }
    },
-   "signedDigest": "0xc4a7804518d566b4251e0f299ccbf77eb3752259a688a8636cdccc8daa6ee826"
+   "signedDigest": "0xc4a7804518d566b4251e0f299ccbf77eb3752259a688a8636cdccc8daa6ee826",
+   "issued": 1789999760,
+   "verifyAt": [
+    {
+     "now": 1789999760,
+     "expect": {
+      "isValid": true,
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+     }
+    },
+    {
+     "now": 1790000054,
+     "expect": {
+      "isValid": true,
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+     }
+    },
+    {
+     "now": 1790000055,
+     "expect": {
+      "isValid": false,
+      "invalidReason": "invalid_exact_evm_payload_authorization_valid_before",
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+     }
+    }
+   ]
   }
  ],
  "refusals": [
@@ -188,7 +238,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/no-x402-twin"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "a Gateway credential (buyer B6 of mpp-charge-usdc-gateway.json): a burn intent has no x402 twin",
@@ -243,7 +294,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/no-x402-twin"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "the authorization under a challenge with splits, which offers Permit2 alone",
@@ -276,7 +328,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/no-x402-twin"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "the authorization with payload type permit2",
@@ -309,7 +362,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/no-x402-twin"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "no token version",
@@ -341,7 +395,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/input-malformed"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "an empty token name",
@@ -374,7 +429,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/input-malformed"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "validBefore equal to validAfter",
@@ -407,7 +463,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/credential-malformed"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "a nonce of 31 bytes",
@@ -440,7 +497,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/credential-malformed"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "a signature that is not hex",
@@ -473,7 +531,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/credential-malformed"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "a value that is not a decimal",
@@ -506,7 +565,8 @@
    "expect": {
     "refused": true,
     "code": "mpp/credential-malformed"
-   }
+   },
+   "issued": 1789999760
   },
   {
    "case": "a from that is not an address",
@@ -539,6 +599,210 @@
    "expect": {
     "refused": true,
     "code": "mpp/credential-malformed"
+   },
+   "issued": 1789999760
+  },
+  {
+   "case": "a challenge with no expires, which offers no pairing",
+   "credential": {
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payload": {
+     "type": "authorization",
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+     "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
+    }
+   },
+   "token": {
+    "name": "USDC",
+    "version": "2"
+   },
+   "issued": 1789999760,
+   "expect": {
+    "refused": true,
+    "code": "mpp/expires-required"
+   }
+  },
+  {
+   "case": "issued not an integer second",
+   "credential": {
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payload": {
+     "type": "authorization",
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+     "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
+    }
+   },
+   "token": {
+    "name": "USDC",
+    "version": "2"
+   },
+   "issued": 1789999760.5,
+   "expect": {
+    "refused": true,
+    "code": "mpp/input-malformed"
+   }
+  },
+  {
+   "case": "issued given as a string",
+   "credential": {
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payload": {
+     "type": "authorization",
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+     "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
+    }
+   },
+   "token": {
+    "name": "USDC",
+    "version": "2"
+   },
+   "issued": "1789999760",
+   "expect": {
+    "refused": true,
+    "code": "mpp/input-malformed"
+   }
+  },
+  {
+   "case": "issued before the Unix epoch",
+   "credential": {
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payload": {
+     "type": "authorization",
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+     "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
+    }
+   },
+   "token": {
+    "name": "USDC",
+    "version": "2"
+   },
+   "issued": -1,
+   "expect": {
+    "refused": true,
+    "code": "mpp/input-malformed"
+   }
+  },
+  {
+   "case": "issued at expires",
+   "credential": {
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payload": {
+     "type": "authorization",
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+     "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
+    }
+   },
+   "token": {
+    "name": "USDC",
+    "version": "2"
+   },
+   "issued": 1790000060,
+   "expect": {
+    "refused": true,
+    "code": "mpp/input-malformed"
+   }
+  },
+  {
+   "case": "issued after expires",
+   "credential": {
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payload": {
+     "type": "authorization",
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+     "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
+    }
+   },
+   "token": {
+    "name": "USDC",
+    "version": "2"
+   },
+   "issued": 1790000061,
+   "expect": {
+    "refused": true,
+    "code": "mpp/input-malformed"
    }
   }
  ]

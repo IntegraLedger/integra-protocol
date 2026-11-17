@@ -38,15 +38,17 @@ function twinOf(c: MppCredential): MppPairingId | undefined {
  * The x402 `exact` EIP-3009 payment and requirements of an MPP `evm` `authorization` credential or `usdc` EVM
  * credential: `scheme` `exact`, `network` `eip155:<chainId>`, `amount`, `asset` and `payTo` the request's `amount`,
  * `currency` and `recipient`, `extra` the token's EIP-712 `name` and `version` the caller gives, and
- * `maxTimeoutSeconds` the window the payer signed, `validBefore` less `validAfter`; the payload's `authorization` is the
- * credential's `from`, `to`, `value`, `validAfter`, `validBefore` and `nonce`, with its `signature`. The echoed challenge
- * is held to the pairing's filter as an issued one is, so it need not carry H. A credential of any other form, a Permit2
- * witness, a Gateway burn intent, a challenge with splits and every non-EVM form among them, is `mpp/no-x402-twin`; a
- * payload member out of its form, or a `validBefore` not after `validAfter`, is `mpp/credential-malformed`; a token
- * domain that is not two strings of 1 to 256 characters is `mpp/input-malformed`. It compares nothing the payment pays
- * with the challenge: the facilitator's verification does.
+ * `maxTimeoutSeconds` the echoed challenge's `expires` less `issued`, the Unix second at which the resource server
+ * issued the challenge, never the window the payer signed; the payload's `authorization` is the credential's `from`,
+ * `to`, `value`, `validAfter`, `validBefore` and `nonce`, with its `signature`. The echoed challenge is held to the
+ * pairing's filter as an issued one is, so it need not carry H. A credential of any other form, a Permit2 witness, a
+ * Gateway burn intent, a challenge with splits and every non-EVM form among them, is `mpp/no-x402-twin`; a challenge
+ * with no `expires`, which offers neither form, is `mpp/expires-required`; a payload member out of its form, or a
+ * `validBefore` not after `validAfter`, is `mpp/credential-malformed`; a token domain that is not two strings of 1 to
+ * 256 characters, or an `issued` that is not a non-negative safe integer before `expires`, is `mpp/input-malformed`. It
+ * compares nothing the payment pays with the challenge: the facilitator's verification does.
  */
-export function toX402(credential: unknown, token: TokenDomain): X402Mapped | Refusal {
+export function toX402(credential: unknown, token: TokenDomain, issued: number): X402Mapped | Refusal {
   if (
     !isObject(credential) ||
     !isObject(credential["challenge"]) ||
@@ -58,8 +60,13 @@ export function toX402(credential: unknown, token: TokenDomain): X402Mapped | Re
   const pairing = twinOf(c);
   if (pairing === undefined) return refusal("mpp/no-x402-twin");
   const checked = issuedFor(c.challenge, pairing);
-  if (isRefusal(checked)) return checked.code === "mpp/not-this-pairing" ? refusal("mpp/no-x402-twin") : checked;
+  if (isRefusal(checked)) {
+    if (checked.code !== "mpp/not-this-pairing") return checked;
+    return c.challenge.expires === undefined ? refusal("mpp/expires-required") : refusal("mpp/no-x402-twin");
+  }
+  if (checked.expires === undefined) return refusal("mpp/expires-required");
   if (!isDomainMember(token?.name) || !isDomainMember(token?.version)) return refusal("mpp/input-malformed");
+  if (!Number.isSafeInteger(issued) || issued < 0 || issued >= checked.expires) return refusal("mpp/input-malformed");
   const p = c.payload;
   const validAfter = uint256Of(p["validAfter"]);
   const validBefore = uint256Of(p["validBefore"]);
@@ -75,9 +82,7 @@ export function toX402(credential: unknown, token: TokenDomain): X402Mapped | Re
   ) {
     return refusal("mpp/credential-malformed");
   }
-  if (validBefore <= validAfter || validBefore - validAfter > BigInt(Number.MAX_SAFE_INTEGER)) {
-    return refusal("mpp/credential-malformed");
-  }
+  if (validBefore <= validAfter) return refusal("mpp/credential-malformed");
   const details = pairing === "mpp/charge/usdc/evm" ? (checked.details["evm"] as { [k: string]: unknown }) : checked.details;
   const r = checked.request;
   const paymentRequirements: PaymentRequirements = {
@@ -86,7 +91,7 @@ export function toX402(credential: unknown, token: TokenDomain): X402Mapped | Re
     amount: r["amount"] as string,
     asset: r["currency"] as string,
     payTo: r["recipient"] as string,
-    maxTimeoutSeconds: Number(validBefore - validAfter),
+    maxTimeoutSeconds: checked.expires - issued,
     extra: { name: token.name, version: token.version },
   };
   const authorization = {
