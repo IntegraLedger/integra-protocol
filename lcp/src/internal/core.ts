@@ -62,7 +62,9 @@ export function newAtrId(): string {
  * 6. The binding value is a JSON value `JSON.stringify` writes exactly, every number a safe integer, nested at most 64
  *    levels (`core/binding-not-json`).
  * 7. The assembled length is at most the limit (`core/too-large`).
- * 8. Each party's bytes, in order, are one JSON value (`core/content-not-json`).
+ * 8. Each party's bytes, in order, are one JSON value in which no object repeats a member name, names compared after
+ *    their escapes are decoded, no number overflows a double, and no integer lies beyond 2^53 - 1 either way
+ *    (`core/content-not-json`).
  *
  * Each input is read once: each array's length and members, each party's name, bytes and size, and each member of
  * the binding value, in the one walk that checks the value and writes it. What is checked is what is written, an input
@@ -244,13 +246,17 @@ function writeJson(v: unknown, depth: number, integersOnly: boolean, sorted: boo
 
 /**
  * True when `b`, of `n` bytes, is valid UTF-8 without a leading byte-order mark and holds exactly one RFC 8259 JSON
- * value, with optional surrounding whitespace and at most 64 levels of nesting. The value is scanned, never built.
+ * value, with optional surrounding whitespace and at most 64 levels of nesting, in which no object repeats a member
+ * name (names compared after their escapes are decoded), no number overflows a double, and no integer (a number with
+ * neither fraction nor exponent) lies beyond 2^53 - 1 either way. The value is scanned, never built.
  */
 function isOneJsonValue(b: Uint8Array, n: number): boolean {
   if (n >= 3 && b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) return false;
   if (!isUtf8(b, n)) return false;
 
   const stack: number[] = [];
+  const names: Set<string>[] = [];
+  const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
   let i = 0;
 
   const ws = (): void => {
@@ -292,20 +298,25 @@ function isOneJsonValue(b: Uint8Array, n: number): boolean {
     return i > start;
   };
   const number = (): boolean => {
+    const start = i;
+    let integer = true;
     if (b[i] === 0x2d) i++;
     if (b[i] === 0x30) i++;
     else if (b[i] !== undefined && b[i]! >= 0x31 && b[i]! <= 0x39) digits();
     else return false;
     if (b[i] === 0x2e) {
       i++;
+      integer = false;
       if (!digits()) return false;
     }
     if (b[i] === 0x65 || b[i] === 0x45) {
       i++;
+      integer = false;
       if (b[i] === 0x2b || b[i] === 0x2d) i++;
       if (!digits()) return false;
     }
-    return true;
+    const value = Number(utf8.decode(b.subarray(start, i)));
+    return integer ? Number.isSafeInteger(value) : Number.isFinite(value);
   };
   const literal = (word: readonly number[]): boolean => {
     for (let k = 0; k < word.length; k++) if (b[i + k] !== word[k]) return false;
@@ -313,7 +324,12 @@ function isOneJsonValue(b: Uint8Array, n: number): boolean {
     return true;
   };
   const member = (): boolean => {
+    const start = i;
     if (!string()) return false;
+    const name = JSON.parse(utf8.decode(b.subarray(start, i))) as string;
+    const seen = names[names.length - 1]!;
+    if (seen.has(name)) return false;
+    seen.add(name);
     ws();
     if (b[i] !== 0x3a) return false;
     i++;
@@ -328,12 +344,13 @@ function isOneJsonValue(b: Uint8Array, n: number): boolean {
     if (c === 0x7b || c === 0x5b) {
       if (stack.length >= MAX_JSON_DEPTH) return false;
       stack.push(c);
+      if (c === 0x7b) names.push(new Set());
       i++;
       ws();
       const close = c === 0x7b ? 0x7d : 0x5d;
       if (b[i] === close) {
         i++;
-        stack.pop();
+        if (stack.pop() === 0x7b) names.pop();
       } else {
         if (c === 0x7b && !member()) return false;
         continue;
@@ -366,7 +383,7 @@ function isOneJsonValue(b: Uint8Array, n: number): boolean {
       }
       if ((top === 0x5b && d === 0x5d) || (top === 0x7b && d === 0x7d)) {
         i++;
-        stack.pop();
+        if (stack.pop() === 0x7b) names.pop();
         continue;
       }
       return false;

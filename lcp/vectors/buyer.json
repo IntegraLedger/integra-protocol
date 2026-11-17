@@ -60,7 +60,7 @@
   "account": "eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "now": 1790000000,
   "agreement": {
-   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says (BA14's first answer, to the unpaid request, is 202); the 200 body is a receipt. BA1's agreement digest and signature were computed with viem 2.57.4 and with eth-account 0.14.0 (Python 3.11.16 and 3.14.7), which agree. requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. requiredUnpadded is the base64 of required's JSON text, as JSON.stringify writes it, without its two trailing pad characters; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60. requiredBomLed is the base64 of required's JSON text, as JSON.stringify writes it, led by the UTF-8 byte-order mark EF BB BF; requiredInnerSpace is required's padded base64 with a space after its fourth character; a row that names either in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. receiptBomLed is receipt's JSON text, as JSON.stringify writes it, led by EF BB BF, in hex: a step's bodyHex names the fixed.agreement member whose bytes the 200 answer's body is. requiredPadBit is required's padded base64 with the lowest of the four pad bits of its last character before the padding set (RFC 4648 section 3.5): the same bytes in a form no conforming encoder writes; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is.",
+   "about": "The BA rows are the agreement step: the offer names fixed.agreement.url, whose resource answers 402 with PAYMENT-REQUIRED = base64 of fixed.agreement.required (the agreement option placed for hash(A) and A's link), then 202 or 200 as each row says (BA14's first answer, to the unpaid request, is 202); the 200 body is a receipt. The agreement payment's nonce is the agreement's own value for hash(A), SHA-256 over the 16 ASCII bytes lcp-agreement-v1 followed by hash(A)'s 32 bytes, computed with GNU coreutils sha256sum and openssl dgst -sha256, which agree; BA1's agreement digest and signature over it were computed with viem 2.57.4's hashTypedData and privateKeyToAccount(payerKey).signTypedData, which reproduce the digest and signature over the nonce hash(A). requiredMixed is required whose accepts list x402-exact-solana.json's option, with maxTimeoutSeconds 600, and then option. requiredTimeoutText is the exact JSON text of required, as JSON.stringify writes it, with maxTimeoutSeconds written 60.0; a row that names it sends that text, base64, as PAYMENT-REQUIRED. requiredUnpadded is the base64 of required's JSON text, as JSON.stringify writes it, without its two trailing pad characters; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. The gate hands the agent the agreement payment for approval before it signs: input.approve is the agent's answer, true to approve and false to leave it unapproved, and expect.approval is what the gate hands the agent, the chosen option's amount, asset (the token), payTo (the payee) and network. With approve false the gate's answer is that request for approval, and nothing is signed or paid. A row with no approve declines, or pays no agreement, before the gate asks. The agreement option is chosen with the main payment's rule: the options in order, the first the signer can pay whose pairing's payment is itself a public proof (pattern.publicProof true); the exchange's bounds come from that chosen option, and maxTimeoutSeconds is a JSON number with an integral value, so 60.0 is 60. requiredBomLed is the base64 of required's JSON text, as JSON.stringify writes it, led by the UTF-8 byte-order mark EF BB BF; requiredInnerSpace is required's padded base64 with a space after its fourth character; a row that names either in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is. receiptBomLed is receipt's JSON text, as JSON.stringify writes it, led by EF BB BF, in hex: a step's bodyHex names the fixed.agreement member whose bytes the 200 answer's body is. requiredPadBit is required's padded base64 with the lowest of the four pad bits of its last character before the padding set (RFC 4648 section 3.5): the same bytes in a form no conforming encoder writes; a row that names it in paymentRequiredHeader sends it as PAYMENT-REQUIRED as it is.",
    "url": "https://api.seller.example/agreement/b9d3d4b7-2c99-4d5f-9178-837645f75273",
    "option": {
     "scheme": "exact",
@@ -642,10 +642,10 @@
      "value": "1",
      "validAfter": "0",
      "validBefore": "1790000060",
-     "nonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+     "nonce": "0xeb5f529a831e854b6c9b270a00451c7564e5276eaa94e018136c1acd89080ba2"
     },
-    "agreementDigest": "0x0e8f9e383c80f341bbdbfc7c3168c5945225b764256771e81cd680a547262ba0",
-    "agreementSignature": "0x81b120378e057ee69436122591f22495d58d27b028ced8585e5c3036e40098d006a1e3d3517de3f3c51e7a90cc82d00d434a95ac9e05b978953df19c090d59931c",
+    "agreementDigest": "0x6b796593e13d56f25e09565f12a0ecc084f1b01911c7ae7f683f755e691eb8ce",
+    "agreementSignature": "0x9d2a14ef34c5bafe61849098ba4648cff6d6fb482477c0f6494137f1724a87a72550167e9cfacd4cbc8eaa504cc2b6dad2d668a9275ead360fa3a806fef0be671b",
     "paidRequests": 2,
     "paymentSignature": "B6",
     "receipt": "receipt",
@@ -879,9 +879,9 @@
      "value": "1",
      "validAfter": "0",
      "validBefore": "1790000060",
-     "nonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+     "nonce": "0xeb5f529a831e854b6c9b270a00451c7564e5276eaa94e018136c1acd89080ba2"
     },
-    "agreementSignature": "0x81b120378e057ee69436122591f22495d58d27b028ced8585e5c3036e40098d006a1e3d3517de3f3c51e7a90cc82d00d434a95ac9e05b978953df19c090d59931c",
+    "agreementSignature": "0x9d2a14ef34c5bafe61849098ba4648cff6d6fb482477c0f6494137f1724a87a72550167e9cfacd4cbc8eaa504cc2b6dad2d668a9275ead360fa3a806fef0be671b",
     "paymentSignature": "B6"
    },
    "note": "The signer's account is on eip155:84532, so the Solana option is not one it can pay; the EVM option is the first it can pay whose pairing is a public proof, and the gate asks approval for that option and signs it as BA1."
@@ -943,10 +943,10 @@
      "value": "1",
      "validAfter": "0",
      "validBefore": "1790000060",
-     "nonce": "0x8b1e122580ae3f6a8c3d36a24294e1260a87bde70f597279b973e39310072938"
+     "nonce": "0xeb5f529a831e854b6c9b270a00451c7564e5276eaa94e018136c1acd89080ba2"
     },
-    "agreementDigest": "0x0e8f9e383c80f341bbdbfc7c3168c5945225b764256771e81cd680a547262ba0",
-    "agreementSignature": "0x81b120378e057ee69436122591f22495d58d27b028ced8585e5c3036e40098d006a1e3d3517de3f3c51e7a90cc82d00d434a95ac9e05b978953df19c090d59931c",
+    "agreementDigest": "0x6b796593e13d56f25e09565f12a0ecc084f1b01911c7ae7f683f755e691eb8ce",
+    "agreementSignature": "0x9d2a14ef34c5bafe61849098ba4648cff6d6fb482477c0f6494137f1724a87a72550167e9cfacd4cbc8eaa504cc2b6dad2d668a9275ead360fa3a806fef0be671b",
     "paymentSignature": "B6"
    },
    "note": "maxTimeoutSeconds written 60.0 is the number 60 (RFC 8259 section 6: a number is a sequence of digits with an optional fraction), so validBefore is now + 60 and the agreement signature is BA1's."

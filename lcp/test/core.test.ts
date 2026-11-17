@@ -58,7 +58,7 @@ async function assembleVector(v: Vector) {
 describe("V1-V3 assembly and hashing", () => {
   for (const [name, length] of [
     ["V1", 190],
-    ["V2", 129],
+    ["V2", 131],
     ["V3", 118],
   ] as const) {
     it(`${name} gives the expected bytes and hash`, async () => {
@@ -127,6 +127,11 @@ describe("V5 plants: refusals", () => {
   it("V5b two JSON values", async () => {
     const out = await assemble(v1.id!, v1.binding!, [["offer", fromHex(refusalOf("V5b").contentHex!)]]);
     expect(out).toEqual({ refused: true, code: refusalOf("V5b").expect });
+  });
+  it.each(["V5m", "V5n", "V5o"])("%s a party's JSON that two readers read differently", async (name) => {
+    const row = refusalOf(name);
+    const out = await assemble(v1.id!, v1.binding!, [["offer", fromHex(row.contentHex!)]]);
+    expect(out).toEqual({ refused: true, code: row.expect });
   });
   it("V5c bytes that are not UTF-8", async () => {
     const out = await assemble(v1.id!, v1.binding!, [["offer", fromHex(refusalOf("V5c").contentHex!)]]);
@@ -368,8 +373,8 @@ describe("slot names and content form", () => {
       expect(await assemble(id, ["bind", {}], [["x", bad]])).toEqual({ refused: true, code: "core/content-not-json" });
     }
   });
-  it("carries escapes, numbers, duplicates and whitespace as given", async () => {
-    const given = utf8(' \t{"a" : [1, -0.5e+10, true, false, null, "\\u00e9\\n"], "a": {}}\r\n');
+  it("carries escapes, numbers and whitespace as given", async () => {
+    const given = utf8(' \t{"a" : [1, -0.5e+10, true, false, null, "\\u00e9\\n"], "b": {}}\r\n');
     const out = await assemble(id, ["bind", {}], [["x", given]]);
     if ("refused" in out) throw new Error(out.code);
     const text = new TextDecoder().decode(out.bytes);

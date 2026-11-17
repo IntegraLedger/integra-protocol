@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the return after an agreement (legal-context-return.md): the Legal-Context header, an RFC 9651 Item whose token is H's LCP string and whose one parameter is rv, the sale's 32-byte return value as a byte sequence; and the member by which an agreement option names the charge options it serves. H is mpp-challenge.json's; the return value is the bytes 0x00 to 0x1f; the x402 option and the MPP challenge are mpp-challenge.json's C_E and the x402 specification's example option. Expected values were written from the profile with Python 3.12.3's base64 and json, the MPP opaque as base64url without padding of RFC 8785's form. The read and readRefusals rows follow RFC 9651's parsing algorithm (section 4.2, the Item; 4.2.3.2, parameters, a repeated key overwriting the value before it; 4.2.4 to 4.2.10, the bare items; 4.2.7, a byte sequence read with its padding absent and with bits set past its last byte, which a parser should not refuse), each rv's bytes decoded by Python 3.12.3's base64.b64decode with the padding restored; the bare items given before an overwritten rv are RFC 9651 section 3.3's own examples, and each refused one breaks one step of section 4.2.",
+ "about": "Vectors for the return after an agreement (legal-context-return.md): the Legal-Context header, an RFC 9651 Item whose token is H's LCP string and whose one parameter is rv, the sale's 32-byte return value as a byte sequence; and the member by which an agreement option names the charge options it serves. H is mpp-challenge.json's; the return value is the bytes 0x00 to 0x1f; the x402 option and the MPP challenge are mpp-challenge.json's C_E and the x402 specification's example option. Expected values were written from the profile with Python 3.12.3's base64 and json, the MPP opaque as base64url without padding of RFC 8785's form. The read and readRefusals rows follow RFC 9651's parsing algorithm (section 4.2, the Item; 4.2.3.2, parameters, a repeated key overwriting the value before it; 4.2.4 to 4.2.10, the bare items; 4.2.7, a byte sequence read with its padding absent and with bits set past its last byte, which a parser should not refuse), each rv's bytes decoded by Python 3.12.3's base64.b64decode with the padding restored; the bare items given before an overwritten rv are RFC 9651 section 3.3's own examples, and each refused one breaks one step of section 4.2. The check rows hold a header value and the resource server's record of the sale (its H, and its return value where it has one), and what checkLegalContextReturn answers: one return that passes and one for each refusal, the last a Lightning sale's return without its return value; their headers are written as the write rows are.",
  "write": [
   {
    "case": "H alone",
@@ -640,6 +640,52 @@
    "expect": {
     "refused": true,
     "code": "return/serves-malformed"
+   }
+  }
+ ],
+ "check": [
+  {
+   "case": "a return whose header holds the record's H and return value",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;rv=:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=:",
+   "record": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "returnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+   },
+   "expect": true
+  },
+  {
+   "case": "a header whose H is written in upper case hex",
+   "value": "lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
+   "record": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "returnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/header-malformed"
+   }
+  },
+  {
+   "case": "a header holding another sale's H (SHA-256 of the empty string) than the record's",
+   "value": "lcp:sha256:0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "record": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/not-this-sale"
+   }
+  },
+  {
+   "case": "a return to a Lightning sale without the sale's return value: refused, so it gets no invoice",
+   "value": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "record": {
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "returnValueHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+   },
+   "expect": {
+    "refused": true,
+    "code": "return/value-mismatch"
    }
   }
  ]

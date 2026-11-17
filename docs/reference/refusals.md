@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 557 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 559 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -54,7 +54,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`tvm`](#tvm) | 16 | TON (`@integraledger/lcp/tvm`). |
 | [`ln`](#ln) | 25 | Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/lightning`). |
 | [`stacks`](#stacks) | 7 | Stacks (`@integraledger/lcp/stacks`, and `chargeUsdcStacks` in `@integraledger/lcp/mpp`). |
-| [`return`](#return) | 2 | The return after an agreement: the `Legal-Context` header and the charge options an agreement option serves (`@integraledger/lcp`). |
+| [`return`](#return) | 4 | The return after an agreement: the `Legal-Context` header, its check, and the charge options an agreement option serves (`@integraledger/lcp`). |
 | [`spend-permissions`](#spend-permissions) | 12 | The Spend Permission exchange (`@integraledger/lcp/spend-permissions`). |
 
 ## core
@@ -64,7 +64,7 @@ The core: `assemble` and the JSON checks under it.
 | Code | Meaning |
 |---|---|
 | `core/binding-not-json` | `assemble` refuses an `id` that is not a string, or a binding value that is not serialisable JSON with safe-integer numbers and at most 64 levels of nesting. |
-| `core/content-not-json` | `assemble` refuses a `content` that is not an array, or party content that is not a `Uint8Array` holding exactly one JSON value, and `canonicalJson` and `digestJson` refuse a value that is not JSON (deeper than 64 levels, a non-finite number, a string with an unpaired surrogate, or a non-JSON type). |
+| `core/content-not-json` | `assemble` refuses a `content` that is not an array, or party content that is not a `Uint8Array` holding exactly one JSON value in which no object repeats a member name (after escape decoding), no number overflows a double and no integer lies beyond 2^53 - 1 either way, and `canonicalJson` and `digestJson` refuse a value that is not JSON (deeper than 64 levels, a non-finite number, a string with an unpaired surrogate, or a non-JSON type). |
 | `core/slot-duplicate` | `assemble` refuses two party slots with the same name. |
 | `core/slot-name` | `assemble` refuses a binding or a party slot that is not an array of two, or a binding slot or party slot name that is not a string of 1 to 64 characters from `A-Z`, `a-z`, `0-9`, `.`, `_` and `-` starting with a letter or digit. |
 | `core/slot-reserved` | `assemble` refuses a slot named `atrVersion` or `id`, or a party slot that reuses the binding slot's name. |
@@ -815,6 +815,8 @@ The return after an agreement: the `Legal-Context` header and the charge options
 |---|---|
 | `return/header-malformed` | `fromLegalContextHeader` is given a value that is not an RFC 9651 Item whose token is H's LCP string in lowercase hex with no parameter but `rv`, a byte sequence of 32 bytes, its padding absent or present and bits past its last byte read as RFC 9651 section 4.2.7 reads them, the last `rv` given counting where it is repeated; or `toLegalContextHeader` is given an H that is not a 32-byte hash or a return value that is not 32 bytes. |
 | `return/serves-malformed` | `servesOf` is given a value that is not an object, an x402 option whose `extra` is not an object or whose `extra.legalContextServes` is not an array of 1 to 32 distinct names `x402/<i>` or `mpp/<i>`, `i` from 0 to 31 without a leading zero, or an MPP challenge whose `opaque` is not a map of strings or whose `legalContextServes` is not such names joined by one space. |
+| `return/not-this-sale` | `checkLegalContextReturn` is given a header whose H is not the H the resource server's record holds for the request, or a record whose H is not a 32-byte hash. |
+| `return/value-mismatch` | `checkLegalContextReturn` is given a header whose return value is not the one the record holds, compared in constant time: an `rv` where the record holds none, none where it holds one, or another value; or a record whose return value is not 32 bytes. |
 
 ## spend-permissions
 

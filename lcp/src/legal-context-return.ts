@@ -3,14 +3,17 @@
  * made the agreement repeats its request with the sale's H and, where the sale has one, its return value; and the
  * member by which an agreement option names the sale's charge options it serves.
  */
-import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
+import { fromLcpString, hashEquals, toLcpString, type AtrHash } from "./core.js";
 import { isObject, normalHash } from "./fields.js";
 import { opaqueMembers } from "./mpp-challenge.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
-import { refusal, type Refusal } from "./refusal.js";
+import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
 /** The header's name. */
 export const LEGAL_CONTEXT_HEADER = "Legal-Context";
+
+/** The `_meta` key under which an MCP tool result, and each later tool call's `params`, carry the header's value. */
+export const LEGAL_CONTEXT_META = "com.integraledger.lcp/legal-context";
 
 /** The member by which an agreement option names the charge options it serves: in an x402 option's `extra`, in an MPP challenge's `opaque`. */
 export const LEGAL_CONTEXT_SERVES = "legalContextServes";
@@ -82,6 +85,35 @@ export function fromLegalContextHeader(value: unknown): LegalContextReturn | Ref
   if (rv === undefined) return { h };
   if (rv.kind !== "bytes" || rv.bytes.length !== RETURN_VALUE_BYTES) return refusal("return/header-malformed");
   return { h, returnValue: rv.bytes };
+}
+
+/** What a resource server's own record holds for the request a return names: the sale's H, and its return value where it has one. */
+export interface LegalContextRecord {
+  h: AtrHash;
+  returnValue?: Uint8Array;
+}
+
+/**
+ * The check a resource server makes of a return: `value`, a `Legal-Context` header's value or the same value from an
+ * MCP `_meta`, read as `fromLegalContextHeader` reads it (`return/header-malformed`); its H the record's H
+ * (`return/not-this-sale`); and its return value the record's, compared in constant time, an `rv` given where the
+ * record holds none and none given where it holds one refused alike (`return/value-mismatch`). True where all hold. A
+ * record whose H is not a 32-byte hash is `return/not-this-sale`, and one whose return value is not 32 bytes is
+ * `return/value-mismatch`.
+ */
+export function checkLegalContextReturn(value: unknown, record: LegalContextRecord): true | Refusal {
+  const got = fromLegalContextHeader(value);
+  if (isRefusal(got)) return got;
+  const h = isObject(record) ? normalHash(record["h"]) : null;
+  if (h === null || !hashEquals(got.h, h)) return refusal("return/not-this-sale");
+  const want = (record as { returnValue?: unknown }).returnValue;
+  if (want === undefined) return got.returnValue === undefined ? true : refusal("return/value-mismatch");
+  if (got.returnValue === undefined || !(want instanceof Uint8Array) || want.length !== RETURN_VALUE_BYTES) {
+    return refusal("return/value-mismatch");
+  }
+  let diff = 0;
+  for (let i = 0; i < RETURN_VALUE_BYTES; i++) diff |= got.returnValue[i]! ^ want[i]!;
+  return diff === 0 ? true : refusal("return/value-mismatch");
 }
 
 /** A parsed RFC 9651 bare item: a byte sequence with its bytes, or another kind, whose value is not read. */

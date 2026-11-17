@@ -63,9 +63,9 @@ describe("buyer.json: the agreement option the gate asks approval for", () => {
     expect(r.expect.paidRequests).toBe(r.input.advanceMs / 1000 / Number(r.input.agreement[1].retryAfter));
   });
 
-  // BA1's agreement digest and signature are viem's and eth-account's (fixed.agreement.about); BA9 and BA11 sign as BA1.
-  // viem re-derives them from each row's agreementMessage with the types written here, and build's typed data for the
-  // agreement option of the 402 each row names is held to them.
+  // BA1's agreement digest and signature are viem's (fixed.agreement.about), over the agreement's own value for H as the
+  // nonce; BA9 and BA11 sign as BA1. viem re-derives them from each row's agreementMessage with the types written here,
+  // and build's typed data for the act agreement on the 402 each row names is held to them.
   it("BA1, BA9 and BA11: build's agreement message, its EIP-712 digest and the payer's signature are the rows'", async () => {
     const payer = B.fixed.account.split(":")[2];
     const signer = privateKeyToAccount(B.fixed.payerKey);
@@ -93,7 +93,7 @@ describe("buyer.json: the agreement option the gate asks approval for", () => {
       } as TypedDataDefinition;
       expect(hashTypedData(written), name).toBe(digest);
       expect(await signer.signTypedData(written), name).toBe(r.expect.agreementSignature);
-      const u = await exactEip3009.build({ required: doc, accepted: option, from: payer, now: B.fixed.now }, h);
+      const u = await exactEip3009.build({ required: doc, accepted: option, from: payer, now: B.fixed.now }, h, "agreement");
       if ("refused" in u) throw new Error(u.code);
       const message = Object.fromEntries(Object.entries(u.typedData.message).map(([k, v]) => [k, String(v)]));
       expect(message, name).toStrictEqual(m);

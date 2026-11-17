@@ -55,7 +55,7 @@ export const READS_TO_REPEAT: readonly string[] = [
 
 /** Every other code the package returns, by namespace. */
 export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = {
-  return: ["header-malformed", "serves-malformed"],
+  return: ["header-malformed", "not-this-sale", "serves-malformed", "value-mismatch"],
   "spend-permissions": [
     "account-is-spender", "choice-malformed", "ended", "header-malformed", "legal-context-malformed", "link-not-https",
     "not-approved", "not-bound", "option-malformed", "revoked", "route-not-accepted", "signature-invalid",

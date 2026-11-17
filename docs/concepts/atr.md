@@ -34,7 +34,7 @@ flowchart LR
 ```
 
 The party slots are never parsed into values, re-serialised or canonicalised. `assemble` checks only that each one
-holds exactly one JSON value in well-formed UTF-8, then copies its bytes. A seller that stores the returned bytes and
+holds exactly one JSON value in well-formed UTF-8 that two JSON readers read alike, then copies its bytes. A seller that stores the returned bytes and
 a buyer that fetches them hash the same thing.
 
 ## Assembling an ATR
@@ -83,7 +83,7 @@ record's size, and last the JSON each party slot holds:
 | Every slot name matches `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. | `core/slot-name` |
 | No slot is named `atrVersion` or `id`, and no party slot takes the binding slot's name. | `core/slot-reserved` |
 | No two party slots share a name. | `core/slot-duplicate` |
-| Each party slot's bytes are a `Uint8Array` of well-formed UTF-8 without a byte-order mark, and hold exactly one JSON value (RFC 8259) nested at most 64 levels deep. | `core/content-not-json` |
+| Each party slot's bytes are a `Uint8Array` of well-formed UTF-8 without a byte-order mark, and hold exactly one JSON value (RFC 8259) nested at most 64 levels deep, in which no object repeats a member name (names compared after their escapes are decoded), no number overflows a double, and no integer lies beyond 2^53 - 1 either way; a number beyond the safe integers is written as a string. | `core/content-not-json` |
 | The binding value is a JSON value that `JSON.stringify` writes exactly: every number a safe integer, every string free of unpaired surrogates, nested at most 64 levels deep. | `core/binding-not-json` |
 | At most 64 party slots, and the whole record at most `limits.maxBytes` bytes (1 MiB by default, and never more than 1 MiB). | `core/too-large` |
 

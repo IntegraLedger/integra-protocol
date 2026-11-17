@@ -38,11 +38,11 @@
    "content": [
     [
      "offer",
-     "207b20226e223a2031323334353637383930313233343536373839302c20226b223a2276222c20226b223a227722207d"
+     "207b20226e223a20312e323334353637383930313233343536376531392c20226b223a2276222c20226a223a227722207d20"
     ]
    ],
-   "expectBytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653431222c2262696e64223a7b7d2c226f66666572223a207b20226e223a2031323334353637383930313233343536373839302c20226b223a2276222c20226b223a227722207d7d",
-   "expectHash": "0x6cf87866ec6e5b91c840409eefd3a03716ada242ffae18a90de48b98d9a32394"
+   "expectBytesHex": "7b2261747256657273696f6e223a2231222c226964223a2236663163326230652d386434612d346333622d396532662d316137643563396233653431222c2262696e64223a7b7d2c226f66666572223a207b20226e223a20312e323334353637383930313233343536376531392c20226b223a2276222c20226a223a227722207d207d",
+   "expectHash": "0x421ce0fdbb564c591b1d17ce64370e03dacb21199bac11829205b4f85d1b6445"
   },
   {
    "name": "V3",
@@ -137,6 +137,24 @@
    "name": "V5l",
    "case": "V1's inputs with the binding value's n behind an accessor that gives 7 on its first read and 1.5 on every later read: the ATR is V1's, and never holds 1.5",
    "expectHash": "0xf693f8353bd93131403120d11e849c7646ad8976857560b9f72ac2ebe08de12f"
+  },
+  {
+   "name": "V5m",
+   "case": "content bytes {\"amount\":\"1\",\"\\u0061mount\":\"1000000\"}: the member name amount twice, the second spelled with an escape; RFC 8259 leaves a repeated name's meaning open, and Python 3.12.3 json.loads and JSON.parse both keep the second value, so a reader that keeps the first reads another amount",
+   "contentHex": "7b22616d6f756e74223a2231222c225c75303036316d6f756e74223a2231303030303030227d",
+   "expect": "core/content-not-json"
+  },
+  {
+   "name": "V5n",
+   "case": "content bytes {\"amount\":1e400}: a number that overflows a double, which JSON.parse reads as Infinity and Python 3.12.3 json.loads as inf",
+   "contentHex": "7b22616d6f756e74223a31653430307d",
+   "expect": "core/content-not-json"
+  },
+  {
+   "name": "V5o",
+   "case": "content bytes {\"amount\":9007199254740993}: an integer beyond 2^53 - 1, which JSON.parse reads as 9007199254740992 and Python 3.12.3 json.loads keeps as 9007199254740993",
+   "contentHex": "7b22616d6f756e74223a393030373139393235343734303939337d",
+   "expect": "core/content-not-json"
   }
  ],
  "links": {

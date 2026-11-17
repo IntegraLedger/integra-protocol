@@ -273,9 +273,9 @@
     {
       "unit": "The return after an agreement",
       "exports": {
-        ".": ["LEGAL_CONTEXT_HEADER", "LEGAL_CONTEXT_SERVES", "LegalContextReturn", "RETURN_VALUE_BYTES", "fromLegalContextHeader", "servesOf", "toLegalContextHeader"]
+        ".": ["LEGAL_CONTEXT_HEADER", "LEGAL_CONTEXT_META", "LEGAL_CONTEXT_SERVES", "LegalContextRecord", "LegalContextReturn", "RETURN_VALUE_BYTES", "checkLegalContextReturn", "fromLegalContextHeader", "servesOf", "toLegalContextHeader"]
       },
-      "use": "Any buyer's agent that has made an agreement returns to the resource server with H, and the sale's return value where it has one, in the Legal-Context header, and any resource server reads it; any buyer reads which charge options an agreement option serves.",
+      "use": "Any buyer's agent that has made an agreement returns to the resource server with H, and the sale's return value where it has one, in the Legal-Context header or an MCP _meta, and any resource server reads it and checks it against its own record; any buyer reads which charge options an agreement option serves.",
       "fixedBy": "legal-context-return.md; RFC 9651; legal-context-return.json."
     },
     {

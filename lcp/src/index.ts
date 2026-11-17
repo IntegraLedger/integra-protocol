@@ -32,14 +32,16 @@ export { isRefusal, readToRepeat } from "./refusal.js";
 export type { Refusal } from "./refusal.js";
 export { challengeH, challengeHash, challengeId, FETCHED } from "./mpp-challenge.js";
 export {
+  checkLegalContextReturn,
   fromLegalContextHeader,
   LEGAL_CONTEXT_HEADER,
+  LEGAL_CONTEXT_META,
   LEGAL_CONTEXT_SERVES,
   RETURN_VALUE_BYTES,
   servesOf,
   toLegalContextHeader,
 } from "./legal-context-return.js";
-export type { LegalContextReturn } from "./legal-context-return.js";
+export type { LegalContextRecord, LegalContextReturn } from "./legal-context-return.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 export type { LcpPattern } from "./x402.js";
 export type {

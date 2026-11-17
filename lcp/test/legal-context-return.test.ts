@@ -2,7 +2,7 @@
 // names the charge options it serves. Every expected value is the file's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { fromLegalContextHeader, isRefusal, servesOf, toLegalContextHeader } from "../src/index.js";
+import { checkLegalContextReturn, fromLegalContextHeader, isRefusal, servesOf, toLegalContextHeader } from "../src/index.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/legal-context-return.json", import.meta.url), "utf8"));
@@ -42,6 +42,15 @@ describe("legal-context-return.json", () => {
   for (const row of rowsOf([...V.serves, ...V.servesRefusals], "legal-context-return.json serves and servesRefusals", { exact: 16 })) {
     it(`servesOf: ${row.case}`, () => {
       expect(servesOf(row.option) ?? null).toEqual(row.expect);
+    });
+  }
+});
+
+describe("legal-context-return.json check", () => {
+  for (const row of rowsOf(V.check, "legal-context-return.json check")) {
+    it(`checkLegalContextReturn: ${row.case}`, () => {
+      const rv = bytes(row.record.returnValueHex);
+      expect(checkLegalContextReturn(row.value, { h: row.record.h, ...(rv === undefined ? {} : { returnValue: rv }) })).toEqual(row.expect);
     });
   }
 });
