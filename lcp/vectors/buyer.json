@@ -1165,6 +1165,7 @@
     "account": "xrpl:1:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
     "inputs": {
      "deposit": "1000000",
+     "ledgerIndex": 990,
      "xrpl": {
       "publicKey": "0xED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9",
       "settleDelay": 3600,
@@ -1355,7 +1356,7 @@
      }
     ]
    },
-   "note": "The link serves fixed.A, a JSON ATR lcp's check 8 admits, whose SHA-256 (GNU coreutils sha256sum and openssl dgst -sha256, which agree) is the advertised H, so a gate that parses the ATR reaches the option filter. Each document is the pairing's B2 document placed for that H, its id the base64url of H without padding (RFC 4648 section 5, Python's base64) followed by .0 and its opaque's legalContext lcp:sha256: and H, with request.amount replaced, the request re-encoded as compact JSON in base64url without padding (RFC 4648 section 5). The session's amount is a string of whole drops in decimal, at most 2^64 - 1 (the XRP Ledger's Currency Formats: an XRP amount is a string of whole drops), so every other value is mpp/request-malformed and nothing is signed."
+   "note": "The link serves fixed.A, a JSON ATR lcp's check 8 admits, whose SHA-256 (GNU coreutils sha256sum and openssl dgst -sha256, which agree) is the advertised H, so a gate that parses the ATR reaches the option filter. Each document is the pairing's B2 document placed for that H, its id the base64url of H without padding (RFC 4648 section 5, Python's base64) followed by .0 and its opaque's legalContext lcp:sha256: and H, with request.amount replaced, the request re-encoded as compact JSON in base64url without padding (RFC 4648 section 5). inputs.ledgerIndex, 990, is the validated ledger index the caller read, below the request's LastLedgerSequence 1000, so a gate that bounds the payment's window from it can sign the B2 request. The session's amount is a string of whole drops in decimal, at most 2^64 - 1 (the XRP Ledger's Currency Formats: an XRP amount is a string of whole drops), so every other value is mpp/request-malformed and nothing is signed."
   },
   {
    "name": "BW1",

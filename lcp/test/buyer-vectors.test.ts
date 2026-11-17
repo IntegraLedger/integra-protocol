@@ -226,9 +226,11 @@ describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document plac
     expect(hashEquals(h, H)).toBe(true);
   });
 
-  it("the row's account and inputs are B2's", () => {
+  it("the row's account and inputs are B2's, with the validated ledger index the caller read, below LastLedgerSequence", () => {
     expect(row("BX1").input.account).toBe(B2.account);
-    expect(row("BX1").input.inputs).toEqual(B2.inputs);
+    const { ledgerIndex, ...rest } = row("BX1").input.inputs as { ledgerIndex: number; xrpl: { lastLedgerSequence: number } };
+    expect(rest).toEqual(B2.inputs);
+    expect(Number.isSafeInteger(ledgerIndex) && ledgerIndex < rest.xrpl.lastLedgerSequence).toBe(true);
   });
 
   for (const c of cases) {
