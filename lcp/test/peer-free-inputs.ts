@@ -156,7 +156,7 @@ const suiDigestOf = (b: Uint8Array) => base58.encode(blake2b(Uint8Array.from([..
 /** V2's bytes with the version tag (byte 0) or the kind tag (byte 1) replaced. */
 const suiTagged = (at: 0 | 1, tag: number) => Uint8Array.from(SUI_TX.V2!, (x, i) => (i === at ? tag : x));
 const suiAnswer = (tx: { bcs: Uint8Array; status: string } | null) => ({
-  tx: tx === null ? null : { transactionBcs: tx.bcs, status: tx.status, checkpoint: 7n },
+  tx: tx === null ? null : { transactionBcs: tx.bcs, status: tx.status, checkpoint: 7n, balanceChanges: [] },
   epoch: 1234n,
   firstCheckpoint: null,
 });
@@ -819,13 +819,13 @@ function countedBy(network: string, answer: (method: string, args: unknown[]) =>
   return { reader, reads: () => reads };
 }
 
-const SUI_STATUS_REF = SUI.V4.ref as { network: string; digest: string; untilEpoch: string; h: string };
+const SUI_STATUS_REF = SUI.V4.ref as { network: string; payee: string; sender: string; digest: string; untilEpoch: string; h: string };
 /** The position x402-exact-sui.json's V4 reads from. */
 export const SUI_STATUS_POSITION = BigInt(SUI.V4.position);
 /** The query of x402-exact-sui.json's V4 reads: the act payment at Sui's one mark, after its position. */
 export const SUI_STATUS_QUERY = { act: "payment", finality: "final", after: SUI_STATUS_POSITION } as const;
 const suiStatusAnswer = (tx: { bcs: Uint8Array; status: string } | null, epoch: bigint, firstCheckpoint: bigint | null) => ({
-  tx: tx === null ? null : { transactionBcs: tx.bcs, status: tx.status, checkpoint: 7n },
+  tx: tx === null ? null : { transactionBcs: tx.bcs, status: tx.status, checkpoint: 7n, balanceChanges: [] },
   epoch,
   firstCheckpoint,
 });
@@ -840,21 +840,26 @@ export function suiStatusRows(): StatusRow[] {
   const ref = SUI_STATUS_REF;
   const read = (answer: unknown) => () => counted(SUI_NETWORK, "read", answer);
   const unreadable = (reason: string) => ({ state: "unreadable", reason, foreign: [] });
-  const search = { state: "pending", reason: "search-incomplete", foreign: [] };
+  const gap = unreadable("history-gap");
   const decoded = { expect: unreadable("unparseable"), reads: 1 };
   const tagged = (at: 0 | 1, tag: number) => ({ ref: { ...ref, digest: suiDigestOf(suiTagged(at, tag)) }, reader: read(suiStatusAnswer({ bcs: suiTagged(at, tag), status: "SUCCESS" }, 1234n, null)) });
+  // V2's signed transfer, command 1, names the payee; the answer shows no balance change, so it moved a transfer of zero.
+  const settled = {
+    state: "settled", transaction: ref.digest, position: 7n, finality: "final", foreign: [],
+    moved: [{ asset: "0x2::sui::SUI", amount: "0", to: ref.payee, transaction: ref.digest, place: 1 }], signer: ref.sender, presented: "yes",
+  };
   return [
-    { case: "V2's transaction, executed at checkpoint 7", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "SUCCESS" }, 1234n, null)), expect: { state: "settled", transaction: ref.digest, position: 7n, finality: "final", foreign: [] }, reads: 1, without: decoded },
-    { case: "V2's transaction, aborted", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "FAILURE" }, 1234n, null)), expect: search, reads: 1, without: decoded },
-    { case: "no transaction, at its bound", ref, reader: read(suiStatusAnswer(null, 1234n, 0n)), expect: search, reads: 1 },
-    { case: "no transaction past its bound, the history held from the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION)), expect: search, reads: 1 },
-    { case: "no transaction past its bound, the history held only after the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION + 1n)), expect: search, reads: 1 },
-    { case: "no transaction past its bound, no history named", ref, reader: read(suiStatusAnswer(null, 1235n, null)), expect: search, reads: 1 },
+    { case: "V2's transaction, executed at checkpoint 7", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "SUCCESS" }, 1234n, null)), expect: settled, reads: 1, without: decoded },
+    { case: "V2's transaction, aborted, no range stated for the search", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V2!, status: "FAILURE" }, 1234n, null)), expect: gap, reads: 1, without: decoded },
+    { case: "no transaction, at its bound", ref, reader: read(suiStatusAnswer(null, 1234n, 0n)), expect: { state: "pending", reason: "instrument-live", foreign: [] }, reads: 1 },
+    { case: "no transaction past its bound, the history held from the position, no range stated for the search", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION)), expect: gap, reads: 1 },
+    { case: "no transaction past its bound, the history held only after the position", ref, reader: read(suiStatusAnswer(null, 1235n, SUI_STATUS_POSITION + 1n)), expect: gap, reads: 1 },
+    { case: "no transaction past its bound, no history named", ref, reader: read(suiStatusAnswer(null, 1235n, null)), expect: gap, reads: 1 },
     { case: "a read that fails", ref, reader: read("error"), expect: unreadable("transport"), reads: 1 },
     { case: "an answer out of the reader's form", ref, reader: read({ epoch: "1234" }), expect: unreadable("unparseable"), reads: 1 },
     { case: "V1's bytes under V2's digest", ref, reader: read(suiStatusAnswer({ bcs: SUI_TX.V1!, status: "SUCCESS" }, 1234n, null)), expect: unreadable("unparseable"), reads: 1 },
-    { case: "bytes whose version tag is not V1's", ...tagged(0, 1), expect: search, reads: 1 },
-    { case: "a transaction whose kind is not programmable", ...tagged(1, 1), expect: search, reads: 1 },
+    { case: "bytes whose version tag is not V1's", ...tagged(0, 1), expect: unreadable("unparseable"), reads: 1 },
+    { case: "a transaction whose kind is not programmable", ...tagged(1, 1), expect: unreadable("unparseable"), reads: 1 },
     { case: "a reader for another network", ref, reader: () => counted("sui:mainnet", "read", null), expect: unreadable("chain-mismatch"), reads: 0 },
     { case: "a ref whose h is not a hash", ref: { ...ref, h: "0x12" }, reader: read(null), expect: unreadable("unparseable"), reads: 0 },
   ];

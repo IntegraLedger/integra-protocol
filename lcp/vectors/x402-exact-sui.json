@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/sui pairing: the sui entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is Sui testnet transaction EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE, its transactionBcs read over GraphQL (graphql.testnet.sui.io) on 2026-09-25. V2 and V3 are recipe R, built with @mysten/sui 2.35.0. Every digest is Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58. O is a test option: the option's values are not read by the pairing beyond its filter. V4's status rows read with position 5, the checkpoint from which the caller needs the endpoint's history. A reader answer's firstCheckpoint is the endpoint's serviceConfig.availableRange(type: \"Query\", field: \"transaction\").first, which Sui's GraphQL schema (MystenLabs/sui, crates/sui-indexer-alt-graphql/schema.graphql) defines as the \"Inclusive lower checkpoint for which data is available\"; a row that gives none answers null, an endpoint that states no range. An absent transaction past its epoch bound is expired only while the endpoint holds transactions from the position or earlier. V3's MoveCall row is recipe R with one MoveCall appended, written with @mysten/sui 2.35.0's bcs (@mysten/bcs 2.1.2). V4's status rows and the plant are read with the act payment at the one mark final, after V4's position, and answer as the profile read-status gives them: since the read holds no search for H, an aborted transaction, an expired one and one not found answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
+ "about": "Vectors for the x402/exact/sui pairing: the sui entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is Sui testnet transaction EV7D7z9gjzjrAQSKWSW8S1iLGdk8aEVPjn3zLA1aUSLE, its transactionBcs read over GraphQL (graphql.testnet.sui.io) on 2026-09-25. V2 and V3 are recipe R, built with @mysten/sui 2.35.0. Every digest is Python 3's hashlib.blake2b(b\"TransactionData::\" + bytes, digest_size=32), then base58. O is a test option: the option's values are not read by the pairing beyond its filter. V4's status rows read with position 5, the checkpoint from which the caller needs the endpoint's history. A reader answer's firstCheckpoint is the endpoint's serviceConfig.availableRange(type: \"Query\", field: \"transaction\").first, which Sui's GraphQL schema (MystenLabs/sui, crates/sui-indexer-alt-graphql/schema.graphql) defines as the \"Inclusive lower checkpoint for which data is available\"; a row that gives none answers null, an endpoint that states no range. An absent transaction past its epoch bound, while the endpoint holds transactions from the position or earlier, waits for the search for H (the profile x402-exact-sui.md, rule 13), which at this release proves no absence (rule 15); without that history it is unreadable history-gap. V3's MoveCall row is recipe R with one MoveCall appended, written with @mysten/sui 2.35.0's bcs (@mysten/bcs 2.1.2). V4's status rows and the plant are read with the act payment at the one mark final, after V4's position, and answer as the profile read-status gives them: a reader answer's searchRange is the range availableRange(type: \"Query\", field: \"transactions\", filters: [\"sentAddress\"]) states (schema.graphql of @mysten/sui 2.35.0, line 3968, as installed), with the epoch of its last checkpoint, and its pages are the sender's transactions with their effects' balanceChangesJson; both are constructed, in the shapes the profile states, and no endpoint was read for them. Every balance change is constructed. The transactions R2 (recipe R with Epoch(1240)), RP (recipe R sent by the payee), RN (recipe R with the SHA-256 of the empty string in place of H) and RO (recipe R with Epoch(1241), paying the account fixed.other) under search were built with @mysten/sui 2.35.0 and digested with Python's hashlib as above. Each expected answer was derived by hand from read-status.md and the profile x402-exact-sui.md: a search read whole proves no absence at this release (the profile's rule 15), so where the read would answer failed for any reason but before-position it answers pending search-incomplete at the search's head. RG, RS and RM under search were built with @mysten/sui 2.35.0 (its coinWithBalance intent with the build option assumeSufficientAddressBalances, so no endpoint was read) and digested with Python's hashlib as above: RG pays 10000 of testnet USDC (0xa1ec7fc0…::usdc::USDC) on the gasless path, price 0, budget 0 and no gas payment, the intent drawing it from the payer's address balance and sending the remainder back to the sender with 0x2::coin::send_funds; RS sends 1000 MIST of SUI to the payee, who owns the gas data; RM passes 10000 MIST split from the gas coin to a Move call, 0xabab…::shop::pay, that credits the payee, no command naming the payee. Their balance changes, the coin type with type parameters (0x5c5c…::reserve::CToken<…>) and the balance change whose owner is no address are constructed. Each entry of what moved is named by its transaction and its place: a balance change by its owner and coin type, a signed transfer by its command's index (the profile, rule 9).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
@@ -15,7 +15,8 @@
   "resource": {
    "url": "https://api.seller.example/v1/quote"
   },
-  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+  "other": "0x7777777777777777777777777777777777777777777777777777777777777777"
  },
  "V1": {
   "case": "the real rail: every input is used by settle_payment",
@@ -41,7 +42,8 @@
    "network": "sui:testnet",
    "payee": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
    "digest": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
-   "untilEpoch": "1234"
+   "untilEpoch": "1234",
+   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
   }
  },
  "V3": [
@@ -78,7 +80,8 @@
     "network": "sui:testnet",
     "payee": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
     "digest": "9x7AxqgfG1R1RCp4zJszPrVx8rKxPSStuGomPTtGWeai",
-    "untilEpoch": null
+    "untilEpoch": null,
+    "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
    }
   },
   {
@@ -103,7 +106,8 @@
    "payee": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
    "digest": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
    "untilEpoch": "1234",
-   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
   },
   "position": "5",
   "status": [
@@ -112,7 +116,19 @@
     "answer": {
      "tx": "V2",
      "status": "SUCCESS",
-     "checkpoint": "7"
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-10000"
+      }
+     ]
     },
     "epoch": "1234",
     "expect": {
@@ -120,7 +136,18 @@
      "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
      "position": "7",
      "finality": "final",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "yes"
     }
    },
    {
@@ -128,8 +155,8 @@
     "answer": null,
     "epoch": "1234",
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
+     "state": "unreadable",
+     "reason": "history-gap",
      "foreign": []
     }
    },
@@ -139,8 +166,8 @@
     "epoch": "1235",
     "firstCheckpoint": "5",
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
+     "state": "unreadable",
+     "reason": "history-gap",
      "foreign": []
     }
    },
@@ -189,8 +216,8 @@
     "epoch": "1235",
     "firstCheckpoint": "6",
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
+     "state": "unreadable",
+     "reason": "history-gap",
      "foreign": []
     }
    },
@@ -200,9 +227,914 @@
     "epoch": "1235",
     "firstCheckpoint": null,
     "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "no transaction, epoch 1234, the endpoint holding transactions from checkpoint 5: the signed bytes can still land",
+    "answer": null,
+    "epoch": "1234",
+    "firstCheckpoint": "5",
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    }
+   },
+   {
+    "case": "SUCCESS with no checkpoint: executed, below the one mark a query can ask, never settled",
+    "answer": {
+     "tx": "V2",
+     "status": "SUCCESS",
+     "checkpoint": null,
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "expect": {
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+     "finality": "executed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
+    }
+   },
+   {
+    "case": "SUCCESS at checkpoint 5, the position given: before-position",
+    "answer": {
+     "tx": "V2",
+     "status": "SUCCESS",
+     "checkpoint": "5",
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+     "position": "5",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
+    }
+   },
+   {
+    "case": "the act the caller gave by its reference holds the digest: never settled on, a foreign item given while the search proves no absence",
+    "answer": {
+     "tx": "V2",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1234"
+    },
+    "pages": [
+     {
+      "transactions": [],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "query": {
+     "others": [
+      {
+       "ref": {
+        "digest": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu"
+       }
+      }
+     ]
+    },
+    "expect": {
      "state": "pending",
      "reason": "search-incomplete",
+     "search": "9",
+     "foreign": [
+      {
+       "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+       "position": "7",
+       "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "moved": [
+        {
+         "asset": "0x2::sui::SUI",
+         "amount": "10000",
+         "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+         "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+         "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+        }
+       ],
+       "reason": "given"
+      }
+     ]
+    }
+   },
+   {
+    "case": "RO under its own digest pays another account: a payment, it names no account of the payee and is a foreign item while the search proves no absence",
+    "tx": "RO",
+    "untilEpoch": "1241",
+    "answer": {
+     "tx": "RO",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x7777777777777777777777777777777777777777777777777777777777777777",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1234"
+    },
+    "pages": [
+     {
+      "transactions": [],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "9",
+     "foreign": [
+      {
+       "transaction": "2Ze3tacYJ9UEAFo8eGu1NJk6F2jt4Po7m876FXmVmoQP",
+       "position": "7",
+       "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "moved": [
+        {
+         "asset": "0x2::sui::SUI",
+         "amount": "10000",
+         "to": "0x7777777777777777777777777777777777777777777777777777777777777777",
+         "transaction": "2Ze3tacYJ9UEAFo8eGu1NJk6F2jt4Po7m876FXmVmoQP",
+         "place": "0x7777777777777777777777777777777777777777777777777777777777777777:0x2::sui::SUI"
+        }
+       ],
+       "reason": "other-account"
+      }
+     ]
+    }
+   },
+   {
+    "case": "RO under its own digest, the act agreement: an agreement is held to no account, settled",
+    "tx": "RO",
+    "untilEpoch": "1241",
+    "answer": {
+     "tx": "RO",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x7777777777777777777777777777777777777777777777777777777777777777",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "query": {
+     "act": "agreement"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "2Ze3tacYJ9UEAFo8eGu1NJk6F2jt4Po7m876FXmVmoQP",
+     "position": "7",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x7777777777777777777777777777777777777777777777777777777777777777",
+       "transaction": "2Ze3tacYJ9UEAFo8eGu1NJk6F2jt4Po7m876FXmVmoQP",
+       "place": "0x7777777777777777777777777777777777777777777777777777777777777777:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "lapsed; the search finds R2, signed again over H under another digest, paying the payee at checkpoint 8: settled on it, not the payment presented",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1235"
+    },
+    "pages": [
+     {
+      "transactions": [
+       {
+        "tx": "R2",
+        "status": "SUCCESS",
+        "checkpoint": "8",
+        "balanceChanges": [
+         {
+          "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+          "coinType": "0x2::sui::SUI",
+          "amount": "10000"
+         },
+         {
+          "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+          "coinType": "0x2::sui::SUI",
+          "amount": "-10000"
+         }
+        ]
+       }
+      ],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe",
+     "position": "8",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "lapsed; the search meets RN, which carries no H, and RP, signed by the payee: RP a foreign item, and the search, read whole, proves no absence at this release",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1235"
+    },
+    "pages": [
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "6"
+       },
+       {
+        "tx": "RP",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "9",
+     "foreign": [
+      {
+       "transaction": "BTAYkhU61eaG5BLgNnjwecRnSrzuxmmUKHKmjnkvVDWu",
+       "position": "7",
+       "signer": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "moved": [],
+       "reason": "payee-signed"
+      }
+     ]
+    }
+   },
+   {
+    "case": "lapsed; pages left at the read's bound: search-incomplete at the checkpoint before the last one read",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1235"
+    },
+    "pages": [
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     },
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     },
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     },
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     },
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     },
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     },
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     },
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7"
+       }
+      ],
+      "hasNextPage": true,
+      "endCursor": "c"
+     }
+    ],
+    "expectSearches": 8,
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "6",
      "foreign": []
+    }
+   },
+   {
+    "case": "lapsed; resumed from the search position 6, the search finds R2 at checkpoint 8",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1235"
+    },
+    "query": {
+     "search": "6"
+    },
+    "pages": [
+     {
+      "transactions": [
+       {
+        "tx": "R2",
+        "status": "SUCCESS",
+        "checkpoint": "8",
+        "balanceChanges": [
+         {
+          "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+          "coinType": "0x2::sui::SUI",
+          "amount": "10000"
+         },
+         {
+          "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+          "coinType": "0x2::sui::SUI",
+          "amount": "-10000"
+         }
+        ]
+       }
+      ],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "expectSearchFrom": "6",
+    "expect": {
+     "state": "settled",
+     "transaction": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe",
+     "position": "8",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "lapsed; the search passes a transaction whose bytes do not hash to the digest the endpoint names: named, its position held before it",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1235"
+    },
+    "pages": [
+     {
+      "transactions": [
+       {
+        "tx": "RN",
+        "status": "SUCCESS",
+        "checkpoint": "7",
+        "digest": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe"
+       }
+      ],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "6",
+     "foreign": [],
+     "undecoded": [
+      "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe"
+     ]
+    }
+   },
+   {
+    "case": "lapsed; the endpoint states no range for the sender filter",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "lapsed; the range the endpoint states for the sender filter begins after the position given",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "6",
+     "last": "9",
+     "epoch": "1235"
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "RG under its own digest, a gasless payment of testnet USDC the balance intent drew from the payer's address balance: settled on the payee's change, and the remainder the intent sends back to the sender is no entry of what moved",
+    "tx": "RG",
+    "untilEpoch": "1234",
+    "answer": {
+     "tx": "RG",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+       "amount": "10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+       "amount": "-10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "expect": {
+     "state": "settled",
+     "transaction": "53eJ2aKKCiftT3WN97H28kHNNFFebt24zFbXqpZPSxNR",
+     "position": "7",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "53eJ2aKKCiftT3WN97H28kHNNFFebt24zFbXqpZPSxNR",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "RS under its own digest, 1000 MIST sent to a payee that owns the gas data, whose change the gas outweighs: settled by the recipient the signed send_funds names, command 3, with the payee's net change in SUI",
+    "tx": "RS",
+    "untilEpoch": "1234",
+    "answer": {
+     "tx": "RS",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-1000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-1000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "expect": {
+     "state": "settled",
+     "transaction": "GchHexbx7KBY2rN5ACVuMg7Rhg9wNMEr2XiWKTtqp2Zj",
+     "position": "7",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+       "amount": "-1000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "GchHexbx7KBY2rN5ACVuMg7Rhg9wNMEr2XiWKTtqp2Zj",
+       "place": 3
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "RM under its own digest, a Move call that credits the payee and no command naming the payee: settled on the payee's balance change",
+    "tx": "RM",
+    "untilEpoch": "1234",
+    "answer": {
+     "tx": "RM",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "expect": {
+     "state": "settled",
+     "transaction": "DvNLk2vVDUzHGwciWaehfKJWFg12CKeqY7xUXozggxto",
+     "position": "7",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "DvNLk2vVDUzHGwciWaehfKJWFg12CKeqY7xUXozggxto",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "RO under its own digest pays another account, and the search finds R2, signed again over H, paying the payee at checkpoint 8: settled on R2, RO named a foreign item other-account",
+    "tx": "RO",
+    "untilEpoch": "1241",
+    "answer": {
+     "tx": "RO",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x7777777777777777777777777777777777777777777777777777777777777777",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1234"
+    },
+    "pages": [
+     {
+      "transactions": [
+       {
+        "tx": "R2",
+        "status": "SUCCESS",
+        "checkpoint": "8",
+        "balanceChanges": [
+         {
+          "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+          "coinType": "0x2::sui::SUI",
+          "amount": "10000"
+         },
+         {
+          "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+          "coinType": "0x2::sui::SUI",
+          "amount": "-10000"
+         }
+        ]
+       }
+      ],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe",
+     "position": "8",
+     "finality": "final",
+     "foreign": [
+      {
+       "transaction": "2Ze3tacYJ9UEAFo8eGu1NJk6F2jt4Po7m876FXmVmoQP",
+       "position": "7",
+       "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "moved": [
+        {
+         "asset": "0x2::sui::SUI",
+         "amount": "10000",
+         "to": "0x7777777777777777777777777777777777777777777777777777777777777777",
+         "transaction": "2Ze3tacYJ9UEAFo8eGu1NJk6F2jt4Po7m876FXmVmoQP",
+         "place": "0x7777777777777777777777777777777777777777777777777777777777777777:0x2::sui::SUI"
+        }
+       ],
+       "reason": "other-account"
+      }
+     ],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "SUCCESS, checkpoint 7, beside the sender's change in a coin type with type parameters: the coin type decodes, settled",
+    "answer": {
+     "tx": "V2",
+     "status": "SUCCESS",
+     "checkpoint": "7",
+     "balanceChanges": [
+      {
+       "owner": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "coinType": "0x2::sui::SUI",
+       "amount": "10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-10000"
+      },
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c::reserve::CToken<0x5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d::pool::MAIN, 0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC>",
+       "amount": "-5"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "expect": {
+     "state": "settled",
+     "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+     "position": "7",
+     "finality": "final",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x2::sui::SUI",
+       "amount": "10000",
+       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+       "place": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa:0x2::sui::SUI"
+      }
+     ],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "lapsed; the search passes R2 at checkpoint 7 with a balance change whose owner is no address, then RP, signed by the payee, at checkpoint 8: R2 named, its position held before it, and the page read on",
+    "answer": null,
+    "epoch": "1235",
+    "firstCheckpoint": "0",
+    "searchRange": {
+     "first": "0",
+     "last": "9",
+     "epoch": "1235"
+    },
+    "pages": [
+     {
+      "transactions": [
+       {
+        "tx": "R2",
+        "status": "SUCCESS",
+        "checkpoint": "7",
+        "balanceChanges": [
+         {
+          "owner": "0xnot-an-address",
+          "coinType": "0x2::sui::SUI",
+          "amount": "10000"
+         }
+        ]
+       },
+       {
+        "tx": "RP",
+        "status": "SUCCESS",
+        "checkpoint": "8"
+       }
+      ],
+      "hasNextPage": false,
+      "endCursor": null
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "6",
+     "foreign": [
+      {
+       "transaction": "BTAYkhU61eaG5BLgNnjwecRnSrzuxmmUKHKmjnkvVDWu",
+       "position": "8",
+       "signer": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
+       "moved": [],
+       "reason": "payee-signed"
+      }
+     ],
+     "undecoded": [
+      "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe"
+     ]
+    }
+   },
+   {
+    "case": "FAILURE at checkpoint 5, the position given, gas its one balance change: before-position, naming it with nothing moved, a failed result moving nothing",
+    "answer": {
+     "tx": "V2",
+     "status": "FAILURE",
+     "checkpoint": "5",
+     "balanceChanges": [
+      {
+       "owner": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b",
+       "coinType": "0x2::sui::SUI",
+       "amount": "-2000"
+      }
+     ]
+    },
+    "epoch": "1234",
+    "firstCheckpoint": "0",
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "FNMud69cyiAmZqf4kM26uQpn2KTpQZgWQnKd5zFnrqLu",
+     "position": "5",
+     "finality": "final",
+     "foreign": [],
+     "moved": [],
+     "signer": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
     }
    }
   ],
@@ -240,8 +1172,22 @@
   "expect": {
    "state": "pending",
    "reason": "search-incomplete",
+   "search": "9",
    "foreign": []
-  }
+  },
+  "firstCheckpoint": "0",
+  "searchRange": {
+   "first": "0",
+   "last": "9",
+   "epoch": "1234"
+  },
+  "pages": [
+   {
+    "transactions": [],
+    "hasNextPage": false,
+    "endCursor": null
+   }
+  ]
  },
  "agreedRefusals": {
   "about": "Refusal codes where the pairing leaves the code to the implementation. A transaction written {\"$repeat\": [s, n]} is s repeated n times; the rows below repeat AA and U+10000, four UTF-16 code units and three code points, and a length is counted in UTF-16 code units, as JavaScript's String length counts it.",
@@ -315,7 +1261,8 @@
      "network": "sui:testnet",
      "payee": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
      "digest": "8h31hqhLmgQKquKtuqVEMvWVP7SaMJLMVhcMrXgNpK1i",
-     "untilEpoch": "1234"
+     "untilEpoch": "1234",
+     "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
     }
    },
    {
@@ -331,7 +1278,8 @@
      "network": "sui:testnet",
      "payee": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
      "digest": "28fhq3ZbGct7K31dSgPoU7DJsVpbwh3cTpr3hb9BYXFp",
-     "untilEpoch": null
+     "untilEpoch": null,
+     "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
     }
    }
   ]
@@ -531,7 +1479,7 @@
     "expect": "x402/option-not-this-pairing"
    },
    {
-    "case": "the option with amount \"0\", which is zero",
+    "case": "the option with amount \"0\" on the gasless path, whose floor is the coin type's smallest transfer, so zero is not offered there (the profile, rule 16)",
     "pairing": "x402/exact/sui",
     "payment": "/buyer/rows/1/input/presented",
     "accepted": {
@@ -540,7 +1488,10 @@
      "amount": "0",
      "asset": "0x2::sui::SUI",
      "payTo": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa",
-     "maxTimeoutSeconds": 60
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "gasless": true
+     }
     },
     "expect": "x402/option-not-this-pairing"
    },
@@ -613,6 +1564,172 @@
      "maxTimeoutSeconds": 60
     },
     "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ },
+ "search": {
+  "R2": {
+   "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAB2AQAAAAAAAA=",
+   "digest": "6twCNwsnycov3xxBYAo8xnZmrEQ6sKwgn8aiDNsZ5gFe",
+   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
+  },
+  "RP": {
+   "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAglpO8avwMUyi6NvrwPFFO8xIofCCWk7xq/AxTKLo2+gAglpO8avwMUyi6NvrwPFFO8xIofCCWk7xq/AxTKLo2+ugDAAAAAAAAQEtMAAAAAAAB0gQAAAAAAAA=",
+   "digest": "BTAYkhU61eaG5BLgNnjwecRnSrzuxmmUKHKmjnkvVDWu",
+   "sender": "0x209693bc6afc0c5328ba36faf03c514ef312287c209693bc6afc0c5328ba36fa"
+  },
+  "RN": {
+   "transactionBase64": "AAADACDjsMRCmPwcFJr79MiZb7kkJ65B5GSbk0yklZkbeFK4VQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAB0gQAAAAAAAA=",
+   "digest": "GqmAgKdn8utWTxpmxw1TrwSvdARm3wjmzR7JhcUuGLqb",
+   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
+  },
+  "RO": {
+   "transactionBase64": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAIHd3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAB2QQAAAAAAAA=",
+   "digest": "2Ze3tacYJ9UEAFo8eGu1NJk6F2jt4Po7m876FXmVmoQP",
+   "sender": "0x2eba319f6171320e2af116fc8f21981b67e72ca7f0c060014364720f1394da1b"
+  },
+  "RG": {
+   "transactionBase64": "AAAFACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAgIJaTvGr8DFMoujb68DxRTvMSKHwglpO8avwMUyi6NvoCABAnAAAAAAAAAAeh7H/ACm9A25aTrRQV0MGTrTkGSUQozyUmIQN71xF+KQR1c2RjBFVTREMAAAAIECcAAAAAAAAAIC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNobBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgRjb2luDHJlZGVlbV9mdW5kcwEHoex/wApvQNuWk60UFdDBk605BklEKM8lJiEDe9cRfikEdXNkYwRVU0RDAAEBAgACAgAAAQEDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgRjb2luCnNlbmRfZnVuZHMBB6Hsf8AKb0DblpOtFBXQwZOtOQZJRCjPJSYhA3vXEX4pBHVzZGMEVVNEQwACAgAAAQQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACBGNvaW4Kc2VuZF9mdW5kcwEHoex/wApvQNuWk60UFdDBk605BklEKM8lJiEDe9cRfikEdXNkYwRVU0RDAAIDAQAAAAEBAC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNobAC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNobAAAAAAAAAAAAAAAAAAAAAAHSBAAAAAAAAA==",
+   "digest": "53eJ2aKKCiftT3WN97H28kHNNFFebt24zFbXqpZPSxNR"
+  },
+  "RS": {
+   "transactionBase64": "AAAFACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAgIJaTvGr8DFMoujb68DxRTvMSKHwglpO8avwMUyi6NvoCAOgDAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgNzdWkDU1VJAAAACOgDAAAAAAAAACAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIEY29pbgxyZWRlZW1fZnVuZHMBBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACA3N1aQNTVUkAAQECAAICAAABAQMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACBGNvaW4Kc2VuZF9mdW5kcwEHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIDc3VpA1NVSQACAgAAAQQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACBGNvaW4Kc2VuZF9mdW5kcwEHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIDc3VpA1NVSQACAwEAAAABAQAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwGampqampqampqampqampqampqampqampqampqampqamgMAAAAAAAAAIC9d1SoP+bpkNLhx3zNaCZ5nd0fWb4CXtTwM4bn8IS8PIJaTvGr8DFMoujb68DxRTvMSKHwglpO8avwMUyi6NvroAwAAAAAAAEBLTAAAAAAAAdIEAAAAAAAA",
+   "digest": "GchHexbx7KBY2rN5ACVuMg7Rhg9wNMEr2XiWKTtqp2Zj"
+  },
+  "RM": {
+   "transactionBase64": "AAACACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAACAgABAQEAAKurq6urq6urq6urq6urq6urq6urq6urq6urq6urq6urBHNob3ADcGF5AAEDAAAAAC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNobAC66MZ9hcTIOKvEW/I8hmBtn5yyn8MBgAUNkcg8TlNob6AMAAAAAAABAS0wAAAAAAAHSBAAAAAAAAA==",
+   "digest": "DvNLk2vVDUzHGwciWaehfKJWFg12CKeqY7xUXozggxto"
+  }
+ },
+ "filter": {
+  "about": "The option filter's rows: V's fixed option O with the members named changed, read by pairingOf and advertise. Each gas path is x402's Sui scheme's (extra.gasStation, scheme_exact_sui.md, Sponsored Transactions) or the profile's (extra.gasless, which the scheme does not define; the profile x402-exact-sui.md, rule 7). An amount of zero is admitted where the agreement's floor is zero, a sponsor or the buyer paying gas, and not on the gasless path, whose floor is the coin type's smallest transfer on the network (Sui a0516ffd, crates/sui-protocol-config/src/lib.rs:4709, :4777-4778; the profile, rule 16). expect is true for an option this pairing pays, else the code advertise gives.",
+  "rows": [
+   {
+    "case": "sponsored: extra.gasStation an https URL",
+    "change": {
+     "extra": {
+      "gasStation": "https://gas.seller.example/v1/sponsor"
+     }
+    },
+    "expect": true
+   },
+   {
+    "case": "gasless: extra.gasless true",
+    "change": {
+     "extra": {
+      "gasless": true
+     }
+    },
+    "expect": true
+   },
+   {
+    "case": "the buyer pays: neither member",
+    "change": {},
+    "expect": true
+   },
+   {
+    "case": "both extra.gasStation and extra.gasless",
+    "change": {
+     "extra": {
+      "gasStation": "https://gas.seller.example/v1/sponsor",
+      "gasless": true
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "extra.gasStation an http URL",
+    "change": {
+     "extra": {
+      "gasStation": "http://gas.seller.example/v1/sponsor"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "extra.gasStation that is no URL",
+    "change": {
+     "extra": {
+      "gasStation": "gas station"
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "extra.gasless false",
+    "change": {
+     "extra": {
+      "gasless": false
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "amount 0 where the buyer pays",
+    "change": {
+     "amount": "0"
+    },
+    "expect": true
+   },
+   {
+    "case": "amount 0 on the sponsored path",
+    "change": {
+     "amount": "0",
+     "extra": {
+      "gasStation": "https://gas.seller.example/v1/sponsor"
+     }
+    },
+    "expect": true
+   },
+   {
+    "case": "amount 0 on the gasless path",
+    "change": {
+     "amount": "0",
+     "extra": {
+      "gasless": true
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "amount 00",
+    "change": {
+     "amount": "00"
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ },
+ "sponsored": {
+  "about": "complete's rows on the sponsored path (the profile x402-exact-sui.md, rule 7; x402's scheme_exact_sui.md, Sponsored Transactions): the option is O with extra.gasStation, sent is the transaction the client sends to the gas station (recipe R, its gas data the client's own), and each row's returned transaction is the one the client signs, each built with @mysten/sui 2.35.0. The station's gas data (owner 0x5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b, price 750, budget 4000000, one gas coin) may differ from the one sent; the sender, the kind (inputs and commands) and the expiration may not. expect is true where complete gives the payment, else its code.",
+  "gasStation": "https://gas.seller.example/v1/sponsor",
+  "sent": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaG+gDAAAAAAAAQEtMAAAAAAAB0gQAAAAAAAA=",
+  "rows": [
+   {
+    "case": "the returned transaction differs from the one sent in its gas data alone",
+    "returned": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwGbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubmwUAAAAAAAAAIC9d1SoP+bpkNLhx3zNaCZ5nd0fWb4CXtTwM4bn8IS8PW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1vuAgAAAAAAAAAJPQAAAAAAAdIEAAAAAAAA",
+    "expect": true
+   },
+   {
+    "case": "the returned transaction moves 20000 in place of 10000",
+    "returned": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIIE4AAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwGbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubmwUAAAAAAAAAIC9d1SoP+bpkNLhx3zNaCZ5nd0fWb4CXtTwM4bn8IS8PW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1vuAgAAAAAAAAAJPQAAAAAAAdIEAAAAAAAA",
+    "expect": "sui/not-as-sent"
+   },
+   {
+    "case": "the returned transaction's expiration is Epoch(1300) in place of Epoch(1234)",
+    "returned": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwGbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubmwUAAAAAAAAAIC9d1SoP+bpkNLhx3zNaCZ5nd0fWb4CXtTwM4bn8IS8PW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1vuAgAAAAAAAAAJPQAAAAAAARQFAAAAAAAA",
+    "expect": "sui/not-as-sent"
+   },
+   {
+    "case": "the returned transaction's sender is another account",
+    "returned": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgB3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3dwGbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubmwUAAAAAAAAAIC9d1SoP+bpkNLhx3zNaCZ5nd0fWb4CXtTwM4bn8IS8PW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1vuAgAAAAAAAAAJPQAAAAAAAdIEAAAAAAAA",
+    "expect": "sui/not-as-sent"
+   },
+   {
+    "case": "no transaction sent is given",
+    "returned": "AAADACC6eBa/jwHP6kFBQN5driIjsANho5YXepy0EP9h8gAVrQAIECcAAAAAAAAAICCWk7xq/AxTKLo2+vA8UU7zEih8IJaTvGr8DFMoujb6AgIAAQEBAAEBAwAAAAABAgAuujGfYXEyDirxFvyPIZgbZ+csp/DAYAFDZHIPE5TaGwGbm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubm5ubmwUAAAAAAAAAIC9d1SoP+bpkNLhx3zNaCZ5nd0fWb4CXtTwM4bn8IS8PW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1vuAgAAAAAAAAAJPQAAAAAAAdIEAAAAAAAA",
+    "sent": null,
+    "expect": "sui/not-as-sent"
    }
   ]
  }

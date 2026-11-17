@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 492 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 494 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -27,7 +27,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 |---|---|---|
 | [`core`](#core) | 6 | The core: `assemble` and the JSON checks under it. |
 | [`discovery`](#discovery) | 20 | The discovery document (`@integraledger/lcp/discovery`). |
-| [`x402`](#x402) | 34 | x402 documents, the request commitment, and the checks every x402 pairing shares (`@integraledger/lcp/x402` and the x402 pairings on each rail). |
+| [`x402`](#x402) | 35 | x402 documents, the request commitment, and the checks every x402 pairing shares (`@integraledger/lcp/x402` and the x402 pairings on each rail). |
 | [`mpp`](#mpp) | 52 | MPP challenges and credentials, and the checks every MPP pairing shares (`@integraledger/lcp/mpp`). |
 | [`ack`](#ack) | 10 | ACK Payment Requests and receipts (`@integraledger/lcp/ack`). |
 | [`acp`](#acp) | 16 | ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`). |
@@ -49,7 +49,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`). |
 | [`polkadot`](#polkadot) | 19 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
 | [`starknet`](#starknet) | 15 | Starknet (`@integraledger/lcp/starknet`). |
-| [`sui`](#sui) | 11 | Sui (`@integraledger/lcp/sui`). |
+| [`sui`](#sui) | 12 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 15 | TON (`@integraledger/lcp/tvm`). |
 | [`ln`](#ln) | 17 | Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/lightning`). |
@@ -102,6 +102,7 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 
 | Code | Meaning |
 |---|---|
+| `x402/accepted-not-option` | A pairing's `reference` is given a payment whose `accepted` is not the option it is given, compared by RFC 8785 form. |
 | `x402/channel-id-mismatch` | The EVM batch pairing finds that the voucher's `channelId` is not the id computed from the payment's channel config, or `buildWithin` is given a channel config whose `salt` is not H. |
 | `x402/channel-kind-unknown` | The batch pairing's `channel.kind` cannot classify the payment as an opening, a payment within the channel, or a close (an unknown payload `type`, or an SVM deposit whose channel instruction is neither `open` nor `top_up`); its `channel.ref` refuses such a payment with this code, as it refuses every payment `channel.kind` refuses with `channel.kind`'s code. |
 | `x402/delegation-empty` | At the ERC-7710 salt level, the payment's permission context decodes to no delegations. |
@@ -663,6 +664,7 @@ Sui (`@integraledger/lcp/sui`).
 | `sui/ambiguous` | The Sui transaction has more than one unused `Pure` input. |
 | `sui/hash-not-carried` | The Sui transaction has no unused `Pure` input, or its one unused `Pure` input is not 32 bytes. |
 | `sui/network-malformed` | A Sui option's network starts with `sui:` but is not `sui:mainnet`, `sui:testnet` or `sui:devnet`. |
+| `sui/not-as-sent` | x402 `complete` is given, on an option with `extra.gasStation`, no transaction the client sent to the gas station, or a signed transaction that differs from the one sent in its sender, its kind (inputs and commands) or its expiration; only the gas data may differ. |
 | `sui/not-found` | **Read to repeat.** The Sui reader found no transaction for the digest. |
 | `sui/not-programmable` | The Sui `TransactionData` V1 given to `decodeSuiTx`, or read by `suiRecover` under the reference's digest, has a kind that is not `ProgrammableTransaction`; a `TransactionData` of another version does not decode, and is `sui/tx-malformed`. |
 | `sui/peer-missing` | The optional peer dependency `@mysten/sui`, with which the Sui pairing reads and writes transaction bytes, cannot be loaded. x402 `build` never gives it: it checks H, then the choice's document and option, and writes its request without the peer. Its `complete`, and x402 `bound` and `reference`, give it once they decode a signed transaction, after the option filter, which needs no peer, and the payload's form, so a choice or payment whose option the pairing does not serve gets the answer it gets with `@mysten/sui`, and `complete` refuses a transaction whose base64, size or tags fail as `x402/signed-not-bound` either way. `decodeSuiTx` gives it after the bytes' base64 and size and their version and kind tags are checked, which need no peer, so bytes that are not V1 are `sui/tx-malformed`, and a V1 transaction of another kind `sui/not-programmable`, either way. `recover` gives it for a transaction it reads whose bytes hash to the digest and that did not abort, after the ref, the reader and the read are checked, which need no peer. `status` returns no refusal: without `@mysten/sui` it reads as with it and gives its answers, and bytes that hash to the digest and that `decodeSuiTx` reads past its tags are pending `unreadable`. |

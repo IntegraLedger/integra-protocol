@@ -122,20 +122,29 @@ function refOf(v: Record<string, string>): AptosRef {
     expiresAt: v["expiresAt"]!,
     idDigest: v["idDigest"] as `0x${string}`,
     ...(v["transaction"] !== undefined ? { transaction: v["transaction"] as `0x${string}` } : {}),
+    ...(v["maxGasAmount"] !== undefined ? { maxGasAmount: v["maxGasAmount"] } : {}),
+    ...(v["gasUnitPrice"] !== undefined ? { gasUnitPrice: v["gasUnitPrice"] } : {}),
     payee: v["payee"]!,
   };
 }
 
 /** The query a row asks: the act payment at the one mark unless the row's query says otherwise, its position a version. */
 const paymentAct = { act: "payment", finality: "committed" } as const;
-function queryOf(q?: { act: "payment" | "agreement"; finality: "committed"; after?: string }) {
+function queryOf(q?: { act: "payment" | "agreement"; finality: "committed"; after?: string; others?: unknown[] }) {
   if (q === undefined) return paymentAct;
-  return q.after === undefined ? { act: q.act, finality: q.finality } : { act: q.act, finality: q.finality, after: BigInt(q.after) };
+  const others = q.others === undefined ? {} : { others: q.others as never };
+  return q.after === undefined ? { act: q.act, finality: q.finality, ...others } : { act: q.act, finality: q.finality, after: BigInt(q.after), ...others };
 }
 const unreadable = (reason: string) => ({ state: "unreadable", reason, foreign: [] });
 const expired = { state: "failed", reason: "instrument-unused", finality: "committed", foreign: [] };
 
-type Row = { ledgerUsecs: string; byHash?: unknown; bySequence?: unknown; readerError?: boolean };
+type Row = {
+  ledgerUsecs: string;
+  byHash?: unknown;
+  bySequence?: unknown;
+  account?: { sequenceNumber: string; timestampUsecs: string; oldestVersion: string };
+  readerError?: boolean;
+};
 
 /** A scripted reader; `asked` holds the hash and the sender each lookup was given. */
 function reader(row: Row, network = "aptos:1", chainId = 1): AptosReader & { calls: number; asked: unknown[] } {
@@ -156,9 +165,19 @@ function reader(row: Row, network = "aptos:1", chainId = 1): AptosReader & { cal
     async bySequence(sender: unknown) {
       r.calls++;
       r.asked.push(sender);
-      const answer = row.bySequence as { notFound?: true; timestampUsecs?: string } | null | undefined;
-      if (answer?.notFound === true) return { notFound: true as const, timestampUsecs: BigInt(answer.timestampUsecs!) };
+      const answer = row.bySequence as { notFound?: true; timestampUsecs?: string; oldestVersion?: string } | null | undefined;
+      if (answer?.notFound === true) {
+        const oldest = answer.oldestVersion === undefined ? {} : { oldestVersion: BigInt(answer.oldestVersion) };
+        return { notFound: true as const, timestampUsecs: BigInt(answer.timestampUsecs!), ...oldest };
+      }
       return (answer ?? null) as AptosCommitted;
+    },
+    async account(sender: unknown) {
+      r.calls++;
+      r.asked.push(sender);
+      const a = row.account;
+      if (a === undefined) throw new ReaderError("transport");
+      return { sequenceNumber: BigInt(a.sequenceNumber), timestampUsecs: BigInt(a.timestampUsecs), oldestVersion: BigInt(a.oldestVersion) };
     },
   };
   return r;
@@ -268,13 +287,13 @@ describe("V4 · status", () => {
     it(row.case, async () => {
       const r = reader(row);
       expect(plain(await exactAptos.status(refOf(row.ref), r, queryOf(row.query)))).toEqual(row.expect);
-      expect(r.calls).toBeLessThanOrEqual(3);
+      expect(r.calls).toBeLessThanOrEqual(4);
     });
   }
   it("a retry with another expiry has the same idDigest, and its commit settles only its own row", async () => {
     // Aptos takes each sequence number once, so once the retry commits at 218 the first signed transaction never can:
     // the vector's retry row.
-    const retry = V.V4.status.find((r: { case: string }) => r.case.includes("a retry"));
+    const retry = V.V4.status.find((r: { case: string }) => r.case.includes("signed the number again"));
     const committed = retry.bySequence as AptosCommitted;
     const first = await exactAptos.reference(payment(signedWire(raw())), O);
     const second = await exactAptos.reference(
@@ -289,44 +308,23 @@ describe("V4 · status", () => {
     expect(plain(await exactAptos.status(first, reader(at), paymentAct))).toEqual(retry.expect);
     const named = { ...first, transaction: committed.hash as `0x${string}` };
     expect(plain(await exactAptos.status(named, reader({ ...at, byHash: committed }), paymentAct))).toEqual(retry.expect);
-    expect(plain(await exactAptos.status(second, reader(at), paymentAct))).toEqual({
-      state: "settled",
-      transaction: committed.hash,
-      position: committed.version,
-      finality: "committed",
-      foreign: [],
-    });
-  });
-  // Every successful Aptos REST response carries X-Aptos-Ledger-TimestampUsec, the ledger timestamp of that answer, and a
-  // transaction cannot commit at or past its expiration_timestamp_secs. A lookup computed at a ledger before the one
-  // read first cannot show the transaction absent at that ledger, whatever the ledger read first says.
-  it("a not-found lookup computed before the ledger read first is pending, never expired", async () => {
-    const [row] = V.V4.status.filter((r: { case: string }) => r.case.endsWith("1790300896 s"));
-    const ledgerUsecs = 1790300896000000n;
-    for (const at of [1790300865000000n, 1790300895000000n, 1790300895999999n, ledgerUsecs, ledgerUsecs + 1n]) {
-      const r = reader({ ...row, bySequence: { notFound: true, timestampUsecs: at.toString() } });
-      const want = at >= ledgerUsecs ? expired : unreadable("history-gap");
-      expect([at, await exactAptos.status(refOf(row.ref), r, paymentAct)]).toEqual([at, want]);
-    }
-    const unnamed = { ...reader(row), bySequence: async () => ({ notFound: true }) as never };
-    expect(await exactAptos.status(refOf(row.ref), unnamed, paymentAct)).toEqual(unreadable("history-gap"));
-    const bare = { ...reader(row), bySequence: async () => null as never };
-    expect(await exactAptos.status(refOf(row.ref), bare, paymentAct)).toEqual(unreadable("unparseable"));
+    // The second reference holds the signed gas members, which the trimmed REST answer does not show.
+    expect(plain(await exactAptos.status(second, reader(at), paymentAct))).toEqual({ ...retry.expect, presented: "unshown" });
   });
   // aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move:134-137: the
-  // prologue asserts `timestamp::now_seconds() < txn_expiration_time` and refuses with PROLOGUE_ETRANSACTION_EXPIRED
-  // otherwise; timestamp.move:67-69 gives now_seconds as the ledger's microseconds / 1000000. So from the ledger second
-  // equal to expiresAt the transaction cannot commit, and a lookup that covers that ledger shows it never will.
-  it("an absent transaction is expired from the ledger second that equals expiresAt, not-found before", async () => {
+  // prologue asserts `timestamp::now_seconds() < txn_expiration_time`; timestamp.move:67-69 gives now_seconds as the
+  // ledger's microseconds / 1000000. So from the ledger second equal to expiresAt, read in the answer that read the
+  // account's sequence number, the transaction cannot commit: instrument-unused from that second, instrument-live before.
+  it("an absent transaction is unused from the account read's ledger second that equals expiresAt, live before", async () => {
     const [row] = V.V4.status.filter((r: { case: string }) => r.case.endsWith("1790300896 s"));
-    const expiresAt = BigInt(row.ref.expiresAt);
-    const second = expiresAt * 1_000_000n;
+    const second = BigInt(row.ref.expiresAt) * 1_000_000n;
     for (const at of [second - 1_000_000n, second - 1n, second, second + 1n, second + 999_999n, second + 1_000_000n]) {
-      const covering = { notFound: true, timestampUsecs: at.toString() };
-      const r = reader({ ...row, ledgerUsecs: at.toString(), bySequence: covering });
-      const want = at >= second ? expired : unreadable("history-gap");
-      expect([at, await exactAptos.status(refOf(row.ref), r, paymentAct)]).toEqual([at, want]);
+      const r = reader({ ...row, account: { ...row.account, timestampUsecs: at.toString() } });
+      const want = at >= second ? expired : { state: "pending", reason: "instrument-live", foreign: [] };
+      expect([at, await exactAptos.status(refOf(row.ref), r, queryOf(row.query))]).toEqual([at, want]);
     }
+    const bare = { ...reader(row), bySequence: async () => null as never };
+    expect(await exactAptos.status(refOf(row.ref), bare, queryOf(row.query))).toEqual(unreadable("unparseable"));
   });
   it("a reader for another network, or a ledger for another chain, is unreadable chain-mismatch", async () => {
     const row = V.V4.status[0];
@@ -425,9 +423,10 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
     });
     expect(exactAptos.data.carrier.signed).toBeNull();
     expect(exactAptos.data.coverage).toBe("none");
-    expect(exactAptos.data.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(
+    expect(exactAptos.data.proves.startsWith("Before this payment was taken, an account signed an agreement transaction")).toBe(
       true,
     );
+    expect(exactAptos.data.proves).not.toMatch(/\b(buyer|payer) signed/);
     // What the challenge shows: the ATR existed before it went out, and it advertised the hash and the link. Where the
     // seller keeps the ATR is not something this record, or anything the package reads, can show.
     expect(exactAptos.data.proves).toContain(

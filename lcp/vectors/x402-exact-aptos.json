@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/aptos pairing: the aptos entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The committed answer is Aptos mainnet transaction 0xde08191e\u2026ef48ceb5 (version 7351075186) read over REST from api.mainnet.aptoslabs.com on 2026-09-25, trimmed to the members the reader returns. Fixture F's RawTransaction is built with @aptos-labs/ts-sdk 7.5.0 from that answer (max_gas_amount 15000, gas_unit_price 100, chain 1); its SHA-256 is Python's hashlib. idDigest is Python's hashlib.sha256 over json.dumps(sort_keys=True, separators=(',',':')) of the normal form. Other answers are the real one with the named member changed. Ledger times are microseconds. A lookup by sequence number that finds nothing answers notFound with the ledger timestamp of that answer (the REST API's X-Aptos-Ledger-TimestampUsec header), so it shows absence only through that ledger. An absent transaction is expired only once the ledger time read first, in whole seconds, is at or past expiresAt: the Aptos prologue takes a transaction only while timestamp::now_seconds() < txn_expiration_time, and refuses it from that second with PROLOGUE_ETRANSACTION_EXPIRED (aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move). The V4 rows give status's answer under the profile read-status at the one mark, committed, asked about the act payment unless a row's query says otherwise; positions are ledger versions. Another transaction at the sequence number answers pending search-incomplete, never failed, since the read has not found the act's own transaction (rule 23); a lookup that finds nothing before the expiry answers unreadable history-gap, since the reader states no history (rule 18).",
+ "about": "Vectors for the x402/exact/aptos pairing: the aptos entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The committed answer is Aptos mainnet transaction 0xde08191e…ef48ceb5 (version 7351075186) read over REST from api.mainnet.aptoslabs.com on 2026-09-25, trimmed to the members the reader returns. Fixture F's RawTransaction is built with @aptos-labs/ts-sdk 7.5.0 from that answer (max_gas_amount 15000, gas_unit_price 100, chain 1); its SHA-256 is Python's hashlib. idDigest is Python's hashlib.sha256 over json.dumps(sort_keys=True, separators=(',',':')) of the normal form. Other answers are the real one with the named member changed. The trimmed answer shows no events or changes: each committed answer here carries a Withdraw and a Deposit event of the fungible-asset framework and, at the deposit's store, an ObjectCore change naming its owner and a FungibleStore change naming its asset, in the REST API's shape; these, and every store address (SHA-256 of the owner and the asset), are constructed, and no node was read for them. The account answers (sequence number, ledger time and X-Aptos-Ledger-Oldest-Version) and the lookups' oldestVersion are constructed in the same way. The issue position given is version 7351070000. Each expected answer was derived by hand from read-status.md and the profile x402-exact-aptos.md. Ledger times are microseconds. A lookup by sequence number that finds nothing answers notFound with the ledger timestamp of that answer (the REST API's X-Aptos-Ledger-TimestampUsec header), so it shows absence only through that ledger. A committed answer is read only with its events and its changes, the members the read takes the deposits from: the same answer without either is out of the reader's form, unparseable, and never read as a transaction that deposited nothing (the profile x402-exact-aptos.md, rule 8). The rows that compare the signed gas members carry the real answer's max_gas_amount 15000 and gas_unit_price 100, as fixture F records them; the two 0x1::fungible_asset::transfer answers, whose arguments are stores, the answer with a script payload and the block_metadata_transaction a hint names are constructed in the same way. An absent transaction is unused only once the ledger time of the answer that read the account's sequence number (its X-Aptos-Ledger-TimestampUsec), in whole seconds, is at or past expiresAt: the Aptos prologue takes a transaction only while timestamp::now_seconds() < txn_expiration_time, and refuses it from that second with PROLOGUE_ETRANSACTION_EXPIRED (aptos-core e53447e0, aptos-move/framework/aptos-framework/sources/transaction_validation.move). The V4 rows give status's answer under the profile read-status at the one mark, committed, asked about the act payment unless a row's query says otherwise; positions are ledger versions. A transaction committed at the sequence number consumed it: one that is not the act asked about, its deposit reaching a store another account owns, signed by the payee, or an act the caller gave, answers failed instrument-consumed, and one with success false failed transaction-failed (the profile, rule 11). The account's number passed with nothing returned at it answers pending search-incomplete (read-status rule 23). Nothing at the number with the account not past it answers pending instrument-live before the expiry and failed instrument-unused from it; each of these is decided only where the history floor of every answer is at or below the issue position, and otherwise answers unreadable history-gap (read-status rule 18).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -36,7 +36,50 @@
      "99900000"
     ],
     "type": "entry_function_payload"
-   }
+   },
+   "events": [
+    {
+     "type": "0x1::fungible_asset::Withdraw",
+     "data": {
+      "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+      "amount": "99900000"
+     }
+    },
+    {
+     "type": "0x1::fungible_asset::Deposit",
+     "data": {
+      "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+      "amount": "99900000"
+     }
+    }
+   ],
+   "changes": [
+    {
+     "type": "write_resource",
+     "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+     "data": {
+      "type": "0x1::object::ObjectCore",
+      "data": {
+       "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "allow_ungated_transfer": false
+      }
+     }
+    },
+    {
+     "type": "write_resource",
+     "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+     "data": {
+      "type": "0x1::fungible_asset::FungibleStore",
+      "data": {
+       "metadata": {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "balance": "0",
+       "frozen": false
+      }
+     }
+    }
+   ]
   },
   "fixtureF": {
    "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -81,7 +124,9 @@
    "sequenceNumber": "218",
    "expiresAt": "1790300895",
    "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
-   "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+   "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+   "maxGasAmount": "15000",
+   "gasUnitPrice": "100"
   },
   "chainMismatch": {
    "case": "chain_id 2 on aptos:1",
@@ -138,7 +183,50 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
     },
     "bySequence": null,
     "expect": {
@@ -146,7 +234,18 @@
      "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
      "position": "7351075186",
      "finality": "committed",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "yes"
     }
    },
    {
@@ -183,7 +282,9 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [],
+     "changes": []
     },
     "bySequence": null,
     "expect": {
@@ -192,11 +293,13 @@
      "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
      "position": "7351075186",
      "finality": "committed",
-     "foreign": []
+     "foreign": [],
+     "moved": [],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
     }
    },
    {
-    "case": "pending_transaction",
+    "case": "pending_transaction named, nothing at the number, the account not past it before the expiry: instrument-live",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -206,15 +309,29 @@
      "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
      "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
     },
-    "ledgerUsecs": "1790301538000000",
+    "ledgerUsecs": "1790300800000000",
     "byHash": {
      "type": "pending_transaction"
     },
-    "bySequence": null,
+    "bySequence": {
+     "notFound": true,
+     "timestampUsecs": "1790300800000000",
+     "oldestVersion": "7000000000"
+    },
     "expect": {
      "state": "pending",
-     "reason": "search-incomplete",
+     "reason": "instrument-live",
      "foreign": []
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300800000000",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
     }
    },
    {
@@ -252,18 +369,72 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
     },
     "expect": {
      "state": "settled",
      "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
      "position": "7351075186",
      "finality": "committed",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "yes"
     }
    },
    {
-    "case": "byHash an answer for another instrument, bySequence the real answer",
+    "case": "byHash an answer for another instrument, bySequence the real answer: the hint is another sequence number, so the lookup by number decides",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -296,7 +467,50 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
     },
     "bySequence": {
      "type": "user_transaction",
@@ -320,18 +534,72 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
     },
     "expect": {
      "state": "settled",
      "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
      "position": "7351075186",
      "finality": "committed",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "yes"
     }
    },
    {
-    "case": "bySequence an answer with sequence 218 and recipient 0x\u202601",
+    "case": "bySequence an answer with sequence 218 and recipient 0x…01: its deposit reaches a store another account owns, so it consumed the number and names no account of the payee",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -364,16 +632,72 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0xb0a747d3fe880ad0253e3ce943ef7239f50bc9b2a7acffa0eb839826b5bc3b19",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0xb0a747d3fe880ad0253e3ce943ef7239f50bc9b2a7acffa0eb839826b5bc3b19",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0x0000000000000000000000000000000000000000000000000000000000000001",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0xb0a747d3fe880ad0253e3ce943ef7239f50bc9b2a7acffa0eb839826b5bc3b19",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "0x3333333333333333333333333333333333333333333333333333333333333333",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0x0000000000000000000000000000000000000000000000000000000000000001",
+       "transaction": "0x3333333333333333333333333333333333333333333333333333333333333333",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
     }
    },
    {
-    "case": "bySequence the real answer with hash 0x44\u202644 and expiration_timestamp_secs 1790300955: a retry of the same transfer at sequence 218 with another expiry",
+    "case": "bySequence the real transfer under hash 0x44…44 with expiration_timestamp_secs 1790300955: the sender signed the number again, settled on it, not the payment presented",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -406,16 +730,72 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+     "state": "settled",
+     "transaction": "0x4444444444444444444444444444444444444444444444444444444444444444",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0x4444444444444444444444444444444444444444444444444444444444444444",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "no"
     }
    },
    {
-    "case": "byHash null, bySequence not found at the ledger time read first, 1790300895 s, the expiry itself",
+    "case": "byHash null, nothing at the number, the account read not past it at ledger time, 1790300895 s, the expiry itself",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -429,17 +809,28 @@
     "byHash": null,
     "bySequence": {
      "notFound": true,
-     "timestampUsecs": "1790300895000000"
+     "timestampUsecs": "1790300895000000",
+     "oldestVersion": "7000000000"
     },
     "expect": {
      "state": "failed",
      "reason": "instrument-unused",
      "finality": "committed",
      "foreign": []
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300895000000",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
     }
    },
    {
-    "case": "byHash null, bySequence not found at the ledger time read first, 1790300896 s",
+    "case": "byHash null, nothing at the number, the account read not past it at ledger time, 1790300896 s",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -453,13 +844,24 @@
     "byHash": null,
     "bySequence": {
      "notFound": true,
-     "timestampUsecs": "1790300896000000"
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
     },
     "expect": {
      "state": "failed",
      "reason": "instrument-unused",
      "finality": "committed",
      "foreign": []
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
     }
    },
    {
@@ -482,7 +884,7 @@
     }
    },
    {
-    "case": "byHash null, bySequence not found at ledger time 1790300865 s, the ledger read first at 1790300896 s",
+    "case": "byHash null, nothing at the number, the account read not past it at ledger time 1790300865.0 s, before the expiry: the signed transaction can still land",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -496,16 +898,27 @@
     "byHash": null,
     "bySequence": {
      "notFound": true,
-     "timestampUsecs": "1790300865000000"
+     "timestampUsecs": "1790300865000000",
+     "oldestVersion": "7000000000"
     },
     "expect": {
-     "state": "unreadable",
-     "reason": "history-gap",
+     "state": "pending",
+     "reason": "instrument-live",
      "foreign": []
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300865000000",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
     }
    },
    {
-    "case": "byHash null, bySequence not found at the ledger time read first, 1790300894.999999 s, the microsecond before the expiry",
+    "case": "byHash null, nothing at the number, the account read not past it at ledger time 1790300894.999999 s, before the expiry: the signed transaction can still land",
     "ref": {
      "network": "aptos:1",
      "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
@@ -519,12 +932,23 @@
     "byHash": null,
     "bySequence": {
      "notFound": true,
-     "timestampUsecs": "1790300894999999"
+     "timestampUsecs": "1790300894999999",
+     "oldestVersion": "7000000000"
     },
     "expect": {
-     "state": "unreadable",
-     "reason": "history-gap",
+     "state": "pending",
+     "reason": "instrument-live",
      "foreign": []
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300894999999",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
     }
    },
    {
@@ -561,7 +985,50 @@
        "99900000"
       ],
       "type": "entry_function_payload"
-     }
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
     },
     "bySequence": null,
     "expect": {
@@ -570,12 +1037,1575 @@
      "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
      "position": "7351075186",
      "finality": "committed",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
     },
     "query": {
      "act": "payment",
      "finality": "committed",
      "after": "7351075186"
+    }
+   },
+   {
+    "case": "nothing at the number past the expiry, the lookup's history floor above the issue position: history-gap",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790300896000000",
+    "byHash": null,
+    "bySequence": {
+     "notFound": true,
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7351075000"
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "nothing at the number past the expiry, the account answer's history floor above the issue position: history-gap",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790300896000000",
+    "byHash": null,
+    "bySequence": {
+     "notFound": true,
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7351075000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "nothing at the number past the expiry, no issue position given: history-gap",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790300896000000",
+    "byHash": null,
+    "bySequence": {
+     "notFound": true,
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "account": {
+     "sequenceNumber": "218",
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed"
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the account has passed the number and the lookup returned nothing at it: search-incomplete",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790300896000000",
+    "byHash": null,
+    "bySequence": {
+     "notFound": true,
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "account": {
+     "sequenceNumber": "219",
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the account has passed the number, the history floor above the issue position: history-gap",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790300896000000",
+    "byHash": null,
+    "bySequence": {
+     "notFound": true,
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7000000000"
+    },
+    "account": {
+     "sequenceNumber": "219",
+     "timestampUsecs": "1790300896000000",
+     "oldestVersion": "7351075000"
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "after": "7351070000"
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the transaction at the number is an act the caller gave by its reference: never settled, instrument-consumed",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "query": {
+     "act": "payment",
+     "finality": "committed",
+     "others": [
+      {
+       "ref": {
+        "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+        "sequenceNumber": "218"
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
+    }
+   },
+   {
+    "case": "the option's payee is the sender: the transaction is signed by the payee, never settled",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
+    }
+   },
+   {
+    "case": "a deposit whose store's owner the answer does not show: unparseable",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the deposit reaches the payee's store in another asset and amount: settled, what moved recorded as observed",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "7"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "7"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+       "amount": "7",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the real answer by hash with no events member: unparseable, never a transaction that deposited nothing",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the real answer by hash with no write-set changes member: unparseable, never a transaction that deposited nothing",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ]
+    },
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "unparseable",
+     "foreign": []
+    }
+   },
+   {
+    "case": "bySequence a committed 0x1::fungible_asset::transfer at 218 whose arguments are stores, its to store owned by the payee: settled on the deposit's owner, never on a signed argument, not the payment presented",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": null,
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0x5555555555555555555555555555555555555555555555555555555555555555",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::fungible_asset::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::FungibleStore"
+      ],
+      "arguments": [
+       {
+        "inner": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037"
+       },
+       {
+        "inner": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b"
+       },
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0x5555555555555555555555555555555555555555555555555555555555555555",
+     "position": "7351075186",
+     "finality": "committed",
+     "presented": "no",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0x5555555555555555555555555555555555555555555555555555555555555555",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
+    }
+   },
+   {
+    "case": "bySequence a committed 0x1::fungible_asset::transfer at 218 whose to store another account owns: it consumed the number and names no account of the payee",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": null,
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0x6666666666666666666666666666666666666666666666666666666666666666",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::fungible_asset::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::FungibleStore"
+      ],
+      "arguments": [
+       {
+        "inner": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037"
+       },
+       {
+        "inner": "0xb0a747d3fe880ad0253e3ce943ef7239f50bc9b2a7acffa0eb839826b5bc3b19"
+       },
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0xb0a747d3fe880ad0253e3ce943ef7239f50bc9b2a7acffa0eb839826b5bc3b19",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0xb0a747d3fe880ad0253e3ce943ef7239f50bc9b2a7acffa0eb839826b5bc3b19",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0x0000000000000000000000000000000000000000000000000000000000000001",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0xb0a747d3fe880ad0253e3ce943ef7239f50bc9b2a7acffa0eb839826b5bc3b19",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "transaction": "0x6666666666666666666666666666666666666666666666666666666666666666",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0x0000000000000000000000000000000000000000000000000000000000000001",
+       "transaction": "0x6666666666666666666666666666666666666666666666666666666666666666",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "reason": "instrument-consumed"
+    }
+   },
+   {
+    "case": "the real answer by hash with its signed gas members, against a reference that holds them: settled, presented yes",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxGasAmount": "15000",
+     "gasUnitPrice": "100"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ],
+     "max_gas_amount": "15000",
+     "gas_unit_price": "100"
+    },
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ],
+     "max_gas_amount": "15000",
+     "gas_unit_price": "100"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the real answer by hash with gas_unit_price 101, against a reference that holds 100: settled all the same, presented no",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "maxGasAmount": "15000",
+     "gasUnitPrice": "100"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ],
+     "max_gas_amount": "15000",
+     "gas_unit_price": "101"
+    },
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ],
+     "max_gas_amount": "15000",
+     "gas_unit_price": "101"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "bySequence a committed transaction at 218 with a script payload that deposits to the payee's store: read for its deposits, settled, not the payment presented",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": null,
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0x7777777777777777777777777777777777777777777777777777777777777777",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "type": "script_payload",
+      "code": {
+       "bytecode": "0xa11ceb0b"
+      },
+      "type_arguments": [],
+      "arguments": []
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0x7777777777777777777777777777777777777777777777777777777777777777",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0x7777777777777777777777777777777777777777777777777777777777777777",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "no"
+    }
+   },
+   {
+    "case": "byHash a block_metadata_transaction, bySequence the real answer: a hint that names no user transaction is passed over",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": {
+     "type": "block_metadata_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075100"
+    },
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "version": "7351075186",
+     "success": true,
+     "vm_status": "Executed successfully",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [
+      {
+       "type": "0x1::fungible_asset::Withdraw",
+       "data": {
+        "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+        "amount": "99900000"
+       }
+      },
+      {
+       "type": "0x1::fungible_asset::Deposit",
+       "data": {
+        "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+        "amount": "99900000"
+       }
+      }
+     ],
+     "changes": [
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::object::ObjectCore",
+        "data": {
+         "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+         "allow_ungated_transfer": false
+        }
+       }
+      },
+      {
+       "type": "write_resource",
+       "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+       "data": {
+        "type": "0x1::fungible_asset::FungibleStore",
+        "data": {
+         "metadata": {
+          "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+         },
+         "balance": "0",
+         "frozen": false
+        }
+       }
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+       "amount": "99900000",
+       "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+       "place": 1
+      }
+     ],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "the same with success false, its signed transfer to 0x…01: it consumed the number, and the destination it signed names no account of the payee: instrument-consumed",
+    "ref": {
+     "network": "aptos:1",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequenceNumber": "218",
+     "expiresAt": "1790300895",
+     "idDigest": "0x190f62077d11b2f734f93a45c86adedc566083b43ea3f6f5694c713a7e481f02",
+     "payee": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea"
+    },
+    "ledgerUsecs": "1790301538000000",
+    "byHash": null,
+    "bySequence": {
+     "type": "user_transaction",
+     "hash": "0x8888888888888888888888888888888888888888888888888888888888888888",
+     "version": "7351075186",
+     "success": false,
+     "vm_status": "Move abort in 0x1::fungible_asset: EINSUFFICIENT_BALANCE(0x10004)",
+     "sender": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+     "sequence_number": "218",
+     "expiration_timestamp_secs": "1790300895",
+     "payload": {
+      "function": "0x1::primary_fungible_store::transfer",
+      "type_arguments": [
+       "0x1::fungible_asset::Metadata"
+      ],
+      "arguments": [
+       {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "0x1",
+       "99900000"
+      ],
+      "type": "entry_function_payload"
+     },
+     "events": [],
+     "changes": []
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "0x8888888888888888888888888888888888888888888888888888888888888888",
+     "position": "7351075186",
+     "finality": "committed",
+     "foreign": [],
+     "moved": [],
+     "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a"
     }
    }
   ]
@@ -614,7 +2644,50 @@
      "99900000"
     ],
     "type": "entry_function_payload"
-   }
+   },
+   "events": [
+    {
+     "type": "0x1::fungible_asset::Withdraw",
+     "data": {
+      "store": "0x05d304e80235fa3471e59400c56923404e8d5db5c470d22371743381d8c36037",
+      "amount": "99900000"
+     }
+    },
+    {
+     "type": "0x1::fungible_asset::Deposit",
+     "data": {
+      "store": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+      "amount": "99900000"
+     }
+    }
+   ],
+   "changes": [
+    {
+     "type": "write_resource",
+     "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+     "data": {
+      "type": "0x1::object::ObjectCore",
+      "data": {
+       "owner": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+       "allow_ungated_transfer": false
+      }
+     }
+    },
+    {
+     "type": "write_resource",
+     "address": "0x9d4853b9c399e268f8fa4d1ddedd10b2b8636c9a9e338cdca779a4880e561c6b",
+     "data": {
+      "type": "0x1::fungible_asset::FungibleStore",
+      "data": {
+       "metadata": {
+        "inner": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b"
+       },
+       "balance": "0",
+       "frozen": false
+      }
+     }
+    }
+   ]
   },
   "bySequence": null,
   "expect": {
@@ -622,7 +2695,18 @@
    "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
    "position": "7351075186",
    "finality": "committed",
-   "foreign": []
+   "foreign": [],
+   "moved": [
+    {
+     "asset": "0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b",
+     "amount": "99900000",
+     "to": "0xe8ca094fec460329aaccc2a644dc73c5e39f1a2ad6e97f82b6cbdc1a5949b9ea",
+     "transaction": "0xde08191eb38d62f83ff1b5c11128260066fc4941053f020620b8ba01ef48ceb5",
+     "place": 1
+    }
+   ],
+   "signer": "0x1b609a6c28d853520749bad0e651cf98606e5d0c8151f1f0fe275d3cc4f9965a",
+   "presented": "yes"
   }
  },
  "agreedRefusals": {
@@ -664,14 +2748,14 @@
     "case": "a transaction of 87384 UTF-16 code units and 65538 code points, whose length gives 65538 decoded bytes, over 64 KiB",
     "transaction": {
      "$repeat": [
-      "AA\ud800\udc00",
+      "AA𐀀",
       21846
      ]
     },
     "expect": "aptos/tx-too-large"
    },
    {
-    "case": "a transaction whose last character before the padding has a bit set past the last byte (fixture F's RawTransaction, rawTransactionBytes long, its SHA-256 rawTransactionSha256): the same bytes, not in canonical form (RFC 4648 \u00a73.5)",
+    "case": "a transaction whose last character before the padding has a bit set past the last byte (fixture F's RawTransaction, rawTransactionBytes long, its SHA-256 rawTransactionSha256): the same bytes, not in canonical form (RFC 4648 §3.5)",
     "transaction": "G2CabCjYU1IHSbrQ5lHPmGBuXQyBUfHw/iddPMT5llraAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARZwcmltYXJ5X2Z1bmdpYmxlX3N0b3JlCHRyYW5zZmVyAQcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ5mdW5naWJsZV9hc3NldAhNZXRhZGF0YQADIDV7C3S8gz6VoRWtImBIVNaw/KFRzs2UERdw5db/ydwrIOjKCU/sRgMpqszCpkTcc8Xjnxoq1ul/grbL3BpZSbnqCGBa9AUAAAAAmDoAAAAAAABkAAAAAAAAAN/StWoAAAAAAR==",
     "expect": "aptos/tx-malformed"
    },

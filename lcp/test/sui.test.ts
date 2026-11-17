@@ -18,13 +18,31 @@ const H: `0x${string}` = V.fixed.H;
 const O = V.fixed.O;
 const LINK: string = V.fixed.link;
 const REQUIRED: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [O] };
-const TX: Record<string, string> = { V1: V.V1.tx.transactionBase64, V2: V.V2.tx.transactionBase64 };
+const TX: Record<string, string> = {
+  V1: V.V1.tx.transactionBase64,
+  V2: V.V2.tx.transactionBase64,
+  ...Object.fromEntries(Object.entries(V.search as Record<string, { transactionBase64: string }>).map(([k, v]) => [k, v.transactionBase64])),
+};
 const POSITION = BigInt(V.V4.position);
 /** The query of V4's rows: the act payment at the one mark, after V4's position. */
 const Q = { act: "payment", finality: "final", after: POSITION } as const;
-const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
 const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
-const settledAt = (digest: string, checkpoint: string) => ({ state: "settled", transaction: digest, position: checkpoint, finality: "final", foreign: [] });
+/**
+ * Recipe R settled with no balance change: its signed transfer, command 1, names the payee, and moved nothing the
+ * effects show, so what moved is that transfer of zero (the profile, rule 9).
+ */
+const settledAt = (digest: string, checkpoint: string) => ({
+  state: "settled",
+  transaction: digest,
+  position: checkpoint,
+  finality: "final",
+  foreign: [],
+  moved: [{ asset: "0x2::sui::SUI", amount: "0", to: O.payTo, transaction: digest, place: 1 }],
+  signer: V.fixed.sender,
+  presented: "yes",
+});
+const GAP = { state: "unreadable", reason: "history-gap", foreign: [] };
+const LIVE = { state: "pending", reason: "instrument-live", foreign: [] };
 /** The recover input for a digest. */
 const input = (network: string, digest: unknown) => ({ network, tx: digest, option: O }) as never;
 
@@ -36,28 +54,57 @@ function payment(transaction: string, accepted = O) {
   return { x402Version: 2, accepted, payload: { signature: "AAAA", transaction } };
 }
 
-type Answer = { tx: string; status: "SUCCESS" | "FAILURE"; checkpoint: string } | null;
+type Change = { owner: string; coinType: string; amount: string };
+type Answer = { tx: string; status: "SUCCESS" | "FAILURE"; checkpoint: string | null; balanceChanges?: Change[]; digest?: string } | null;
+type Page = { transactions: NonNullable<Answer>[]; hasNextPage: boolean; endCursor: string | null };
 
-/** A scripted reader. `firstCheckpoint` is the endpoint's available range's first checkpoint; null states none. */
+/** An executed transaction as the reader gives it, its balance changes none where the row gives none. */
+function executed(a: NonNullable<Answer>) {
+  return {
+    transactionBcs: bytesOf(TX[a.tx]!),
+    status: a.status,
+    checkpoint: a.checkpoint === null ? null : BigInt(a.checkpoint),
+    balanceChanges: (a.balanceChanges ?? []).map((c) => ({ ...c, amount: BigInt(c.amount) })),
+  };
+}
+
+/**
+ * A scripted reader. `firstCheckpoint` is the endpoint's available range's first checkpoint; null states none.
+ * `searchRange` is the range it states for the sender filter, and `pages` the search's pages in order; `searches`
+ * records the `afterCheckpoint` of each page asked.
+ */
 function reader(
   network: string,
   answer: Answer | "error",
   epoch = "1234",
   firstCheckpoint: string | null = null,
-): SuiReader & { calls: number } {
+  search: { searchRange?: { first: string; last: string; epoch: string }; pages?: Page[] } = {},
+): SuiReader & { calls: number; searches: bigint[]; asked: { sender: string; before: bigint }[] } {
   const r = {
     network: network as SuiReader["network"],
     calls: 0,
+    searches: [] as bigint[],
+    asked: [] as { sender: string; before: bigint }[],
     async read() {
       r.calls++;
       if (answer === "error") throw new ReaderError("timeout");
+      const range = search.searchRange;
       return {
-        tx:
-          answer === null
-            ? null
-            : { transactionBcs: bytesOf(TX[answer.tx]!), status: answer.status, checkpoint: BigInt(answer.checkpoint) },
+        tx: answer === null ? null : executed(answer),
         epoch: BigInt(epoch),
         firstCheckpoint: firstCheckpoint === null ? null : BigInt(firstCheckpoint),
+        ...(range === undefined ? {} : { searchRange: { first: BigInt(range.first), last: BigInt(range.last), epoch: BigInt(range.epoch) } }),
+      };
+    },
+    async search(sender: string, after: bigint, before: bigint) {
+      const page = search.pages?.[r.searches.length];
+      r.searches.push(after);
+      r.asked.push({ sender, before });
+      if (page === undefined) throw new ReaderError("timeout");
+      return {
+        transactions: page.transactions.map((t) => ({ ...executed(t), digest: t.digest ?? V.search[t.tx]?.digest ?? V.V2.tx.digest })),
+        hasNextPage: page.hasNextPage,
+        endCursor: page.endCursor,
       };
     },
   };
@@ -65,7 +112,14 @@ function reader(
 }
 
 function refOf(v: { network: string; digest: string; untilEpoch: string | null; h: string }): SuiRef & { h: `0x${string}` } {
-  return { network: v.network as SuiRef["network"], payee: O.payTo, digest: v.digest, untilEpoch: v.untilEpoch, h: v.h as `0x${string}` };
+  return {
+    network: v.network as SuiRef["network"],
+    payee: O.payTo,
+    sender: V.fixed.sender,
+    digest: v.digest,
+    untilEpoch: v.untilEpoch,
+    h: v.h as `0x${string}`,
+  };
 }
 
 /** A reference as the issuer stores it: through JSON, which throws on a bigint. The round trip must change nothing. */
@@ -117,6 +171,7 @@ describe("an Epoch expiration above 2^53 - 1", () => {
       expect(throughJson(await exactSui.reference(payment(b64), O))).toEqual({
         network: O.network,
         payee: O.payTo,
+        sender: V.fixed.sender,
         digest: tx.digest,
         untilEpoch: e,
       });
@@ -294,11 +349,18 @@ describe("V3 · refusals", () => {
 describe("V4 · status and recover", () => {
   for (const row of rowsOf(V.V4.status, "x402-exact-sui.json V4.status")) {
     it(`status: ${row.case}`, async () => {
-      const ref = refOf({ ...V.V4.ref, network: row.refNetwork ?? V.V4.ref.network });
+      const own = row.tx === undefined ? {} : { digest: V.search[row.tx].digest, untilEpoch: row.untilEpoch };
+      const ref = refOf({ ...V.V4.ref, network: row.refNetwork ?? V.V4.ref.network, ...own });
       const network = row.readerNetwork ?? V.V4.ref.network;
-      const r = reader(network, row.readerError ? "error" : row.answer, row.epoch, row.firstCheckpoint ?? null);
-      expect(plain(await exactSui.status(ref, r, Q))).toEqual(row.expect);
+      const r = reader(network, row.readerError ? "error" : row.answer, row.epoch, row.firstCheckpoint ?? null, row);
+      const q = { ...Q, ...row.query, ...(row.query?.search === undefined ? {} : { search: BigInt(row.query.search) }) };
+      expect(plain(await exactSui.status(ref, r, q))).toEqual(row.expect);
       expect(r.calls).toBeLessThanOrEqual(1);
+      if (row.expectSearchFrom !== undefined) expect(r.searches[0]).toBe(BigInt(row.expectSearchFrom));
+      if (row.expectSearches !== undefined) expect(r.searches).toHaveLength(row.expectSearches);
+      // The search reads the reference's sender, from the position given or the search's own, to one past its head.
+      if (r.searches.length > 0) expect(r.searches[0]).toBe(BigInt(row.query?.search ?? V.V4.position));
+      for (const asked of r.asked) expect(asked).toEqual({ sender: V.fixed.sender, before: BigInt(row.searchRange.last) + 1n });
     });
   }
   // SuiReader: the answer's firstCheckpoint is a bigint or null; anything else is a malformed answer, and status takes
@@ -312,6 +374,9 @@ describe("V4 · status and recover", () => {
         async read() {
           return { tx: null, epoch: 1235n, firstCheckpoint } as never;
         },
+        async search(): Promise<never> {
+          throw new Error("no search");
+        },
       };
       expect(await exactSui.status(ref, r, Q)).toEqual(UNPARSEABLE);
       expect(await exactSui.recover(input(ref.network, ref.digest), r)).toEqual({ refused: true, code: "sui/unreadable" });
@@ -319,7 +384,7 @@ describe("V4 · status and recover", () => {
     for (const position of [undefined, 5, "5", -1n]) {
       const r = reader(V.V4.ref.network, null, "1235", "0");
       const got = await exactSui.status(ref, r, { ...Q, after: position } as never);
-      expect([position, got, r.calls]).toEqual(position === undefined ? [position, SEARCH, 1] : [position, UNPARSEABLE, 0]);
+      expect([position, got, r.calls]).toEqual(position === undefined ? [position, GAP, 1] : [position, UNPARSEABLE, 0]);
     }
   });
   // Sui's `TransactionExpiration::None` sets no epoch after which validators refuse the transaction, so an absent one
@@ -329,18 +394,26 @@ describe("V4 · status and recover", () => {
     const ref = refOf({ ...V.V4.ref, digest: unbounded.tx.digest, untilEpoch: null });
     for (const epoch of ["1235", "18446744073709551615"]) {
       const r = reader(V.V4.ref.network, null, epoch, "0");
-      expect(await exactSui.status(ref, r, Q)).toEqual(SEARCH);
+      expect(await exactSui.status(ref, r, Q)).toEqual(LIVE);
       expect(r.calls).toBe(1);
     }
-    // Past its bound with the history shown, the bounded one is expired; with no search for H, still pending
-    // search-incomplete (read-status rule 24).
+    // Past its bound with the history shown, the bounded one lapsed; the endpoint states no range for the sender filter,
+    // so the search for H cannot be read: history-gap (read-status rule 24; the profile, rule 14).
     const bounded = reader(V.V4.ref.network, null, "1235", "0");
-    expect(await exactSui.status(refOf(V.V4.ref), bounded, Q)).toEqual(SEARCH);
-    const landed = { transactionBcs: bytesOf(unbounded.tx.transactionBase64), status: "SUCCESS" as const, checkpoint: 9n };
+    expect(await exactSui.status(refOf(V.V4.ref), bounded, Q)).toEqual(GAP);
+    const landed = {
+      transactionBcs: bytesOf(unbounded.tx.transactionBase64),
+      status: "SUCCESS" as const,
+      checkpoint: 9n,
+      balanceChanges: [],
+    };
     const r = {
       network: "sui:testnet" as const,
       async read() {
         return { tx: landed, epoch: 99n, firstCheckpoint: 0n };
+      },
+      async search(): Promise<never> {
+        throw new Error("no search");
       },
     };
     expect(plain(await exactSui.status(ref, r, Q))).toEqual(settledAt(unbounded.tx.digest, "9"));
@@ -399,7 +472,8 @@ describe("V4 · status and recover", () => {
   // and a later read gives the same bytes. Bytes decodeSuiTx refuses as text are refused by recover with the same code
   // (V2's bytes with one byte appended are not TransactionData; Sui's TransactionKind tag 10 is
   // ProgrammableSystemTransaction, MystenLabs/sui 2d56d0e crates/sui-types/src/transaction.rs), and status answers
-  // them as carrying no act, pending search-incomplete with no search for H.
+  // them unreadable unparseable: a transaction found by the digest whose bytes do not decode releases nothing (the
+  // profile x402-exact-sui.md, rule 10).
   it("recover: bytes under their own digest that do not decode give decodeSuiTx's refusal", async () => {
     const v2 = Buffer.from(TX["V2"]!, "base64");
     const system = Buffer.from(v2);
@@ -414,10 +488,13 @@ describe("V4 · status and recover", () => {
       const digest = TransactionDataBuilder.getDigestFromBytes(bytes);
       const r: SuiReader = {
         network: V.V4.ref.network,
-        read: async () => ({ tx: { transactionBcs: Uint8Array.from(bytes), status: "SUCCESS", checkpoint: 7n }, epoch: 1234n, firstCheckpoint: null }),
+        read: async () => ({ tx: { transactionBcs: Uint8Array.from(bytes), status: "SUCCESS", checkpoint: 7n, balanceChanges: [] }, epoch: 1234n, firstCheckpoint: null }),
+        search: async () => {
+          throw new Error("no search");
+        },
       };
       expect([what, await exactSui.recover(input(V.V4.ref.network, digest), r)]).toEqual([what, { refused: true, code }]);
-      expect([what, await exactSui.status(refOf({ ...V.V4.ref, digest }), r, Q)]).toEqual([what, SEARCH]);
+      expect([what, await exactSui.status(refOf({ ...V.V4.ref, digest }), r, Q)]).toEqual([what, UNPARSEABLE]);
     }
   });
   it("recover: a reader for another network, a failed read, and no transaction", async () => {
@@ -433,11 +510,11 @@ describe("V4 · status and recover", () => {
 
 describe("plant", () => {
   it("an aborted transaction with V2's digest and bytes is never settled", async () => {
-    const r = reader(V.V4.ref.network, V.plant.answer, V.plant.epoch);
+    const r = reader(V.V4.ref.network, V.plant.answer, V.plant.epoch, V.plant.firstCheckpoint, V.plant);
     expect(plain(await exactSui.status(refOf(V.V4.ref), r, Q))).toEqual(V.plant.expect);
   });
   it("status on the act agreement, at the settled checkpoint, with no position, and recover with an option that is not an object", async () => {
-    const r = () => reader(V.V4.ref.network, { tx: "V2", status: "SUCCESS", checkpoint: "7" }, "1234");
+    const r = () => reader(V.V4.ref.network, V.V4.status[0].answer, "1234");
     const settled = V.V4.status[0].expect;
     expect(plain(await exactSui.status(refOf(V.V4.ref), r(), { ...Q, act: "agreement" }))).toEqual(settled);
     expect(plain(await exactSui.status(refOf(V.V4.ref), r(), { act: "payment", finality: "final" }))).toEqual(settled);
@@ -449,6 +526,8 @@ describe("plant", () => {
       position: "7",
       finality: "final",
       foreign: [],
+      moved: settled.moved,
+      signer: settled.signer,
     });
     for (const option of [undefined, null, "option"]) {
       const got = await exactSui.recover({ network: V.V4.ref.network, tx: V.V4.ref.digest, option } as never, r());
@@ -477,6 +556,31 @@ describe("the pairing's filter", () => {
       code: "sui/network-malformed",
     });
   });
+});
+
+describe("x402-exact-sui.json filter: the gas path and the agreement's zero", () => {
+  for (const row of rowsOf(V.filter.rows, "x402-exact-sui.json filter.rows")) {
+    it(row.case, () => {
+      const extra = row.change.extra === undefined ? {} : { extra: row.change.extra };
+      const o: PaymentRequirements = { ...O, ...(row.change.amount === undefined ? {} : { amount: row.change.amount }), ...extra };
+      const got = exactSui.advertise({ ...REQUIRED, accepts: [o] }, H, LINK, o);
+      expect([pairingOf(o) === "x402/exact/sui", "refused" in got ? got.code : true]).toEqual([row.expect === true, row.expect]);
+    });
+  }
+});
+
+describe("x402-exact-sui.json sponsored: complete holds the signed transaction to the one sent to the gas station", () => {
+  const o: PaymentRequirements = { ...O, extra: { gasStation: V.sponsored.gasStation } };
+  for (const row of rowsOf(V.sponsored.rows, "x402-exact-sui.json sponsored.rows")) {
+    it(row.case, async () => {
+      const required = exactSui.advertise({ ...REQUIRED, accepts: [o] }, H, LINK, o);
+      if ("refused" in required) throw new Error(required.code);
+      const u = await exactSui.build({ required, accepted: o }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const got = u.complete({ signature: "AAAA", transaction: row.returned }, row.sent === null ? undefined : V.sponsored.sent);
+      expect("refused" in got ? got.code : got.payload.transaction === row.returned).toEqual(row.expect);
+    });
+  }
 });
 
 describe("advertise, read, build and complete", () => {

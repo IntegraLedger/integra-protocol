@@ -85,7 +85,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/batch-settlement/eip155` | `batchEvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-settlement-eip155.md) |
 | `x402/batch-settlement/solana` | `batchSvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes |  |
 | `x402/exact/algorand` | `exactAvm` from `@integraledger/lcp/avm` | `full` | no | `native-field` | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
-| `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | yes | `http-advisory` | no | no |  |
+| `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | no | `http-advisory` | no | no |  |
 | `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
 | `x402/exact/casper` | `exactCasper` from `@integraledger/lcp/casper` | `full` | yes | `native-field` | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
 | `x402/exact/ccd` | `exactCcd` from `@integraledger/lcp/ccd` | `full` | no | `native-field` | yes | yes | [`x402/exact/ccd`](../../lcp/profiles/x402-exact-ccd.md) |
@@ -280,7 +280,7 @@ The payer's account authorized an Algorand asset transfer whose note is this ATR
 
 ### `x402/exact/aptos`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled before the challenge went out, and the challenge advertised its hash and link. The payer's signed Aptos transaction does not carry the hash. The resource server tied the hash to this payment when it recorded the hash for this request, and identified the settlement as the payer's committed transaction by sender, sequence number and a digest of its transfer. This does not show that the buyer's approval carried the hash, or that amount, payee, asset or timing match the ATR's content.
+Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement moved. The ATR was assembled before the challenge went out, and the challenge advertised its hash and link. The payer's signed Aptos transaction does not carry the hash. The resource server tied the hash to this payment when it recorded the hash for this request, and the read identified the payment as the sender's committed transaction at its signed sequence number, signed by an account other than the option's payee and depositing to a store the payee owns. What it moved is recorded as observed: this does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/exact/cardano`
 
@@ -336,7 +336,7 @@ The payer signed, as SNIP-12 typed data, a SNIP-9 outside execution whose nonce 
 
 ### `x402/exact/sui`
 
-The payer signed a Sui transaction whose one unused Pure input is this ATR's hash. The network executed that transaction successfully, and the hash is on chain in its input list, readable by its digest while a node retains it. This does not show that amount, payee, coin type or timing match the ATR's content.
+The payer, the sender, signed a Sui transaction whose one unused Pure input is this ATR's hash, and the network executed it successfully in a checkpoint after the position the read was given; the hash is on chain in its input list, readable by its digest while a node retains it. The sender is not the option's payee. Where the transaction moved value it paid each account a positive balance change names; where it moved nothing it was signed, naming the recipient its signed transfer names. What it moved is recorded as observed: this does not show that amount, coin type or timing match the ATR's content.
 
 ### `x402/exact/tron/lcp-trc20-memo`
 

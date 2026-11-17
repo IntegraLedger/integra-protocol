@@ -377,7 +377,7 @@
     {
       "unit": "Aptos",
       "exports": {
-        "./aptos": ["AptosCommitted", "AptosInstrument", "AptosNetwork", "AptosReader", "AptosRef", "AptosStatus", "AptosUnsigned", "aptosIdDigest", "aptosStatus", "committedInstrument", "decodeAptosTx", "exactAptos"]
+        "./aptos": ["AptosAccount", "AptosCommitted", "AptosInstrument", "AptosNetwork", "AptosReader", "AptosRef", "AptosStatus", "AptosUnsigned", "MAX_APTOS_READ_ITEMS", "MAX_APTOS_TX_BYTES", "aptosIdDigest", "aptosStatus", "committedInstrument", "decodeAptosTx", "exactAptos"]
       },
       "use": "Any Aptos seller advertises H in the challenge, and anyone holding the ATR finds the payer's transfer by its sender and sequence number and identifies it by what the payer signed.",
       "fixedBy": "x402's exact scheme on Aptos; the Aptos REST API."
@@ -449,9 +449,9 @@
     {
       "unit": "Sui",
       "exports": {
-        "./sui": ["SuiExecuted", "SuiNetwork", "SuiPayload", "SuiReader", "SuiRef", "SuiStatus", "SuiTx", "SuiUnsigned", "decodeSuiTx", "exactSui", "suiCarrier", "suiRecover", "suiStatus"]
+        "./sui": ["MAX_SUI_BALANCE_CHANGES", "MAX_SUI_COIN_TYPE_LENGTH", "MAX_SUI_SEARCH_PAGES", "SuiBalanceChange", "SuiExecuted", "SuiFound", "SuiNetwork", "SuiPage", "SuiPayload", "SuiReader", "SuiRef", "SuiSearchRange", "SuiStatus", "SuiTransfer", "SuiTx", "SuiUnsigned", "decodeSuiTx", "exactSui", "suiCarrier", "suiRecover", "suiStatus"]
       },
-      "use": "Any Sui buyer's client builds a programmable transaction holding H as an unused input, any server checks it, and anyone reads H back from the executed transaction.",
+      "use": "Any Sui buyer's client builds a programmable transaction holding H as an unused input, any server checks it, and anyone reads H back from the executed transaction, what it moved and to whom, and searches the payer's transactions for H through a GraphQL endpoint.",
       "fixedBy": "x402-exact-sui.md."
     },
     {

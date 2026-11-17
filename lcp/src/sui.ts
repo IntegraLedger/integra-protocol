@@ -12,6 +12,7 @@ import { blake2b } from "@noble/hashes/blake2.js";
 import { base58 } from "@scure/base";
 import type { bcs as SuiBcs } from "@mysten/sui/bcs";
 import { fromRawBytes, toRawBytes, type AtrHash } from "./core.js";
+import { canonicalJson } from "./internal/core.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { SuiPaymentPayload } from "./internal/sui.js";
 import {
@@ -27,7 +28,7 @@ import {
   type X402Read,
   type X402Forms,
 } from "./internal/x402.js";
-import { base64Bytes, decimalBelow, sameBytes, toBase64, U64_LIMIT } from "./rail-bytes.js";
+import { base64Bytes, decimalBelow, hexOf, sameBytes, toBase64, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -38,8 +39,18 @@ import {
 import { SUI } from "./internal/data/sui.js";
 import type { Entry } from "./internal/registry.js";
 import { x402Payee } from "./internal/payee.js";
-import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
-import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import {
+  decide,
+  type Facts,
+  type Moved,
+  type RecoverInput,
+  type Seen,
+  type StatusAnswer,
+  type StatusQuery,
+  type Undecoded,
+  type UnreadableReason,
+} from "./internal/read.js";
+import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -61,52 +72,117 @@ export interface SuiTx<B extends ArrayBufferLike = ArrayBufferLike> {
   digest: string;
   unusedPure: readonly Uint8Array<B>[];
   untilEpoch: bigint | null;
+  /** The sender, who signed the bytes: `0x` and 64 lowercase hex digits. */
+  sender: string;
+  /** The transfers the signed commands name, each with the recipient it names (`SuiTransfer`). */
+  transfers: readonly SuiTransfer[];
+}
+
+/**
+ * A transfer a signed command names: `TransferObjects` to an address given as a `Pure` input, or a call of
+ * `0x2::coin::send_funds<T>(coin, recipient)` with the recipient given so. `command` is the command's index among the
+ * transaction's commands; `coinType` is the type the command shows, `T` of `send_funds`, or `0x2::sui::SUI` where every
+ * object transferred is split from the gas coin, and absent where the bytes do not show it.
+ */
+export interface SuiTransfer {
+  command: number;
+  recipient: string;
+  coinType?: string;
+}
+
+/** One owner's net change in one coin type, an entry of the effects' `balanceChanges`. */
+export interface SuiBalanceChange {
+  owner: string;
+  coinType: string;
+  amount: bigint;
 }
 
 export interface SuiExecuted {
   transactionBcs: Uint8Array;
   status: "SUCCESS" | "FAILURE";
+  /** The checkpoint that holds the effects, or null for a transaction executed and not yet in one. */
   checkpoint: bigint | null;
+  /** The effects' balance changes, each owner's net change in each coin type (`balanceChangesJson`). */
+  balanceChanges: readonly SuiBalanceChange[];
+}
+
+/** A transaction a page of the search returns: its digest as the endpoint names it, with the read's members. */
+export interface SuiFound extends SuiExecuted {
+  digest: string;
+}
+
+/**
+ * The range of checkpoints the endpoint states it holds for the sender filter of `transactions`
+ * (`serviceConfig.availableRange(type: "Query", field: "transactions", filters: ["sentAddress"])`): its first and
+ * last checkpoints, and the epoch of the last.
+ */
+export interface SuiSearchRange {
+  first: bigint;
+  last: bigint;
+  epoch: bigint;
+}
+
+/** One page of the sender's transactions, in checkpoint order, with the endpoint's `pageInfo`. */
+export interface SuiPage {
+  transactions: readonly SuiFound[];
+  hasNextPage: boolean;
+  endCursor: string | null;
 }
 
 /**
  * Bounded, read-only calls against one network's GraphQL endpoint. Every failure rejects, for example with
  * `ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable. `read` is one request, so one
- * snapshot: `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}}}
- * checkpoint{epoch{epochId}} serviceConfig{availableRange(type:"Query",field:"transaction"){first{sequenceNumber}}}}`.
- * `epoch` is the latest checkpoint's epoch. `firstCheckpoint` is the first checkpoint from which the endpoint holds
- * transactions (the available range's inclusive lower bound), or null when the endpoint states none.
+ * snapshot: `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}
+ * balanceChangesJson}} checkpoint{epoch{epochId}} serviceConfig{availableRange(type:"Query",field:"transaction"){first{sequenceNumber}}
+ * sender:availableRange(type:"Query",field:"transactions",filters:["sentAddress"]){first{sequenceNumber}
+ * last{sequenceNumber epoch{epochId}}}}}`. `epoch` is the latest checkpoint's epoch. `firstCheckpoint` is the first
+ * checkpoint from which the endpoint holds transactions (the available range's inclusive lower bound), or null when the
+ * endpoint states none. `searchRange` is the range it states for the sender filter, its first and last checkpoints and
+ * the last one's epoch (`SuiSearchRange`). Every executed transaction carries its effects' balance changes
+ * (`balanceChangesJson`), each owner's net change in each coin type, whole: an answer without them is `unparseable`.
  */
 export interface SuiReader {
   readonly network: SuiNetwork;
-  read(digest: string): Promise<{ tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null }>;
+  read(digest: string): Promise<{
+    tx: SuiExecuted | null;
+    epoch: bigint;
+    firstCheckpoint: bigint | null;
+    /** The range the endpoint states it holds for the sender filter; null, or absent, where it states none. */
+    searchRange?: SuiSearchRange | null;
+  }>;
+  /**
+   * One page of the sender's transactions: `transactions(first, after: cursor, filter: {sentAddress: sender,
+   * afterCheckpoint, beforeCheckpoint}) { pageInfo { hasNextPage endCursor } nodes { digest transactionBcs effects {
+   * status checkpoint { sequenceNumber } balanceChangesJson } } }`, `cursor` null for the first page.
+   */
+  search(sender: string, afterCheckpoint: bigint, beforeCheckpoint: bigint, cursor: string | null): Promise<SuiPage>;
 }
 
-/** The read keys: the network, the digest, the epoch bound, and the payee, the `payTo` of the option the payment answers. */
+/**
+ * The read keys: the network, the digest, the epoch bound, the payee, the `payTo` of the option the payment answers,
+ * and the sender, by which the search for H finds the payer's acts. The digest is over the whole transaction data the
+ * payer signed, its signatures apart, so it also names the payment presented.
+ */
 export interface SuiRef {
   network: SuiNetwork;
   payee: string;
+  sender: string;
   digest: string;
   /** The last epoch the transaction can execute in, as a decimal string, or null when it sets no maximum epoch. */
   untilEpoch: string | null;
 }
 
 /**
- * The answer of `suiStatus`, as the profile `read-status` gives it. Its one mark is `final`, the effects of an executed
- * transaction, and its position the checkpoint sequence number.
+ * The answer of `suiStatus`, as the profile `read-status` gives it, and on `settled` whether its act is the payment
+ * presented. Positions are checkpoint sequence numbers, and so is the search's position. The one mark a query can ask
+ * for is `final`, certified effects in a checkpoint; `executed`, a transaction the endpoint returns with no checkpoint,
+ * is the state below it that the endpoint tells apart and no query names.
  */
-export type SuiStatus = StatusAnswer<bigint, SuiMark>;
+export type SuiStatus = StatusAnswer<bigint, SuiMark, bigint>;
 
-type SuiMark = "final";
-const MARKS: readonly SuiMark[] = ["final"];
-
-/** What the read of the digest found; `holds`, whether the endpoint holds transactions from the position given. */
-type SuiRead =
-  | { state: "settled"; checkpoint: bigint | null }
-  | { state: "pending"; why: "not-found"; holds: boolean }
-  | { state: "failed"; why: "aborted"; checkpoint: bigint | null }
-  | { state: "failed"; why: "expired" | "not-this-instrument" }
-  | { state: "unreadable"; reason: UnreadableReason };
+type SuiMark = "executed" | "final";
+/** The marks a query can ask for. */
+const QUERY_MARKS: readonly SuiMark[] = ["final"];
 
 /** The payload x402's Sui scheme defines. */
 export interface SuiPayload {
@@ -122,13 +198,31 @@ export interface SuiUnsigned {
     pureInput: Uint8Array<ArrayBuffer>;
     expiration: "epoch-bounded";
   };
-  complete(signed: SuiPayload): SuiPaymentPayload | Refusal;
+  /**
+   * The payment, once the signed transaction carries H. `sent` is the transaction the client sent to the option's gas
+   * station (`extra.gasStation`), base64 of its `TransactionData`: on the sponsored path it is required, and the signed
+   * transaction must equal it in everything but the gas data (its owner, payment, price and budget), else
+   * `sui/not-as-sent`, since a gas station that changed the sender, an input, a command or the expiration could raise
+   * the amount or remove the lapse under a valid H.
+   */
+  complete(signed: SuiPayload, sent?: string): SuiPaymentPayload | Refusal;
 }
 
 const ID = "x402/exact/sui" as const;
 /** `max_tx_size_bytes`: 128 KiB. */
 const MAX_TX_BYTES = 128 * 1024;
 const NETWORKS: readonly string[] = ["sui:mainnet", "sui:testnet", "sui:devnet"];
+/**
+ * The most balance changes the read takes of one executed transaction: lcp's own bound on the work one reader's answer
+ * asks of it. Sui sets no count a GraphQL answer is held to; a transaction with more is out of the reader's form.
+ */
+export const MAX_SUI_BALANCE_CHANGES = 4096;
+/**
+ * The longest coin type, in characters, the read takes from a balance change: lcp's own bound on a reader's answer. Sui
+ * bounds a type by its nesting (16) and its identifiers, not by its text; a coin type with type parameters, such as a
+ * pool's share `…::reserve::CToken<P, T>`, is a coin type all the same.
+ */
+export const MAX_SUI_COIN_TYPE_LENGTH = 4096;
 const PAY_TO = /^0x[0-9a-f]{64}$/;
 const IDENT = "[A-Za-z_][A-Za-z0-9_]*";
 const COIN_TYPE = new RegExp(`^0x[0-9a-fA-F]{1,64}::${IDENT}::${IDENT}$`);
@@ -142,6 +236,8 @@ const PRIMITIVE_TYPES: ReadonlySet<string> = new Set(["address", "bool", "signer
 /** A vector type and a struct type as @mysten/sui writes them, and reads them back to serialise them. */
 const VECTOR_TYPE = /^vector<(.+)>$/;
 const STRUCT_TYPE = /^([^:]+)::([^:]+)::([^<]+)(<(.+)>)?/;
+const MOVE_ADDRESS = /^0x[0-9a-fA-F]{1,64}$/;
+const MOVE_IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 /**
  * Decodes a base64 `TransactionData` V1 with a programmable kind. A programmable transaction with a type (a call's
@@ -210,7 +306,53 @@ export function decodeSuiTx(base64: string): SuiTx<ArrayBuffer> | Refusal {
   else if (exp.$kind === "ValidDuring" && exp.ValidDuring.maxEpoch !== null) untilEpoch = BigInt(exp.ValidDuring.maxEpoch);
   else if (exp.$kind === "Validity" && exp.Validity.maxEpoch !== null) untilEpoch = BigInt(exp.Validity.maxEpoch);
 
-  return { bytes, digest: suiDigest(bytes), unusedPure, untilEpoch };
+  return { bytes, digest: suiDigest(bytes), unusedPure, untilEpoch, sender: v1.sender, transfers: transfersOf(inputs, commands) };
+}
+
+/** `0x2`, the Sui framework's package, as @mysten/sui writes an address. */
+const SUI_FRAMEWORK = "0x" + "0".repeat(63) + "2";
+/** SUI's coin type, the gas coin's. */
+const SUI_COIN = "0x2::sui::SUI";
+
+type ParsedInput = ReturnType<typeof SuiBcs.CallArg.parse>;
+
+/**
+ * The transfers the commands name (`SuiTransfer`): each `TransferObjects` whose address is a `Pure` input of 32 bytes,
+ * and each call of `0x2::coin::send_funds<T>(coin, recipient)` whose recipient is one, the function @mysten/sui's
+ * coin intents call to send funds to an address balance (`@mysten/sui` 2.35.0
+ * `src/transactions/intents/CoinWithBalance.ts:436-445`).
+ */
+function transfersOf(inputs: readonly ParsedInput[], commands: readonly ParsedCommand[]): SuiTransfer[] {
+  const address = (arg: ParsedArgument): string | undefined => {
+    if (arg.$kind !== "Input") return undefined;
+    const input = inputs[arg.Input];
+    if (input === undefined || input.$kind !== "Pure") return undefined;
+    const b = base64Bytes(input.Pure.bytes, 64);
+    return typeof b === "string" || b.length !== 32 ? undefined : hexOf(b);
+  };
+  const gasSplits = new Set<number>();
+  commands.forEach((c, i) => {
+    if (c.$kind === "SplitCoins" && c.SplitCoins.coin.$kind === "GasCoin") gasSplits.add(i);
+  });
+  const fromGas = (a: ParsedArgument): boolean =>
+    (a.$kind === "Result" && gasSplits.has(a.Result)) || (a.$kind === "NestedResult" && gasSplits.has(a.NestedResult[0]));
+  const out: SuiTransfer[] = [];
+  commands.forEach((c, command) => {
+    if (c.$kind === "TransferObjects") {
+      const recipient = address(c.TransferObjects.address);
+      if (recipient === undefined) return;
+      const objects = c.TransferObjects.objects;
+      out.push(objects.length > 0 && objects.every(fromGas) ? { command, recipient, coinType: SUI_COIN } : { command, recipient });
+    } else if (c.$kind === "MoveCall") {
+      const call = c.MoveCall;
+      if (call.package !== SUI_FRAMEWORK || call.module !== "coin" || call.function !== "send_funds") return;
+      const recipient = call.arguments.length === 2 ? address(call.arguments[1]!) : undefined;
+      if (recipient === undefined) return;
+      const coinType = call.typeArguments[0];
+      out.push(coinType === undefined ? { command, recipient } : { command, recipient, coinType });
+    }
+  });
+  return out;
 }
 
 /**
@@ -228,89 +370,304 @@ export function suiCarrier(tx: SuiTx): AtrHash | Refusal {
 }
 
 /**
- * Answers the read of the recorded digest as the profile `read-status` gives it. The digest is the single-use value:
- * Sui derives it from the signed bytes alone, so a transaction with it that executed, succeeded or not, consumed it. A
- * present transaction must be these bytes carrying this hash, else it carries no act that binds H; its effects' status
- * then decides: `SUCCESS` is the payer's act, and `FAILURE` the act included with a failed result, each at the one
- * mark `final` and at its checkpoint, where the effects name one. An absent transaction is past its validity once the
- * latest epoch is past its bound and the endpoint holds transactions from the position the query gives as `after`, or
- * earlier: such a position is at or before every checkpoint the payment could have executed in, such as the latest
- * checkpoint when the payment is requested. Otherwise it names no included act, since an endpoint that holds a shorter
- * history may have pruned a transaction that executed; one with no bound (a null `untilEpoch`) can execute in any later
- * epoch. The read holds no search for H, so none of these answers `failed` but `before-position`. A read that rejects
- * is unreadable `transport`; an answer out of the reader's form, bytes that do not hash to the digest, or, without
- * @mysten/sui, bytes that hash to the digest and that `decodeSuiTx` cannot read before the peer, are `unparseable`;
- * and a reader for another network than the ref's is `chain-mismatch`. A ref, a reader or a query that is not one, a
- * reader that names no network, a ref whose `digest` is not base58 of 32 bytes, whose `h` is not `0x` and 64 hex
- * digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and an `after` that is not a
- * non-negative bigint, are unreadable `unparseable`, with nothing read. One call. Only the decode of a present
- * transaction's bytes needs @mysten/sui; every other answer is the one with it.
+ * Whether a run has shown the facts the search for H rests on: that a `graphql` endpoint serves `sentAddress` with both
+ * checkpoint bounds, states the range it holds for that filter, returns the sender's transactions in checkpoint order
+ * with their bytes, and answers the range and every page of one search from one view. Not at this release (the
+ * profile `x402/exact/sui`, rule 15): a search read whole proves no absence, so where the read would answer `failed`
+ * for any reason but `before-position` it answers `pending`, `search-incomplete`, the search's position at its head.
+ */
+const SEARCH_SHOWN = false;
+/**
+ * The pages one call of `status` reads of the search before it answers with the search's position: lcp's own bound on
+ * the reads one call makes. The next call resumes from that position.
+ */
+export const MAX_SUI_SEARCH_PAGES = 8;
+
+/**
+ * Answers the read of the recorded digest as the profile `read-status` gives it, with the search for H the profile
+ * `x402/exact/sui` states. The digest is the single-use value: Sui derives it from the signed bytes alone, so the
+ * transaction with it, succeeded or not, consumed it. That transaction must be these bytes carrying this hash, else
+ * the answer is unreadable `unparseable`. It is classified from what landed: its signer, the sender, against the
+ * option's payee and the reference's sender; the account it names, a positive balance change the payee's address owns
+ * or a recipient a signed transfer names, against the payee; and whether it is another act the caller gave by its
+ * reference. One with no checkpoint is in the state `executed`, after every checkpoint, so after the position given,
+ * and below the final mark. An absent transaction can still land while the endpoint holds transactions from the
+ * position given and the epoch at the search's head is not past its bound, or it has none; past it, it lapsed. Where
+ * the read would answer `failed` for any reason but `before-position`, it reads the search for H: the sender's
+ * transactions after the position given, or after the search's position an earlier answer returned, to the last
+ * checkpoint the endpoint states it holds for the sender filter, at most `MAX_SUI_SEARCH_PAGES` pages a call, each transaction
+ * read as `bound` reads one, those that carry H classified as the digest's is. A transaction it passes that does not
+ * hash to its digest or does not decode is named among the items the search could not decode, held at the checkpoint
+ * before it. A rejected read is
+ * unreadable `transport`; an answer out of the reader's form `unparseable`; transaction bytes over the bound
+ * `too-large`; a reader for another network `chain-mismatch`; a ref, a reader or a query that is not one is
+ * `unparseable`, with nothing read.
  */
 export async function suiStatus(
   ref: SuiRef & { h: AtrHash },
   reader: SuiReader,
-  query: StatusQuery<SuiRef & { h: AtrHash }, bigint, SuiMark>,
+  query: StatusQuery<SuiRef & { h: AtrHash }, bigint, SuiMark, bigint>,
 ): Promise<SuiStatus> {
-  if (!isQuery(query, MARKS, (p) => typeof p === "bigint" && p >= 0n)) return UNPARSEABLE;
-  return decide(factsOf(await readSui(ref, reader, query.after), ref), query, LEDGER);
+  if (!isQuery(query, QUERY_MARKS, isCheckpoint)) return UNPARSEABLE;
+  if (query.search !== undefined && !isCheckpoint(query.search)) return UNPARSEABLE;
+  const keys = keysOf(ref, query);
+  if (keys === undefined) return UNPARSEABLE;
+  if (!isObject(reader) || typeof reader.network !== "string") return UNPARSEABLE;
+  if (reader.network !== keys.network) return unreadable("chain-mismatch");
+  const answer = await readOnce(reader, keys.digest);
+  if (typeof answer === "string") return unreadable(answer);
+  const { tx, epoch, firstCheckpoint, searchRange } = answer;
+  const after = query.after;
+  const holds = after !== undefined && firstCheckpoint !== null && firstCheckpoint <= after;
+
+  if (tx !== null) {
+    if (suiDigest(tx.transactionBcs) !== keys.digest) return unreadable("unparseable");
+    const own = seenOf(keys, keys.digest, tx, true);
+    // A transaction found by the digest whose bytes do not decode, or do not carry the H asked about, releases nothing.
+    if (own === undefined || !own.carries) return unreadable("unparseable");
+    if (tx.checkpoint === null) {
+      const below: Facts<bigint, SuiMark, bigint> = {
+        seen: [own],
+        value: { consumed: true, lapsed: false, mark: "executed", head: { consumed: true } },
+        search: { whole: true },
+        history: holds,
+      };
+      // Executed and in no checkpoint yet: after every checkpoint, so after the position given.
+      const { after: _placed, ...unplaced } = query;
+      return decide(below, unplaced, LEDGER);
+    }
+    // The digest is read at the latest head the endpoint serves: consumed there, as at the final mark where in a checkpoint.
+    const value = { consumed: true, lapsed: false, mark: "final", head: { consumed: true } } as const;
+    const first = decide({ seen: [own], value, search: { whole: true }, history: holds }, query, LEDGER);
+    if (first.state === "settled" || (first.state === "failed" && first.reason === "before-position")) {
+      return first;
+    }
+    const found = await searchFor(reader, keys, query.search ?? after, searchRange);
+    if ("unreadable" in found) return unreadable(found.unreadable);
+    const facts = { seen: [own, ...found.seen], value, search: found.search, undecoded: found.undecoded, history: holds };
+    return decide(facts, query, LEDGER);
+  }
+
+  if (!holds) return decide({ seen: [], search: { whole: true }, history: false }, query, LEDGER);
+  const head = searchRange === undefined || searchRange === null ? epoch : searchRange.epoch;
+  const lapsed = keys.untilEpoch !== null && head > keys.untilEpoch;
+  if (!lapsed) {
+    const live = { consumed: false, lapsed: false, mark: "final", head: { consumed: false } } as const;
+    return decide({ seen: [], value: live, search: { whole: true }, history: true }, query, LEDGER);
+  }
+  const found = await searchFor(reader, keys, query.search ?? after, searchRange);
+  if ("unreadable" in found) return unreadable(found.unreadable);
+  const value = { consumed: false, lapsed: true, mark: "final", head: { consumed: false } } as const;
+  return decide({ seen: found.seen, value, search: found.search, undecoded: found.undecoded, history: true }, query, LEDGER);
 }
 
-const LEDGER = ledgerOf<bigint, SuiMark>(SUI[ID].coverage, MARKS, bigintOrder);
+const LEDGER = ledgerOf<bigint, SuiMark>(SUI[ID].coverage, ["executed", "final"], bigintOrder);
 
-async function readSui(ref: SuiRef & { h: AtrHash }, reader: SuiReader, position: bigint | undefined): Promise<SuiRead> {
-  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
-  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") return unparseable;
+function isCheckpoint(p: unknown): p is bigint {
+  return typeof p === "bigint" && p >= 0n && p < U64_LIMIT;
+}
+
+function unreadable(reason: UnreadableReason): SuiStatus {
+  return { state: "unreadable", reason, foreign: [] };
+}
+
+/** The reference's keys, checked, with the digests of the other acts the caller gave by their references. */
+interface Keys {
+  network: SuiNetwork;
+  digest: string;
+  untilEpoch: bigint | null;
+  h: AtrHash;
+  payee: string;
+  sender: string;
+  given: ReadonlySet<string>;
+}
+
+function keysOf(ref: SuiRef & { h: AtrHash }, query: { others?: readonly unknown[] }): Keys | undefined {
+  if (!isObject(ref)) return undefined;
   const untilEpoch = ref.untilEpoch === null ? null : decimalBelow(ref.untilEpoch, U64_LIMIT);
   const h = normalHash(ref.h);
-  if (!NETWORKS.includes(ref.network) || untilEpoch === undefined || h === null || !isDigest(ref.digest)) return unparseable;
-  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
-  const answer = await readOnce(reader, ref.digest);
-  if (typeof answer === "string") return { state: "unreadable", reason: answer };
-  const { tx, epoch, firstCheckpoint } = answer;
-  if (tx === null) {
-    const holds = position !== undefined && firstCheckpoint !== null && firstCheckpoint <= position;
-    const expired = untilEpoch !== null && epoch > untilEpoch && holds;
-    return expired ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found", holds };
+  if (!NETWORKS.includes(ref.network) || untilEpoch === undefined || h === null || !isDigest(ref.digest)) return undefined;
+  if (typeof ref.payee !== "string" || !PAY_TO.test(ref.payee)) return undefined;
+  if (typeof ref.sender !== "string" || !PAY_TO.test(ref.sender)) return undefined;
+  const given = new Set<string>();
+  for (const o of query.others ?? []) {
+    const r = isObject(o) ? o["ref"] : undefined;
+    if (isObject(r) && isDigest(r["digest"])) given.add(r["digest"]);
   }
-  if (suiDigest(tx.transactionBcs) !== ref.digest) return unparseable;
-  const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
-  if (isRefusal(decoded) && decoded.code === "sui/peer-missing") return unparseable;
-  if (isRefusal(decoded)) return { state: "failed", why: "not-this-instrument" };
-  const carried = suiCarrier(decoded);
-  if (isRefusal(carried) || carried !== h) return { state: "failed", why: "not-this-instrument" };
-  if (tx.status === "FAILURE") return { state: "failed", why: "aborted", checkpoint: tx.checkpoint };
-  return { state: "settled", checkpoint: tx.checkpoint };
+  return { network: ref.network, digest: ref.digest, untilEpoch, h, payee: ref.payee, sender: ref.sender, given };
 }
 
 /**
- * The read's facts: the act where it executed, succeeded or failed, with the digest read consumed; the digest read
- * unconsumed with its validity passed where it expired; and nothing else, with the history the endpoint showed for a
- * transaction not found. The lookup by digest is never a search read whole.
+ * A transaction the read met, classified from what landed, or undefined where its bytes do not decode. `consumed` for
+ * the transaction with the reference's digest alone, which is also the one `presented` states `yes` of: the digest is
+ * over the whole data the payer signed, so any other is another message.
  */
-function factsOf(read: SuiRead, ref: SuiRef): Facts<bigint, SuiMark> {
-  const none = { seen: [], search: { whole: false }, history: false } as const;
-  const at = (checkpoint: bigint | null) => (checkpoint === null ? undefined : checkpoint);
-  switch (read.state) {
-    case "unreadable":
-      return { ...none, unreadable: read.reason };
-    case "settled":
-      return { ...none, seen: [actSeen<bigint, SuiMark>(ref.digest, "final", at(read.checkpoint))] };
-    case "pending":
-      return { ...none, history: read.holds };
-    case "failed":
-      switch (read.why) {
-        case "aborted":
-          return {
-            ...none,
-            seen: [actSeen<bigint, SuiMark>(ref.digest, "final", at(read.checkpoint), "failed")],
-            value: { consumed: true, lapsed: false, mark: "final" },
-          };
-        case "expired":
-          return { ...none, history: true, value: { consumed: false, lapsed: true, mark: "final" } };
-        case "not-this-instrument":
-          return none;
-      }
+function seenOf(keys: Keys, digest: string, tx: SuiExecuted, consumed: boolean): Seen<bigint, SuiMark> | undefined {
+  const decoded = decodeSuiTx(toBase64(tx.transactionBcs));
+  if (isRefusal(decoded)) return undefined;
+  const carried = suiCarrier(decoded);
+  const sender = decoded.sender;
+  // A failed result moved nothing but gas: the account it names is the recipient the payer signed (read-status rules
+  // 9, 20), and what it moved is none.
+  const failed = tx.status !== "SUCCESS";
+  const moved = failed ? [] : movedOf(tx.balanceChanges, decoded.transfers, digest, sender);
+  const named = failed ? decoded.transfers.map((t) => t.recipient).filter((to) => to !== sender) : moved.map((m) => m.to);
+  return {
+    transaction: digest,
+    ...(tx.checkpoint === null ? {} : { position: tx.checkpoint }),
+    mark: tx.checkpoint === null ? "executed" : "final",
+    result: tx.status === "SUCCESS" ? "succeeded" : "failed",
+    consumed,
+    carries: !isRefusal(carried) && carried === keys.h,
+    party: sender === keys.payee ? "payee" : sender === keys.sender ? "payer" : "other",
+    kind: "same",
+    account: named.some((to) => to === keys.payee) ? "payee" : named.length > 0 ? "other" : "none",
+    ...(keys.given.has(digest) ? { given: true } : {}),
+    presented: digest === keys.digest ? "yes" : "no",
+    moved,
+    signer: sender,
+  };
+}
+
+/**
+ * What moved, as observed, each entry named by the transaction's digest and its place in it: each positive balance
+ * change, the account it reached being its owner, its place `<owner>:<coin type>`, one owner's net change in one coin
+ * type; and each transfer a signed command names whose recipient no positive change in its coin type shows, a transfer
+ * of zero or one the recipient's own gas outweighs, recorded with the recipient's net change in that coin type where it
+ * has one, else zero, its place the command's index. A command whose coin type the bytes do not show is recorded with
+ * no asset and zero where its recipient shows no positive change. A transfer to the sender, such as the remainder of a
+ * balance sent back to it, is the sender's own and is not recorded.
+ */
+function movedOf(changes: readonly SuiBalanceChange[], transfers: readonly SuiTransfer[], digest: string, sender: string): Moved[] {
+  const moved: Moved[] = changes
+    .filter((c) => c.amount > 0n)
+    .map((c) => ({ asset: c.coinType, amount: c.amount.toString(), to: c.owner, transaction: digest, place: `${c.owner}:${c.coinType}` }));
+  for (const t of transfers) {
+    if (t.recipient === sender) continue;
+    const type = t.coinType === undefined ? undefined : normalType(t.coinType);
+    if (moved.some((m) => m.to === t.recipient && (type === undefined || normalType(m.asset) === type))) continue;
+    const net = type === undefined ? undefined : changes.find((c) => c.owner === t.recipient && normalType(c.coinType) === type);
+    const amount = net === undefined ? "0" : net.amount.toString();
+    moved.push({ asset: t.coinType ?? "", amount, to: t.recipient, transaction: digest, place: t.command });
   }
+  return moved;
+}
+
+/** A type with every address written as `0x` and 64 lowercase hex digits, so that two spellings of one type compare equal. */
+function normalType(t: string): string {
+  return t.replace(/0x[0-9a-fA-F]{1,64}/g, (a) => `0x${a.slice(2).toLowerCase().padStart(64, "0")}`);
+}
+
+/**
+ * True for a coin type a balance change may carry: a struct type `address::module::name`, with type parameters where
+ * the struct has them, each a type, nested below Sui's type depth limit, at most `MAX_SUI_COIN_TYPE_LENGTH` characters.
+ */
+function isCoinType(s: unknown): s is string {
+  if (typeof s !== "string" || s.length > MAX_SUI_COIN_TYPE_LENGTH) return false;
+  const todo: [string, number, boolean][] = [[s, 1, true]];
+  for (let next = todo.pop(); next !== undefined; next = todo.pop()) {
+    const [t, depth, struct] = next;
+    if (depth >= TYPE_DEPTH_LIMIT) return false;
+    if (!struct && PRIMITIVE_TYPES.has(t) && t !== "signer") continue;
+    const vector = struct ? null : VECTOR_TYPE.exec(t);
+    if (vector !== null) {
+      todo.push([vector[1]!, depth + 1, false]);
+      continue;
+    }
+    const open = t.indexOf("<");
+    if (open >= 0 && !t.endsWith(">")) return false;
+    const parts = (open < 0 ? t : t.slice(0, open)).split("::");
+    if (parts.length !== 3 || !MOVE_ADDRESS.test(parts[0]!) || !MOVE_IDENT.test(parts[1]!) || !MOVE_IDENT.test(parts[2]!)) return false;
+    if (open >= 0) {
+      for (const p of typeParameters(t.slice(open + 1, -1))) {
+        if (p === "") return false;
+        todo.push([p, depth + 1, false]);
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * The search for H in the sender's transactions after `start`, to the last checkpoint the endpoint states it holds for
+ * the sender filter. A range that is not stated, or begins after `start`, is `history-gap`; no `start` leaves the
+ * search not read, with no position.
+ */
+async function searchFor(
+  reader: SuiReader,
+  keys: Keys,
+  start: bigint | undefined,
+  range: SuiSearchRange | null | undefined,
+): Promise<
+  | { seen: Seen<bigint, SuiMark>[]; search: { whole: boolean; at?: bigint }; undecoded: Undecoded<bigint>[] }
+  | { unreadable: UnreadableReason }
+> {
+  if (start === undefined) return { seen: [], search: { whole: false }, undecoded: [] };
+  if (range === undefined || range === null || range.first > start) return { unreadable: "history-gap" };
+  const head = range.last;
+  const seen: Seen<bigint, SuiMark>[] = [];
+  const undecoded: Undecoded<bigint>[] = [];
+  let last = start;
+  let cursor: string | null = null;
+  let done = head <= start;
+  for (let pages = 0; !done && pages < MAX_SUI_SEARCH_PAGES; pages++) {
+    let page: unknown;
+    try {
+      page = await reader.search(keys.sender, start, head + 1n, cursor);
+    } catch {
+      return { unreadable: "transport" };
+    }
+    const checked = pageOf(page, start, head);
+    if (typeof checked === "string") return { unreadable: checked };
+    for (const found of checked.transactions) {
+      last = found.checkpoint;
+      if (found.digest === keys.digest) continue;
+      const decoded =
+        "transactionBcs" in found && suiDigest(found.transactionBcs) === found.digest ? seenOf(keys, found.digest, found, false) : undefined;
+      if (decoded === undefined) {
+        // Held at the checkpoint before it, the last all of whose transactions of the sender were read before it.
+        undecoded.push({ transaction: found.digest, at: found.checkpoint - 1n });
+        continue;
+      }
+      if (decoded.carries) seen.push(decoded);
+    }
+    if (!checked.hasNextPage) done = true;
+    else if (checked.endCursor === null) return { unreadable: "unparseable" };
+    else cursor = checked.endCursor;
+  }
+  const at = done ? (head > start ? head : start) : last > start ? last - 1n : start;
+  const whole = done && SEARCH_SHOWN;
+  return { seen, search: whole ? { whole } : { whole, at }, undecoded };
+}
+
+/**
+ * A page of the search, its shape checked, every transaction named by its digest in a checkpoint of the range, in
+ * checkpoint order. A transaction so named whose other members are out of the reader's form is kept by its digest and
+ * checkpoint alone, an item the search could not decode, and fails nothing else of the page (read-status rule 19).
+ */
+function pageOf(
+  page: unknown,
+  start: bigint,
+  head: bigint,
+):
+  | { transactions: ((SuiFound & { checkpoint: bigint }) | { digest: string; checkpoint: bigint })[]; hasNextPage: boolean; endCursor: string | null }
+  | "unparseable" {
+  if (!isObject(page) || !Array.isArray(page["transactions"]) || typeof page["hasNextPage"] !== "boolean") return "unparseable";
+  const endCursor = page["endCursor"];
+  if (endCursor !== null && typeof endCursor !== "string") return "unparseable";
+  const out: ((SuiFound & { checkpoint: bigint }) | { digest: string; checkpoint: bigint })[] = [];
+  let previous = start;
+  for (const t of page["transactions"] as unknown[]) {
+    const digest = isObject(t) ? t["digest"] : undefined;
+    const checkpoint = isObject(t) ? t["checkpoint"] : undefined;
+    if (!isDigest(digest) || !isCheckpoint(checkpoint) || checkpoint <= start || checkpoint > head || checkpoint < previous) {
+      return "unparseable";
+    }
+    previous = checkpoint;
+    const executed = executedOf(t);
+    out.push(typeof executed === "string" ? { digest, checkpoint } : { ...executed, digest, checkpoint });
+  }
+  return { transactions: out, hasNextPage: page["hasNextPage"], endCursor };
 }
 
 /**
@@ -350,14 +707,33 @@ function suiOptionCheck(option: unknown): Refusal | undefined {
   if (extra?.["assetTransferMethod"] !== undefined) return refusal("x402/option-not-this-pairing");
   const flow = extra?.["paymentFlow"];
   if (flow !== undefined && flow !== "authorization") return refusal("x402/option-not-this-pairing");
+  // The gas path the option fixes (the profile, rule 7): sponsored by the gas station `extra.gasStation` names, an
+  // https URL; gasless where `extra.gasless` is true; else the buyer pays. Never both.
+  const station = extra?.["gasStation"];
+  const gasless = extra?.["gasless"];
+  if (station !== undefined && !isStation(station)) return refusal("x402/option-not-this-pairing");
+  if (gasless !== undefined && (gasless !== true || station !== undefined)) return refusal("x402/option-not-this-pairing");
   const payTo = option["payTo"];
   const asset = option["asset"];
   if (typeof payTo !== "string" || !PAY_TO.test(payTo)) return refusal("x402/option-not-this-pairing");
   if (typeof asset !== "string" || !COIN_TYPE.test(asset)) return refusal("x402/option-not-this-pairing");
+  // The agreement's floor by gas path (the profile, rule 16): zero where a sponsor or the buyer pays gas; on the gasless
+  // path the coin type's smallest transfer on the network, a ledger parameter, so "0" is not admitted there.
   const amount = option["amount"];
-  if (!isAmount(amount) || decimalBelow(amount, U64_LIMIT) === undefined) return refusal("x402/option-not-this-pairing");
+  const zero = amount === "0" && gasless === undefined;
+  if (!(isAmount(amount) || zero) || decimalBelow(amount, U64_LIMIT) === undefined) return refusal("x402/option-not-this-pairing");
   if (!isTimeoutSeconds(option["maxTimeoutSeconds"])) return refusal("x402/option-not-this-pairing");
   return undefined;
+}
+
+/** An https URL of at most 2048 characters, as the gas station's endpoint. */
+function isStation(v: unknown): boolean {
+  if (typeof v !== "string" || v.length > 2048) return false;
+  try {
+    return new URL(v).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 /** The filter step over `suiOptionCheck`. */
@@ -396,14 +772,48 @@ async function build(
   const { required } = choice;
   return {
     request: { kind: "sui-transaction", accepted, pureInput: toRawBytes(expected), expiration: "epoch-bounded" },
-    complete(signed: SuiPayload): SuiPaymentPayload | Refusal {
+    complete(signed: SuiPayload, sent?: string): SuiPaymentPayload | Refusal {
       const payment = paymentWith(required, accepted, signed);
       const got = boundNow(payment);
       if (isRefusal(got) && got.code === "sui/peer-missing") return got;
       if (isRefusal(got) || got !== expected) return refusal("x402/signed-not-bound");
+      const sponsored = isObject(accepted.extra) && accepted.extra["gasStation"] !== undefined;
+      if (sponsored || sent !== undefined) {
+        const same = sameButGas(signed.transaction, sent);
+        if (same !== true) return same;
+      }
       return payment;
     },
   };
+}
+
+/**
+ * True where `signed` equals `sent` in everything but the gas data: the sender, the transaction kind (its inputs and
+ * commands) and the expiration, compared as their BCS bytes. `sui/not-as-sent` where they differ, or where `sent` is
+ * absent or does not decode; `sui/peer-missing` without @mysten/sui.
+ */
+function sameButGas(signed: unknown, sent: unknown): true | Refusal {
+  if (typeof signed !== "string" || typeof sent !== "string") return refusal("sui/not-as-sent");
+  if (peer === undefined) return refusal("sui/peer-missing");
+  const { bcs } = peer;
+  const parse = (b64: string) => {
+    const bytes = base64Bytes(b64, MAX_TX_BYTES);
+    if (typeof bytes === "string") return undefined;
+    try {
+      const d = bcs.TransactionData.parse(bytes);
+      return d.$kind === "V1" ? d.V1 : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const a = parse(signed);
+  const b = parse(sent);
+  if (a === undefined || b === undefined) return refusal("sui/not-as-sent");
+  const same =
+    a.sender === b.sender &&
+    sameBytes(bcs.TransactionKind.serialize(a.kind).toBytes(), bcs.TransactionKind.serialize(b.kind).toBytes()) &&
+    sameBytes(bcs.TransactionExpiration.serialize(a.expiration).toBytes(), bcs.TransactionExpiration.serialize(b.expiration).toBytes());
+  return same ? true : refusal("sui/not-as-sent");
 }
 
 /** The hash inside the transaction the payer signed. The signature is not verified here. */
@@ -412,8 +822,8 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys for this payment: network, digest and the epoch bound, null for a transaction that sets none; and the
- * payee, the `payTo` of the option the payment answers.
+ * The read keys for this payment: network, digest and the epoch bound, null for a transaction that sets none; the
+ * sender; and the payee, the `payTo` of the option the payment answers, which must be the option the payment presents.
  */
 async function reference(presented: unknown, option: PaymentRequirements): Promise<SuiRef | Refusal> {
   return referenceNow(presented, option);
@@ -429,8 +839,21 @@ function referenceNow(presented: unknown, option: PaymentRequirements): SuiRef |
   if (isRefusal(tx)) return tx;
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
-  const { digest, untilEpoch } = tx.tx;
-  return { network: tx.network, payee, digest, untilEpoch: untilEpoch === null ? null : untilEpoch.toString() };
+  const accepted = acceptedIs(presented, option);
+  if (accepted !== undefined) return accepted;
+  const { digest, untilEpoch, sender } = tx.tx;
+  return { network: tx.network, payee, sender, digest, untilEpoch: untilEpoch === null ? null : untilEpoch.toString() };
+}
+
+/**
+ * Undefined where the presented payment's `accepted` is the option `reference` is given, compared by RFC 8785 form;
+ * else `x402/accepted-not-option`.
+ */
+function acceptedIs(presented: unknown, option: PaymentRequirements): Refusal | undefined {
+  const accepted = isObject(presented) ? presented["accepted"] : undefined;
+  const a = canonicalJson(accepted);
+  const b = canonicalJson(option);
+  return typeof a === "string" && typeof b === "string" && a === b ? undefined : refusal("x402/accepted-not-option");
 }
 
 function presentedTx(presented: unknown): { network: SuiNetwork; tx: SuiTx } | Refusal {
@@ -490,7 +913,7 @@ export const exactSui = Object.freeze({
     unsigned: SuiUnsigned;
     landed: { h: AtrHash };
     network: SuiNetwork;
-    query: StatusQuery<SuiRef & { h: AtrHash }, bigint, SuiMark>;
+    query: StatusQuery<SuiRef & { h: AtrHash }, bigint, SuiMark, bigint>;
     answer: SuiStatus;
   }
 >;
@@ -607,7 +1030,12 @@ function suiDigest(bytes: Uint8Array): string {
 async function readOnce(
   reader: SuiReader,
   digest: string,
-): Promise<{ tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null } | "transport" | "unparseable" | "too-large"> {
+): Promise<
+  | { tx: SuiExecuted | null; epoch: bigint; firstCheckpoint: bigint | null; searchRange: SuiSearchRange | null }
+  | "transport"
+  | "unparseable"
+  | "too-large"
+> {
   let answer: unknown;
   try {
     answer = await reader.read(digest);
@@ -618,11 +1046,38 @@ async function readOnce(
   const epoch = answer["epoch"];
   const firstCheckpoint = answer["firstCheckpoint"];
   if (firstCheckpoint !== null && typeof firstCheckpoint !== "bigint") return "unparseable";
+  const range = answer["searchRange"];
+  let searchRange: SuiSearchRange | null = null;
+  if (range !== undefined && range !== null) {
+    if (!isObject(range) || !isCheckpoint(range["first"]) || !isCheckpoint(range["last"]) || typeof range["epoch"] !== "bigint") {
+      return "unparseable";
+    }
+    searchRange = { first: range["first"], last: range["last"], epoch: range["epoch"] };
+  }
   const tx = answer["tx"];
-  if (tx === null) return { tx: null, epoch, firstCheckpoint };
+  if (tx === null) return { tx: null, epoch, firstCheckpoint, searchRange };
+  const executed = executedOf(tx);
+  return typeof executed === "string" ? executed : { tx: executed, epoch, firstCheckpoint, searchRange };
+}
+
+/** An executed transaction as a reader gives it, its shape checked; its owners' addresses read in lowercase. */
+function executedOf(tx: unknown): SuiExecuted | "unparseable" | "too-large" {
   if (!isObject(tx) || !(tx["transactionBcs"] instanceof Uint8Array)) return "unparseable";
   if (tx["status"] !== "SUCCESS" && tx["status"] !== "FAILURE") return "unparseable";
-  if (tx["checkpoint"] !== null && typeof tx["checkpoint"] !== "bigint") return "unparseable";
+  if (tx["checkpoint"] !== null && !isCheckpoint(tx["checkpoint"])) return "unparseable";
   if (tx["transactionBcs"].length > MAX_TX_BYTES) return "too-large";
-  return { tx: tx as unknown as SuiExecuted, epoch, firstCheckpoint };
+  const changes = tx["balanceChanges"];
+  if (!Array.isArray(changes) || changes.length > MAX_SUI_BALANCE_CHANGES) return "unparseable";
+  const balanceChanges: SuiBalanceChange[] = [];
+  for (const c of changes as unknown[]) {
+    if (!isObject(c) || typeof c["owner"] !== "string" || !PAY_TO.test(c["owner"].toLowerCase())) return "unparseable";
+    if (!isCoinType(c["coinType"]) || typeof c["amount"] !== "bigint") return "unparseable";
+    balanceChanges.push({ owner: c["owner"].toLowerCase(), coinType: c["coinType"], amount: c["amount"] });
+  }
+  return {
+    transactionBcs: tx["transactionBcs"],
+    status: tx["status"],
+    checkpoint: tx["checkpoint"] as bigint | null,
+    balanceChanges,
+  };
 }

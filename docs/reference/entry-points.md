@@ -123,9 +123,9 @@ import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integrale
 
 **Pairings:** `x402/exact/aptos`.
 
-**Values (5):** `aptosIdDigest`, `aptosStatus`, `committedInstrument`, `decodeAptosTx`, `exactAptos`.
+**Values (7):** `aptosIdDigest`, `aptosStatus`, `committedInstrument`, `decodeAptosTx`, `exactAptos`, `MAX_APTOS_READ_ITEMS`, `MAX_APTOS_TX_BYTES`.
 
-**Types (8):** `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`, `Broadcaster`.
+**Types (9):** `AptosAccount`, `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`, `Broadcaster`.
 
 ## `@integraledger/lcp/avm`
 
@@ -346,14 +346,14 @@ import { decodeStellarTx, muxedFor, PASSPHRASE, … } from "@integraledger/lcp/s
 Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a transaction's bytes is the one step that needs it: without it a function refuses `sui/peer-missing` only when it reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own dependency @scure/base, so it is checked without the peer.
 
 ```ts no-check
-import { decodeSuiTx, exactSui, suiCarrier, … } from "@integraledger/lcp/sui";
+import { decodeSuiTx, exactSui, MAX_SUI_BALANCE_CHANGES, … } from "@integraledger/lcp/sui";
 ```
 
 **Pairings:** `x402/exact/sui`.
 
-**Values (5):** `decodeSuiTx`, `exactSui`, `suiCarrier`, `suiRecover`, `suiStatus`.
+**Values (8):** `decodeSuiTx`, `exactSui`, `MAX_SUI_BALANCE_CHANGES`, `MAX_SUI_COIN_TYPE_LENGTH`, `MAX_SUI_SEARCH_PAGES`, `suiCarrier`, `suiRecover`, `suiStatus`.
 
-**Types (9):** `Broadcaster`, `SuiExecuted`, `SuiNetwork`, `SuiPayload`, `SuiReader`, `SuiRef`, `SuiStatus`, `SuiTx`, `SuiUnsigned`.
+**Types (14):** `Broadcaster`, `SuiBalanceChange`, `SuiExecuted`, `SuiFound`, `SuiNetwork`, `SuiPage`, `SuiPayload`, `SuiReader`, `SuiRef`, `SuiSearchRange`, `SuiStatus`, `SuiTransfer`, `SuiTx`, `SuiUnsigned`.
 
 ## `@integraledger/lcp/svm`
 

@@ -32,7 +32,9 @@ import {
 } from "./x402.js";
 import { APTOS } from "./internal/data/aptos.js";
 import { x402Payee } from "./internal/payee.js";
-import { decide, type Facts, type Ledger, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { decide, type Ledger, type Moved, type Seen, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { isQuery } from "./internal/read-ledger.js";
+import { canonicalJson } from "./internal/core.js";
 import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -45,12 +47,19 @@ export interface AptosInstrument {
   sequenceNumber: bigint;
   expiresAt: bigint;
   chainId: number;
+  /** The signed gas members; absent in a normal form read from a REST answer that does not show them. */
+  maxGasAmount?: bigint;
+  gasUnitPrice?: bigint;
   function: string;
   typeArguments: readonly string[];
   arguments: readonly string[];
 }
 
-/** A committed user transaction as the REST API returns it. */
+/**
+ * A committed user transaction as the REST API returns it, with every member the read needs: its `events` and its
+ * `changes` whole, as the node returns them. A reader that leaves either out returns an answer out of this form, which
+ * the read answers `unreadable`, `unparseable`, and never reads as a transaction that deposited nothing.
+ */
 export interface AptosCommitted {
   type: "user_transaction";
   hash: string;
@@ -59,12 +68,36 @@ export interface AptosCommitted {
   sender: string;
   sequence_number: string;
   expiration_timestamp_secs: string;
-  payload: { type: string; function: string; type_arguments: string[]; arguments: unknown[] };
+  /**
+   * The payload as signed: an entry function's `function`, `type_arguments` and `arguments`, or another kind's members.
+   * The read takes a transaction of any payload at the signed number for its deposits.
+   */
+  payload: { type: string; function?: string; type_arguments?: string[]; arguments?: unknown[] };
+  max_gas_amount?: string;
+  gas_unit_price?: string;
+  /** Every event of the transaction, each with its type and data: a deposit is `0x1::fungible_asset::Deposit`, `{store, amount}`. */
+  events: { type: string; data: unknown }[];
+  /**
+   * Every write-set change of the transaction: at a deposit's store address, `0x1::object::ObjectCore`'s `owner` and
+   * `0x1::fungible_asset::FungibleStore`'s `metadata`, each a `write_resource` whose `data` is `{type, data}`.
+   */
+  changes: { type: string; address?: string; data?: unknown }[];
+}
+
+/** The account's sequence number, at the ledger of that answer: its time, and its oldest version held. */
+export interface AptosAccount {
+  /** The account's `sequence_number`; 0 where the node does not hold the account. */
+  sequenceNumber: bigint;
+  /** The answer's `X-Aptos-Ledger-TimestampUsec`. */
+  timestampUsecs: bigint;
+  /** The answer's `X-Aptos-Ledger-Oldest-Version`. */
+  oldestVersion: bigint;
 }
 
 /**
  * Bounded, read-only calls against one network's REST endpoint. Every failure rejects, for example with `ReaderError`
- * from `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ * from `@integraledger/lcp/evm`; any rejection reads as unreadable. A committed transaction is returned whole, with
+ * its `events` and its `changes` (`AptosCommitted`); an answer without them is `unparseable`.
  */
 export interface AptosReader {
   readonly network: AptosNetwork;
@@ -72,10 +105,12 @@ export interface AptosReader {
   byHash(hash: Hex): Promise<AptosCommitted | { type: "pending_transaction" } | null>;
   /**
    * `GET /v1/accounts/{sender}/transactions?start=n&limit=1`, kept only when its `sequence_number` is n. When there is
-   * none, `notFound` with `timestampUsecs`: the ledger timestamp of that answer, its `X-Aptos-Ledger-TimestampUsec`
-   * header.
+   * none, `notFound` with `timestampUsecs`, the ledger timestamp of that answer, its `X-Aptos-Ledger-TimestampUsec`
+   * header, and `oldestVersion`, its `X-Aptos-Ledger-Oldest-Version` header.
    */
-  bySequence(sender: Hex, n: bigint): Promise<AptosCommitted | { notFound: true; timestampUsecs: bigint }>;
+  bySequence(sender: Hex, n: bigint): Promise<AptosCommitted | { notFound: true; timestampUsecs: bigint; oldestVersion?: bigint }>;
+  /** `GET /v1/accounts/{sender}`: the account's sequence number with the ledger time and floor of that answer. */
+  account(sender: Hex): Promise<AptosAccount>;
   /** `GET /v1`. */
   ledger(): Promise<{ chainId: number; timestampUsecs: bigint }>;
 }
@@ -87,7 +122,10 @@ export interface AptosRef {
   sequenceNumber: string;
   expiresAt: string;
   idDigest: Hex;
-  /** The facilitator's transaction hash, once named. */
+  /** The signed gas members, decimal strings: with the members above, the payment presented. */
+  maxGasAmount?: string;
+  gasUnitPrice?: string;
+  /** The facilitator's transaction hash, once named: a hint, since a fee payer's signature changes it. */
   transaction?: Hex;
   /** The option's `payTo`. */
   payee: string;
@@ -118,8 +156,11 @@ export interface AptosUnsigned {
 }
 
 const ID = "x402/exact/aptos" as const;
-/** `max_transaction_size_in_bytes`: 64 KiB. */
-const MAX_TX_BYTES = 64 * 1024;
+/**
+ * The largest Aptos transaction lcp decodes, in bytes: the chain's `max_transaction_size_in_bytes`, 64 KiB, beyond which
+ * the chain refuses a transaction. A larger one is `aptos/tx-too-large`.
+ */
+export const MAX_APTOS_TX_BYTES = 64 * 1024;
 const NETWORK = /^aptos:([1-9][0-9]{0,2})$/;
 const ADDRESS_64 = /^0x[0-9a-fA-F]{64}$/;
 const ADDRESS_ANY = /^0x[0-9a-fA-F]{1,64}$/;
@@ -140,7 +181,7 @@ const TRANSFERS: readonly string[] = [
  * ASCII letters, digits and underscores, else `aptos/tx-malformed`.
  */
 export function decodeAptosTx(transaction: string): AptosInstrument | Refusal {
-  const decoded = base64Bytes(transaction, MAX_TX_BYTES);
+  const decoded = base64Bytes(transaction, MAX_APTOS_TX_BYTES);
   if (decoded === "too-large") return refusal("aptos/tx-too-large");
   if (decoded === "malformed") return refusal("aptos/tx-malformed");
   const bytes = referenceForm(decoded) ?? decoded;
@@ -163,8 +204,8 @@ export function decodeAptosTx(transaction: string): AptosInstrument | Refusal {
     const second = r.bytes(r.uleb());
     const amount = r.bytes(r.uleb());
     if (first.length !== 32 || second.length !== 32 || amount.length !== 8) return refusal("aptos/not-an-x402-transfer");
-    r.u64();
-    r.u64();
+    const maxGasAmount = r.u64();
+    const gasUnitPrice = r.u64();
     const expiresAt = r.u64();
     const chainId = r.u8();
     return {
@@ -172,6 +213,8 @@ export function decodeAptosTx(transaction: string): AptosInstrument | Refusal {
       sequenceNumber,
       expiresAt,
       chainId,
+      maxGasAmount,
+      gasUnitPrice,
       function: fn,
       typeArguments: [typeArgument],
       arguments: [hexOf(first), hexOf(second), leU64(amount).toString()],
@@ -199,7 +242,7 @@ export async function aptosIdDigest(i: AptosInstrument): Promise<Hex | Refusal> 
  * amount as its decimal string. The REST answer carries no chain id, so the caller supplies the ledger's.
  */
 export function committedInstrument(t: AptosCommitted, chainId: number): AptosInstrument | Refusal {
-  if (!isCommitted(t) || t.payload.type !== "entry_function_payload") return refusal("aptos/not-an-x402-transfer");
+  if (!isUserTransaction(t) || t.payload.type !== "entry_function_payload") return refusal("aptos/not-an-x402-transfer");
   const sender = longAddress(t.sender);
   const sequenceNumber = decimalBelow(t.sequence_number, U64_LIMIT);
   const expiresAt = decimalBelow(t.expiration_timestamp_secs, U64_LIMIT);
@@ -219,75 +262,19 @@ export function committedInstrument(t: AptosCommitted, chainId: number): AptosIn
   if (typeArgument === null || first === null || second === null || amount === undefined) {
     return refusal("aptos/not-an-x402-transfer");
   }
+  const maxGasAmount = t.max_gas_amount === undefined ? undefined : decimalBelow(t.max_gas_amount, U64_LIMIT);
+  const gasUnitPrice = t.gas_unit_price === undefined ? undefined : decimalBelow(t.gas_unit_price, U64_LIMIT);
   return {
     sender,
     sequenceNumber,
     expiresAt,
     chainId,
+    ...(maxGasAmount === undefined ? {} : { maxGasAmount }),
+    ...(gasUnitPrice === undefined ? {} : { gasUnitPrice }),
     function: fn,
     typeArguments: [typeArgument],
     arguments: [first, second, amount.toString()],
   };
-}
-
-/**
- * Finds the payer's transaction by the facilitator's hash when named, else by sender and sequence number, and
- * identifies it by the transfer's digest and its expiry: a committed transaction at that sequence number with another
- * transfer or another expiry is failed `superseded`. Only `success` decides a committed, matching transaction. The
- * ledger is read first. The Aptos prologue takes a transaction only while the ledger's time in whole seconds is below
- * its expiry (aptos-core's `transaction_validation.move`: `timestamp::now_seconds() < txn_expiration_time`), so status
- * is failed `expired` only when the ledger's timestamp is at or past `expiresAt` and the lookup by sequence number
- * finds nothing at a ledger timestamp at or past that ledger's; a lookup computed at an earlier ledger, or naming none,
- * is `not-found`. A reader for another network, or a ledger for another chain, is `chain-mismatch`; a rejected read is
- * `transport`, or by a `ReaderError`'s kind `too-large` or `unparseable`; an answer of another shape is `unparseable`.
- * A ref whose sequence number or expiry is not a decimal string below 2^64, or whose `sender`, `idDigest` or named
- * `transaction` is not `0x` and 64 hex digits, is `unparseable`, with nothing read; hex digits read the same in either
- * case, and the reader is given the sender and the transaction in lowercase. At most three calls.
- */
-async function readAptos(ref: AptosRef, reader: AptosReader): Promise<AptosRead> {
-  const unparseable = { state: "unreadable", why: "unparseable" } as const;
-  const mismatch = { state: "unreadable", why: "chain-mismatch" } as const;
-  if (!isObject(ref)) return unparseable;
-  const chainId = chainOf(ref.network);
-  if (chainId === undefined) return unparseable;
-  if (!isObject(reader) || reader.network !== ref.network) return mismatch;
-  const sequenceNumber = decimalBelow(ref.sequenceNumber, U64_LIMIT);
-  const expiresAt = decimalBelow(ref.expiresAt, U64_LIMIT);
-  if (sequenceNumber === undefined || expiresAt === undefined) return unparseable;
-  const sender = typeof ref.sender === "string" && ADDRESS_64.test(ref.sender) ? (ref.sender.toLowerCase() as Hex) : null;
-  const idDigest = normalHash(ref.idDigest);
-  const transaction = ref.transaction === undefined ? undefined : normalHash(ref.transaction);
-  if (sender === null || idDigest === null || transaction === null) return unparseable;
-  try {
-    const ledger = await reader.ledger();
-    if (!isObject(ledger) || typeof ledger.timestampUsecs !== "bigint") return unparseable;
-    if (ledger.chainId !== chainId) return mismatch;
-
-    if (transaction !== undefined) {
-      const named = await reader.byHash(transaction);
-      if (named !== null && !isObject(named)) return unparseable;
-      if (named !== null && named.type === "pending_transaction") return { state: "pending", why: "in-mempool" };
-      if (named !== null) {
-        if (!isCommitted(named)) return unparseable;
-        if (await matches(named, idDigest, expiresAt, chainId)) return decided(named);
-      }
-    }
-
-    const found: unknown = await reader.bySequence(sender, sequenceNumber);
-    const readTo = notFoundPoint(found, "timestampUsecs");
-    if (readTo !== undefined) {
-      const covered = readTo !== null && readTo >= ledger.timestampUsecs;
-      return covered && ledger.timestampUsecs / 1_000_000n >= expiresAt
-        ? { state: "failed", why: "expired" }
-        : { state: "pending", why: "not-found" };
-    }
-    if (!isCommitted(found)) return unparseable;
-    if (longAddress(found.sender) !== sender || found.sequence_number !== sequenceNumber.toString()) return unparseable;
-    if (!(await matches(found, idDigest, expiresAt, chainId))) return { state: "failed", why: "superseded" };
-    return decided(found);
-  } catch (e) {
-    return { state: "unreadable", why: rejected(e) };
-  }
 }
 
 /** A rejected read: a `ReaderError` by its kind, anything else `transport`. */
@@ -304,55 +291,214 @@ const APTOS_LEDGER: Ledger<bigint, "committed"> = {
   positionOrder: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
 };
 
-type AptosFacts = Facts<bigint, "committed", bigint>;
-
+const FA_DEPOSIT = `${FRAMEWORK}::fungible_asset::Deposit`;
+const OBJECT_CORE = `${FRAMEWORK}::object::ObjectCore`;
+const FUNGIBLE_STORE = `${FRAMEWORK}::fungible_asset::FungibleStore`;
 /**
- * The facts of a read of the payer's sequence number, its single-use value. A committed transaction at it, with the
- * signed transfer and expiry, is the act where it succeeded and a failed act where it aborted, either consuming the
- * sequence number; another transaction there consumed it; and nothing there at a ledger at or past the expiry leaves it
- * unconsumed with its validity passed.
+ * The most events, and the most write-set changes, the read takes of one committed transaction: lcp's own bound on the
+ * work one reader's answer asks of it. Aptos sets no count a REST answer is held to; an answer over it is `unparseable`.
  */
-function factsOfAptos(read: AptosRead): AptosFacts {
-  const none = { seen: [], search: { whole: true }, history: false } as const;
-  const own = (t: { version: bigint; transaction: Hex }, result: "succeeded" | "failed") => ({
-    transaction: t.transaction,
-    position: t.version,
-    mark: "committed" as const,
-    result,
-    consumed: true,
-    carries: true,
-    party: "payer" as const,
-    kind: "same" as const,
-    account: "payee" as const,
-  });
-  switch (read.state) {
-    case "unreadable":
-      return { ...none, unreadable: read.why };
-    case "settled":
-      return { ...none, seen: [own(read, "succeeded")] };
-    case "aborted":
-      return { ...none, seen: [own(read, "failed")], value: { consumed: true, lapsed: false, mark: "committed" } };
-    case "pending":
-      return read.why === "in-mempool" ? { ...none, search: { whole: false } } : none;
-    case "failed":
-      return read.why === "expired"
-        ? { ...none, value: { consumed: false, lapsed: true, mark: "committed" } }
-        : { ...none, value: { consumed: true, lapsed: false, mark: "committed" } };
-  }
-}
+export const MAX_APTOS_READ_ITEMS = 4096;
 
 /**
- * The read of the payment, as the profile `read-status` answers it at coverage `none`: the transaction at the payer's
- * sequence number with the signed transfer and expiry is the act, settled at `committed`; an aborted one is failed
- * `transaction-failed`; nothing there past the expiry is failed `instrument-unused`; another transaction there is
- * `pending`, `search-incomplete`, as is one still in the mempool.
+ * The read of the payment as the profile `x402/exact/aptos` states it, answered by the profile `read-status` at
+ * coverage `none`. The act is the sender's committed transaction at the signed sequence number, found by the sender and
+ * that number; a named hash is a hint, read first, since a fee payer's signature changes it, and a transaction the node
+ * holds uncommitted ends nothing. The transaction found is classified from what landed: its signer, the sender, against
+ * the option's payee; the account it names, the owner of each fungible-asset store a `Deposit` event credits, read from
+ * the transaction's `ObjectCore` change at that store, against the payee; and whether it is another act the caller gave,
+ * by its reference's sender and sequence number. A `settled` answer states `presented`: whether the transaction's
+ * signed members, the sender, sequence number, entry function and arguments, gas members and expiry, are those the
+ * reference holds. Where nothing is at the number, the account's own sequence number is read with that answer's ledger
+ * time and history floor: a number the account has passed is consumed, its transaction not returned; one it has not
+ * passed is live until the ledger's time in whole seconds reaches the signed expiry (aptos-core's
+ * `transaction_validation.move` takes a transaction only while `timestamp::now_seconds() < txn_expiration_time`), and
+ * unused after it, but only where the floor of each answer is at or below the position given, else `history-gap`. A
+ * reader for another network, or a ledger for another chain, is `chain-mismatch`; a rejected read is `transport`, or by a
+ * `ReaderError`'s kind `too-large` or `unparseable`; an answer of another shape, or a deposit whose store's owner the
+ * answer does not show, or a committed answer without its events or its changes, is `unparseable`, never a transaction
+ * that deposited nothing; a ref or query that is not one is `unparseable`, with nothing read.
  */
 export async function aptosStatus(
   ref: AptosRef,
   reader: AptosReader,
   query: StatusQuery<AptosRef, bigint, "committed", bigint>,
 ): Promise<AptosStatus> {
-  return decide(factsOfAptos(await readAptos(ref, reader)), query, APTOS_LEDGER);
+  const bad: AptosStatus = { state: "unreadable", reason: "unparseable", foreign: [] };
+  if (!isQuery(query, ["committed"], (p) => typeof p === "bigint" && p >= 0n && p < U64_LIMIT)) return bad;
+  if (!isObject(ref)) return bad;
+  const chainId = chainOf(ref.network);
+  if (chainId === undefined) return bad;
+  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch", foreign: [] };
+  const sequenceNumber = decimalBelow(ref.sequenceNumber, U64_LIMIT);
+  const expiresAt = decimalBelow(ref.expiresAt, U64_LIMIT);
+  const sender = typeof ref.sender === "string" && ADDRESS_64.test(ref.sender) ? (ref.sender.toLowerCase() as Hex) : null;
+  const payee = longAddress(ref.payee);
+  const idDigest = normalHash(ref.idDigest);
+  const transaction = ref.transaction === undefined ? undefined : normalHash(ref.transaction);
+  const gas = (v: unknown) => (v === undefined ? undefined : decimalBelow(v, U64_LIMIT) ?? null);
+  const maxGas = gas(ref.maxGasAmount);
+  const gasPrice = gas(ref.gasUnitPrice);
+  if (sequenceNumber === undefined || expiresAt === undefined || sender === null || payee === null) return bad;
+  if (idDigest === null || transaction === null || maxGas === null || gasPrice === null) return bad;
+  const given = givenOf(query.others);
+  try {
+    const ledger = await reader.ledger();
+    if (!isObject(ledger) || typeof ledger.timestampUsecs !== "bigint") return bad;
+    if (ledger.chainId !== chainId) return { state: "unreadable", reason: "chain-mismatch", foreign: [] };
+    let found: AptosCommitted | undefined;
+    if (transaction !== undefined) {
+      const named: unknown = await reader.byHash(transaction);
+      if (named !== null && !isObject(named)) return bad;
+      // A hint is passed over unless it names a user transaction: pending, or another kind the node commits.
+      if (isObject(named) && named["type"] === "user_transaction") {
+        if (!isCommitted(named)) return bad;
+        if (longAddress(named.sender) === sender && named.sequence_number === sequenceNumber.toString()) found = named;
+      }
+    }
+    if (found === undefined) {
+      const looked: unknown = await reader.bySequence(sender, sequenceNumber);
+      const readTo = notFoundPoint(looked, "timestampUsecs");
+      if (readTo === undefined) {
+        if (!isCommitted(looked)) return bad;
+        if (longAddress(looked.sender) !== sender || looked.sequence_number !== sequenceNumber.toString()) return bad;
+        found = looked;
+      } else {
+        const oldest = isObject(looked) ? looked["oldestVersion"] : undefined;
+        if (oldest !== undefined && typeof oldest !== "bigint") return bad;
+        const account: unknown = await reader.account(sender);
+        if (!isObject(account) || typeof account["sequenceNumber"] !== "bigint" || typeof account["timestampUsecs"] !== "bigint") return bad;
+        if (typeof account["oldestVersion"] !== "bigint") return bad;
+        const floors = [account["oldestVersion"], ...(typeof oldest === "bigint" ? [oldest] : [])];
+        const holds = query.after !== undefined && floors.every((f) => f <= query.after!);
+        const consumed = account["sequenceNumber"] > sequenceNumber;
+        const lapsed = !consumed && account["timestampUsecs"] / 1_000_000n >= expiresAt;
+        // History is decided before instrument-unused, and before a number passed whose transaction did not come back.
+        if ((consumed || lapsed) && !holds) return { state: "unreadable", reason: "history-gap", foreign: [] };
+        const value = { consumed, lapsed, mark: "committed" as const, head: { consumed } };
+        return decide({ seen: [], value, search: { whole: !consumed }, history: holds }, query, APTOS_LEDGER);
+      }
+    }
+    const shown = committedInstrument(found, chainId);
+    const presented = isRefusal(shown)
+      ? "no"
+      : await presentedOf(shown, { idDigest, expiresAt, ...(maxGas === undefined ? {} : { maxGas }), ...(gasPrice === undefined ? {} : { gasPrice }) });
+    const seen = seenOf(found, sender, payee, given, presented);
+    if (seen === undefined) return bad;
+    const value = { consumed: true, lapsed: false, mark: "committed" as const, head: { consumed: true } };
+    return decide({ seen: [seen], value, search: { whole: true }, history: true }, query, APTOS_LEDGER);
+  } catch (e) {
+    return { state: "unreadable", reason: rejected(e), foreign: [] };
+  }
+}
+
+/** The other acts the caller gave by their references, as `sender:sequenceNumber`. */
+function givenOf(others: readonly unknown[] | undefined): ReadonlySet<string> {
+  const out = new Set<string>();
+  for (const o of others ?? []) {
+    const r = isObject(o) ? o["ref"] : undefined;
+    if (!isObject(r)) continue;
+    const s = longAddress(r["sender"]);
+    const n = decimalBelow(r["sequenceNumber"], U64_LIMIT);
+    if (s !== null && n !== undefined) out.add(`${s}:${n}`);
+  }
+  return out;
+}
+
+/**
+ * The committed transaction as the read met it, classified from what landed, with `presented` as the read compared it;
+ * undefined where its version or hash, or one of its deposits, cannot be read.
+ */
+function seenOf(
+  t: AptosCommitted,
+  sender: Hex,
+  payee: Hex,
+  given: ReadonlySet<string>,
+  presented: "yes" | "no" | "unshown",
+): Seen<bigint, "committed"> | undefined {
+  const version = decimalBelow(t.version, U64_LIMIT);
+  const hash = normalHash(t.hash);
+  const moved = hash === null ? undefined : depositsOf(t, hash);
+  if (version === undefined || hash === null || moved === undefined) return undefined;
+  const signer = longAddress(t.sender);
+  // A failed result moved nothing: the account it names is the destination the payer signed (read-status rules 9, 20).
+  const named = t.success ? moved.map((m) => m.to) : signedRecipients(t);
+  return {
+    transaction: hash,
+    position: version,
+    mark: "committed",
+    result: t.success ? "succeeded" : "failed",
+    consumed: true,
+    carries: false,
+    party: signer === payee ? "payee" : signer === sender ? "payer" : "other",
+    kind: "same",
+    account: named.some((to) => to === payee) ? "payee" : named.length > 0 ? "other" : "none",
+    ...(given.has(`${sender}:${t.sequence_number}`) ? { given: true } : {}),
+    presented,
+    moved,
+    ...(signer === null ? {} : { signer }),
+  };
+}
+
+/**
+ * Each fungible-asset deposit the transaction made, by its `Deposit` event: the store's owner, from the transaction's
+ * `ObjectCore` change at the store, is the account it reached, and the store's `FungibleStore` change names its asset;
+ * each named by the transaction and the index of its event among the transaction's `events`. Undefined where the
+ * answer does not hold its events and changes, a deposit's owner is not shown, or an item is out of form: an answer
+ * without its events is never read as one that deposited nothing.
+ */
+function depositsOf(t: AptosCommitted, transaction: Hex): Moved[] | undefined {
+  const { events, changes } = t;
+  if (!Array.isArray(events) || !Array.isArray(changes) || events.length > MAX_APTOS_READ_ITEMS || changes.length > MAX_APTOS_READ_ITEMS) return undefined;
+  const at = (store: Hex, type: string): unknown => {
+    const c = changes.find((x) => isObject(x) && x.type === "write_resource" && longAddress(x.address) === store && isObject(x.data) && moveName(x.data["type"]) === type);
+    return c === undefined ? undefined : (c.data as Record<string, unknown>)["data"];
+  };
+  const out: Moved[] = [];
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    if (!isObject(e) || moveName(e["type"]) !== FA_DEPOSIT) continue;
+    const data = e["data"];
+    const store = isObject(data) ? longAddress(data["store"]) : null;
+    const amount = isObject(data) ? decimalBelow(data["amount"], U64_LIMIT) : undefined;
+    const core = store === null ? undefined : at(store, OBJECT_CORE);
+    const owner = isObject(core) ? longAddress(core["owner"]) : null;
+    if (store === null || amount === undefined || owner === null) return undefined;
+    const fs = at(store, FUNGIBLE_STORE);
+    const asset = isObject(fs) ? longAddress(objectAddress(fs["metadata"])) : null;
+    out.push({ asset: asset ?? "", amount: amount.toString(), to: owner, transaction, place: i });
+  }
+  return out;
+}
+
+/**
+ * The account the transaction's signed transfer names: `arguments[1]` of `0x1::primary_fungible_store::transfer`, the
+ * owner whose primary store it pays. Another payload names none the read can take, `0x1::fungible_asset::transfer`
+ * naming a store, whose owner only a deposit shows.
+ */
+function signedRecipients(t: AptosCommitted): Hex[] {
+  const p = t.payload;
+  if (p.type !== "entry_function_payload" || moveName(p.function) !== TRANSFERS[0] || !Array.isArray(p.arguments)) return [];
+  const to = longAddress(objectAddress(p.arguments[1]));
+  return to === null ? [] : [to];
+}
+
+/**
+ * Whether the committed transaction is the payment the reference was built from: `yes` where every signed member the
+ * reference holds equals the answer's, `no` where one differs, and `unshown` where the answer does not show one.
+ */
+async function presentedOf(
+  shown: AptosInstrument,
+  held: { idDigest: Hex; expiresAt: bigint; maxGas?: bigint; gasPrice?: bigint },
+): Promise<"yes" | "no" | "unshown"> {
+  const d = await aptosIdDigest(shown);
+  if (isRefusal(d) || d !== held.idDigest || shown.expiresAt !== held.expiresAt) return "no";
+  for (const [mine, theirs] of [[held.maxGas, shown.maxGasAmount], [held.gasPrice, shown.gasUnitPrice]] as const) {
+    if (mine === undefined) continue;
+    if (theirs === undefined) return "unshown";
+    if (mine !== theirs) return "no";
+  }
+  return "yes";
 }
 
 /** The pairing's filter: undefined for an option this pairing can pay, or the refusal naming why not. */
@@ -426,14 +572,18 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys for this payment: sender, sequence number, expiry, and the transfer's digest; and the payee, the
- * `payTo` of the option the payment answers.
+ * The read keys for this payment: sender, sequence number, expiry, the transfer's digest and the signed gas members, the
+ * payment presented; and the payee, the `payTo` of the option the payment answers, which must be the option the
+ * payment presents (`x402/accepted-not-option`).
  */
 async function reference(presented: unknown, option: PaymentRequirements): Promise<AptosRef | Refusal> {
   const found = instrumentOf(presented);
   if (isRefusal(found)) return found;
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
+  const accepted = isObject(presented) ? canonicalJson(presented["accepted"]) : undefined;
+  const offered = canonicalJson(option);
+  if (typeof accepted !== "string" || typeof offered !== "string" || accepted !== offered) return refusal("x402/accepted-not-option");
   const idDigest = await aptosIdDigest(found.instrument);
   if (isRefusal(idDigest)) return idDigest;
   const i = found.instrument;
@@ -443,6 +593,8 @@ async function reference(presented: unknown, option: PaymentRequirements): Promi
     sequenceNumber: i.sequenceNumber.toString(),
     expiresAt: i.expiresAt.toString(),
     idDigest,
+    ...(i.maxGasAmount === undefined ? {} : { maxGasAmount: i.maxGasAmount.toString() }),
+    ...(i.gasUnitPrice === undefined ? {} : { gasUnitPrice: i.gasUnitPrice.toString() }),
     payee,
   };
 }
@@ -509,25 +661,8 @@ export const exactAptos = Object.freeze({
   }
 >;
 
-/**
- * True when the committed transaction is the one the payer signed: its transfer hashes to the ref's digest, given in
- * lowercase, and its expiry is the ref's.
- */
-async function matches(t: AptosCommitted, idDigest: string, expiresAt: bigint, chainId: number): Promise<boolean> {
-  const i = committedInstrument(t, chainId);
-  if (isRefusal(i) || i.expiresAt !== expiresAt) return false;
-  const d = await aptosIdDigest(i);
-  return !isRefusal(d) && d === idDigest;
-}
-
-function decided(t: AptosCommitted): AptosRead {
-  const version = decimalBelow(t.version, U64_LIMIT);
-  const hash = normalHash(t.hash);
-  if (version === undefined || hash === null) return { state: "unreadable", why: "unparseable" };
-  return { state: t.success ? "settled" : "aborted", version, transaction: hash };
-}
-
-function isCommitted(t: unknown): t is AptosCommitted {
+/** A committed user transaction's members, any payload kind, without its events and changes. */
+function isUserTransaction(t: unknown): t is Omit<AptosCommitted, "events" | "changes"> {
   if (!isObject(t) || t["type"] !== "user_transaction") return false;
   const p = t["payload"];
   return (
@@ -538,11 +673,13 @@ function isCommitted(t: unknown): t is AptosCommitted {
     typeof t["sequence_number"] === "string" &&
     typeof t["expiration_timestamp_secs"] === "string" &&
     isObject(p) &&
-    typeof p["type"] === "string" &&
-    typeof p["function"] === "string" &&
-    Array.isArray(p["type_arguments"]) &&
-    Array.isArray(p["arguments"])
+    typeof p["type"] === "string"
   );
+}
+
+/** A committed user transaction in the reader's form (`AptosCommitted`): its events and its changes held whole. */
+function isCommitted(t: unknown): t is AptosCommitted {
+  return isUserTransaction(t) && Array.isArray((t as Record<string, unknown>)["events"]) && Array.isArray((t as Record<string, unknown>)["changes"]);
 }
 
 function chainOf(network: string): number | undefined {

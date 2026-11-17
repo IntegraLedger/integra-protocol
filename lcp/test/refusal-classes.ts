@@ -160,8 +160,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "tx-malformed", "tx-too-large",
   ],
   sui: [
-    "aborted", "ambiguous", "hash-not-carried", "network-malformed", "not-programmable", "peer-missing", "tx-malformed",
-    "tx-too-large", "wrong-reader",
+    "aborted", "ambiguous", "hash-not-carried", "network-malformed", "not-as-sent", "not-programmable", "peer-missing",
+    "tx-malformed", "tx-too-large", "wrong-reader",
   ],
   svm: [
     "bundle-empty", "carrier-mismatch", "carrier-not-canonical", "carrier-occupied", "channel-id-mismatch",
@@ -190,7 +190,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "nothing-to-sign", "option-malformed", "option-not-this-checkout", "request-malformed", "too-large",
   ],
   x402: [
-    "channel-id-mismatch", "channel-kind-unknown", "delegation-empty", "deposit-authorization", "escrow-not-canonical",
+    "accepted-not-option", "channel-id-mismatch", "channel-kind-unknown", "delegation-empty", "deposit-authorization", "escrow-not-canonical",
     "facilitator-missing", "flow-missing", "flow-not-carried", "header-malformed", "tool-call-malformed", "legal-context-conflict", "legal-context-malformed",
     "link-not-https", "manager-not-reference", "no-legal-context", "no-payable-option", "nonce-malformed",
     "nonce-not-payment", "not-an-opening", "not-bound-within", "not-v2", "option-malformed", "option-not-in-document",

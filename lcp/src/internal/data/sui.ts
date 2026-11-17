@@ -11,11 +11,17 @@ export const SUI = /* @__PURE__ */ freeze({
     read: {
       endpoint: ["graphql"],
       search:
-        "Found by the digest. Every `failed` but `before-position` waits for the search for H in the sender's transactions, " +
-        "from the issue position to the last checkpoint the endpoint states it holds.",
-      history: "from the issue position, for the digest and for the search",
+        "Found by the digest, computed from the signed transaction data. Every `failed` but `before-position` waits for the " +
+        "search for H in the sender's transactions (`transactions` filtered by `sentAddress`, `afterCheckpoint` and " +
+        "`beforeCheckpoint`), from the issue position to the last checkpoint the endpoint states it holds for that filter, " +
+        "page by page; at this release a search read whole proves no absence (the profile, rule 15).",
+      history:
+        "from the issue position: the endpoint's first checkpoint for transactions at or before it, for the digest, and the " +
+        "range it states for the sender filter beginning at or before it, for the search",
       contracts: [],
-      lapse: "the signed expiration epoch; a transaction with no epoch in its expiration has no readable bound and is never `failed`",
+      lapse:
+        "the signed expiration epoch, compared with the epoch at the search's head; a transaction with no epoch in its " +
+        "expiration has no readable bound and is never `failed`",
     },
     destination:
       "the effects' balance changes: a positive change owned by the payee's address, in any coin; for a transfer of zero, " +
@@ -33,8 +39,11 @@ export const SUI = /* @__PURE__ */ freeze({
         "`Pure` input H and its sender not the option's payee; what it moved is recorded as observed",
     },
     proves:
-      "The payer signed a Sui transaction whose one unused Pure input is this ATR's hash. The network executed " +
-      "that transaction successfully, and the hash is on chain in its input list, readable by its digest while " +
-      "a node retains it. This does not show that amount, payee, coin type or timing match the ATR's content.",
+      "The payer, the sender, signed a Sui transaction whose one unused Pure input is this ATR's hash, and the network " +
+      "executed it successfully in a checkpoint after the position the read was given; the hash is on chain in its input " +
+      "list, readable by its digest while a node retains it. The sender is not the option's payee. Where the transaction " +
+      "moved value it paid each account a positive balance change names; where it moved nothing it was signed, naming the " +
+      "recipient its signed transfer names. What it moved is recorded as observed: this does not show that amount, coin " +
+      "type or timing match the ATR's content.",
   },
 });
