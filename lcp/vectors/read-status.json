@@ -1,5 +1,5 @@
 {
- "about": "The cases common to every pairing's read, the public half of the read kit, for the profile read-status (lcp/profiles/read-status.md). Each case states what a read observed, in the profile's own terms: the transactions it met, each with its position, the mark it was read at, its result, whether it consumed the act's single-use value, whether it carries H, its signer against the payer and the option's payee, its pairing and kind, and the account it names; the single-use value as read, absent where the read has no means to read it; whether the search or lookup was read whole, and its position where it was not; and whether the reader showed its history. Positions are integers; marks are 'included', 'safe' and 'final', in that order. Each expected answer was derived by hand from the rules of read-status.md the case names, for the act 'payment' and for the act 'agreement', and none was taken from the package's output. An expected answer lists the members the answer must hold; foreign items are listed with their transaction and reason. A pairing's own vectors run each case through its reader, mapping each transaction and position to its ledger's, or state that the case cannot arise on its ledger.",
+ "about": "The cases common to every pairing's read, the public half of the read kit, for the profile read-status (lcp/profiles/read-status.md). Each case states what a read observed, in the profile's own terms: the transactions it met, each with its position, the mark it was read at, its result, whether it consumed the act's single-use value, whether it carries H, its signer against the payer and the option's payee, its pairing and kind, and the account it names; the single-use value as read at the final mark, with whether it is consumed at the latest head where the read read it there (head), absent where the read has no means to read it; whether the search or lookup was read whole, and its position where it was not; the items the search met and could not decode (undecoded), each with the search position held at it; and whether the reader showed its history. Positions are integers; marks are 'included', 'safe' and 'final', in that order. Each expected answer was derived by hand from the rules of read-status.md the case names, for the act 'payment' and for the act 'agreement', and none was taken from the package's output. An expected answer lists the members the answer must hold; foreign items are listed with their transaction and reason, and the items a search-incomplete answer names as ones its search could not decode by their transactions (undecoded). A pairing's own vectors run each case through its reader, mapping each transaction and position to its ledger's, or state that the case cannot arise on its ledger.",
  "marks": [
   "included",
   "safe",
@@ -641,7 +641,7 @@
   },
   {
    "case": "transactions carrying H with a failed result, the payer's own and one the payee signed, are no foreign items",
-   "rules": "15, 20",
+   "rules": "15, 20, 22",
    "coverage": "full",
    "facts": {
     "seen": [
@@ -675,7 +675,10 @@
     "value": {
      "consumed": false,
      "lapsed": false,
-     "mark": "final"
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
     }
    },
    "query": {
@@ -1313,7 +1316,7 @@
   },
   {
    "case": "a failed result that left the value unconsumed, its validity not passed: instrument-live",
-   "rules": "20",
+   "rules": "20, 22",
    "coverage": "full",
    "facts": {
     "seen": [
@@ -1336,7 +1339,10 @@
     "value": {
      "consumed": false,
      "lapsed": false,
-     "mark": "final"
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
     }
    },
    "query": {
@@ -1380,7 +1386,10 @@
     "value": {
      "consumed": false,
      "lapsed": true,
-     "mark": "final"
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
     }
    },
    "query": {
@@ -1446,7 +1455,10 @@
     "value": {
      "consumed": false,
      "lapsed": true,
-     "mark": "final"
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
     }
    },
    "query": {
@@ -1598,7 +1610,10 @@
     "value": {
      "consumed": false,
      "lapsed": false,
-     "mark": "final"
+     "mark": "final",
+     "head": {
+      "consumed": true
+     }
     }
    },
    "query": {
@@ -1637,7 +1652,10 @@
     "value": {
      "consumed": false,
      "lapsed": false,
-     "mark": "final"
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
     }
    },
    "query": {
@@ -1855,6 +1873,505 @@
    }
   },
   {
+   "case": "a value unconsumed at the final mark and consumed at the latest head, its act not found: search-incomplete, never instrument-live",
+   "rules": "22, 23",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": false,
+     "mark": "final",
+     "head": {
+      "consumed": true
+     }
+    }
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "a read that did not read the value at the latest head never answers instrument-live",
+   "rules": "22",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": false,
+     "mark": "final"
+    }
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "a value whose validity passed, unconsumed at the final mark and consumed at the latest head, is not instrument-unused: search-incomplete",
+   "rules": "17, 23",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": true,
+     "mark": "final",
+     "head": {
+      "consumed": true
+     }
+    }
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "a search that met an item it cannot decode and found nothing else that decides: search-incomplete, held at that item, which it names",
+   "rules": "19",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
+    }
+   }
+  },
+  {
+   "case": "the answer names every item the search could not decode in its range, held at the first",
+   "rules": "19",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     },
+     {
+      "transaction": "u2",
+      "at": 30
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1",
+      "u2"
+     ]
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1",
+      "u2"
+     ]
+    }
+   }
+  },
+  {
+   "case": "an item the search could not decode holds a failed answer at coverage full: search-incomplete",
+   "rules": "19, 24",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": true,
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
+    },
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
+    }
+   }
+  },
+  {
+   "case": "the search's range left to read and an item it could not decode before its end: held at the item",
+   "rules": "19",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": false,
+     "at": 42
+    },
+    "history": true,
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
+    }
+   }
+  },
+  {
+   "case": "an item the caller gave by its transaction holds no search though the read cannot decode it, and is named given",
+   "rules": "6, 14, 19",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": true,
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
+    },
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     }
+    ]
+   },
+   "query": {
+    "finality": "final",
+    "others": [
+     {
+      "transaction": "u1"
+     }
+    ]
+   },
+   "expect": {
+    "payment": {
+     "state": "failed",
+     "reason": "instrument-unused",
+     "finality": "final",
+     "foreign": [
+      {
+       "transaction": "u1",
+       "reason": "given"
+      }
+     ]
+    },
+    "agreement": {
+     "state": "failed",
+     "reason": "instrument-unused",
+     "finality": "final",
+     "foreign": [
+      {
+       "transaction": "u1",
+       "reason": "given"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": "an item the caller gave that the read cannot decode, beside one it did not give: held at the one not given, which alone it names",
+   "rules": "6, 19",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": true,
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
+    },
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     },
+     {
+      "transaction": "u2",
+      "at": 30
+     }
+    ]
+   },
+   "query": {
+    "finality": "final",
+    "others": [
+     {
+      "transaction": "u1"
+     }
+    ]
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "u1",
+       "reason": "given"
+      }
+     ],
+     "search": 30,
+     "undecoded": [
+      "u2"
+     ]
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "u1",
+       "reason": "given"
+      }
+     ],
+     "search": 30,
+     "undecoded": [
+      "u2"
+     ]
+    }
+   }
+  },
+  {
+   "case": "an act the search found is settled, whatever items it could not decode",
+   "rules": "7, 19",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "t1",
+      "position": 10,
+      "mark": "final",
+      "result": "succeeded",
+      "consumed": true,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "payee"
+     }
+    ],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "position": 10,
+     "foreign": []
+    },
+    "agreement": {
+     "state": "settled",
+     "transaction": "t1",
+     "finality": "final",
+     "position": 10,
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "instrument-live is answered before an item the search could not decode",
+   "rules": "19, 22",
+   "coverage": "full",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "value": {
+     "consumed": false,
+     "lapsed": false,
+     "mark": "final",
+     "head": {
+      "consumed": false
+     }
+    },
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "search": 15,
+     "foreign": []
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "search": 15,
+     "foreign": []
+    }
+   }
+  },
+  {
    "case": "at coverage none, the transaction the reference names is the act, whether or not it carries H",
    "rules": "7",
    "coverage": "none",
@@ -1996,6 +2513,47 @@
      "state": "unreadable",
      "reason": "history-gap",
      "foreign": []
+    }
+   }
+  },
+  {
+   "case": "at coverage none, a lookup read whole beside an item the search could not decode: search-incomplete, not not-found",
+   "rules": "18, 19",
+   "coverage": "none",
+   "facts": {
+    "seen": [],
+    "search": {
+     "whole": true
+    },
+    "history": true,
+    "undecoded": [
+     {
+      "transaction": "u1",
+      "at": 15
+     }
+    ]
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
+    },
+    "agreement": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [],
+     "search": 15,
+     "undecoded": [
+      "u1"
+     ]
     }
    }
   }

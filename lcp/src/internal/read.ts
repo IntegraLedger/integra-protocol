@@ -71,6 +71,8 @@ export type StatusAnswer<Position, Mark, Cursor = Position> =
       readonly state: "pending";
       readonly reason: PendingReason;
       readonly search?: Cursor;
+      /** On `search-incomplete`, each item the search could not decode, by its transaction, the one it is held at first. */
+      readonly undecoded?: readonly string[];
       readonly foreign: readonly ForeignItem<Position>[];
     })
   | (Named<Position, Mark> & {
@@ -114,6 +116,12 @@ export interface Seen<Position, Mark> {
   readonly authority?: string;
 }
 
+/** An item a search met and could not decode: its transaction, and the search position held at it. */
+export interface Undecoded<Cursor> {
+  readonly transaction: string;
+  readonly at?: Cursor;
+}
+
 /** What a pairing's read observed, from which `decide` composes the answer. */
 export interface Facts<Position, Mark, Cursor = Position> {
   /** Set where the read established nothing. */
@@ -121,15 +129,28 @@ export interface Facts<Position, Mark, Cursor = Position> {
   /** Every transaction the read met that carries H, consumed the single-use value, or is the one the reference names. */
   readonly seen: readonly Seen<Position, Mark>[];
   /**
-   * The single-use value as read: whether it is consumed, whether its validity has passed, and the mark it was read at.
-   * Absent where the read has no means to read it.
+   * The single-use value as read: whether it is consumed, whether its validity has passed, and the mark it was read at;
+   * and `head`, whether it is consumed at the latest head the endpoint serves, absent where the read did not read it
+   * there, which never answers `instrument-live`. Absent where the read has no means to read the value.
    */
-  readonly value?: { readonly consumed: boolean; readonly lapsed: boolean; readonly mark: Mark };
+  readonly value?: {
+    readonly consumed: boolean;
+    readonly lapsed: boolean;
+    readonly mark: Mark;
+    readonly head?: { readonly consumed: boolean };
+  };
   /**
-   * The search, or the lookup at coverage `none`: `whole` where it was read to its end and the endpoint answered in
-   * the form it documents; `at`, the position to resume from where it was not.
+   * The search, or the lookup at coverage `none`: `whole` where its range was read to its end and the endpoint answered
+   * in the form it documents; `at`, the position to resume from where it was not. On a pairing whose single-use value
+   * is H's own carrier (read-status rule 26), the read of the value at the final mark and at the latest head is the
+   * search, read whole by those two reads.
    */
   readonly search: { readonly whole: boolean; readonly at?: Cursor };
+  /**
+   * The items the search met and could not decode, in the order of its range, however it found them. Each one the
+   * caller did not give by its transaction holds the search; one the caller gave holds none, and is named `given`.
+   */
+  readonly undecoded?: readonly Undecoded<Cursor>[];
   /** Whether the reader showed that it holds the history the act would be in. */
   readonly history: boolean;
 }
@@ -149,13 +170,17 @@ const PENDING_ORDER: readonly PendingReason[] = ["below-mark", "instrument-live"
 
 /**
  * The answer the profile `read-status` gives for what a read observed. A query that is not an object naming the act
- * `payment` or `agreement` is `unreadable`, `unparseable`, as a malformed reference is. Applies, in order: `before-position` first; the
- * act asked about, identified by its binding and its parties and never one the caller gave, settled at or above the
- * finality asked for and `below-mark` under it; `failed` only at the final mark and, at coverage `full`, only once
- * the search was read whole; a value read consumed with no transaction found as `search-incomplete`; `not-found` only
- * where the reader showed its history, and `history-gap` otherwise; and the `pending` reasons in their order. Every
- * transaction that carries H, succeeded, is not the act and is not named as the consumer of the value is a foreign
- * item where a reason holds, named with the first.
+ * `payment` or `agreement` is `unreadable`, `unparseable`, as a malformed reference is. Applies, in order:
+ * `before-position` first; the act asked about, identified by its binding and its parties and never one the caller
+ * gave, settled at or above the finality asked for and `below-mark` under it; `failed` only at the final mark and, at
+ * coverage `full`, only once the search was read whole, an item it could not decode that the caller did not give
+ * holding it; a value read consumed, at the final mark or at the latest head, with no transaction found as
+ * `search-incomplete`; `instrument-live` only where the value reads unconsumed at the final mark and at the latest
+ * head; `not-found` only where the reader showed its history, and `history-gap` otherwise; and the `pending` reasons in
+ * their order, `search-incomplete` held at the first item it could not decode and naming each. Every transaction that
+ * carries H, succeeded, is not the act and is not named as the consumer of the value is a foreign item where a reason
+ * holds, named with the first; and an item the caller gave by its transaction that the read could not decode is named
+ * `given`.
  */
 export function decide<Ref, Position, Mark, Cursor>(
   facts: Facts<Position, Mark, Cursor>,
@@ -171,6 +196,12 @@ export function decide<Ref, Position, Mark, Cursor>(
     (query.others ?? []).flatMap((o) => ("transaction" in o && typeof o.transaction === "string" ? [o.transaction] : [])),
   );
   const isGiven = (s: Seen<Position, Mark>): boolean => s.given === true || givenTx.has(s.transaction);
+  // An item the search could not decode holds it, unless the caller gave it by its transaction.
+  const undecoded = facts.undecoded ?? [];
+  const holding = undecoded.filter((u) => !givenTx.has(u.transaction));
+  const givenUndecoded = undecoded.filter((u) => givenTx.has(u.transaction));
+  const whole = facts.search.whole && holding.length === 0;
+  const searchAt = holding[0]?.at ?? facts.search.at;
   const bindsAct = (s: Seen<Position, Mark>): boolean => ledger.coverage === "none" || s.carries;
   const isAct = (s: Seen<Position, Mark>): boolean =>
     s.result === "succeeded" &&
@@ -198,12 +229,14 @@ export function decide<Ref, Position, Mark, Cursor>(
           return query.act === "payment" && s.account !== "payee";
       }
     });
-  const foreignOf = (except: Seen<Position, Mark> | undefined): ForeignItem<Position>[] =>
-    facts.seen.flatMap((s) => {
+  const foreignOf = (except: Seen<Position, Mark> | undefined): ForeignItem<Position>[] => [
+    ...facts.seen.flatMap((s) => {
       if (s === except || s.result !== "succeeded" || !s.carries || isAct(s)) return [];
       const reason = reasonOf(s);
       return reason === undefined ? [] : [itemOf(s, reason)];
-    });
+    }),
+    ...givenUndecoded.map((u): ForeignItem<Position> => ({ transaction: u.transaction, reason: "given" })),
+  ];
 
   // Before the position: decided before any other reason.
   const deciding = facts.seen.filter((s) => isAct(s) || consumer(s) || (ownFailed(s) && s.consumed));
@@ -232,7 +265,7 @@ export function decide<Ref, Position, Mark, Cursor>(
     if (!isFinal(mark)) {
       pendingReasons.add("below-mark");
       below ??= by;
-    } else if (facts.value === undefined || (ledger.coverage === "full" && !facts.search.whole)) {
+    } else if (facts.value === undefined || (ledger.coverage === "full" && !whole)) {
       pendingReasons.add("search-incomplete");
     } else {
       failed = by === undefined ? { reason } : { reason, by };
@@ -245,9 +278,11 @@ export function decide<Ref, Position, Mark, Cursor>(
   if (consumedBy !== undefined) failedAt("instrument-consumed", consumedBy.mark, consumedBy);
   else if (failedOwn !== undefined) failedAt("transaction-failed", failedOwn.mark, failedOwn);
   else if (facts.value !== undefined) {
-    if (facts.value.consumed) pendingReasons.add("search-incomplete");
-    else if (facts.value.lapsed) failedAt("instrument-unused", facts.value.mark);
-    else if (isFinal(facts.value.mark)) pendingReasons.add("instrument-live");
+    const v = facts.value;
+    // A value consumed at the latest head, though unconsumed at the final mark, was consumed by an act above it.
+    if (v.consumed || v.head?.consumed === true) pendingReasons.add("search-incomplete");
+    else if (v.lapsed) failedAt("instrument-unused", v.mark);
+    else if (isFinal(v.mark) && v.head !== undefined) pendingReasons.add("instrument-live");
     else pendingReasons.add("search-incomplete");
   } else if (facts.seen.some((s) => ownFailed(s) && !s.consumed)) {
     pendingReasons.add("search-incomplete");
@@ -266,7 +301,7 @@ export function decide<Ref, Position, Mark, Cursor>(
     };
   }
 
-  if (!facts.search.whole) pendingReasons.add("search-incomplete");
+  if (!whole) pendingReasons.add("search-incomplete");
   const first = PENDING_ORDER.find((r) => pendingReasons.has(r));
   if (first !== undefined) return pending(first, first === "below-mark" ? below : undefined);
   if (facts.value === undefined && !facts.history) return { state: "unreadable", reason: "history-gap", foreign: foreignOf(undefined) };
@@ -277,7 +312,8 @@ export function decide<Ref, Position, Mark, Cursor>(
       state: "pending",
       reason,
       ...(by === undefined ? {} : namedOf(by)),
-      ...(facts.search.at === undefined ? {} : { search: facts.search.at }),
+      ...(searchAt === undefined ? {} : { search: searchAt }),
+      ...(reason === "search-incomplete" && holding.length > 0 ? { undecoded: holding.map((u) => u.transaction) } : {}),
       foreign: foreignOf(by),
     };
   }
