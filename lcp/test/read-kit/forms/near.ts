@@ -293,7 +293,10 @@ export function onNear(c: ReadCase, act: Act): {
 
 /** The cases the read cannot meet, each with its reason, as the profile `x402-exact-near-memo` (rule 12) states them. */
 export const NOT_FOUND =
-  "On `x402/exact/near`, `not-found`: the read holds the single-use value, the access key's nonce";
+  "On `x402/exact/near`, `not-found`: the read holds the single-use value, the access key's nonce, where the key is " +
+  "present at both reads, and a key absent at either read, as one the payer deleted is, leaves the value unread and is " +
+  "answered `pending`, `search-incomplete`, never `not-found`, whatever the search shows: the value may have been " +
+  "taken before the key went, and no state in which it may have been taken is answered `not-found`";
 export const ZERO =
   "*a payment act carrying H that transferred zero* and *an act carrying H that transferred zero*: the standard token " +
   "refuses a zero `ft_transfer` (inferred from NEP-141's reference token, not yet shown by a run)";

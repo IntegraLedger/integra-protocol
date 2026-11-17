@@ -422,8 +422,10 @@ function memoIn(parsed: Record<string, unknown>): AtrHash | Refusal {
  * read is named as one the search could not decode, held at the block before it, and the search reads on (one the
  * caller gave is named `given`). The value is read at the final mark and at the latest head: consumed where the nonce
  * is at or past the signed one; lapsed where it is below the signed one at a block past `max_block_height`; a key that
- * is absent at either read leaves the value unread. No run has yet shown the search across the account's keys whole,
- * so the search is never read whole, and every `failed` but `before-position` answers `pending`, `search-incomplete`.
+ * is absent at either read leaves the value unread, and holds the search short of whole whatever it reads, since the
+ * value may have been taken before the key went: such a read answers `pending`, `search-incomplete`, never `not-found`.
+ * No run has yet shown the search across the account's keys whole, so the search is never read whole, and every
+ * `failed` but `before-position` answers `pending`, `search-incomplete`.
  * A `settled` answer states `presented`: `yes` where the delegate is, member by member, the one the reference holds,
  * `no` otherwise. A read
  * that rejects is unreadable by its reason; an answer outside the reader's documented form, a change outside the range
@@ -736,6 +738,9 @@ async function readNear(
     }
   }
 
+  // A key absent at either read leaves the value unread, and no read shows it untaken once the key is gone: the
+  // search is not whole, whatever it read.
+  if (atFinal.nonce === null || atLatest.nonce === null) whole = false;
   // The value at the final mark and at the latest head.
   let value: Facts<bigint, NearMark, bigint>["value"];
   if (atFinal.nonce !== null && atLatest.nonce !== null) {

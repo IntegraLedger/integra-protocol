@@ -910,10 +910,11 @@ function configBefore(input: Uint8Array, salt: Hex): { payer: Hex; receiver: Hex
  * `AuthorizationUsed(payer, nonce)` on ERC-3009, or on Permit2 the payer's bit set at its block and unset before with
  * the nonce in its input; any other deposit into the channel is a later credential of it, an act of another kind. The
  * deposit counts where the channel's `receiver` is the option's payee; what moved is the deposit's amount to that
- * receiver, by its `Deposited` log. The opening of another channel is its payer's only with the payer's transfer of its
- * amount (`payerDeposited`), since the channel contract takes a deposit through any collector, and the two the scheme
- * names move only what the payer signed; without it the act names no signer. A log of the contract the read cannot
- * decode holds the search.
+ * receiver, by its `Deposited` log. The opening is its payer's by the use of the nonce; any other deposit, the opening
+ * of another channel and a later deposit into the reference's channel, is its payer's only with the payer's transfer of
+ * its amount (`payerDeposited`), since the channel contract takes a deposit through any collector, and the two the
+ * scheme names move only what the payer signed; without it the act names no signer. A log of the contract the read
+ * cannot decode holds the search.
  */
 async function batchClassify(ref: BatchEvmRef, view: TxView, reader: EvmReader): Promise<Classified> {
   const { receipt } = view;
@@ -968,15 +969,16 @@ async function batchClassify(ref: BatchEvmRef, view: TxView, reader: EvmReader):
       if (amount === undefined) return { undecodable: true };
       const consumed = await consumedIn(ref, view, reader);
       if (typeof consumed !== "boolean") return consumed;
+      const signer = consumed || payerDeposited(logs, own, amount) ? (own.payer.toLowerCase() as Hex) : undefined;
       seen.push({
         result: "succeeded",
         consumed,
         carries: true,
-        party: partyOf(own.payer, ref.payer, ref.payee),
+        party: partyOf(signer, ref.payer, ref.payee),
         kind: consumed ? "same" : "other",
         account: same(own.receiver, ref.payee) ? "payee" : "other",
         moved: [movedAt(own.token.toLowerCase() as Hex, amount, own.receiver.toLowerCase() as Hex, view.hash, i)],
-        signer: own.payer.toLowerCase() as Hex,
+        ...(signer === undefined ? {} : { signer }),
         signed: { channel: ref.channel, amount: amount.toString() },
       });
     }

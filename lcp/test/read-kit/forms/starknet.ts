@@ -405,7 +405,7 @@ const HOLDS = STATED(
 );
 const PLACED = STATED("by the case's words, since every event the search reads names its block (rule 15)");
 const ONE_SEARCH = STATED(
-  "by the case's words, since the nonce is H's low bits, or the agreement's own value's, keyed by the account alone, so its read at the final mark and at the latest head is the search for H, read whole, no search has range left, a nonce read unconsumed is read with no search and so meets no item, and every act of the payer that carries H runs under that nonce, which one act consumes (rules 14 to 16)",
+  "by the case's words, since the nonce is H's low bits, or the agreement's own value's, keyed by the account alone, so its read at the final mark and at the latest head is the search for H, read whole, which no item changes, a nonce read unconsumed is read with no other search and so meets no item, and every act of the payer that carries H runs under that nonce, which one act consumes, the `Transfer` search that looks for the transaction that consumed a nonce read consumed being no search for H, which can be left with range to read and then answers `pending`, `search-incomplete` at its position (rules 14 to 17)",
 );
 const ONE_NONCE = STATED(
   "by the case's words, on the act payment, since every act of the payer that carries H runs under that nonce and so consumes it, and that read is the search (rules 14 and 15)",

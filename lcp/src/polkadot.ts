@@ -128,10 +128,10 @@ export type PolkadotLanded = PolkadotRef & { h: AtrHash; transaction?: string };
  * order, and its position the block height. A transaction is named by its timepoint, `<block hash>-<index>`. A
  * `settled` answer states `presented`: `yes` where the landed extrinsic's signed body, its signature apart, is the
  * presented one's, `no` where it is not. Each transfer of what moved is named by the timepoint and its place: the
- * event's index among the extrinsic's events, or `call 0` for a transfer of zero, the first call of the profile's
- * batch, which emits no event, after a `0` for each wrapper that leads to it. Its `signer` is the extrinsic's signer,
- * and its `authority` the wrapper it acted through for the payer, `proxy.proxy` or `multisig.as_multi_threshold_1`,
- * absent where it signed as the payer. A `pending` answer that holds the head at which the chain's validation of the presented
+ * event's index among the extrinsic's events, or, for a transfer call of zero, which emits no event, `call` and the
+ * index of each call on the path from the extrinsic's own call down to it (`call 0` for the profile's own). Its
+ * `signer` is the extrinsic's signer, and its `authority` the wrapper it acted through for the payer, `proxy.proxy` or
+ * `multisig.as_multi_threshold_1`, absent where it signed as the payer. A `pending` answer that holds the head at which the chain's validation of the presented
  * extrinsic answered valid keeps it in its search position, `validated`, for the next call.
  */
 export type PolkadotStatus = StatusAnswer<bigint, PolkadotMark, PolkadotCursor>;
@@ -609,27 +609,23 @@ function accountOf(v: unknown): Uint8Array | null {
 
 const ASSET_INSTANCES = ["assets", "foreignAssets", "poolAssets"] as const;
 /**
- * The place of a transfer of zero, which emits no event: the index of each call that leads to it from the extrinsic's
- * own call, one `0` for each wrapper's one call, then the first call of the profile's `batch_all`.
+ * The place of a transfer call of zero, which emits no event: `call` and the index of each call on the path from the
+ * extrinsic's own call down to it, `0` for the one call of a `proxy.proxy` or a `multisig.as_multi_threshold_1`, and for
+ * a `utility.batch`, `batch_all` or `force_batch` the index among the batch's calls of the call the path goes through.
  */
-function zeroCallPlace(wrappers: number): string {
-  return `call ${"0 ".repeat(wrappers)}0`;
+function zeroCallPlace(path: readonly number[]): string {
+  return ["call", ...path].join(" ");
 }
 
 /**
  * What the extrinsic moved from the payer, as observed: every `balances.Transfer` and every `Transferred` of the assets
  * pallet's instances whose `from` is the payer (polkadot-sdk at 23b84ba4, `substrate/frame/balances/src/lib.rs:349`,
  * `substrate/frame/assets/src/lib.rs:701-706`), each with its asset, amount and recipient (`0x` and its 32 bytes),
- * named by the extrinsic's timepoint and the event's index among its events, no sender recorded; and, where the
- * extrinsic ends with the profile call of zero, which emits no event, and that call runs as the payer, a transfer of
- * zero to the account it names, named by its call's place.
+ * named by the extrinsic's timepoint and the event's index among its events, no sender recorded; and each transfer call
+ * of zero that ran as the payer (`zeroCallsRun`), which emits no event, a transfer of zero to the account it names,
+ * named by its call's place.
  */
-function movedOf(
-  x: PolkadotExtrinsic,
-  payer: Uint8Array,
-  zero: { call: ProfileCall; wrappers: number } | null,
-  transaction: string,
-): Moved[] {
+function movedOf(x: PolkadotExtrinsic, payer: Uint8Array, zeros: readonly ZeroCall[], transaction: string): Moved[] {
   const moved: Moved[] = [];
   for (const [place, e] of x.events.entries()) {
     if (!isObject(e) || !Array.isArray(e.data)) continue;
@@ -649,9 +645,7 @@ function movedOf(
     if (typeof amount !== "string" && typeof amount !== "number") continue;
     moved.push({ asset, amount: String(amount), to: toHex(account), transaction, place });
   }
-  if (zero !== null && zero.call.amount === 0n) {
-    moved.push({ asset: `assets:${zero.call.assetId}`, amount: "0", to: toHex(zero.call.dest), transaction, place: zeroCallPlace(zero.wrappers) });
-  }
+  for (const z of zeros) moved.push({ asset: `assets:${z.assetId}`, amount: "0", to: toHex(z.dest), transaction, place: z.place });
   return moved;
 }
 
@@ -699,10 +693,10 @@ function compareBytes(a: Uint8Array, b: Uint8Array): number {
   return a.length - b.length;
 }
 
-/** Where the call an extrinsic ends with begins, at or after `from`: the longest suffix `transfersAt` decodes whole. */
+/** Where the call an extrinsic ends with begins, at or after `from`: the longest suffix `callAt` decodes whole. */
 function callStart(xt: Uint8Array, from: number): number | null {
   for (let start = from; start < xt.length; start++) {
-    const call = transfersAt(xt, start, 0);
+    const call = callAt(xt, start, 0);
     if (call !== null && call.next === xt.length) return start;
   }
   return null;
@@ -890,13 +884,13 @@ async function readPolkadot(
     // The account the call runs as, the payer where the signer signed as the payer or acted for it through a wrapper.
     const runs = item.kind === "signed" && item.signer !== null && start !== null ? originOf(xt, start, item.signer) : null;
     const forPayer = runs !== null && equalBytes(runs.origin, signer);
-    // The profile call the wrappers lead to, which a transfer of zero is read from.
-    const call0 = runs === null || !forPayer ? null : decodeProfileCall(xt.subarray(runs.inner));
-    const zero = call0 === null || isRefusal(call0) ? null : { call: call0, wrappers: runs!.wrappers.length };
+    // The transfer calls of zero that ran as the payer, read from the signed call and the events that show it ran.
+    const tree = start === null ? null : callAt(xt, start, 0);
+    const zeros = !succeeded || tree === null || item.kind !== "signed" || item.signer === null ? [] : zeroCallsRun(tree.call, item.signer, signer, x.events);
     const signedTo = isRefusal(split) || succeeded ? null : signedTransfers(xt, split.end);
     const transaction = `${x.at.hash.toLowerCase()}-${index}`;
     // What it moved where it dispatched: an extrinsic that did not meet the profile's success keeps what its events show.
-    const moved = succeeded ? movedOf(x, signer, zero, transaction) : x.success ? movedOf(x, signer, null, transaction) : [];
+    const moved = succeeded ? movedOf(x, signer, zeros, transaction) : x.success ? movedOf(x, signer, [], transaction) : [];
     const signerHex = item.kind === "signed" && item.signer !== null ? toHex(item.signer) : undefined;
     const party = item.kind === "signed" && item.signer !== null && equalBytes(item.signer, payee) ? "payee" : mine || forPayer ? "payer" : "other";
     // The wrapper the signer acted through for the payer; none where it signed as the payer.
@@ -1016,16 +1010,25 @@ async function readPolkadot(
 }
 
 /**
- * The accounts a signed call transfers to, decoded from its bytes: `assets.transfer` and `transfer_keep_alive` (pallet
- * 50, calls 8 and 9), `balances.transfer_allow_death` and `transfer_keep_alive` (10; 0 and 3), each to a
- * `MultiAddress::Id`; `system.remark` and `remark_with_event` (0; 0 and 7), which transfer nothing; and, holding these,
- * `utility.batch`, `batch_all` and `force_batch` (40; 0, 2 and 4), `proxy.proxy` (42; 0) over a `MultiAddress::Id`, and
+ * A signed call, decoded from its bytes: `assets.transfer` and `transfer_keep_alive` (pallet 50, calls 8 and 9),
+ * `balances.transfer_allow_death` and `transfer_keep_alive` (10; 0 and 3), each to a `MultiAddress::Id`;
+ * `system.remark` and `remark_with_event` (0; 0 and 7), which transfer nothing; and, holding these, `utility.batch`,
+ * `batch_all` and `force_batch` (40; 0, 2 and 4), `proxy.proxy` (42; 0) over a `MultiAddress::Id`, and
  * `multisig.as_multi_threshold_1` (41; 0).
  * Pallet and call indices are Polkadot Asset Hub's (polkadot-fellows/runtimes at 30696143, asset-hub-polkadot's
- * `construct_runtime`; polkadot-sdk at 23b84ba4, each pallet's `call_index`). Null where the bytes at `at` are no such
- * call.
+ * `construct_runtime`; polkadot-sdk at 23b84ba4, each pallet's `call_index`).
  */
-function transfersAt(b: Uint8Array, at: number, depth: number): { to: Uint8Array[]; next: number } | null {
+type Call =
+  | { kind: "batch" | "batch_all" | "force_batch"; calls: Call[] }
+  | { kind: "proxy"; real: Uint8Array; call: Call }
+  | { kind: "multisig"; others: Uint8Array[]; call: Call }
+  | { kind: "transfer"; assetId: bigint | undefined; dest: Uint8Array; amount: bigint }
+  | { kind: "remark" };
+
+const BATCH_KINDS = { 0: "batch", 2: "batch_all", 4: "force_batch" } as const;
+
+/** The call whose bytes begin at `at`, and where they end; null where the bytes at `at` are no such call. */
+function callAt(b: Uint8Array, at: number, depth: number): { call: Call; next: number } | null {
   const pallet = b[at];
   const index = b[at + 1];
   if (pallet === undefined || index === undefined || depth > 4) return null;
@@ -1034,54 +1037,192 @@ function transfersAt(b: Uint8Array, at: number, depth: number): { to: Uint8Array
   if (pallet === 40 && (index === 0 || index === 2 || index === 4)) {
     const count = compactAt(b, args);
     if (count === null || count.value > 64n) return null;
-    const to: Uint8Array[] = [];
+    const calls: Call[] = [];
     let next = count.next;
     for (let i = 0n; i < count.value; i++) {
-      const inner = transfersAt(b, next, depth + 1);
+      const inner = callAt(b, next, depth + 1);
       if (inner === null) return null;
-      to.push(...inner.to);
+      calls.push(inner.call);
       next = inner.next;
     }
-    return { to, next };
+    return { call: { kind: BATCH_KINDS[index], calls }, next };
   }
   if (pallet === 42 && index === 0) {
-    if (account(args) === null) return null;
+    const real = account(args);
+    if (real === null) return null;
     const kind = b[args + 33];
     if (kind !== 0x00 && kind !== 0x01) return null;
-    return transfersAt(b, args + 34 + kind, depth + 1);
+    const inner = callAt(b, args + 34 + kind, depth + 1);
+    return inner === null ? null : { call: { kind: "proxy", real, call: inner.call }, next: inner.next };
   }
   if (pallet === 41 && index === 0) {
     const count = compactAt(b, args);
     if (count === null || count.value > 100n || count.next + 32 * Number(count.value) > b.length) return null;
-    return transfersAt(b, count.next + 32 * Number(count.value), depth + 1);
+    const others: Uint8Array[] = [];
+    for (let i = 0; i < Number(count.value); i++) others.push(b.subarray(count.next + 32 * i, count.next + 32 * (i + 1)));
+    const inner = callAt(b, count.next + 32 * Number(count.value), depth + 1);
+    return inner === null ? null : { call: { kind: "multisig", others, call: inner.call }, next: inner.next };
   }
   if (pallet === 50 && (index === 8 || index === 9)) {
     const asset = compactAt(b, args);
     const dest = asset === null ? null : account(asset.next);
     const amount = asset === null || dest === null ? null : compactAt(b, asset.next + 33);
-    return dest === null || amount === null ? null : { to: [dest], next: amount.next };
+    return asset === null || dest === null || amount === null ? null : { call: { kind: "transfer", assetId: asset.value, dest, amount: amount.value }, next: amount.next };
   }
   if (pallet === 10 && (index === 0 || index === 3)) {
     const dest = account(args);
     const amount = dest === null ? null : compactAt(b, args + 33);
-    return dest === null || amount === null ? null : { to: [dest], next: amount.next };
+    return dest === null || amount === null ? null : { call: { kind: "transfer", assetId: undefined, dest, amount: amount.value }, next: amount.next };
   }
   if (pallet === 0 && (index === 0 || index === 7)) {
     const length = compactAt(b, args);
     if (length === null || length.value > BigInt(b.length - length.next)) return null;
-    return { to: [], next: length.next + Number(length.value) };
+    return { call: { kind: "remark" }, next: length.next + Number(length.value) };
   }
   return null;
 }
 
+/** The accounts a call transfers to, in its order. */
+function transfersOf(c: Call): Uint8Array[] {
+  if (c.kind === "transfer") return [c.dest];
+  if (c.kind === "remark") return [];
+  if (c.kind === "proxy" || c.kind === "multisig") return transfersOf(c.call);
+  return c.calls.flatMap(transfersOf);
+}
+
+/** A transfer call of zero on the assets pallet: its asset, the account it names, and its call's place. */
+interface ZeroCall {
+  assetId: bigint;
+  dest: Uint8Array;
+  place: string;
+}
+
+/**
+ * An event the utility, proxy or multisig pallet emits as it dispatches a call it holds (polkadot-sdk at 23b84ba4,
+ * `substrate/frame/utility/src/lib.rs:117-125`; `substrate/frame/proxy/src/lib.rs:1032-1035`;
+ * `substrate/frame/multisig/src/lib.rs:337-345`): `interrupted` with the index `BatchInterrupted` names, `failed` for
+ * `ItemFailed`, `done` for `ItemCompleted`, `end` for `BatchCompleted` or `BatchCompletedWithErrors`, `proxy` with
+ * `ProxyExecuted`'s result, `multisig` for `MultisigExecuted` with `Ok`; `other` for any other event of these pallets,
+ * which no reading places. Undefined for an event of another pallet.
+ */
+type Dispatched = { e: "interrupted"; index: number } | { e: "failed" } | { e: "done" } | { e: "end" } | { e: "proxy"; ok: boolean } | { e: "multisig" } | { e: "other" };
+
+function dispatchedOf(ev: PolkadotExtrinsic["events"][number]): Dispatched | undefined {
+  if (!isObject(ev)) return undefined;
+  const d: readonly Json[] = Array.isArray(ev.data) ? ev.data : [];
+  const result = (r: Json | undefined): boolean | undefined =>
+    isObject(r) && "ok" in r && !("err" in r) ? true : isObject(r) && "err" in r && !("ok" in r) ? false : undefined;
+  if (ev.pallet === "utility") {
+    if (ev.method === "BatchInterrupted") {
+      const i = typeof d[0] === "number" ? d[0] : typeof d[0] === "string" && DECIMAL.test(d[0]) ? Number(d[0]) : NaN;
+      return Number.isSafeInteger(i) ? { e: "interrupted", index: i } : { e: "other" };
+    }
+    if (ev.method === "ItemFailed") return { e: "failed" };
+    if (ev.method === "ItemCompleted") return { e: "done" };
+    if (ev.method === "BatchCompleted" || ev.method === "BatchCompletedWithErrors") return { e: "end" };
+    return { e: "other" };
+  }
+  if (ev.pallet === "proxy") {
+    const ok = ev.method === "ProxyExecuted" ? result(d[0]) : undefined;
+    return ok === undefined ? { e: "other" } : { e: "proxy", ok };
+  }
+  if (ev.pallet === "multisig") return ev.method === "MultisigExecuted" && result(d[4]) === true ? { e: "multisig" } : { e: "other" };
+  return undefined;
+}
+
+/** A reading of the dispatch: whether the call ran, how many of the events it placed, the zero calls it shows ran. */
+type Reading = { ok: boolean; at: number; ran: readonly string[] };
+/** lcp's bound on the readings one extrinsic's events are read under. */
+const MAX_READINGS = 4096;
+const TOO_MANY = Symbol("too many readings");
+
+/**
+ * The transfer calls of zero on the assets pallet that ran as the payer in a succeeded extrinsic whose call is `root`,
+ * signed by `signer`. A call runs as the account its wrappers make it (`originOf`'s rule). A call of zero ran where every
+ * call on its path ran, as the pallets dispatch (polkadot-sdk at 23b84ba4): under a `utility.batch` where the batch was
+ * not interrupted or the call comes before the one whose index `BatchInterrupted` names, the batch dispatching its calls
+ * in order and stopping at the first that fails (`substrate/frame/utility/src/lib.rs:188-192`, `:214-235`); under a
+ * `utility.force_batch` where the batch reports no `ItemFailed` for it (`:404-440`); under a `utility.batch_all` where
+ * the batch ran, one failing call failing the batch (`:323-350`); under a `proxy.proxy` where its `ProxyExecuted` carries
+ * no error (`substrate/frame/proxy/src/lib.rs:1032-1035`); under a `multisig.as_multi_threshold_1` where the call ran,
+ * a failing call failing it (`substrate/frame/multisig/src/lib.rs:337-345`). A failed call's own events are undone with
+ * it. The events of these pallets are read in order, each reading of the dispatch placing `BatchInterrupted`,
+ * `ItemFailed` and a `ProxyExecuted` with an error where a call failed, and `ItemCompleted`, a batch's closing event,
+ * `ProxyExecuted` and `MultisigExecuted` without one where the endpoint lists them; a call of zero ran where every
+ * reading that places all of the events shows it ran, and none ran where no reading does.
+ */
+function zeroCallsRun(root: Call, signer: Uint8Array, payer: Uint8Array, events: PolkadotExtrinsic["events"]): ZeroCall[] {
+  const evs = events.flatMap((ev) => dispatchedOf(ev) ?? []);
+  const zeros = new Map<string, ZeroCall>();
+  let count = 0;
+  const unique = (rs: readonly Reading[]): Reading[] => {
+    const out = new Map<string, Reading>();
+    for (const r of rs) out.set(`${r.ok}|${r.at}|${r.ran.join(",")}`, r);
+    count += out.size;
+    if (count > MAX_READINGS) throw TOO_MANY;
+    return [...out.values()];
+  };
+  /** `r` and, where the event at its place is `e`, `r` past it. */
+  const optional = (r: Reading, e: Dispatched["e"]): Reading[] => (evs[r.at]?.e === e ? [r, { ...r, at: r.at + 1 }] : [r]);
+  /** Each reading of `c` dispatched from `from`: it ran, or it failed with its events undone. */
+  const run = (c: Call, path: readonly number[], origin: Uint8Array, from: Reading): Reading[] => {
+    const out: Reading[] = [{ ...from, ok: false }];
+    if (c.kind === "remark") out.push({ ...from, ok: true });
+    else if (c.kind === "transfer") {
+      const place = zeroCallPlace(path);
+      const zero = c.amount === 0n && c.assetId !== undefined && equalBytes(origin, payer);
+      if (zero) zeros.set(place, { assetId: c.assetId!, dest: c.dest, place });
+      out.push({ ...from, ok: true, ran: zero ? [...from.ran, place] : from.ran });
+    } else if (c.kind === "multisig") {
+      const all = [...c.others, origin].sort(compareBytes);
+      const account = blake256(concat(MULTISIG_SEED, compact(BigInt(all.length)), ...all, [1, 0]));
+      for (const r of run(c.call, [...path, 0], account, from)) if (r.ok) out.push(...optional(r, "multisig"));
+    } else if (c.kind === "proxy") {
+      for (const r of run(c.call, [...path, 0], c.real, from)) {
+        const e = evs[r.at];
+        const executed = e?.e === "proxy" ? e.ok : undefined;
+        if (r.ok) out.push(r, ...(executed === true ? [{ ...r, at: r.at + 1 }] : []));
+        else if (executed === false) out.push({ ...from, ok: true, at: from.at + 1 });
+      }
+    } else {
+      let open: Reading[] = [{ ...from, ok: true }];
+      const closed: Reading[] = [];
+      for (const [i, inner] of c.calls.entries()) {
+        const next: Reading[] = [];
+        for (const at of open) {
+          const e = evs[at.at];
+          for (const r of run(inner, [...path, i], origin, at)) {
+            if (r.ok) next.push(...optional(r, "done"));
+            else if (c.kind === "batch" && e?.e === "interrupted" && e.index === i) closed.push({ ...at, at: at.at + 1 });
+            else if (c.kind === "force_batch" && e?.e === "failed") next.push({ ...at, at: at.at + 1 });
+          }
+        }
+        open = unique(next);
+      }
+      for (const r of open) closed.push(...optional(r, "end"));
+      out.push(...closed.map((r) => ({ ...r, ok: true })));
+    }
+    return unique(out);
+  };
+  let whole: Reading[];
+  try {
+    whole = run(root, [], signer, { ok: true, at: 0, ran: [] }).filter((r) => r.ok && r.at === evs.length);
+  } catch (e) {
+    if (e === TOO_MANY) return [];
+    throw e;
+  }
+  if (whole.length === 0) return [];
+  return [...zeros.values()].filter((z) => whole.every((w) => w.ran.includes(z.place)));
+}
+
 /**
  * The accounts the call an extrinsic ends with transfers to, that call starting at or after `from`, the longest suffix
- * `transfersAt` decodes whole; null where none does.
+ * `callAt` decodes whole; null where none does.
  */
 function signedTransfers(xt: Uint8Array, from: number): Uint8Array[] | null {
   for (let start = from; start < xt.length; start++) {
-    const call = transfersAt(xt, start, 0);
-    if (call !== null && call.next === xt.length) return call.to;
+    const call = callAt(xt, start, 0);
+    if (call !== null && call.next === xt.length) return transfersOf(call.call);
   }
   return null;
 }

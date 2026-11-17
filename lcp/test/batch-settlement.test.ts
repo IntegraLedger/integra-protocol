@@ -265,7 +265,7 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(await batchEvm.channel.boundWithin(matched)).not.toBe(H);
   });
 
-  it("EB7: status from what landed: the opening, a later deposit into the channel, and another contract's log", async () => {
+  it("EB7: status from what landed: the opening, a later deposit into the channel with and without the payer's transfer, and another contract's log", async () => {
     const { payment } = await evmOpening();
     const ref = unwrap(await evmReference(payment));
     expect([ref.channel, ref.nonce, ref.amount]).toEqual([V.EB1.channelId, V.EB3.depositNonce, V.fixed.evm.deposit]);
@@ -273,7 +273,7 @@ describe("x402-batch-settlement.json: EVM", () => {
     const plain = (x: unknown) => JSON.parse(JSON.stringify(x, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
     const used = BigInt(V.EB7.reader.used);
     expect(plain(await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(V.EB7.fullCall.receipt, used), Q))).toEqual(V.EB7.fullCall.expect);
-    for (const row of [V.EB7.laterDeposit, V.EB7.plantOtherContract]) {
+    for (const row of [V.EB7.laterDeposit, V.EB7.laterDepositByPayer, V.EB7.plantOtherContract]) {
       expect(plain(await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(row.receipt), Q)), row.case).toEqual(row.expect);
     }
     expect(V.EB7.fullCall.receipt.logs[3]).toEqual(V.EB8.log);

@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). The eraNonce rows' signer, era and nonce are as @polkadot/types 17.0.1 decodes them under Polkadot Asset Hub's transaction extensions (eraNonce's about). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover and status rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's pallet and call index as Polkadot Asset Hub's runtime has them (polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1731-1776: System 0, Balances 10, Utility 40, Proxy 42, Assets 50, ForeignAssets 53; polkadot-sdk at 23b84ba4: utility batch 0, batch_all 2, force_batch 4, proxy.proxy 0, balances transfer_keep_alive 3, assets transfer_keep_alive 9), and recompute the length prefix; the signature is V3's and does not cover that call, which neither recover nor status verifies. The re-signed status rows replace V3's signature with 64 bytes of 0x11, and one its era bytes a502 with b502. A status row's events with another call are constructed in Sidecar's shape, each as the pallet emits it (pallet_proxy's ProxyExecuted, pallet_utility's BatchInterrupted, ItemFailed, ItemCompleted and BatchCompletedWithErrors, pallet_balances' Transfer, the assets pallet's Transferred under foreignAssets). Status rows are read with the act payment at the finality the row gives, finalized where it gives none, after the position the row gives, by the signer's account nonce as the profile's rule 8 states it: the reader fixture answers V4's raw extrinsics at block 100 and one bare v4 item (length, 0x04, a two-byte call) at every other height from 90 to 120, the row's finalized and head heights, the account nonce at each, and the chain's validation of the presented extrinsic (valid at the height given, or not valid); these answers are constructed, not recorded. Each expected answer is derived by hand from read-status.md and the profile's rule 8; each transfer of what moved is named by the extrinsic's timepoint and its place, the index of its event among the fixture's events as the endpoint lists them, and only a transfer whose from is the payer is what moved (Balances' Transfer { from, to, amount } and the assets pallet's Transferred { asset_id, from, to, amount }, polkadot-sdk at 23b84ba4, substrate/frame/balances/src/lib.rs:349 and substrate/frame/assets/src/lib.rs:701-706). The wrapper rows read the account a call runs as: a delegate's proxy.proxy runs its call as its real, the payer, its preamble V3's with the delegate's account (0x22 bytes) as the signer; and a delegate's multisig.as_multi_threshold_1 (Multisig is pallet 41, polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1767; as_multi_threshold_1 is call 0, polkadot-sdk at 23b84ba4, substrate/frame/multisig/src/lib.rs:311-337) with one other signatory (0x55 bytes) runs it as the multisig account, BLAKE2b-256 by hashlib of modlpy/utilisuba, the compact count and the sorted accounts, and the threshold 1 as a u16 (substrate/frame/multisig/src/lib.rs:645-648, :789-808), which that row gives as the reference's signer: a multisig account holds no key, so no reference reads it from a presented extrinsic, and the row constructs it. The answer names the delegate as the signer and the wrapper as its authority.",
+ "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). The eraNonce rows' signer, era and nonce are as @polkadot/types 17.0.1 decodes them under Polkadot Asset Hub's transaction extensions (eraNonce's about). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover and status rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's pallet and call index as Polkadot Asset Hub's runtime has them (polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1731-1776: System 0, Balances 10, Utility 40, Proxy 42, Assets 50, ForeignAssets 53; polkadot-sdk at 23b84ba4: utility batch 0, batch_all 2, force_batch 4, proxy.proxy 0, balances transfer_keep_alive 3, assets transfer_keep_alive 9), and recompute the length prefix; the signature is V3's and does not cover that call, which neither recover nor status verifies. The re-signed status rows replace V3's signature with 64 bytes of 0x11, and one its era bytes a502 with b502. A status row's events with another call are constructed in Sidecar's shape, each as the pallet emits it (pallet_proxy's ProxyExecuted, pallet_utility's BatchInterrupted, ItemFailed, ItemCompleted and BatchCompletedWithErrors, pallet_balances' Transfer, the assets pallet's Transferred under foreignAssets). Status rows are read with the act payment at the finality the row gives, finalized where it gives none, after the position the row gives, by the signer's account nonce as the profile's rule 8 states it: the reader fixture answers V4's raw extrinsics at block 100 and one bare v4 item (length, 0x04, a two-byte call) at every other height from 90 to 120, the row's finalized and head heights, the account nonce at each, and the chain's validation of the presented extrinsic (valid at the height given, or not valid); these answers are constructed, not recorded. Each expected answer is derived by hand from read-status.md and the profile's rule 8; each transfer of what moved is named by the extrinsic's timepoint and its place, the index of its event among the fixture's events as the endpoint lists them, and only a transfer whose from is the payer is what moved (Balances' Transfer { from, to, amount } and the assets pallet's Transferred { asset_id, from, to, amount }, polkadot-sdk at 23b84ba4, substrate/frame/balances/src/lib.rs:349 and substrate/frame/assets/src/lib.rs:701-706). The wrapper rows read the account a call runs as: a delegate's proxy.proxy runs its call as its real, the payer, its preamble V3's with the delegate's account (0x22 bytes) as the signer; and a delegate's multisig.as_multi_threshold_1 (Multisig is pallet 41, polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1767; as_multi_threshold_1 is call 0, polkadot-sdk at 23b84ba4, substrate/frame/multisig/src/lib.rs:311-337) with one other signatory (0x55 bytes) runs it as the multisig account, BLAKE2b-256 by hashlib of modlpy/utilisuba, the compact count and the sorted accounts, and the threshold 1 as a u16 (substrate/frame/multisig/src/lib.rs:645-648, :789-808), which that row gives as the reference's signer: a multisig account holds no key, so no reference reads it from a presented extrinsic, and the row constructs it. The answer names the delegate as the signer and the wrapper as its authority. The rows of a transfer call of zero inside nested batches read when such a call ran from the utility pallet's own dispatch (polkadot-sdk at 23b84ba4, substrate/frame/utility/src/lib.rs:117-125 for the events, :214-237 utility.batch dispatching its calls in order and depositing BatchInterrupted with the failing call's index and stopping, :323-350 batch_all, :419-441 force_batch depositing ItemFailed or ItemCompleted for each call and BatchCompletedWithErrors or BatchCompleted after them), each call's own events undone where it failed; their events are as those lines emit them, the failing balances.transfer_keep_alive's error Balances' InsufficientBalance (substrate/frame/balances/src/lib.rs:441, error 2 of pallet 10) and the refused call's frame_system CallFiltered (substrate/frame/system/src/lib.rs:955, error 5 of pallet 0), and each transfer of zero is named by its call's path.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -1549,6 +1549,420 @@
      "presented": "no",
      "signer": "0x2222222222222222222222222222222222222222222222222222222222222222",
      "authority": "multisig.as_multi_threshold_1"
+    }
+   },
+   {
+    "case": "utility.batch of the remark and a utility.batch_all of two assets.transfer_keep_alive calls of zero, to another account and to payTo; every call ran: two transfers of zero, at call 1 0 and call 1 1, settled",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x31048400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000280008000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561642802083209e514001111111111111111111111111111111111111111111111111111111111111111003209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00"
+    ],
+    "change": {
+     "hash": "0xc442de0aa77766a880ecba94cc7cdcb2d93a6f90ad4479faba502ba4f5be31c3",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompleted",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "0",
+       "to": "0x1111111111111111111111111111111111111111111111111111111111111111",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": "call 1 0"
+      },
+      {
+       "asset": "assets:1337",
+       "amount": "0",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": "call 1 1"
+      }
+     ],
+     "presented": "no",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
+    }
+   },
+   {
+    "case": "utility.batch of the remark, a balances.transfer_keep_alive to payTo that fails and a transfer of zero to payTo: BatchInterrupted names index 1, so the call of zero after it did not run and nothing moved: instrument-consumed, other-account",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x21048400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a5020000000028000c000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561640a0300d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c3209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00"
+    ],
+    "change": {
+     "hash": "0x5560f8531deea02aed6150787855187a2d4fc45500f6381b1e4f52deb651407f",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchInterrupted",
+       "data": [
+        "1",
+        {
+         "module": {
+          "index": 10,
+          "error": "0x02000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "carries": "other-account",
+     "moved": []
+    }
+   },
+   {
+    "case": "utility.batch of the remark, a transfer of zero to payTo and a balances.transfer_keep_alive that fails: BatchInterrupted names index 2, so the call of zero before it ran, at call 1: settled",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x21048400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a5020000000028000c000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561643209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d000a0300d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c"
+    ],
+    "change": {
+     "hash": "0x719eaef51b075f4c56730e9db8210020f37510a2e6ba770e537c37dbd6a802ad",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchInterrupted",
+       "data": [
+        "2",
+        {
+         "module": {
+          "index": 10,
+          "error": "0x02000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "0",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": "call 1"
+      }
+     ],
+     "presented": "no",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
+    }
+   },
+   {
+    "case": "utility.force_batch of the remark and a transfer of zero to payTo for which the batch reports ItemFailed (the origin's filter refusing it, CallFiltered): the call of zero did not run and nothing moved: instrument-consumed, other-account",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x8d038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000280408000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561643209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00"
+    ],
+    "change": {
+     "hash": "0xb7ffd7da9cc32583d0c94b829b39f55e63678339bcfd4a9559edf8b1011eef65",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemFailed",
+       "data": [
+        {
+         "module": {
+          "index": 0,
+          "error": "0x05000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompletedWithErrors",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "carries": "other-account",
+     "moved": []
+    }
+   },
+   {
+    "case": "utility.batch of a utility.batch, holding a transfer of zero to payTo and a balances.transfer_keep_alive that fails, and the remark: the inner batch's BatchInterrupted names index 1 and the outer batch runs on, so the call of zero ran, at call 0 0: settled",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x2d048400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002800082800083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d000a0300d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0x31ad9b7b17f785ca61d296355bc4b4f0496cc94422f9c3254fa4f9599fd063bf",
+     "events": [
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchInterrupted",
+       "data": [
+        "1",
+        {
+         "module": {
+          "index": 10,
+          "error": "0x02000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompleted",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "0",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": "call 0 0"
+      }
+     ],
+     "presented": "no",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
     }
    }
   ],

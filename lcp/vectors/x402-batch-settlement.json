@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3, and EB10's refund authorizer account 2's address; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit). ES5 is a landed opening read by recover, landedErr the error it is read landed with; transactionV1's statusRows read the stock version-1 opening back, and the read's own cases are in svm-read.json. EB7's laterDeposit and plantOtherContract, each a transaction that is not this deposit, answer pending search-incomplete: the read defines no search for H, and at coverage full failed comes only from a search read whole (read-status rule 24). EB10 is the scheme's refund-authorizer mode, its values from the stock @x402/evm 2.31.0 client as its case states. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
+ "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3, and EB10's refund authorizer account 2's address; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit). ES5 is a landed opening read by recover, landedErr the error it is read landed with; transactionV1's statusRows read the stock version-1 opening back, and the read's own cases are in svm-read.json. EB7's laterDeposit, laterDepositByPayer and plantOtherContract, each a transaction that is not this deposit, answer pending search-incomplete: the read defines no search for H, and at coverage full failed comes only from a search read whole (read-status rule 24). EB10 is the scheme's refund-authorizer mode, its values from the stock @x402/evm 2.31.0 client as its case states. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "Hprime": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
@@ -521,11 +521,58 @@
    }
   },
   "laterDeposit": {
-   "case": "the full call's Deposited alone, with no use of the deposit nonce, and the nonce unused: a later deposit into the channel, a foreign item of another kind; the value unused, the search not whole",
+   "case": "the full call's Deposited alone, with no use of the deposit nonce and no transfer of the payer's, and the nonce unused: a later deposit into the channel that names no signer, since the channel contract's deposit takes any non-zero collector and checks only that its own balance rose by the amount (x402-foundation/x402 f8f83309, contracts/evm/src/x402BatchSettlement.sol L200-231); a foreign item under another account's signature; the value unused, the search not whole",
    "receipt": {
     "status": 1,
     "blockNumber": "100",
     "logs": [
+     {
+      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+      "topics": [
+       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
+       "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a000000000000000000000000000000000000000000000000000000000000186a0"
+     }
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "search-incomplete",
+    "foreign": [
+     {
+      "transaction": "0xabababababababababababababababababababababababababababababababab",
+      "position": "100",
+      "moved": [
+       {
+        "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "amount": "100000",
+        "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+        "transaction": "0xabababababababababababababababababababababababababababababababab",
+        "place": 0
+       }
+      ],
+      "reason": "other-signer"
+     }
+    ]
+   }
+  },
+  "laterDepositByPayer": {
+   "case": "the full call's Deposited with the payer's Transfer of its amount to the ERC-3009 deposit collector before it, no use of the deposit nonce, and the nonce unused: a later deposit into the channel by the payer's own act, the collector moving only what the payer signed, a foreign item of another kind; the value unused, the search not whole",
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     },
      {
       "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
       "topics": [
@@ -551,7 +598,7 @@
         "amount": "100000",
         "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
         "transaction": "0xabababababababababababababababababababababababababababababababab",
-        "place": 0
+        "place": 1
        }
       ],
       "reason": "other-kind"

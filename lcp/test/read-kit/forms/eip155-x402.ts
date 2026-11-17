@@ -637,14 +637,14 @@ const REFUND_AUTHORIZER = lower("0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" as 
 const PACKED_SALT = lower(`0x${AUTH_SALT.slice(2, 26)}${REFUND_AUTHORIZER.slice(2)}` as Hex);
 
 /**
- * A deposit's logs: where it opens the channel, the payer's transfer of the amount to the channel contract (as Permit2's
- * deposit collector moves it) and `ChannelCreated`; then `Deposited`.
+ * A deposit's logs: the channel payer's transfer of the amount to the channel contract (as Permit2's deposit collector
+ * moves it); where it opens the channel, `ChannelCreated`; then `Deposited`.
  */
 function channelLogs(c: { config: Channel; id: Hex }, amount: bigint, created: boolean) {
   const topicsOf = (eventName: "ChannelCreated" | "Deposited", args: Record<string, unknown>) =>
     (encodeEventTopics({ abi: BATCH_ABI, eventName, args } as never) as Hex[]).map(lower);
   return [
-    ...(created ? [transferLog(c.config.token, c.config.payer, CHANNEL_AT, amount)] : []),
+    transferLog(c.config.token, c.config.payer, CHANNEL_AT, amount),
     ...(created ? [{ address: CHANNEL_AT, topics: topicsOf("ChannelCreated", { channelId: c.id }), data: encodeAbiParameters(CHANNEL_CREATED_DATA as never, [c.config] as never) as Hex }] : []),
     { address: CHANNEL_AT, topics: topicsOf("Deposited", { channelId: c.id, sender: OTHER }), data: encodeAbiParameters([{ type: "uint128" }, { type: "uint128" }], [amount, amount]) as Hex },
   ];
@@ -655,8 +655,8 @@ function channelLogs(c: { config: Channel; id: Hex }, amount: bigint, created: b
  * presented channel to the payee that consumed the deposit authorization's nonce, is that channel's `ChannelCreated`
  * and `Deposited` beside the token's `AuthorizationUsed(payer, nonce)` (Permit2: the nonce in its input and the payer's
  * bit set from its block). An act of another kind is a later deposit into the presented channel, which consumes no
- * nonce of this authorization, where the payer's (an act of another kind another account signed is named by its signer,
- * rule 14). Any other act carrying H is the opening of another channel whose salt is H: its payer
+ * nonce of this authorization, where the payer's, with the payer's transfer of its amount (an act of another kind
+ * another account signed is named by its signer, rule 14). Any other act carrying H is the opening of another channel whose salt is H: its payer
  * the party, its receiver the payee's account or another (rule 9 treats an act that names no account as one naming
  * another, and a channel always names a receiver), its token the asset moved. A consumer another account signed is made
  * as the payer's, the collector redeeming only what the payer signed. A failed result is a reverted `deposit` of that
