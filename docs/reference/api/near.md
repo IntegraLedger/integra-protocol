@@ -196,7 +196,8 @@ shortens the search and proves nothing.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-request"></a> `request` | `object` | SHA-256 of the NEP-461-prefixed delegate action: what the key signs. |
+| <a id="property-request"></a> `request` | `object` | What the key signs. `delegateAction` is the borsh of the NEP-366 `DelegateAction`; `hash` is the SHA-256 of the NEP-461 prefix, `NEP461_DELEGATE` as a little-endian u32, followed by those bytes. `nearRequest` reads them. |
+| `request.delegateAction` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.hash` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.kind` | `"near-delegate"` | - |
 
@@ -400,6 +401,32 @@ that is not an LCP string `near/memo-not-lcp`. The hash is recovered whatever th
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+
+***
+
+### nearRequest()
+
+> **nearRequest**(`delegateAction`): `Promise`\<[`Refusal`](index.md#refusal) \| \{ `amount`: `string`; `asset`: `string`; `deposit`: `bigint`; `gas`: `bigint`; `h`: `` `0x${string}` ``; `hash`: `Uint8Array`\<`ArrayBuffer`\>; `maxBlockHeight`: `bigint`; `nonce`: `bigint`; `payer`: `string`; `payTo`: `string`; `publicKey`: `string`; \}\>
+
+Reads the delegate action a `near-delegate` request carries, its borsh bytes, as `nearCarrier` reads the delegate
+action of a signed one, with its codes, and gives `hash`, the SHA-256 of the NEP-461 prefix followed by those bytes,
+which is the request's `hash` when the bytes are its `delegateAction`. It gives every member the bytes hold: the
+sender (`payer`) and its access key, the token contract (`asset`, the receiver), the one function call's gas and
+attached deposit in yoctoNEAR, the nonce, `maxBlockHeight`, the last block height at which the action can run, and
+the `ft_transfer` arguments' `receiver_id` (`payTo`), `amount` and the hash in `memo`. A delegate action holds one
+action, an `ft_transfer`, or it is refused, so nothing else runs under the signature. A value that is not a
+`Uint8Array` is `near/sda-malformed`, and bytes longer than those of the longest signed delegate action lcp decodes
+are `near/sda-too-large`; without borsh, bytes within the bound are `near/peer-missing`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `delegateAction` | `Uint8Array` |
+
+#### Returns
+
+`Promise`\<[`Refusal`](index.md#refusal) \| \{ `amount`: `string`; `asset`: `string`; `deposit`: `bigint`; `gas`: `bigint`; `h`: `` `0x${string}` ``; `hash`: `Uint8Array`\<`ArrayBuffer`\>; `maxBlockHeight`: `bigint`; `nonce`: `bigint`; `payer`: `string`; `payTo`: `string`; `publicKey`: `string`; \}\>
 
 ***
 

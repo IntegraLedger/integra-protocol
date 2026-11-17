@@ -287,7 +287,7 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 **Pairings:** `x402/exact/near`.
 
-**Values (9):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `MAX_FT_TRANSFER_ARGS_BYTES`, `MAX_SIGNED_DELEGATE_BASE64`, `nearCarrier`, `nearRecover`, `nearStatus`, `NEP461_DELEGATE`.
+**Values (10):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `MAX_FT_TRANSFER_ARGS_BYTES`, `MAX_SIGNED_DELEGATE_BASE64`, `nearCarrier`, `nearRecover`, `nearRequest`, `nearStatus`, `NEP461_DELEGATE`.
 
 **Types (12):** `Broadcaster`, `NearFunctionCall`, `NearKeyChange`, `NearKeyChanges`, `NearMark`, `NearNetwork`, `NearOutcome`, `NearQuery`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
 
@@ -405,7 +405,7 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 
 **Pairings:** `x402/exact/tron/lcp-trc20-memo`.
 
-**Values (13):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `TRON_BOUNDS`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`.
+**Values (14):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `TRON_BOUNDS`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronRequest`, `tronStatus`.
 
 **Types (13):** `Broadcaster`, `TronBlock`, `TronCursor`, `TronInfo`, `TronLevel`, `TronNetwork`, `TronNow`, `TronQuery`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
 
@@ -419,7 +419,7 @@ import { exactTvm, lcpComment, MAX_TVM_ATTACHED_ABOVE_FORWARD, … } from "@inte
 
 **Pairings:** `x402/exact/tvm`.
 
-**Values (13):** `exactTvm`, `lcpComment`, `MAX_TVM_ATTACHED_ABOVE_FORWARD`, `MAX_TVM_BOC_BYTES`, `MAX_TVM_CELLS`, `MAX_TVM_DEPTH`, `MAX_TVM_LISTED`, `OP`, `TVM_EXPIRY_MARGIN`, `tvmCarrier`, `tvmRecover`, `tvmStatus`, `W5R1_CODE_HASH`.
+**Values (14):** `exactTvm`, `lcpComment`, `MAX_TVM_ATTACHED_ABOVE_FORWARD`, `MAX_TVM_BOC_BYTES`, `MAX_TVM_CELLS`, `MAX_TVM_DEPTH`, `MAX_TVM_LISTED`, `OP`, `TVM_EXPIRY_MARGIN`, `tvmCarrier`, `tvmRecover`, `tvmRequest`, `tvmStatus`, `W5R1_CODE_HASH`.
 
 **Types (15):** `Broadcaster`, `TonAccountState`, `TonAccountStatus`, `TonCell`, `TonIndexed`, `TonLink`, `TonOutMsg`, `TonTx`, `TonWalletState`, `TvmNetwork`, `TvmReader`, `TvmRef`, `TvmSearch`, `TvmStatus`, `TvmUnsigned`.
 

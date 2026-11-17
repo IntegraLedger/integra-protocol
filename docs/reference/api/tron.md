@@ -226,8 +226,9 @@ is the payment presented; `txid` its SHA-256, the single-use value; `asset` the 
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-request"></a> `request` | `object` | The 32-byte transaction id the payer signs. |
+| <a id="property-request"></a> `request` | `object` | What the payer signs. `rawBytes` is the transaction's `raw_data`, `Transaction.raw` as `encodeTronRaw` writes it; `txid` is its SHA-256, the 32-byte transaction id. `tronRequest` reads them. |
 | `request.kind` | `"tron-txid"` | - |
+| `request.rawBytes` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.txid` | `Uint8Array`\<`ArrayBuffer`\> | - |
 
 #### Methods
@@ -445,6 +446,32 @@ id, and its `option` the option the payment answers, an object, of which the rea
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+
+***
+
+### tronRequest()
+
+> **tronRequest**(`rawBytes`): `Promise`\<[`Refusal`](index.md#refusal) \| \{ `amount`: `string`; `asset`: `string`; `h`: `` `0x${string}` ``; `payer`: `string`; `payTo`: `string`; `raw`: [`TronRaw`](#tronraw)\<`ArrayBuffer`\>; `txid`: `Uint8Array`\<`ArrayBuffer`\>; \}\>
+
+Reads the `raw_data` a `tron-txid` request carries, as `decodeTronTx` reads a signed transaction's and `tronCarrier`
+reads its call and memo, with their codes, and gives `txid`, its SHA-256, which is the request's `txid` when the bytes
+are its `rawBytes`. `raw` is every field the bytes hold, which are all the fields `decodeTronTx` admits: the reference
+block's bytes and hash, `expiration` and `timestamp` in milliseconds, the memo `data`, `fee_limit` in sun, and the one
+contract, a `TriggerSmartContract` with no call value from `owner` to `contractAddress` whose call data is
+`transfer(address,uint256)`. Read from them: `payer`, the owner, and `asset`, the contract, in base58check; `payTo`,
+the transfer's recipient, its address word's last 20 bytes under 0x41, in base58check; `amount`, the transfer's
+value, in decimal; and `h`, the hash the memo carries. Bytes longer than the longest transaction `decodeTronTx` reads,
+4,096 bytes, are `tron/tx-too-large`, and a value that is not a `Uint8Array` `tron/tx-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `rawBytes` | `Uint8Array` |
+
+#### Returns
+
+`Promise`\<[`Refusal`](index.md#refusal) \| \{ `amount`: `string`; `asset`: `string`; `h`: `` `0x${string}` ``; `payer`: `string`; `payTo`: `string`; `raw`: [`TronRaw`](#tronraw)\<`ArrayBuffer`\>; `txid`: `Uint8Array`\<`ArrayBuffer`\>; \}\>
 
 ***
 

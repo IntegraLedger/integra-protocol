@@ -184,8 +184,11 @@ interface TronChoice {
 }
 
 export interface TronUnsigned {
-  /** The 32-byte transaction id the payer signs. */
-  request: { kind: "tron-txid"; txid: Uint8Array<ArrayBuffer> };
+  /**
+   * What the payer signs. `rawBytes` is the transaction's `raw_data`, `Transaction.raw` as `encodeTronRaw` writes it;
+   * `txid` is its SHA-256, the 32-byte transaction id. `tronRequest` reads them.
+   */
+  request: { kind: "tron-txid"; txid: Uint8Array<ArrayBuffer>; rawBytes: Uint8Array<ArrayBuffer> };
   /** Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}. */
   complete(signature: Uint8Array): TronPayment | Refusal;
 }
@@ -476,6 +479,44 @@ export async function tronCarrier(tx: { raw: TronRaw; rawBytes: Uint8Array }): P
   const h = memoHash(tx.raw.data);
   if (h === null) return refusal("tron/memo-not-lcp");
   return { h, txid: await hash(tx.rawBytes) };
+}
+
+/**
+ * Reads the `raw_data` a `tron-txid` request carries, as `decodeTronTx` reads a signed transaction's and `tronCarrier`
+ * reads its call and memo, with their codes, and gives `txid`, its SHA-256, which is the request's `txid` when the bytes
+ * are its `rawBytes`. `raw` is every field the bytes hold, which are all the fields `decodeTronTx` admits: the reference
+ * block's bytes and hash, `expiration` and `timestamp` in milliseconds, the memo `data`, `fee_limit` in sun, and the one
+ * contract, a `TriggerSmartContract` with no call value from `owner` to `contractAddress` whose call data is
+ * `transfer(address,uint256)`. Read from them: `payer`, the owner, and `asset`, the contract, in base58check; `payTo`,
+ * the transfer's recipient, its address word's last 20 bytes under 0x41, in base58check; `amount`, the transfer's
+ * value, in decimal; and `h`, the hash the memo carries. Bytes longer than the longest transaction `decodeTronTx` reads,
+ * 4,096 bytes, are `tron/tx-too-large`, and a value that is not a `Uint8Array` `tron/tx-malformed`.
+ */
+export async function tronRequest(rawBytes: Uint8Array): Promise<{
+  txid: Uint8Array<ArrayBuffer>;
+  raw: TronRaw<ArrayBuffer>;
+  payer: string;
+  asset: string;
+  payTo: string;
+  amount: string;
+  h: AtrHash;
+} | Refusal> {
+  if (!(rawBytes instanceof Uint8Array)) return refusal("tron/tx-malformed");
+  if (rawBytes.length > MAX_TX_HEX / 2) return refusal("tron/tx-too-large");
+  const raw = decodeRaw(rawBytes);
+  if (isRefusal(raw)) return raw;
+  const c = await tronCarrier({ raw, rawBytes });
+  if (isRefusal(c)) return c;
+  const call = raw.callData;
+  return {
+    txid: bytesOfHexDigits(c.txid.slice(2))!,
+    raw,
+    payer: BASE58CHECK.encode(raw.owner),
+    asset: BASE58CHECK.encode(raw.contractAddress),
+    payTo: BASE58CHECK.encode(Uint8Array.of(0x41, ...call.subarray(16, 36))),
+    amount: BigInt(`0x${hexDigits(call.subarray(36))}`).toString(),
+    h: c.h,
+  };
 }
 
 /** Whether `data` is an LCP string of `h`, as `memoHash` reads one: `lcp:sha256:0x` and its hex digits in either case. */
@@ -1105,7 +1146,7 @@ async function build(c: TronChoice, h: AtrHash): Promise<TronUnsigned | Refusal>
   const rawBytes = encodeTronRaw(raw);
   const txid = bytesOfHexDigits((await hash(rawBytes)).slice(2))!;
   return {
-    request: { kind: "tron-txid", txid },
+    request: { kind: "tron-txid", txid, rawBytes: Uint8Array.from(rawBytes) },
     complete(signature: Uint8Array): TronPayment | Refusal {
       if (!(signature instanceof Uint8Array) || signature.length !== SIGNATURE_BYTES) {
         return refusal("tron/signature-malformed");

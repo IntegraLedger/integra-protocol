@@ -334,9 +334,10 @@ between were read.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-request"></a> `request` | `object` | The 32-byte representation hash of the W5 request the wallet key signs. |
+| <a id="property-request"></a> `request` | `object` | What the wallet key signs. `signedBoc` is the W5 request, its signature not in it, as a base64 bag of cells of one root; `hash` is that root cell's 32-byte representation hash. `tvmRequest` reads them. |
 | `request.hash` | `Uint8Array`\<`ArrayBuffer`\> | - |
 | `request.kind` | `"ton-w5"` | - |
+| `request.signedBoc` | `string` | - |
 
 #### Methods
 
@@ -559,6 +560,36 @@ not a non-empty string, or whose option is not an object, is `tvm/wrong-reader`,
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+
+***
+
+### tvmRequest()
+
+> **tvmRequest**(`signedBoc`, `network`): [`Refusal`](index.md#refusal) \| \{ `amount`: `string`; `attachNanotons`: `bigint`; `customPayload?`: `string`; `extraCurrencies`: `object`[]; `forwardTonAmount`: `string`; `h`: `` `0x${string}` ``; `hash`: `Uint8Array`\<`ArrayBuffer`\>; `jettonWallet`: `string`; `mode`: `number`; `payTo`: `string`; `queryId`: `bigint`; `responseDestination`: `string` \| `null`; `seqno`: `number`; `stateInit?`: `string`; `validUntil`: `number`; `walletId`: `number`; \}
+
+Reads the W5 request a `ton-w5` request carries, `signedBoc`, as `tvmCarrier` reads the signed part of a settlement
+message's body at the network's configuration, with its codes, and gives `hash`, the root cell's representation hash,
+which is the request's `hash` when the text is its `signedBoc`. The root must be an ordinary cell whose op is
+`internal_signed`, or it is `tvm/not-w5-signed`. It gives every member W5 reads: the wallet id, `validUntil`, the
+sequence number and the one action's send mode; and of the one message that action sends, its destination
+(`jettonWallet`), the nanotons it attaches, each extra currency it attaches by its id, and its state init, where it
+carries one, as a base64 bag of cells; and of the Jetton `transfer` it carries, the query id, `amount`, the
+destination (`payTo`), the response destination or null for `addr_none`, the custom payload where it carries one, as
+a base64 bag of cells, the forward TON amount and the hash the forward payload's comment holds. Addresses are raw. A
+request holds one action, sending one Jetton `transfer`, or it is refused, so nothing else runs under the signature;
+W5 reads nothing after `has_other_actions`, and neither does this. The request names no wallet, so the message's
+source is read as the settlement message's sender is, by its form alone.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `signedBoc` | `string` |
+| `network` | `` `tvm:${number}` `` |
+
+#### Returns
+
+[`Refusal`](index.md#refusal) \| \{ `amount`: `string`; `attachNanotons`: `bigint`; `customPayload?`: `string`; `extraCurrencies`: `object`[]; `forwardTonAmount`: `string`; `h`: `` `0x${string}` ``; `hash`: `Uint8Array`\<`ArrayBuffer`\>; `jettonWallet`: `string`; `mode`: `number`; `payTo`: `string`; `queryId`: `bigint`; `responseDestination`: `string` \| `null`; `seqno`: `number`; `stateInit?`: `string`; `validUntil`: `number`; `walletId`: `number`; \}
 
 ***
 

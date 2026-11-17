@@ -175,7 +175,24 @@ export function isNearEd25519Signature(data: Uint8Array): boolean {
  * and signature Ed25519 or secp256k1, and an Ed25519 signature one nearcore reads, or they are "malformed".
  */
 export function decodeSignedDelegate(borsh: typeof Borsh, bytes: Uint8Array): SignedFunctionCallDelegate | DelegateRefused {
-  let read: { delegateAction: DelegateValue; signature: KeyValue };
+  const read = readDelegate<{ delegateAction: DelegateValue; signature: KeyValue }>(borsh, bytes, SIGNED_DELEGATE);
+  if (typeof read === "string") return read;
+  const signature = keyOf(read.signature);
+  if (signature.keyType === 0 && !isNearEd25519Signature(signature.data)) return "malformed";
+  return { delegateAction: delegateOf(read.delegateAction), signature };
+}
+
+/**
+ * Reads a delegate action, unsigned, as `decodeSignedDelegate` reads the delegate action at the start of a signed one:
+ * the same order and the same answers, the bytes exactly the borsh of the one-action delegate and nothing after it.
+ */
+export function decodeDelegateAction(borsh: typeof Borsh, bytes: Uint8Array): FunctionCallDelegate | DelegateRefused {
+  const read = readDelegate<DelegateValue>(borsh, bytes, DELEGATE_ACTION);
+  return typeof read === "string" ? read : delegateOf(read);
+}
+
+/** The bytes read under `schema`, which begins with a delegate action, in the order `decodeSignedDelegate` states. */
+function readDelegate<T>(borsh: typeof Borsh, bytes: Uint8Array, schema: Schema): T | DelegateRefused {
   try {
     const head = borsh.deserialize(HEAD, bytes) as { senderId: string; receiverId: string; actionCount: number };
     const written = borsh.serialize(HEAD, head);
@@ -184,25 +201,23 @@ export function decodeSignedDelegate(borsh: typeof Borsh, bytes: Uint8Array): Si
     if (head.actionCount !== 1) return "action-count";
     const first = borsh.deserialize(HEAD_AND_VARIANT, bytes) as { variant: number };
     if (first.variant !== FUNCTION_CALL) return "not-function-call";
-    read = borsh.deserialize(SIGNED_DELEGATE, bytes) as typeof read;
-    if (!sameBytes(borsh.serialize(SIGNED_DELEGATE, read), bytes)) return "malformed";
+    const read = borsh.deserialize(schema, bytes) as T;
+    if (!sameBytes(borsh.serialize(schema, read), bytes)) return "malformed";
+    return read;
   } catch {
     return "malformed";
   }
-  const signature = keyOf(read.signature);
-  if (signature.keyType === 0 && !isNearEd25519Signature(signature.data)) return "malformed";
-  const da = read.delegateAction;
+}
+
+function delegateOf(da: DelegateValue): FunctionCallDelegate {
   const call = da.functionCall;
   return {
-    delegateAction: {
-      senderId: da.senderId,
-      receiverId: da.receiverId,
-      functionCall: { methodName: call.methodName, args: Uint8Array.from(call.args), gas: call.gas, deposit: call.deposit },
-      nonce: da.nonce,
-      maxBlockHeight: da.maxBlockHeight,
-      publicKey: keyOf(da.publicKey),
-    },
-    signature,
+    senderId: da.senderId,
+    receiverId: da.receiverId,
+    functionCall: { methodName: call.methodName, args: Uint8Array.from(call.args), gas: call.gas, deposit: call.deposit },
+    nonce: da.nonce,
+    maxBlockHeight: da.maxBlockHeight,
+    publicKey: keyOf(da.publicKey),
   };
 }
 

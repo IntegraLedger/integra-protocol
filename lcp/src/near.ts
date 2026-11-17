@@ -9,13 +9,16 @@ import { deepFreeze, isObject, normalHash, sameJson } from "./fields.js";
 import { jsonObjectKeys } from "./internal/core.js";
 import type { NearPayment } from "./internal/near.js";
 import {
+  decodeDelegateAction,
   decodeSignedDelegate,
   delegateMessage,
+  encodeDelegateAction,
   encodeSignedDelegate,
   isNearAccountId,
   isNearEd25519Signature,
   nearKeyOf,
   nearKeyText,
+  type DelegateRefused,
   type FunctionCallDelegate,
 } from "./internal/near-delegate.js";
 import {
@@ -217,8 +220,11 @@ interface NearChoice {
 }
 
 export interface NearUnsigned {
-  /** SHA-256 of the NEP-461-prefixed delegate action: what the key signs. */
-  request: { kind: "near-delegate"; hash: Uint8Array<ArrayBuffer> };
+  /**
+   * What the key signs. `delegateAction` is the borsh of the NEP-366 `DelegateAction`; `hash` is the SHA-256 of the
+   * NEP-461 prefix, `NEP461_DELEGATE` as a little-endian u32, followed by those bytes. `nearRequest` reads them.
+   */
+  request: { kind: "near-delegate"; hash: Uint8Array<ArrayBuffer>; delegateAction: Uint8Array<ArrayBuffer> };
   /**
    * Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature. An Ed25519 signature whose last byte
    * is 0x20 or more is `x402/signature-malformed`: nearcore reads none, and a valid signature never has one.
@@ -294,12 +300,23 @@ export function nearCarrier(signedDelegateAction: string): {
 } | Refusal {
   const c = carrierOf(signedDelegateAction);
   if (isRefusal(c)) return c;
-  const { args: _args, gas: _gas, deposit: _deposit, ...carried } = c;
+  const { args: _args, gas: _gas, deposit: _deposit, payTo: _payTo, amount: _amount, ...carried } = c;
   return carried;
 }
 
 /** `nearCarrier`'s reading, with the signed `ft_transfer` arguments' bytes. */
-function carrierOf(signedDelegateAction: string): {
+function carrierOf(signedDelegateAction: string): Carried | Refusal {
+  if (typeof signedDelegateAction !== "string") return refusal("near/sda-malformed");
+  if (signedDelegateAction.length > MAX_SIGNED_DELEGATE_BASE64) return refusal("near/sda-too-large");
+  const bytes = signedDelegateAction === "" ? null : fromBase64(signedDelegateAction);
+  if (bytes === null) return refusal("near/sda-malformed");
+  if (borsh === undefined) return refusal("near/peer-missing");
+  const d = decodeSignedDelegate(borsh, bytes);
+  return typeof d === "string" ? delegateRefused(d) : carriedIn(d.delegateAction);
+}
+
+/** What a delegate action carries, as `nearCarrier` reads it, with what its `ft_transfer` arguments name. */
+interface Carried {
   h: AtrHash;
   payer: string;
   publicKey: string;
@@ -309,23 +326,27 @@ function carrierOf(signedDelegateAction: string): {
   args: Uint8Array;
   gas: bigint;
   deposit: bigint;
-} | Refusal {
-  if (typeof signedDelegateAction !== "string") return refusal("near/sda-malformed");
-  if (signedDelegateAction.length > MAX_SIGNED_DELEGATE_BASE64) return refusal("near/sda-too-large");
-  const bytes = signedDelegateAction === "" ? null : fromBase64(signedDelegateAction);
-  if (bytes === null) return refusal("near/sda-malformed");
-  if (borsh === undefined) return refusal("near/peer-missing");
-  const d = decodeSignedDelegate(borsh, bytes);
-  if (d === "malformed") return refusal("near/sda-malformed");
+  /** The arguments' `receiver_id`. */
+  payTo: string;
+  /** The arguments' `amount`, as the canonical decimal of the value the token contract reads. */
+  amount: string;
+}
+
+function delegateRefused(d: DelegateRefused): Refusal {
   if (d === "action-count") return refusal("near/actions");
   if (d === "not-function-call") return refusal("near/not-ft-transfer");
-  const da = d.delegateAction;
+  return refusal("near/sda-malformed");
+}
+
+/** The delegate action's one function call read as `ft_transfer` and its arguments as `nearCarrier` states. */
+function carriedIn(da: FunctionCallDelegate): Carried | Refusal {
   if (da.functionCall.methodName !== "ft_transfer") return refusal("near/not-ft-transfer");
   const args = da.functionCall.args;
   const parsed = argsObject(args);
   if (isRefusal(parsed)) return parsed;
   const memo = memoIn(parsed);
   if (isRefusal(memo)) return memo;
+  const amount = parsed["amount"] as string;
   return {
     h: memo,
     payer: da.senderId,
@@ -336,7 +357,45 @@ function carrierOf(signedDelegateAction: string): {
     args,
     gas: da.functionCall.gas,
     deposit: da.functionCall.deposit,
+    payTo: parsed["receiver_id"] as string,
+    amount: BigInt(amount.startsWith("+") ? amount.slice(1) : amount).toString(),
   };
+}
+
+/**
+ * Reads the delegate action a `near-delegate` request carries, its borsh bytes, as `nearCarrier` reads the delegate
+ * action of a signed one, with its codes, and gives `hash`, the SHA-256 of the NEP-461 prefix followed by those bytes,
+ * which is the request's `hash` when the bytes are its `delegateAction`. It gives every member the bytes hold: the
+ * sender (`payer`) and its access key, the token contract (`asset`, the receiver), the one function call's gas and
+ * attached deposit in yoctoNEAR, the nonce, `maxBlockHeight`, the last block height at which the action can run, and
+ * the `ft_transfer` arguments' `receiver_id` (`payTo`), `amount` and the hash in `memo`. A delegate action holds one
+ * action, an `ft_transfer`, or it is refused, so nothing else runs under the signature. A value that is not a
+ * `Uint8Array` is `near/sda-malformed`, and bytes longer than those of the longest signed delegate action lcp decodes
+ * are `near/sda-too-large`; without borsh, bytes within the bound are `near/peer-missing`.
+ */
+export async function nearRequest(delegateAction: Uint8Array): Promise<{
+  hash: Uint8Array<ArrayBuffer>;
+  payer: string;
+  publicKey: string;
+  asset: string;
+  payTo: string;
+  amount: string;
+  h: AtrHash;
+  nonce: bigint;
+  maxBlockHeight: bigint;
+  gas: bigint;
+  deposit: bigint;
+} | Refusal> {
+  if (!(delegateAction instanceof Uint8Array)) return refusal("near/sda-malformed");
+  if (delegateAction.length > (MAX_SIGNED_DELEGATE_BASE64 / 4) * 3) return refusal("near/sda-too-large");
+  if (borsh === undefined) return refusal("near/peer-missing");
+  const d = decodeDelegateAction(borsh, delegateAction);
+  if (typeof d === "string") return delegateRefused(d);
+  const c = carriedIn(d);
+  if (isRefusal(c)) return c;
+  const digest = await hash(delegateMessage(borsh, d));
+  const { args: _args, ...read } = c;
+  return { hash: bytesOfHexDigits(digest.slice(2))!, ...read };
 }
 
 /**
@@ -933,7 +992,11 @@ async function build(c: NearChoice, h: AtrHash): Promise<NearUnsigned | Refusal>
   };
   const digest = await hash(delegateMessage(borsh, delegateAction));
   return {
-    request: { kind: "near-delegate", hash: bytesOfHexDigits(digest.slice(2))! },
+    request: {
+      kind: "near-delegate",
+      hash: bytesOfHexDigits(digest.slice(2))!,
+      delegateAction: Uint8Array.from(encodeDelegateAction(borsh, delegateAction)),
+    },
     complete(signature: { keyType: 0 | 1; bytes: Uint8Array }): NearPayment | Refusal {
       if (!isObject(signature) || !(signature.bytes instanceof Uint8Array)) return refusal("x402/signature-malformed");
       const { keyType, bytes } = signature;

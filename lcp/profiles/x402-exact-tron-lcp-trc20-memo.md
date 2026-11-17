@@ -10,7 +10,7 @@
    - `timestamp` = now and `expiration` = now + `maxTimeoutSeconds` × 1000, in milliseconds;
    - a recent reference block, and the client's own `fee_limit`.
 
-   The signature is the payer's secp256k1 signature over SHA-256 of the serialized `raw_data`.
+   The signature is the payer's secp256k1 signature over SHA-256 of the serialized `raw_data`. `build`'s `tron-txid` request carries, beside `txid`, `rawBytes`: the serialized `raw_data` whose SHA-256 is `txid`, which `tronRequest` reads back to that id and to every field the payer signs.
 4. The payer pays every fee: energy, bandwidth and the network's memo fee. Nothing in this profile sponsors them.
 5. A facilitator's `/verify` MUST:
    - decode the transaction, and require rule 3's shape on `asset`, for `transfer(payTo, amount)` exactly;

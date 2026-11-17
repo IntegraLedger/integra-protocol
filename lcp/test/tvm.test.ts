@@ -8,7 +8,7 @@ import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { rowsOf } from "./rows.js";
 import { pairingOf } from "../src/index.js";
-import { exactTvm, lcpComment, MAX_TVM_LISTED, tvmCarrier, type TonTx, type TvmNetwork, type TvmReader, type TvmRef, type TvmSearch } from "../src/tvm.js";
+import { exactTvm, lcpComment, MAX_TVM_LISTED, tvmCarrier, tvmRequest, type TonTx, type TvmNetwork, type TvmReader, type TvmRef, type TvmSearch } from "../src/tvm.js";
 import { ledgerReader, MASTERS, STRANGER, W5R1, type LedgerSpec, type LedgerTx } from "./tvm-ledger.js";
 import { stockExact, stockOption } from "./stock-tvm.js";
 import type { AtrHash } from "../src/core.js";
@@ -248,6 +248,32 @@ describe("x402-exact-tvm.json", () => {
     const r = exactTvm.read(doc);
     if ("refused" in r) throw new Error(r.code);
     expect({ h: r.h, link: r.link, options: r.offer.options }).toEqual({ h: H, link: V.fixed.link, options: [placed] });
+  });
+
+  // expectSettlementBoc is pytoniq-core's settlement tree (V2's case); its body less the signature is the request whose
+  // representation hash is expectRequestHash.
+  it("V2: the request carries the W5 request its hash is over, and tvmRequest reads it to V2's members", async () => {
+    const u = await exactTvm.build(choice(), H);
+    if ("refused" in u) throw new Error(u.code);
+    const oracle = unsignedOf(Cell.fromBase64(V.V2.expectSettlementBoc).refs.at(-1)!);
+    expect(Cell.fromBase64(u.request.signedBoc).equals(oracle)).toBe(true);
+    const r = tvmRequest(u.request.signedBoc, placed.network as TvmNetwork);
+    if ("refused" in r) throw new Error(r.code);
+    expect(Buffer.from(r.hash).toString("hex")).toBe(V.V2.expectRequestHash);
+    expect(r).toMatchObject({
+      walletId: V.fixed.walletId,
+      validUntil: V.V3.expectReference.validUntil,
+      seqno: V.fixed.seqno,
+      jettonWallet: V.V3.expectReference.jettonWallet,
+      attachNanotons: BigInt(V.fixed.attachNanotons),
+      extraCurrencies: [],
+      amount: placed.amount,
+      payTo: placed.payTo,
+      responseDestination: null,
+      forwardTonAmount: "0",
+      h: V.V3.expectBound,
+    });
+    expect("stateInit" in r || "customPayload" in r).toBe(false);
   });
 
   it("V2: build gives the vector's cells, request hash and settlement root", async () => {

@@ -17,6 +17,7 @@ import {
   MAX_FT_TRANSFER_ARGS_BYTES,
   MAX_SIGNED_DELEGATE_BASE64,
   nearCarrier,
+  nearRequest,
   type NearQuery,
   type NearReader,
   type NearRef,
@@ -101,6 +102,31 @@ describe("x402-exact-near.json", () => {
     expect(delegateBytes.length).toBe(V.V1.expectDelegateActionBytes);
     const prefixed = Buffer.concat([Buffer.from(V.V1.expectPrefix, "hex"), delegateBytes]);
     expect(createHash("sha256").update(prefixed).digest("hex")).toBe(V.V1.expectRequestHash);
+  });
+
+  // V2's signed delegate action begins with the delegate action V1's request hash was computed over (borsh-construct
+  // and hashlib, the file's about): its first expectDelegateActionBytes bytes.
+  it("V1: the request carries the delegate action its hash is over, and nearRequest reads it to V2's reference", async () => {
+    const u = await exactNear.build(choice(), H);
+    if ("refused" in u) throw new Error(u.code);
+    const oracle = Buffer.from(V.V2.expectSignedDelegateAction, "base64").subarray(0, V.V1.expectDelegateActionBytes);
+    expect(Buffer.from(u.request.delegateAction).toString("hex")).toBe(oracle.toString("hex"));
+    const r = await nearRequest(u.request.delegateAction);
+    if ("refused" in r) throw new Error(r.code);
+    expect(Buffer.from(r.hash).toString("hex")).toBe(V.V1.expectRequestHash);
+    const ref = V.V2.expectReference;
+    expect(written(r)).toMatchObject({
+      payer: ref.payer,
+      publicKey: ref.publicKey,
+      asset: ref.asset,
+      payTo: ref.payee,
+      amount: O.amount,
+      h: ref.h,
+      nonce: ref.nonce,
+      maxBlockHeight: ref.maxBlockHeight,
+      gas: ref.gas,
+      deposit: ref.deposit,
+    });
   });
 
   // JSON reads 0.0 as the number 0 (RFC 8259 section 6: a number is digits with an optional fraction), so a signer's

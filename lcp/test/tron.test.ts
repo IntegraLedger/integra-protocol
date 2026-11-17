@@ -16,6 +16,7 @@ import {
   exactTronMemo,
   tronAddress,
   tronCarrier,
+  tronRequest,
   type TronInfo,
   type TronReader,
   type TronRef,
@@ -200,6 +201,32 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     expect(hex(d.raw.refBlockBytes)).toBe(V.V2.expectRefBlockBytes);
     expect(hex(d.raw.refBlockHash)).toBe(V.V2.expectRefBlockHash);
     expect(await tronCarrier(d)).toEqual({ h: H, txid: V.V2.expectTxid });
+  });
+
+  // expectRawHex is raw_data encoded by hand from TRON's protobuf schema, and expectTxid its SHA-256 by hashlib (V2's case).
+  it("V2: the request carries the raw data its txid is over, and tronRequest reads it to V2's members", async () => {
+    const u = await exactTronMemo.build(choice(), H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(hex(u.request.rawBytes)).toBe(V.V2.expectRawHex);
+    const r = await tronRequest(u.request.rawBytes);
+    if ("refused" in r) throw new Error(r.code);
+    expect("0x" + hex(r.txid)).toBe(V.V2.expectTxid);
+    expect({ refBlockBytes: hex(r.raw.refBlockBytes), refBlockHash: hex(r.raw.refBlockHash) }).toEqual({
+      refBlockBytes: V.V2.expectRefBlockBytes,
+      refBlockHash: V.V2.expectRefBlockHash,
+    });
+    expect(plain({ ...r, txid: undefined, raw: undefined })).toEqual({
+      payer: V.V3.expectReference.payer,
+      asset: O.asset,
+      payTo: O.payTo,
+      amount: O.amount,
+      h: H,
+    });
+    expect(plain({ expiration: r.raw.expiration, timestamp: r.raw.timestamp, feeLimit: r.raw.feeLimit })).toEqual({
+      expiration: V.V3.expectReference.expiration,
+      timestamp: V.fixed.now,
+      feeLimit: V.fixed.feeLimit,
+    });
   });
 
   it("V3: bound and reference, and each refusal", async () => {

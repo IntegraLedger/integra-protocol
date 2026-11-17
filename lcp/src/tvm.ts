@@ -264,8 +264,11 @@ interface TvmChoice {
 }
 
 export interface TvmUnsigned {
-  /** The 32-byte representation hash of the W5 request the wallet key signs. */
-  request: { kind: "ton-w5"; hash: Uint8Array<ArrayBuffer> };
+  /**
+   * What the wallet key signs. `signedBoc` is the W5 request, its signature not in it, as a base64 bag of cells of one
+   * root; `hash` is that root cell's 32-byte representation hash. `tvmRequest` reads them.
+   */
+  request: { kind: "ton-w5"; hash: Uint8Array<ArrayBuffer>; signedBoc: string };
   /** Takes the 64-byte Ed25519 signature. */
   complete(signature: Uint8Array): TvmPayment | Refusal;
 }
@@ -737,17 +740,25 @@ function commentHash(c: Cell): AtrHash | null {
 }
 
 /** The Jetton transfer body's fields up to and including its forward payload, which must be a reference. */
-function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
+function jettonTransfer(body: Cell): {
+  queryId: bigint;
+  amount: bigint;
+  destination: Address;
+  responseDestination: Address | null;
+  customPayload: Cell | null;
+  forwardTonAmount: bigint;
+  payload: Cell | null;
+} | Refusal {
   try {
     const s = body.beginParse();
     if (s.remainingBits < 32 || s.loadUint(32) !== OP.jettonTransfer) return refusal("tvm/not-jetton-transfer");
-    s.loadUintBig(64);
-    s.loadCoins();
-    s.loadAddress();
-    s.loadMaybeAddress();
-    s.loadMaybeRef();
-    s.loadCoins();
-    return { payload: s.loadBit() ? s.loadRef() : null };
+    const queryId = s.loadUintBig(64);
+    const amount = s.loadCoins();
+    const destination = s.loadAddress();
+    const responseDestination = s.loadMaybeAddress();
+    const customPayload = s.loadMaybeRef();
+    const forwardTonAmount = s.loadCoins();
+    return { queryId, amount, destination, responseDestination, customPayload, forwardTonAmount, payload: s.loadBit() ? s.loadRef() : null };
   } catch {
     return refusal("tvm/not-jetton-transfer");
   }
@@ -777,7 +788,11 @@ function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
  *   cell on each path, a `^StateInit` and a referenced body;
  * - at most `MAX_MERKLE_DEPTH` Merkle proofs and updates nest under the init and the body.
  */
-function messageOf(c: Cell, from: string | null, config: TonConfiguration): { dest: string; body: Cell; init: Cell | null; bounce: boolean } | null {
+function messageOf(
+  c: Cell,
+  from: string | null,
+  config: TonConfiguration,
+): { dest: string; body: Cell; init: Cell | null; bounce: boolean; value: bigint; extra: Cell | null } | null {
   const T = peer!;
   if (c.isExotic) return null;
   try {
@@ -790,7 +805,8 @@ function messageOf(c: Cell, from: string | null, config: TonConfiguration): { de
     if (src.tag !== 0 && (src.tag !== 2 || src.raw === null || (from !== null && src.raw !== from))) return null;
     const dest = msgAddress(s, config);
     if (dest.tag < 2 || dest.raw === null) return null;
-    if (varUInteger(s, 4) === null) return null;
+    const value = varUInteger(s, 4);
+    if (value === null) return null;
     const extra = s.loadMaybeRef();
     const flags = varUInteger(s, 4);
     if (config.globalVersion >= 12 && (flags === null || flags > 3n)) return null;
@@ -829,7 +845,7 @@ function messageOf(c: Cell, from: string | null, config: TonConfiguration): { de
       if (!hashmap(extra, 32, currency) || count > config.maxMsgExtraCurrencies) return null;
     }
     if (merkleDepth([...(init === null ? [] : [init]), ...(bodyRef ? [body] : body.refs)]) > MAX_MERKLE_DEPTH) return null;
-    return { dest: dest.raw, body, init, bounce };
+    return { dest: dest.raw, body, init, bounce, value, extra };
   } catch {
     return null;
   }
@@ -958,10 +974,8 @@ function carrierIn(root: Cell, config: TonConfiguration): {
   const message = messageOf(root, null, config);
   if (message === null) return refusal("tvm/boc-malformed");
 
-  let validUntil: number;
-  let seqno: number;
+  let signed: Cell;
   let signedHash: Hex;
-  let actions: Cell;
   try {
     const body = message.body;
     const op = body.beginParse();
@@ -970,10 +984,47 @@ function carrierIn(root: Cell, config: TonConfiguration): {
     }
     const signedPart = peer!.beginCell().storeBits(body.bits.substring(0, body.bits.length - SIGNATURE_BITS));
     for (const r of body.refs) signedPart.storeRef(r);
-    const signed = signedPart.endCell();
+    signed = signedPart.endCell();
     signedHash = `0x${signed.hash().toString("hex")}`;
+  } catch {
+    return refusal("tvm/not-w5-signed");
+  }
+  const r = requestIn(signed, message.dest, config);
+  if (isRefusal(r)) return r;
+  return {
+    h: r.h,
+    transferBodyHash: `0x${r.out.body.hash().toString("hex")}`,
+    jettonWallet: r.out.dest,
+    requestBodyHash: `0x${message.body.hash().toString("hex")}`,
+    signedHash,
+    wallet: message.dest,
+    validUntil: r.validUntil,
+    seqno: r.seqno,
+    ...codeOf(message.init),
+    payload: r.transfer.payload,
+  };
+}
+
+/**
+ * A W5 request less its signature, read as `carrierIn` reads the signed part of a settlement message's body, its
+ * outgoing message read as one the account `from` sends, where `from` is known.
+ */
+function requestIn(signed: Cell, from: string | null, config: TonConfiguration): {
+  h: AtrHash;
+  walletId: number;
+  validUntil: number;
+  seqno: number;
+  mode: number;
+  out: NonNullable<ReturnType<typeof messageOf>>;
+  transfer: Exclude<ReturnType<typeof jettonTransfer>, Refusal> & { payload: Cell };
+} | Refusal {
+  let walletId: number;
+  let validUntil: number;
+  let seqno: number;
+  let actions: Cell;
+  try {
     const s = signed.beginParse().skip(32);
-    s.loadUint(32);
+    walletId = s.loadUint(32);
     validUntil = s.loadUint(32);
     seqno = s.loadUint(32);
     const list = s.loadMaybeRef();
@@ -987,7 +1038,7 @@ function carrierIn(root: Cell, config: TonConfiguration): {
   const send = sendMessage(actions);
   if (isRefusal(send)) return send;
   if (!SCHEME_SEND_MODES.has(send.mode)) return refusal("tvm/actions");
-  const out = messageOf(send.message, message.dest, config);
+  const out = messageOf(send.message, from, config);
   if (out === null) return refusal("tvm/not-jetton-transfer");
   // The scheme's message to the Jetton wallet is bounceable; the stock codec refuses one that is not as it refuses a
   // wrong mode (`@x402/tvm` 2.30.0 `src/exact/codec.ts:61`).
@@ -997,17 +1048,78 @@ function carrierIn(root: Cell, config: TonConfiguration): {
   if (transfer.payload === null) return refusal("tvm/payload-not-lcp");
   const h = commentHash(transfer.payload);
   if (h === null) return refusal("tvm/payload-not-lcp");
+  return { h, walletId, validUntil, seqno, mode: send.mode, out, transfer: { ...transfer, payload: transfer.payload } };
+}
+
+/**
+ * Reads the W5 request a `ton-w5` request carries, `signedBoc`, as `tvmCarrier` reads the signed part of a settlement
+ * message's body at the network's configuration, with its codes, and gives `hash`, the root cell's representation hash,
+ * which is the request's `hash` when the text is its `signedBoc`. The root must be an ordinary cell whose op is
+ * `internal_signed`, or it is `tvm/not-w5-signed`. It gives every member W5 reads: the wallet id, `validUntil`, the
+ * sequence number and the one action's send mode; and of the one message that action sends, its destination
+ * (`jettonWallet`), the nanotons it attaches, each extra currency it attaches by its id, and its state init, where it
+ * carries one, as a base64 bag of cells; and of the Jetton `transfer` it carries, the query id, `amount`, the
+ * destination (`payTo`), the response destination or null for `addr_none`, the custom payload where it carries one, as
+ * a base64 bag of cells, the forward TON amount and the hash the forward payload's comment holds. Addresses are raw. A
+ * request holds one action, sending one Jetton `transfer`, or it is refused, so nothing else runs under the signature;
+ * W5 reads nothing after `has_other_actions`, and neither does this. The request names no wallet, so the message's
+ * source is read as the settlement message's sender is, by its form alone.
+ */
+export function tvmRequest(signedBoc: string, network: TvmNetwork): {
+  hash: Uint8Array<ArrayBuffer>;
+  walletId: number;
+  validUntil: number;
+  seqno: number;
+  mode: number;
+  jettonWallet: string;
+  attachNanotons: bigint;
+  extraCurrencies: { id: number; amount: bigint }[];
+  stateInit?: string;
+  queryId: bigint;
+  amount: string;
+  payTo: string;
+  responseDestination: string | null;
+  customPayload?: string;
+  forwardTonAmount: string;
+  h: AtrHash;
+} | Refusal {
+  const config = CONFIGURATIONS.get(network);
+  if (config === undefined) return refusal("tvm/network-malformed");
+  const root = rootOf(signedBoc);
+  if (isRefusal(root)) return root;
+  if (root.isExotic || root.bits.length < 32 || root.beginParse().loadUint(32) !== OP.internalSigned) {
+    return refusal("tvm/not-w5-signed");
+  }
+  const r = requestIn(root, null, config);
+  if (isRefusal(r)) return r;
+  const T = peer!;
+  const t = r.transfer;
+  let extraCurrencies: { id: number; amount: bigint }[] = [];
+  if (r.out.extra !== null) {
+    try {
+      const d = T.Dictionary.loadDirect(T.Dictionary.Keys.Uint(32), T.Dictionary.Values.BigVarUint(5), r.out.extra);
+      extraCurrencies = d.keys().map((id) => ({ id, amount: d.get(id)! }));
+    } catch {
+      return refusal("tvm/not-jetton-transfer");
+    }
+  }
   return {
-    h,
-    transferBodyHash: `0x${out.body.hash().toString("hex")}`,
-    jettonWallet: out.dest,
-    requestBodyHash: `0x${message.body.hash().toString("hex")}`,
-    signedHash,
-    wallet: message.dest,
-    validUntil,
-    seqno,
-    ...codeOf(message.init),
-    payload: transfer.payload,
+    hash: Uint8Array.from(root.hash()),
+    walletId: r.walletId,
+    validUntil: r.validUntil,
+    seqno: r.seqno,
+    mode: r.mode,
+    jettonWallet: r.out.dest,
+    attachNanotons: r.out.value,
+    extraCurrencies,
+    ...(r.out.init === null ? {} : { stateInit: bocOf(r.out.init) }),
+    queryId: t.queryId,
+    amount: t.amount.toString(),
+    payTo: t.destination.toRawString(),
+    responseDestination: t.responseDestination === null ? null : t.responseDestination.toRawString(),
+    ...(t.customPayload === null ? {} : { customPayload: bocOf(t.customPayload) }),
+    forwardTonAmount: t.forwardTonAmount.toString(),
+    h: r.h,
   };
 }
 
@@ -2101,7 +2213,7 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
     return refusal("x402/option-malformed");
   }
   return {
-    request: { kind: "ton-w5", hash: Uint8Array.from(request.hash()) },
+    request: { kind: "ton-w5", hash: Uint8Array.from(request.hash()), signedBoc: bocOf(request) },
     complete(signature: Uint8Array): TvmPayment | Refusal {
       if (!(signature instanceof Uint8Array) || signature.length !== SIGNATURE_BITS / 8) {
         return refusal("x402/signature-malformed");

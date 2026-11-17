@@ -459,7 +459,7 @@
     {
       "unit": "NEAR",
       "exports": {
-        "./near": ["FT_TRANSFER_GAS", "MAX_FT_TRANSFER_ARGS_BYTES", "MAX_SIGNED_DELEGATE_BASE64", "NEP461_DELEGATE", "NearFunctionCall", "NearKeyChange", "NearKeyChanges", "NearMark", "NearNetwork", "NearOutcome", "NearQuery", "NearReader", "NearRef", "NearStatus", "NearUnsigned", "exactNear", "ftTransferArgs", "nearCarrier", "nearRecover", "nearStatus"]
+        "./near": ["FT_TRANSFER_GAS", "MAX_FT_TRANSFER_ARGS_BYTES", "MAX_SIGNED_DELEGATE_BASE64", "NEP461_DELEGATE", "NearFunctionCall", "NearKeyChange", "NearKeyChanges", "NearMark", "NearNetwork", "NearOutcome", "NearQuery", "NearReader", "NearRef", "NearStatus", "NearUnsigned", "exactNear", "ftTransferArgs", "nearCarrier", "nearRecover", "nearRequest", "nearStatus"]
       },
       "use": "Any NEAR buyer's client signs a delegate action whose ft_transfer memo is H, any relayer or server checks it, and anyone reads the payment through the payer's access key and the relayed transaction's receipts.",
       "fixedBy": "x402-exact-near-memo.md; NEP-366; NEP-141."
@@ -499,7 +499,7 @@
     {
       "unit": "Tron",
       "exports": {
-        "./tron": ["LCP_TRC20_MEMO", "TRANSFER_SELECTOR", "TRANSFER_TOPIC", "TRIGGER_SMART_CONTRACT", "TRIGGER_URL", "TRON_BOUNDS", "TronBlock", "TronCursor", "TronInfo", "TronLevel", "TronNetwork", "TronNow", "TronQuery", "TronRaw", "TronReader", "TronRef", "TronStatus", "TronUnsigned", "decodeTronTx", "encodeTronRaw", "exactTronMemo", "tronAddress", "tronCarrier", "tronRecover", "tronStatus"]
+        "./tron": ["LCP_TRC20_MEMO", "TRANSFER_SELECTOR", "TRANSFER_TOPIC", "TRIGGER_SMART_CONTRACT", "TRIGGER_URL", "TRON_BOUNDS", "TronBlock", "TronCursor", "TronInfo", "TronLevel", "TronNetwork", "TronNow", "TronQuery", "TronRaw", "TronReader", "TronRef", "TronStatus", "TronUnsigned", "decodeTronTx", "encodeTronRaw", "exactTronMemo", "tronAddress", "tronCarrier", "tronRecover", "tronRequest", "tronStatus"]
       },
       "use": "Any Tron buyer's client signs a TRC-20 transfer whose memo is H, any server checks it, and anyone reads it back by its transaction id and searches a node's blocks for H.",
       "fixedBy": "x402-exact-tron-lcp-trc20-memo.md."
@@ -507,7 +507,7 @@
     {
       "unit": "TON",
       "exports": {
-        "./tvm": ["MAX_TVM_ATTACHED_ABOVE_FORWARD", "MAX_TVM_BOC_BYTES", "MAX_TVM_CELLS", "MAX_TVM_DEPTH", "MAX_TVM_LISTED", "OP", "TVM_EXPIRY_MARGIN", "TonAccountState", "TonAccountStatus", "TonCell", "TonIndexed", "TonLink", "TonOutMsg", "TonTx", "TonWalletState", "TvmNetwork", "TvmReader", "TvmRef", "TvmSearch", "TvmStatus", "TvmUnsigned", "W5R1_CODE_HASH", "exactTvm", "lcpComment", "tvmCarrier", "tvmRecover", "tvmStatus"]
+        "./tvm": ["MAX_TVM_ATTACHED_ABOVE_FORWARD", "MAX_TVM_BOC_BYTES", "MAX_TVM_CELLS", "MAX_TVM_DEPTH", "MAX_TVM_LISTED", "OP", "TVM_EXPIRY_MARGIN", "TonAccountState", "TonAccountStatus", "TonCell", "TonIndexed", "TonLink", "TonOutMsg", "TonTx", "TonWalletState", "TvmNetwork", "TvmReader", "TvmRef", "TvmSearch", "TvmStatus", "TvmUnsigned", "W5R1_CODE_HASH", "exactTvm", "lcpComment", "tvmCarrier", "tvmRecover", "tvmRequest", "tvmStatus"]
       },
       "use": "Any TON buyer's client sends a Jetton transfer whose forward payload is H as a text comment, any server validates it before it is relayed, and anyone reads it back, reads whether it settled, and reads its lapse from the wallet's state and its linked list of transactions.",
       "fixedBy": "x402's exact scheme on TON; TEP-74; x402-exact-tvm.md."
