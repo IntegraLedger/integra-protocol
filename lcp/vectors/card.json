@@ -314,7 +314,7 @@
     "expect": "card/vi-malformed"
    },
    {
-    "case": "VI Immediate build of a checkout payload over 12288 bytes of JSON",
+    "case": "VI Immediate build of a checkout payload over 11520 bytes of JSON",
     "expect": "card/too-large"
    }
   ]

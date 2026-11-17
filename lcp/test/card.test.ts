@@ -691,7 +691,7 @@ describe("card.json agreedRefusals: every row runs", () => {
       await viImmediate.build(42, H),
       await viImmediate.build({ checkout: [], shown: V.C2.build.doc }, H),
     ],
-    "VI Immediate build of a checkout payload over 12288 bytes of JSON": async () => [
+    "VI Immediate build of a checkout payload over 11520 bytes of JSON": async () => [
       await viImmediate.build({ checkout: { pad: "a".repeat(12288) }, shown: V.C2.build.doc }, H),
     ],
     "VI bound with a layer over 65536 characters or over 32 disclosures": async () => {
