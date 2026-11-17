@@ -350,7 +350,10 @@ Each member, one entry per network unless it says otherwise:
 - **`hedera`**: `network`; `signer`, the seller's fee-payer account and its key (`FacilitatorHederaSigner`): the class
   takes only a payment whose transaction id names an account it manages as `extra.feePayer`; `mirror`, the seller's
   Mirror Node REST base URL, which lcp's read and the fee count use; `archival`, optional, true where it holds every
-  record since the network began.
+  record since the network began. `@x402/hedera` 2.31.0 makes the signer from its parts rather than from a key alone:
+  `toFacilitatorHederaSigner` over `signAndSubmitTransaction` from `createHederaSignAndSubmitTransaction` (a client per
+  network, such as `createHederaClient`'s, and the fee payer's `PrivateKey`), `verifyPayerSignature` from
+  `createHederaVerifyPayerSignature`, and `preflightTransfer` from `createHederaPreflightTransfer`.
 - **`lnbtc`**: `network`, x402's `lnbtc` id of Bitcoin mainnet (`lnbtc:000000000019d6689c085ae165831e93`) or testnet3
   (`lnbtc:000000000933ea01ad0ee984209779ba`). The buyer's node paid the invoice before the preimage reached the buyer,
   so settling moves nothing: the module makes the scheme's validation through lcp's `validateExactLnbtc`, answers the
