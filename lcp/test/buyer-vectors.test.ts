@@ -213,15 +213,17 @@ describe("buyer.json BE1: the served bodies decode to A under the coding each ca
   }
 });
 
-describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document with only request.amount replaced", () => {
+describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document placed for hash(A), with only request.amount replaced", () => {
   const B2 = load("mpp-session-hedera-solana-xrpl.json").buyer.rows.find(
     (r: { name: string; pairing: string }) => r.name === "B2" && r.pairing === "mpp/session/xrpl",
   ).input;
-  const cases = rowsOf(row("BX1").input.cases as { case: string; doc: { request: string }[]; expect: { decline?: string; detail?: string; refusal?: string } }[], "buyer.json BX1 input.cases");
+  const cases = rowsOf(row("BX1").input.cases as { case: string; doc: { request: string; opaque: string }[]; expect: { decline?: string; detail?: string; refusal?: string } }[], "buyer.json BX1 input.cases");
+  const opaque = (c: { opaque: string }) => JSON.parse(Buffer.from(c.opaque, "base64url").toString("utf8"));
 
-  it("abc, which the link serves, hashes to the advertised H", async () => {
+  it("fixed.A, which the link serves, is the ATR a parsing gate admits, and hashes to the advertised H", async () => {
+    expect(row("BX1").input.servesHex).toBe(B.fixed.A);
     const h = await hash(fromHex(row("BX1").input.servesHex));
-    expect(hashEquals(h, "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")).toBe(true);
+    expect(hashEquals(h, H)).toBe(true);
   });
 
   it("the row's account and inputs are B2's", () => {
@@ -232,8 +234,9 @@ describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document with
   for (const c of cases) {
     it(c.case, () => {
       const [got] = c.doc;
-      const [base] = B2.doc as { request: string }[];
-      expect({ ...got, request: undefined }).toEqual({ ...base, request: undefined });
+      const [base] = B2.doc as { request: string; opaque: string }[];
+      expect({ ...got, request: undefined, opaque: undefined }).toEqual({ ...base, request: undefined, opaque: undefined });
+      expect(opaque(got!)).toEqual({ ...opaque(base!), legalContext: toLcpString(H) });
       expect({ ...request(got!), amount: undefined }).toEqual({ ...request(base!), amount: undefined });
       if (c.expect.detail === undefined) expect(request(got!).amount).toBe("100");
       else {
