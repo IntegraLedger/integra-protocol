@@ -4,32 +4,25 @@
  * advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds
  * it.
  */
-import { canonicalJson, digestJson, fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
+import { agreementValue, canonicalJson, digestJson, fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
 import {
-  AUTHORIZATION_USED_TOPIC,
   DELEGATION_MANAGER,
   DELEGATION_MANAGER_CHAINS,
   ESCROW,
   EXACT_PERMIT2_PROXY,
   PAYMENT_AUTHORIZED_TOPIC,
   PERMIT2,
-  REDEEMED_DELEGATION_TOPIC,
   TRANSFER_TOPIC,
   UPTO_PERMIT2_PROXY,
-  authorizationIdDigest,
   authorizationUsed,
   bindSalt,
   decodePermissionContext,
   eip3009Recover,
-  eip3009Status,
   eip3009TypedData,
   paymentHash,
   permit2TypedData,
-  transferDigest,
   type Eip155,
-  type Eip3009Ref,
   type Eip3009TypedData,
-  type EvmBreadthStatus,
   type EvmReader,
   type EvmReceipt,
   type EvmRef,
@@ -46,20 +39,28 @@ import {
   finalAt,
   isLog,
   isReceipt,
-  permit2Status,
   receiveTypedData,
   redeemedLeafRecover,
   transferParts,
-  withPayee,
   type EvmQuery,
   type ReceiveTypedData,
   type EvmStatus,
-  type EvmTxRef,
-  type TransferLog,
 } from "./internal/evm.js";
-import type { RecoverInput } from "./internal/read.js";
+import type { Act, RecoverInput } from "./internal/read.js";
+import {
+  authCaptureRead,
+  eip3009Read,
+  erc7710Read,
+  erc7710SaltRead,
+  permit2ExactRead,
+  permit2UptoRead,
+  delegationHash,
+  type AuthCaptureRef,
+  type Eip3009Ref,
+  type Erc7710Ref,
+  type Permit2Ref,
+} from "./internal/evm-x402-reads.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
-import { boundStatus } from "./internal/evm-status.js";
 import { x402Payee } from "./internal/payee.js";
 import {
   LEGAL_CONTEXT,
@@ -77,6 +78,7 @@ import {
   type X402Forms,
 } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
+import { sameJson } from "./fields.js";
 import { MAX_REQUEST_BYTES, MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_X402 } from "./internal/data/eip155-x402.js";
 import { headerDigests, type HeaderDigest, type HeaderFields } from "./internal/request-headers.js";
@@ -292,7 +294,7 @@ function evmPairingOf(option: PaymentRequirements): X402PairingId | undefined {
 }
 
 /** The EIP-3009 `exact` filter: this pairing's id for an option it can pay, or undefined. */
-function eip3009Of(option: PaymentRequirements): typeof ID | undefined {
+function eip3009Of(option: PaymentRequirements): typeof ID | Refusal | undefined {
   if (!isObject(option)) return undefined;
   if (option.scheme !== "exact") return undefined;
   if (chainIdOf(option.network) === undefined) return undefined;
@@ -302,7 +304,22 @@ function eip3009Of(option: PaymentRequirements): typeof ID | undefined {
   if (method !== undefined && method !== "eip3009") return undefined;
   const flow = extra?.["paymentFlow"];
   if (flow !== undefined && flow !== "authorization" && flow !== "upfront") return undefined;
+  const splits = splitsRefused(extra);
+  if (splits !== undefined) return splits;
+  // Circle's batched option signs under the Gateway Wallet's domain, not the token's: not this pairing's to pay.
+  if (extra?.["name"] === "GatewayWalletBatched") return refusal("x402/batched-not-eip3009");
+  const verifying = extra?.["verifyingContract"];
+  if (verifying !== undefined && !(typeof verifying === "string" && typeof option.asset === "string" && verifying.toLowerCase() === option.asset.toLowerCase())) {
+    return refusal("x402/batched-not-eip3009");
+  }
   return ID;
+}
+
+/** `exact` pays one payee: an option whose `extra.splits` is present and not an empty list is refused. */
+function splitsRefused(extra: Record<string, unknown> | undefined): Refusal | undefined {
+  const splits = extra?.["splits"];
+  if (splits === undefined || (Array.isArray(splits) && splits.length === 0)) return undefined;
+  return refusal("x402/splits-not-carried");
 }
 
 /**
@@ -337,9 +354,10 @@ function evmFilter(id: X402PairingId): OptionFilter {
  * The `TransferWithAuthorization` the payer signs for the chosen option, with the hash as its nonce. H is checked
  * first, then the choice's `from` and `now`, then its document and option.
  */
-async function build(choice: X402Choice, h: AtrHash): Promise<Unsigned | Refusal> {
-  const nonce = normalHash(h);
-  if (nonce === null) return refusal("x402/payload-malformed");
+async function build(choice: X402Choice, h: AtrHash, act?: Act): Promise<Unsigned | Refusal> {
+  const atr = normalHash(h);
+  if (atr === null) return refusal("x402/payload-malformed");
+  const nonce = act === "agreement" ? await agreementValue(atr) : atr;
   if (!isObject(choice)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = choice;
   if (!isAddress(from) || !Number.isSafeInteger(now) || now < 0) return refusal("x402/option-malformed");
@@ -388,12 +406,30 @@ async function build(choice: X402Choice, h: AtrHash): Promise<Unsigned | Refusal
  * The hash inside what the payer signed: the authorization's nonce, lowercase. The signature is not verified here;
  * the token contract verifies it when it executes the transfer.
  */
-async function bound(presented: unknown): Promise<AtrHash | Refusal> {
+async function bound(presented: unknown, given?: { readonly act: Act; readonly h: AtrHash }): Promise<AtrHash | Refusal> {
   const p = paymentOf(presented);
   if (isRefusal(p)) return p;
   const nonce = normalHash(p.payload.authorization.nonce);
   if (nonce === null) return refusal("x402/payload-malformed");
-  return nonce;
+  return carriedAs(nonce, given);
+}
+
+/**
+ * H as a signed nonce carries it: the nonce itself for a payment; for the act `agreement`, given H, H where the nonce is
+ * the agreement's own value (`agreementValue`), else `x402/nonce-not-agreement`. A given H that is not a hash is
+ * `x402/payload-malformed`.
+ */
+async function carriedAs(nonce: AtrHash, given?: { readonly act: Act; readonly h: AtrHash }): Promise<AtrHash | Refusal> {
+  if (given === undefined || !isObject(given) || given.act !== "agreement") return nonce;
+  const h = normalHash(given.h);
+  if (h === null) return refusal("x402/payload-malformed");
+  return (await agreementValue(h)) === nonce ? h : refusal("x402/nonce-not-agreement");
+}
+
+/** A presented `accepted` that is not, by RFC 8785 form, the option `reference` is given is `x402/accepted-not-option`. */
+function acceptedIs(presented: unknown, option: PaymentRequirements): Refusal | undefined {
+  const accepted = isObject(presented) ? presented["accepted"] : undefined;
+  return sameJson(accepted, option) ? undefined : refusal("x402/accepted-not-option");
 }
 
 /**
@@ -402,31 +438,50 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
  * the authorization as the token records its use (nonce H, deadline `validBefore`); and the payee of `option`, the
  * issued option the payment answers (`x402Payee`). A refusal of the payment comes first, then the option's.
  */
-async function reference(presented: unknown, option: PaymentRequirements): Promise<Eip3009Ref | Refusal> {
-  return withPayee(await eip3009Keys(presented), x402Payee(option));
+async function reference(
+  presented: unknown,
+  option: PaymentRequirements,
+  given?: { readonly act: Act; readonly h: AtrHash },
+): Promise<Eip3009Ref | Refusal> {
+  const keys = await eip3009Keys(presented, given);
+  if (isRefusal(keys)) return keys;
+  const payee = x402Payee(option);
+  if (isRefusal(payee)) return payee;
+  return acceptedIs(presented, option) ?? { ...keys, payee };
 }
 
-async function eip3009Keys(presented: unknown): Promise<Omit<Eip3009Ref, "payee"> | Refusal> {
-  const h = await bound(presented);
+/**
+ * The read keys of a presented EIP-3009 payment: the network, the token, the payer (`from`), `validBefore`, H, and the
+ * members of the payment presented, which `status` compares with what landed: the token, `from`, `to`, `value` and
+ * `nonce`, lowercase, the value in decimal.
+ */
+async function eip3009Keys(
+  presented: unknown,
+  given?: { readonly act: Act; readonly h: AtrHash },
+): Promise<Omit<Eip3009Ref, "payee"> | Refusal> {
+  const h = await bound(presented, given);
   if (isRefusal(h)) return h;
   const { accepted, payload } = presented as Eip3009Payment;
   const a = payload.authorization;
   const validBefore = uint256Of(a.validBefore);
-  if (!isAddress(a.from) || !isAddress(a.to) || uint256Of(a.value) === undefined || validBefore === undefined) {
+  const value = uint256Of(a.value);
+  if (!isAddress(a.from) || !isAddress(a.to) || value === undefined || validBefore === undefined) {
     return refusal("x402/payload-malformed");
   }
-  const idDigest = await authorizationIdDigest(a.from, a.to, a.value);
-  if (isRefusal(idDigest)) return idDigest;
-  const asset = accepted.asset as Hex;
+  const asset = (accepted.asset as string).toLowerCase() as Hex;
   return {
     network: accepted.network as Eip155,
     asset,
+    payer: a.from.toLowerCase() as Hex,
     validBefore: validBefore.toString(),
-    idDigest,
-    bindingLog: { address: asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: h },
-    transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: idDigest },
-    search: { address: asset, topics: [AUTHORIZATION_USED_TOPIC, null, h] },
-    authorization: { scheme: "eip3009", at: asset, nonce: h, deadline: validBefore.toString(), asset },
+    h,
+    presented: {
+      token: asset,
+      from: a.from.toLowerCase(),
+      to: a.to.toLowerCase(),
+      value: value.toString(),
+      nonce: normalHash(a.nonce)!,
+    },
   };
 }
 
@@ -476,7 +531,7 @@ export const exactEip3009 = Object.freeze({
   broadcaster: x402Broadcaster("payee", { refused: () => refusal("x402/payload-malformed") }),
   reference,
   authorizer,
-  status: eip3009Status,
+  status: eip3009Read,
   recover: eip3009Recover,
 }) satisfies Entry<
   typeof ID,
@@ -486,9 +541,9 @@ export const exactEip3009 = Object.freeze({
   X402Forms & {
     choice: X402Choice;
     unsigned: Unsigned;
-    landed: { transaction: Hex; h: AtrHash };
+    landed: { transaction?: Hex };
     network: Eip155;
-    query: EvmQuery<EvmTxRef & { h: AtrHash; transferLog: TransferLog }>;
+    query: EvmQuery<unknown>;
     answer: EvmStatus;
   }
 >;
@@ -521,7 +576,7 @@ function isPayable(o: PaymentRequirements): boolean {
     extra["version"] !== "" &&
     isAddress(o.asset) &&
     isAddress(o.payTo) &&
-    isAmount(o.amount) &&
+    (isAmount(o.amount) || o.amount === EIP155_X402[ID].agreement!.floor) &&
     uint256Of(o.amount) !== undefined &&
     isTimeoutSeconds(o.maxTimeoutSeconds)
   );
@@ -621,6 +676,7 @@ function optionFilter(option: PaymentRequirements): X402PairingId | Refusal | un
     if (chainIdOf(option.network) === undefined || !isAddress(option.asset) || !isAddress(option.payTo)) return undefined;
     const flow = extra?.["paymentFlow"];
     if (flow !== undefined && flow !== "authorization" && flow !== "upfront") return undefined;
+    if ((method === "permit2" || method === "erc7710") && splitsRefused(extra) !== undefined) return splitsRefused(extra);
     if (method === "permit2") return PERMIT2_EXACT;
     if (method === "erc7710") return ERC7710;
     return undefined;
@@ -658,9 +714,12 @@ function deploymentOf(extra: Record<string, unknown>): (typeof ESCROW)["v1.1"] |
 
 /**
  * The eip155 pairing of this entry point that serves a presented payment: the `exact`, `upto` or `auth-capture` pairing
- * its `accepted` names, except that an `erc7710` payment whose delegation manager is `DELEGATION_MANAGER`, on a chain
- * in `DELEGATION_MANAGER_CHAINS`, is the salt level. Undefined for any other option, an option on another rail
- * included; the root `pairingOf` names the x402 pairing of an option on any rail.
+ * its `accepted` names, except that an `erc7710` payment is the salt level only where its delegation manager is
+ * `DELEGATION_MANAGER`, on a chain in `DELEGATION_MANAGER_CHAINS`, and the leaf delegation of its permission context
+ * carries as its salt the H its echoed `extensions.legalContext.info` names. Every other delegation, a stock client's
+ * whose leaf salt is drawn at random among them, or one whose context or extension does not decode, is the level that
+ * signs no H. Undefined for any other option, an option on another rail included; the root `pairingOf` names the x402
+ * pairing of an option on any rail.
  */
 export function pairingOfPayment(p: PaymentPayload): X402PairingId | undefined {
   if (!isObject(p) || !isObject(p.accepted)) return undefined;
@@ -668,7 +727,13 @@ export function pairingOfPayment(p: PaymentPayload): X402PairingId | undefined {
   if (id !== ERC7710) return id;
   const payload: unknown = p.payload;
   const manager = isObject(payload) ? payload["delegationManager"] : undefined;
-  return isReferenceManager(manager, p.accepted.network) ? ERC7710_SALT : ERC7710;
+  if (!isReferenceManager(manager, p.accepted.network)) return ERC7710;
+  const ctx = isObject(payload) ? payload["permissionContext"] : undefined;
+  const delegations = typeof ctx === "string" ? decodePermissionContext(ctx as Hex) : undefined;
+  const leaf = delegations === undefined || isRefusal(delegations) ? undefined : delegations[0];
+  const lc = isObject(p.extensions) ? p.extensions[LEGAL_CONTEXT] : undefined;
+  const echoed = fromLegalContext({ legalContext: isObject(lc) ? lc["info"] : undefined });
+  return leaf !== undefined && echoed !== null && normalHash(leaf.salt) === echoed.h ? ERC7710_SALT : ERC7710;
 }
 
 function isReferenceManager(manager: unknown, network: unknown): boolean {
@@ -763,8 +828,10 @@ const WITNESS_UPTO: readonly Field[] = Object.freeze([
 ]);
 
 function permit2Build(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
-  return async (choice: X402Choice, h: AtrHash): Promise<X402Unsigned | Refusal> => {
-    const c = choiceOf(id, choice, h);
+  return async (choice: X402Choice, h: AtrHash, act?: Act): Promise<X402Unsigned | Refusal> => {
+    const atr = normalHash(h);
+    const signedNonce = atr !== null && act === "agreement" && id === PERMIT2_EXACT ? await agreementValue(atr) : h;
+    const c = choiceOf(id, choice, signedNonce);
     if (isRefusal(c)) return c;
     const { required, accepted, from } = choice;
     const upto = id === PERMIT2_UPTO;
@@ -823,39 +890,68 @@ function permit2Presented(
 }
 
 function permit2Bound(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
-  return async (presented: unknown): Promise<AtrHash | Refusal> => {
+  return async (presented: unknown, given?: { readonly act: Act; readonly h: AtrHash }): Promise<AtrHash | Refusal> => {
     const r = permit2Presented(id, presented);
-    return isRefusal(r) ? r : r.h;
+    if (isRefusal(r)) return r;
+    return id === PERMIT2_EXACT ? carriedAs(r.h, given) : r.h;
   };
 }
 
 function permit2Reference(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
   const keys = permit2Keys(id);
-  return async (presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> =>
-    withPayee(await keys(presented), x402Payee(option));
+  return async (
+    presented: unknown,
+    option: PaymentRequirements,
+    given?: { readonly act: Act; readonly h: AtrHash },
+  ): Promise<Permit2Ref | Refusal> => {
+    const k = await keys(presented, given);
+    if (isRefusal(k)) return k;
+    const payee = x402Payee(option);
+    if (isRefusal(payee)) return payee;
+    return acceptedIs(presented, option) ?? { ...k, payee };
+  };
 }
 
+/**
+ * The read keys of a presented Permit2 payment: the network, the token, the owner, `deadline`, H, and the members of
+ * the payment presented: the permit's `token`, `amount`, `nonce` and `deadline`, its `spender`, the `owner`, and the
+ * witness's `to` and `validAfter`, with `facilitator` on `upto`, lowercase, numbers in decimal.
+ */
 function permit2Keys(id: typeof PERMIT2_EXACT | typeof PERMIT2_UPTO) {
-  return async (presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> => {
-    const r = permit2Presented(id, presented);
-    if (isRefusal(r)) return r;
+  const bound = permit2Bound(id);
+  return async (presented: unknown, given?: { readonly act: Act; readonly h: AtrHash }): Promise<Omit<Permit2Ref, "payee"> | Refusal> => {
+    const h = await bound(presented, given);
+    if (isRefusal(h)) return h;
+    const r = permit2Presented(id, presented) as Exclude<ReturnType<typeof permit2Presented>, Refusal>;
     const { a, p } = r;
     const deadline = uint256Of(a.deadline);
-    const value = uint256Of(a.permitted.amount);
-    if (!isAddress(a.from) || !isAddress(a.witness["to"]) || deadline === undefined || value === undefined) {
+    const amount = uint256Of(a.permitted.amount);
+    const validAfter = uint256Of(a.witness["validAfter"] ?? "0");
+    const upto = id === PERMIT2_UPTO;
+    const facilitator = a.witness["facilitator"];
+    if (!isAddress(a.from) || !isAddress(a.witness["to"]) || !isAddress(a.permitted.token) || deadline === undefined) {
       return refusal("x402/payload-malformed");
     }
-    const upto = id === PERMIT2_UPTO;
-    const digest = await transferDigest(
-      upto ? { from: a.from, to: a.witness["to"] as Hex } : { from: a.from, to: a.witness["to"] as Hex, value },
-    );
-    if (isRefusal(digest)) return refusal("x402/payload-malformed");
-    const asset = p.accepted.asset as Hex;
+    if (amount === undefined || validAfter === undefined || (upto && !isAddress(facilitator))) {
+      return refusal("x402/payload-malformed");
+    }
     return {
       network: p.accepted.network as Eip155,
-      settleBy: deadline.toString(),
-      transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: upto ? "from,to" : "from,to,value", digest },
-      authorization: { scheme: "permit2", at: PERMIT2, nonce: r.h, deadline: deadline.toString(), asset },
+      asset: (p.accepted.asset as string).toLowerCase() as Hex,
+      payer: a.from.toLowerCase() as Hex,
+      deadline: deadline.toString(),
+      h,
+      presented: {
+        token: a.permitted.token.toLowerCase(),
+        amount: amount.toString(),
+        nonce: r.h,
+        deadline: deadline.toString(),
+        spender: a.spender.toLowerCase(),
+        owner: a.from.toLowerCase(),
+        to: a.witness["to"].toLowerCase(),
+        validAfter: validAfter.toString(),
+        ...(upto ? { facilitator: (facilitator as string).toLowerCase() } : {}),
+      },
     };
   };
 }
@@ -898,14 +994,15 @@ type ProxySettle = { selector: Hex; permit: number; owner: number };
 
 /**
  * Recovers H from a Permit2 settlement transaction alone: the Permit2 nonce of the scheme's proxy call that spent the
- * permit. It reads the transaction's input by `eth_getTransactionByHash`, as `permit2Status` does, and finds the call
- * at any byte offset, where `permit2Status` finds the nonce: at offset 0 for a direct call to the proxy and further in
- * for a batched call or an ERC-4337 bundle, by its selector, with an address in its permit's `token` word and in its
+ * permit. It reads the transaction's input by `eth_getTransactionByHash` and finds the call at any byte offset, as the
+ * pairing's `status` finds it: at offset 0 for a direct call to the proxy and further in for a batched call or an
+ * ERC-4337 bundle, by its selector, with an address in its permit's `token` word and in its
  * owner word. A call counts only where the receipt holds a `Transfer` log emitted by that token whose `from` is that
  * owner: the proxy settles only through Permit2's transfer of a non-zero amount from the owner, and the log's recipient
  * and value are not compared. Exactly one such call (by nonce and owner) must be there, else `evm/no-permit2-settle`
- * for none and `evm/ambiguous` for more; and, as `permit2Status` requires, `nonceBitmap(owner, nonce >> 8)` on Permit2
- * must have bit `nonce & 0xff` set at the receipt's block and unset at the block before, else `evm/nonce-not-used`. No
+ * for none and `evm/ambiguous` for more; and, as the pairing's `status` requires, `nonceBitmap(owner, nonce >> 8)` on
+ * Permit2 must have bit `nonce & 0xff` set at the receipt's block and unset at the block before, else
+ * `evm/nonce-not-used`. No
  * signature is checked, and Permit2's bitmap shows only that the owner's nonce was used in that block, by a settlement
  * or by the owner's `invalidateUnorderedNonces`, not in which transaction: any transaction of that block, the owner's
  * cancelling one included, whose input carries a call with the same nonce and owner, and whose receipt holds a
@@ -1069,26 +1166,43 @@ async function erc7710SaltBound(presented: unknown): Promise<AtrHash | Refusal> 
  */
 function erc7710Reference(id: typeof ERC7710 | typeof ERC7710_SALT) {
   const keys = erc7710Keys(id);
-  return async (presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> =>
-    withPayee(await keys(presented), x402Payee(option));
+  return async (presented: unknown, option: PaymentRequirements): Promise<Erc7710Ref | Refusal> => {
+    const k = await keys(presented);
+    if (isRefusal(k)) return k;
+    const payee = x402Payee(option);
+    if (isRefusal(payee)) return payee;
+    return acceptedIs(presented, option) ?? { ...k, payee };
+  };
 }
 
+/**
+ * The read keys of a presented ERC-7710 payment: the network, the token, H, and the payer: the payment's `delegator`
+ * at the level that signs no H, and at the salt level the root delegator, the last delegation's, whose account the
+ * manager executes the transfer from and by which the search finds its redemptions.
+ */
 function erc7710Keys(id: typeof ERC7710 | typeof ERC7710_SALT) {
-  return async (presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> => {
+  return async (presented: unknown): Promise<Omit<Erc7710Ref, "payee"> | Refusal> => {
     const h = await (id === ERC7710 ? erc7710Bound(presented) : erc7710SaltBound(presented));
     if (isRefusal(h)) return h;
-    const { p, d } = erc7710Presented(id, presented) as { p: PaymentPayload; d: { delegator: string } };
-    if (!isAddress(d.delegator)) return refusal("x402/payload-malformed");
-    const digest = await transferDigest({ from: d.delegator });
-    if (isRefusal(digest)) return refusal("x402/payload-malformed");
-    const ref: Omit<EvmRef, "payee"> = {
-      network: p.accepted.network as Eip155,
-      transferLog: { address: p.accepted.asset as Hex, topic0: TRANSFER_TOPIC, identity: "from", digest },
-    };
+    const { p, d } = erc7710Presented(id, presented) as { p: PaymentPayload; d: { delegator: string; permissionContext: string } };
+    if (!isAddress(d.delegator) || !isAddress(p.accepted.asset)) return refusal("x402/payload-malformed");
+    let payer = d.delegator.toLowerCase() as Hex;
+    // The payment presented: the leaf delegation whole, by its EIP-712 hash, which status compares with the leaf a
+    // `RedeemedDelegation` log carries. At the level that signs no H, a context that does not decode as the reference
+    // manager's presents no member.
+    const delegations = decodePermissionContext(d.permissionContext as Hex);
+    const leafPresented = isRefusal(delegations) || delegations.length === 0 ? undefined : { delegation: delegationHash(delegations[0]!) };
     if (id === ERC7710_SALT) {
-      ref.bindingLog = { address: DELEGATION_MANAGER, topic0: REDEEMED_DELEGATION_TOPIC, dataWord: 5, value: h };
+      if (isRefusal(delegations) || delegations.length === 0) return refusal("x402/permission-context-malformed");
+      payer = delegations[delegations.length - 1]!.delegator.toLowerCase() as Hex;
     }
-    return ref;
+    return {
+      network: p.accepted.network as Eip155,
+      asset: p.accepted.asset.toLowerCase() as Hex,
+      payer,
+      h,
+      ...(leafPresented === undefined ? {} : { presented: leafPresented }),
+    };
   };
 }
 
@@ -1320,48 +1434,45 @@ function authCaptureBound(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
 
 function authCaptureReference(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
   const keys = authCaptureKeys(id);
-  return async (presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> =>
-    withPayee(await keys(presented), x402Payee(option));
+  return async (presented: unknown, option: PaymentRequirements): Promise<AuthCaptureRef | Refusal> => {
+    const k = await keys(presented);
+    if (isRefusal(k)) return k;
+    const payee = x402Payee(option);
+    if (isRefusal(payee)) return payee;
+    return acceptedIs(presented, option) ?? { ...k, payee };
+  };
 }
 
+/**
+ * The read keys of a presented `auth-capture` payment: the network, the token and the way it is pulled, the payer, the
+ * escrow deployment and its event for the option's flow, the payment hash of the presented `PaymentInfo` and that hash
+ * with payer zero (the signed nonce, the single-use value), the salt, `preApprovalExpiry`, and H.
+ */
 function authCaptureKeys(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
-  return async (presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> => {
+  return async (presented: unknown): Promise<Omit<AuthCaptureRef, "payee"> | Refusal> => {
     const r = authCapturePresented(id, presented);
     if (isRefusal(r)) return r;
     const { t, p, payer, salt, preApprovalExpiry } = r;
     const paymentId = paymentHash(t.chainId, t.deployment.escrow, t.info(payer as Hex, salt, preApprovalExpiry));
     if (isRefusal(paymentId)) return refusal("x402/payload-malformed");
-    const topic0 = t.flow === "authorization" ? t.deployment.chargedTopic : PAYMENT_AUTHORIZED_TOPIC;
+    const event = t.flow === "authorization" ? t.deployment.chargedTopic : PAYMENT_AUTHORIZED_TOPIC;
     const signatureNonce = paymentHash(t.chainId, t.deployment.escrow, t.info(ZERO_ADDRESS, salt, preApprovalExpiry));
     if (isRefusal(signatureNonce)) return refusal("x402/payload-malformed");
-    const asset = p.accepted.asset as Hex;
-    const ref: Omit<EvmRef, "payee"> = {
+    return {
       network: p.accepted.network as Eip155,
-      settleBy: preApprovalExpiry.toString(),
-      bindingLog: { address: t.deployment.escrow, topic0, index: 1, value: paymentId },
-      authorization:
-        id === AC_EIP3009
-          ? { scheme: "eip3009", at: asset, nonce: signatureNonce, deadline: preApprovalExpiry.toString(), asset }
-          : { scheme: "permit2", at: PERMIT2, nonce: signatureNonce, deadline: preApprovalExpiry.toString(), asset },
+      scheme: id === AC_EIP3009 ? "eip3009" : "permit2",
+      asset: (p.accepted.asset as string).toLowerCase() as Hex,
+      payer: payer.toLowerCase() as Hex,
+      escrow: t.deployment.escrow.toLowerCase() as Hex,
+      event: event.toLowerCase() as Hex,
+      paymentId: paymentId.toLowerCase() as Hex,
+      signatureNonce: signatureNonce.toLowerCase() as Hex,
+      salt: salt.toLowerCase() as Hex,
+      expiry: preApprovalExpiry.toString(),
+      h: r.h,
     };
-    if (id === AC_EIP3009) {
-      const digest = await transferDigest({
-        from: payer as Hex,
-        to: t.deployment.eip3009Collector,
-        value: BigInt(p.accepted.amount),
-      });
-      if (isRefusal(digest)) return refusal("x402/payload-malformed");
-      ref.transferLog = { address: asset, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest };
-      ref.search = { address: asset, topics: [AUTHORIZATION_USED_TOPIC, null, signatureNonce] };
-    } else {
-      ref.search = { address: t.deployment.escrow, topics: [topic0, paymentId] };
-    }
-    return ref;
   };
 }
-
-/** The escrow events an auth-capture reference names as its binding log, in either deployment. */
-const ESCROW_EVENTS = [PAYMENT_AUTHORIZED_TOPIC, ESCROW["v1.1"].chargedTopic, ESCROW["v1.0"].chargedTopic] as const;
 
 /**
  * The payer of a presented auth-capture payment, lowercase: the token authorization's `from`, which the escrow's
@@ -1371,6 +1482,60 @@ function authCaptureAuthorizer(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
   return async (presented: unknown): Promise<Hex | Refusal> => {
     const r = authCapturePresented(id, presented);
     return isRefusal(r) ? r : (r.payer.toLowerCase() as Hex);
+  };
+}
+
+/**
+ * Recovers the value an `auth-capture` transaction carries in H's place: the `PaymentInfo.salt` of the escrow's
+ * `PaymentAuthorized` or `PaymentCharged` logs, emitted by the escrow of the deployment the option names (its
+ * `extra.authCaptureEscrow`, v1.1's where absent) and naming as their token collector that deployment's collector for
+ * the pairing's scheme, the one that redeems the authorization the payer signed (`@x402/evm` 2.31.0
+ * `src/auth-capture/constants.ts`). That salt is H itself where the option binds neither a receiver authorizer nor a
+ * policy; otherwise it is the commitment over the two and H, `bindSalt(receiverAuthorizer, policy, H)`, which a holder of
+ * the ATR computes from the option and its own H and compares, since a commitment is not read back to H. The escrow's
+ * event data is `PaymentInfo`'s twelve words, the amount and the collector; an event of the escrow with those topics
+ * whose data holds fewer words is `evm/unreadable`. Exactly one distinct salt must be there: none is
+ * `evm/no-escrow-payment` and more than one `evm/ambiguous`. A reverted transaction is `evm/reverted`. A revert,
+ * `evm/no-escrow-payment` and `evm/ambiguous` are given only at or below the reader's `finalized` mark, and above it, or
+ * where that mark cannot be read, each is `evm/not-final`, as `eip3009Recover` answers; the mark is read only for those.
+ * An input or reader that is not an object, a reader for another network, a `tx` that is not a 32-byte hash, or an
+ * option that names no deployment of the escrow, is `evm/wrong-reader`, with nothing read. At most two calls.
+ */
+function authCaptureRecover(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
+  return async (input: RecoverInput<Eip155, PaymentRequirements>, reader: EvmReader): Promise<AtrHash | Refusal> => {
+    if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("evm/wrong-reader");
+    if (normalHash(input.tx) === null) return refusal("evm/wrong-reader");
+    const extra = isObject(input.option) && isObject(input.option.extra) ? input.option.extra : undefined;
+    const d = extra === undefined ? undefined : deploymentOf(extra);
+    if (d === undefined) return refusal("evm/wrong-reader");
+    let receipt: EvmReceipt | null;
+    try {
+      receipt = await reader.receipt(input.tx as Hex);
+    } catch {
+      return refusal("evm/unreadable");
+    }
+    if (receipt === null) return refusal("evm/not-found");
+    if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return refusal("evm/unreadable");
+    if (receipt.status === 0) {
+      const read = await failedAt(receipt.blockNumber, "reverted", reader);
+      return read.state === "failed" ? refusal("evm/reverted") : refusal("evm/not-final");
+    }
+    const collector = id === AC_EIP3009 ? d.eip3009Collector : d.permit2Collector;
+    const salts = new Set<AtrHash>();
+    for (const l of receipt.logs) {
+      if (!sameBytes(l.address, d.escrow) || l.topics.length !== 2) continue;
+      if (!sameBytes(l.topics[0], PAYMENT_AUTHORIZED_TOPIC) && !sameBytes(l.topics[0], d.chargedTopic)) continue;
+      const data = bytesOf(l.data);
+      const salt = data === undefined ? undefined : wordAt(data, 11);
+      const through = data === undefined ? undefined : wordAt(data, 13);
+      if (salt === undefined || through === undefined) return refusal("evm/unreadable");
+      if (!sameBytes(hexOf(through.subarray(12)), collector) || through.subarray(0, 12).some((b) => b !== 0)) continue;
+      salts.add(hexOf(salt) as AtrHash);
+    }
+    if (salts.size !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("evm/not-final");
+    if (salts.size === 0) return refusal("evm/no-escrow-payment");
+    if (salts.size > 1) return refusal("evm/ambiguous");
+    return [...salts][0]!;
   };
 }
 
@@ -1396,26 +1561,23 @@ type BreadthBase<Id extends BreadthId> = {
   readonly broadcaster: (presented: unknown) => Promise<Broadcaster | Refusal>;
 };
 
-/** The reference a breadth pairing's `status` reads: the payment's read keys and the transaction that settled it. */
-type BreadthRef = EvmRef & { transaction: Hex };
-
 /** The family descriptor of an x402 EVM breadth pairing that `status` reads. */
 type BreadthFamily = X402Forms & {
   choice: X402Choice;
   unsigned: X402Unsigned;
-  landed: { transaction: Hex };
+  landed: { transaction?: Hex };
   network: Eip155;
-  query: EvmQuery<BreadthRef>;
-  answer: EvmBreadthStatus;
+  query: EvmQuery<unknown>;
+  answer: EvmStatus;
 };
 
 /** The members each x402 EVM breadth pairing gives itself. */
 type BreadthMembers = {
-  readonly build: (choice: X402Choice, h: AtrHash) => Promise<X402Unsigned | Refusal>;
-  readonly bound: (presented: unknown) => Promise<AtrHash | Refusal>;
-  readonly reference: (presented: unknown, option: PaymentRequirements) => Promise<EvmRef | Refusal>;
+  readonly build: (choice: X402Choice, h: AtrHash, act?: Act) => Promise<X402Unsigned | Refusal>;
+  readonly bound: (presented: unknown, given?: { readonly act: Act; readonly h: AtrHash }) => Promise<AtrHash | Refusal>;
+  readonly reference: (presented: unknown, option: PaymentRequirements, given?: { readonly act: Act; readonly h: AtrHash }) => Promise<object | Refusal>;
   readonly authorizer?: (presented: unknown) => Promise<Hex | Refusal>;
-  readonly status?: (ref: BreadthRef, reader: EvmReader, query: EvmQuery<BreadthRef>) => Promise<EvmBreadthStatus>;
+  readonly status?: (ref: never, reader: EvmReader, query: EvmQuery<unknown>) => Promise<EvmStatus>;
   readonly recover?: (input: RecoverInput<Eip155, PaymentRequirements>, reader: EvmReader) => Promise<AtrHash | Refusal>;
 };
 
@@ -1458,10 +1620,10 @@ export const exactPermit2 = binding(
     bound: permit2Bound(PERMIT2_EXACT),
     reference: permit2Reference(PERMIT2_EXACT),
     authorizer: permit2Authorizer(PERMIT2_EXACT),
-    status: permit2Status(EIP155_X402[PERMIT2_EXACT].coverage),
+    status: permit2ExactRead,
     recover: permit2Recover(PERMIT2_EXACT),
   },
-) satisfies Entry<typeof PERMIT2_EXACT, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
+) satisfies Entry<typeof PERMIT2_EXACT, PaymentPayload, Permit2Ref, EvmReader, BreadthFamily>;
 
 /**
  * `x402/upto/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator,
@@ -1483,16 +1645,16 @@ export const uptoPermit2 = binding(
     bound: permit2Bound(PERMIT2_UPTO),
     reference: permit2Reference(PERMIT2_UPTO),
     authorizer: permit2Authorizer(PERMIT2_UPTO),
-    status: permit2Status(EIP155_X402[PERMIT2_UPTO].coverage),
+    status: permit2UptoRead,
     recover: permit2Recover(PERMIT2_UPTO),
   },
-) satisfies Entry<typeof PERMIT2_UPTO, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
+) satisfies Entry<typeof PERMIT2_UPTO, PaymentPayload, Permit2Ref, EvmReader, BreadthFamily>;
 
 /**
  * `x402/exact/eip155/erc7710`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator redeems
- * the delegation the payer signed. This unsigned level has no `status`: its read keys identify any transfer from the
- * delegator, and nothing in the settlement transaction ties one to this payment, so a read of the chain alone never
- * settles it.
+ * the delegation the payer signed. Nothing the delegator signed carries H, so a read of the chain alone never settles
+ * it: its `status` reads the transaction the caller names, after the position of the agreement's own settlement, which
+ * the caller gives, and holds it to a `Transfer` from the payment's `delegator` to the option's payee.
  */
 export const exactErc7710 = binding(
   ERC7710,
@@ -1503,14 +1665,8 @@ export const exactErc7710 = binding(
     forwardIndexable: false,
   }),
   false,
-  { build: erc7710Build, bound: erc7710Bound, reference: erc7710Reference(ERC7710) },
-) satisfies Entry<
-  typeof ERC7710,
-  PaymentPayload,
-  EvmRef,
-  never,
-  X402Forms & NoRead & { choice: X402Choice; unsigned: X402Unsigned }
->;
+  { build: erc7710Build, bound: erc7710Bound, reference: erc7710Reference(ERC7710), status: erc7710Read },
+) satisfies Entry<typeof ERC7710, PaymentPayload, Erc7710Ref, EvmReader, BreadthFamily>;
 
 /**
  * `x402/exact/eip155/erc7710-salt`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1531,10 +1687,10 @@ export const exactErc7710Salt = binding(
     bound: erc7710SaltBound,
     reference: erc7710Reference(ERC7710_SALT),
     authorizer: erc7710SaltAuthorizer,
-    status: boundStatus([REDEEMED_DELEGATION_TOPIC], EIP155_X402[ERC7710_SALT].coverage),
+    status: erc7710SaltRead,
     recover: redeemedLeafRecover,
   },
-) satisfies Entry<typeof ERC7710_SALT, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
+) satisfies Entry<typeof ERC7710_SALT, PaymentPayload, Erc7710Ref, EvmReader, BreadthFamily>;
 
 /**
  * `x402/auth-capture/eip155/eip3009`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1556,9 +1712,10 @@ export const authCaptureEip3009 = binding(
     bound: authCaptureBound(AC_EIP3009),
     reference: authCaptureReference(AC_EIP3009),
     authorizer: authCaptureAuthorizer(AC_EIP3009),
-    status: boundStatus(ESCROW_EVENTS, EIP155_X402[AC_EIP3009].coverage),
+    status: authCaptureRead,
+    recover: authCaptureRecover(AC_EIP3009),
   },
-) satisfies Entry<typeof AC_EIP3009, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
+) satisfies Entry<typeof AC_EIP3009, PaymentPayload, AuthCaptureRef, EvmReader, BreadthFamily>;
 
 /**
  * `x402/auth-capture/eip155/permit2`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
@@ -1580,9 +1737,10 @@ export const authCapturePermit2 = binding(
     bound: authCaptureBound(AC_PERMIT2),
     reference: authCaptureReference(AC_PERMIT2),
     authorizer: authCaptureAuthorizer(AC_PERMIT2),
-    status: boundStatus(ESCROW_EVENTS, EIP155_X402[AC_PERMIT2].coverage),
+    status: authCaptureRead,
+    recover: authCaptureRecover(AC_PERMIT2),
   },
-) satisfies Entry<typeof AC_PERMIT2, PaymentPayload, EvmRef, EvmReader, BreadthFamily>;
+) satisfies Entry<typeof AC_PERMIT2, PaymentPayload, AuthCaptureRef, EvmReader, BreadthFamily>;
 
 function isNonEmpty(v: unknown): v is string {
   return typeof v === "string" && v !== "";

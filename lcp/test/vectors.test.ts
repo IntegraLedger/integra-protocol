@@ -1,7 +1,23 @@
 // Runs the vector files' rows through the entry points. Every expected value is the file's.
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { domainSeparator, hashStruct, hashTypedData, recoverTypedDataAddress } from "viem";
+import {
+  decodeEventLog,
+  decodeFunctionData,
+  domainSeparator,
+  encodeAbiParameters,
+  encodeEventTopics,
+  encodeFunctionData,
+  encodeFunctionResult,
+  erc20Abi,
+  hashStruct,
+  hashTypedData,
+  multicall3Abi,
+  parseAbi,
+  recoverTypedDataAddress,
+} from "viem";
+import { authorizationTypes, eip3009ABI } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
 import { hash, hashEquals, isHttpsLink, type AtrHash } from "../src/index.js";
 import { AUTHORIZATION_USED_TOPIC, ReaderError, evmStatus, type EvmReader, type EvmReceipt, type Hex } from "../src/evm.js";
@@ -34,7 +50,13 @@ const asMessage = (m: Eip3009TypedData["message"]) => ({
 });
 
 type FixtureReceipt = { status: 0 | 1; blockNumber: string; logs: EvmReceipt["logs"] } | null | "reader-error";
-function readerFor(r: FixtureReceipt): EvmReader {
+type FixtureTransaction = { from: Hex; to: Hex; input: Hex };
+/**
+ * The V6 reader: the row's receipt, the row's transaction where it carries one, and the token's `authorizationState`
+ * (EIP-3009), true where the row's `authorizationState` is (its receipt holds the payer's use of H on the asset), as the
+ * x402 facilitator's own ABI encodes the answer; it makes no log query.
+ */
+function readerFor(r: FixtureReceipt, row: { transaction?: FixtureTransaction; authorizationState?: boolean } = {}): EvmReader {
   return {
     network: P.V6.reader.network,
     receipt: async () => {
@@ -42,10 +64,13 @@ function readerFor(r: FixtureReceipt): EvmReader {
       return r === null ? null : { status: r.status, blockNumber: BigInt(r.blockNumber), logs: r.logs };
     },
     blockNumber: async (tag) => BigInt(tag === "finalized" ? P.V6.reader.finalized : P.V6.reader.safe),
-    transaction: async () => null,
-    call: async () => {
-      throw new ReaderError("transport");
-    },
+    transaction: async () => row.transaction ?? null,
+    call: async (to, data) =>
+      encodeFunctionResult({
+        abi: eip3009ABI,
+        functionName: "authorizationState",
+        result: row.authorizationState === true && to.toLowerCase() === P.V6.ref.asset && data.startsWith("0xe94a0102"),
+      }),
   };
 }
 const withBigints = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
@@ -135,7 +160,7 @@ describe("x402-exact-eip155-eip3009.json", () => {
   it("V6", async () => {
     const ref = P.V6.ref;
     for (const row of rowsOf(P.V6.status, "x402-exact-eip155-eip3009.json V6.status")) {
-      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt), row.query))).toEqual(row.expect);
+      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt, row), row.query))).toEqual(row.expect);
     }
     for (const row of rowsOf(P.V6.recover, "x402-exact-eip155-eip3009.json V6.recover")) {
       const tx = { network: ref.network, tx: ref.transaction, option: O };
@@ -143,15 +168,19 @@ describe("x402-exact-eip155-eip3009.json", () => {
     }
   });
 
-  it("V6: the settled row answers the same for the act agreement, and failed before-position at its own block", async () => {
+  it("V6: the settled row's transaction is no agreement, which carries the agreement's own value, and failed before-position at its own block", async () => {
     const row = rowsOf(P.V6.status, "x402-exact-eip155-eip3009.json V6.status").find(
       (r: { expect: { state: string; finality?: string } }) => r.expect.state === "settled" && r.expect.finality === "finalized",
     );
-    const reader = readerFor(row.receipt);
+    const reader = readerFor(row.receipt, row);
+    // Under the act agreement the single-use value is agreementValue(H): a transaction carrying H is the payment, an
+    // act of another kind, named as a foreign item.
     const agreement = { act: "agreement" as const, finality: "finalized" as const };
-    expect(withBigints(await exactEip3009.status(P.V6.ref, reader, agreement))).toEqual(row.expect);
+    const asAgreement = withBigints(await exactEip3009.status(P.V6.ref, reader, agreement));
+    expect(asAgreement).toMatchObject({ state: "pending", reason: "search-incomplete" });
+    expect(asAgreement.foreign.map((f: { transaction: string; reason: string }) => [f.transaction, f.reason])).toEqual([[row.expect.transaction, "other-kind"]]);
     const at = BigInt(row.expect.position);
-    const { state: _, ...named } = row.expect;
+    const { state: _, presented: _p, ...named } = row.expect;
     expect(withBigints(await exactEip3009.status(P.V6.ref, reader, { ...agreement, act: "payment", after: at }))).toEqual({
       ...named,
       state: "failed",
@@ -161,31 +190,117 @@ describe("x402-exact-eip155-eip3009.json", () => {
 
   it("V6: a named transaction that is not this payment is no act", async () => {
     for (const row of rowsOf(P.V6.notThisPayment.rows, "x402-exact-eip155-eip3009.json V6.notThisPayment.rows")) {
-      expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(row.receipt), row.query)), row.case).toEqual(row.expect);
+      expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(row.receipt, row), row.query)), row.case).toEqual(row.expect);
     }
   });
 
   it("V6: each use of H pairs with the transfer the token emits for it", async () => {
     const ref = P.V6.ref;
-    const bindingLog = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
-    const asEvmRef = { network: ref.network, transaction: ref.transaction, bindingLog, transferLog: ref.transferLog, payee: ref.payee };
-    for (const row of rowsOf(P.V6.pairing.rows, "x402-exact-eip155-eip3009.json V6.pairing.rows", { exact: 7 })) {
-      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt), row.query)), row.name).toEqual(row.expect);
-      expect(withBigints(await evmStatus(asEvmRef, readerFor(row.receipt), row.query)), row.name).toEqual(row.expect);
+    // Where a transaction holds one use and at most one transfer of the authorizer on the token, the two logs pair; where
+    // the uses must be split, the read decodes the transaction's EIP-3009 call, and with no transaction to decode the item
+    // holds the search (the profile).
+    for (const row of rowsOf(P.V6.pairing.rows, "x402-exact-eip155-eip3009.json V6.pairing.rows", { exact: 8 })) {
+      expect(withBigints(await exactEip3009.status(ref, readerFor(row.receipt, row), row.query)), row.name).toEqual(row.expect);
     }
     expect(P.V6.pairing.rows.map((r: { name: string }) => r.name)).toEqual([
       "secondSignature",
       "plainBeside",
       "batch",
+      "batchUnread",
       "transferFirst",
       "transferFirstBatch",
       "transferFirstTwoPayers",
-      "transferBeforeAnotherUse",
+      "oneUseOneTransfer",
     ]);
   });
 
+  it("AG: the agreement signs the agreement's own value as its nonce, and bound tells the two acts apart", async () => {
+    expect(createHash("sha256").update(Buffer.from(P.AG.preimageHex, "hex")).digest("hex")).toBe(P.AG.expectValue.slice(2));
+    expect(P.AG.preimageHex).toBe(P.AG.tagHex + H.slice(2));
+    expect(Buffer.from(P.AG.tagHex, "hex").toString("ascii")).toBe("lcp-agreement-v1");
+    const u = await exactEip3009.build({ required, accepted: O, from: P.fixed.payer, now: P.fixed.now }, H, "agreement");
+    if ("refused" in u) throw new Error(u.code);
+    expect(u.typedData.message.nonce).toBe(P.AG.expectValue);
+    expect(hashTypedData(forViem(u.typedData))).toBe(P.AG.expectDigest);
+    const p = u.complete(await privateKeyToAccount(P.fixed.payerKey).signTypedData(forViem(u.typedData)));
+    expect(await exactEip3009.bound(p)).toBe(P.AG.expectBound);
+    expect(await exactEip3009.bound(p, { act: "agreement", h: H })).toBe(P.AG.expectBoundAsAgreement);
+    const payment = (await unsigned()).complete(P.V1.expectSignature);
+    expect(await exactEip3009.bound(payment, { act: "agreement", h: H })).toEqual(P.AG.paymentAsAgreement);
+  });
+
   it("plant", async () => {
-    expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(P.plant.receipt), P.plant.query))).toEqual(P.plant.expect);
+    expect(withBigints(await exactEip3009.status(P.V6.ref, readerFor(P.plant.receipt, P.plant), P.plant.query))).toEqual(P.plant.expect);
+  });
+
+  it("V6 and the plant: each log and input is viem's encoding of the token's ABI, each signature its authorizer's", async () => {
+    // EIP-3009's events as the EIP states them; ERC-20's Transfer as viem's erc20Abi holds it (V6.about).
+    const EIP3009_EVENTS = parseAbi([
+      "event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce)",
+      "event AuthorizationCanceled(address indexed authorizer, bytes32 indexed nonce)",
+    ]);
+    const STAND_INS = [1, 2, 3].map((n) => `0x${n.toString(16).padStart(64, "0")}`);
+    type Log = { address: Hex; topics: Hex[]; data: Hex };
+    type Row = { receipt: FixtureReceipt; transaction?: FixtureTransaction };
+    const rows: Row[] = [...P.V6.status, ...P.V6.recover, ...P.V6.notThisPayment.rows, ...P.V6.pairing.rows, P.plant];
+    const logs = rows.flatMap((r) => (r.receipt === null || r.receipt === "reader-error" ? [] : (r.receipt.logs as Log[])));
+    const reEncoded = (l: Log): Log => {
+      if (STAND_INS.includes(l.topics[0]!)) return l;
+      for (const abi of [EIP3009_EVENTS, erc20Abi] as const) {
+        let d: ReturnType<typeof decodeEventLog>;
+        try {
+          d = decodeEventLog({ abi, topics: l.topics as [Hex, ...Hex[]], data: l.data, strict: true });
+        } catch {
+          continue;
+        }
+        const topics = (encodeEventTopics({ abi, eventName: d.eventName, args: d.args } as never) as Hex[]).map((t) => t.toLowerCase() as Hex);
+        const data = d.eventName === "Transfer" ? encodeAbiParameters([{ type: "uint256" }], [(d.args as { value: bigint }).value]) : "0x";
+        return { address: l.address, topics, data };
+      }
+      throw new Error(`a log no event of the token's ABI encodes: ${JSON.stringify(l)}`);
+    };
+    for (const l of rowsOf(logs, "V6's and the plant's logs", { min: 40 })) expect(reEncoded(l)).toEqual(l);
+    expect(logs.filter((l) => !STAND_INS.includes(l.topics[0]!)).length).toBeGreaterThan(30);
+    // Each transaction: one transferWithAuthorization on the token, or Multicall3's aggregate3 of calls to it; each
+    // authorization's signature recovers to its `from` over V1's domain.
+    const txs = rowsOf(
+      rows.filter((r) => r.transaction !== undefined).map((r) => r.transaction!),
+      "the V6 rows that carry a transaction",
+      { exact: 6 },
+    );
+    let signed = 0;
+    for (const tx of txs) {
+      const inner =
+        tx.to === P.V6.ref.asset
+          ? [tx.input]
+          : (() => {
+              const d = decodeFunctionData({ abi: multicall3Abi, data: tx.input });
+              expect([tx.to, d.functionName]).toEqual(["0xca11bde05977b3631167028862be2a173976ca11", "aggregate3"]);
+              expect(encodeFunctionData({ abi: multicall3Abi, functionName: "aggregate3", args: d.args } as never)).toBe(tx.input);
+              return (d.args![0] as unknown as readonly { target: Hex; callData: Hex }[]).map((c) => {
+                expect(c.target.toLowerCase()).toBe(P.V6.ref.asset);
+                return c.callData;
+              });
+            })();
+      for (const data of inner) {
+        if (data.startsWith("0x23b872dd")) {
+          // ERC-20's transferFrom, which the plain transfer beside an authorization is.
+          const d = decodeFunctionData({ abi: erc20Abi, data });
+          expect(encodeFunctionData({ abi: erc20Abi, functionName: "transferFrom", args: d.args } as never)).toBe(data);
+          continue;
+        }
+        const d = decodeFunctionData({ abi: eip3009ABI, data });
+        expect(d.functionName).toBe("transferWithAuthorization");
+        expect(encodeFunctionData({ abi: eip3009ABI, functionName: "transferWithAuthorization", args: d.args } as never)).toBe(data);
+        const [from, to, value, validAfter, validBefore, nonce, v, r, s] = d.args as [Hex, Hex, bigint, bigint, bigint, Hex, number, Hex, Hex];
+        const signature = `${r}${s.slice(2)}${v.toString(16).padStart(2, "0")}` as Hex;
+        const message = { from, to, value, validAfter, validBefore, nonce };
+        const typed = { domain: P.V1.expectDomain, types: authorizationTypes, primaryType: "TransferWithAuthorization", message } as const;
+        expect(await recoverTypedDataAddress({ ...typed, signature })).toBe(from);
+        signed++;
+      }
+    }
+    expect(signed).toBe(11);
   });
 
   // The rows that carry their input, as the agreedRefusals about states: build's choice; read of V5's document with its

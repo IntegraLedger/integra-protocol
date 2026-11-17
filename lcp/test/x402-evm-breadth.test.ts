@@ -10,6 +10,7 @@ import {
   hashTypedData,
   keccak256,
   parseAbi,
+  parseAbiParameters,
   toBytes,
   toFunctionSelector,
   type TypedDataDefinition,
@@ -35,9 +36,12 @@ import {
   transferDigest,
   type EvmReader,
   type EvmReceipt,
+  type AuthCaptureRef,
+  type Erc7710Ref,
   type EvmRef,
   type Hex,
   type PaymentInfo,
+  type Permit2Ref,
 } from "../src/evm.js";
 import {
   LEGAL_CONTEXT_SCHEMA,
@@ -54,6 +58,7 @@ import {
   type X402Unsigned,
 } from "../src/x402.js";
 import { pairingOf } from "../src/index.js";
+import { readerOf } from "./evm-chain.js";
 import { rowsOf } from "./rows.js";
 
 const load = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${name}`, import.meta.url), "utf8"));
@@ -281,6 +286,21 @@ describe("x402-exact-eip155-permit2.json", () => {
     const p = await signed(exactPermit2, f);
     expect((p.payload as { signature: string }).signature).toBe(P2.EV1.expectSignature);
   });
+  it("AG: the agreement's permit carries the agreement's own value as its nonce, and bound tells the two acts apart", async () => {
+    expect(sha256("0x" + P2.AG.preimageHex)).toBe(P2.AG.expectValue);
+    expect(P2.AG.preimageHex).toBe(P2.AG.tagHex + H.slice(2));
+    const doc = documentOf(f);
+    const u = await exactPermit2.build({ required: doc, accepted: f.option, from: f.payer, now: f.now }, H, "agreement");
+    if ("refused" in u || u.request.kind !== "eip712") throw new Error("build");
+    const td = u.request.typedData as any;
+    expect(td.message.nonce.toString()).toBe(P2.AG.expectNonceDecimal);
+    expect(BigInt(P2.AG.expectValue).toString()).toBe(P2.AG.expectNonceDecimal);
+    expect(hashTypedData(td as TypedDataDefinition)).toBe(P2.AG.expectDigest);
+    const p = (u.complete as (s: Hex) => PaymentPayload)(await privateKeyToAccount(f.payerKey).signTypedData(td as TypedDataDefinition));
+    expect(await exactPermit2.bound(p)).toBe(P2.AG.expectBound);
+    expect(await exactPermit2.bound(p, { act: "agreement", h: H })).toBe(P2.AG.expectBoundAsAgreement);
+    expect(await exactPermit2.bound(await signed(exactPermit2, f), { act: "agreement", h: H })).toEqual(P2.AG.paymentAsAgreement);
+  });
   it("EV1: bound gives H for the decimal nonce and its 0x spelling; the upto proxy as spender is refused", async () => {
     const p = await signed(exactPermit2, f);
     expect(await exactPermit2.bound(p)).toBe(P2.EV1.expectBound);
@@ -293,22 +313,17 @@ describe("x402-exact-eip155-permit2.json", () => {
     const bad = structuredClone(p) as any;
     bad.payload.permit2Authorization.nonce = P2.EV1.nonceMalformed.nonce;
     expect(await exactPermit2.bound(bad)).toEqual(P2.EV1.nonceMalformed.expect);
-    const ref = (await referenceOf(exactPermit2, p)) as EvmRef;
-    expect(ref.transferLog?.digest).toBe(P2.EV1.expectReferenceDigest);
+    const ref = (await referenceOf(exactPermit2, p)) as Permit2Ref;
     expect(ref.payee).toBe(f.option.payTo);
-    expect(ref.bindingLog).toBeUndefined();
-    expect(ref.search).toBeUndefined();
+    expect(ref.h).toBe(H);
+    expect(ref.presented.nonce).toBe(H);
   });
   it("EV1: the reference names Permit2's record of the nonce, and authorizer the payer", async () => {
     const p = await signed(exactPermit2, f);
-    const ref = (await referenceOf(exactPermit2, p)) as EvmRef;
-    expect(ref.authorization).toEqual({
-      scheme: "permit2",
-      at: P2.EV6.expectCall.to,
-      nonce: H,
-      deadline: P2.EV1.expectDeadline,
-      asset: f.option.asset,
-    });
+    const ref = (await referenceOf(exactPermit2, p)) as Permit2Ref;
+    // The read keys: the owner whose Permit2 bitmap records the nonce, the deadline, and the token.
+    expect([ref.payer, ref.deadline, ref.asset]).toEqual([f.payer.toLowerCase(), P2.EV1.expectDeadline, f.option.asset.toLowerCase()]);
+    expect(P2.EV6.expectCall.to.toLowerCase()).toBe(PERMIT2.toLowerCase());
     expect(await exactPermit2.authorizer(p)).toBe(f.payer.toLowerCase());
     const bad = structuredClone(p) as any;
     bad.payload.permit2Authorization.spender = P2.EV1.uptoProxyAsSpender.spender;
@@ -343,54 +358,6 @@ describe("x402-exact-eip155-permit2.json", () => {
     expect(offsetsOf(batched, H)).toEqual([552]);
     expect((552 - 4) % 32).not.toBe(0);
     expect(offsetsOf(P2.EV6.inputs.plainTransfer, H)).toEqual([]);
-  });
-  it("EV6 and the emitter plant: status of EV1's reference reads the transaction carrying the permit's nonce and Permit2's record of it", async () => {
-    const ref = (await referenceOf(exactPermit2, await signed(exactPermit2, f))) as EvmRef;
-    const tx = P2.EV6.transaction as Hex;
-    const names = [
-      "transferAt100",
-      "batched",
-      "nonceUnused",
-      "usedBefore",
-      "plainTransfer",
-      "callFails",
-      "transactionNone",
-      "transactionFails",
-      "value9999",
-      "reverted",
-      "none",
-    ];
-    for (const row of [...names.map((n) => P2.EV6[n]), P2.plantEmitter]) {
-      const calls: { to: string; data: string; block: string }[] = [];
-      const reader = permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, calls);
-      expect(plain(await exactPermit2.status({ ...ref, transaction: tx }, reader, row.query)), row.case).toEqual(row.expect);
-      expect(calls, row.case).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore].slice(0, row.calls));
-    }
-    const selector = toFunctionSelector("function nonceBitmap(address owner, uint256 wordPos)");
-    expect(P2.EV6.expectCall.data.startsWith(selector)).toBe(true);
-    expect(P2.EV6.expectCallBefore.data).toBe(P2.EV6.expectCall.data);
-    expect(NONCE_BITMAP_SELECTOR).toBe(selector);
-  });
-  it("EV6 transferAt100: the act agreement settles as the act payment does, and an act at the position given is failed before-position", async () => {
-    const ref = (await referenceOf(exactPermit2, await signed(exactPermit2, f))) as EvmRef;
-    const row = P2.EV6.transferAt100;
-    const read = (query: object) =>
-      exactPermit2.status({ ...ref, transaction: P2.EV6.transaction as Hex }, permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, []), query as never);
-    expect(plain(await read({ act: "agreement", finality: "finalized" }))).toEqual(row.expect);
-    const { state: _, ...named } = row.expect;
-    expect(plain(await read({ ...FINAL, after: BigInt(row.expect.position) }))).toEqual({ ...named, state: "failed", reason: "before-position" });
-  });
-  it("status is unreadable unparseable for a ref without Permit2's record or a transfer naming from", async () => {
-    const ref = (await referenceOf(exactPermit2, await signed(exactPermit2, f))) as EvmRef;
-    const tx = P2.EV6.transaction as Hex;
-    const reader = readerFor(P2.EV6.transferAt100.receipt, P2.EV6.reader, P2.EV6.transferAt100.nonceBitmap);
-    const unreadable = { state: "unreadable", reason: "unparseable", foreign: [] };
-    const { authorization: _, ...bare } = ref;
-    expect(await exactPermit2.status({ ...bare, transaction: tx }, reader, FINAL)).toEqual(unreadable);
-    const eip3009 = { ...ref, authorization: { ...ref.authorization!, scheme: "eip3009" as const } };
-    expect(await exactPermit2.status({ ...eip3009, transaction: tx }, reader, FINAL)).toEqual(unreadable);
-    const toOnly = { ...ref, transferLog: { ...ref.transferLog!, identity: "to,value" as const } };
-    expect(await exactPermit2.status({ ...toOnly, transaction: tx }, reader, FINAL)).toEqual(unreadable);
   });
 });
 
@@ -440,17 +407,10 @@ describe("x402-upto-eip155-permit2.json", () => {
     hex.payload.permit2Authorization.nonce = H;
     expect(await uptoPermit2.bound(hex)).toBe(UP.EV2.boundOfHexNonce);
     const ref = plain(await referenceOf(uptoPermit2, p));
-    expect(ref.transferLog.identity).toBe(UP.EV2.expectReference.identity);
-    expect(ref.transferLog.digest).toBe(UP.EV2.expectReference.digest);
-    expect(ref.settleBy).toBe(UP.EV2.expectReference.settleBy);
+    expect(ref.deadline).toBe(UP.EV2.expectReference.settleBy);
     expect(ref.payee).toBe(UP.EV2.expectReference.payee);
-    expect(ref.authorization).toEqual({
-      scheme: "permit2",
-      at: UP.EV6.expectCall.to,
-      nonce: H,
-      deadline: UP.EV2.expectDeadline,
-      asset: f.option.asset,
-    });
+    expect(ref.presented.facilitator).toBe(String(f.option.extra?.["facilitatorAddress"]).toLowerCase());
+    expect([ref.payer, ref.presented.nonce, ref.deadline]).toEqual([f.payer.toLowerCase(), H, UP.EV2.expectDeadline]);
     expect(await uptoPermit2.authorizer(p)).toBe(f.payer.toLowerCase());
   });
   it("EV6: the inputs are the upto proxy's settle call for one unit and a plain transfer above the cap, as viem encodes them", async () => {
@@ -473,24 +433,6 @@ describe("x402-upto-eip155-permit2.json", () => {
     expect(UP.EV6.inputs.plainAboveCap).toBe(encodeFunctionData({ abi: ERC20, functionName: "transfer", args: [f.option.payTo as Hex, above] }));
     expect(BigInt(UP.EV6.aboveCapPlain.receipt.logs[0].data)).toBe(above);
     expect(offsetsOf(UP.EV6.inputs.plainAboveCap, H)).toEqual([]);
-  });
-  it("EV6: a transfer of any amount is this payment's only in the transaction that spends the permit carrying nonce H", async () => {
-    const ref = (await referenceOf(uptoPermit2, await signed(uptoPermit2, f))) as EvmRef;
-    for (const row of [UP.EV6.oneUnitUsed, UP.EV6.oneUnitUnused, UP.EV6.aboveCapPlain]) {
-      const calls: { to: string; data: string; block: string }[] = [];
-      const reader = permit2Reader(row, UP.EV6, UPTO_PERMIT2_PROXY, calls);
-      expect(plain(await uptoPermit2.status({ ...ref, transaction: UP.EV6.transaction }, reader, row.query)), row.case).toEqual(row.expect);
-      expect(calls, row.case).toEqual([UP.EV6.expectCall, UP.EV6.expectCallBefore].slice(0, row.calls));
-    }
-    const used = UP.EV6.oneUnitUsed;
-    const { state: _, ...named } = used.expect;
-    const at = { ...FINAL, after: BigInt(used.expect.position) };
-    const reader = permit2Reader(used, UP.EV6, UPTO_PERMIT2_PROXY, []);
-    expect(plain(await uptoPermit2.status({ ...ref, transaction: UP.EV6.transaction }, reader, at))).toEqual({
-      ...named,
-      state: "failed",
-      reason: "before-position",
-    });
   });
   it("an upto option without facilitatorAddress is refused", async () => {
     const o = structuredClone(f.option) as any;
@@ -538,41 +480,31 @@ describe("recover on the Permit2 pairings", () => {
     return { got, calls };
   };
 
-  it("EV6: H from the settle call in the transaction, directly or in a batch, where status settles; a refusal that names why where it does not", async () => {
-    const statusRef = (await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed))) as EvmRef;
-    const expectations: [string, string | { refused: true; code: string }, number][] = [
-      ["transferAt100", H, 2],
-      ["batched", H, 2],
-      ["nonceUnused", { refused: true, code: "evm/nonce-not-used" }, 1],
-      ["usedBefore", { refused: true, code: "evm/nonce-not-used" }, 2],
-      ["plainTransfer", { refused: true, code: "evm/no-permit2-settle" }, 0],
-      ["callFails", { refused: true, code: "evm/unreadable" }, 1],
-      ["transactionNone", { refused: true, code: "evm/not-found" }, 0],
-      ["transactionFails", { refused: true, code: "evm/unreadable" }, 0],
-      ["reverted", { refused: true, code: "evm/reverted" }, 0],
-      ["none", { refused: true, code: "evm/not-found" }, 0],
-    ];
-    for (const [name, expected, n] of expectations) {
+  it("EV6: each row's expectRecover, and the eth_calls recover makes for it", async () => {
+    const names = rowsOf(
+      Object.keys(P2.EV6).filter((k) => typeof P2.EV6[k] === "object" && P2.EV6[k] !== null && "expectRecover" in P2.EV6[k]),
+      "x402-exact-eip155-permit2.json EV6's recover rows",
+      { exact: 11 },
+    );
+    for (const name of names) {
       const row = P2.EV6[name];
       const { got, calls } = await recoverRow(exactPermit2, row, P2.EV6, EXACT_PERMIT2_PROXY);
-      expect(got, row.case ?? name).toEqual(expected);
-      expect(calls, row.case ?? name).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore].slice(0, n));
-      if (["transferAt100", "batched", "nonceUnused", "usedBefore", "plainTransfer"].includes(name)) {
-        const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, P2.EV6, EXACT_PERMIT2_PROXY, []), ANY_MARK);
-        expect(s.state === "settled", name).toBe(got === H);
-      }
+      expect(got, row.case ?? name).toEqual(row.expectRecover);
+      expect(calls, row.case ?? name).toEqual([P2.EV6.expectCall, P2.EV6.expectCallBefore].slice(0, row.calls));
     }
   });
 
-  it("EV6 upto: H from the upto proxy's settle call; a plain transfer above the cap carries none", async () => {
-    const cases: [string, string | { refused: true; code: string }][] = [
-      ["oneUnitUsed", H],
-      ["oneUnitUnused", { refused: true, code: "evm/nonce-not-used" }],
-      ["aboveCapPlain", { refused: true, code: "evm/no-permit2-settle" }],
-    ];
-    for (const [name, expected] of cases) {
-      const { got } = await recoverRow(uptoPermit2, UP.EV6[name], UP.EV6, UPTO_PERMIT2_PROXY);
-      expect(got, UP.EV6[name].case).toEqual(expected);
+  it("plantEmitter: a Transfer from another contract than the settle call's token gives no H", async () => {
+    const { got, calls } = await recoverRow(exactPermit2, P2.plantEmitter, P2.EV6, EXACT_PERMIT2_PROXY);
+    expect(got).toEqual(P2.plantEmitter.expectRecover);
+    expect(calls).toHaveLength(P2.plantEmitter.calls);
+  });
+
+  it("EV6 upto: each row's expectRecover", async () => {
+    for (const name of ["oneUnitUsed", "oneUnitUnused", "aboveCapPlain"]) {
+      const { got, calls } = await recoverRow(uptoPermit2, UP.EV6[name], UP.EV6, UPTO_PERMIT2_PROXY);
+      expect(got, UP.EV6[name].case).toEqual(UP.EV6[name].expectRecover);
+      expect(calls, UP.EV6[name].case).toEqual([UP.EV6.expectCall, UP.EV6.expectCallBefore].slice(0, UP.EV6[name].calls));
     }
   });
 
@@ -691,8 +623,6 @@ describe("recover on the Permit2 pairings", () => {
         got: { refused: true, code: "evm/no-permit2-settle" },
         calls: [],
       });
-      const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []), FINAL);
-      expect(s, name).toEqual(SEARCHING);
     }
   });
 
@@ -721,24 +651,20 @@ describe("recover on the Permit2 pairings", () => {
 
   // Multicall3's `aggregate3` with `allowFailure` catches a failing call (mds1/multicall src/Multicall3.sol), so a
   // batch can carry a settle-shaped call that spent nothing.
-  it("a settle call of another owner beside the settlement, with no Transfer from that owner, is not read: H, where status settles", async () => {
+  it("a settle call of another owner beside the settlement, with no Transfer from that owner, is not read: H", async () => {
     const statusRef = (await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed))) as EvmRef;
     const decoy = await settleWith(BigInt(H) ^ 1n, `0x${"dd".repeat(20)}`);
     const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, decoy: batch([[await settleWith(BigInt(H)), false], [decoy, true]]) } };
     const row = { ...used, input: "decoy" };
     expect(await recoverRow(exactPermit2, row, ev, EXACT_PERMIT2_PROXY)).toEqual({ got: H, calls: [P2.EV6.expectCall, P2.EV6.expectCallBefore] });
-    const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []), ANY_MARK);
-    expect(s.state).toBe("settled");
   });
 
-  it("a call with the settlement's nonce and owner but another token word, after the settlement in a batch, does not hide it: H, where status settles", async () => {
+  it("a call with the settlement's nonce and owner but another token word, after the settlement in a batch, does not hide it: H", async () => {
     const statusRef = (await referenceOf(exactPermit2, await signed(exactPermit2, P2.fixed))) as EvmRef;
     const otherToken = await settleWith(BigInt(H), undefined, `0x${"ee".repeat(20)}`);
     const ev = { ...P2.EV6, inputs: { ...P2.EV6.inputs, after: batch([[await settleWith(BigInt(H)), false], [otherToken, true]]) } };
     const row = { ...used, input: "after" };
     expect(await recoverRow(exactPermit2, row, ev, EXACT_PERMIT2_PROXY)).toEqual({ got: H, calls: [P2.EV6.expectCall, P2.EV6.expectCallBefore] });
-    const s = await exactPermit2.status({ ...statusRef, transaction: ref.tx }, permit2Reader(row, ev, EXACT_PERMIT2_PROXY, []), ANY_MARK);
-    expect(s.state).toBe("settled");
   });
 
   it("a malformed receipt is evm/unreadable: a block number below zero, or a log entry that is not a log", async () => {
@@ -871,6 +797,24 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
       expect(await exactErc7710Salt.bound(await payment(c, ES.fixed.delegationManager))).toEqual(ES.EV8.malformedContext.expect);
     }
   });
+  it("EV8: a delegation through the reference manager is the salt level only where its leaf salt is the echoed H", async () => {
+    const message = { ...leafMessage, salt: BigInt(ES.EV8.stockSalt.salt) };
+    const signature = await privateKeyToAccount(f.payerKey).signTypedData({
+      domain: ES.fixed.delegationDomain,
+      types: delegationTypes,
+      primaryType: "Delegation",
+      message,
+    });
+    const stock = await payment(encode([{ ...L, salt: ES.EV8.stockSalt.salt, signature }]), ES.fixed.delegationManager);
+    expect(pairingOfPayment(stock)).toBe(ES.EV8.stockSalt.expectPairingOfPayment);
+    const bare = structuredClone(stock);
+    delete bare.extensions;
+    expect(pairingOfPayment(bare)).toBe(ES.EV8.stockSalt.withoutExtension.expectPairingOfPayment);
+    // The same payment with its leaf salt H is the salt level.
+    expect(pairingOfPayment(await payment(encode([{ ...L, signature: ES.EV8.expectSignature }]), ES.fixed.delegationManager))).toBe(
+      ES.EV8.expectPairingOfPayment,
+    );
+  });
   it("EV7: complete gives x402's PaymentPayload; the unsigned level reads H from the echoed extension, and its record claims nothing", async () => {
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
     const p = await payment(ctx, ERC7710.EV7.otherManager);
@@ -881,14 +825,14 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     const bare = structuredClone(p);
     delete bare.extensions;
     expect(await exactErc7710.bound(bare)).toEqual(ERC7710.EV7.withoutExtension.expect);
-    const ref = (await referenceOf(exactErc7710, p)) as EvmRef;
-    expect(ref.transferLog?.identity).toBe(ERC7710.EV7.expectReference.identity);
-    expect(ref.transferLog?.digest).toBe(ERC7710.EV7.expectReference.digest);
+    const ref = (await referenceOf(exactErc7710, p)) as Erc7710Ref;
+    // The payer the read holds a transfer to the payee from: the payment's delegator.
+    expect(ref.payer).toBe(((p.payload as any).delegator as string).toLowerCase());
     expect(ref.payee).toBe(ERC7710.EV7.expectReference.payee);
     expect(exactErc7710.claims).toBe(ERC7710.EV7.claims);
     expect(exactErc7710.data.coverage).toBe("none");
   });
-  it("EV7: the unsigned level has no status and no authorizer, since no read of the chain alone ties a transfer to it", async () => {
+  it("EV7: the unsigned level has a status on a named transaction and no authorizer, since no read of the chain alone ties a transfer to it", async () => {
     const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
     const p = await payment(ctx, ERC7710.EV7.otherManager);
     const ref = (await referenceOf(exactErc7710, p)) as EvmRef;
@@ -907,7 +851,7 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     expect(await exactErc7710Salt.authorizer(await payment(ctx, ES.EV8.otherManager.manager))).toEqual(ES.EV8.otherManager.expectSaltBound);
     expect(((await referenceOf(exactErc7710Salt, p)) as EvmRef).authorization).toBeUndefined();
   });
-  it("EV9: the event topic, its data words, the settlement read and recover", async () => {
+  it("EV9: the event topic, its data words, and recover", async () => {
     expect(keccak256(toBytes(ES.EV9.eventSignature))).toBe(ES.EV9.expectTopic);
     expect(REDEEMED_DELEGATION_TOPIC).toBe(ES.EV9.expectTopic);
     const data = encodeAbiParameters([{ type: "tuple", components: delegationAbi[0].components }], [
@@ -928,38 +872,81 @@ describe("x402-exact-eip155-erc7710.json and x402-exact-eip155-erc7710-salt.json
     };
     const reader = readerFor(receipt, { network: "eip155:84532", finalized: "100", safe: "105" });
     const tx = ("0x" + "33".repeat(32)) as Hex;
-    expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader, ES.EV9.query))).toEqual(ES.EV9.expectStatus);
     expect(await exactErc7710Salt.recover!({ network: "eip155:84532", tx, option: f.option }, reader)).toBe(ES.EV9.expectRecover);
-    const { state: _, ...named } = ES.EV9.expectStatus;
-    const at = { ...FINAL, after: BigInt(ES.EV9.expectStatus.position) };
-    expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader, at))).toEqual({ ...named, state: "failed", reason: "before-position" });
   });
-  it("EV9 plants: status binds only a leaf carrying H and counts a transfer from that leaf's root delegator, as recover reads leaves", async () => {
-    const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
-    const ref = (await referenceOf(exactErc7710Salt, await payment(ctx, ES.fixed.delegationManager))) as EvmRef;
-    expect(ref.transferLog?.identity).toBe("from");
-    const T = ES.plantsEV9;
-    const account = (name: string): Hex =>
-      name === "payer" ? f.payer : name === "payTo" ? (f.option.payTo as Hex) : ((T.accounts[name] ?? name) as Hex);
-    const salt = (name: string) => (name === "H" ? H : name === "H2" ? T.H2 : name);
-    const topic = (a: string) => ("0x" + "00".repeat(12) + a.slice(2).toLowerCase()) as Hex;
-    const tx = ("0x" + "44".repeat(32)) as Hex;
-    for (const row of rowsOf(T.rows, "x402-exact-eip155-erc7710-salt.json plantsEV9.rows")) {
-      const logs = row.logs.map((l: any) => {
-        if (l.redeemed !== undefined) {
-          const r = l.redeemed;
-          const delegation = { ...L, delegate: account(r.delegate), delegator: account(r.delegator), salt: BigInt(salt(r.salt)), signature: ES.EV8.expectSignature };
-          const data = encodeAbiParameters([{ type: "tuple", components: delegationAbi[0].components }], [delegation]) as Hex;
-          return { address: ES.fixed.delegationManager, topics: [REDEEMED_DELEGATION_TOPIC, topic(account(r.rootDelegator)), topic(account(r.redeemer))], data };
+  // The payment presented on both ERC-7710 levels is the leaf delegation whole: its EIP-712 hash, EV8's struct hash for
+  // L, which covers its caveats and, through its authority, the chain above it. A landed leaf with L's delegate,
+  // delegator, authority and salt and another caveat is not the payment presented.
+  it("presented: the leaf delegation whole, by its EIP-712 hash, on both levels", async () => {
+    const signedLeaf = { ...L, signature: ES.EV8.expectSignature };
+    const otherCaveat = { ...signedLeaf, caveats: [{ ...L.caveats[0], terms: "0x5678" }] };
+    const tupleAbi = [{ type: "tuple", components: delegationAbi[0].components }] as const;
+    const word = (a: string) => ("0x" + "00".repeat(12) + a.slice(2).toLowerCase()) as Hex;
+    const redeemed = (d: typeof signedLeaf) => ({
+      address: ES.fixed.delegationManager as Hex,
+      topics: [REDEEMED_DELEGATION_TOPIC as Hex, word(f.payer), word(L.delegate)],
+      data: encodeAbiParameters(tupleAbi as never, [{ ...d, salt: BigInt(d.salt) }] as never) as Hex,
+    });
+    const paid = { address: f.option.asset as Hex, topics: [TRANSFER_TOPIC as Hex, word(f.payer), word(f.option.payTo)], data: ("0x" + (10000).toString(16).padStart(64, "0")) as Hex };
+    const T = ("0x" + "33".repeat(32)) as Hex;
+    const ledger = (logs: EvmReceipt["logs"]) =>
+      readerOf({ network: "eip155:84532", heads: { finalized: 140n, safe: 140n, latest: 150n }, time: (b) => 1_700_000_000n + b, txs: [{ hash: T, block: 110n, status: 1, logs }] });
+    const query = { act: "payment", finality: "finalized", after: 100n } as never;
+
+    const salted = (await referenceOf(exactErc7710Salt, await payment(encode([signedLeaf]), ES.fixed.delegationManager))) as Erc7710Ref;
+    expect(salted.presented).toEqual({ delegation: ES.EV8.expectStructHash });
+    expect(await exactErc7710Salt.status(salted as never, ledger([redeemed(signedLeaf), paid]), query)).toMatchObject({ state: "settled", presented: "yes" });
+    expect(await exactErc7710Salt.status(salted as never, ledger([redeemed(otherCaveat), paid]), query)).toMatchObject({ state: "settled", presented: "no" });
+
+    // The level that signs no H: a leaf whose salt is not H, read in the transaction the caller names.
+    const unsalted = { ...signedLeaf, salt: ES.plantLeafNotRoot.leafSalt };
+    const named = { ...((await referenceOf(exactErc7710, await payment(encode([unsalted]), ES.fixed.delegationManager))) as Erc7710Ref), transaction: T };
+    expect(named.presented).toEqual({
+      delegation: hashStruct({ data: { ...unsalted, salt: BigInt(unsalted.salt) }, primaryType: "Delegation", types: delegationTypes }),
+    });
+    expect(await exactErc7710.status!(named as never, ledger([redeemed(unsalted), paid]), query)).toMatchObject({ state: "settled", presented: "yes" });
+    expect(await exactErc7710.status!(named as never, ledger([redeemed({ ...otherCaveat, salt: unsalted.salt }), paid]), query)).toMatchObject({
+      state: "settled",
+      presented: "no",
+    });
+    // No redemption of the reference manager in the transaction: what was signed is not shown.
+    expect(await exactErc7710.status!(named as never, ledger([paid]), query)).toMatchObject({ state: "settled", presented: "unshown" });
+  });
+  it("plantsEV9: each row's expectRecover, the rows' delegations L with the members each names changed", async () => {
+    const A = ES.plantsEV9.accounts as Record<string, Hex>;
+    const who = (n: string): Hex => (n === "payer" ? f.payer : n === "payTo" ? (f.option.payTo as Hex) : (A[n] ?? n) as Hex);
+    const salt = (n: string): Hex => (n === "H" ? H : n === "H2" ? ES.plantsEV9.H2 : n) as Hex;
+    const word = (a: string) => ("0x" + "00".repeat(12) + a.slice(2).toLowerCase()) as Hex;
+    const tupleAbi = [{ type: "tuple", components: delegationAbi[0].components }] as const;
+    type Log = { redeemed?: Record<string, string>; transfer?: { from: string; to: string } };
+    for (const row of rowsOf(ES.plantsEV9.rows as { name: string; case: string; logs: Log[]; expectRecover: Hex }[], "plantsEV9's rows", { exact: 4 })) {
+      const logs = row.logs.map((l) => {
+        if (l.transfer !== undefined) {
+          return { address: f.option.asset as Hex, topics: [TRANSFER_TOPIC as Hex, word(who(l.transfer.from)), word(who(l.transfer.to))], data: ("0x" + (10000).toString(16).padStart(64, "0")) as Hex };
         }
-        const t = l.transfer;
-        return { address: f.option.asset as Hex, topics: [TRANSFER_TOPIC, topic(account(t.from)), topic(account(t.to))], data: ("0x" + (10000).toString(16).padStart(64, "0")) as Hex };
+        const r = l.redeemed!;
+        const d = { ...L, delegate: who(r["delegate"]!), delegator: who(r["delegator"]!), salt: BigInt(salt(r["salt"]!)), signature: ES.EV8.expectSignature };
+        return {
+          address: ES.fixed.delegationManager as Hex,
+          topics: [REDEEMED_DELEGATION_TOPIC as Hex, word(who(r["rootDelegator"]!)), word(who(r["redeemer"]!))],
+          data: encodeAbiParameters(tupleAbi as never, [d] as never) as Hex,
+        };
       });
       const reader = readerFor({ status: 1, blockNumber: "100", logs }, { network: "eip155:84532", finalized: "100", safe: "105" });
-      expect(plain(await exactErc7710Salt.status({ ...ref, transaction: tx }, reader, row.query)), row.name).toEqual(row.expectStatus);
-      expect(await exactErc7710Salt.recover!({ network: "eip155:84532", tx, option: f.option }, reader), row.name).toBe(row.expectRecover);
+      expect(await exactErc7710Salt.recover!({ network: "eip155:84532", tx: ("0x" + "44".repeat(32)) as Hex, option: f.option }, reader), row.case).toBe(row.expectRecover);
     }
-    expect(T.rows.map((r: any) => r.name)).toEqual(["nonLeaf", "otherRoot", "anyPayee", "wildcard"]);
+  });
+  it("reference on both levels refuses a presented accepted that is not the option it is given", async () => {
+    const ctx = encode([{ ...L, signature: ES.EV8.expectSignature }]);
+    for (const [b, manager] of [
+      [exactErc7710Salt, ES.fixed.delegationManager],
+      [exactErc7710, ERC7710.EV7.otherManager],
+    ] as const) {
+      const p = await payment(ctx, manager);
+      const other = { ...p.accepted, maxTimeoutSeconds: p.accepted.maxTimeoutSeconds + 1 };
+      expect([b.id, await b.reference(p, other)]).toEqual([b.id, { refused: true, code: "x402/accepted-not-option" }]);
+      expect([b.id, "refused" in ((await b.reference(p, p.accepted)) as object)]).toEqual([b.id, false]);
+    }
   });
   it("plant: the leaf's salt, never the root's", async () => {
     const root = { ...L, delegate: f.payer, delegator: "0x2096" + "00".repeat(18), caveats: [], salt: H, signature: "0x" };
@@ -1112,18 +1099,11 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     expect((p.payload as any).saltNonce).toBe(H);
     expect((p.payload as any).salt).toBe(A3.EV3.expectBindSalt);
     expect(await authCaptureEip3009.bound(p)).toBe(A3.EV4.expectBound);
-    const ref = (await referenceOf(authCaptureEip3009, p)) as EvmRef;
-    expect(ref.transferLog?.digest).toBe(A3.EV4.expectTransferDigest);
-    expect(ref.bindingLog).toEqual({ address: A3.EV3.escrow, topic0: PAYMENT_AUTHORIZED_TOPIC, index: 1, value: A3.EV3.bound.expectPaymentHash });
-    expect(ref.search?.topics[2]).toBe(A3.EV3.bound.expectSignatureNonce);
+    const ref = (await referenceOf(authCaptureEip3009, p)) as AuthCaptureRef;
+    expect([ref.escrow, ref.event, ref.paymentId]).toEqual([A3.EV3.escrow.toLowerCase(), PAYMENT_AUTHORIZED_TOPIC, A3.EV3.bound.expectPaymentHash]);
+    expect(ref.signatureNonce).toBe(A3.EV3.bound.expectSignatureNonce);
     expect(await transferDigest({ from: f.payer, to: ESCROW["v1.1"].eip3009Collector, value: 10000n })).toBe(A3.EV4.expectTransferDigest);
-    expect(ref.authorization).toEqual({
-      scheme: "eip3009",
-      at: f.option.asset,
-      nonce: A3.EV3.bound.expectSignatureNonce,
-      deadline: String(f.now + f.option.maxTimeoutSeconds),
-      asset: f.option.asset,
-    });
+    expect([ref.scheme, ref.asset, ref.expiry]).toEqual(["eip3009", f.option.asset.toLowerCase(), String(f.now + f.option.maxTimeoutSeconds)]);
     expect(await authCaptureEip3009.authorizer(p)).toBe(f.payer.toLowerCase());
   });
   // EV4's permit2 digest is eth-account's, over Permit2's PermitTransferFrom (Uniswap/permit2 cc56ad0f, PermitHash.sol
@@ -1160,17 +1140,10 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     expect(hashTypedData(u.request.typedData as TypedDataDefinition)).toBe(AP.EV4.expectDigest);
     const p = await signed(authCapturePermit2, g);
     expect(await authCapturePermit2.bound(p)).toBe(AP.EV4.expectBound);
-    const ref = (await referenceOf(authCapturePermit2, p)) as EvmRef;
-    expect(ref.search).toEqual(AP.EV4.expectSearch);
-    expect(ref.transferLog).toBeUndefined();
+    const ref = (await referenceOf(authCapturePermit2, p)) as AuthCaptureRef;
+    expect([ref.escrow, ref.event, ref.paymentId]).toEqual(AP.EV4.expectSearch.topics.length === 2 ? [AP.EV4.expectSearch.address.toLowerCase(), ...AP.EV4.expectSearch.topics] : []);
     // The option's PaymentInfo terms are the eip3009 file's, so the signed nonce is that file's signatureNonce.
-    expect(ref.authorization).toEqual({
-      scheme: "permit2",
-      at: P2.EV6.expectCall.to,
-      nonce: A3.EV3.bound.expectSignatureNonce,
-      deadline: String(g.now + g.option.maxTimeoutSeconds),
-      asset: g.option.asset,
-    });
+    expect([ref.scheme, ref.signatureNonce, ref.expiry]).toEqual(["permit2", A3.EV3.bound.expectSignatureNonce, String(g.now + g.option.maxTimeoutSeconds)]);
     expect(await authCapturePermit2.authorizer(p)).toBe(g.payer.toLowerCase());
   });
   it("EV5: the escrow topics are the events' signatures", () => {
@@ -1181,31 +1154,52 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     expect(ESCROW["v1.1"].chargedTopic).toBe(A3.EV5.paymentChargedV11);
     expect(ESCROW["v1.0"].chargedTopic).toBe(A3.EV5.paymentChargedV10);
   });
-  it("EV6: the first collection's event and the transfer settle; the charge flow needs PaymentCharged", async () => {
-    const p = await signed(authCaptureEip3009, f);
-    const ref = (await referenceOf(authCaptureEip3009, p)) as EvmRef;
-    const tx = A3.EV6.transaction as Hex;
-    const receipt: FixtureReceipt = { status: 1, blockNumber: "100", logs: A3.EV6.authorizedAndTransfer.logs };
-    expect(plain(await evmStatus({ ...ref, transaction: tx }, readerFor(receipt, A3.EV6.reader), A3.EV6.authorizedAndTransfer.query))).toEqual(
-      A3.EV6.authorizedAndTransfer.expect,
-    );
-    const statusOf = (b: typeof authCaptureEip3009, q: object) =>
-      b.status({ ...ref, transaction: tx }, readerFor(receipt, A3.EV6.reader), q as never);
-    expect(plain(await statusOf(authCaptureEip3009, FINAL))).toEqual(A3.EV6.authorizedAndTransfer.expect);
-    const { state: _, ...named } = A3.EV6.authorizedAndTransfer.expect;
-    expect(plain(await statusOf(authCaptureEip3009, { ...FINAL, after: BigInt(named.position) }))).toEqual({
-      ...named,
-      state: "failed",
-      reason: "before-position",
+  // EV6: recover over the escrow's events, their data encoded by viem from the events' signatures (EV5).
+  it("EV6: recover gives the PaymentInfo.salt of the escrow's one event through the scheme's collector", async () => {
+    const d = ESCROW["v1.1"];
+    const INFO = "(address,address,address,address,uint120,uint48,uint48,uint48,uint16,uint16,address,uint256)";
+    const after = {
+      PaymentAuthorized: parseAbiParameters(`${INFO}, uint256, address`),
+      PaymentCharged: parseAbiParameters(`${INFO}, uint256, address, uint256, address`),
+    } as const;
+    const tuple = (salt: Hex) => {
+      const i = info(f.payer, salt);
+      return [i.operator, i.payer, i.receiver, i.token, i.maxAmount, Number(i.preApprovalExpiry), Number(i.authorizationExpiry), Number(i.refundExpiry), i.minFeeBps, i.maxFeeBps, i.feeReceiver, BigInt(i.salt)] as const;
+    };
+    type Row = { case?: string; logs: { event?: "PaymentCharged"; salt: "bound" | "H"; collector: "eip3009" | "permit2" }[]; expectRecover: unknown };
+    const receiptOf = (row: Row): FixtureReceipt => ({
+      status: 1,
+      blockNumber: "100",
+      logs: row.logs.map((l) => {
+        const salt = l.salt === "bound" ? (A3.EV3.expectBindSalt as Hex) : H;
+        const collector = l.collector === "eip3009" ? d.eip3009Collector : d.permit2Collector;
+        const event = l.event ?? "PaymentAuthorized";
+        const values = event === "PaymentCharged" ? [tuple(salt), 10_000n, collector, 0n, ZERO] : [tuple(salt), 10_000n, collector];
+        return {
+          address: d.escrow,
+          topics: [event === "PaymentCharged" ? d.chargedTopic : PAYMENT_AUTHORIZED_TOPIC, A3.EV3.bound.expectPaymentHash],
+          data: encodeAbiParameters(after[event] as never, values as never) as Hex,
+        };
+      }),
     });
-    const charge = structuredClone(f.option) as any;
-    charge.extra.paymentFlow = A3.EV6.authorizationFlowOnlyAuthorized.paymentFlow;
-    const pc = await signed(authCaptureEip3009, f, charge);
-    const refc = (await referenceOf(authCaptureEip3009, pc)) as EvmRef;
-    const only: FixtureReceipt = { status: 1, blockNumber: "100", logs: [A3.EV6.authorizedAndTransfer.logs[0]] };
-    expect(plain(await evmStatus({ ...refc, transaction: tx }, readerFor(only, A3.EV6.reader), A3.EV6.authorizationFlowOnlyAuthorized.query))).toEqual(
-      A3.EV6.authorizationFlowOnlyAuthorized.expect,
-    );
+    const recover = (b: typeof authCaptureEip3009 | typeof authCapturePermit2, row: Row, calls: unknown[] = []) =>
+      b.recover({ network: A3.EV6.reader.network, tx: A3.EV6.transaction, option: f.option }, readerFor(receiptOf(row), A3.EV6.reader, undefined, calls as never));
+    for (const name of ["authorized", "charged", "unbound", "otherCollector", "twoSalts"] as const) {
+      const row = A3.EV6[name] as Row;
+      const calls: unknown[] = [];
+      expect(await recover(authCaptureEip3009, row, calls), row.case ?? name).toEqual(row.expectRecover);
+      expect(calls, row.case ?? name).toEqual([]);
+    }
+    // The Permit2 pairing reads its own collector's events: the EIP-3009 collector's are none of its.
+    expect(await recover(authCapturePermit2, A3.EV6.otherCollector)).toEqual(A3.EV6.authorized.expectRecover);
+    expect(await recover(authCapturePermit2, A3.EV6.authorized)).toEqual(A3.EV6.otherCollector.expectRecover);
+    // An option that names no deployment of the escrow: nothing is read.
+    const esc = structuredClone(f.option) as any;
+    esc.extra.authCaptureEscrow = A3.escrowNotCanonical.authCaptureEscrow;
+    expect(await authCaptureEip3009.recover({ network: A3.EV6.reader.network, tx: A3.EV6.transaction, option: esc }, readerFor(null, A3.EV6.reader))).toEqual({
+      refused: true,
+      code: "evm/wrong-reader",
+    });
   });
   it("EV3 unbound: build with an option whose extra names no receiverAuthorizer signs the payer-agnostic hash of salt H", async () => {
     const unbound = structuredClone(f.option) as any;
@@ -1238,6 +1232,24 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
   });
 });
 
+// A presented payment whose `accepted` is not the option `reference` is given answers another option, whose payee the
+// read would not test: x402/accepted-not-option, x402's one code for it on every family.
+describe("reference refuses a presented accepted that is not the option it is given", () => {
+  it("on the Permit2, upto and auth-capture pairings", async () => {
+    for (const [b, f] of [
+      [exactPermit2, P2.fixed],
+      [uptoPermit2, UP.fixed],
+      [authCaptureEip3009, A3.fixed],
+      [authCapturePermit2, AP.fixed],
+    ] as const) {
+      const p = await signed(b as { build: typeof exactPermit2.build }, f);
+      const other = { ...p.accepted, maxTimeoutSeconds: p.accepted.maxTimeoutSeconds + 1 };
+      expect([b.id, await b.reference(p, other)]).toEqual([b.id, { refused: true, code: "x402/accepted-not-option" }]);
+      expect([b.id, "refused" in (await b.reference(p, p.accepted))]).toEqual([b.id, false]);
+    }
+  });
+});
+
 describe("every reference is JSON", () => {
   it("round-trips each breadth pairing's reference through JSON unchanged", async () => {
     const refs = [
@@ -1260,7 +1272,9 @@ describe("the records", () => {
       expect(b.data.coverage).toBe("full");
     }
     expect(exactErc7710.claims).toBe(false);
-    expect(exactErc7710.data.proves.startsWith("Before this payment, the buyer signed and paid an agreement transaction")).toBe(true);
+    // At coverage none the record says an account signed the agreement, never the buyer.
+    expect(exactErc7710.data.proves.startsWith("Before this payment was taken, an account signed an agreement transaction")).toBe(true);
+    expect(exactErc7710.data.proves).not.toContain("buyer signed");
     expect(exactErc7710Salt.recover).toBeDefined();
     for (const b of [exactPermit2, uptoPermit2]) {
       expect(b.recover, b.id).toBeDefined();

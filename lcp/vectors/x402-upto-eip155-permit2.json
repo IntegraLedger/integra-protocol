@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/upto/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The upto facilitator F is Anvil account 2. Under the profile read-status, a status row that read failed now reads pending search-incomplete: at coverage full a failed answer waits for a search for H that this pairing does not have yet (rule 24).",
+ "about": "Vectors for x402/upto/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The upto facilitator F is Anvil account 2. The read's own cases are the read kit's (read-status.json, through the pairing's read-kit form); EV6 holds recover's rows.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -44,7 +44,7 @@
   }
  },
  "EV6": {
-  "case": "uptoPermit2.status of EV2's reference on fixture receipts and transactions; the reader answers finalized 100, safe 105, eth_getTransactionByHash with the row's input, and each eth_call with the row's nonceBitmap word at the receipt's block and its nonceBitmapBefore word at the block before it. The identity names from and to only, so a transfer of any amount matches it; the transaction that carries the permit's nonce in its calldata, with Permit2's record of nonce H (nonceBitmap(owner, H >> 8), bit H & 0xff = 173, Permit2 _useUnorderedNonce) set at the receipt's block and unset at the block before, decides whether it is this payment's. expectCall and expectCallBefore are as in x402-exact-eip155-permit2.json's EV6, and calls is how many of the two a row makes",
+  "case": "uptoPermit2.recover of {network, tx, option} on fixture receipts and transactions; the reader answers finalized 100, safe 105, eth_getTransactionByHash with the row's input, and each eth_call with the row's nonceBitmap word at the receipt's block and its nonceBitmapBefore word at the block before it. The upto proxy's settle call that carries the permit's nonce in the transaction's input, with a Transfer of its token from its owner in the receipt, and Permit2's record of nonce H (nonceBitmap(owner, H >> 8), bit H & 0xff = 173, Permit2 _useUnorderedNonce) set at the receipt's block and unset at the block before, gives H; the transfer's amount is compared with nothing. expectCall and expectCallBefore are as in x402-exact-eip155-permit2.json's EV6, expectRecover is recover's answer, written from the pairing's profile, and calls is how many of the two a row makes",
   "reader": {
    "network": "eip155:84532",
    "finalized": "100",
@@ -87,17 +87,7 @@
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "nonceBitmapBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
    "calls": 2,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "settled",
-    "transaction": "0x3333333333333333333333333333333333333333333333333333333333333333",
-    "position": "100",
-    "finality": "finalized",
-    "foreign": []
-   }
+   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "oneUnitUnused": {
    "case": "the same one-unit transfer by whose block Permit2 holds nonce H unused",
@@ -119,14 +109,9 @@
    "input": "settle",
    "nonceBitmap": "0x0000000000000000000000000000000000000000000000000000000000000000",
    "calls": 1,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/nonce-not-used"
    }
   },
   "aboveCapPlain": {
@@ -149,14 +134,9 @@
    "input": "plainAboveCap",
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "calls": 0,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/no-permit2-settle"
    }
   }
  },

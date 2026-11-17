@@ -25,7 +25,9 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       search:
         "The logs of every contract with topics `[AuthorizationUsed, payer, H]`, from the block after the position recorded " +
         "at issue to a `finalized` block past `validBefore`, and before any `failed` to the latest head; a hit on another " +
-        "contract counts only where the payer's signature verifies, and a cancellation is the asset's " +
+        "contract counts only where the payer's signature verifies (by ecrecover in the contract's domain, or the payer's " +
+        "ERC-1271 check), holds the search where the read cannot verify it or show it is not the payer's, and a " +
+        "cancellation is the asset's " +
         "`[AuthorizationCanceled, null, H]`.",
       history: "the log search from the position recorded at issue to the latest head",
       contracts: ["the asset (the EIP-3009 token)"],
@@ -47,7 +49,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "agreement's digest and `authorizer` the buyer's `from`, paired with its `Transfer`, recorded as what moved",
     },
     proves:
-      "The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash. The token contract " +
+      "The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash, or for an agreement the " +
+      "agreement's value of it. The token contract " +
       "verified that signature when it executed the transfer, and the hash is on chain as the nonce topic of " +
       "its AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset " +
       "or timing match the ATR's content.",
@@ -89,10 +92,11 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "nonce of the proxy call whose owner is the payer, the payer's bit for it set at the receipt's block and unset before",
     },
     proves:
-      "The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with the scheme's x402 " +
-      "proxy as spender and the payee in the witness. Permit2 verified the signature when the proxy executed " +
-      "the transfer, and the hash is in the settlement transaction's calldata as the Permit2 nonce; no event " +
-      "carries it. This does not show that amount, payee, asset or timing match the ATR's content.",
+      "The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, or for an agreement the " +
+      "agreement's value of it, with the scheme's x402 proxy as spender and the payee in the witness. Permit2 " +
+      "verified the signature when the proxy executed the transfer, and the hash is in the settlement transaction's " +
+      "calldata as the Permit2 nonce; no event carries it. This does not show that amount, payee, asset or timing " +
+      "match the ATR's content.",
   },
   "x402/upto/eip155/permit2": {
     coverage: "full",
@@ -137,8 +141,9 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       endpoint: ["json-rpc"],
       note: "receipt, logs, `eth_call`, a block by mark with its timestamp",
       search:
-        "The escrow's payment hash with payer zero, as the token's authorization nonce, found by " +
-        "`[AuthorizationUsed, null, nonce]` on the asset. " +
+        "The escrow's `PaymentAuthorized` and `PaymentCharged` logs, each tested by its `PaymentInfo.salt` before its " +
+        "transaction's receipt is read, the act the option's flow's event through the deployment's EIP-3009 collector; the value, the escrow's payment hash with payer " +
+        "zero as the token's authorization nonce, read by `authorizationState` on the asset. " +
         NO_SEARCH_FOR_H,
       contracts: ["the escrow (v1.1 or v1.0 deployment)", "the deployment's EIP-3009 collector", "the asset"],
       lapse: ESCROW_LAPSE,
@@ -170,8 +175,9 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       endpoint: ["json-rpc"],
       note: "receipt, logs, `eth_call`, a block by mark with its timestamp",
       search:
-        "The escrow's payment hash with payer zero, as the Permit2 nonce, found by the escrow's event by payment id " +
-        "(`PaymentAuthorized`, or `PaymentCharged` for the `authorization` flow). " +
+        "The escrow's `PaymentAuthorized` and `PaymentCharged` logs, each tested by its `PaymentInfo.salt` before its " +
+        "transaction's receipt is read, the act the option's flow's event through the deployment's Permit2 collector; the value, the escrow's payment hash with payer " +
+        "zero as the Permit2 nonce, read by the payer's `nonceBitmap` bit. " +
         NO_SEARCH_FOR_H,
       contracts: ["the escrow (v1.1 or v1.0 deployment)", "the deployment's Permit2 collector", "Permit2"],
       lapse: ESCROW_LAPSE,
@@ -184,7 +190,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       "The payment presented a Permit2 authorization whose nonce commits, through the escrow's PaymentInfo, to " +
       "a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and " +
       "policy when bound. The escrow's event in the settlement transaction carries that PaymentInfo, salt " +
-      "included; it does not show which collector funded the payment. When unbound, the salt is this ATR's " +
+      "included, and names the deployment's Permit2 collector as the token collector that funded it. When unbound, the salt is this ATR's " +
       "hash, so the settled transaction itself shows it. When bound, a holder of the ATR, the receiver " +
       "authorizer and the policy can confirm the hash from the salt; the chain alone does not reveal it. This " +
       "record covers that first collection; capture, void, refund and reclaim are the operator's and the " +
@@ -194,9 +200,9 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     coverage: "full",
     carrier: {
       signed:
-        "`ChannelConfig.salt`, which is H; in refund-authorizer mode the deposit authorization's salt " +
-        "(`erc3009Authorization.salt`, or the Permit2 deposit nonce) is H, and the channel salt is " +
-        "`bytes12(entropy) ‖ bytes20(refundAuthorizer)`",
+        "`ChannelConfig.salt`, which is H, all of H; in the scheme's refund-authorizer mode (`extra.voucherManager` " +
+        "`\"facilitator\"` with a non-zero `extra.refundAuthorizer`), whose channel salt packs entropy and the refund " +
+        "authorizer, the deposit authorization's salt (`erc3009Authorization.salt`) or the Permit2 deposit's nonce, which is H",
     },
     source: "lcp's client",
     nonce: "unshown",
@@ -205,8 +211,11 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       endpoint: ["json-rpc"],
       note: "receipt, logs, `eth_call`, a block by mark with its timestamp",
       search:
-        "The deposit authorization's nonce on the token or Permit2, found by `[AuthorizationUsed, null, keccak256(channelId, " +
-        "salt)]` on the token, or `Deposited` by channel id. " +
+        "The channel contract's `ChannelCreated` logs, each tested by its salt, and its `Deposited` logs of the channel; a " +
+        "deposit is the opening where its transaction consumed the deposit authorization's nonce (`keccak256(channelId, " +
+        "authSalt)` on the token, or the Permit2 nonce), any other deposit a later credential of the channel; another " +
+        "channel's opening is its payer's only with the payer's transfer of its amount. In the refund-authorizer mode " +
+        "the reference's channel salt carries no H, and the nonce is `keccak256(channelId, H)` or H. " +
         NO_SEARCH_FOR_H,
       contracts: ["the channel contract", "the token or Permit2 (the deposit collector)"],
       lapse:
@@ -220,10 +229,11 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     proves:
       "The payer signed a token authorization for a deposit into an x402 batch-settlement channel whose " +
       "identifier, the EIP-712 hash of the channel's configuration, commits to this ATR's hash as the " +
-      "configuration's salt. The token contract or Permit2 verified that signature when the channel contract " +
-      "collected the deposit, and the hash is on chain as the salt in the channel's ChannelCreated event. Each " +
-      "voucher in this channel signs a commitment to this ATR's hash. This does not show that amount, payee, " +
-      "asset or timing match the ATR's content.",
+      "configuration's salt, or, in the scheme's refund-authorizer mode, whose own salt is this ATR's hash. The " +
+      "token contract or Permit2 verified that signature when the channel contract collected the deposit, and the " +
+      "hash is on chain as the salt in the channel's ChannelCreated event, or in that mode in the deposit call. " +
+      "Each voucher in this channel signs a commitment to the channel, and so, outside that mode, to this ATR's " +
+      "hash. This does not show that amount, payee, asset or timing match the ATR's content.",
   },
   "x402/batch-settlement/cloudflare": {
     coverage: "none",
@@ -234,11 +244,12 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     confirmed: "no",
     proves:
-      "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
-      "<network>, recorded in <transaction>. The buyer's agent signed, with the HTTP message signature key it " +
-      "registered with Cloudflare, a request whose PAYMENT-SIGNATURE header echoes this ATR's hash in the " +
-      "legalContext entry of x402's extensions. Cloudflare verifies that signature and bills the agent's " +
-      "registered identity off chain. This does not show that amount, asset or timing match the ATR's content.",
+      "Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on " +
+      "<network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement " +
+      "moved. The request whose payment echoed this ATR's hash in the legalContext entry of x402's extensions was " +
+      "signed with an HTTP message signature key registered with Cloudflare, which Cloudflare verifies, billing that " +
+      "key's registered identity off chain; no public ledger records the payment. This does not show that amount, " +
+      "asset or timing match the ATR's content.",
   },
   "x402/exact/eip155/erc7710-salt": {
     coverage: "full",
@@ -250,10 +261,11 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       endpoint: ["json-rpc"],
       note: "receipt, logs, a block by mark",
       search:
-        "The manager's `RedeemedDelegation` by root delegator (topic 1), each hit tested for a leaf whose delegate is the " +
-        "redeemer and whose salt is H, searched to the end of the payment's hold; lcp declares no search.",
+        "The manager's `RedeemedDelegation` by root delegator (topic 1), each hit tested for a delegation whose salt is H, " +
+        "the leaf's (its delegate the redeemer or the wildcard) the act; searched for as long as the caller asks, never " +
+        "read whole, so never `failed`.",
       contracts: ["the reference delegation manager"],
-      lapse: "none: a delegation signs no bound, so it is searched to the end of the payment's hold and is never `failed`",
+      lapse: "none: a delegation signs no bound, so it is searched for as long as the caller asks and is never `failed`",
     },
     destination: "the token's `Transfer` from the payment's `delegator`, its `to` compared on a charge with the option's `payTo`",
     asset: "that `Transfer`'s token, compared with nothing",
@@ -290,9 +302,11 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     agreementOn: "any",
     confirmed: "no",
     proves:
-      "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
-      "<network>, recorded in <transaction>. The ATR was assembled and delivered before the payment, and the " +
-      "buyer's payment payload echoed this ATR's hash in the legalContext entry of x402's extensions. The " +
-      "buyer's delegation does not sign the hash, and the settlement transaction does not carry it.",
+      "Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on " +
+      "<network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement " +
+      "moved. The ATR was assembled and delivered before the payment, and the payment payload echoed this ATR's hash " +
+      "in the legalContext entry of x402's extensions. The read found the named settlement transaction, after the " +
+      "agreement's position, holding a transfer from the payment's delegator to the payee. The delegation does not " +
+      "sign the hash, and the settlement transaction does not carry it.",
   },
 });

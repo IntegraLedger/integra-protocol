@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/exact/eip155/erc7710-salt, MetaMask's DelegationManager v1.3.0. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The leaf L's caveat is arbitrary: bound never reads caveats. Under the profile read-status, a status row that read failed now reads pending search-incomplete: at coverage full a failed answer waits for a search for H that this pairing does not have yet (rule 24).",
+ "about": "Vectors for x402/exact/eip155/erc7710-salt, MetaMask's DelegationManager v1.3.0. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The leaf L's caveat is arbitrary: bound never reads caveats. The read's own cases are the read kit's (read-status.json, through the pairing's read-kit form); EV9 and plantsEV9 hold recover's.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -78,6 +78,14 @@
     "code": "x402/permission-context-malformed"
    }
   },
+  "stockSalt": {
+   "case": "A payment through fixed.delegationManager on the option's chain whose leaf delegation is fixed.leaf with its salt replaced by SHA-256(\"abd\") (GNU coreutils sha256sum), as a stock client draws a random salt, signed with fixed.payerKey by viem 2.57.4's signTypedData over fixed.delegationDomain: its leaf salt is not the echoed H, so pairingOfPayment names the level that signs no H. The same payment with its extensions removed, whose H cannot be read, is that level too.",
+   "salt": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+   "expectPairingOfPayment": "x402/exact/eip155/erc7710",
+   "withoutExtension": {
+    "expectPairingOfPayment": "x402/exact/eip155/erc7710"
+   }
+  },
   "case": "complete with the delegation manager fixed.delegationManager gives expectPayload. expectPayload is x402 v2's PaymentPayload written by hand from the specifications (x402-foundation/x402 751590a2): its members in the order of specs/x402-specification-v2.md \u00a75.2.1 (x402Version, resource, accepted, payload, extensions), the ERC-7710 payload as specs/schemes/exact/scheme_exact_evm.md L243-280 writes it (delegationManager, permissionContext, delegator), and extensions the document's own, echoed (L150: the legal context's info and its JSON Schema); accepted and resource are x402-exact-eip155-erc7710-salt.json's fixed option and resource, delegator its payer, and permissionContext the ABI encoding of the one-delegation array [fixed.leaf with EV8.expectSignature], computed with eth-abi 6.0.0 as encode of (address,address,bytes32,(address,bytes,bytes)[],uint256,bytes)[], whose length and SHA-256 are EV8's expectContextBytes and expectContextSha256. Python 3.12.3's json.dumps of that object, compact, is the JSON text of expectPayload.",
   "expectPayload": {
    "x402Version": 2,
@@ -146,22 +154,11 @@
    "0x00000000000000000000000000000000000000000000000000000000000000c0",
    "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   ],
-  "query": {
-   "act": "payment",
-   "finality": "finalized"
-  },
-  "expectStatus": {
-   "state": "settled",
-   "transaction": "0x3333333333333333333333333333333333333333333333333333333333333333",
-   "position": "100",
-   "finality": "finalized",
-   "foreign": []
-  },
   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-  "case": "the RedeemedDelegation event, L's event data, and a fixture receipt (finalized 100, safe 105) with that log from the manager, emitted with the root delegator (the payer) in topic 1 and the redeemer F in topic 2, and a Transfer from the delegator: status settles it, and recover gives H. A log carries a leaf when its delegate (data word 1) is the redeemer or the wildcard delegate 0x0000000000000000000000000000000000000a11 (MetaMask DelegationManager.sol L41, L155-158). The rows below change one thing each; the test encodes each delegation's event data with viem's encodeAbiParameters, as for L"
+  "case": "the RedeemedDelegation event, L's event data, and a fixture receipt (finalized 100, safe 105) with that log from the manager, emitted with the root delegator (the payer) in topic 1 and the redeemer F in topic 2, and a Transfer from the delegator: recover gives H. A log carries a leaf when its delegate (data word 1) is the redeemer or the wildcard delegate 0x0000000000000000000000000000000000000a11 (MetaMask DelegationManager.sol L41, L155-158). The rows below change one thing each; the test encodes each delegation's event data with viem's encodeAbiParameters, as for L"
  },
  "plantsEV9": {
-  "about": "Each row is a fixture receipt of logs, in order, from the manager (RedeemedDelegation: rootDelegator, redeemer, and the delegation as data) and from USDC (Transfer: from, to, value 10000). Delegations are L with the members the row names changed; F is L's delegate, G is Anvil account 3, and O is Anvil account 4. H2 is SHA-256(\"abd\") (FIPS 180-2 B.1's message with its last byte changed, by GNU coreutils sha256sum)",
+  "about": "Each row is a fixture receipt of logs, in order, from the manager (RedeemedDelegation: rootDelegator, redeemer, and the delegation as data) and from USDC (Transfer: from, to, value 10000). Delegations are L with the members the row names changed; F is L's delegate, G is Anvil account 3, and O is Anvil account 4. H2 is SHA-256(\"abd\") (FIPS 180-2 B.1's message with its last byte changed, by GNU coreutils sha256sum). Each row's expectRecover is recover's answer, written from the pairing's profile: the one distinct salt of the leaves, the redemptions whose delegate is the redeemer or the wildcard",
   "accounts": {
    "F": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
    "G": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
@@ -198,15 +195,6 @@
       }
      }
     ],
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
     "expectRecover": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9"
    },
    {
@@ -229,15 +217,6 @@
       }
      }
     ],
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expectStatus": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
@@ -260,17 +239,6 @@
       }
      }
     ],
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expectStatus": {
-     "state": "settled",
-     "transaction": "0x4444444444444444444444444444444444444444444444444444444444444444",
-     "position": "100",
-     "finality": "finalized",
-     "foreign": []
-    },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
@@ -293,17 +261,6 @@
       }
      }
     ],
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expectStatus": {
-     "state": "settled",
-     "transaction": "0x4444444444444444444444444444444444444444444444444444444444444444",
-     "position": "100",
-     "finality": "finalized",
-     "foreign": []
-    },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    }
   ]

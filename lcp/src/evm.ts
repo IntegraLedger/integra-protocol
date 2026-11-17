@@ -27,15 +27,25 @@ import {
   bindSalt,
   decodePermissionContext,
   eip3009Recover,
-  eip3009Status,
   eip3009TypedData,
   evmStatus,
   paymentHash,
   permit2TypedData,
   transferDigest,
 } from "./internal/evm.js";
+import { eip3009Read as eip3009Status } from "./internal/evm-x402-reads.js";
+import {
+  AUTHORIZATION_CANCELED_TOPIC,
+  MAX_SEARCH_PAGES,
+  SEARCH_PAGE_BLOCKS,
+  UNORDERED_NONCE_INVALIDATION_TOPIC,
+} from "./internal/evm-x402.js";
 
 export {
+  AUTHORIZATION_CANCELED_TOPIC,
+  MAX_SEARCH_PAGES,
+  SEARCH_PAGE_BLOCKS,
+  UNORDERED_NONCE_INVALIDATION_TOPIC,
   AUTHORIZATION_STATE_SELECTOR,
   AUTHORIZATION_USED_TOPIC,
   DELEGATION_MANAGER,
@@ -67,10 +77,10 @@ export {
 export type {
   Delegation,
   Eip155,
-  Eip3009Ref,
   Eip3009TypedData,
   EvmBreadthStatus,
   EvmLog,
+  EvmLogEntry,
   EvmReader,
   EvmReceipt,
   EvmRef,
@@ -85,3 +95,4 @@ export type {
   TransferIdentity,
   TransferLog,
 } from "./internal/evm.js";
+export type { AuthCaptureRef, BatchEvmRef, Eip3009Ref, Erc7710Ref, Permit2Ref } from "./internal/evm-x402-reads.js";

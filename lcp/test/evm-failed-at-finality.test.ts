@@ -128,95 +128,7 @@ const witness = log(ACCOUNT_KEYCHAIN, [KEY_AUTHORIZATION_WITNESS_TOPIC, topic(PA
 const toPayee = digest({ to: PAYEE });
 
 const ROWS: Row[] = [
-  [
-    "x402/exact/eip155/eip3009",
-    "the payment",
-    BASE,
-    {
-      asset: TOKEN,
-      transaction: TX,
-      h: H,
-      transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: digest({ from: PAYER, to: PAYEE, value: VALUE }) },
-    },
-    [
-      { why: "reverted", logs: [log(TOKEN, [AUTHORIZATION_USED_TOPIC, topic(PAYER), H]), transfer(PAYER, PAYEE)], reverted: true },
-      { why: "authorization-not-used", logs: [transfer(PAYER, PAYEE)] },
-      { why: "transfer-not-found", logs: [log(TOKEN, [AUTHORIZATION_USED_TOPIC, topic(PAYER), H]), transfer(PAYER, PAYEE, VALUE + 1n)] },
-    ],
-  ],
-  ["x402/exact/eip155/permit2", "the payment", BASE, permit2Ref, permit2Failures],
-  ["x402/upto/eip155/permit2", "the payment", BASE, permit2Ref, permit2Failures],
   ["mpp/charge/evm/permit2", "the payment", BASE, permit2Ref, permit2Failures],
-  [
-    "x402/exact/eip155/erc7710-salt",
-    "the payment",
-    BASE,
-    {
-      transaction: TX,
-      bindingLog: { address: DELEGATION_MANAGER, topic0: REDEEMED_DELEGATION_TOPIC, dataWord: 5, value: H },
-      transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from", digest: digest({ from: PAYER }) },
-    },
-    [
-      { why: "reverted", logs: [leaf, transfer(PAYER, PAYEE)], reverted: true },
-      { why: "binding-log-not-found", logs: [transfer(PAYER, PAYEE)] },
-      { why: "transfer-not-found", logs: [leaf, transfer(STRANGER, PAYEE)] },
-    ],
-  ],
-  [
-    "x402/auth-capture/eip155/eip3009",
-    "the payment",
-    BASE,
-    {
-      transaction: TX,
-      bindingLog: { address: escrow.escrow, topic0: PAYMENT_AUTHORIZED_TOPIC, index: 1, value: H },
-      transferLog: {
-        address: TOKEN,
-        topic0: TRANSFER_TOPIC,
-        identity: "from,to,value",
-        digest: digest({ from: PAYER, to: escrow.eip3009Collector, value: VALUE }),
-      },
-    },
-    [
-      { why: "reverted", logs: [authorized, transfer(PAYER, escrow.eip3009Collector)], reverted: true },
-      { why: "binding-log-not-found", logs: [transfer(PAYER, escrow.eip3009Collector)] },
-      { why: "transfer-not-found", logs: [authorized] },
-      { why: "receive-policy-blocked", logs: [authorized, transfer(PAYER, RECEIVE_POLICY_GUARD)] },
-    ],
-  ],
-  [
-    "x402/auth-capture/eip155/permit2",
-    "the payment",
-    BASE,
-    { transaction: TX, bindingLog: { address: escrow.escrow, topic0: PAYMENT_AUTHORIZED_TOPIC, index: 1, value: H } },
-    [
-      { why: "reverted", logs: [authorized], reverted: true },
-      { why: "binding-log-not-found", logs: [] },
-    ],
-  ],
-  [
-    "x402/batch-settlement/eip155",
-    "the opening",
-    BASE,
-    {
-      transaction: TX,
-      settleBy: "1790000060",
-      bindingLog: { address: BATCH_SETTLEMENT, topic0: DEPOSITED_TOPIC, index: 1, value: CHANNEL },
-      transferLog: {
-        address: TOKEN,
-        topic0: TRANSFER_TOPIC,
-        identity: "from,to,value",
-        digest: digest({ from: PAYER, to: BATCH_SETTLEMENT, value: VALUE }),
-      },
-    },
-    [
-      { why: "reverted", logs: [transfer(PAYER, BATCH_SETTLEMENT), deposited], reverted: true },
-      { why: "binding-log-not-found", logs: [transfer(PAYER, BATCH_SETTLEMENT)] },
-      { why: "transfer-not-found", logs: [deposited] },
-      // The payer's transfer after the channel's `Deposited`: not this deposit call's.
-      { why: "transfer-not-found", logs: [deposited, transfer(PAYER, BATCH_SETTLEMENT)] },
-      { why: "receive-policy-blocked", logs: [deposited, transfer(PAYER, RECEIVE_POLICY_GUARD)] },
-    ],
-  ],
   ["mpp/charge/evm/authorization", "the payment", BASE, pulled(NONCE), pulledFailures],
   ["mpp/charge/usdc/evm", "the payment", BASE, pulled(NONCE), pulledFailures],
   ...(["mpp/charge/evm/transaction", "mpp/charge/evm/hash"] as const).map(
@@ -395,12 +307,23 @@ describe("an EVM failed read answers pending search-incomplete, at or below the 
   }
 
   it("covers every EVM pairing with a status, and each failed reason the EVM reads give", () => {
-    const evm = BINDINGS.filter((b) => /eip155|\/evm|tempo/.test(b.id) && "status" in b && b.status);
+    // The x402 eip155 pairings whose read is a search (src/internal/evm-x402-reads.ts) are held by the read kit's forms
+    // (test/read-kit/forms/eip155-x402.ts) and their own read tests, not by a named transaction's failed reasons.
+    const searched = new Set([
+      "x402/exact/eip155/eip3009",
+      "x402/exact/eip155/permit2",
+      "x402/upto/eip155/permit2",
+      "x402/exact/eip155/erc7710",
+      "x402/exact/eip155/erc7710-salt",
+      "x402/auth-capture/eip155/eip3009",
+      "x402/auth-capture/eip155/permit2",
+      "x402/batch-settlement/eip155",
+    ]);
+    const evm = BINDINGS.filter((b) => /eip155|\/evm|tempo/.test(b.id) && "status" in b && b.status !== undefined && !searched.has(b.id));
     expect(new Set(ROWS.map(([id]) => id))).toEqual(new Set(evm.map((b) => b.id)));
     expect(new Set(ROWS.flatMap(([, , , , f]) => f.map((x) => x.why)))).toEqual(
       new Set([
         "reverted",
-        "authorization-not-used",
         "transfer-not-found",
         "binding-log-not-found",
         "receive-policy-blocked",
@@ -485,6 +408,13 @@ describe("an EVM or Tempo session recover gives a revert or a verdict read from 
     { why: "evm/nonce-not-used", logs: [transfer(PAYER, PAYEE)], tx: calling(settleOf(PERMIT2_NONCE)), call: () => uint(1n) },
   ];
 
+  /**
+   * The escrow v1.1's `PaymentAuthorized` with `salt` as `PaymentInfo.salt` (data word 11) and the deployment's
+   * collector for `scheme` as its token collector (word 13), the other words zero.
+   */
+  const escrowEvent = (salt: Hex, scheme: "eip3009" | "permit2") =>
+    log(escrow.escrow, [PAYMENT_AUTHORIZED_TOPIC, NONCE], ("0x" +
+      [...Array(11).fill(hex64("0x0")), salt.slice(2), hex64(uint(VALUE)), hex64(scheme === "eip3009" ? escrow.eip3009Collector : escrow.permit2Collector)].join("")) as Hex);
   /** A pairing with a `recover`, the network and option it reads, and the reads that give each verdict (`why`). */
   type Recovered = [id: string, network: string, option: object, failures: Failure[], notFinal: string];
   const RECOVERS: Recovered[] = [
@@ -510,6 +440,20 @@ describe("an EVM or Tempo session recover gives a revert or a verdict read from 
       ],
       "evm/not-final",
     ],
+    ...(["eip3009", "permit2"] as const).map(
+      (scheme): Recovered => [
+        `x402/auth-capture/eip155/${scheme}`,
+        BASE,
+        { extra: {} },
+        [
+          { why: "evm/reverted", logs: [escrowEvent(H, scheme)], reverted: true },
+          // The escrow's event through the deployment's other collector: no payment of this scheme.
+          { why: "evm/no-escrow-payment", logs: [escrowEvent(H, scheme === "eip3009" ? "permit2" : "eip3009"), transfer(PAYER, PAYEE)] },
+          { why: "evm/ambiguous", logs: [escrowEvent(H, scheme), escrowEvent(NONCE, scheme)] },
+        ],
+        "evm/not-final",
+      ],
+    ),
     ["x402/exact/eip155/permit2", BASE, {}, permit2Rows(settle), "evm/not-final"],
     ["x402/upto/eip155/permit2", BASE, {}, permit2Rows(settleUpto), "evm/not-final"],
     [

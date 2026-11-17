@@ -278,8 +278,17 @@
       },
       "expect": {
         "network": "eip155:84532",
-        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "validBefore": "1777777777",
+        "h": "0xb9260524c983d5baba7c350c62f2e90028659a41b1667511381fd8e905e6dde0",
+        "payer": "0x5e1f62dac767b0491e3ce72469c217365d5b48cc",
+        "presented": {
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "from": "0x5e1f62dac767b0491e3ce72469c217365d5b48cc",
+          "to": "0x0d2e0cdf56a0e0e5b3cb0b3b3f7fad84b9f5d5d1",
+          "value": "12500000",
+          "nonce": "0xb9260524c983d5baba7c350c62f2e90028659a41b1667511381fd8e905e6dde0"
+        },
         "idDigest": "0x845ca4baf8a965c5e77283c5d12aba9658d449e64507ac44af17ab3bdfd0176b",
         "bindingLog": {
           "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
@@ -327,8 +336,17 @@
       },
       "expect": {
         "network": "eip155:84532",
-        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "validBefore": "1777777777",
+        "h": "0xb9260524c983d5baba7c350c62f2e90028659a41b1667511381fd8e905e6dde0",
+        "payer": "0x5e1f62dac767b0491e3ce72469c217365d5b48cc",
+        "presented": {
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "from": "0x5e1f62dac767b0491e3ce72469c217365d5b48cc",
+          "to": "0x0d2e0cdf56a0e0e5b3cb0b3b3f7fad84b9f5d5d1",
+          "value": "12500000",
+          "nonce": "0xb9260524c983d5baba7c350c62f2e90028659a41b1667511381fd8e905e6dde0"
+        },
         "idDigest": "0x845ca4baf8a965c5e77283c5d12aba9658d449e64507ac44af17ab3bdfd0176b",
         "bindingLog": {
           "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",

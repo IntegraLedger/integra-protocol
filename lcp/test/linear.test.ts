@@ -67,9 +67,9 @@ describe("readEntry: an Algorand payment entry is decoded in time linear in its 
   }
 });
 
-describe("evmStatus: a delegation payment's receipt is read in time linear in its logs", () => {
+describe("status: a delegation payment's receipt is read in time linear in its logs", () => {
   // x402/exact/eip155/erc7710-salt: the binding is data word 5 of a leaf's RedeemedDelegation log from the
-  // DelegationManager, and a transfer counts when its `from` is a leaf's root delegator (topic 1).
+  // DelegationManager, and the account it names is a transfer from the leaf's root delegator (topic 1).
   const PAYER = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266" as Hex;
   const PAYEE = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as Hex;
   const REDEEMER = "0x00000000000000000000000000000000000000ee" as Hex;
@@ -84,13 +84,7 @@ describe("evmStatus: a delegation payment's receipt is read in time linear in it
     data: `0x${[root, REDEEMER, "0x0", "0x0", "0x0", H].map(word).join("")}` as Hex,
   });
   const transfer: EvmLog = { address: TOKEN, topics: [TRANSFER_TOPIC, topic(PAYER), topic(PAYEE)], data: topic("0x2710") };
-  const ref = {
-    network: "eip155:84532",
-    transaction: `0x${"11".repeat(32)}`,
-    bindingLog: { address: DELEGATION_MANAGER, topic0: REDEEMED_DELEGATION_TOPIC, dataWord: 5, value: H },
-    // SHA-256 of the transfer's `from`, the one field the transfer log names.
-    transferLog: { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from", digest: `0x${createHash("sha256").update(Buffer.from(PAYER.slice(2), "hex")).digest("hex")}` },
-  };
+  const ref = { network: "eip155:84532", transaction: `0x${"11".repeat(32)}`, payee: PAYEE, h: H, payer: PAYER, asset: TOKEN };
   const status = (BINDINGS.find((b) => b.id === "x402/exact/eip155/erc7710-salt") as unknown as {
     status: (ref: object, reader: EvmReader, query: object) => Promise<{ state: string }>;
   }).status;

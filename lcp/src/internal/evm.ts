@@ -144,20 +144,6 @@ export async function authorizationIdDigest(from: Hex, to: Hex, value: string | 
   return hash(packed);
 }
 
-/**
- * What a settlement reference holds for an EIP-3009 payment: read keys only. It is an `EvmRef` naming the
- * `AuthorizationUsed` log, the transfer's identity and the authorization as the token records its use, with the
- * token, `validBefore` and the transfer digest.
- */
-export type Eip3009Ref = EvmRef & {
-  network: Eip155;
-  asset: Hex;
-  validBefore: string;
-  idDigest: Hex;
-  transferLog: TransferLog;
-  authorization: PullAuthorization;
-};
-
 /** One receipt log: the emitter, its topics and its data. */
 export interface EvmLog {
   address: Hex;
@@ -192,7 +178,28 @@ export interface EvmReader {
   transaction(tx: Hex): Promise<EvmTransaction | null>;
   /** `eth_call` of `data` to the contract `to`, in the state after block `block`: the return data. */
   call(to: Hex, data: Hex, block: bigint): Promise<Hex>;
+  /**
+   * `eth_getLogs` over `fromBlock` to `toBlock`: `address` absent, every contract's; a topic `null`, any value there.
+   * Rejects with a `ReaderError` of kind `too-large` for a range the endpoint refuses, and of kind `history` where the
+   * endpoint does not hold the history of the range. Absent where the reader makes no log query: a read that needs a
+   * search then holds its search open and answers no `failed` that rests on one.
+   */
+  logs?(filter: {
+    address?: Hex;
+    topics: readonly (Hex | null)[];
+    fromBlock: bigint;
+    toBlock: bigint;
+  }): Promise<readonly EvmLogEntry[]>;
+  /**
+   * `eth_getBlockByNumber(at, false)`: its number and timestamp. Rejects with a `ReaderError` of kind `history` where the
+   * endpoint does not hold that block. Absent where the reader reads no block; a read that needs a block's time then
+   * reads no lapse.
+   */
+  block?(at: "latest" | "safe" | "finalized" | bigint): Promise<{ number: bigint; timestamp: bigint }>;
 }
+
+/** A log as `eth_getLogs` gives it: the log, the transaction that emitted it, its block and its index in the block. */
+export type EvmLogEntry = EvmLog & { transactionHash: Hex; blockNumber: bigint; logIndex: number };
 
 /** A transaction as `eth_getTransactionByHash` gives it: `from`, the address that signed it; `to`; and `input`. */
 export interface EvmTransaction {
@@ -201,9 +208,14 @@ export interface EvmTransaction {
   input: Hex;
 }
 
+/**
+ * Why a reader's call gave no answer: it timed out, its answer exceeded the reader's bound or the endpoint refused the
+ * range asked, it did not complete, its answer was malformed, or the endpoint does not hold the history or state asked
+ * for (`history`), which a read answers `unreadable`, `history-gap`.
+ */
 export class ReaderError extends Error {
-  readonly kind: "timeout" | "too-large" | "transport" | "malformed";
-  constructor(kind: "timeout" | "too-large" | "transport" | "malformed", message?: string) {
+  readonly kind: "timeout" | "too-large" | "transport" | "malformed" | "history";
+  constructor(kind: "timeout" | "too-large" | "transport" | "malformed" | "history", message?: string) {
     super(message ?? kind);
     this.name = "ReaderError";
     this.kind = kind;
@@ -264,6 +276,7 @@ const QUERY_UNPARSEABLE: EvmStatus = Object.freeze({ state: "unreadable", reason
 export function rejected(e: unknown): UnreadableReason {
   if (!(e instanceof ReaderError)) return "transport";
   if (e.kind === "too-large") return "too-large";
+  if (e.kind === "history") return "history-gap";
   return e.kind === "malformed" ? "unparseable" : "transport";
 }
 
@@ -348,65 +361,6 @@ export function evmStatusOf<Ref extends { transaction: Hex }>(
     if (!isEvmQuery(query)) return QUERY_UNPARSEABLE;
     return evmAnswer(await read(ref, reader), ref, query, coverage);
   };
-}
-
-/**
- * Reads the named transaction as this payment's EIP-3009 settlement, and answers as the profile `read-status` does for
- * what it observed. The read is settled when the receipt succeeded and holds the pair one authorization produces: a log
- * from `asset` with exactly three topics, the first `AuthorizationUsed` and the third equal to `h`, and the `Transfer`
- * paired with it, which `transferLog` identifies. The pair follows the order in which EIP-3009's reference
- * implementation and USDC's FiatToken emit them, the use and then its transfer; EIP-3009 itself states no order. The
- * `Transfer` paired with a use is the first one from its authorizer (topic 1) after it and before the token's next
- * `AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the token's previous
- * `AuthorizationUsed` and before it. On a token that emits the `Transfer` first, a use followed in the same transaction
- * by another authorization of its payer pairs with that authorization's transfer: where their terms differ the
- * transaction is not this act, and where the payer signed the use's nonce twice it can read settled on the other's
- * transfer. The mark is the highest block mark at or above the receipt's block, and the position the receipt's block.
- * Settled at a mark is the act at that mark: `settled` at or above the finality asked for, `below-mark` under it. A
- * receipt the reader does not hold, a reverted one (which consumes no nonce), and a transaction without such a use or
- * its transfer are no act, and with no search for H yet answer `pending` `search-incomplete`. A reader that rejects is
- * unreadable by its error (`rejected`); a reader for another network `chain-mismatch`; a `transaction` or `h` that is
- * not a 32-byte hash, an `asset` that is not an address, a `transferLog` that is not one, a reader answer that is
- * neither `null` nor a receipt, or a receipt holding a log that is not an object with a string `address`, an array of
- * string `topics` and a string `data`, `unparseable`; and a query that is not one `status` takes, `unparseable`, with
- * nothing read. At most three calls.
- */
-export async function eip3009Status(
-  ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog },
-  reader: EvmReader,
-  query: EvmQuery<EvmTxRef & { h: AtrHash; transferLog: TransferLog }>,
-): Promise<EvmStatus> {
-  return eip3009Answer(ref, reader, query);
-}
-
-const eip3009Answer = evmStatusOf(readEip3009, EIP155_X402["x402/exact/eip155/eip3009"].coverage);
-
-async function readEip3009(ref: EvmTxRef & { h: AtrHash; transferLog: TransferLog }, reader: EvmReader): Promise<EvmRead> {
-  if (!isObject(ref)) return unreadable("unparseable");
-  const fault = readerFault(ref, reader);
-  if (fault !== undefined) return unreadable(fault);
-  if (!isTransferLog(ref.transferLog) || normalHash(ref.transaction) === null || normalHash(ref.h) === null) {
-    return unreadable("unparseable");
-  }
-  if (!isAddress(ref.asset)) return unreadable("unparseable");
-  let receipt: EvmReceipt | null;
-  try {
-    receipt = await reader.receipt(ref.transaction);
-  } catch (e) {
-    return unreadable(rejected(e));
-  }
-  if (receipt === null) return { state: "pending", why: "not-found" };
-  if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return unreadable("unparseable");
-  const at = receipt.blockNumber;
-  if (receipt.status === 0) return failedAt(at, "reverted", reader);
-
-  const binding = { address: ref.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2 as const, value: ref.h };
-  const authorizers = authorizersOf(receipt.logs, binding);
-  if (authorizers.length === 0) return failedAt(at, "authorization-not-used", reader);
-  const transfers = await pairedTransfers(receipt.logs, binding, ref.transferLog);
-  if (transfers.length === 0) return failedAt(at, "transfer-not-found", reader);
-
-  return settledAt(at, reader);
 }
 
 /**

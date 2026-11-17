@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit). ES5 is a landed opening read by recover, landedErr the error it is read landed with; transactionV1's statusRows read the stock version-1 opening back, and the read's own cases are in svm-read.json. EB7's plants, each a transaction that is not this deposit, answer pending search-incomplete where they answered failed: no search for H is defined yet, and at coverage full failed comes only from a search read whole (read-status rule 24). transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
+ "about": "Vectors for the x402 batch-settlement pairings (the x402-batch-settlement entry point of @integraledger/lcp). H is SHA-256(\"abc\") and H' SHA-256(\"abd\"); EVM keys are the published Anvil development accounts 0, 1 and 3, and EB10's refund authorizer account 2's address; the EVM values were computed with eth-account 0.14.0, eth-abi 6.0.0, eth-utils 6.0.0 and viem 2.57.4 and read them on Base Sepolia; the SVM values with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The SVM fixtures (ES4's top_up, request_close and nonce-memo wires, ES5's landed wire, the no-channel transaction) were built with solders 0.26.0 on Python 3.11; the same script reproduces ES1, ES2, ES3 and ES5's txid. The receiver authorizer is the key of seed 03x32. An SVM opening carries two Memo instructions, the seller memo (extra.memo, L) and then x402's receiver-authorizer binding memo, whose UTF-8 data is x402:batch-settlement:svm:rcvauth:v1: and the base58 key (x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_svm.md L121-127 and L1320-1325; the order is the steward SDK's, typescript/packages/mechanisms/svm/src/payment-channels/open.ts:464-467, and the text its batch-settlement/receiverBinding.ts:19 and test/unit/batch.receiverAuthorizer.test.ts, \"round-trips the binding memo and rejects anything else\", at the same commit). ES5 is a landed opening read by recover, landedErr the error it is read landed with; transactionV1's statusRows read the stock version-1 opening back, and the read's own cases are in svm-read.json. EB7's laterDeposit and plantOtherContract, each a transaction that is not this deposit, answer pending search-incomplete: the read defines no search for H, and at coverage full failed comes only from a search read whole (read-status rule 24). EB10 is the scheme's refund-authorizer mode, its values from the stock @x402/evm 2.31.0 client as its case states. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "Hprime": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
@@ -443,42 +443,11 @@
   "case": "bound and the channel members. expectVoucherPayload and expectRefundPayload are buildWithin's completes for fixed.evm.config at maxClaimableAmount 1000 with EB2.signature, without and with refund {amount refundAmount}, written by hand from x402-foundation/x402 751590a2, specs/schemes/batch-settlement/scheme_batch_settlement_evm.md L166-190 (type \"voucher\", channelConfig, voucher) and L192-221 (type \"refund\", channelConfig, voucher, amount), wrapped in x402 v2's PaymentPayload (specs/x402-specification-v2.md §5.2.1: x402Version, resource, accepted, payload, then extensions, the document's own, echoed); Python 3.12.3's json.dumps of the object, compact, is its JSON text."
  },
  "EB7": {
-  "case": "status on fixture receipts (finalized 100, safe 105) with EB3's reference. The channel contract's deposit collects the deposit through the collector and then emits ChannelCreated, on a channel's first deposit, and Deposited (x402BatchSettlement.sol deposit, L216-231), so a deposit call's transfers lie after the contract's previous Deposited log and before its own. Rows that name a channel X use EB1's withHprime as its id; the stranger is Anvil account 3 and the custom collector 0x8888888888888888888888888888888888888888",
+  "case": "status from what landed, with EB3's reference naming the transaction 0xab..ab, on fixture receipts (finalized 100, safe 105); the token's authorizationState for the payer and EB3's deposit nonce reads true from block reader.used where the receipt uses the nonce. The opening is the channel contract's Deposited for EB1's channel in a transaction that consumed the deposit authorization's nonce (USDC's AuthorizationUsed for the payer and that nonce); what moved is the deposit's amount to the channel's receiver, by its Deposited log; a Deposited for the channel with no use of the nonce is a later deposit, an act of another kind; a Deposited from another contract is no act. The reader answers no block and no logs, so no search reads to a head and none is whole",
   "reader": {
    "finalized": "100",
-   "safe": "105"
-  },
-  "transferDigest": "0xbb43eabb8b28f3d00c6a8e876fd15bb3eb23c8ce0534a4f62d45eae6b1c286a0",
-  "receipt": {
-   "status": 1,
-   "blockNumber": "100",
-   "logs": [
-    {
-     "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-     "topics": [
-      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-      "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
-     ],
-     "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-    },
-    {
-     "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
-     "topics": [
-      "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
-      "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
-      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-     ],
-     "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-    }
-   ]
-  },
-  "expect": {
-   "state": "settled",
-   "transaction": "0xabababababababababababababababababababababababababababababababab",
-   "position": "100",
-   "finality": "finalized",
-   "foreign": []
+   "safe": "105",
+   "used": "100"
   },
   "fullCall": {
    "case": "the deposit call as the ERC-3009 collector makes it: USDC's AuthorizationUsed for the payer's deposit authorization (EB3's deposit nonce), the payer's transfer to the collector, the collector's to the channel contract, ChannelCreated (EB8's log) and Deposited with its amount and the channel's new balance",
@@ -537,23 +506,26 @@
     "transaction": "0xabababababababababababababababababababababababababababababababab",
     "position": "100",
     "finality": "finalized",
+    "moved": [
+     {
+      "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      "amount": "100000",
+      "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+      "transaction": "0xabababababababababababababababababababababababababababababababab",
+      "place": 4
+     }
+    ],
+    "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    "presented": "yes",
     "foreign": []
    }
   },
-  "plantGift": {
+  "laterDeposit": {
+   "case": "the full call's Deposited alone, with no use of the deposit nonce, and the nonce unused: a later deposit into the channel, a foreign item of another kind; the value unused, the search not whole",
    "receipt": {
     "status": 1,
     "blockNumber": "100",
     "logs": [
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x000000000000000000000000000000000000000000000000000000000000dead",
-       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
-      ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-     },
      {
       "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
       "topics": [
@@ -561,153 +533,34 @@
        "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
        "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
       ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a000000000000000000000000000000000000000000000000000000000000186a0"
      }
     ]
    },
    "expect": {
     "state": "pending",
     "reason": "search-incomplete",
-    "foreign": []
-   }
-  },
-  "plantGiftBesideDeposit": {
-   "case": "a stranger's 1-unit gift into channel H through a custom collector, then the payer's own 100000 deposit into channel X in the same transaction: the payer's transfer belongs to X's deposit call",
-   "receipt": {
-    "status": 1,
-    "blockNumber": "100",
-    "logs": [
+    "foreign": [
      {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906",
-       "0x0000000000000000000000008888888888888888888888888888888888888888"
+      "transaction": "0xabababababababababababababababababababababababababababababababab",
+      "position": "100",
+      "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+      "moved": [
+       {
+        "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "amount": "100000",
+        "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+        "transaction": "0xabababababababababababababababababababababababababababababababab",
+        "place": 0
+       }
       ],
-      "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
-     },
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x0000000000000000000000008888888888888888888888888888888888888888",
-       "0x0000000000000000000000004020074e9df2ce1dee5a9c1b5c3f541d02a10003"
-      ],
-      "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
-     },
-     {
-      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
-      "topics": [
-       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
-       "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
-       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-      ],
-      "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
-     },
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
-      ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-     },
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004",
-       "0x0000000000000000000000004020074e9df2ce1dee5a9c1b5c3f541d02a10003"
-      ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-     },
-     {
-      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
-      "topics": [
-       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
-       "0xe86beca0bedc5bc55580fbbc3bcd49b100d96adaf426d13ed5c9994067e76fa1",
-       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-      ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+      "reason": "other-kind"
      }
     ]
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
-   }
-  },
-  "plantShortBesideDeposit": {
-   "case": "the payer's 1-unit deposit into channel H, then the payer's 100000 deposit into channel X in the same transaction: the transfer the reference identifies belongs to X's deposit call",
-   "receipt": {
-    "status": 1,
-    "blockNumber": "100",
-    "logs": [
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
-      ],
-      "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
-     },
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004",
-       "0x0000000000000000000000004020074e9df2ce1dee5a9c1b5c3f541d02a10003"
-      ],
-      "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
-     },
-     {
-      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
-      "topics": [
-       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
-       "0x3598ca24bdbeeed601277e20ad87cbab5ef13dbda04cec034f616ea5e4494482",
-       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-      ],
-      "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
-     },
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
-      ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-     },
-     {
-      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      "topics": [
-       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004",
-       "0x0000000000000000000000004020074e9df2ce1dee5a9c1b5c3f541d02a10003"
-      ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-     },
-     {
-      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
-      "topics": [
-       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
-       "0xe86beca0bedc5bc55580fbbc3bcd49b100d96adaf426d13ed5c9994067e76fa1",
-       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-      ],
-      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
-     }
-    ]
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
    }
   },
   "plantOtherContract": {
+   "case": "a Deposited for EB1's channel from another contract than the channel contract: no act; the nonce unused",
    "receipt": {
     "status": 1,
     "blockNumber": "100",
@@ -803,6 +656,405 @@
     }
    }
   ]
+ },
+ "EB10": {
+  "case": "the scheme's refund-authorizer mode, which the stock @x402/evm 2.31.0 client marks by extra.voucherManager \"facilitator\" and a non-zero extra.refundAuthorizer (dist/esm/chunk-AEYKXGQA.mjs:232-250, buildChannelConfig) and the stock server announces (dist/esm/batch-settlement/server/index.mjs:2412-2423). The channel salt is the stock client's packing, the entropy's first 12 bytes, or its last 12 where those are zero, then the refund authorizer's 20 bytes (packRefundAuthorizerSalt, dist/esm/chunk-7DJ4WEQ5.mjs:218-223); H is the deposit authorization's salt, from which the ERC-3009 nonce is keccak256(abi.encode(channelId, salt)) (buildErc3009DepositNonce, dist/esm/chunk-W6ON4LG2.mjs:3-7), or the deposit permit's nonce. refundAuthorizer is Anvil development account 2. Each packing row's expectChannelConfig and expectChannelId are the stock client's buildChannelConfig and computeChannelId for fixed.evm's payer and payer authorizer, the row's entropy as the client's salt and this option, and expectDepositNonce viem 2.57's keccak256 of that encoding for H. Each method's expectPayload is lcp's complete for fixed.evm's choice with authSalt the first row's entropy, signed with fixed.evm's keys (viem's deterministic signatures; digest is viem's hashTypedData of the deposit authorization); input is viem's encodeFunctionData of the stock batchSettlementABI's deposit with that config, the deposit's amount, the method's deposit collector and the collector data the stock facilitator encodes (buildErc3009CollectorData and buildPermit2CollectorData, dist/esm/chunk-W6ON4LG2.mjs:8-31); receipt holds the logs the channel contract and its collectors emit for that call (the token's AuthorizationUsed and Transfers on ERC-3009, Permit2's Transfer from the payer to the channel contract, ChannelCreated and Deposited), encoded with viem's encodeEventTopics; expectStatus and expectRecover are what lcp's read gives for them, the transaction named by transaction, read with reader's marks, the token's authorizationState, or the payer's Permit2 bit, reading used from block reader.used",
+  "refundAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+  "option": {
+   "scheme": "batch-settlement",
+   "network": "eip155:84532",
+   "amount": "1000",
+   "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+   "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+   "maxTimeoutSeconds": 3600,
+   "extra": {
+    "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+    "withdrawDelay": 900,
+    "name": "USDC",
+    "version": "2",
+    "voucherManager": "facilitator",
+    "refundAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+   }
+  },
+  "packing": [
+   {
+    "entropy": "0x0000000000000000000000000000000000000000000000000000000000000001",
+    "expectChannelConfig": {
+     "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+     "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "withdrawDelay": 900,
+     "salt": "0x0000000000000000000000013C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+    },
+    "expectChannelId": "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0",
+    "expectDepositNonce": "0x96d0141b60b98546374903203fad59c0966bf7e97334672a23b37e940f165986"
+   },
+   {
+    "entropy": "0xa5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5",
+    "expectChannelConfig": {
+     "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+     "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+     "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "withdrawDelay": 900,
+     "salt": "0xa5a5a5a5a5a5a5a5a5a5a5a53C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+    },
+    "expectChannelId": "0x3d9f173b38990acd7782edbbfda480e0dc3b0910ba4cf336bf7f9efae7503aeb",
+    "expectDepositNonce": "0x572fc20328811d6d6e905eb2afabf1c2b8e6e2cc3bb8110dedd8a010a9ad4465"
+   }
+  ],
+  "reader": {
+   "finalized": "100",
+   "safe": "105",
+   "used": "100"
+  },
+  "transaction": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+  "eip3009": {
+   "case": "the ERC-3009 deposit: erc3009Authorization.salt is H",
+   "digest": "0xfc24d8b7ff2546e8656022cdb83c62ebc705e656741946921b9ca549b21dc00a",
+   "signature": "0x7e1ffb6260e6b50c7ae2c704a42ad00dc411cf69bf4e44a5f084d88dd284d5670643d3bdbfc30226ec2b400d77f5cb3df9423e47e00832eb32c2d53405f2b29e1b",
+   "voucherSignature": "0xb3159359cb8a9c6ebc4061479e2f282b8ad78ed3271e362c4e94d54e90c8bbbe123e6a3e34b9bf24d3c949ecbfb331c1d074438cd4030c116acbcf688dabfb5f1b",
+   "expectPayload": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "eip155:84532",
+     "amount": "1000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2",
+      "voucherManager": "facilitator",
+      "refundAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+     }
+    },
+    "payload": {
+     "type": "deposit",
+     "channelConfig": {
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "withdrawDelay": 900,
+      "salt": "0x0000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+     },
+     "voucher": {
+      "channelId": "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0",
+      "maxClaimableAmount": "1000",
+      "signature": "0xb3159359cb8a9c6ebc4061479e2f282b8ad78ed3271e362c4e94d54e90c8bbbe123e6a3e34b9bf24d3c949ecbfb331c1d074438cd4030c116acbcf688dabfb5f1b"
+     },
+     "deposit": {
+      "amount": "100000",
+      "authorization": {
+       "erc3009Authorization": {
+        "validAfter": "0",
+        "validBefore": "1790003600",
+        "salt": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        "signature": "0x7e1ffb6260e6b50c7ae2c704a42ad00dc411cf69bf4e44a5f084d88dd284d5670643d3bdbfc30226ec2b400d77f5cb3df9423e47e00832eb32c2d53405f2b29e1b"
+       }
+      }
+     }
+    },
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   },
+   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectRef": {
+    "network": "eip155:84532",
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "scheme": "eip3009",
+    "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+    "payer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    "channel": "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0",
+    "payerAuthorizer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    "receiver": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+    "receiverAuthorizer": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+    "withdrawDelay": 900,
+    "salt": "0x0000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+    "nonce": "0x96d0141b60b98546374903203fad59c0966bf7e97334672a23b37e940f165986",
+    "settleBy": "1790003600",
+    "amount": "100000",
+    "refundAuthorizer": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+    "payee": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+   },
+   "input": "0x140f1e75000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000000003840000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc00000000000000000000000000000000000000000000000000000000000186a00000000000000000000000004020806089470a89826cb9fb1f4059150b550004000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006ab14990ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000417e1ffb6260e6b50c7ae2c704a42ad00dc411cf69bf4e44a5f084d88dd284d5670643d3bdbfc30226ec2b400d77f5cb3df9423e47e00832eb32c2d53405f2b29e1b00000000000000000000000000000000000000000000000000000000000000",
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x96d0141b60b98546374903203fad59c0966bf7e97334672a23b37e940f165986"
+      ],
+      "data": "0x"
+     },
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     },
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x0000000000000000000000004020806089470a89826cb9fb1f4059150b550004",
+       "0x0000000000000000000000004020074e9df2ce1dee5a9c1b5c3f541d02a10003"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     },
+     {
+      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+      "topics": [
+       "0x69d8248d5566bdb2ebc4d218970710d8378a2ff9b709a999e052b71970f808fa",
+       "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0"
+      ],
+      "data": "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000000003840000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+     },
+     {
+      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+      "topics": [
+       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
+       "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0",
+       "0x00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a000000000000000000000000000000000000000000000000000000000000186a0"
+     }
+    ]
+   },
+   "expectStatus": {
+    "state": "settled",
+    "transaction": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+    "position": "100",
+    "finality": "finalized",
+    "moved": [
+     {
+      "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      "amount": "100000",
+      "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+      "transaction": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "place": 4
+     }
+    ],
+    "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    "presented": "yes",
+    "foreign": []
+   },
+   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "permit2": {
+   "case": "the Permit2 deposit: the permit's nonce is H, in decimal",
+   "digest": "0xd0b8a21bc0ef0879af56851b6af76ea97ea037fb8a475d7a0d074ec500c38758",
+   "signature": "0x019bb86d722456a0090d047feb1cc420be79cceecc33492b1df9d9801b11cb1419237b07acc6da6d364c0ba9f76317a93ae4463795da9ce08664c131114034e51b",
+   "voucherSignature": "0xb3159359cb8a9c6ebc4061479e2f282b8ad78ed3271e362c4e94d54e90c8bbbe123e6a3e34b9bf24d3c949ecbfb331c1d074438cd4030c116acbcf688dabfb5f1b",
+   "expectPayload": {
+    "x402Version": 2,
+    "resource": {
+     "url": "https://api.seller.example/v1/quote"
+    },
+    "accepted": {
+     "scheme": "batch-settlement",
+     "network": "eip155:84532",
+     "amount": "1000",
+     "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+     "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "maxTimeoutSeconds": 3600,
+     "extra": {
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "withdrawDelay": 900,
+      "name": "USDC",
+      "version": "2",
+      "voucherManager": "facilitator",
+      "refundAuthorizer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      "assetTransferMethod": "permit2"
+     }
+    },
+    "payload": {
+     "type": "deposit",
+     "channelConfig": {
+      "payer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+      "payerAuthorizer": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      "receiver": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+      "receiverAuthorizer": "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
+      "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "withdrawDelay": 900,
+      "salt": "0x0000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+     },
+     "voucher": {
+      "channelId": "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0",
+      "maxClaimableAmount": "1000",
+      "signature": "0xb3159359cb8a9c6ebc4061479e2f282b8ad78ed3271e362c4e94d54e90c8bbbe123e6a3e34b9bf24d3c949ecbfb331c1d074438cd4030c116acbcf688dabfb5f1b"
+     },
+     "deposit": {
+      "amount": "100000",
+      "authorization": {
+       "permit2Authorization": {
+        "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "permitted": {
+         "token": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+         "amount": "100000"
+        },
+        "spender": "0x4020425FAf3B746C082C2f942b4E5159887B0005",
+        "nonce": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
+        "deadline": "1790003600",
+        "witness": {
+         "channelId": "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0"
+        },
+        "signature": "0x019bb86d722456a0090d047feb1cc420be79cceecc33492b1df9d9801b11cb1419237b07acc6da6d364c0ba9f76317a93ae4463795da9ce08664c131114034e51b"
+       }
+      }
+     }
+    },
+    "extensions": {
+     "legalContext": {
+      "info": {
+       "type": "sha256",
+       "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+       "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+      },
+      "schema": {
+       "$schema": "https://json-schema.org/draft/2020-12/schema",
+       "type": "object",
+       "properties": {
+        "type": {
+         "const": "sha256"
+        },
+        "value": {
+         "type": "string",
+         "pattern": "^0x[0-9a-f]{64}$"
+        },
+        "legalContextUrl": {
+         "type": "string",
+         "pattern": "^https://"
+        }
+       },
+       "required": [
+        "type",
+        "value",
+        "legalContextUrl"
+       ]
+      }
+     }
+    }
+   },
+   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "expectRef": {
+    "network": "eip155:84532",
+    "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "scheme": "permit2",
+    "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+    "payer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    "channel": "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0",
+    "payerAuthorizer": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+    "receiver": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+    "receiverAuthorizer": "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
+    "withdrawDelay": 900,
+    "salt": "0x0000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+    "nonce": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "settleBy": "1790003600",
+    "amount": "100000",
+    "refundAuthorizer": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
+    "payee": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C"
+   },
+   "input": "0x140f1e75000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000000003840000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc00000000000000000000000000000000000000000000000000000000000186a00000000000000000000000004020425faf3b746c082c2f942b4e5159887b000500000000000000000000000000000000000000000000000000000000000001400000000000000000000000000000000000000000000000000000000000000120ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad000000000000000000000000000000000000000000000000000000006ab14990000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000041019bb86d722456a0090d047feb1cc420be79cceecc33492b1df9d9801b11cb1419237b07acc6da6d364c0ba9f76317a93ae4463795da9ce08664c131114034e51b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "receipt": {
+    "status": 1,
+    "blockNumber": "100",
+    "logs": [
+     {
+      "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "topics": [
+       "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+       "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+       "0x0000000000000000000000004020074e9df2ce1dee5a9c1b5c3f541d02a10003"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a0"
+     },
+     {
+      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+      "topics": [
+       "0x69d8248d5566bdb2ebc4d218970710d8378a2ff9b709a999e052b71970f808fa",
+       "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0"
+      ],
+      "data": "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb9226600000000000000000000000070997970c51812dc3a010c7d01b50e0d17dc79c8000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906000000000000000000000000036cbd53842c5426634e7929541ec2318f3dcf7e00000000000000000000000000000000000000000000000000000000000003840000000000000000000000013c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+     },
+     {
+      "address": "0x4020074e9dF2ce1deE5A9C1b5c3f541D02a10003",
+      "topics": [
+       "0x6c2a09353b5e75e70d0b9778b80a413809bb235d46c211811c474b3346791d89",
+       "0x4f0ae1be4806eba772bd37233aa6e6d00e0052ab335837fe2d5c64ba126143a0",
+       "0x00000000000000000000000090f79bf6eb2c4f870365e785982e1f101e93b906"
+      ],
+      "data": "0x00000000000000000000000000000000000000000000000000000000000186a000000000000000000000000000000000000000000000000000000000000186a0"
+     }
+    ]
+   },
+   "expectStatus": {
+    "state": "settled",
+    "transaction": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+    "position": "100",
+    "finality": "finalized",
+    "moved": [
+     {
+      "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+      "amount": "100000",
+      "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+      "transaction": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+      "place": 2
+     }
+    ],
+    "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+    "presented": "yes",
+    "foreign": []
+   },
+   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  }
  },
  "ES1": {
   "channelPda": "8msh7T45JEaicCMYm5TZeUNeh3WjU1Xb9pAnQet4oek8",

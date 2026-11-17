@@ -15,7 +15,9 @@ import {
   isSignerRole,
   isWritableRole,
 } from "@solana/kit";
-import { hashDomain, hashTypedData, keccak256, toBytes, toEventSelector } from "viem";
+import { encodeAbiParameters, hashDomain, hashTypedData, keccak256, toBytes, toEventSelector, toFunctionSelector } from "viem";
+import { batchSettlementABI } from "@x402/evm/batch-settlement";
+import { buildChannelConfig, computeChannelId } from "@x402/evm/batch-settlement/client";
 import { privateKeyToAccount } from "viem/accounts";
 import { ReaderError, type EvmReader, type EvmReceipt, type Hex } from "../src/evm.js";
 import { pairingOf, type AtrHash, type Refusal } from "../src/index.js";
@@ -100,7 +102,11 @@ async function evmOpening(method?: "permit2"): Promise<{ u: BatchUnsigned; payme
   return { u, payment: unwrap(u.complete([s1, s2])) };
 }
 
-function evmReaderFor(receipt: unknown): EvmReader {
+/**
+ * A reader of one receipt at EB7's marks, whose `authorizationState` reads the deposit nonce used from block `used`, and
+ * Permit2's `nonceBitmap` every bit set from it; its transaction, where `input` is given, carries that input.
+ */
+function evmReaderFor(receipt: unknown, used?: bigint, input?: string): EvmReader {
   return {
     network: "eip155:84532",
     receipt: async () => {
@@ -110,12 +116,14 @@ function evmReaderFor(receipt: unknown): EvmReader {
       return { status: r.status, blockNumber: BigInt(r.blockNumber), logs: r.logs };
     },
     blockNumber: async (tag) => BigInt(tag === "finalized" ? V.EB7.reader.finalized : V.EB7.reader.safe),
-    transaction: async () => null,
-    call: async () => {
-      throw new ReaderError("transport");
+    transaction: async () => (input === undefined ? null : { from: E.receiverAuthorizer, to: batchSettlement.BATCH_SETTLEMENT, input: input as Hex }),
+    call: async (to, _data, block) => {
+      const set = to.toLowerCase() === PERMIT2_AT ? (1n << 256n) - 1n : 1n;
+      return `0x${(used !== undefined && block >= used ? set : 0n).toString(16).padStart(64, "0")}` as Hex;
     },
   };
 }
+const PERMIT2_AT = "0x000000000022d473030f116ddee9f6b43ac78ba3";
 
 // x402's batch-settlement EVM payloads written by hand (x402 751590a2, scheme_batch_settlement_evm.md L118-221; the
 // steward SDK's Permit2 deposit, client/permit2.ts L37-50 and L77-90) in x402 v2's PaymentPayload (§5.2.1): each EB
@@ -257,20 +265,16 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(await batchEvm.channel.boundWithin(matched)).not.toBe(H);
   });
 
-  it("EB7: status on the opening's reference, and its plants", async () => {
+  it("EB7: status from what landed: the opening, a later deposit into the channel, and another contract's log", async () => {
     const { payment } = await evmOpening();
     const ref = unwrap(await evmReference(payment));
-    expect(ref.transferLog?.digest).toBe(V.EB7.transferDigest);
+    expect([ref.channel, ref.nonce, ref.amount]).toEqual([V.EB1.channelId, V.EB3.depositNonce, V.fixed.evm.deposit]);
     const tx = ("0x" + "ab".repeat(32)) as Hex;
-    const settled = await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(V.EB7.receipt), Q);
-    expect(JSON.parse(JSON.stringify(settled, (_, v) => (typeof v === "bigint" ? v.toString() : v)))).toEqual(V.EB7.expect);
-    expect(await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(V.EB7.plantGift.receipt), Q)).toEqual(V.EB7.plantGift.expect);
-    expect(await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(V.EB7.plantOtherContract.receipt), Q)).toEqual(
-      V.EB7.plantOtherContract.expect,
-    );
-    for (const row of [V.EB7.fullCall, V.EB7.plantGiftBesideDeposit, V.EB7.plantShortBesideDeposit]) {
-      const s = await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(row.receipt), Q);
-      expect(JSON.parse(JSON.stringify(s, (_, v) => (typeof v === "bigint" ? v.toString() : v))), row.case).toEqual(row.expect);
+    const plain = (x: unknown) => JSON.parse(JSON.stringify(x, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
+    const used = BigInt(V.EB7.reader.used);
+    expect(plain(await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(V.EB7.fullCall.receipt, used), Q))).toEqual(V.EB7.fullCall.expect);
+    for (const row of [V.EB7.laterDeposit, V.EB7.plantOtherContract]) {
+      expect(plain(await batchEvm.status({ ...ref, transaction: tx }, evmReaderFor(row.receipt), Q)), row.case).toEqual(row.expect);
     }
     expect(V.EB7.fullCall.receipt.logs[3]).toEqual(V.EB8.log);
     expect(V.EB7.fullCall.receipt.logs[0].topics[2]).toBe(V.EB3.depositNonce);
@@ -285,11 +289,97 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(await batchEvm.reference({ x402Version: 1 }, noPayee as PaymentRequirements)).toEqual(refused("x402/not-v2"));
   });
 
+  it("EB7: reference refuses an opening whose accepted is not the option it is given, after the payment and the payee", async () => {
+    const { payment } = await evmOpening();
+    const other = { ...E.option, amount: "1001" } as PaymentRequirements;
+    expect(await batchEvm.reference(payment, other)).toEqual(refused("x402/accepted-not-option"));
+    const { payTo: _payTo, ...noPayee } = other;
+    expect(await batchEvm.reference(payment, noPayee as PaymentRequirements)).toEqual(refused("x402/option-malformed"));
+    // The same option in another member order is the option: RFC 8785 form is compared.
+    const reordered = Object.fromEntries(Object.entries(acceptedOf(payment)).reverse()) as PaymentRequirements;
+    expect((unwrap(await batchEvm.reference(payment, reordered)) as { channel: string }).channel).toBe(V.EB1.channelId);
+  });
+
+  it("EB7: the read takes the channel's payer, receiver and token as its id commits to them: a reference whose config is not its channel's is unparseable", async () => {
+    const { payment } = await evmOpening();
+    const ref = { ...unwrap(await evmReference(payment)), transaction: ("0x" + "ab".repeat(32)) as Hex };
+    const reader = () => evmReaderFor(V.EB7.fullCall.receipt, BigInt(V.EB7.reader.used));
+    expect((await batchEvm.status(ref, reader(), Q)).state).toBe("settled");
+    for (const [member, value] of [
+      ["receiver", E.receiverAuthorizer],
+      ["payer", E.payerAuthorizer],
+      ["asset", E.receiver],
+      ["withdrawDelay", 901],
+    ] as const) {
+      expect(await batchEvm.status({ ...ref, [member]: value } as never, reader(), Q), member).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
+    }
+    // A reference on a network that is not eip155:<chain id> holds no channel id: unparseable, never thrown.
+    const odd = { network: "eip155:x", receipt: async () => null } as unknown as EvmReader;
+    expect(await batchEvm.status({ ...ref, network: "eip155:x" } as never, odd, Q)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
+  });
+
+  it("EB7: the search reads the receipt of a ChannelCreated whose config's salt is H, or whose data it cannot decode, and of no other channel's opening", async () => {
+    const { payment } = await evmOpening();
+    const ref = unwrap(await evmReference(payment));
+    const word = (a: string) => a.slice(2).toLowerCase().padStart(64, "0");
+    const configData = (c: ChannelConfig) =>
+      `0x${[c.payer, c.payerAuthorizer, c.receiver, c.receiverAuthorizer, c.token].map(word).join("")}${BigInt(c.withdrawDelay).toString(16).padStart(64, "0")}${c.salt.slice(2)}` as Hex;
+    const carrying: ChannelConfig = { ...E.config, payer: E.payerAuthorizer };
+    const otherSalt: ChannelConfig = { ...E.config, salt: H2 };
+    const created = (c: ChannelConfig) => ({ address: batchSettlement.BATCH_SETTLEMENT, topics: [CHANNEL_CREATED_TOPIC, batchChannelId(84532, c) as Hex], data: configData(c) });
+    const tx = (b: string) => `0x${b.repeat(32)}` as Hex;
+    const entries = [
+      { ...created(otherSalt), transactionHash: tx("01"), blockNumber: 101n, logIndex: 0 },
+      { ...created(carrying), transactionHash: tx("02"), blockNumber: 102n, logIndex: 0 },
+      { address: batchSettlement.BATCH_SETTLEMENT, topics: [CHANNEL_CREATED_TOPIC, tx("77")], data: "0x" as Hex, transactionHash: tx("03"), blockNumber: 103n, logIndex: 0 },
+    ];
+    const asked: string[] = [];
+    const reader: EvmReader = {
+      ...evmReaderFor(null),
+      block: async (at) => ({ number: at === "latest" ? 110n : at === "safe" ? 105n : at === "finalized" ? 100n : (at as bigint), timestamp: 1n }),
+      logs: async (f) => (f.topics[0]?.toLowerCase() === CHANNEL_CREATED_TOPIC.toLowerCase() ? entries : []),
+      receipt: async (h) => {
+        asked.push(h);
+        const e = entries.find((x) => x.transactionHash === h)!;
+        return { status: 1, blockNumber: e.blockNumber, logs: [{ address: e.address, topics: e.topics, data: e.data }] };
+      },
+    };
+    const answer = await batchEvm.status(ref, reader, { ...Q, after: 99n });
+    expect(asked.sort()).toEqual([tx("02"), tx("03")]);
+    expect(answer).toMatchObject({ state: "pending", reason: "instrument-live" });
+  });
+
+  it("EB7: another channel's opening carrying H is the payer's only with the payer's transfer of its deposit, since the channel contract takes any collector", async () => {
+    const { payment } = await evmOpening();
+    const ref = { ...unwrap(await evmReference(payment)), transaction: ("0x" + "ab".repeat(32)) as Hex };
+    const word = (a: string) => a.slice(2).toLowerCase().padStart(64, "0");
+    const other: ChannelConfig = { ...E.config, payerAuthorizer: E.receiverAuthorizer };
+    const id = batchChannelId(84532, other) as Hex;
+    const data = `0x${[other.payer, other.payerAuthorizer, other.receiver, other.receiverAuthorizer, other.token].map(word).join("")}${(900).toString(16).padStart(64, "0")}${H.slice(2)}` as Hex;
+    const created = { address: batchSettlement.BATCH_SETTLEMENT, topics: [CHANNEL_CREATED_TOPIC, id], data };
+    const deposited = { address: batchSettlement.BATCH_SETTLEMENT, topics: [DEPOSITED_TOPIC, id, `0x${word(E.receiverAuthorizer)}`], data: `0x${(100000).toString(16).padStart(64, "0").repeat(2)}` as Hex };
+    const transfer = (from: string) => ({
+      address: E.token,
+      topics: ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", `0x${word(from)}`, `0x${word(batchSettlement.BATCH_SETTLEMENT)}`],
+      data: `0x${(100000).toString(16).padStart(64, "0")}` as Hex,
+    });
+    const read = (logs: unknown[]) => batchEvm.status(ref, evmReaderFor({ status: 1, blockNumber: "100", logs }), Q);
+    // Funded by another account through a collector of its own: no signer is shown, and no sale settles on it.
+    expect(await read([transfer(E.receiverAuthorizer), created, deposited])).toMatchObject({
+      state: "pending",
+      reason: "search-incomplete",
+      foreign: [{ transaction: ref.transaction, reason: "other-signer" }],
+    });
+    expect(((await read([transfer(E.receiverAuthorizer), created, deposited])) as unknown as { foreign: { signer?: string }[] }).foreign[0]!.signer).toBeUndefined();
+    // With the payer's transfer it is the payer's opening of another channel under H: settled, presented no.
+    expect(await read([transfer(E.payer), created, deposited])).toMatchObject({ state: "settled", presented: "no", signer: E.payer.toLowerCase() });
+  });
+
   it("EB7: the settled deposit at or before the position the caller gives is failed before-position", async () => {
     const { payment } = await evmOpening();
     const ref = { ...unwrap(await evmReference(payment)), transaction: ("0x" + "ab".repeat(32)) as Hex };
-    const read = (after: bigint) => batchEvm.status(ref, evmReaderFor(V.EB7.receipt), { ...Q, after });
-    expect(await read(100n)).toEqual({
+    const read = (after: bigint) => batchEvm.status(ref, evmReaderFor(V.EB7.fullCall.receipt, BigInt(V.EB7.reader.used)), { ...Q, after });
+    expect(await read(100n)).toMatchObject({
       state: "failed",
       reason: "before-position",
       transaction: ref.transaction,
@@ -305,15 +395,137 @@ describe("x402-batch-settlement.json: EVM", () => {
   // the id in its topic, or is not seven words, is such an answer; batchChannelCreated, given the same log, names why.
   it("EB8: recover", async () => {
     const tx = ("0x" + "cd".repeat(32)) as Hex;
-    const ok = evmReaderFor({ status: 1, blockNumber: "100", logs: [V.EB8.log] });
+    const ok = evmReaderFor(V.EB7.fullCall.receipt);
     expect(await batchEvm.recover({ network: "eip155:84532", tx, option: E.option }, ok)).toBe(V.EB8.expect);
-    const bad = evmReaderFor({ status: 1, blockNumber: "100", logs: [V.EB8.word0Changed] });
+    const bad = evmReaderFor({ status: 1, blockNumber: "100", logs: V.EB7.fullCall.receipt.logs.map((l: unknown) => (JSON.stringify(l) === JSON.stringify(V.EB8.log) ? V.EB8.word0Changed : l)) });
     expect(await batchEvm.recover({ network: "eip155:84532", tx, option: E.option }, bad)).toEqual(refused(V.EB8.expectWord0));
     expect(batchChannelCreated(V.EB8.word0Changed, 84532)).toEqual(refused("evm/channel-id-mismatch"));
     const short = { ...V.EB8.log, data: (V.EB8.log.data as string).slice(0, -2) };
-    const shortRead = evmReaderFor({ status: 1, blockNumber: "100", logs: [short] });
+    const shortRead = evmReaderFor({ status: 1, blockNumber: "100", logs: V.EB7.fullCall.receipt.logs.map((l: unknown) => (JSON.stringify(l) === JSON.stringify(V.EB8.log) ? short : l)) });
     expect(await batchEvm.recover({ network: "eip155:84532", tx, option: E.option }, shortRead)).toEqual(refused("evm/unreadable"));
     expect(batchChannelCreated(short, 84532)).toEqual(refused("evm/field-malformed"));
+  });
+
+  it("EB8: recover requires the payer's transfer of the channel's deposit, at or below the final mark", async () => {
+    const tx = ("0x" + "cd".repeat(32)) as Hex;
+    const full = V.EB7.fullCall.receipt;
+    const at = (logs: unknown[], blockNumber = "100") => evmReaderFor({ status: 1, blockNumber, logs });
+    const recover = (r: EvmReader) => batchEvm.recover({ network: "eip155:84532", tx, option: E.option }, r);
+    const transfer = full.logs[1];
+    const word = (n: bigint) => `0x${n.toString(16).padStart(64, "0")}`;
+    for (const [label, logs] of [
+      ["the ChannelCreated alone", [V.EB8.log]],
+      ["without the payer's transfer to the collector", full.logs.filter((_: unknown, i: number) => i !== 1)],
+      ["the payer's transfer of another amount", full.logs.map((l: unknown, i: number) => (i === 1 ? { ...transfer, data: word(99999n) } : l))],
+      ["a transfer of the amount from another account", full.logs.map((l: unknown, i: number) => (i === 1 ? { ...transfer, topics: [transfer.topics[0], full.logs[2].topics[1], transfer.topics[2]] } : l))],
+      ["without the channel's Deposited", full.logs.filter((_: unknown, i: number) => i !== 4)],
+    ] as const) {
+      expect(await recover(at(logs as unknown[])), label).toEqual(refused("evm/no-payer-deposit"));
+      expect(await recover(at(logs as unknown[], "101")), `${label}, above the final mark`).toEqual(refused("evm/not-final"));
+    }
+    // Through Permit2 the payer's transfer goes to the channel contract itself.
+    const viaPermit2 = [{ ...transfer, topics: [transfer.topics[0], transfer.topics[1], full.logs[2].topics[2]] }, full.logs[3], full.logs[4]];
+    expect(await recover(at(viaPermit2))).toBe(V.EB8.expect);
+  });
+});
+
+describe("x402-batch-settlement.json EB10: the refund-authorizer mode", () => {
+  const R = V.EB10;
+  const option: PaymentRequirements = R.option;
+  const network = "eip155:84532" as const;
+  const tx = R.transaction as Hex;
+  const plain = (x: unknown) => JSON.parse(JSON.stringify(x, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
+  const lower = (x: unknown) => JSON.parse(JSON.stringify(x, (_, v) => (typeof v === "string" ? v.toLowerCase() : v)));
+  const doc = () => unwrap(batchEvm.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [option] }, H, V.fixed.link, option));
+  async function opening(method: "eip3009" | "permit2", authSalt: string = R.packing[0].entropy) {
+    const placed = doc();
+    const accepted = method === "eip3009" ? placed.accepts[0]! : { ...placed.accepts[0]!, extra: { ...placed.accepts[0]!.extra, assetTransferMethod: "permit2" } };
+    const u = unwrap(
+      await batchEvm.build(
+        { required: { ...placed, accepts: [accepted] }, accepted, from: E.payer, now: E.now, payerAuthorizer: E.payerAuthorizer, deposit: BigInt(E.deposit), authSalt: authSalt as Hex },
+        H,
+      ),
+    );
+    const td = (i: number) => forViem(u.requests[i]!.kind === "eip712" ? u.requests[i]!.typedData : undefined);
+    const s1 = await privateKeyToAccount(E.payerKey).signTypedData(td(0));
+    const s2 = await privateKeyToAccount(E.payerAuthorizerKey).signTypedData(td(1));
+    return { u, digest: hashTypedData(td(0)), payment: unwrap(u.complete([s1, s2])) };
+  }
+
+  it("the stock client's channel config: its packed salt and channel id, and the ERC-3009 deposit nonce for H", () => {
+    for (const row of R.packing) {
+      const config = buildChannelConfig({ signer: { address: E.payer }, salt: row.entropy, payerAuthorizer: E.payerAuthorizer } as never, option as never);
+      expect(config).toEqual(row.expectChannelConfig);
+      expect(computeChannelId(config as never, option.network)).toBe(row.expectChannelId);
+      expect(batchChannelId(84532, lower(config))).toBe(row.expectChannelId);
+      expect(keccak256(encodeAbiParameters([{ type: "bytes32" }, { type: "uint256" }], [row.expectChannelId, BigInt(H)]))).toBe(row.expectDepositNonce);
+      expect(erc3009DepositNonce(row.expectChannelId, H)).toBe(row.expectDepositNonce);
+    }
+    // The deposit call's selector is the stock ABI's.
+    expect(toFunctionSelector(batchSettlementABI.find((x) => x.type === "function" && x.name === "deposit") as never)).toBe(R.eip3009.input.slice(0, 10));
+  });
+
+  it("build packs the channel salt as the stock client does, from either entropy, and puts H in the deposit authorization", async () => {
+    for (const row of R.packing) {
+      const { payment } = await opening("eip3009", row.entropy);
+      const p = payment.payload as Record<string, any>;
+      expect(lower(p["channelConfig"])).toEqual(lower(row.expectChannelConfig));
+      expect(p["voucher"].channelId).toBe(row.expectChannelId);
+      expect(p["deposit"].authorization.erc3009Authorization.salt).toBe(H);
+    }
+    for (const method of ["eip3009", "permit2"] as const) {
+      const { payment, digest } = await opening(method);
+      expect(digest, method).toBe(R[method].digest);
+      expect(JSON.stringify(payment), method).toBe(JSON.stringify(R[method].expectPayload));
+      expect(await batchEvm.bound(payment), method).toBe(R[method].expectBound);
+      expect(unwrap(await evmReference(payment)), method).toEqual(R[method].expectRef);
+    }
+    expect((R.permit2.expectPayload.payload.deposit.authorization.permit2Authorization.nonce as string)).toBe(BigInt(H).toString());
+    expect(R.eip3009.expectRef.nonce).toBe(R.packing[0].expectDepositNonce);
+  });
+
+  it("bound, reference and buildWithin refuse a channel under the mode whose salt does not end in its refund authorizer; a later payment carries no H", async () => {
+    const { payment } = await opening("eip3009");
+    const p = payment.payload as Record<string, any>;
+    // The opening the pairing wrote before this mode was read: the channel salt H, unpacked.
+    const unpacked = { ...p["channelConfig"], salt: H };
+    const id = batchChannelId(84532, unpacked) as Hex;
+    const plantedOpening = { ...payment, payload: { ...p, channelConfig: unpacked, voucher: { ...p["voucher"], channelId: id } } };
+    expect(await batchEvm.bound(plantedOpening)).toEqual(refused("x402/channel-id-mismatch"));
+    expect(await evmReference(plantedOpening)).toEqual(refused("x402/channel-id-mismatch"));
+    const voucher = { ...payment, payload: { type: "voucher", channelConfig: p["channelConfig"], voucher: p["voucher"] } };
+    expect(await batchEvm.channel.boundWithin(voucher)).toEqual(refused("x402/not-bound-within"));
+    expect(await batchEvm.channel.ref(voucher)).toEqual({ network: option.network, channel: R.packing[0].expectChannelId });
+    const within = (config: unknown) =>
+      batchEvm.buildWithin({ required: doc(), accepted: doc().accepts[0]!, channelConfig: config as never, maxClaimableAmount: 2000n }, H);
+    expect(unwrap(await within(p["channelConfig"])).requests).toHaveLength(1);
+    expect(await within(unpacked)).toEqual(refused("x402/channel-id-mismatch"));
+  });
+
+  it("status and recover read H from what landed: the deposit authorization's use and the deposit call", async () => {
+    for (const method of ["eip3009", "permit2"] as const) {
+      const ref = { ...(R[method].expectRef as object), transaction: tx } as never;
+      const reader = (logs = R[method].receipt.logs, input: string = R[method].input) =>
+        evmReaderFor({ ...R[method].receipt, logs }, BigInt(R.reader.used), input);
+      expect(plain(await batchEvm.status(ref, reader(), Q)), method).toEqual(R[method].expectStatus);
+      expect(await batchEvm.recover({ network, tx, option }, reader()), method).toBe(R[method].expectRecover);
+      // Under an option of the other mode the transaction carries the packed salt in H's place.
+      expect(await batchEvm.recover({ network, tx, option: E.option }, reader()), method).toBe(R[method].expectPayload.payload.channelConfig.salt);
+      expect(await batchEvm.recover({ network, tx, option }, reader(undefined, "0x")), method).toEqual(refused("evm/no-deposit-call"));
+      // The collector data's value changed: the token logged no use of its nonce, or Permit2 set no bit for it.
+      const at = R[method].input.indexOf(H.slice(2));
+      const changed = R[method].input.slice(0, at) + "00" + R[method].input.slice(at + 2);
+      expect(await batchEvm.recover({ network, tx, option }, method === "eip3009" ? reader(undefined, changed) : evmReaderFor(R[method].receipt, 101n, R[method].input)), method).toEqual(
+        refused(method === "eip3009" ? "evm/no-authorization-use" : "evm/nonce-not-used"),
+      );
+    }
+  });
+
+  it("the filter refuses an option whose extra.refundAuthorizer is present and is no address, at read and at advertise", () => {
+    const bad = { ...option, extra: { ...option.extra, refundAuthorizer: "0x1234" } } as PaymentRequirements;
+    const document = { ...doc(), accepts: [bad] } as PaymentRequired;
+    expect(batchEvm.read(document)).toEqual(refused("x402/no-payable-option"));
+    expect(batchEvm.advertise(document, H, V.fixed.link, bad)).toEqual(refused("x402/option-malformed"));
   });
 });
 
@@ -672,7 +884,7 @@ describe("x402-batch-settlement.json: a decimal with a leading zero", () => {
     expect(await batchEvm.bound(padded)).toBe(V.EB6.expectBound);
     expect(await batchEvm.channel.ref(padded)).toEqual(V.EB6.expectRef);
     const ref = unwrap(await evmReference(padded));
-    expect([ref.transferLog?.digest, ref.settleBy]).toEqual([V.EB7.transferDigest, E.validBefore]);
+    expect([ref.amount, ref.settleBy]).toEqual([E.deposit, E.validBefore]);
     expect(ref).toEqual(unwrap(await evmReference(payment)));
     const wide = { ...payment, payload: { ...p, deposit: { ...p["deposit"], amount: E.deposit.padStart(40, "0") } } };
     expect(await batchEvm.bound(wide)).toBe(V.EB6.expectBound);
@@ -865,8 +1077,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
       for (const amount of [1n, 2n ** 128n - 1n]) {
         expect(await batchEvm.bound(withAmount(amount.toString())), `${form} ${amount}`).toBe(H);
         const ref = unwrap(await evmReference(withAmount(amount.toString())));
-        const digest = createHash("sha256").update(Buffer.concat([fromHex(E.payer.slice(2)), fromHex(to.slice(2)), word(amount)]));
-        expect(ref.transferLog?.digest, `${form} ${amount}`).toBe(`0x${digest.digest("hex")}`);
+        expect(ref.amount, `${form} ${amount}`).toBe(amount.toString());
       }
     }
   });
@@ -941,7 +1152,7 @@ describe("x402-batch-settlement.json: the agreedRefusals rows that carry their i
         const label = `${form} ${JSON.stringify(members)}`;
         const id = viemChannelId(config).toLowerCase();
         expect(await runs["bound"]!(), label).toBe(H);
-        expect((unwrap(await runs["reference"]!()) as { bindingLog: { value: string } }).bindingLog.value, label).toBe(id);
+        expect((unwrap(await runs["reference"]!()) as { channel: string }).channel, label).toBe(id);
         expect(await runs["channel.ref"]!(), label).toEqual({ network: "eip155:84532", channel: id });
         expect(await runs["channel.boundWithin"]!(), label).toBe(H);
         expect("refused" in (unwrap(await runs["buildWithin"]!()) as object), label).toBe(false);
@@ -1219,12 +1430,12 @@ describe("x402-batch-settlement.json agreedRefusals: the rows that carry only ca
         await batchSvm.channel.ref(svmVoucherPayment(svmSaltText)),
       ];
     },
-    // EB7's receipt holds a transfer and a Deposited log; its other-contract plant holds the same with the Deposited
-    // log from another address; the last receipt holds EB8's ChannelCreated log from that other address.
+    // EB7's later deposit holds a Deposited log alone; its other-contract plant a transfer and a Deposited log
+    // from another address; the last receipt holds EB8's ChannelCreated log from that other address.
     "recover when no ChannelCreated log from the channel contract is in the receipt": async () => {
       const other = V.EB7.plantOtherContract.receipt.logs[1].address as string;
       return [
-        await batchEvm.recover(named, evmReaderFor(V.EB7.receipt)),
+        await batchEvm.recover(named, evmReaderFor(V.EB7.laterDeposit.receipt)),
         await batchEvm.recover(named, evmReaderFor(V.EB7.plantOtherContract.receipt)),
         await batchEvm.recover(named, evmReaderFor({ status: 1, blockNumber: "100", logs: [{ ...V.EB8.log, address: other }] })),
       ];

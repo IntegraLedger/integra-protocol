@@ -1,7 +1,43 @@
 **LCP profile `x402/auth-capture/eip155`: the ATR hash as the escrow payment's salt.**
 
+This profile covers `x402/auth-capture/eip155/eip3009` and `x402/auth-capture/eip155/permit2`: x402's `auth-capture` scheme, the commerce-payments escrow flow, on an EVM chain, the payer's token authorization redeemed by the escrow deployment's EIP-3009 or Permit2 collector. H is in the escrow payment's `PaymentInfo.salt`, so both pairings are at coverage `full`. The hold is the payment; capture, void, refund and reclaim are the operator's and the payer's, and this profile defines no read of them.
+
+**The payment**
+
 1. The resource server's `PaymentRequired` carries `extensions.legalContext.info` = `{"type":"sha256","value":H,"legalContextUrl":L}`. H is the SHA-256 of the ATR's exact bytes, as `0x` lowercase hex, and L is an `https` URL that serves those bytes.
 2. The client fetches L, computes SHA-256 over the bytes received, and compares the result with H as 32 decoded bytes. On a mismatch it does not sign.
 3. On a match, the client uses H as its random 32 bytes: `salt` = H when `receiverAuthorizer` and `policy` are both zero; otherwise `saltNonce` = H and `salt` is the scheme's commitment over it.
 4. The server refuses a payment whose salt or saltNonce is not an H it issued for that request, or whose signed nonce does not commit to it.
-5. The salt is in the escrow's `PaymentAuthorized` or `PaymentCharged` data, and a holder of the ATR confirms H from it.
+5. The salt is in the escrow's `PaymentAuthorized` or `PaymentCharged` data, and a holder of the ATR confirms H from it. `recover` takes `{network, tx, option}`, of which it reads the option's escrow deployment (`extra.authCaptureEscrow`, v1.1's where absent); it reads the transaction's receipt and returns the `PaymentInfo.salt`, data word 11, of the escrow's `PaymentAuthorized` or `PaymentCharged` logs whose token collector, data word 13, is that deployment's collector for the pairing's scheme, which alone redeems the authorization the payer signed: the value the transaction carries in H's place, which is H where the option binds neither a receiver authorizer nor a policy, and otherwise the commitment over the two and H, which a holder of the ATR computes from the option and its own H and compares, since a commitment is not read back to H. No such log is `evm/no-escrow-payment`, more than one distinct salt `evm/ambiguous`, a reverted transaction `evm/reverted`, each only at or below the `finalized` mark and `evm/not-final` above it; an option that names no deployment of the escrow is `evm/wrong-reader`, with nothing read.
+6. The option filter takes the escrow deployments v1.1 (escrow `0xf96815976523E00e65Be8f34cA5e64b4f41EB19c`) and v1.0 (escrow `0xBdEA0D1bcC5966192B070Fdf62aB4EF5b4420cff`), the `escrow` flow and the `authorization` flow, which settles as the escrow's `charge`, and refuses `autoCapture`. The token authorization the payer signs, an EIP-3009 `ReceiveWithAuthorization` to the deployment's EIP-3009 collector or a Permit2 permit whose spender is its Permit2 collector, has as its nonce the escrow's payment hash of the `PaymentInfo` with the payer set to zero, so the nonce fixes every member of `PaymentInfo`, the salt among them. The payment hash with the payer is the payment's id.
+
+**The reference**
+
+7. `reference` gives the network, the scheme (`eip3009` or `permit2`), the token, the payer (`PaymentInfo.payer`, the token authorization's signer), the escrow deployment and the event of the option's flow (`PaymentAuthorized` for `escrow`, `PaymentCharged` for `authorization`), the payment id, the signed nonce, the salt, `preApprovalExpiry`, H, the option's payee and the transaction a settler names, a hint. It refuses a payment whose `accepted` is not the option it is given, compared by RFC 8785 form (`x402/accepted-not-option`).
+
+**The read**
+
+`status` reads through a JSON-RPC endpoint the caller supplies: receipts, transactions, `eth_call`, blocks by mark with their timestamps, and `eth_getLogs`.
+
+8. **The single-use value** is the signed nonce, read at the `finalized` block and at the latest block: `authorizationState(payer, nonce)` on the token on `eip3009`, the payer's Permit2 bit on `permit2`. It is a digest over H and the offer's other members, so its read is no search for H, and none is defined: every answer that would be `failed` is `pending`, `search-incomplete`.
+9. **Found by.** The escrow's `PaymentAuthorized` and `PaymentCharged` logs, by the deployment's escrow address and topic, from the block after the position given to the latest head, in pages as `x402/exact/eip155/eip3009` reads them. Each is decoded as the payment hash in topic 1 and data words holding `PaymentInfo`'s twelve members (operator, payer, receiver, token, maxAmount, the three expiries, the two fee bounds, the fee receiver, salt), the amount and the token collector, and is an act carrying H where its salt is the reference's. Every payment of every user of the escrow emits these events, so the read tests each log's salt, data word 11, from the log itself, before it reads that transaction's receipt, and reads a receipt only for a log whose salt is the reference's or whose data holds no such word. An escrow log the read cannot decode holds the search.
+10. **The act.** The option's flow's event through the deployment's collector for the pairing's scheme, which alone redeems the token authorization the payer signed, is an act of this kind; another event, or one through another collector, is an act of another kind. An event through that collector whose payment hash is the presented one consumed the payer's nonce. The signer of H is its `PaymentInfo.payer`, never the transaction's sender, which is the operator.
+11. **The account an act names, and what moved.** The deposit counts where its `PaymentInfo.receiver` is the option's payee. What moved is the event's token and amount to that receiver, named by the transaction and the event's log's place among the receipt's logs: the escrow records a deposit as one event naming one amount.
+12. **A reverted transaction** consumed nothing: the read finds the inline `PaymentInfo` whose last word is the salt in its input and answers a failed result naming the account its `receiver` names.
+13. **The payment presented** is the `PaymentInfo` whole, compared by its payment hash: `presented` is `yes` where the event's payment hash is the presented one, and `no` otherwise. Since the signed nonce fixes every member of the token authorization the collector redeems, an act that consumed it signed the very message presented. The escrow's events are read by their salt, so a second `PaymentInfo` the payer signed carrying H, another member giving it another payment hash, through the deployment's collector and naming the payee as its `receiver`, is an act of this payment though it consumed nothing, and settles it with `presented` `no`.
+14. **Lapse.** `preApprovalExpiry`: the escrow takes the authorization only before it. The nonce unconsumed at a `finalized` block past it is not answered `failed` while no search for H is defined (rule 8).
+15. **Marks.** `latest`, `safe` and `finalized`; final `finalized`. There is no agreement on these pairings: a hold is no agreement.
+
+**What a record proves**
+
+16. That the payer signed a token authorization whose nonce commits, through the escrow's `PaymentInfo`, to a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and the policy when bound; that the token contract or Permit2 verified the signature when the escrow collected the payment, and that the escrow's event in the settlement transaction carries that salt. When bound, a holder of the ATR, the receiver authorizer and the policy can confirm the hash from the salt; the chain alone does not reveal it. The record covers that first collection.
+
+**The read kit**
+
+17. Declared inapplicable to the read kit, each with its reason:
+    - `transaction-failed`, and the cases opening *a failed result that consumed the value*: a reverted transaction consumes no authorization nonce or Permit2 bit.
+    - `not-found`: the read holds its single-use value.
+    - `instrument-unused` and `instrument-consumed`: the single-use value is a digest over H and the offer's other members, so its read is no search for H, and the read defines none (rule 8).
+    - *An act the read cannot place against the position given* (its three cases) and *an item the search could not decode that gives no position*: every log and receipt the read meets names its block.
+    - *A read that did not read the value at the latest head*: the read reads the value at a `finalized` block and at the latest block.
+    - *Each transfer of what moved is named by its transaction and its place*: the escrow records each act as one event naming one amount and one `receiver`.

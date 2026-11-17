@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/auth-capture/eip155/eip3009 on the commerce-payments escrow v1.1. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. captureAuthorizer F is Anvil account 2, receiverAuthorizer R Anvil account 3, feeRecipient Anvil account 4; policy zero. Under the profile read-status, a status row that read failed now reads pending search-incomplete: at coverage full a failed answer waits for a search for H that this pairing does not have yet (rule 24).",
+ "about": "Vectors for x402/auth-capture/eip155/eip3009 on the commerce-payments escrow v1.1. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. captureAuthorizer F is Anvil account 2, receiverAuthorizer R Anvil account 3, feeRecipient Anvil account 4; policy zero. The read's own cases are the read kit's (read-status.json, through the pairing's read-kit form); EV6 holds recover's.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -75,54 +75,71 @@
   }
  },
  "EV6": {
+  "case": "recover on fixture receipts read at block 100 (finalized 100, safe 105). Each row's logs are the escrow v1.1's events, in order: PaymentAuthorized, or PaymentCharged where the row names it, topic 1 EV3.bound.expectPaymentHash, and the data the event's members after its topic as AuthCaptureEscrow.sol declares them (EV5.signatures), encoded by viem's encodeAbiParameters: the fixed payment's PaymentInfo with the row's salt (bound: EV3.expectBindSalt; H: the fixture's H), the amount 10000 and the row's token collector (the deployment's eip3009 or permit2 collector), then for PaymentCharged two zero words. recover returns the PaymentInfo.salt of the one such log through the deployment's collector for the pairing's scheme: on this file's option, whose receiverAuthorizer is R, the commitment EV3.expectBindSalt, which a holder of the ATR computes from the option and its own H (x402's scheme_auth_capture_evm.md L250-267 at x402 751590a2), and H itself on an option that binds neither a receiver authorizer nor a policy. calls is how many eth_calls a row's recover makes: none, its finalized mark being read by block number.",
   "reader": {
    "network": "eip155:84532",
    "finalized": "100",
    "safe": "105"
   },
   "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
-  "authorizedAndTransfer": {
+  "authorized": {
    "logs": [
     {
-     "address": "0xf96815976523E00e65Be8f34cA5e64b4f41EB19c",
-     "topics": [
-      "0x1c81fb2e3bab27f6bb09bee9a0dddf61600b7cbaf2c12683e4864e0cbdb9d284",
-      "0x21a0acc1bbeb5c7e1c4259865dc5bcdb7867f4c07c99440e731d48141d8da556"
-     ],
-     "data": "0x"
-    },
-    {
-     "address": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-     "topics": [
-      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-      "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-      "0x0000000000000000000000008612dfdc421f80336cd14e8ef9cb1e765db5ab88"
-     ],
-     "data": "0x0000000000000000000000000000000000000000000000000000000000002710"
+     "salt": "bound",
+     "collector": "eip3009"
     }
    ],
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "settled",
-    "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
-    "position": "100",
-    "finality": "finalized",
-    "foreign": []
+   "expectRecover": "0x4a7ddc17918c33f6ce173013c74426aed304994db838af82acb19aec125d1be2"
+  },
+  "charged": {
+   "case": "the authorization flow: the escrow's charge emits PaymentCharged, through the same collector",
+   "logs": [
+    {
+     "event": "PaymentCharged",
+     "salt": "bound",
+     "collector": "eip3009"
+    }
+   ],
+   "expectRecover": "0x4a7ddc17918c33f6ce173013c74426aed304994db838af82acb19aec125d1be2"
+  },
+  "unbound": {
+   "case": "an option with no receiverAuthorizer and no policy: the salt is H",
+   "logs": [
+    {
+     "salt": "H",
+     "collector": "eip3009"
+    }
+   ],
+   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "otherCollector": {
+   "case": "the event names the deployment's Permit2 collector, which redeems no EIP-3009 authorization",
+   "logs": [
+    {
+     "salt": "bound",
+     "collector": "permit2"
+    }
+   ],
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/no-escrow-payment"
    }
   },
-  "authorizationFlowOnlyAuthorized": {
-   "paymentFlow": "authorization",
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
+  "twoSalts": {
+   "case": "two events through the collector carrying two salts",
+   "logs": [
+    {
+     "salt": "bound",
+     "collector": "eip3009"
+    },
+    {
+     "salt": "H",
+     "collector": "eip3009"
+    }
+   ],
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/ambiguous"
    }
   }
  },

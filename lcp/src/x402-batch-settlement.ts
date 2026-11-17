@@ -7,6 +7,7 @@
 import { base58 } from "@scure/base";
 import { toLcpString, type AtrHash, type Json } from "./core.js";
 import {
+  addressOfWord,
   addressWord,
   bytes32Word,
   bytesOf,
@@ -21,38 +22,37 @@ import {
 } from "./evm-abi.js";
 import {
   AUTHORIZATION_USED_TOPIC,
-  TRANSFER_TOPIC,
+  PERMIT2,
   permit2TypedData,
-  transferDigest,
   type Eip155,
-  type EvmBreadthStatus,
   type EvmLog,
   type EvmReader,
   type EvmReceipt,
-  type EvmRef,
+  type EvmTransaction,
   type Field,
   type Permit2TypedData,
 } from "./evm.js";
-import { chainIdOf, isAddress, isObject, normalHash } from "./fields.js";
+import { chainIdOf, isAddress, isObject, normalHash, sameJson } from "./fields.js";
 import {
-  carriesBinding,
-  evmStatusOf,
   failedAt,
-  failedIfFinal,
   finalAt,
   isLog,
   isReceipt,
   receiveTypedData,
-  transferParts,
   unreadable,
   withPayee,
+  type EvmMark,
   type EvmQuery,
-  type EvmRead,
   type ReceiveTypedData,
 } from "./internal/evm.js";
-import { boundRead } from "./internal/evm-status.js";
+import {
+  hexOfWord,
+  movedAt,
+  type BatchEvmRef,
+} from "./internal/evm-x402-reads.js";
+import { callsIn, inputCarries, nonceUsed, partyOf, same, statusOf, topicAddress, transfersIn, type Classified, type ReadSpec, type TxView } from "./internal/evm-x402.js";
 import { x402Payee } from "./internal/payee.js";
-import type { RecoverInput } from "./internal/read.js";
+import type { RecoverInput, StatusAnswer, UnreadableReason } from "./internal/read.js";
 import {
   buildChannelMessage,
   channelInstruction,
@@ -305,6 +305,11 @@ export interface ChannelMembers {
 export interface BatchEvmOpen extends X402Choice {
   payerAuthorizer: Hex;
   deposit: bigint;
+  /**
+   * 32 bytes the caller draws at random: the deposit authorization's salt (ERC-3009) or the deposit permit's nonce
+   * (Permit2); under an option in the scheme's refund-authorizer mode, where H is that salt or nonce, the entropy the
+   * channel salt packs.
+   */
   authSalt: Hex;
 }
 
@@ -360,6 +365,37 @@ function isDelay(v: unknown): v is number {
 
 function nonZeroAddress(v: unknown): v is Hex {
   return isAddress(v) && !/^0x0{40}$/.test(v);
+}
+
+/**
+ * The refund authorizer of an option in the scheme's refund-authorizer mode, lowercase, or undefined: the mode is an
+ * option whose `extra.voucherManager` is `"facilitator"` and whose `extra.refundAuthorizer` is an address that is not the
+ * zero address, as the stock client marks it (`@x402/evm` 2.31.0 `buildChannelConfig`,
+ * `dist/esm/chunk-AEYKXGQA.mjs:238-239`), and the stock server announces it (`batch-settlement/server/index.mjs:2420-2421`).
+ * In that mode the channel salt is packed from entropy and the refund authorizer, and H is the deposit authorization's
+ * salt (ERC-3009) or the deposit permit's nonce (Permit2).
+ */
+function refundAuthorizerOf(option: unknown): Hex | undefined {
+  if (!isObject(option) || !isObject(option["extra"])) return undefined;
+  const extra = option["extra"];
+  const ra = extra["refundAuthorizer"];
+  return extra["voucherManager"] === "facilitator" && nonZeroAddress(ra) ? (ra.toLowerCase() as Hex) : undefined;
+}
+
+/**
+ * The channel salt of the refund-authorizer mode, as the stock client packs it (`packRefundAuthorizerSalt`,
+ * `@x402/evm` 2.31.0 `dist/esm/chunk-7DJ4WEQ5.mjs:218-223`): the entropy's first 12 bytes, or, where those are all
+ * zero, its last 12, then the refund authorizer's 20 bytes.
+ */
+function packedSalt(entropy: Hex, refundAuthorizer: Hex): Hex {
+  const e = bytesOf(entropy)!;
+  const high = e.subarray(0, 12);
+  return hexOf(concat([high.every((b) => b === 0) ? e.subarray(20, 32) : high, bytesOf(refundAuthorizer)!]));
+}
+
+/** Whether a channel salt ends in the refund authorizer's 20 bytes, as the mode packs it. */
+function packs(salt: unknown, refundAuthorizer: Hex): boolean {
+  return typeof salt === "string" && isHash32(salt) && same(`0x${salt.slice(26)}`, refundAuthorizer);
 }
 
 /**
@@ -437,10 +473,12 @@ function payable(o: PaymentRequirements): boolean {
 
 /**
  * What the EVM `build` can pay: `payable`, and a `payTo` and asset that are not the zero address, since the channel
- * contract's `deposit` refuses a configuration whose receiver or token is.
+ * contract's `deposit` refuses a configuration whose receiver or token is, and an `extra.refundAuthorizer` that is absent
+ * or an address, which the stock client reads as one (`refundAuthorizerOf`).
  */
 function evmPayable(o: PaymentRequirements): boolean {
-  return payable(o) && nonZeroAddress(o.payTo) && nonZeroAddress(o.asset);
+  const ra = o.extra?.["refundAuthorizer"];
+  return payable(o) && nonZeroAddress(o.payTo) && nonZeroAddress(o.asset) && (ra === undefined || isAddress(ra));
 }
 
 /** What the Solana `build` can pay: `payable`, with the amount below 2^64, the voucher's `u64`. */
@@ -546,10 +584,16 @@ function evmPayloadKind(payload: Record<string, unknown>): "open" | "within" | "
  * voucher's `maxClaimableAmount` to equal `chargedCumulativeAmount + amount`, which is 0, and its facilitator ("Not
  * below claimed") requires it to be strictly greater than `totalClaimed`. So a zero price is paid by a later voucher
  * (`buildWithin`), never by an opening.
+ *
+ * The channel salt is H, and `authSalt` the deposit authorization's salt (ERC-3009) or the permit's nonce (Permit2).
+ * Under an option in the refund-authorizer mode (`refundAuthorizerOf`) H is the deposit authorization's salt, or the
+ * permit's nonce, and the channel salt is packed from `authSalt` as the entropy and the option's refund authorizer
+ * (`packedSalt`), as the stock client packs it; so `authSalt`, drawn at random by the caller, makes each opening a new
+ * channel in either mode.
  */
 async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
-  const salt = normalHash(h);
-  if (salt === null) return refusal("x402/option-malformed");
+  const hash = normalHash(h);
+  if (hash === null) return refusal("x402/option-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   if (!isAddress(c.from) || !isAddress(c.payerAuthorizer) || !isHash32(c.authSalt)) {
     return refusal("x402/option-malformed");
@@ -562,6 +606,9 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   const { accepted, required } = c;
   const extra = accepted.extra!;
   const chainId = chainIdOf(accepted.network)!;
+  const ra = refundAuthorizerOf(accepted);
+  const salt = ra === undefined ? hash : packedSalt(c.authSalt, ra);
+  const authSalt = ra === undefined ? c.authSalt : hash;
   const config: ChannelConfig = {
     payer: c.from,
     payerAuthorizer: c.payerAuthorizer,
@@ -582,12 +629,12 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
       chainId,
       permitted: { token: config.token, amount: c.deposit },
       spender: PERMIT2_DEPOSIT_COLLECTOR,
-      nonce: BigInt(c.authSalt),
+      nonce: BigInt(authSalt),
       deadline,
       witness: { type: "DepositWitness", fields: [{ name: "channelId", type: "bytes32" }], value: { channelId } },
     });
   } else {
-    const nonce = erc3009DepositNonce(channelId, c.authSalt);
+    const nonce = erc3009DepositNonce(channelId, authSalt);
     if (isRefusal(nonce)) return nonce;
     tokenAuth = receiveTypedData({
       network: accepted.network as Eip155,
@@ -620,13 +667,13 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
               from: c.from,
               permitted: { token: config.token, amount: c.deposit.toString() },
               spender: PERMIT2_DEPOSIT_COLLECTOR,
-              nonce: BigInt(c.authSalt).toString(),
+              nonce: BigInt(authSalt).toString(),
               deadline: deadline.toString(),
               witness: { channelId },
               signature: s1,
             },
           }
-        : { erc3009Authorization: { validAfter: "0", validBefore: deadline.toString(), salt: c.authSalt, signature: s1 } };
+        : { erc3009Authorization: { validAfter: "0", validBefore: deadline.toString(), salt: authSalt, signature: s1 } };
       return paymentWith(required, accepted, {
           type: "deposit",
           channelConfig,
@@ -639,7 +686,9 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
 
 /**
  * A later voucher, or a refund, for a channel opened under `h`. A `channelConfig` the channel contract's `deposit`
- * refuses is `x402/payload-malformed`.
+ * refuses is `x402/payload-malformed`. Its salt must be H, else `x402/channel-id-mismatch`; under an option in the
+ * refund-authorizer mode, where H is in the opening's deposit authorization and in no later payment, its salt must end
+ * in the option's refund authorizer instead, else the same code.
  */
 async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(w)) return refusal("x402/not-v2");
@@ -647,7 +696,8 @@ async function evmBuildWithin(w: BatchWithin, h: AtrHash): Promise<BatchUnsigned
   if (ok !== true) return ok;
   const config = w.channelConfig;
   if (!isDepositConfig(config)) return refusal("x402/payload-malformed");
-  if (normalHash(config.salt) !== normalHash(h)) return refusal("x402/channel-id-mismatch");
+  const ra = refundAuthorizerOf(w.accepted);
+  if (ra === undefined ? normalHash(config.salt) !== normalHash(h) : !packs(config.salt, ra)) return refusal("x402/channel-id-mismatch");
   if (typeof w.maxClaimableAmount !== "bigint" || w.maxClaimableAmount < 0n || w.maxClaimableAmount >= U128_LIMIT) {
     return refusal("x402/option-malformed");
   }
@@ -702,14 +752,18 @@ function depositOf(payload: Record<string, unknown>) {
     return { amount, method: "eip3009" as const, settleBy: validBefore, authSalt: e["salt"] as Hex };
   }
   const deadline = isObject(p) ? decimalBelow(p["deadline"], U256_LIMIT) : undefined;
-  if (deadline === undefined) return refusal("x402/payload-malformed");
-  return { amount, method: "permit2" as const, settleBy: deadline };
+  const nonce = isObject(p) ? decimalBelow(p["nonce"], U256_LIMIT) : undefined;
+  if (deadline === undefined || nonce === undefined) return refusal("x402/payload-malformed");
+  return { amount, method: "permit2" as const, settleBy: deadline, nonce: hexOf(uintWord(nonce)) };
 }
 
 /**
  * The opening's `salt`, once its config hashes to the voucher's channel id. No signature is verified here. A config
  * the channel contract's `deposit` refuses, or a deposit amount that is not a positive decimal below 2^128, as that
- * `deposit` takes a `uint128` and refuses 0, is `x402/payload-malformed`, as `reference` answers it.
+ * `deposit` takes a `uint128` and refuses 0, is `x402/payload-malformed`, as `reference` answers it. Under an accepted
+ * option in the refund-authorizer mode (`refundAuthorizerOf`) H is the deposit authorization's salt, or the deposit
+ * permit's nonce as a 32-byte word, and a channel salt that does not end in the option's refund authorizer is
+ * `x402/channel-id-mismatch`: that channel is not the mode's.
  */
 async function evmBound(presented: unknown): Promise<AtrHash | Refusal> {
   const x = payloadOf(presented, EVM_ID);
@@ -720,125 +774,350 @@ async function evmBound(presented: unknown): Promise<AtrHash | Refusal> {
   if (isRefusal(d)) return d;
   const r = await evmRef(presented);
   if (isRefusal(r)) return r;
-  return normalHash((x.payload["channelConfig"] as ChannelConfig).salt)!;
+  const salt = (x.payload["channelConfig"] as ChannelConfig).salt;
+  const ra = refundAuthorizerOf(x.accepted);
+  if (ra === undefined) return normalHash(salt)!;
+  if (!packs(salt, ra)) return refusal("x402/channel-id-mismatch");
+  return normalHash(d.method === "eip3009" ? d.authSalt : d.nonce)!;
 }
 
-/** A within payment's `salt`, once its config hashes to its voucher's channel id. */
+/**
+ * A within payment's `salt`, once its config hashes to its voucher's channel id. Under an accepted option in the
+ * refund-authorizer mode a later payment carries no H, which only the opening's deposit authorization carries:
+ * `x402/not-bound-within`.
+ */
 async function evmBoundWithin(presented: unknown): Promise<AtrHash | Refusal> {
   const r = await evmRef(presented);
   if (isRefusal(r)) return r;
-  const x = payloadOf(presented, EVM_ID) as { payload: Record<string, unknown> };
+  const x = payloadOf(presented, EVM_ID) as { accepted: PaymentRequirements; payload: Record<string, unknown> };
+  if (refundAuthorizerOf(x.accepted) !== undefined) return refusal("x402/not-bound-within");
   return normalHash((x.payload["channelConfig"] as ChannelConfig).salt)!;
 }
 
 /**
- * The opening's read keys: the `Deposited` log, the payer's transfer by digest, and the log filter that finds the
- * opening. `settleBy` is the deposit authorization's `validBefore` or `deadline`, in decimal, below 2^256. With them,
- * the payee of `option`, the issued option the payment answers (`x402Payee`), whose refusal comes after the payment's.
+ * The opening's read keys: the channel's id, payer, receiver, token and salt, the deposit authorization's nonce
+ * (keccak256(channelId, salt) on ERC-3009, the permit's nonce on Permit2), its `validBefore` or `deadline`, in decimal,
+ * below 2^256, and the deposit's amount. With them, the payee of `option`, the issued option the payment answers
+ * (`x402Payee`), whose refusal comes after the payment's; then a presented `accepted` that is not, by RFC 8785 form,
+ * that option is `x402/accepted-not-option`.
  */
-async function evmReference(presented: unknown, option: PaymentRequirements): Promise<EvmRef | Refusal> {
-  return withPayee(await evmKeys(presented), x402Payee(option));
+async function evmReference(presented: unknown, option: PaymentRequirements): Promise<BatchEvmRef | Refusal> {
+  const ref = withPayee(await evmKeys(presented), x402Payee(option));
+  if (isRefusal(ref)) return ref;
+  return sameJson((presented as { accepted: unknown }).accepted, option) ? ref : refusal("x402/accepted-not-option");
 }
 
-async function evmKeys(presented: unknown): Promise<Omit<EvmRef, "payee"> | Refusal> {
+async function evmKeys(presented: unknown): Promise<Omit<BatchEvmRef, "payee"> | Refusal> {
   const h = await evmBound(presented);
   if (isRefusal(h)) return h;
   const x = payloadOf(presented, EVM_ID) as { accepted: PaymentRequirements; payload: Record<string, unknown> };
   const config = x.payload["channelConfig"] as ChannelConfig;
   const d = depositOf(x.payload) as Exclude<ReturnType<typeof depositOf>, Refusal>;
-  const channelId = (await evmRef(presented)) as { channel: string };
-  const id = channelId.channel as Hex;
-  const to = d.method === "eip3009" ? ERC3009_DEPOSIT_COLLECTOR : BATCH_SETTLEMENT;
-  const digest = await transferDigest({ from: config.payer, to, value: d.amount });
-  if (isRefusal(digest)) return digest;
-  let search: NonNullable<EvmRef["search"]>;
-  if (d.method === "eip3009") {
-    const nonce = erc3009DepositNonce(id, d.authSalt);
-    if (isRefusal(nonce)) return nonce;
-    search = { address: config.token, topics: [AUTHORIZATION_USED_TOPIC, null, nonce] };
-  } else {
-    search = { address: BATCH_SETTLEMENT, topics: [DEPOSITED_TOPIC, id] };
-  }
+  const id = ((await evmRef(presented)) as { channel: string }).channel.toLowerCase() as Hex;
+  const nonce = d.method === "eip3009" ? erc3009DepositNonce(id, d.authSalt) : d.nonce;
+  if (isRefusal(nonce)) return nonce;
   return {
     network: x.accepted.network as Eip155,
+    h,
+    scheme: d.method,
+    asset: config.token.toLowerCase() as Hex,
+    payer: config.payer.toLowerCase() as Hex,
+    channel: id,
+    payerAuthorizer: config.payerAuthorizer.toLowerCase() as Hex,
+    receiver: config.receiver.toLowerCase() as Hex,
+    receiverAuthorizer: config.receiverAuthorizer.toLowerCase() as Hex,
+    withdrawDelay: config.withdrawDelay,
+    salt: config.salt.toLowerCase() as Hex,
+    nonce: nonce.toLowerCase() as Hex,
     settleBy: d.settleBy.toString(),
-    bindingLog: { address: BATCH_SETTLEMENT, topic0: DEPOSITED_TOPIC, index: 1, value: id },
-    transferLog: { address: config.token, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest },
-    search,
+    amount: d.amount.toString(),
+    ...(refundAuthorizerOf(x.accepted) === undefined ? {} : { refundAuthorizer: refundAuthorizerOf(x.accepted)! }),
+  };
+}
+
+/** The channel config a batch reference holds, its token the reference's `asset`. */
+function refConfig(r: BatchEvmRef): ChannelConfig {
+  return {
+    payer: r.payer,
+    payerAuthorizer: r.payerAuthorizer,
+    receiver: r.receiver,
+    receiverAuthorizer: r.receiverAuthorizer,
+    token: r.asset,
+    withdrawDelay: r.withdrawDelay,
+    salt: r.salt,
   };
 }
 
 /**
- * The opening's settlement, answered as the profile `read-status` does at the pairing's coverage: `evmStatus`'s read of
- * the reference, and then the payer's transfer must be among the logs between the channel contract's previous
- * `Deposited` log and the channel's own `Deposited`. The contract collects a deposit and then emits `ChannelCreated`,
- * on a channel's first deposit, and `Deposited`, and its deposits do not nest, so those logs hold that deposit call's
- * transfers. The transfer counts when its `from`, `to` and `value` hash to the reference's digest. A matching transfer
- * elsewhere in the transaction, such as the payer's deposit into another channel beside a gift into this one, makes
- * the transaction no act of this deposit; a matching transfer the transaction makes between the previous deposit call
- * and this one is read as this deposit's. With no search for H yet, a transaction that is no act answers `pending`
- * `search-incomplete`, as `evmStatus`'s reasons do. A reference without this pairing's well-formed `Deposited` binding
- * log from the channel contract and its `from,to,value` transfer log is unreadable `unparseable`, a reader that is not
- * an object unreadable `transport`, and a query that is not one `status` takes unreadable `unparseable`, and nothing is
- * read. At most three calls.
+ * A batch reference: its members of their forms, on an `eip155:<chain id>` network, and its config whole, which must
+ * hash to its channel id, so that the config the read compares is the one the channel id a landed log names commits to.
+ * Its salt is H; in the refund-authorizer mode its salt ends in its refund authorizer, and its nonce is H's: on ERC-3009
+ * keccak256(abi.encode(channelId, H)), on Permit2 H.
  */
-async function evmDepositStatus(
-  ref: EvmRef & { transaction: Hex },
-  reader: EvmReader,
-  query: EvmQuery<EvmRef & { transaction: Hex }>,
-): Promise<EvmBreadthStatus> {
-  return depositAnswer(ref, reader, query);
+function isBatchRef(r: unknown): r is BatchEvmRef {
+  if (
+    !(
+      isObject(r) &&
+      (r["scheme"] === "eip3009" || r["scheme"] === "permit2") &&
+      [r["asset"], r["payer"], r["payerAuthorizer"], r["receiver"], r["receiverAuthorizer"]].every(isAddress) &&
+      [r["channel"], r["salt"], r["nonce"]].every((x) => normalHash(x) !== null) &&
+      typeof r["payee"] === "string" &&
+      decimalBelow(r["settleBy"], U256_LIMIT) !== undefined &&
+      decimalBelow(r["amount"], U128_LIMIT) !== undefined
+    )
+  ) {
+    return false;
+  }
+  const chainId = chainIdOf(r["network"]);
+  if (chainId === undefined) return false;
+  const id = batchChannelId(chainId, refConfig(r as unknown as BatchEvmRef));
+  if (isRefusal(id) || !same(id, r["channel"])) return false;
+  const h = normalHash(r["h"]);
+  if (h === null) return false;
+  const ra = r["refundAuthorizer"];
+  if (ra === undefined) return same(r["salt"], h);
+  if (!nonZeroAddress(ra) || !packs(r["salt"], ra)) return false;
+  const nonce = r["scheme"] === "eip3009" ? erc3009DepositNonce(id, h) : h;
+  return !isRefusal(nonce) && same(nonce, r["nonce"]);
 }
 
-const depositAnswer = evmStatusOf(readDeposit, EIP155_X402[EVM_ID].coverage);
+/** A `Deposited` log's amount, its first data word, below 2^128; undefined where the log holds no such word. */
+function depositedAmount(l: EvmLog): bigint | undefined {
+  const data = bytesOf(l.data);
+  const w = data === undefined || data.length !== 64 ? undefined : wordAt(data, 0);
+  const a = w === undefined ? undefined : uintOf(w);
+  return a === undefined || a >= U128_LIMIT ? undefined : a;
+}
 
-async function readDeposit(ref: EvmRef & { transaction: Hex }, reader: EvmReader): Promise<EvmRead> {
-  if (!isObject(ref)) return unreadable("unparseable");
-  if (!isObject(reader)) return unreadable("transport");
-  const binding = ref.bindingLog;
-  const t = ref.transferLog;
-  const fromContract = typeof binding === "object" && binding !== null && sameBytes(binding.address, BATCH_SETTLEMENT);
-  if (!fromContract || typeof t !== "object" || t === null || t.identity !== "from,to,value") {
-    return unreadable("unparseable");
+/** The channel config whose last word, `salt`, is `salt`, inline in a call's input: its payer and receiver. */
+function configBefore(input: Uint8Array, salt: Hex): { payer: Hex; receiver: Hex } | undefined {
+  const w = bytesOf(salt);
+  if (w === undefined || w.length !== 32) return undefined;
+  next: for (let i = 6 * 32; i + 32 <= input.length; i++) {
+    for (let j = 0; j < 32; j++) if (input[i + j] !== w[j]) continue next;
+    const payer = topicAddress(hexOfWord(input.subarray(i - 6 * 32, i - 5 * 32)));
+    const receiver = topicAddress(hexOfWord(input.subarray(i - 4 * 32, i - 3 * 32)));
+    if (payer !== undefined && receiver !== undefined) return { payer, receiver };
   }
-  let seen: EvmReceipt | null = null;
-  const watching: EvmReader = {
-    network: reader.network,
-    receipt: async (tx) => (seen = await reader.receipt(tx)),
-    blockNumber: (tag) => reader.blockNumber(tag),
-    transaction: (tx) => reader.transaction(tx),
-    call: (to, data, block) => reader.call(to, data, block),
-  };
-  const s = await boundRead([DEPOSITED_TOPIC])(ref, watching);
-  if (s.state !== "settled") return s;
-  const logs = (seen as EvmReceipt | null)?.logs ?? [];
-  let start = 0;
-  for (let i = 0; i < logs.length; i++) {
-    const log = logs[i]!;
-    if (!sameBytes(log.address, binding.address) || !sameBytes(log.topics[0], binding.topic0)) continue;
-    if (carriesBinding(log, binding)) {
-      for (let j = start; j < i; j++) {
-        const p = transferParts(logs[j]!, t.address, t.topic0);
-        if (p !== undefined && sameBytes(await transferDigest(p), t.digest)) return s;
-      }
-    }
-    start = i + 1;
-  }
-  return failedIfFinal(s, "transfer-not-found");
+  return undefined;
 }
 
 /**
- * Zero-party: the salt of the one `ChannelCreated` log from the channel contract whose data hashes to its id. A failed
- * read, a reader answer that is neither `null` nor a receipt, a receipt holding a log that is not an object with a
- * string `address`, an array of string `topics` and a string `data`, or a `ChannelCreated` log from the channel
- * contract that `batchChannelCreated` refuses (data that is not the seven words of a channel config, or whose channel
- * id is not the id in its topic), is `evm/unreadable`, a read to repeat, as any reader answer out of the form the
- * contract's log takes. No receipt (`null`) is `evm/not-found`. A reverted transaction is `evm/reverted`; a receipt
- * with no such log is `evm/no-channel-created`, and one with more than one `evm/ambiguous`. Each of the three is given
- * only at or below the reader's `finalized` mark, and above it, or where that mark cannot be read, is `evm/not-final`,
- * a read to repeat; the mark is read only for them. The option is not read. An input or reader that is not an object,
- * a reader for another network, or a `tx` that is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At
- * most two calls.
+ * The channel contract's logs in a transaction that carry H: each `ChannelCreated` whose config's salt is H, of a
+ * channel other than the reference's, an opening of another channel carrying H, with the `Deposited` of that channel
+ * after it as what it moved; and each `Deposited` into the reference's channel. A deposit into the reference's channel
+ * is the opening where the transaction consumed the deposit authorization's nonce, the token's
+ * `AuthorizationUsed(payer, nonce)` on ERC-3009, or on Permit2 the payer's bit set at its block and unset before with
+ * the nonce in its input; any other deposit into the channel is a later credential of it, an act of another kind. The
+ * deposit counts where the channel's `receiver` is the option's payee; what moved is the deposit's amount to that
+ * receiver, by its `Deposited` log. The opening of another channel is its payer's only with the payer's transfer of its
+ * amount (`payerDeposited`), since the channel contract takes a deposit through any collector, and the two the scheme
+ * names move only what the payer signed; without it the act names no signer. A log of the contract the read cannot
+ * decode holds the search.
+ */
+async function batchClassify(ref: BatchEvmRef, view: TxView, reader: EvmReader): Promise<Classified> {
+  const { receipt } = view;
+  if (receipt.status === 0) {
+    const tx = await view.tx();
+    if (tx === null) return { seen: [] };
+    if ("unreadable" in tx) return tx;
+    const input = bytesOf(tx.input);
+    if (input === undefined) return { unreadable: "unparseable" };
+    const c = configBefore(input, ref.salt) ?? (ref.refundAuthorizer === undefined ? undefined : configBefore(input, ref.h));
+    if (c === undefined) return { seen: [] };
+    return {
+      seen: [{ result: "failed", consumed: false, carries: true, party: partyOf(c.payer, ref.payer, ref.payee), kind: "same", account: same(c.receiver, ref.payee) ? "payee" : "other", signer: c.payer }],
+    };
+  }
+  const chainId = chainIdOf(ref.network)!;
+  const logs = receipt.logs;
+  const ofContract = (l: EvmLog, topic: Hex) => same(l.address, BATCH_SETTLEMENT) && same(l.topics[0], topic);
+  // The reference's channel as landed: its `ChannelCreated` in this transaction, where the deposit opened it, its data
+  // hashing to the id in its topic; else the reference's config, which the reference's check holds to that id, the id
+  // the landed `Deposited` names.
+  let own: ChannelConfig = refConfig(ref);
+  for (const l of logs) {
+    if (!ofContract(l, CHANNEL_CREATED_TOPIC) || !same(l.topics[1], ref.channel)) continue;
+    const c = batchChannelCreated(l, chainId);
+    if (isRefusal(c)) return { undecodable: true };
+    own = c.config;
+  }
+  const seen: Exclude<Classified, { undecodable: true } | { unreadable: UnreadableReason }>["seen"][number][] = [];
+  for (const [i, l] of logs.entries()) {
+    if (ofContract(l, CHANNEL_CREATED_TOPIC)) {
+      const c = batchChannelCreated(l, chainId);
+      if (isRefusal(c)) return { undecodable: true };
+      if (!same(c.config.salt, ref.h) || same(c.channelId, ref.channel)) continue;
+      const at = logs.findIndex((d, j) => j > i && ofContract(d, DEPOSITED_TOPIC) && same(d.topics[1], c.channelId));
+      const amount = at < 0 ? undefined : depositedAmount(logs[at]!);
+      if (amount === undefined) return { undecodable: true };
+      const signer = payerDeposited(logs, c.config, amount) ? (c.config.payer.toLowerCase() as Hex) : undefined;
+      seen.push({
+        result: "succeeded",
+        consumed: false,
+        carries: true,
+        party: partyOf(signer, ref.payer, ref.payee),
+        kind: "same",
+        account: same(c.config.receiver, ref.payee) ? "payee" : "other",
+        moved: [movedAt(c.config.token.toLowerCase() as Hex, amount, c.config.receiver.toLowerCase() as Hex, view.hash, at)],
+        ...(signer === undefined ? {} : { signer }),
+        signed: { channel: c.channelId.toLowerCase(), amount: amount.toString() },
+      });
+    } else if (ofContract(l, DEPOSITED_TOPIC) && same(l.topics[1], ref.channel)) {
+      const amount = depositedAmount(l);
+      if (amount === undefined) return { undecodable: true };
+      const consumed = await consumedIn(ref, view, reader);
+      if (typeof consumed !== "boolean") return consumed;
+      seen.push({
+        result: "succeeded",
+        consumed,
+        carries: true,
+        party: partyOf(own.payer, ref.payer, ref.payee),
+        kind: consumed ? "same" : "other",
+        account: same(own.receiver, ref.payee) ? "payee" : "other",
+        moved: [movedAt(own.token.toLowerCase() as Hex, amount, own.receiver.toLowerCase() as Hex, view.hash, i)],
+        signer: own.payer.toLowerCase() as Hex,
+        signed: { channel: ref.channel, amount: amount.toString() },
+      });
+    }
+  }
+  return { seen };
+}
+
+/**
+ * Whether a `ChannelCreated` entry the search found is read further: where its data is the seven words of a config, only
+ * where its salt, the seventh, is `salt`, so that the read fetches no receipt of another channel's opening; any other
+ * data is read, since a log the read cannot decode holds the search.
+ */
+function createdMayCarry(e: EvmLog, salt: Hex): boolean {
+  const data = bytesOf(e.data);
+  if (data === undefined || data.length !== 224) return true;
+  return same(hexOf(wordAt(data, 6)!), salt);
+}
+
+/** Whether the transaction consumed the deposit authorization's nonce: its use logged by the token, or the payer's bit. */
+async function consumedIn(ref: BatchEvmRef, view: TxView, reader: EvmReader): Promise<boolean | { unreadable: UnreadableReason }> {
+  const { receipt } = view;
+  if (ref.scheme === "eip3009") {
+    return receipt.logs.some(
+      (l) => same(l.address, ref.asset) && same(l.topics[0], AUTHORIZATION_USED_TOPIC) && same(topicAddress(l.topics[1]), ref.payer) && same(l.topics[2], ref.nonce),
+    );
+  }
+  const tx = await view.tx();
+  if (tx === null) return false;
+  if ("unreadable" in tx) return tx;
+  const input = bytesOf(tx.input);
+  if (input === undefined) return { unreadable: "unparseable" };
+  if (!inputCarries(input, ref.nonce)) return false;
+  const after = await nonceUsed("permit2", PERMIT2, ref.payer, ref.nonce, receipt.blockNumber, reader);
+  if (typeof after !== "boolean" || !after) return after;
+  return receipt.blockNumber === 0n ? true : nonceUsed("permit2", PERMIT2, ref.payer, ref.nonce, receipt.blockNumber - 1n, reader).then((b) => (typeof b === "boolean" ? !b : b));
+}
+
+/**
+ * The read of `x402/batch-settlement/eip155`: the single-use value is the deposit authorization's nonce, a digest over
+ * the channel id, so its read is no search for H. The channel contract's `ChannelCreated`
+ * logs are read whole, each tested by its salt, with the `Deposited` logs of the reference's channel, so every opening
+ * carrying H the contract recorded is named; the search is never whole, since no search for H is defined.
+ */
+const BATCH_EVM_READ: ReadSpec<BatchEvmRef> = {
+  coverage: EIP155_X402[EVM_ID].coverage,
+  agreementValue: false,
+  check: isBatchRef,
+  paymentValue: (ref) => ref.nonce,
+  value: async (ref, v, reader, block) => nonceUsed(ref.scheme, ref.asset, ref.payer, v, block, reader),
+  deadline: (ref) => ({ at: BigInt(ref.settleBy), inclusive: ref.scheme === "eip3009" }),
+  search: "open",
+  filters: (ref) => [
+    { address: BATCH_SETTLEMENT, topics: [CHANNEL_CREATED_TOPIC] },
+    { address: BATCH_SETTLEMENT, topics: [DEPOSITED_TOPIC, ref.channel] },
+  ],
+  entry: (ref, _values, e) => !same(e.topics[0], CHANNEL_CREATED_TOPIC) || createdMayCarry(e, ref.h),
+  classify: (ref, _values, view, reader) => batchClassify(ref, view, reader),
+  presented: (ref) =>
+    isObject(ref) && normalHash(ref["channel"]) !== null && typeof ref["amount"] === "string"
+      ? { channel: (ref["channel"] as string).toLowerCase(), amount: ref["amount"] }
+      : undefined,
+  payer: (ref) => ref.payer,
+};
+
+/** The opening's settlement, read from what landed, as `read-status` answers it (BATCH_EVM_READ). */
+const evmDepositStatus = statusOf(BATCH_EVM_READ);
+
+/**
+ * Whether a receipt holds the payer's transfer of a deposit into a channel: a `Transfer` of `amount` emitted by the
+ * channel's token from the channel's payer to the ERC-3009 deposit collector or, through Permit2, to the channel contract.
+ */
+function payerDeposited(logs: readonly EvmLog[], config: ChannelConfig, amount: bigint): boolean {
+  return transfersIn(logs).some(
+    (t) => same(t.token, config.token) && same(t.from, config.payer) && t.value === amount && (same(t.to, ERC3009_DEPOSIT_COLLECTOR) || same(t.to, BATCH_SETTLEMENT)),
+  );
+}
+
+/** The selector of the channel contract's `deposit(ChannelConfig, uint128, address, bytes)`. */
+const DEPOSIT_SELECTOR = "0x140f1e75" as Hex;
+
+/**
+ * The deposit calls in a transaction's input, found at any byte offset by their selector, whose channel config is the
+ * seven words `config`, through one of the two deposit collectors: each with its collector and the value its collector
+ * data carries first, the authorization's `salt` on the ERC-3009 collector (`abi.encode(validAfter, validBefore, salt,
+ * signature)`) and the permit's `nonce` on the Permit2 collector (`abi.encode(nonce, deadline, signature,
+ * permitData)`), distinct by the two (`@x402/evm` 2.31.0 `buildErc3009CollectorData` and `buildPermit2CollectorData`,
+ * `dist/esm/chunk-W6ON4LG2.mjs:8-31`).
+ */
+function depositCallsIn(input: Uint8Array, config: Uint8Array): { collector: "eip3009" | "permit2"; value: Hex }[] {
+  const out = new Map<string, { collector: "eip3009" | "permit2"; value: Hex }>();
+  for (const { args } of callsIn(input, [DEPOSIT_SELECTOR])) {
+    if (args.length < 10 * 32 || !sameBytes(hexOf(args.subarray(0, 7 * 32)), hexOf(config))) continue;
+    const through = addressOfWord(wordAt(args, 8)!);
+    const collector = same(through, ERC3009_DEPOSIT_COLLECTOR) ? "eip3009" : same(through, PERMIT2_DEPOSIT_COLLECTOR) ? "permit2" : undefined;
+    const offset = uintOf(wordAt(args, 9)!);
+    if (collector === undefined || offset + 32n > BigInt(args.length)) continue;
+    const length = uintOf(args.subarray(Number(offset), Number(offset) + 32));
+    const data = args.subarray(Number(offset) + 32);
+    const w = length > BigInt(data.length) ? undefined : wordAt(data.subarray(0, Number(length)), collector === "eip3009" ? 2 : 0);
+    if (w === undefined) continue;
+    const value = hexOf(w);
+    out.set(`${collector}${value}`, { collector, value });
+  }
+  return [...out.values()];
+}
+
+/** The refusals `recover` gives only where the receipt's block is at or below the reader's `finalized` mark. */
+const FINAL_ONLY: ReadonlySet<string> = new Set([
+  "evm/no-channel-created",
+  "evm/ambiguous",
+  "evm/no-payer-deposit",
+  "evm/no-deposit-call",
+  "evm/no-authorization-use",
+  "evm/nonce-not-used",
+]);
+
+/**
+ * Zero-party: H from the opening a transaction holds. The opening is the one `ChannelCreated` log from the channel
+ * contract whose data hashes to its id, with the payer's transfer: the channel's `Deposited` and a `Transfer` of that
+ * amount emitted by the channel's token from the channel's payer to the ERC-3009 deposit collector, or through Permit2
+ * to the channel contract, so that the deposit is the payer's (the channel contract takes any collector; the two the
+ * scheme names move only what the payer signed). H is that channel's salt; under an option in the refund-authorizer
+ * mode (`refundAuthorizerOf`), whose channel salt must end in the option's refund authorizer, H is the deposit
+ * authorization's salt or the deposit permit's nonce, read from the transaction's one deposit call with that channel's
+ * config through a collector of the scheme (`depositCallsIn`), and counted only where the token logged the use of
+ * keccak256(abi.encode(channelId, salt)) by the payer, or Permit2 set the payer's bit for that nonce at the receipt's
+ * block and not at the block before.
+ *
+ * A failed read, a reader answer that is neither `null` nor a receipt or a transaction, a receipt holding a log that is
+ * not an object with a string `address`, an array of string `topics` and a string `data`, a `ChannelCreated` log from
+ * the channel contract that `batchChannelCreated` refuses (data that is not the seven words of a channel config, or
+ * whose channel id is not the id in its topic), or an input that is not hex bytes, is `evm/unreadable`, a read to
+ * repeat. No receipt or no transaction (`null`) is `evm/not-found`. A reverted transaction is `evm/reverted`; a receipt
+ * with no such log is `evm/no-channel-created`, one with more than one `evm/ambiguous`, one without the payer's transfer
+ * `evm/no-payer-deposit`; in the refund-authorizer mode, a channel salt that does not end in the refund authorizer or no
+ * such deposit call is `evm/no-deposit-call`, more than one `evm/ambiguous`, and an ERC-3009 salt whose use the token did
+ * not log `evm/no-authorization-use`, a Permit2 nonce whose bit is not so `evm/nonce-not-used`. Each of these is given
+ * only at or below the reader's `finalized` mark, and above it, or where that mark cannot be read, is `evm/not-final`, a
+ * read to repeat; the mark is read only for them. An input or reader that is not an object, a reader for another
+ * network, or a `tx` that is not a 32-byte hash is `evm/wrong-reader`, with nothing read. At most two calls, and five in
+ * the refund-authorizer mode.
  */
 async function evmRecover(input: RecoverInput<Eip155, PaymentRequirements>, reader: EvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(input) || !isObject(reader) || reader.network !== input.network) return refusal("evm/wrong-reader");
@@ -857,15 +1136,57 @@ async function evmRecover(input: RecoverInput<Eip155, PaymentRequirements>, read
     const read = await failedAt(receipt.blockNumber, "reverted", reader);
     return read.state === "failed" ? refusal("evm/reverted") : refusal("evm/not-final");
   }
-  const created = receipt.logs.filter(
-    (l) => l.address.toLowerCase() === BATCH_SETTLEMENT.toLowerCase() && sameBytes(l.topics[0], CHANNEL_CREATED_TOPIC),
-  );
-  if (created.length !== 1 && !(await finalAt(receipt.blockNumber, reader))) return refusal("evm/not-final");
+  const found = await openingIn(input, receipt, chainId, reader);
+  if (isRefusal(found) && FINAL_ONLY.has(found.code) && !(await finalAt(receipt.blockNumber, reader))) return refusal("evm/not-final");
+  return found;
+}
+
+/** `evmRecover`'s read of a receipt that succeeded: H, or the refusal it is given at or below the final mark. */
+async function openingIn(
+  input: RecoverInput<Eip155, PaymentRequirements>,
+  receipt: EvmReceipt,
+  chainId: number,
+  reader: EvmReader,
+): Promise<AtrHash | Refusal> {
+  const logs = receipt.logs;
+  const created = logs.filter((l) => same(l.address, BATCH_SETTLEMENT) && sameBytes(l.topics[0], CHANNEL_CREATED_TOPIC));
   if (created.length === 0) return refusal("evm/no-channel-created");
   if (created.length > 1) return refusal("evm/ambiguous");
   const c = batchChannelCreated(created[0]!, chainId);
   if (isRefusal(c)) return refusal("evm/unreadable");
-  return normalHash(c.config.salt)!;
+  const { config, channelId } = c;
+  const deposited = logs.find((l) => same(l.address, BATCH_SETTLEMENT) && same(l.topics[0], DEPOSITED_TOPIC) && same(l.topics[1], channelId));
+  const amount = deposited === undefined ? undefined : depositedAmount(deposited);
+  if (amount === undefined || !payerDeposited(logs, config, amount)) return refusal("evm/no-payer-deposit");
+  const ra = refundAuthorizerOf(input.option);
+  if (ra === undefined) return normalHash(config.salt)!;
+  if (!packs(config.salt, ra)) return refusal("evm/no-deposit-call");
+  let tx: EvmTransaction | null;
+  try {
+    tx = await reader.transaction(input.tx as Hex);
+  } catch {
+    return refusal("evm/unreadable");
+  }
+  if (tx === null) return refusal("evm/not-found");
+  const calldata = isObject(tx) ? bytesOf(tx.input) : undefined;
+  if (calldata === undefined) return refusal("evm/unreadable");
+  const calls = depositCallsIn(calldata, bytesOf(created[0]!.data)!);
+  if (calls.length === 0) return refusal("evm/no-deposit-call");
+  if (calls.length > 1) return refusal("evm/ambiguous");
+  const { collector, value } = calls[0]!;
+  if (collector === "eip3009") {
+    const nonce = erc3009DepositNonce(channelId, value) as Hex;
+    const used = logs.some(
+      (l) => same(l.address, config.token) && same(l.topics[0], AUTHORIZATION_USED_TOPIC) && same(topicAddress(l.topics[1]), config.payer) && same(l.topics[2], nonce),
+    );
+    return used ? normalHash(value)! : refusal("evm/no-authorization-use");
+  }
+  const block = receipt.blockNumber;
+  const after = await nonceUsed("permit2", PERMIT2, config.payer, value, block, reader);
+  if (typeof after !== "boolean") return refusal("evm/unreadable");
+  const before = !after || block === 0n ? false : await nonceUsed("permit2", PERMIT2, config.payer, value, block - 1n, reader);
+  if (typeof before !== "boolean") return refusal("evm/unreadable");
+  return after && !before ? normalHash(value)! : refusal("evm/nonce-not-used");
 }
 
 function evmAdvertise(
@@ -946,15 +1267,15 @@ export const batchEvm = Object.freeze({
 }) satisfies Entry<
   typeof EVM_ID,
   BatchPaymentPayload,
-  EvmRef,
+  BatchEvmRef,
   EvmReader,
   X402Forms & {
     choice: BatchEvmOpen;
     unsigned: BatchUnsigned;
     landed: { transaction: Hex };
     network: Eip155;
-    query: EvmQuery<EvmRef & { transaction: Hex }>;
-    answer: EvmBreadthStatus;
+    query: EvmQuery<BatchEvmRef>;
+    answer: StatusAnswer<bigint, EvmMark>;
   }
 >;
 

@@ -192,7 +192,9 @@ const status = await exactEip3009.status({ ...ref, transaction, h }, reader, { a
 console.log("status:", status.state, status.state === "settled" ? status.finality : status.reason);
 const authorizer = await exactEip3009.authorizer(payment);
 if (typeof authorizer !== "string") throw new Error(authorizer.code);
-console.log("authorization used by block 100:", await authorizationUsed(ref, authorizer, 100n, reader));
+// The authorization as the token records its use: the token, the nonce the payer signed, and its validBefore.
+const authorization = { scheme: "eip3009", at: ref.asset, nonce: h, deadline: ref.validBefore, asset: ref.asset } as const;
+console.log("authorization used by block 100:", await authorizationUsed({ network: ref.network, authorization }, authorizer, 100n, reader));
 const recovered = await exactEip3009.recover({ network: ref.network, tx: transaction, option }, reader);
 console.log("recovered from the chain alone:", typeof recovered === "string" && hashEquals(recovered, atr.atrHash));
 ```

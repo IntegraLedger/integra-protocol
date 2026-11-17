@@ -85,10 +85,12 @@ Where the buyer's approval does not sign H, the record says so, and says what th
 `x402/exact/eip155/erc7710`, whose `data.carrier.signed` is null, states (the record fills in `<network>` and
 `<transaction>`):
 
-> Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>,
-> recorded in <transaction>. The ATR was assembled and delivered before the payment, and the buyer's payment payload
-> echoed this ATR's hash in the legalContext entry of x402's extensions. The buyer's delegation does not sign the hash,
-> and the settlement transaction does not carry it.
+> Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on <network>,
+> recorded in <transaction>; this shows neither that the account is the payer nor what the agreement moved. The ATR was
+> assembled and delivered before the payment, and the payment payload echoed this ATR's hash in the legalContext entry
+> of x402's extensions. The read found the named settlement transaction, after the agreement's position, holding a
+> transfer from the payment's delegator to the payee. The delegation does not sign the hash, and the settlement
+> transaction does not carry it.
 
 This example checks that some pairings' buyer does not sign H, `mpp/charge/stripe` among them:
 

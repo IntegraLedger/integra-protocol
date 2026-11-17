@@ -116,7 +116,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   evm: [
     "ambiguous", "amount-malformed", "chain-mismatch", "channel-id-mismatch", "field-malformed", "network-malformed",
-    "no-authorization-use", "no-channel-created", "no-leaf", "no-open-call", "no-permit2-settle", "nonce-not-used",
+    "no-authorization-use", "no-channel-created", "no-deposit-call", "no-escrow-payment", "no-leaf", "no-open-call",
+    "no-payer-deposit", "no-permit2-settle", "nonce-not-used",
     "reverted", "wrong-reader",
   ],
   hedera: [
@@ -201,7 +202,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "nonce-not-payment", "not-an-opening", "not-bound-within", "not-v2", "option-malformed", "option-not-in-document",
     "option-not-this-pairing", "payload-malformed", "permission-context-malformed", "request-header-invalid", "request-target-invalid",
     "request-too-large", "salt-malformed", "salt-not-bound", "signature-malformed", "signed-not-bound",
-    "spender-not-proxy",
+    "spender-not-proxy", "batched-not-eip3009", "nonce-not-agreement", "splits-not-carried",
   ],
   xrpl: [
     "blob-malformed", "blob-too-large", "carrier-mismatch", "carrier-not-lcp", "carrier-occupied", "currency-not-xrp",

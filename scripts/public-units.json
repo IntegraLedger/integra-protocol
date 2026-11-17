@@ -218,7 +218,7 @@
         "./x402": ["authCaptureEip3009", "authCapturePermit2", "Eip3009Payment", "Eip3009TypedData", "exactEip3009", "exactErc7710", "exactErc7710Salt", "exactPermit2", "uptoPermit2"]
       },
       "use": "Any buyer's client on an EVM chain builds an x402 payment that binds H, and any server checks it before anything moves and reads it back.",
-      "fixedBy": "x402-exact-eip155-eip3009.md; x402-exact-eip155-permit2.md; x402-exact-eip155-erc7710-salt.md; x402-upto-eip155-permit2.md; x402-auth-capture-eip155.md."
+      "fixedBy": "x402-exact-eip155-eip3009.md; x402-exact-eip155-permit2.md; x402-exact-eip155-erc7710-salt.md; x402-exact-eip155-erc7710.md; x402-upto-eip155-permit2.md; x402-auth-capture-eip155.md."
     },
     {
       "unit": "EVM signing and the transfer's identity",
@@ -239,7 +239,7 @@
     {
       "unit": "Reading an EVM payment back",
       "exports": {
-        "./evm": ["EvmReader", "EvmLog", "EvmReceipt", "EvmTransaction", "ReaderError", "EvmRef", "Eip3009Ref", "EvmTxRef", "PullAuthorization", "authorizationUsed", "eip3009Recover", "eip3009Status", "evmStatus", "EvmStatus", "EvmBreadthStatus"]
+        "./evm": ["EvmReader", "EvmLog", "EvmReceipt", "EvmTransaction", "ReaderError", "EvmRef", "Eip3009Ref", "EvmTxRef", "PullAuthorization", "authorizationUsed", "eip3009Recover", "eip3009Status", "evmStatus", "EvmStatus", "EvmBreadthStatus", "EvmLogEntry", "Permit2Ref", "AuthCaptureRef", "BatchEvmRef", "Erc7710Ref", "AUTHORIZATION_CANCELED_TOPIC", "UNORDERED_NONCE_INVALIDATION_TOPIC", "SEARCH_PAGE_BLOCKS", "MAX_SEARCH_PAGES"]
       },
       "use": "Anyone reading an EVM payment back finds it, learns whether it landed, can still land or can no longer land, and reads H back from the settlement transaction alone.",
       "fixedBy": "EIP-3009; Permit2; Ethereum JSON-RPC; the x402 eip155 profiles."
@@ -348,7 +348,7 @@
         "./x402-batch-settlement": ["BATCH_SETTLEMENT", "BatchEvmOpen", "BatchSvmOpen", "BatchUnsigned", "BatchWithin", "CHANNEL_CONFIG_TYPEHASH", "CHANNEL_CREATED_TOPIC", "ChannelConfig", "ChannelMembers", "DEPOSITED_TOPIC", "ERC3009_DEPOSIT_COLLECTOR", "Eip712Request", "PERMIT2_DEPOSIT_COLLECTOR", "SigningRequest", "VOUCHER_TYPEHASH", "batchChannelCreated", "batchChannelId", "batchCloudflare", "batchEvm", "batchSvm", "erc3009DepositNonce"]
       },
       "use": "Any buyer and seller using x402's batch-settlement bind one ATR to a channel: on EVM as the channel configuration's salt, on Solana in the opening's Memo, and on Cloudflare in each request's echoed extension.",
-      "fixedBy": "x402-batch-settlement-eip155.md; x402's batch-settlement scheme."
+      "fixedBy": "x402-batch-settlement-eip155.md; x402-batch-settlement-cloudflare.md; x402's batch-settlement scheme."
     },
     {
       "unit": "Stellar",

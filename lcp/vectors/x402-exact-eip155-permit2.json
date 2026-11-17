@@ -1,5 +1,5 @@
 {
- "about": "Vectors for x402/exact/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. Under the profile read-status, a status row that read failed now reads pending search-incomplete: at coverage full a failed answer waits for a search for H that this pairing does not have yet (rule 24).",
+ "about": "Vectors for x402/exact/eip155/permit2. H is SHA-256(\"abc\") (FIPS 180-2); the payer is the published Anvil development key #0; now is 1790000000. Values are written in full, or as their prefix and suffix where truncated. Refusal codes are this package's own, not the specification's. The read's own cases are the read kit's (read-status.json, through the pairing's read-kit form); EV6 and plantEmitter hold recover's rows.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "option": {
@@ -58,7 +58,7 @@
   "expectReferenceDigest": "0xc2396ede68ae6fe8e354ddf13ddb355932d97ac8cdeff1467f9307e47bf0d42f"
  },
  "EV6": {
-  "case": "exactPermit2.status of EV1's reference on fixture receipts and transactions; the reader answers finalized 100, safe 105, eth_getTransactionByHash with the row's input, and each eth_call with the row's nonceBitmap word at the receipt's block and its nonceBitmapBefore word at the block before it. Permit2's SignatureTransfer records a nonce in nonceBitmap(owner, nonce >> 8), bit nonce & 0xff (Permit2 _useUnorderedNonce), and the call that spends a permit carries its nonce in its calldata. expectCall is the eth_call at the receipt's block and expectCallBefore the one at the block before: to Permit2, of the selector keccak256(\"nonceBitmap(address,uint256)\")[0..4] (js-sha3 0.13.0) with the payer as owner and H >> 8 as the word position; H & 0xff is 173, and the words are Python integers. calls is how many of the two a row makes, in that order",
+  "case": "exactPermit2.recover of {network, tx, option} on fixture receipts and transactions; the reader answers finalized 100, safe 105, eth_getTransactionByHash with the row's input, and each eth_call with the row's nonceBitmap word at the receipt's block and its nonceBitmapBefore word at the block before it. Permit2's SignatureTransfer records a nonce in nonceBitmap(owner, nonce >> 8), bit nonce & 0xff (Permit2 _useUnorderedNonce), and the call that spends a permit carries its nonce in its calldata. expectCall is the eth_call at the receipt's block and expectCallBefore the one at the block before: to Permit2, of the selector keccak256(\"nonceBitmap(address,uint256)\")[0..4] (js-sha3 0.13.0) with the payer as owner and H >> 8 as the word position; H & 0xff is 173, and the words are Python integers. expectRecover is recover's answer, written from the pairing's profile (H, or the refusal that names why there is none), and calls is how many of the two eth_calls it makes, in that order",
   "reader": {
    "network": "eip155:84532",
    "finalized": "100",
@@ -91,17 +91,7 @@
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "nonceBitmapBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
    "calls": 2,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "settled",
-    "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
-    "position": "100",
-    "finality": "finalized",
-    "foreign": []
-   }
+   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "batched": {
    "case": "the same transfer, settled through a batched call that approves Permit2 and then calls the proxy",
@@ -124,17 +114,7 @@
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "nonceBitmapBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
    "calls": 2,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "settled",
-    "transaction": "0x1111111111111111111111111111111111111111111111111111111111111111",
-    "position": "100",
-    "finality": "finalized",
-    "foreign": []
-   }
+   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "nonceUnused": {
    "case": "the same transfer in a transaction by whose block Permit2 holds nonce H unused: a transfer of the payer's with another nonce",
@@ -156,14 +136,9 @@
    "input": "settle",
    "nonceBitmap": "0xffffffffffffffffffffdfffffffffffffffffffffffffffffffffffffffffff",
    "calls": 1,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/nonce-not-used"
    }
   },
   "usedBefore": {
@@ -187,14 +162,9 @@
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "nonceBitmapBefore": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "calls": 2,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/nonce-not-used"
    }
   },
   "plainTransfer": {
@@ -217,14 +187,9 @@
    "input": "plainTransfer",
    "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
    "calls": 0,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/no-permit2-settle"
    }
   },
   "callFails": {
@@ -247,14 +212,9 @@
    "input": "settle",
    "nonceBitmap": "reader-error",
    "calls": 1,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "unreadable",
-    "reason": "transport",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/unreadable"
    }
   },
   "transactionNone": {
@@ -276,14 +236,9 @@
    },
    "input": null,
    "calls": 0,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/not-found"
    }
   },
   "transactionFails": {
@@ -305,17 +260,13 @@
    },
    "input": "reader-error",
    "calls": 0,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "unreadable",
-    "reason": "transport",
-    "foreign": []
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/unreadable"
    }
   },
   "value9999": {
+   "case": "the settle call's transfer of 9999, where the permit's amount is 10000, by whose block Permit2 records nonce H used and not before: recover compares neither the log's recipient nor its value, and gives H",
    "receipt": {
     "status": 1,
     "blockNumber": "100",
@@ -331,16 +282,11 @@
      }
     ]
    },
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
-   },
-   "calls": 0
+   "input": "settle",
+   "nonceBitmap": "0x0000000000000000000020000000000000000000000000000000000000000000",
+   "nonceBitmapBefore": "0x0000000000000000000000000000000000000000000000000000000000000000",
+   "calls": 2,
+   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "reverted": {
    "receipt": {
@@ -348,29 +294,19 @@
     "blockNumber": "100",
     "logs": []
    },
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
-   },
-   "calls": 0
+   "calls": 0,
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/reverted"
+   }
   },
   "none": {
    "receipt": null,
-   "query": {
-    "act": "payment",
-    "finality": "finalized"
-   },
-   "expect": {
-    "state": "pending",
-    "reason": "search-incomplete",
-    "foreign": []
-   },
-   "calls": 0
+   "calls": 0,
+   "expectRecover": {
+    "refused": true,
+    "code": "evm/not-found"
+   }
   },
   "expectCall": {
    "to": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -383,8 +319,22 @@
    "block": "99"
   }
  },
+ "AG": {
+  "case": "The agreement's own value for H: SHA-256 over the 16 ASCII bytes `lcp-agreement-v1` (tagHex) followed by H's 32 bytes (preimageHex, 48 bytes), computed 2026-11-17 with GNU coreutils sha256sum and with openssl dgst -sha256 over those bytes, both giving expectValue; none was taken from the package's output. build(EV1's choice, H, \"agreement\") signs EV1's PermitWitnessTransferFrom with nonce = expectValue as a uint256, expectNonceDecimal; expectDigest is its EIP-712 digest, computed with viem 2.57.4's hashTypedData over the types EV1 writes from Permit2 (Uniswap/permit2 cc56ad0f, src/libraries/PermitHash.sol) and the x402 exact proxy's Witness. bound of that payment answers expectValue with no act given, H given the act agreement and H, and x402/nonce-not-agreement for EV1's payment, whose nonce is H, given the act agreement and H.",
+  "tagHex": "6c63702d61677265656d656e742d7631",
+  "preimageHex": "6c63702d61677265656d656e742d7631ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectValue": "0x424524a7e791dcf7c2e6980bc94582ae2b436d6184873563d03539e97d36a434",
+  "expectNonceDecimal": "29974813443532012023066257594749077332739347346832184257714923838385434305588",
+  "expectDigest": "0xf8e81a509fcacebb2b4ca710d7f61232becb1228c722abb7d9fea6ba229e373a",
+  "expectBound": "0x424524a7e791dcf7c2e6980bc94582ae2b436d6184873563d03539e97d36a434",
+  "expectBoundAsAgreement": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "paymentAsAgreement": {
+   "refused": true,
+   "code": "x402/nonce-not-agreement"
+  }
+ },
  "plantEmitter": {
-  "case": "EV6's Transfer emitted by a contract other than USDC must be failed transfer-not-found, never settled",
+  "case": "EV6's settle call and transfer, the Transfer emitted by a contract other than the permit's token: the settle call has no Transfer of its token from its owner, so recover gives evm/no-permit2-settle, never H",
   "receipt": {
    "status": 1,
    "blockNumber": "100",
@@ -400,16 +350,12 @@
     }
    ]
   },
-  "query": {
-   "act": "payment",
-   "finality": "finalized"
-  },
-  "expect": {
-   "state": "pending",
-   "reason": "search-incomplete",
-   "foreign": []
-  },
-  "calls": 0
+  "input": "settle",
+  "calls": 0,
+  "expectRecover": {
+   "refused": true,
+   "code": "evm/no-permit2-settle"
+  }
  },
  "agreedRefusals": {
   "about": "Refusal codes where the pairing leaves the code to the implementation, as this package applies them. A row with choice is build's choice, with H. A row with permitted is permit2TypedData over EV1's chain id 84532, spender expectSpender, nonce expectNonceDecimal and deadline expectDeadline (each uint256 an integer), with permitted the row's value.",

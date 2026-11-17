@@ -41,7 +41,10 @@ const SIGNED_AGAINST_THE_OPTION: Readonly<Record<string, Readonly<Record<string,
     "x402/nonce-not-payment": "the signed nonce is the hash of the payment information, which holds the option's network, asset, payTo, amount and escrow terms",
     "x402/salt-not-bound": "the signed salt is the commitment to the option's receiver authorizer and policy, and carries no saltNonce where the option binds neither",
   },
-  "x402/batch-settlement/eip155": { "x402/channel-id-mismatch": "the voucher's channel id is the configuration's hash on the option's network" },
+  "x402/batch-settlement/eip155": {
+    "x402/channel-id-mismatch":
+      "the voucher's channel id is the configuration's hash on the option's network, and in the option's refund-authorizer mode the configuration's salt ends in the option's refund authorizer",
+  },
   "x402/batch-settlement/solana": {
     "svm/carrier-mismatch": "the opening's memo is the option's extra.memo",
     "svm/channel-id-mismatch": "the opening's channel is the one the option's extra.feePayer derives",
@@ -137,14 +140,29 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
 }
 
 /**
+ * The member H is read from on `x402/batch-settlement/eip155`, which the option alone chooses: in the scheme's
+ * refund-authorizer mode, an option whose `extra.voucherManager` is `"facilitator"` with a non-zero
+ * `extra.refundAuthorizer` (`@x402/evm` 2.31.0 `buildChannelConfig`), the deposit authorization's salt or the permit's
+ * nonce, and otherwise the channel's salt. Nothing the payer signs marks the mode, so under an option of the other mode
+ * the pairing's `bound` reads the other member, which is not the H the payment's own option gives, and which the
+ * resource server that issued that option refuses as an H it did not issue (the profile's rule 4).
+ */
+const batchModeOf = (o: PaymentRequirements): string | undefined => {
+  const extra = (o.extra ?? {}) as Record<string, unknown>;
+  const ra = extra["refundAuthorizer"];
+  return extra["voucherManager"] === "facilitator" && typeof ra === "string" && /^0x[0-9a-fA-F]{40}$/.test(ra) && !/^0x0{40}$/.test(ra) ? ra.toLowerCase() : undefined;
+};
+
+/**
  * The counts this file's inputs give: the presentations; the answers under an option the pairing's `read` does not
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 30560;
-const NOT_OFFERED = 815654;
-const OFFERED_OWN_BINDS = 1311;
-const OFFERED_COUNTS = [1150, 161, 1072];
+const PRESENTED = 32284;
+const NOT_OFFERED = 861617;
+const OFFERED_OWN_BINDS = 1405;
+const OFFERED_COUNTS = [1231, 174, 1153];
+const OTHER_MODE = 34;
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>
@@ -167,6 +185,8 @@ interface Answer {
   reference?: unknown;
   /** Whether the option names no payee `reference` can take. */
   payeeless: boolean;
+  /** On `x402/batch-settlement/eip155`, whether the option's mode is another than the payment's own option's (`batchModeOf`). */
+  modeChanged: boolean;
   advertised: unknown;
 }
 const answers: Answer[] = [];
@@ -204,6 +224,7 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
           own: own.get(payment)!.get(pairing.id),
           ...(keyed ? { reference: await referenceOf(pairing, { ...payment, accepted }, accepted) } : {}),
           payeeless: isRefusal(x402Payee(accepted)),
+          modeChanged: pairing.id === "x402/batch-settlement/eip155" && batchModeOf(accepted) !== batchModeOf(payment.accepted),
           advertised: isOffered ? undefined : pairing.advertise(doc, H, LINK, accepted),
         });
       }
@@ -237,9 +258,11 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
     let bindings = 0;
     let keyed = 0;
     const payeeRefused = new Set<string>();
+    const otherMode: string[] = [];
     for (const a of offered) {
       if (!isRefusal(a.bound)) {
-        if (a.bound !== a.own) outside.push(`${a.pairing.id} bound another H`);
+        if (a.bound !== a.own && a.modeChanged) otherMode.push(`${a.where}: ${a.what}`);
+        else if (a.bound !== a.own) outside.push(`${a.pairing.id} bound another H`);
         bindings++;
         if (a.reference === undefined) continue;
         if (isRefusal(a.reference) && a.payeeless && a.reference.code === "x402/option-malformed") payeeRefused.add(a.pairing.id);
@@ -250,6 +273,11 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
       compared(a, "bound", a.bound);
     }
     expect([...new Set(outside)].sort()).toEqual([]);
+    // The batch pairing's openings under an option of the other mode (`batchModeOf`): EB10's two openings in the
+    // refund-authorizer mode, each under every option of the files that is not in that mode and under its own option
+    // with `extra.voucherManager` or `extra.refundAuthorizer` changed out of it. An opening of the other mode under
+    // EB10's option is refused, its channel salt not ending in the option's refund authorizer.
+    rowsOf(otherMode, "the EVM batch openings bound under an option of the other mode", { exact: OTHER_MODE });
     // Cardano's two reads offer an option with its `payTo` removed.
     expect([...payeeRefused].sort()).toEqual(["x402/exact/cardano", "x402/exact/cardano/lock"]);
     rowsOf(offered, "every pairing's answer under an option its read offers, for a payment its bound binds under its own option", { exact: OFFERED_OWN_BINDS });
@@ -291,7 +319,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 309 },
+  { exact: 308 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {

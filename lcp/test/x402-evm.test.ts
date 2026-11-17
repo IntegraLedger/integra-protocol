@@ -343,7 +343,7 @@ describe("the record", () => {
     expect(exactEip3009.data.carrier.signed).not.toBeNull();
     expect(exactEip3009.data.coverage).toBe("full");
     expect(exactEip3009.data.proves).toBe(
-        "The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash. The token contract verified that signature when it executed the transfer, and the hash is on chain as the nonce topic of its AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset or timing match the ATR's content.",
+        "The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash, or for an agreement the agreement's value of it. The token contract verified that signature when it executed the transfer, and the hash is on chain as the nonce topic of its AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset or timing match the ATR's content.",
     );
     expect(exactEip3009.claims).toBe(true);
   });
@@ -362,32 +362,27 @@ describe("the identity digest and the reference", () => {
     expect(await authorizationIdDigest(PAYER, O.payTo as Hex, 10000n)).toBe(ID_DIGEST);
     expect(sha256(encodePacked(["address", "address", "uint256"], [PAYER, O.payTo as Hex, 10000n]))).toBe(ID_DIGEST);
   });
-  // The read keys are the network, the token, validBefore and the transfer's digest, with the same keys as an EvmRef;
-  // the option's maxTimeoutSeconds is not among them, so reference neither records nor reads it.
+  // The read keys are the network, the token, the payer, validBefore and H, and the members of the payment presented
+  // (the token, from, to, value and nonce); the option's maxTimeoutSeconds is not among them, so reference neither
+  // records nor reads it.
   const keysOfV2 = {
     network: "eip155:84532",
-    asset: O.asset,
+    asset: O.asset.toLowerCase(),
+    payer: PAYER.toLowerCase(),
     validBefore: "1790000060",
-    idDigest: ID_DIGEST,
-    bindingLog: { address: O.asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H },
-    transferLog: {
-      address: O.asset,
-      topic0: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-      identity: "from,to,value",
-      digest: ID_DIGEST,
-    },
-    search: { address: O.asset, topics: [AUTHORIZATION_USED_TOPIC, null, H] },
-    authorization: { scheme: "eip3009", at: O.asset, nonce: H, deadline: "1790000060", asset: O.asset },
+    h: H,
+    presented: { token: O.asset.toLowerCase(), from: PAYER.toLowerCase(), to: O.payTo.toLowerCase(), value: "10000", nonce: H },
     payee: O.payTo,
   };
   it("reference gives the read keys of V2's payment, with the payee of the option it answers", async () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
     expect(await exactEip3009.reference(p, O)).toEqual(keysOfV2);
   });
-  it("reference takes the payee from the option and refuses an option without one, after the payment's own refusal", async () => {
+  it("reference takes the payee from the option, refuses an option without one after the payment's own refusal, and refuses an option the payment's accepted does not name", async () => {
     const p = (await unsignedV1()).complete(SIGNATURE) as PaymentPayload;
     const otherPayee = "0x3333333333333333333333333333333333333333";
-    expect(await exactEip3009.reference(p, { ...O, payTo: otherPayee })).toEqual({ ...keysOfV2, payee: otherPayee });
+    // The option given must be the one the payment's accepted names: another option is refused.
+    expect(await exactEip3009.reference(p, { ...O, payTo: otherPayee })).toEqual(refused("x402/accepted-not-option"));
     expect(await exactEip3009.reference(p, { ...O, payTo: "" })).toEqual(refused("x402/option-malformed"));
     expect(await exactEip3009.reference(p, null as never)).toEqual(refused("x402/option-malformed"));
     const unsigned = structuredClone(p);
@@ -482,74 +477,6 @@ describe("V6 status and recover", () => {
   const searching = { state: "pending", reason: "search-incomplete", foreign: [] };
   const unreadable = (reason: string) => ({ state: "unreadable", reason, foreign: [] });
 
-  it("a reverted receipt is no act and consumes no nonce: pending search-incomplete", async () => {
-    expect(await exactEip3009.status(ref, reader(receiptAt(100n, [], 0)), at("finalized"))).toEqual(searching);
-  });
-  it("the finality is the highest mark at or above the receipt's block, and the position the receipt's block", async () => {
-    expect(await exactEip3009.status(ref, reader(receiptAt(100n, matchingThirdOfFour)), at("finalized"))).toEqual(
-      settled(100n, "finalized"),
-    );
-    expect(await exactEip3009.status(ref, reader(receiptAt(104n, matchingThirdOfFour)), at("safe"))).toEqual(
-      settled(104n, "safe"),
-    );
-    expect(await exactEip3009.status(ref, reader(receiptAt(110n, matchingThirdOfFour)), at("latest"))).toEqual(
-      settled(110n, "latest"),
-    );
-  });
-  it("an act read below the finality asked for is pending below-mark, naming it at the mark it reached", async () => {
-    expect(await exactEip3009.status(ref, reader(receiptAt(104n, matchingThirdOfFour)), at("finalized"))).toEqual({
-      state: "pending",
-      reason: "below-mark",
-      transaction: TX,
-      position: 104n,
-      finality: "safe",
-      foreign: [],
-    });
-  });
-  it("the act agreement settles on the same transaction as the act payment", async () => {
-    const agreement = { act: "agreement" as const, finality: "finalized" as const };
-    expect(await exactEip3009.status(ref, reader(receiptAt(100n, matchingThirdOfFour)), agreement)).toEqual(
-      settled(100n, "finalized"),
-    );
-  });
-  it("an act at the position the caller gives is failed before-position", async () => {
-    const query = { act: "payment" as const, finality: "finalized" as const, after: 100n };
-    expect(await exactEip3009.status(ref, reader(receiptAt(100n, matchingThirdOfFour)), query)).toEqual({
-      state: "failed",
-      reason: "before-position",
-      transaction: TX,
-      position: 100n,
-      finality: "finalized",
-      foreign: [],
-    });
-    expect(await exactEip3009.status(ref, reader(receiptAt(100n, matchingThirdOfFour)), { ...query, after: 99n })).toEqual(
-      settled(100n, "finalized"),
-    );
-  });
-  it("a query that is not one status takes is unreadable unparseable, with nothing read", async () => {
-    let reads = 0;
-    const counted: EvmReader = { ...reader(receiptAt(100n, matchingThirdOfFour)), receipt: async () => (reads++, null) };
-    for (const q of [undefined, null, {}, { act: "payment", finality: "final" }, { act: "pay", finality: "finalized" }, { act: "payment", finality: "finalized", after: 1 }]) {
-      expect(await exactEip3009.status(ref, counted, q as never), JSON.stringify(q)).toEqual(unreadable("unparseable"));
-    }
-    expect(reads).toBe(0);
-  });
-  it("no receipt is pending search-incomplete; a rejected read is unreadable by the reader's error", async () => {
-    expect(await exactEip3009.status(ref, reader(null), at("finalized"))).toEqual(searching);
-    expect(await exactEip3009.status(ref, reader(new ReaderError("timeout")), at("finalized"))).toEqual(unreadable("transport"));
-    expect(await exactEip3009.status(ref, reader(new ReaderError("transport")), at("finalized"))).toEqual(unreadable("transport"));
-    expect(await exactEip3009.status(ref, reader(new ReaderError("too-large")), at("finalized"))).toEqual(unreadable("too-large"));
-    expect(await exactEip3009.status(ref, reader(new ReaderError("malformed")), at("finalized"))).toEqual(unreadable("unparseable"));
-    expect(await exactEip3009.status(ref, reader(new Error("refused")), at("finalized"))).toEqual(unreadable("transport"));
-  });
-  it("a reader for another network is unreadable chain-mismatch", async () => {
-    const r = { ...reader(receiptAt(100n, matchingThirdOfFour)), network: "eip155:8453" as const };
-    expect(await exactEip3009.status(ref, r, at("finalized"))).toEqual(unreadable("chain-mismatch"));
-  });
-  it("a successful receipt without this authorization's use is no act: pending search-incomplete", async () => {
-    const otherNonce = ("0x" + "22".repeat(32)) as Hex;
-    expect(await exactEip3009.status(ref, reader(receiptAt(100n, [used(otherNonce)])), at("finalized"))).toEqual(searching);
-  });
   it("recover gives H from the block-100 receipt, and refuses two different nonces", async () => {
     const tx = { network: ref.network, tx: TX, option: O };
     expect(await exactEip3009.recover(tx, reader(receiptAt(100n, matchingThirdOfFour)))).toBe(H);
@@ -574,28 +501,5 @@ describe("V6 status and recover", () => {
     expect(reads).toBe(0);
   });
 
-  it("the use of H must come with the transfer the same authorization produces, else the transaction is no act", async () => {
-    const another = "0x3333333333333333333333333333333333333333";
-    const s = (logs: EvmReceipt["logs"]) => exactEip3009.status(ref, reader(receiptAt(100n, logs)), at("finalized"));
-    // Another account's own authorization with nonce H, and its zero-value transfer to itself.
-    expect(await s([used(H, ASSET, another), transfer(another, another, 0n)])).toEqual(searching);
-    // Another account's use of H beside the payer's transfer of the same value to the payee.
-    expect(await s([used(H, ASSET, another), payment])).toEqual(searching);
-    // The payer's use of H with a transfer of another value, or with the transfer from another token.
-    expect(await s([used(H), transfer(PAYER, O.payTo, 9999n)])).toEqual(searching);
-    const elsewhere = { ...payment, address: "0x000000000000000000000000000000000000dEaD" as Hex };
-    expect(await s([used(H), elsewhere])).toEqual(searching);
-  });
-  it("a ref without a well-formed transferLog is unreadable unparseable", async () => {
-    const { transferLog: _, ...bare } = ref;
-    const r = reader(receiptAt(100n, matchingThirdOfFour));
-    expect(await exactEip3009.status(bare as typeof ref, r, at("finalized"))).toEqual(unreadable("unparseable"));
-    const short = { ...ref, transferLog: { ...transferLog, digest: "0x12" as Hex } };
-    expect(await exactEip3009.status(short, r, at("finalized"))).toEqual(unreadable("unparseable"));
-  });
 
-  it("plant: an AuthorizationUsed log with H from another contract is never settled", async () => {
-    const impostor = "0x000000000000000000000000000000000000dEaD" as Hex;
-    expect(await exactEip3009.status(ref, reader(receiptAt(100n, [used(H, impostor)])), at("finalized"))).toEqual(searching);
-  });
 });

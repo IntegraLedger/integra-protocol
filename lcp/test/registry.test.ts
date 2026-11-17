@@ -21,7 +21,7 @@ import type { AtrHash, Json } from "../src/core.js";
 import type { Broadcaster } from "../src/internal/broadcaster.js";
 import type { RecoverInput } from "../src/internal/read.js";
 import type { ChannelKind } from "../src/internal/registry.js";
-import type { Eip3009Ref, EvmReader, EvmRef, Hex } from "../src/evm.js";
+import type { AuthCaptureRef, Eip3009Ref, Erc7710Ref, EvmReader, EvmRef, Hex, Permit2Ref } from "../src/evm.js";
 import { exactHedera, exactHederaExecutor, type ExecutorRef, type HederaReader, type HederaRef } from "../src/hedera.js";
 import * as root from "../src/index.js";
 import {
@@ -139,12 +139,12 @@ type Own<E> = {
  */
 const OWN = {
   "x402/exact/eip155/eip3009": exactEip3009 satisfies Entry<"x402/exact/eip155/eip3009", Eip3009Payment, Eip3009Ref, EvmReader, Own<typeof exactEip3009>>,
-  "x402/exact/eip155/permit2": exactPermit2 satisfies Entry<"x402/exact/eip155/permit2", PaymentPayload, EvmRef, EvmReader, Own<typeof exactPermit2>>,
-  "x402/upto/eip155/permit2": uptoPermit2 satisfies Entry<"x402/upto/eip155/permit2", PaymentPayload, EvmRef, EvmReader, Own<typeof uptoPermit2>>,
-  "x402/exact/eip155/erc7710": exactErc7710 satisfies Entry<"x402/exact/eip155/erc7710", PaymentPayload, EvmRef, never, Own<typeof exactErc7710>>,
-  "x402/exact/eip155/erc7710-salt": exactErc7710Salt satisfies Entry<"x402/exact/eip155/erc7710-salt", PaymentPayload, EvmRef, EvmReader, Own<typeof exactErc7710Salt>>,
-  "x402/auth-capture/eip155/eip3009": authCaptureEip3009 satisfies Entry<"x402/auth-capture/eip155/eip3009", PaymentPayload, EvmRef, EvmReader, Own<typeof authCaptureEip3009>>,
-  "x402/auth-capture/eip155/permit2": authCapturePermit2 satisfies Entry<"x402/auth-capture/eip155/permit2", PaymentPayload, EvmRef, EvmReader, Own<typeof authCapturePermit2>>,
+  "x402/exact/eip155/permit2": exactPermit2 satisfies Entry<"x402/exact/eip155/permit2", PaymentPayload, Permit2Ref, EvmReader, Own<typeof exactPermit2>>,
+  "x402/upto/eip155/permit2": uptoPermit2 satisfies Entry<"x402/upto/eip155/permit2", PaymentPayload, Permit2Ref, EvmReader, Own<typeof uptoPermit2>>,
+  "x402/exact/eip155/erc7710": exactErc7710 satisfies Entry<"x402/exact/eip155/erc7710", PaymentPayload, Erc7710Ref, EvmReader, Own<typeof exactErc7710>>,
+  "x402/exact/eip155/erc7710-salt": exactErc7710Salt satisfies Entry<"x402/exact/eip155/erc7710-salt", PaymentPayload, Erc7710Ref, EvmReader, Own<typeof exactErc7710Salt>>,
+  "x402/auth-capture/eip155/eip3009": authCaptureEip3009 satisfies Entry<"x402/auth-capture/eip155/eip3009", PaymentPayload, AuthCaptureRef, EvmReader, Own<typeof authCaptureEip3009>>,
+  "x402/auth-capture/eip155/permit2": authCapturePermit2 satisfies Entry<"x402/auth-capture/eip155/permit2", PaymentPayload, AuthCaptureRef, EvmReader, Own<typeof authCapturePermit2>>,
   "x402/batch-settlement/eip155": batchEvm satisfies Entry<"x402/batch-settlement/eip155", BatchPaymentPayload, EvmRef, EvmReader, Own<typeof batchEvm>>,
   "x402/batch-settlement/solana": batchSvm satisfies Entry<"x402/batch-settlement/solana", BatchPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof batchSvm>>,
   "x402/batch-settlement/cloudflare": batchCloudflare satisfies Entry<"x402/batch-settlement/cloudflare", CloudflarePaymentPayload, never, never, Own<typeof batchCloudflare>>,

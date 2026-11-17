@@ -81,7 +81,8 @@ describe("ap2/checkout-mandate/x402", () => {
       receipt: async () => ({ status: 1, blockNumber: 100n, logs }),
       blockNumber: async () => 100n,
       transaction: async () => null,
-      call: async () => null as never,
+      // authorizationState: the nonce read unused, as the read reads it before it classifies what landed.
+      call: async () => ("0x" + "00".repeat(32)) as Hex,
     };
     const answer = await exactEip3009.status({ ...ref, transaction: TX, h: ref.bindingLog.value } as never, reader, {
       act: "payment",

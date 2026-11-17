@@ -291,15 +291,15 @@ The payer signed a token authorization whose nonce commits, through the escrow's
 
 ### `x402/auth-capture/eip155/permit2`
 
-The payment presented a Permit2 authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The escrow's event in the settlement transaction carries that PaymentInfo, salt included; it does not show which collector funded the payment. When unbound, the salt is this ATR's hash, so the settled transaction itself shows it. When bound, a holder of the ATR, the receiver authorizer and the policy can confirm the hash from the salt; the chain alone does not reveal it. This record covers that first collection; capture, void, refund and reclaim are the operator's and the payer's.
+The payment presented a Permit2 authorization whose nonce commits, through the escrow's PaymentInfo, to a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy when bound. The escrow's event in the settlement transaction carries that PaymentInfo, salt included, and names the deployment's Permit2 collector as the token collector that funded it. When unbound, the salt is this ATR's hash, so the settled transaction itself shows it. When bound, a holder of the ATR, the receiver authorizer and the policy can confirm the hash from the salt; the chain alone does not reveal it. This record covers that first collection; capture, void, refund and reclaim are the operator's and the payer's.
 
 ### `x402/batch-settlement/cloudflare`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The buyer's agent signed, with the HTTP message signature key it registered with Cloudflare, a request whose PAYMENT-SIGNATURE header echoes this ATR's hash in the legalContext entry of x402's extensions. Cloudflare verifies that signature and bills the agent's registered identity off chain. This does not show that amount, asset or timing match the ATR's content.
+Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement moved. The request whose payment echoed this ATR's hash in the legalContext entry of x402's extensions was signed with an HTTP message signature key registered with Cloudflare, which Cloudflare verifies, billing that key's registered identity off chain; no public ledger records the payment. This does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/batch-settlement/eip155`
 
-The payer signed a token authorization for a deposit into an x402 batch-settlement channel whose identifier, the EIP-712 hash of the channel's configuration, commits to this ATR's hash as the configuration's salt. The token contract or Permit2 verified that signature when the channel contract collected the deposit, and the hash is on chain as the salt in the channel's ChannelCreated event. Each voucher in this channel signs a commitment to this ATR's hash. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer signed a token authorization for a deposit into an x402 batch-settlement channel whose identifier, the EIP-712 hash of the channel's configuration, commits to this ATR's hash as the configuration's salt, or, in the scheme's refund-authorizer mode, whose own salt is this ATR's hash. The token contract or Permit2 verified that signature when the channel contract collected the deposit, and the hash is on chain as the salt in the channel's ChannelCreated event, or in that mode in the deposit call. Each voucher in this channel signs a commitment to the channel, and so, outside that mode, to this ATR's hash. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/batch-settlement/solana`
 
@@ -331,11 +331,11 @@ The payer signed a Concordium transaction one of whose transfers carries this AT
 
 ### `x402/exact/eip155/eip3009`
 
-The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash. The token contract verified that signature when it executed the transfer, and the hash is on chain as the nonce topic of its AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer signed an EIP-3009 transfer authorization whose nonce is this ATR's hash, or for an agreement the agreement's value of it. The token contract verified that signature when it executed the transfer, and the hash is on chain as the nonce topic of its AuthorizationUsed event in the settlement transaction. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/eip155/erc7710`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The ATR was assembled and delivered before the payment, and the buyer's payment payload echoed this ATR's hash in the legalContext entry of x402's extensions. The buyer's delegation does not sign the hash, and the settlement transaction does not carry it.
+Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement moved. The ATR was assembled and delivered before the payment, and the payment payload echoed this ATR's hash in the legalContext entry of x402's extensions. The read found the named settlement transaction, after the agreement's position, holding a transfer from the payment's delegator to the payee. The delegation does not sign the hash, and the settlement transaction does not carry it.
 
 ### `x402/exact/eip155/erc7710-salt`
 
@@ -343,7 +343,7 @@ The leaf delegation of the permission context redeemed for this payment, made th
 
 ### `x402/exact/eip155/permit2`
 
-The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with the scheme's x402 proxy as spender and the payee in the witness. Permit2 verified the signature when the proxy executed the transfer, and the hash is in the settlement transaction's calldata as the Permit2 nonce; no event carries it. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, or for an agreement the agreement's value of it, with the scheme's x402 proxy as spender and the payee in the witness. Permit2 verified the signature when the proxy executed the transfer, and the hash is in the settlement transaction's calldata as the Permit2 nonce; no event carries it. This does not show that amount, payee, asset or timing match the ATR's content.
 
 ### `x402/exact/hedera`
 

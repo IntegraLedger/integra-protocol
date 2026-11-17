@@ -226,12 +226,12 @@ import { emit, MAX_DOCUMENT_BYTES, parse, … } from "@integraledger/lcp/discove
 eip155 rail pieces: EIP-3009 and Permit2 typed data, the identity digest of a transfer, the settlement read from the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use before any transaction is named; the ERC-7710 permission-context decoder and MetaMask's DelegationManager address; the commerce-payments escrow's payment hash and the salt commitment to a receiver authorizer and policy; and x402's Permit2 proxy addresses.
 
 ```ts no-check
-import { AUTHORIZATION_STATE_SELECTOR, AUTHORIZATION_USED_TOPIC, authorizationIdDigest, … } from "@integraledger/lcp/evm";
+import { AUTHORIZATION_CANCELED_TOPIC, AUTHORIZATION_STATE_SELECTOR, AUTHORIZATION_USED_TOPIC, … } from "@integraledger/lcp/evm";
 ```
 
-**Values (27):** `AUTHORIZATION_STATE_SELECTOR`, `AUTHORIZATION_USED_TOPIC`, `authorizationIdDigest`, `authorizationUsed`, `bindSalt`, `decodePermissionContext`, `DELEGATION_MANAGER`, `DELEGATION_MANAGER_CHAINS`, `eip3009Recover`, `eip3009Status`, `eip3009TypedData`, `ESCROW`, `evmStatus`, `EXACT_PERMIT2_PROXY`, `NONCE_BITMAP_SELECTOR`, `PAYMENT_AUTHORIZED_TOPIC`, `PAYMENT_INFO_TYPEHASH`, `paymentHash`, `PERMIT2`, `permit2TypedData`, `ReaderError`, `REDEEMED_DELEGATION_TOPIC`, `SALT_BINDING_TYPEHASH`, `TRANSFER_TOPIC`, `TRANSFER_WITH_AUTHORIZATION_TYPEHASH`, `transferDigest`, `UPTO_PERMIT2_PROXY`.
+**Values (31):** `AUTHORIZATION_CANCELED_TOPIC`, `AUTHORIZATION_STATE_SELECTOR`, `AUTHORIZATION_USED_TOPIC`, `authorizationIdDigest`, `authorizationUsed`, `bindSalt`, `decodePermissionContext`, `DELEGATION_MANAGER`, `DELEGATION_MANAGER_CHAINS`, `eip3009Recover`, `eip3009Status`, `eip3009TypedData`, `ESCROW`, `evmStatus`, `EXACT_PERMIT2_PROXY`, `MAX_SEARCH_PAGES`, `NONCE_BITMAP_SELECTOR`, `PAYMENT_AUTHORIZED_TOPIC`, `PAYMENT_INFO_TYPEHASH`, `paymentHash`, `PERMIT2`, `permit2TypedData`, `ReaderError`, `REDEEMED_DELEGATION_TOPIC`, `SALT_BINDING_TYPEHASH`, `SEARCH_PAGE_BLOCKS`, `TRANSFER_TOPIC`, `TRANSFER_WITH_AUTHORIZATION_TYPEHASH`, `transferDigest`, `UNORDERED_NONCE_INVALIDATION_TOPIC`, `UPTO_PERMIT2_PROXY`.
 
-**Types (19):** `Delegation`, `Eip155`, `Eip3009Ref`, `Eip3009TypedData`, `EvmBreadthStatus`, `EvmLog`, `EvmReader`, `EvmReceipt`, `EvmRef`, `EvmStatus`, `EvmTransaction`, `EvmTxRef`, `Field`, `Hex`, `PaymentInfo`, `Permit2TypedData`, `PullAuthorization`, `TransferIdentity`, `TransferLog`.
+**Types (24):** `AuthCaptureRef`, `BatchEvmRef`, `Delegation`, `Eip155`, `Eip3009Ref`, `Eip3009TypedData`, `Erc7710Ref`, `EvmBreadthStatus`, `EvmLog`, `EvmLogEntry`, `EvmReader`, `EvmReceipt`, `EvmRef`, `EvmStatus`, `EvmTransaction`, `EvmTxRef`, `Field`, `Hex`, `PaymentInfo`, `Permit2Ref`, `Permit2TypedData`, `PullAuthorization`, `TransferIdentity`, `TransferLog`.
 
 ## `@integraledger/lcp/hedera`
 

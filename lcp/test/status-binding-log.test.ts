@@ -29,7 +29,6 @@ import {
   KEY_REVOKED_TOPIC,
   TRANSFER_WITH_MEMO_TOPIC,
 } from "../src/tempo.js";
-import { BATCH_SETTLEMENT, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
 import { rowsOf } from "./rows.js";
 
 const NET = "eip155:84532" as const;
@@ -46,12 +45,11 @@ const digest = ("0x" +
 const transferLog = { address: TOKEN, topic0: TRANSFER_TOPIC, identity: "from,to,value" as const, digest };
 const paid = { address: TOKEN, topics: ["0x" + word(TRANSFER_TOPIC), "0x" + word(PAYER), "0x" + word(PAYEE)] as Hex[], data: ("0x" + word("0x2710")) as Hex };
 
-/** Each pairing, with the binding log its own reference names. */
+/**
+ * Each pairing, with the binding log its own reference names. The x402 eip155 pairings whose read is a search take a
+ * reference of their own form, held by the read kit's forms (test/read-kit/forms/eip155-x402.ts).
+ */
 const PAIRINGS: [string, NonNullable<EvmRef["bindingLog"]>][] = [
-  ["x402/exact/eip155/erc7710-salt", { address: DELEGATION_MANAGER, topic0: REDEEMED_DELEGATION_TOPIC, dataWord: 5, value: H }],
-  ["x402/auth-capture/eip155/eip3009", { address: ESCROW["v1.1"].escrow, topic0: PAYMENT_AUTHORIZED_TOPIC, index: 1, value: H }],
-  ["x402/auth-capture/eip155/permit2", { address: ESCROW["v1.0"].escrow, topic0: ESCROW["v1.0"].chargedTopic, index: 1, value: H }],
-  ["x402/batch-settlement/eip155", { address: BATCH_SETTLEMENT, topic0: DEPOSITED_TOPIC, index: 1, value: H }],
   ["mpp/charge/evm/authorization", { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H }],
   ["mpp/charge/usdc/evm", { address: TOKEN, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: H }],
 ];
@@ -97,8 +95,8 @@ describe("a ref without its pairing's binding log", () => {
       expect(calls).toEqual(["receipt", "blockNumber"]);
     });
   }
-  it("covers each of the six pairings", () => {
-    expect(PAIRINGS.map(([id]) => rowsOf(BINDINGS, "BINDINGS, every pairing").some((b) => b.id === id))).toEqual(Array(6).fill(true));
+  it("covers each of the two pairings", () => {
+    expect(PAIRINGS.map(([id]) => rowsOf(BINDINGS, "BINDINGS, every pairing").some((b) => b.id === id))).toEqual(Array(2).fill(true));
   });
 });
 

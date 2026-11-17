@@ -67,10 +67,17 @@ describe("the root pairingOf, walking BINDINGS", () => {
       for (const [k, x] of Object.entries(v)) walk(x, `${path}.${k}`);
     };
     walk(vectors("x402-batch-settlement"), "x402-batch-settlement");
-    const offered = rowsOf(options, "x402-batch-settlement.json, every option it holds", {
-      keep: ["the options outside boundAccepted", ([path]) => !path.startsWith("x402-batch-settlement.boundAccepted.")],
-      leave: ["boundAccepted's options, which no read offers", ([path]) => path.startsWith("x402-batch-settlement.boundAccepted.")],
-    });
+    // EB10's expected references hold a network and a scheme member, the deposit method: they are no option.
+    const references = options.filter(([path]) => path.endsWith(".expectRef"));
+    expect(references.map(([path]) => path)).toEqual(["x402-batch-settlement.EB10.eip3009.expectRef", "x402-batch-settlement.EB10.permit2.expectRef"]);
+    const offered = rowsOf(
+      options.filter(([path]) => !path.endsWith(".expectRef")),
+      "x402-batch-settlement.json, every option it holds",
+      {
+        keep: ["the options outside boundAccepted", ([path]) => !path.startsWith("x402-batch-settlement.boundAccepted.")],
+        leave: ["boundAccepted's options, which no read offers", ([path]) => path.startsWith("x402-batch-settlement.boundAccepted.")],
+      },
+    );
     for (const [path, o] of offered) {
       expect(o.scheme, path).toBe("batch-settlement");
       expect(pairingOf(o), path).toBe(byNamespace[o.network.split(":")[0]!]);

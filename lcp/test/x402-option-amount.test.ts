@@ -49,11 +49,13 @@ const OUTSIDE: readonly [string, unknown][] = [
  */
 const ZERO_PRICE = X402.map((b) => b.id).filter((id) =>
   [
+    "x402/exact/eip155/eip3009",
     "x402/batch-settlement/eip155",
     "x402/batch-settlement/solana",
     "x402/exact/algorand",
     "x402/exact/casper",
     "x402/exact/ccd",
+    "x402/exact/eip155/eip3009",
     "x402/exact/solana",
     "x402/exact/sui",
     "x402/exact/tvm",
@@ -94,13 +96,13 @@ describe("every x402 pairing's read offers an option's amount only as the canoni
     expect(offered(pairing, all)).toEqual(zero ? [withAmount(option!, "0"), option] : [option]);
   });
 
-  it("27 options set to \"10\" are offered, 154 set outside are not, and 8 set to \"0\" on a zero-price scheme or a zero floor are", () => {
+  it("27 options set to \"10\" are offered, 153 set outside are not, and 9 set to \"0\" on a zero-price scheme or a zero floor are", () => {
     const answers = ROWS.flatMap(({ pairing, option }) => [
       [pairing.id, '"10"', offered(pairing, [option!])],
       ...OUTSIDE.map(([what, amount]) => [pairing.id, what, offered(pairing, [withAmount(option!, amount)])]),
     ]);
     const refused = rowsOf(answers, "each pairing's read of its option at each amount", {
-      exact: 154,
+      exact: 153,
       keep: ["the options its read does not offer", ([, , a]) => isRefusal(a)],
       leave: ["the options its read offers", ([, , a]) => !isRefusal(a)],
     });

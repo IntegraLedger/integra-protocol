@@ -20,7 +20,6 @@ import {
   evmStatus,
   paymentHash,
   permit2TypedData,
-  TRANSFER_TOPIC,
   transferDigest,
 } from "../src/evm.js";
 import {
@@ -65,7 +64,7 @@ import {
 } from "../src/svm.js";
 import { decodeTronTx, encodeTronRaw, tronCarrier, tronRecover, tronStatus } from "../src/tron.js";
 import { exactTvm, tvmRecover } from "../src/tvm.js";
-import { BATCH_SETTLEMENT, batchCloudflare, batchEvm, batchSvm, DEPOSITED_TOPIC } from "../src/x402-batch-settlement.js";
+import { batchCloudflare, batchEvm, batchSvm } from "../src/x402-batch-settlement.js";
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import { uptoSvm } from "../src/x402-upto-solana.js";
@@ -351,19 +350,23 @@ describe("evm", () => {
   });
   it("the EVM statuses read a malformed transaction, h, asset, binding log or transfer log as unreadable unparseable, with nothing read", async () => {
     const ref = load(evm).V6.ref;
-    for (const [name, read, members] of [
-      ["evmStatus", evmStatus, ["transaction", "bindingLog", "transferLog"]],
-      ["eip3009Status", eip3009Status, ["transaction", "h", "asset", "transferLog"]],
+    // evmStatus reads one receipt, null, and answers no act; eip3009Status first reads the final block, which a reader
+    // answering null gives in no form it takes.
+    for (const [name, read, members, first] of [
+      ["evmStatus", evmStatus, ["transaction", "bindingLog", "transferLog"], SEARCH_INCOMPLETE],
+      ["eip3009Status", eip3009Status, ["transaction", "h", "asset", "payer", "validBefore", "presented"], unreadable("unparseable")],
     ] as const) {
       const quiet = quietReader(ref.network);
-      expect(await read(ref, quiet as never, Q), name).toEqual(SEARCH_INCOMPLETE);
+      expect(await read(ref as never, quiet as never, Q), name).toEqual(first);
       expect(quiet.reads(), name).toBe(1);
       for (const member of rowsOf(members, `${name}: the members it reads`)) {
-        const bads = member === "transaction" || member === "h" ? [null, undefined, 1, H.slice(0, 64), `${H}00`] : [null, "0x1234", 1, {}];
+        // eip3009Status takes a reference with no transaction named: absent, it is read by its search alone.
+        const hashes = name === "eip3009Status" && member === "transaction" ? [null, 1, H.slice(0, 64), `${H}00`] : [null, undefined, 1, H.slice(0, 64), `${H}00`];
+        const bads = member === "transaction" || member === "h" ? hashes : [null, "0x1234", 1, {}];
         for (const bad of bads) {
           const reader = quietReader(ref.network);
           const label = `${name} ${member} ${String(bad)}`;
-          expect(await read({ ...ref, [member]: bad }, reader as never, Q), label).toEqual(unreadable("unparseable"));
+          expect(await read({ ...ref, [member]: bad } as never, reader as never, Q), label).toEqual(unreadable("unparseable"));
           expect(reader.reads(), label).toBe(0);
         }
       }
@@ -378,6 +381,8 @@ describe("evm", () => {
       network: v.reader.network,
       receipt: async () => ({ status: receipt.status, blockNumber: BigInt(receipt.blockNumber), logs }),
       blockNumber: async (tag: "safe" | "finalized") => BigInt(v.reader[tag]!),
+      // The token's record of the authorization, which eip3009Status reads: unused.
+      call: async () => `0x${"00".repeat(32)}`,
     });
   it("eip3009Status reads a receipt holding a log that is not an object with a string address, an array of string topics and a string data as unreadable unparseable, as evmStatus does", async () => {
     const v = load(evm).V6;
@@ -387,7 +392,8 @@ describe("evm", () => {
     const plain = (a: unknown) => JSON.parse(JSON.stringify(a, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
     const query = { ...Q, finality: row.expect.finality };
     expect(plain(await eip3009Status(v.ref, reader(row.receipt.logs) as never, query))).toEqual(row.expect);
-    expect(plain(await evmStatus(evmRef as never, reader(row.receipt.logs) as never, query))).toEqual(row.expect);
+    const { state, transaction, position, finality, foreign } = row.expect;
+    expect(plain(await evmStatus(evmRef as never, reader(row.receipt.logs) as never, query))).toEqual({ state, transaction, position, finality, foreign });
     for (const [label, logs] of misshapen(row.receipt.logs, useOf(row.receipt.logs, v.ref.h))) {
       expect(await eip3009Status(v.ref, reader(logs) as never, Q), label).toEqual(unreadable("unparseable"));
       expect(await evmStatus(evmRef as never, reader(logs) as never, Q), label).toEqual(unreadable("unparseable"));
@@ -775,22 +781,32 @@ describe("svm", () => {
 });
 
 describe("x402 batch settlement", () => {
-  // The vector file's ref names no Deposited binding log: batchEvm.status reads it as unparseable once the reader is an
-  // object.
-  evmStatusReads([
-    ["batchEvm.status", batchEvm.status, "x402-exact-eip155-eip3009.json", (bad, at) => (at === "reader" && !isObjectValue(bad) ? "transport" : "unparseable")],
-  ]);
+  // The vector file's ref is EIP-3009's, not a channel's: batchEvm.status reads it as unparseable once the reader is
+  // one of its network.
+  evmStatusReads([["batchEvm.status", batchEvm.status, "x402-exact-eip155-eip3009.json", byNetwork]]);
   reads([["batchEvm.recover", batchEvm.recover, "x402-exact-eip155-eip3009.json", refused("evm/wrong-reader")]]);
-  it("batchEvm.status: a reader that is not an object, beside the reference its reference writes, answers unreadable transport, and one with no members chain-mismatch", async () => {
+  it("batchEvm.status: a reader that is not an object, beside the reference its reference writes, answers unreadable transport, one with no members chain-mismatch, and one that answers no block unparseable", async () => {
     const V = load("x402-batch-settlement.json");
+    const e = V.fixed.evm;
     const ref = {
-      network: `eip155:${V.fixed.evm.chainId}`,
-      transaction: `0x${"ab".repeat(32)}`,
-      bindingLog: { address: BATCH_SETTLEMENT, topic0: DEPOSITED_TOPIC, index: 1, value: V.EB1.channelId },
-      transferLog: { address: V.fixed.evm.token, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: V.EB7.transferDigest },
+      network: `eip155:${e.chainId}`,
+      payee: e.receiver,
+      h: e.config.salt,
+      scheme: "eip3009",
+      asset: e.token,
+      payer: e.payer,
+      channel: V.EB1.channelId,
+      payerAuthorizer: e.payerAuthorizer,
+      receiver: e.receiver,
+      receiverAuthorizer: e.receiverAuthorizer,
+      withdrawDelay: e.withdrawDelay,
+      salt: e.config.salt,
+      nonce: V.EB3.depositNonce,
+      settleBy: e.validBefore,
+      amount: e.deposit,
     };
     const quiet = quietReader(ref.network);
-    expect(await batchEvm.status(ref as never, quiet as never, Q)).toEqual(SEARCH_INCOMPLETE);
+    expect(await batchEvm.status(ref as never, quiet as never, Q)).toEqual(unreadable("unparseable"));
     expect(quiet.reads()).toBe(1);
     for (const bad of MALFORMED) {
       expect(await batchEvm.status(ref as never, bad as never, Q), String(bad)).toEqual(unreadable(byNetwork(bad, "reader")));
@@ -798,7 +814,7 @@ describe("x402 batch settlement", () => {
   });
   // EB8's receipt holds its one ChannelCreated log, and EB7's full deposit call the same log fourth of five, beside the
   // token's AuthorizationUsed and Transfers and the channel contract's Deposited (x402-batch-settlement.json): recover
-  // gives EB8's H from each.
+  // gives EB8's H from the full call, which holds the payer's transfer.
   it("batchEvm.recover reads a reader answer that is not a receipt, or a receipt holding a log that is not an object with a string address, an array of string topics and a string data, as evm/unreadable, as eip3009Recover does", async () => {
     const V = load("x402-batch-settlement.json");
     const full = V.EB7.fullCall.receipt;
@@ -806,7 +822,8 @@ describe("x402 batch settlement", () => {
     const tx = { network, tx: `0x${"cd".repeat(32)}`, option: V.fixed.evm.option };
     const answering = (receipt: unknown) => ({ network, receipt: async () => receipt });
     const holding = (logs: unknown[]) => answering({ status: full.status, blockNumber: BigInt(full.blockNumber), logs });
-    expect(await batchEvm.recover(tx as never, holding([V.EB8.log]) as never)).toBe(V.EB8.expect);
+    // The ChannelCreated alone shows no payer's transfer, a refusal given only at the final mark, which this reader cannot read.
+    expect(await batchEvm.recover(tx as never, holding([V.EB8.log]) as never)).toEqual(refused("evm/not-final"));
     expect(await batchEvm.recover(tx as never, holding(full.logs) as never)).toBe(V.EB8.expect);
     const read = full.logs.findIndex((l: unknown) => JSON.stringify(l) === JSON.stringify(V.EB8.log));
     for (const [label, logs] of misshapen(full.logs, read)) {

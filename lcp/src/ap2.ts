@@ -33,7 +33,16 @@ import {
 } from "./sd-jwt.js";
 import { MAX_LINK_LENGTH } from "./internal/bounds.js";
 import { keccak, type Hex } from "./evm-abi.js";
-import { AUTHORIZATION_USED_TOPIC, TRANSFER_TOPIC, authorizationIdDigest, type Eip155, type Eip3009Ref } from "./internal/evm.js";
+import {
+  AUTHORIZATION_USED_TOPIC,
+  TRANSFER_TOPIC,
+  authorizationIdDigest,
+  type Eip155,
+  type EvmRef,
+  type PullAuthorization,
+  type TransferLog,
+} from "./internal/evm.js";
+import type { Eip3009Ref } from "./internal/evm-x402-reads.js";
 import { CARD } from "./internal/data/card.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
@@ -428,7 +437,11 @@ export interface X402Presented extends Presented {
  * nonce standing where that pairing's reference has H, so that the carried pairing's `status` reads the payment; and
  * the authorization's members as presented. The authorization's `nonce` is its single-use value.
  */
-export type X402Ref = Eip3009Ref & {
+export type X402Ref = Eip3009Ref &
+  Omit<EvmRef, "network" | "payee" | "transaction"> & {
+  idDigest: Hex;
+  transferLog: TransferLog;
+  authorization: PullAuthorization;
   from: string;
   to: string;
   value: string;
@@ -594,8 +607,12 @@ async function referenceX402(presented: unknown, option: X402Method): Promise<X4
   const asset = option.asset as Hex;
   return {
     network: caip2Of(option.network)!,
-    asset,
+    asset: asset.toLowerCase() as Hex,
     validBefore: a.validBefore,
+    // x402/exact/eip155/eip3009's read keys, the authorization's own nonce standing where H stands there.
+    h: nonce,
+    payer: a.from.toLowerCase() as Hex,
+    presented: { token: asset.toLowerCase(), from: a.from.toLowerCase(), to: a.to.toLowerCase(), value: a.value, nonce },
     idDigest,
     bindingLog: { address: asset, topic0: AUTHORIZATION_USED_TOPIC, index: 2, value: nonce },
     transferLog: { address: asset, topic0: TRANSFER_TOPIC, identity: "from,to,value", digest: idDigest },
