@@ -166,7 +166,17 @@ export interface VoucherTypedData {
 
 export type SessionUnsigned = {
   funding:
-    | { kind: "eip712"; typedData: ReceiveTypedData | Permit2TypedData }
+    | {
+        kind: "eip712";
+        typedData: ReceiveTypedData | Permit2TypedData;
+        /**
+         * On an `authorization` funding, what its nonce commits to besides the typed data's `from` and token (the
+         * domain's `verifyingContract`): `evmSessionAuthorizationNonce({from, payee, token, salt, authorizedSigner})` is
+         * the nonce, so a client can show the payee and the authorized signer and hold the nonce to them. A Permit2
+         * funding names them in its witness and gives none.
+         */
+        opening?: { payee: Hex; salt: Hex; authorizedSigner: Hex };
+      }
     | { kind: "tempo-call"; chainId: number; call: { to: Hex; data: Hex }; validBefore: number; broadcast: false };
   /**
    * `funded`: the funding signature, transaction hash or signed `0x76` transaction. A `tempo-call` funding's `complete`
@@ -398,6 +408,30 @@ export function evmChannelId(c: {
       addressWord(c.escrow),
       uintWord(BigInt(c.chainId)),
     ]),
+  );
+}
+
+/**
+ * The nonce an `mpp/session/evm` opening funded by an EIP-3009 `authorization` signs:
+ * keccak256(abi.encode(address from, address payee, address token, bytes32 salt, address authorizedSigner)), which the
+ * escrow recomputes in `openWithAuthorization` before it receives the deposit. Any value that is not an address, or a
+ * salt that is not a 32-byte hash, is `mpp/input-malformed`.
+ */
+export function evmSessionAuthorizationNonce(c: {
+  from: Hex;
+  payee: Hex;
+  token: Hex;
+  salt: Hex;
+  authorizedSigner: Hex;
+}): Hex | Refusal {
+  if (!isObject(c)) return refusal("mpp/input-malformed");
+  const salt = normalHash(c.salt);
+  for (const a of [c.from, c.payee, c.token, c.authorizedSigner]) {
+    if (!isAddress(a)) return refusal("mpp/input-malformed");
+  }
+  if (salt === null) return refusal("mpp/input-malformed");
+  return keccakHex(
+    concat([addressWord(c.from), addressWord(c.payee), addressWord(c.token), bytes32Word(salt), addressWord(c.authorizedSigner)]),
   );
 }
 
@@ -1605,7 +1639,8 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
     if (!isObject(td) || typeof td.name !== "string" || td.name === "" || typeof td.version !== "string" || td.version === "") {
       return refusal("mpp/input-malformed");
     }
-    const nonce = keccakHex(concat([addressWord(from), addressWord(recipient), addressWord(currency), bytes32Word(salt), addressWord(signer)]));
+    const nonce = evmSessionAuthorizationNonce({ from, payee: recipient, token: currency, salt, authorizedSigner: signer });
+    if (isRefusal(nonce)) return nonce;
     typedData = receiveTypedData({
       network: `eip155:${chainId}`,
       asset: currency,
@@ -1656,7 +1691,8 @@ async function evmBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsig
       payload: { ...base, type, authorization, signature: funded, voucherSignature },
     });
   };
-  return { funding: { kind: "eip712", typedData }, voucher: voucherFor(complete), complete };
+  const opening = type === "authorization" ? { opening: { payee: recipient, salt, authorizedSigner: signer } } : {};
+  return { funding: { kind: "eip712", typedData, ...opening }, voucher: voucherFor(complete), complete };
 }
 
 /**

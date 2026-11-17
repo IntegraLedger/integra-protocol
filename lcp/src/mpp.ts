@@ -177,6 +177,7 @@ export {
 } from "./hedera-session.js";
 export {
   evmChannelId,
+  evmSessionAuthorizationNonce,
   keySearch,
   sessionEvm,
   sessionStatus,

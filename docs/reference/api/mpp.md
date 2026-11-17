@@ -1092,7 +1092,7 @@ What these pairings' `status` answers, in the terms of `EvmBreadthStatus`.
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-funding-1"></a> `funding` | \{ `kind`: `"eip712"`; `typedData`: [`ReceiveTypedData`](#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `broadcast`: `false`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \} |
+| <a id="property-funding-1"></a> `funding` | \{ `kind`: `"eip712"`; `opening?`: \{ `authorizedSigner`: [`Hex`](evm.md#hex); `payee`: [`Hex`](evm.md#hex); `salt`: [`Hex`](evm.md#hex); \}; `typedData`: [`ReceiveTypedData`](#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `broadcast`: `false`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \} |
 
 #### Methods
 
@@ -1618,6 +1618,32 @@ keccak256(abi.encode(payer, payee, token, salt, authorizedSigner, escrow, chainI
 | `c.escrow` | `` `0x${string}` `` |
 | `c.payee` | `` `0x${string}` `` |
 | `c.payer` | `` `0x${string}` `` |
+| `c.salt` | `` `0x${string}` `` |
+| `c.token` | `` `0x${string}` `` |
+
+#### Returns
+
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
+
+***
+
+### evmSessionAuthorizationNonce()
+
+> **evmSessionAuthorizationNonce**(`c`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
+
+The nonce an `mpp/session/evm` opening funded by an EIP-3009 `authorization` signs:
+keccak256(abi.encode(address from, address payee, address token, bytes32 salt, address authorizedSigner)), which the
+escrow recomputes in `openWithAuthorization` before it receives the deposit. Any value that is not an address, or a
+salt that is not a 32-byte hash, is `mpp/input-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `c` | \{ `authorizedSigner`: `` `0x${string}` ``; `from`: `` `0x${string}` ``; `payee`: `` `0x${string}` ``; `salt`: `` `0x${string}` ``; `token`: `` `0x${string}` ``; \} |
+| `c.authorizedSigner` | `` `0x${string}` `` |
+| `c.from` | `` `0x${string}` `` |
+| `c.payee` | `` `0x${string}` `` |
 | `c.salt` | `` `0x${string}` `` |
 | `c.token` | `` `0x${string}` `` |
 

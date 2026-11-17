@@ -29,6 +29,7 @@ import { KEY_AUTHORIZED_TOPIC } from "../src/internal/tempo.js";
 import {
   challengeId,
   evmChannelId,
+  evmSessionAuthorizationNonce,
   pairingsOf,
   place,
   sessionEvm,
@@ -168,6 +169,10 @@ describe("mpp-session-evm.json", () => {
     expect((td.message as { nonce: string }).nonce).toBe(E.ES3.expectNonce);
     const five = ["address", "address", "address", "bytes32", "address"].map((type) => ({ type }));
     expect(keccak256(encodeAbiParameters(five, [f.payer, f.recipient, f.usdc, H, ZERO]))).toBe(E.ES3.expectNonce);
+    // The funding carries what its nonce commits to besides from and the token, and lcp's export derives the nonce from them.
+    const op = u.funding.opening!;
+    const { from } = td.message as { from: `0x${string}` };
+    expect(evmSessionAuthorizationNonce({ from, token: td.domain.verifyingContract, ...op })).toBe(E.ES3.expectNonce);
     affix(typeHash(E.ES4.typeSignature), E.ES4.expectTypeHash);
     expect(hashTypedData(forViem(td))).toBe(E.ES4.expectDigest);
     const signature = await payer.signTypedData(forViem(td));

@@ -305,7 +305,7 @@
     {
       "unit": "MPP sessions and subscriptions",
       "exports": {
-        "./mpp": ["sessionHederaStock", "hederaStockStatus", "HederaStockReader", "HederaStockRef", "HederaStockStatus", "RailSessionUnsigned", "SessionChoice", "SessionRef", "SessionStatus", "SessionUnsigned", "SessionWithin", "VoucherTypedData", "WithinSigningRequest", "StripeSubscriptionReceipt", "evmChannelId", "keySearch", "sessionEvm", "sessionResume", "sessionStatus", "sessionTempo", "sessionXrpl", "sessionXrplStock", "sessionSolanaMemo", "sessionSolanaStock", "SolanaSessionChoice", "SolanaSessionUnsigned", "subscriptionSolana", "subscriptionStripe", "subscriptionTempo"]
+        "./mpp": ["sessionHederaStock", "hederaStockStatus", "HederaStockReader", "HederaStockRef", "HederaStockStatus", "RailSessionUnsigned", "SessionChoice", "SessionRef", "SessionStatus", "SessionUnsigned", "SessionWithin", "VoucherTypedData", "WithinSigningRequest", "StripeSubscriptionReceipt", "evmChannelId", "keySearch", "sessionEvm", "sessionResume", "sessionStatus", "sessionTempo", "sessionXrpl", "sessionXrplStock", "sessionSolanaMemo", "sessionSolanaStock", "SolanaSessionChoice", "SolanaSessionUnsigned", "subscriptionSolana", "subscriptionStripe", "subscriptionTempo", "evmSessionAuthorizationNonce"]
       },
       "use": "Any server tells a channel's opening from a later credential and holds a later credential to its channel; a buyer's client builds a later payment within its channel; any holder of a subscription's ATR finds a collection made under the key the payer authorised over H.",
       "fixedBy": "The MPP session and subscription drafts; mpp-session-evm-tempo.md; mpp-session-hedera-solana-xrpl.md; mpp-subscription-solana.md."
