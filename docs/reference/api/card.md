@@ -154,13 +154,14 @@ link when one is given, and the processor reference.
 
 ### TapPresented
 
-A TAP payment request as received: the two signature fields and every `lcp-hash` field line.
+A TAP or Agent Pay request as the merchant received it: its two signature fields and, where the merchant's checkout
+path carries the hash, the request's absolute path without its query, as RFC 9421 §2.2.6 defines `@path`.
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-lcphash"></a> `lcpHash` | readonly `string`[] |
+| <a id="property-path"></a> `path?` | `string` |
 | <a id="property-signature"></a> `signature` | `string` |
 | <a id="property-signatureinput"></a> `signatureInput` | `string` |
 
@@ -168,15 +169,14 @@ A TAP payment request as received: the two signature fields and every `lcp-hash`
 
 ### TapUnsigned
 
-What the agent's own RFC 9421 signer adds: the field, its value, and the component it lists.
+What the agent's own RFC 9421 signer places in every message signature of its checkout request: the `nonce`, the
+padded base64 of the hash's 32 bytes followed by 32 random bytes.
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-component"></a> `component` | `"lcp-hash"` |
-| <a id="property-field"></a> `field` | `"lcp-hash"` |
-| <a id="property-value"></a> `value` | `` `0x${string}` `` |
+| <a id="property-nonce"></a> `nonce` | `string` |
 
 ***
 
@@ -191,6 +191,56 @@ The Autonomous chain. `l2` is exactly the presentation that L3b's `sd_hash` cove
 | <a id="property-l1"></a> `l1` | `string` |
 | <a id="property-l2"></a> `l2` | `string` |
 | <a id="property-l3b"></a> `l3b` | `string` |
+
+***
+
+### ViCheckoutChoice
+
+Immediate mode with a `checkout_jwt` the agent creates: the checkout payload it will sign, and the JSON the seller
+showed, whose `legalContext` member `build` writes into the payload.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-checkout-1"></a> `checkout` | `object` |
+| <a id="property-shown"></a> `shown` | `unknown` |
+
+***
+
+### ViCheckoutUnsigned
+
+The checkout payload with the seller's `legalContext` member, for the agent to sign as its `checkout_jwt`.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-checkout-2"></a> `checkout` | `object` |
+
+***
+
+### VicPresented
+
+A VIC transaction reference as the merchant reads it from the credential payload Visa signs for the sale.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-transactionreferenceid"></a> `transactionReferenceId` | `string` |
+
+***
+
+### VicUnsigned
+
+The transaction reference the agent writes into its VIC credential request: the hash as unpadded base64url.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-transactionreferenceid-1"></a> `transactionReferenceId` | `string` |
 
 ***
 
@@ -224,15 +274,35 @@ The checkout mandate for the wallet (L2) or the agent (L3b) to sign, and the pay
 
 ### CardPairingId
 
-> **CardPairingId** = `"card/visa-tap"` \| `"card/mastercard-vi/immediate"` \| `"card/mastercard-vi/autonomous"` \| `"card/seller-reference"`
+> **CardPairingId** = `"card/visa-tap"` \| `"card/mastercard-vi/immediate"` \| `"card/mastercard-vi/autonomous"` \| `"card/seller-reference"` \| `"card/visa-vic"` \| `"card/mastercard-agent-pay"`
 
 ***
 
 ### CardScheme
 
-> **CardScheme** = `"visa-tap"` \| `"mastercard-vi"` \| `"seller-reference"`
+> **CardScheme** = `"visa-tap"` \| `"mastercard-vi"` \| `"seller-reference"` \| `"visa-vic"` \| `"mastercard-agent-pay"`
 
 ## Variables
+
+### agentPay
+
+> `const` **agentPay**: [`CardPairing`](#cardpairing)\<`"card/mastercard-agent-pay"`, [`TapUnsigned`](#tapunsigned)\>
+
+`card/mastercard-agent-pay`. TAP's carrier under Mastercard's two published `tag` spellings. The payee broadcasts
+(`broadcaster` answers `"payee"`): the seller submits the card payment to its processor; nothing here reads it. A
+value that is not an object gets `card/tap-signature-input-malformed`, as `bound` refuses it.
+
+***
+
+### MAX\_CHARGE\_REFERENCE
+
+> `const` **MAX\_CHARGE\_REFERENCE**: `255` = `255`
+
+The longest charge reference lcp reads, in characters: a resource bound on what the seller presents, the bound lcp's
+Stripe subscription key takes for a Stripe ID (`mpp-card-stripe.ts`), which an Adyen `pspReference` (16 characters)
+is well within.
+
+***
 
 ### MAX\_CHECKOUT\_ID
 
@@ -266,19 +336,19 @@ The longest TAP `Signature-Input` or `Signature` field lcp parses, in characters
 
 ***
 
-### MAX\_TAP\_HASH\_LINE
-
-> `const` **MAX\_TAP\_HASH\_LINE**: `256` = `256`
-
-The longest `lcp-hash` field line lcp reads from a TAP payment request, in characters.
-
-***
-
 ### MAX\_TAP\_MEMBERS
 
 > `const` **MAX\_TAP\_MEMBERS**: `16` = `16`
 
 The most members lcp parses in one TAP signature field, an RFC 9651 Dictionary.
+
+***
+
+### MAX\_TAP\_PATH
+
+> `const` **MAX\_TAP\_PATH**: `2048` = `2048`
+
+The longest request path lcp reads from a TAP or Agent Pay request, in characters.
 
 ***
 
@@ -300,16 +370,17 @@ The longest Verifiable Intent layer, an SD-JWT with its disclosures, lcp reads, 
 
 ### sellerReference
 
-> `const` **sellerReference**: [`CardPairing`](#cardpairing)\<`"card/seller-reference"`, `never`\>
+> `const` **sellerReference**: [`CardPairing`](#cardpairing)\<`"card/seller-reference"`, `never`\> & `object`
 
 `card/seller-reference`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment
-to its processor, with H in its processor reference; nothing here reads it.
+to its processor, with H in its processor reference; nothing here reads it. `reference` names the charge by the
+seller's own reference for it.
 
-***
+#### Type Declaration
 
-### TAP\_FIELD
-
-> `const` **TAP\_FIELD**: `"lcp-hash"` = `"lcp-hash"`
+| Name | Type |
+| ------ | ------ |
+| `reference()` | (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ChargeRef`](acp.md#chargeref)\> |
 
 ***
 
@@ -325,7 +396,7 @@ payment the mandates authorize to its processor; nothing here reads it. A value 
 
 ### viImmediate
 
-> `const` **viImmediate**: [`CardPairing`](#cardpairing)\<`"card/mastercard-vi/immediate"`, [`ViUnsigned`](#viunsigned)\>
+> `const` **viImmediate**: [`CardPairing`](#cardpairing)\<`"card/mastercard-vi/immediate"`, [`ViUnsigned`](#viunsigned) \| [`ViCheckoutUnsigned`](#vicheckoutunsigned)\>
 
 `card/mastercard-vi/immediate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card
 payment the mandate authorizes to its processor; nothing here reads it. A value that is not an object gets
@@ -340,6 +411,16 @@ payment the mandate authorizes to its processor; nothing here reads it. A value 
 `card/visa-tap`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment to its
 processor; nothing here reads it. A value that is not an object gets `card/tap-signature-input-malformed`, as
 `bound` refuses it.
+
+***
+
+### visaVic
+
+> `const` **visaVic**: [`CardPairing`](#cardpairing)\<`"card/visa-vic"`, [`VicUnsigned`](#vicunsigned)\>
+
+`card/visa-vic`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller submits the card payment with the
+credential Visa issued for the sale to its processor; nothing here reads it. A value that is not an object gets
+`card/vic-reference-malformed`, as `bound` refuses it.
 
 ## Functions
 
@@ -382,3 +463,15 @@ The binding slot: every card option offered at this checkout, exactly as issued.
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### ChargePresented
+
+Re-exports [ChargePresented](acp.md#chargepresented)
+
+***
+
+### ChargeRef
+
+Re-exports [ChargeRef](acp.md#chargeref)

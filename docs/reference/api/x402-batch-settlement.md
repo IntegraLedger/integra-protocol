@@ -15,15 +15,15 @@ description: "The exports of @integraledger/lcp/x402-batch-settlement."
 
 #### Properties
 
-| Property | Type | Inherited from |
-| ------ | ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | [`X402Choice`](x402.md#x402choice).[`accepted`](x402.md#property-accepted) |
-| <a id="property-authsalt"></a> `authSalt` | `` `0x${string}` `` | - |
-| <a id="property-deposit"></a> `deposit` | `bigint` | - |
-| <a id="property-from"></a> `from` | `` `0x${string}` `` | [`X402Choice`](x402.md#x402choice).[`from`](x402.md#property-from) |
-| <a id="property-now"></a> `now` | `number` | [`X402Choice`](x402.md#x402choice).[`now`](x402.md#property-now) |
-| <a id="property-payerauthorizer"></a> `payerAuthorizer` | `` `0x${string}` `` | - |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | [`X402Choice`](x402.md#x402choice).[`required`](x402.md#property-required) |
+| Property | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - | [`X402Choice`](x402.md#x402choice).[`accepted`](x402.md#property-accepted) |
+| <a id="property-authsalt"></a> `authSalt` | `` `0x${string}` `` | 32 bytes the caller draws at random: the deposit authorization's salt (ERC-3009) or the deposit permit's nonce (Permit2); under an option in the scheme's refund-authorizer mode, where H is that salt or nonce, the entropy the channel salt packs. | - |
+| <a id="property-deposit"></a> `deposit` | `bigint` | - | - |
+| <a id="property-from"></a> `from` | `` `0x${string}` `` | - | [`X402Choice`](x402.md#x402choice).[`from`](x402.md#property-from) |
+| <a id="property-now"></a> `now` | `number` | - | [`X402Choice`](x402.md#x402choice).[`now`](x402.md#property-now) |
+| <a id="property-payerauthorizer"></a> `payerAuthorizer` | `` `0x${string}` `` | - | - |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - | [`X402Choice`](x402.md#x402choice).[`required`](x402.md#property-required) |
 
 ***
 
@@ -168,7 +168,7 @@ seller, verifies the agent's signed request and bills its registered identity of
 
 ### batchEvm
 
-> `const` **batchEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`p`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`p`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_p`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/batch-settlement/eip155"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **batchEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchUnsigned`](#batchunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`p`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`p`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_p`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/batch-settlement/eip155"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`BatchEvmRef`](evm.md#batchevmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/batch-settlement/eip155`. The payee broadcasts (`broadcaster` answers `"payee"` for each payment type
 `channel.kind` takes): for every payment of the channel: the seller's facilitator executes the deposit's token

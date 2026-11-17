@@ -7,6 +7,12 @@ description: "The exports of @integraledger/lcp/core."
 
 ## References
 
+### agreementValue
+
+Re-exports [agreementValue](index.md#agreementvalue)
+
+***
+
 ### assemble
 
 Re-exports [assemble](index.md#assemble)

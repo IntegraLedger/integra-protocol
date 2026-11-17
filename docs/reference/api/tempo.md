@@ -82,6 +82,224 @@ authorization over 8,192 bytes is `tempo/key-authorization-malformed`, as `bound
 | <a id="property-limits"></a> `limits` | `object`[] |
 | <a id="property-witness"></a> `witness` | `` `0x${string}` `` |
 
+***
+
+### TempoSearchReader
+
+A reader of a Tempo network: an `EvmSearchReader` that also reads a storage slot, an account's protocol nonce and the
+transactions of a block, each in the state after the block named. Every failure rejects.
+
+#### Extends
+
+- [`EvmSearchReader`](mpp.md#evmsearchreader)
+
+#### Properties
+
+| Property | Modifier | Type | Inherited from |
+| ------ | ------ | ------ | ------ |
+| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` \| `HederaNetwork` | [`EvmSearchReader`](mpp.md#evmsearchreader).[`network`](mpp.md#property-network) |
+
+#### Methods
+
+##### block()
+
+> **block**(`at`): `Promise`\<\{ `number`: `bigint`; `timestamp`: `bigint`; \}\>
+
+`eth_getBlockByNumber(at, false)`: the block's number and its timestamp, in seconds.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `at` | `bigint` \| `"safe"` \| `"finalized"` \| `"latest"` |
+
+###### Returns
+
+`Promise`\<\{ `number`: `bigint`; `timestamp`: `bigint`; \}\>
+
+###### Inherited from
+
+[`EvmSearchReader`](mpp.md#evmsearchreader).[`block`](mpp.md#block)
+
+##### blockNumber()
+
+> **blockNumber**(`tag`): `Promise`\<`bigint`\>
+
+`eth_getBlockByNumber(tag, false).number`.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `tag` | `"safe"` \| `"finalized"` |
+
+###### Returns
+
+`Promise`\<`bigint`\>
+
+###### Inherited from
+
+[`EvmSearchReader`](mpp.md#evmsearchreader).[`blockNumber`](mpp.md#blocknumber)
+
+##### blockTransactions()
+
+> **blockTransactions**(`block`): `Promise`\<readonly `` `0x${string}` ``[]\>
+
+`eth_getBlockByNumber(block, false)`'s `transactions`: the hashes of the block's transactions, in its order.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `block` | `bigint` |
+
+###### Returns
+
+`Promise`\<readonly `` `0x${string}` ``[]\>
+
+##### call()
+
+> **call**(`to`, `data`, `block`): `Promise`\<`` `0x${string}` ``\>
+
+`eth_call` of `data` to the contract `to`, in the state after block `block`: the return data.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `to` | `` `0x${string}` `` |
+| `data` | `` `0x${string}` `` |
+| `block` | `bigint` |
+
+###### Returns
+
+`Promise`\<`` `0x${string}` ``\>
+
+###### Inherited from
+
+[`EvmSearchReader`](mpp.md#evmsearchreader).[`call`](mpp.md#call)
+
+##### logs()
+
+> **logs**(`filter`): `Promise`\<readonly [`EvmLogEntry`](mpp.md#evmlogentry)[]\>
+
+`eth_getLogs` over `[fromBlock, toBlock]`: `address` absent reads every contract, and each topic is matched by its
+position, `null` matching any.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `filter` | \{ `address?`: `` `0x${string}` ``; `fromBlock`: `bigint`; `toBlock`: `bigint`; `topics`: readonly (`` `0x${string}` `` \| `null`)[]; \} |
+| `filter.address?` | `` `0x${string}` `` |
+| `filter.fromBlock` | `bigint` |
+| `filter.toBlock` | `bigint` |
+| `filter.topics` | readonly (`` `0x${string}` `` \| `null`)[] |
+
+###### Returns
+
+`Promise`\<readonly [`EvmLogEntry`](mpp.md#evmlogentry)[]\>
+
+###### Inherited from
+
+[`EvmSearchReader`](mpp.md#evmsearchreader).[`logs`](mpp.md#logs)
+
+##### nonceAt()
+
+> **nonceAt**(`account`, `block`): `Promise`\<`bigint`\>
+
+`eth_getTransactionCount(account, block)`.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `account` | `` `0x${string}` `` |
+| `block` | `bigint` |
+
+###### Returns
+
+`Promise`\<`bigint`\>
+
+##### raw()
+
+> **raw**(`tx`): `Promise`\<`` `0x${string}` `` \| `null`\>
+
+`eth_getRawTransactionByHash`: the signed transaction's bytes; null when the node holds none.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `tx` | `` `0x${string}` `` |
+
+###### Returns
+
+`Promise`\<`` `0x${string}` `` \| `null`\>
+
+###### Inherited from
+
+[`EvmSearchReader`](mpp.md#evmsearchreader).[`raw`](mpp.md#raw)
+
+##### receipt()
+
+> **receipt**(`tx`): `Promise`\<[`EvmReceipt`](evm.md#evmreceipt) \| `null`\>
+
+`eth_getTransactionReceipt`; null when the node holds none.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `tx` | `` `0x${string}` `` |
+
+###### Returns
+
+`Promise`\<[`EvmReceipt`](evm.md#evmreceipt) \| `null`\>
+
+###### Inherited from
+
+[`EvmSearchReader`](mpp.md#evmsearchreader).[`receipt`](mpp.md#receipt)
+
+##### storageAt()
+
+> **storageAt**(`address`, `slot`, `block`): `Promise`\<`` `0x${string}` ``\>
+
+`eth_getStorageAt(address, slot, block)`: the 32-byte word.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `address` | `` `0x${string}` `` |
+| `slot` | `` `0x${string}` `` |
+| `block` | `bigint` |
+
+###### Returns
+
+`Promise`\<`` `0x${string}` ``\>
+
+##### transaction()
+
+> **transaction**(`tx`): `Promise`\<[`EvmTransaction`](evm.md#evmtransaction) \| `null`\>
+
+`eth_getTransactionByHash`: the sender, the recipient (null for a contract creation) and the calldata; null when
+none.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `tx` | `` `0x${string}` `` |
+
+###### Returns
+
+`Promise`\<[`EvmTransaction`](evm.md#evmtransaction) \| `null`\>
+
+###### Inherited from
+
+[`EvmSearchReader`](mpp.md#evmsearchreader).[`transaction`](mpp.md#transaction)
+
 ## Variables
 
 ### ACCESS\_KEY\_SPEND\_TOPIC
@@ -119,9 +337,11 @@ ChannelClosed(bytes32,address,address,uint96,uint96)
 
 ### CHANNEL\_OPENED\_V1\_TOPIC
 
-> `const` **CHANNEL\_OPENED\_V1\_TOPIC**: `"0x4516edb7b2ea29d92a0dbb5ff857203558b677157f4115d582b66e07b90ac8a8"`
+> `const` **CHANNEL\_OPENED\_V1\_TOPIC**: `"0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94"`
 
-ChannelOpened(bytes32,address,address,address,address,uint256)
+ChannelOpened(bytes32,address,address,address,address,bytes32,uint256), the v1 escrow's event as it is deployed and as
+`mppx`'s legacy escrow ABI has it (0.15.0 `dist/tempo/legacy/session/escrow.abi.js:517-561`): the channel id, the payer
+and the payee indexed; the token, the authorized signer, the salt and the deposit, data words 0 to 3.
 
 ***
 

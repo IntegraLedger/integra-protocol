@@ -7,15 +7,68 @@ description: "The exports of @integraledger/lcp/sui."
 
 ## Interfaces
 
-### SuiExecuted
+### SuiBalanceChange
+
+One owner's net change in one coin type, an entry of the effects' `balanceChanges`.
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-checkpoint"></a> `checkpoint` | `bigint` \| `null` |
-| <a id="property-status"></a> `status` | `"SUCCESS"` \| `"FAILURE"` |
-| <a id="property-transactionbcs"></a> `transactionBcs` | `Uint8Array` |
+| <a id="property-amount"></a> `amount` | `bigint` |
+| <a id="property-cointype"></a> `coinType` | `string` |
+| <a id="property-owner"></a> `owner` | `string` |
+
+***
+
+### SuiExecuted
+
+#### Extended by
+
+- [`SuiFound`](#suifound)
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-balancechanges"></a> `balanceChanges` | readonly [`SuiBalanceChange`](#suibalancechange)[] | The effects' balance changes, each owner's net change in each coin type (`balanceChangesJson`). |
+| <a id="property-checkpoint"></a> `checkpoint` | `bigint` \| `null` | The checkpoint that holds the effects, or null for a transaction executed and not yet in one. |
+| <a id="property-status"></a> `status` | `"SUCCESS"` \| `"FAILURE"` | - |
+| <a id="property-transactionbcs"></a> `transactionBcs` | `Uint8Array` | - |
+
+***
+
+### SuiFound
+
+A transaction a page of the search returns: its digest as the endpoint names it, with the read's members.
+
+#### Extends
+
+- [`SuiExecuted`](#suiexecuted)
+
+#### Properties
+
+| Property | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ |
+| <a id="property-balancechanges-1"></a> `balanceChanges` | readonly [`SuiBalanceChange`](#suibalancechange)[] | The effects' balance changes, each owner's net change in each coin type (`balanceChangesJson`). | [`SuiExecuted`](#suiexecuted).[`balanceChanges`](#property-balancechanges) |
+| <a id="property-checkpoint-1"></a> `checkpoint` | `bigint` \| `null` | The checkpoint that holds the effects, or null for a transaction executed and not yet in one. | [`SuiExecuted`](#suiexecuted).[`checkpoint`](#property-checkpoint) |
+| <a id="property-digest"></a> `digest` | `string` | - | - |
+| <a id="property-status-1"></a> `status` | `"SUCCESS"` \| `"FAILURE"` | - | [`SuiExecuted`](#suiexecuted).[`status`](#property-status) |
+| <a id="property-transactionbcs-1"></a> `transactionBcs` | `Uint8Array` | - | [`SuiExecuted`](#suiexecuted).[`transactionBcs`](#property-transactionbcs) |
+
+***
+
+### SuiPage
+
+One page of the sender's transactions, in checkpoint order, with the endpoint's `pageInfo`.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-endcursor"></a> `endCursor` | `string` \| `null` |
+| <a id="property-hasnextpage"></a> `hasNextPage` | `boolean` |
+| <a id="property-transactions"></a> `transactions` | readonly [`SuiFound`](#suifound)[] |
 
 ***
 
@@ -36,10 +89,14 @@ The payload x402's Sui scheme defines.
 
 Bounded, read-only calls against one network's GraphQL endpoint. Every failure rejects, for example with
 `ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable. `read` is one request, so one
-snapshot: `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}}}
-checkpoint{epoch{epochId}} serviceConfig{availableRange(type:"Query",field:"transaction"){first{sequenceNumber}}}}`.
-`epoch` is the latest checkpoint's epoch. `firstCheckpoint` is the first checkpoint from which the endpoint holds
-transactions (the available range's inclusive lower bound), or null when the endpoint states none.
+snapshot: `query($d:String!){transaction(digest:$d){transactionBcs effects{status checkpoint{sequenceNumber}
+balanceChangesJson}} checkpoint{epoch{epochId}} serviceConfig{availableRange(type:"Query",field:"transaction"){first{sequenceNumber}}
+sender:availableRange(type:"Query",field:"transactions",filters:["sentAddress"]){first{sequenceNumber}
+last{sequenceNumber epoch{epochId}}}}}`. `epoch` is the latest checkpoint's epoch. `firstCheckpoint` is the first
+checkpoint from which the endpoint holds transactions (the available range's inclusive lower bound), or null when the
+endpoint states none. `searchRange` is the range it states for the sender filter, its first and last checkpoints and
+the last one's epoch (`SuiSearchRange`). Every executed transaction carries its effects' balance changes
+(`balanceChangesJson`), each owner's net change in each coin type, whole: an answer without them is `unparseable`.
 
 #### Properties
 
@@ -51,7 +108,7 @@ transactions (the available range's inclusive lower bound), or null when the end
 
 ##### read()
 
-> **read**(`digest`): `Promise`\<\{ `epoch`: `bigint`; `firstCheckpoint`: `bigint` \| `null`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
+> **read**(`digest`): `Promise`\<\{ `epoch`: `bigint`; `firstCheckpoint`: `bigint` \| `null`; `searchRange?`: [`SuiSearchRange`](#suisearchrange) \| `null`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
 
 ###### Parameters
 
@@ -61,22 +118,79 @@ transactions (the available range's inclusive lower bound), or null when the end
 
 ###### Returns
 
-`Promise`\<\{ `epoch`: `bigint`; `firstCheckpoint`: `bigint` \| `null`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
+`Promise`\<\{ `epoch`: `bigint`; `firstCheckpoint`: `bigint` \| `null`; `searchRange?`: [`SuiSearchRange`](#suisearchrange) \| `null`; `tx`: [`SuiExecuted`](#suiexecuted) \| `null`; \}\>
+
+##### search()
+
+> **search**(`sender`, `afterCheckpoint`, `beforeCheckpoint`, `cursor`): `Promise`\<[`SuiPage`](#suipage)\>
+
+One page of the sender's transactions: `transactions(first, after: cursor, filter: {sentAddress: sender,
+afterCheckpoint, beforeCheckpoint}) { pageInfo { hasNextPage endCursor } nodes { digest transactionBcs effects {
+status checkpoint { sequenceNumber } balanceChangesJson } } }`, `cursor` null for the first page.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `sender` | `string` |
+| `afterCheckpoint` | `bigint` |
+| `beforeCheckpoint` | `bigint` |
+| `cursor` | `string` \| `null` |
+
+###### Returns
+
+`Promise`\<[`SuiPage`](#suipage)\>
 
 ***
 
 ### SuiRef
 
-The read keys: the network, the digest, the epoch bound, and the payee, the `payTo` of the option the payment answers.
+The read keys: the network, the digest, the epoch bound, the payee, the `payTo` of the option the payment answers,
+and the sender, by which the search for H finds the payer's acts. The digest is over the whole transaction data the
+payer signed, its signatures apart, so it also names the payment presented.
 
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-digest"></a> `digest` | `string` | - |
+| <a id="property-digest-1"></a> `digest` | `string` | - |
 | <a id="property-network-1"></a> `network` | [`SuiNetwork`](#suinetwork) | - |
 | <a id="property-payee"></a> `payee` | `string` | - |
+| <a id="property-sender"></a> `sender` | `string` | - |
 | <a id="property-untilepoch"></a> `untilEpoch` | `string` \| `null` | The last epoch the transaction can execute in, as a decimal string, or null when it sets no maximum epoch. |
+
+***
+
+### SuiSearchRange
+
+The range of checkpoints the endpoint states it holds for the sender filter of `transactions`
+(`serviceConfig.availableRange(type: "Query", field: "transactions", filters: ["sentAddress"])`): its first and
+last checkpoints, and the epoch of the last.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-epoch"></a> `epoch` | `bigint` |
+| <a id="property-first"></a> `first` | `bigint` |
+| <a id="property-last"></a> `last` | `bigint` |
+
+***
+
+### SuiTransfer
+
+A transfer a signed command names: `TransferObjects` to an address given as a `Pure` input, or a call of
+`0x2::coin::send_funds<T>(coin, recipient)` with the recipient given so. `command` is the command's index among the
+transaction's commands; `coinType` is the type the command shows, `T` of `send_funds`, or `0x2::sui::SUI` where every
+object transferred is split from the gas coin, and absent where the bytes do not show it.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-cointype-1"></a> `coinType?` | `string` |
+| <a id="property-command"></a> `command` | `number` |
+| <a id="property-recipient"></a> `recipient` | `string` |
 
 ***
 
@@ -97,7 +211,9 @@ is what its bytes are backed by: `decodeSuiTx` gives `SuiTx<ArrayBuffer>`, each 
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-bytes"></a> `bytes` | `Uint8Array`\<`B`\> | - |
-| <a id="property-digest-1"></a> `digest` | `string` | Base58 of Blake2b-256 over `"TransactionData::"` followed by the bytes. |
+| <a id="property-digest-2"></a> `digest` | `string` | Base58 of Blake2b-256 over `"TransactionData::"` followed by the bytes. |
+| <a id="property-sender-1"></a> `sender` | `string` | The sender, who signed the bytes: `0x` and 64 lowercase hex digits. |
+| <a id="property-transfers"></a> `transfers` | readonly [`SuiTransfer`](#suitransfer)[] | The transfers the signed commands name, each with the recipient it names (`SuiTransfer`). |
 | <a id="property-untilepoch-1"></a> `untilEpoch` | `bigint` \| `null` | - |
 | <a id="property-unusedpure"></a> `unusedPure` | readonly `Uint8Array`\<`B`\>[] | - |
 
@@ -121,13 +237,20 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ##### complete()
 
-> **complete**(`signed`): [`Refusal`](index.md#refusal) \| `SuiPaymentPayload`
+> **complete**(`signed`, `sent?`): [`Refusal`](index.md#refusal) \| `SuiPaymentPayload`
+
+The payment, once the signed transaction carries H. `sent` is the transaction the client sent to the option's gas
+station (`extra.gasStation`), base64 of its `TransactionData`: on the sponsored path it is required, and the signed
+transaction must equal it in everything but the gas data (its owner, payment, price and budget), else
+`sui/not-as-sent`, since a gas station that changed the sender, an input, a command or the expiration could raise
+the amount or remove the lapse under a valid H.
 
 ###### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `signed` | [`SuiPayload`](#suipayload) |
+| `sent?` | `string` |
 
 ###### Returns
 
@@ -143,10 +266,12 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ### SuiStatus
 
-> **SuiStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `SuiMark`\>
+> **SuiStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `SuiMark`, `bigint`\>
 
-The answer of `suiStatus`, as the profile `read-status` gives it. Its one mark is `final`, the effects of an executed
-transaction, and its position the checkpoint sequence number.
+The answer of `suiStatus`, as the profile `read-status` gives it, and on `settled` whether its act is the payment
+presented. Positions are checkpoint sequence numbers, and so is the search's position. The one mark a query can ask
+for is `final`, certified effects in a checkpoint; `executed`, a transaction the endpoint returns with no checkpoint,
+is the state below it that the endpoint tells apart and no query names.
 
 ## Variables
 
@@ -156,6 +281,34 @@ transaction, and its position the checkpoint sequence number.
 
 `x402/exact/sui`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator executes the
 transaction the payer signed; `status` reads it by the digest the signed bytes fix.
+
+***
+
+### MAX\_SUI\_BALANCE\_CHANGES
+
+> `const` **MAX\_SUI\_BALANCE\_CHANGES**: `4096` = `4096`
+
+The most balance changes the read takes of one executed transaction: lcp's own bound on the work one reader's answer
+asks of it. Sui sets no count a GraphQL answer is held to; a transaction with more is out of the reader's form.
+
+***
+
+### MAX\_SUI\_COIN\_TYPE\_LENGTH
+
+> `const` **MAX\_SUI\_COIN\_TYPE\_LENGTH**: `4096` = `4096`
+
+The longest coin type, in characters, the read takes from a balance change: lcp's own bound on a reader's answer. Sui
+bounds a type by its nesting (16) and its identifiers, not by its text; a coin type with type parameters, such as a
+pool's share `…::reserve::CToken<P, T>`, is a coin type all the same.
+
+***
+
+### MAX\_SUI\_SEARCH\_PAGES
+
+> `const` **MAX\_SUI\_SEARCH\_PAGES**: `8` = `8`
+
+The pages one call of `status` reads of the search before it answers with the search's position: lcp's own bound on
+the reads one call makes. The next call resumes from that position.
 
 ## Functions
 
@@ -231,23 +384,24 @@ need no peer. One call.
 
 > **suiStatus**(`ref`, `reader`, `query`): `Promise`\<[`SuiStatus`](#suistatus)\>
 
-Answers the read of the recorded digest as the profile `read-status` gives it. The digest is the single-use value:
-Sui derives it from the signed bytes alone, so a transaction with it that executed, succeeded or not, consumed it. A
-present transaction must be these bytes carrying this hash, else it carries no act that binds H; its effects' status
-then decides: `SUCCESS` is the payer's act, and `FAILURE` the act included with a failed result, each at the one
-mark `final` and at its checkpoint, where the effects name one. An absent transaction is past its validity once the
-latest epoch is past its bound and the endpoint holds transactions from the position the query gives as `after`, or
-earlier: such a position is at or before every checkpoint the payment could have executed in, such as the latest
-checkpoint when the payment is requested. Otherwise it names no included act, since an endpoint that holds a shorter
-history may have pruned a transaction that executed; one with no bound (a null `untilEpoch`) can execute in any later
-epoch. The read holds no search for H, so none of these answers `failed` but `before-position`. A read that rejects
-is unreadable `transport`; an answer out of the reader's form, bytes that do not hash to the digest, or, without
-@mysten/sui, bytes that hash to the digest and that `decodeSuiTx` cannot read before the peer, are `unparseable`;
-and a reader for another network than the ref's is `chain-mismatch`. A ref, a reader or a query that is not one, a
-reader that names no network, a ref whose `digest` is not base58 of 32 bytes, whose `h` is not `0x` and 64 hex
-digits, or whose `untilEpoch` is neither null nor a decimal string below 2^64, and an `after` that is not a
-non-negative bigint, are unreadable `unparseable`, with nothing read. One call. Only the decode of a present
-transaction's bytes needs @mysten/sui; every other answer is the one with it.
+Answers the read of the recorded digest as the profile `read-status` gives it, with the search for H the profile
+`x402/exact/sui` states. The digest is the single-use value: Sui derives it from the signed bytes alone, so the
+transaction with it, succeeded or not, consumed it. That transaction must be these bytes carrying this hash, else
+the answer is unreadable `unparseable`. It is classified from what landed: its signer, the sender, against the
+option's payee and the reference's sender; the account it names, a positive balance change the payee's address owns
+or a recipient a signed transfer names, against the payee; and whether it is another act the caller gave by its
+reference. One with no checkpoint is in the state `executed`, after every checkpoint, so after the position given,
+and below the final mark. An absent transaction can still land while the endpoint holds transactions from the
+position given and the epoch at the search's head is not past its bound, or it has none; past it, it lapsed. Where
+the read would answer `failed` for any reason but `before-position`, it reads the search for H: the sender's
+transactions after the position given, or after the search's position an earlier answer returned, to the last
+checkpoint the endpoint states it holds for the sender filter, at most `MAX_SUI_SEARCH_PAGES` pages a call, each transaction
+read as `bound` reads one, those that carry H classified as the digest's is. A transaction it passes that does not
+hash to its digest or does not decode is named among the items the search could not decode, held at the checkpoint
+before it. A rejected read is
+unreadable `transport`; an answer out of the reader's form `unparseable`; transaction bytes over the bound
+`too-large`; a reader for another network `chain-mismatch`; a ref, a reader or a query that is not one is
+`unparseable`, with nothing read.
 
 #### Parameters
 
@@ -255,7 +409,7 @@ transaction's bytes needs @mysten/sui; every other answer is the one with it.
 | ------ | ------ |
 | `ref` | [`SuiRef`](#suiref) & `object` |
 | `reader` | [`SuiReader`](#suireader) |
-| `query` | [`StatusQuery`](index.md#statusquery)\<[`SuiRef`](#suiref) & `object`, `bigint`, `"final"`\> |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`SuiRef`](#suiref) & `object`, `bigint`, `SuiMark`, `bigint`\> |
 
 #### Returns
 

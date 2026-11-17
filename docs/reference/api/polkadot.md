@@ -7,6 +7,22 @@ description: "The exports of @integraledger/lcp/polkadot."
 
 ## Interfaces
 
+### PolkadotCursor
+
+The search's position, which a `pending` answer returns while the search has range left and the next call takes:
+the next block to read, never above the finalized height's next, and the timepoints the search met at or below the
+finalized height, which the next call reads again.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-hits"></a> `hits` | `readonly` | readonly `string`[] | - |
+| <a id="property-next"></a> `next` | `readonly` | `bigint` | - |
+| <a id="property-validated"></a> `validated?` | `readonly` | `bigint` | The head at which the chain's validation of the presented extrinsic answered valid, which proves the era's last block; kept in the position so that the next call takes it back. |
+
+***
+
 ### PolkadotExtrinsic
 
 #### Properties
@@ -24,7 +40,8 @@ description: "The exports of @integraledger/lcp/polkadot."
 
 ### PolkadotReader
 
-Bounded, read-only calls against one network's Sidecar. Every failure rejects.
+Bounded, read-only calls against one network's `polkadot-rest-api`, and its declared `json-rpc` side endpoint for the
+validation of a presented extrinsic. Every failure rejects.
 
 #### Properties
 
@@ -33,6 +50,23 @@ Bounded, read-only calls against one network's Sidecar. Every failure rejects.
 | <a id="property-network"></a> `network` | `readonly` | [`PolkadotNetwork`](#polkadotnetwork) |
 
 #### Methods
+
+##### accountNonce()
+
+> **accountNonce**(`account`, `at`): `Promise`\<`bigint`\>
+
+`GET /accounts/{account}/balance-info?at=` → nonce: the account's nonce at the finalized block, or at the head.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `account` | `` `0x${string}` `` |
+| `at` | `"head"` \| `"finalized"` |
+
+###### Returns
+
+`Promise`\<`bigint`\>
 
 ##### extrinsic()
 
@@ -61,6 +95,16 @@ Bounded, read-only calls against one network's Sidecar. Every failure rejects.
 
 `Promise`\<`bigint`\>
 
+##### headHeight()
+
+> **headHeight**(): `Promise`\<`bigint`\>
+
+`GET /blocks/head/header?finalized=false` → number: the latest head the endpoint serves.
+
+###### Returns
+
+`Promise`\<`bigint`\>
+
 ##### rawExtrinsics()
 
 > **rawExtrinsics**(`block`): `Promise`\<readonly `` `0x${string}` ``[] \| `null`\>
@@ -77,21 +121,43 @@ Bounded, read-only calls against one network's Sidecar. Every failure rejects.
 
 `Promise`\<readonly `` `0x${string}` ``[] \| `null`\>
 
+##### validate()
+
+> **validate**(`extrinsic`): `Promise`\<\{ `head`: `bigint`; `valid`: `boolean`; \}\>
+
+`TaggedTransactionQueue_validate_transaction` of the extrinsic at the best block, through the `json-rpc` endpoint:
+whether it answered valid, and the height of the block the call ran at, `state_call`'s `at`, pinned before the call,
+never a head read apart from it.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `extrinsic` | `` `0x${string}` `` |
+
+###### Returns
+
+`Promise`\<\{ `head`: `bigint`; `valid`: `boolean`; \}\>
+
 ***
 
 ### PolkadotRef
 
-The read keys: the accepted option's network, the extrinsic's hash and the call's asset from the signed bytes, and
-the payee, the `payTo` of the option the payment answers.
+The read keys of the presented extrinsic, from its signed bytes: the signer's 32-byte account, the account nonce and
+the era it signed, and the extrinsic itself, which the read validates and compares with what landed; with the
+accepted option's network and the payee, the `payTo` of the option the payment answers, the key of the two party
+tests and no search key.
 
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-assetid"></a> `assetId` | `number` |
-| <a id="property-extrinsichash"></a> `extrinsicHash` | `` `0x${string}` `` |
+| <a id="property-era"></a> `era` | [`PolkadotEra`](#polkadotera) |
+| <a id="property-extrinsic"></a> `extrinsic` | `` `0x${string}` `` |
 | <a id="property-network-1"></a> `network` | [`PolkadotNetwork`](#polkadotnetwork) |
+| <a id="property-nonce"></a> `nonce` | `string` |
 | <a id="property-payee"></a> `payee` | `string` |
+| <a id="property-signer"></a> `signer` | `` `0x${string}` `` |
 
 ***
 
@@ -142,11 +208,34 @@ byte field in its own fresh `ArrayBuffer`, and `encodeProfileCall` takes any bac
 | Property | Type |
 | ------ | ------ |
 | <a id="property-amount"></a> `amount` | `bigint` |
-| <a id="property-assetid-1"></a> `assetId` | `number` |
+| <a id="property-assetid"></a> `assetId` | `number` |
 | <a id="property-dest"></a> `dest` | `Uint8Array`\<`B`\> |
 | <a id="property-remark"></a> `remark` | `Uint8Array`\<`B`\> |
 
 ## Type Aliases
+
+### PolkadotEra
+
+> **PolkadotEra** = \{ `period`: `number`; `phase`: `number`; \} \| `"immortal"`
+
+A signed extrinsic's era: mortal, with its period and phase, or immortal.
+
+***
+
+### PolkadotLanded
+
+> **PolkadotLanded** = [`PolkadotRef`](#polkadotref) & `object`
+
+The reference with what the caller adds: H, and the timepoint a settler named, a hint.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `h` | [`AtrHash`](index.md#atrhash) |
+| `transaction?` | `string` |
+
+***
 
 ### PolkadotNetwork
 
@@ -154,14 +243,27 @@ byte field in its own fresh `ArrayBuffer`, and `encodeProfileCall` takes any bac
 
 ***
 
+### PolkadotQuery
+
+> **PolkadotQuery** = [`StatusQuery`](index.md#statusquery)\<[`PolkadotLanded`](#polkadotlanded), `bigint`, `PolkadotMark`, [`PolkadotCursor`](#polkadotcursor)\>
+
+What `polkadotStatus` takes beside the reference and the reader: the profile `read-status`'s query.
+
+***
+
 ### PolkadotStatus
 
-> **PolkadotStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `PolkadotMark`\>
+> **PolkadotStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `PolkadotMark`, [`PolkadotCursor`](#polkadotcursor)\>
 
 The answer of `polkadotStatus`, as the profile `read-status` gives it. Its marks are `head` and `finalized`, in that
-order, and its position the block height. An answer that names a transaction names the timepoint it read,
-`<block hash>-<index>`: the one given, or the canonical one when the given block left the chain and the canonical
-block at that height holds the same extrinsic at that index.
+order, and its position the block height. A transaction is named by its timepoint, `<block hash>-<index>`. A
+`settled` answer states `presented`: `yes` where the landed extrinsic's signed body, its signature apart, is the
+presented one's, `no` where it is not. Each transfer of what moved is named by the timepoint and its place: the
+event's index among the extrinsic's events, or, for a transfer call of zero, which emits no event, `call` and the
+index of each call on the path from the extrinsic's own call down to it (`call 0` for the profile's own). Its
+`signer` is the extrinsic's signer, and its `authority` the wrapper it acted through for the payer, `proxy.proxy` or
+`multisig.as_multi_threshold_1`, absent where it signed as the payer. A `pending` answer that holds the head at which the chain's validation of the presented
+extrinsic answered valid keeps it in its search position, `validated`, for the next call.
 
 ## Variables
 
@@ -178,7 +280,8 @@ Pallet and call indices, the same on both networks.
 > `const` **exactPolkadotRemark**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotUnsigned`](#polkadotunsigned)\>; `claims`: `true`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/polkadot/lcp-assets-remark"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotRef`](#polkadotref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/polkadot/lcp-assets-remark`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
-facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by block and index.
+facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by the signer's
+account nonce, the timepoint the facilitator named being a hint.
 
 ***
 
@@ -187,6 +290,20 @@ facilitator submits the extrinsic the payer signed and names where it landed; `s
 > `const` **LCP\_ASSETS\_REMARK**: `"lcp-assets-remark"` = `"lcp-assets-remark"`
 
 The profile's `assetTransferMethod`.
+
+***
+
+### POLKADOT\_BOUNDS
+
+> `const` **POLKADOT\_BOUNDS**: `Readonly`\<\{ `blockHashCount`: `4096`; `call`: `141`; `extrinsic`: `4096`; `remark`: `77`; `searchBlocks`: `64`; \}\>
+
+The pairing's bounds, each lcp's own or the chain's, with its reason. `extrinsic`: lcp's bound on a signed extrinsic's
+bytes, length prefix included, which the profile's extrinsic fits many times over and which bounds what is decoded.
+`remark`: the 77 ASCII bytes `lcp:sha256:` and H. `call`: the longest profile call, both compacts in their widest
+form, a `u32` asset id and a `u128` amount. `blockHashCount`: the chain's `BlockHashCount`, the number of block hashes
+an extrinsic's era can name (the profile's rule 7). `searchBlocks`: lcp's resource bound, the blocks one call of
+`polkadotStatus` reads of its search, so that each call's reads are bounded; the next call takes the search's
+position. The search holds the signer's own items alone to `extrinsic`.
 
 ## Functions
 
@@ -247,31 +364,6 @@ BLAKE2b-256 of the extrinsic's bytes, its length prefix included. Throws TypeErr
 
 ***
 
-### polkadotLocate()
-
-> **polkadotLocate**(`ref`, `reader`, `from`, `to`): `Promise`\<`string` \| [`Refusal`](index.md#refusal) \| `null`\>
-
-Finds a payment nobody named, by hashing every extrinsic of each block from `from` to `to` (at most 256 blocks).
-The first match gives its timepoint, once the block's record at that index has the recorded extrinsic hash. A block
-that does not exist, or a record at the matched index with another hash (the block at that height changed between
-the two reads), ends the scan with null. A ref or reader that is not an object, a reader for another network, or a
-ref whose `extrinsicHash` is not `0x` and 64 hex digits is `polkadot/wrong-reader`, with nothing read.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `ref` | [`PolkadotRef`](#polkadotref) |
-| `reader` | [`PolkadotReader`](#polkadotreader) |
-| `from` | `bigint` |
-| `to` | `bigint` |
-
-#### Returns
-
-`Promise`\<`string` \| [`Refusal`](index.md#refusal) \| `null`\>
-
-***
-
 ### polkadotRecover()
 
 > **polkadotRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
@@ -285,9 +377,8 @@ not a hex string, a record that is not an extrinsic's, or raw bytes whose hash i
 hash's LCP string with lowercase hex. The record read is then chosen as `polkadotStatus` chooses it, and a named
 block that the finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at
 its height, is `polkadot/not-located`. That record must show the extrinsic dispatched with the `Remarked` event for
-the remark and a `Transferred` event of the call's asset: one that does not is `polkadot/no-remark` or
-`polkadot/no-transfer` once the finalized chain holds its block, and `polkadot/not-final` while the block is above the
-finalized height, since that block can be replaced. The input's `tx` is the timepoint, and its `option` the option
+the remark, whatever it moved: one that does not is `polkadot/no-remark` once the finalized chain holds its block, and
+`polkadot/not-final` while the block is above the finalized height, since that block can be replaced. The input's `tx` is the timepoint, and its `option` the option
 the payment answers, an object, of which the read needs no member. An input whose `tx` is not a
 `<block hash>-<index>` timepoint, or whose option is not an object, is `polkadot/wrong-reader`, with nothing read. At
 most four calls.
@@ -309,29 +400,28 @@ most four calls.
 
 > **polkadotStatus**(`ref`, `reader`, `query`): `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>
 
-Answers the read of the extrinsic at its timepoint `<block hash>-<index>` as the profile `read-status` gives it. The
-extrinsic is the payer's act when it has the recorded hash, dispatched, and carries the `Remarked` event for this
-hash's remark and a `Transferred` event of the recorded asset, at the mark of the read: `finalized` when the
-finalized chain holds that block, `head` when it is above the finalized height; its position is the block's height.
-When the finalized chain holds another block at that height, the extrinsic at the same index of the canonical block
-is read instead if its hash is the recorded one. An extrinsic with the recorded hash that did not dispatch is the
-payer's act included with a failed result, which took the account's nonce. An extrinsic with another hash, or with
-no `Remarked` or `Transferred` event of the payment, carries no act of the payer's that binds H; a bare broadcast
-hash, a block the reader does not have, and a block that left the chain with no copy of the extrinsic name no
-included act. The read holds no search for H and does not read the account's nonce, so none of these answers
-`failed`. A read that rejects is unreadable `transport`, an answer that is not a record or a height `unparseable`,
-and a reader for another network than the ref's `chain-mismatch`. A ref, a reader or a query that is not one, a
-reader that names no network, or a ref whose network is not a Polkadot network, whose `extrinsicHash` is not `0x`
-and 64 hex digits, whose `assetId` is not an integer from 0 below 2^32, whose `h` is not a hash or whose
-`transaction` is neither a timepoint nor a bare hash, is unreadable `unparseable`, with nothing read.
+Answers the read of the act the query asks about as the profile `read-status` gives it, by the pairing's profile, rule
+8: the payment is read by the signer's account nonce, never by the extrinsic's hash. The read takes the finalized
+height, the latest head, and the account's nonce at each; then reads the timepoint a settler named, the hint, and the
+search's earlier finds; then searches every block after the position the caller gave up to the latest head, at most
+`POLKADOT_BOUNDS.searchBlocks` blocks a call, decoding each item's preamble: the signer's extrinsic at the signed nonce
+is the instrument's, and every extrinsic whose bytes hold the remark of H is read for the search for H. An extrinsic
+meets the profile's success where it dispatched (`success`) with `Remarked` for the remark; on the act `payment` it
+names the payee's account where a transfer it made reaches `payTo`'s 32-byte account. The era's last block is proven
+only by the chain's validation of the presented extrinsic answering valid, at the head it names (the search
+position's `validated`), and
+the lapse is the finalized height past it with the account nonce not past the signed one. A ref, a reader or a query
+that is not one is unreadable `unparseable`, with nothing read; a reader for another network `chain-mismatch`; a read
+that rejects `transport`; a block of the range at or below the finalized height that the endpoint does not hold
+`history-gap`; an item of the signer's over `POLKADOT_BOUNDS.extrinsic` bytes `too-large`.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | [`PolkadotRef`](#polkadotref) & `object` |
+| `ref` | [`PolkadotLanded`](#polkadotlanded) |
 | `reader` | [`PolkadotReader`](#polkadotreader) |
-| `query` | [`StatusQuery`](index.md#statusquery)\<[`PolkadotRef`](#polkadotref) & `object`, `bigint`, `PolkadotMark`\> |
+| `query` | [`PolkadotQuery`](#polkadotquery) |
 
 #### Returns
 

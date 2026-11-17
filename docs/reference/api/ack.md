@@ -9,7 +9,8 @@ description: "The exports of @integraledger/lcp/ack."
 
 ### AckBody
 
-The 402 body.
+The 402 body. The seller-signed token is `paymentRequestToken`, as ACK's SDKs write it from 0.10.0, or
+`paymentToken`, as they wrote it before; a body that carries both carries one token under both names.
 
 #### Properties
 
@@ -17,7 +18,8 @@ The 402 body.
 | ------ | ------ |
 | <a id="property-legalcontext"></a> `legalContext` | [`Json`](index.md#json) |
 | <a id="property-paymentrequest"></a> `paymentRequest?` | [`Json`](index.md#json) |
-| <a id="property-paymentrequesttoken"></a> `paymentRequestToken` | `string` |
+| <a id="property-paymentrequesttoken"></a> `paymentRequestToken?` | `string` |
+| <a id="property-paymenttoken"></a> `paymentToken?` | `string` |
 
 ***
 
@@ -69,8 +71,8 @@ receipt, and `fromReceipt` reads the hash from it; no `fetchPresented`, `status`
 
 > **fromReceipt**(`credentialSubject`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
 
-The hash in a receipt: the `id` of the Payment Request token embedded in its `credentialSubject`. Verifies nothing;
-a party calls it on a receipt it has verified.
+The hash in a receipt: the `id` of the Payment Request token embedded in its `credentialSubject`, under either of the
+token's two names. Verifies nothing; a party calls it on a receipt it has verified.
 
 #### Parameters
 

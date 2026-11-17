@@ -32,12 +32,17 @@ description: "The exports of @integraledger/lcp/ap2."
 
 ### Presented
 
+#### Extended by
+
+- [`X402Presented`](#x402presented)
+
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-checkout_jwt-1"></a> `checkout_jwt` | `string` | The checkout JWT presented beside the mandate. For AP2's latest-checkout check, the seller passes the one it last sent for this checkout; the buyer's copy shows only that the mandate and that JWT agree. |
 | <a id="property-checkout_mandate"></a> `checkout_mandate` | `string` | The closed Checkout Mandate as presented: one SD-JWT, or AP2's chain of the open mandate's SD-JWT and the closed mandate's, joined by `~~`. |
+| <a id="property-payment_receipt"></a> `payment_receipt?` | `object` | Present only in AP2's push funding, where the payment method pushes funds to the merchant and the merchant receives confirmation of funds sent instead of a payment credential: that confirmation, AP2's Payment Receipt as the payer's side gives it, a JSON object carried whole and read by nothing here. Absent where the merchant initiates the charge. |
 
 ***
 
@@ -67,6 +72,78 @@ description: "The exports of @integraledger/lcp/ap2."
 ###### Returns
 
 [`Presented`](#presented)
+
+***
+
+### X402Authorization
+
+The EIP-3009 `TransferWithAuthorization` AP2's x402 credential carries, its numbers as decimal strings.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-from"></a> `from` | `string` | - |
+| <a id="property-nonce"></a> `nonce` | `string` | keccak-256 of the payment mandate chain's UTF-8 text, as 64 hex digits, with or without `0x`. |
+| <a id="property-to"></a> `to` | `string` | - |
+| <a id="property-validafter"></a> `validAfter` | `string` | - |
+| <a id="property-validbefore"></a> `validBefore` | `string` | - |
+| <a id="property-value"></a> `value` | `string` | - |
+
+***
+
+### X402Bundle
+
+AP2's x402 payment credential: the payment mandate chain, its nonce, and the signed EIP-3009 authorization.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-eip_3009_payload"></a> `eip_3009_payload` | `object` |
+| `eip_3009_payload.authorization` | [`X402Authorization`](#x402authorization) |
+| `eip_3009_payload.signature` | `string` |
+| <a id="property-payment_mandate_chain"></a> `payment_mandate_chain` | `string` |
+| <a id="property-payment_nonce"></a> `payment_nonce` | `string` |
+
+***
+
+### X402Method
+
+AP2's x402 payment method, as the merchant names it in the checkout's `accepted_payment_methods`, with the token the
+authorization moves, which AP2's method does not name.
+
+#### Indexable
+
+> \[`k`: `string`\]: [`Json`](index.md#json)
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-address"></a> `address` | `string` | The account the payment pays. |
+| <a id="property-asset"></a> `asset` | `string` | The token under whose EIP-712 domain the authorization is signed, a 20-byte address: the merchant's own configuration of the method, as x402's option names it `asset`. |
+| <a id="property-network"></a> `network` | `string` | The network: an `eip155:<chain id>` CAIP-2 id, or an x402 v1 EVM network name as AP2 writes it (`base-sepolia`). |
+| <a id="property-type"></a> `type` | `"x402"` | - |
+
+***
+
+### X402Presented
+
+The checkout mandate as `ap2/checkout-mandate` takes it, with the x402 credential the merchant received.
+
+#### Extends
+
+- [`Presented`](#presented)
+
+#### Properties
+
+| Property | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ |
+| <a id="property-checkout_jwt-2"></a> `checkout_jwt` | `string` | The checkout JWT presented beside the mandate. For AP2's latest-checkout check, the seller passes the one it last sent for this checkout; the buyer's copy shows only that the mandate and that JWT agree. | [`Presented`](#presented).[`checkout_jwt`](#property-checkout_jwt-1) |
+| <a id="property-checkout_mandate-1"></a> `checkout_mandate` | `string` | The closed Checkout Mandate as presented: one SD-JWT, or AP2's chain of the open mandate's SD-JWT and the closed mandate's, joined by `~~`. | [`Presented`](#presented).[`checkout_mandate`](#property-checkout_mandate) |
+| <a id="property-payment"></a> `payment` | [`X402Bundle`](#x402bundle) | - | - |
+| <a id="property-payment_receipt-1"></a> `payment_receipt?` | `object` | Present only in AP2's push funding, where the payment method pushes funds to the merchant and the merchant receives confirmation of funds sent instead of a payment credential: that confirmation, AP2's Payment Receipt as the payer's side gives it, a JSON object carried whole and read by nothing here. Absent where the merchant initiates the charge. | [`Presented`](#presented).[`payment_receipt`](#property-payment_receipt) |
 
 ## Type Aliases
 
@@ -102,6 +179,30 @@ The `checkout_jwt` payload: the commerce object.
 
 \[`k`: `string`\]: [`Json`](index.md#json)
 
+***
+
+### X402Ref
+
+> **X402Ref** = [`Eip3009Ref`](evm.md#eip3009ref) & `Omit`\<[`EvmRef`](evm.md#evmref), `"network"` \| `"payee"` \| `"transaction"`\> & `object`
+
+The read keys of the x402 credential: the keys of `x402/exact/eip155/eip3009`'s reference, the authorization's own
+nonce standing where that pairing's reference has H, so that the carried pairing's `status` reads the payment; and
+the authorization's members as presented. The authorization's `nonce` is its single-use value.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `authorization` | [`PullAuthorization`](evm.md#pullauthorization) |
+| `from` | `string` |
+| `idDigest` | [`Hex`](evm.md#hex) |
+| `nonce` | `string` |
+| `to` | `string` |
+| `transferLog` | [`TransferLog`](evm.md#transferlog) |
+| `validAfter` | `string` |
+| `validBefore` | `string` |
+| `value` | `string` |
+
 ## Variables
 
 ### CHECKOUT\_VCT
@@ -114,9 +215,22 @@ The `checkout_jwt` payload: the commerce object.
 
 > `const` **checkoutMandate**: `Readonly`\<\{ `advertise`: (`payload`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`Payload`](#payload); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`offer`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"ap2/checkout-mandate"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: [`Ap2Offer`](#ap2offer); \}; `tie`: (`options`) => \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`CheckoutOption`](#checkoutoption); \}\>
 
-`ap2/checkout-mandate`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment processor
-executes the payment the closed Checkout Mandate authorizes; nothing here reads it. A value that is not a JSON object
-gets `ap2/mandate-malformed`, as `bound` refuses it.
+`ap2/checkout-mandate`. Where the merchant initiates the charge, the payee broadcasts (`broadcaster` answers
+`"payee"`): the seller's payment processor executes the payment the closed Checkout Mandate authorizes. In AP2's
+push funding the presentation carries `payment_receipt` and the payer broadcasts (`"payer"`): its side sent the funds
+before the merchant saw them. Nothing here reads the payment. A value outside `bound`'s shape gate gets the refusal
+`bound` gives it.
+
+***
+
+### checkoutMandateX402
+
+> `const` **checkoutMandateX402**: `Readonly`\<\{ `advertise`: (`payload`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`Payload`](#payload); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`offer`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"ap2/checkout-mandate/x402"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: [`Ap2Offer`](#ap2offer); \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`X402Ref`](#x402ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>; `tie`: (`options`) => \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`CheckoutOption`](#checkoutoption); \}\>
+
+`ap2/checkout-mandate/x402`. The payee broadcasts (`broadcaster` answers `"payee"`): the merchant forwards AP2's x402
+credential to its payment processor, which submits the authorization. `status` reads it by this pairing's
+`reference` as `x402/exact/eip155/eip3009`'s read does, at coverage `none`, the authorization's own nonce standing
+where that pairing has H. A value that is not a JSON object gets `ap2/mandate-malformed`, as `bound` refuses it.
 
 ***
 

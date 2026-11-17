@@ -94,6 +94,11 @@ reader the caller supplies to `status`, `recover` and `fetchPresented`, and `F` 
 with no read has no `status` and no `recover`, and takes `never` for `Reader`, and for `Ref` where it has no
 `reference`.
 
+`build`, `bound` and `reference` take the act, and `bound` and `reference` H with it, where the caller gives them;
+absent means the act `payment`. On a pairing whose single-use value is H itself or H's low bits, the act `agreement`
+makes each use the agreement's own value (`agreementValue`, or its low bits as the pairing takes H's) where the
+payment uses H; on every other pairing the act changes nothing. `status` takes the act in its query.
+
 #### Type Parameters
 
 | Type Parameter |
@@ -109,9 +114,9 @@ with no read has no `status` and no `recover`, and takes `never` for `Reader`, a
 | ------ | ------ | ------ | ------ |
 | <a id="property-advertise"></a> `advertise` | `readonly` | (`doc`, `h`, `link`, `offer`, ...`rest`) => [`Refusal`](#refusal) \| `F`\[`"advertised"`\] | - |
 | <a id="property-advertisebeforecarrier"></a> `advertiseBeforeCarrier?` | `readonly` | (`doc`, `h`, `link`, `offer`, ...`rest`) => [`Refusal`](#refusal) \| `F`\[`"advertised"`\] | `advertise` without the checks on a carrier the seller writes after H. |
-| <a id="property-bound"></a> `bound` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | - |
+| <a id="property-bound"></a> `bound` | `readonly` | (`presented`, `given?`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | H as what was presented carries it. Given the act `agreement` and H on a pairing whose agreement has its own value, it checks that what was presented carries that value in H's place, and gives H where it does. |
 | <a id="property-broadcaster"></a> `broadcaster` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| [`Broadcaster`](#broadcaster)\> | - |
-| <a id="property-build"></a> `build?` | `readonly` | (`choice`, `h`) => `Promise`\<[`Refusal`](#refusal) \| `F`\[`"unsigned"`\]\> | Absent where lcp builds no payment for the pairing: the payer's own client builds it. |
+| <a id="property-build"></a> `build?` | `readonly` | (`choice`, `h`, `act?`) => `Promise`\<[`Refusal`](#refusal) \| `F`\[`"unsigned"`\]\> | What the payer signs, with H in place, or for the act `agreement` on a pairing whose agreement has its own value, that value. Absent where lcp builds no payment for the pairing: the payer's own client builds it. |
 | <a id="property-channel"></a> `channel?` | `readonly` | `object` | For a channel, a session or a subscription. |
 | `channel.boundWithin` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | - |
 | `channel.kind` | `readonly` | (`presented`) => [`Refusal`](#refusal) \| `ChannelKind` | - |
@@ -122,8 +127,8 @@ with no read has no `status` and no `recover`, and takes `never` for `Reader`, a
 | <a id="property-keysearch"></a> `keySearch?` | `readonly` | (`ref`, `receipt`, `h`) => [`Refusal`](#refusal) \| `Ref` | The read keys of a transfer made under a key the payer authorised over H, from the receipt that registered it. |
 | <a id="property-landedtx"></a> `landedTx?` | `readonly` | (`presented`) => `string` \| `undefined` | For a form its payer broadcasts: the transaction the presented payment names, or undefined. |
 | <a id="property-read"></a> `read` | `readonly` | (`doc`) => [`Refusal`](#refusal) \| `F`\[`"offered"`\] | - |
-| <a id="property-recover"></a> `recover?` | `readonly` | (`input`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | H, or the value an agreement's transaction carries, read back from a landed transaction. |
-| <a id="property-reference"></a> `reference?` | `readonly` | (`presented`, `option`) => `Promise`\<[`Refusal`](#refusal) \| `Ref`\> | The read keys of a presented payment, with the payee of the option it answers. |
+| <a id="property-recover"></a> `recover?` | `readonly` | (`input`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | The value a landed transaction carries in H's place, in H's spelling: H, or H's low bits as the pairing carries them; and from an agreement's transaction on a pairing whose agreement has its own value, that value, which a holder of the ATR compares with `agreementValue` of its own H, since a digest is not read back to H. |
+| <a id="property-reference"></a> `reference?` | `readonly` | (`presented`, `option`, `given?`) => `Promise`\<[`Refusal`](#refusal) \| `Ref`\> | The read keys of a presented payment, with the payee of the option it answers; given the act `agreement` and H on a pairing whose agreement has its own value, the single-use value it names is that value. |
 | <a id="property-status"></a> `status?` | `readonly` | (`ref`, `reader`, `query`) => `Promise`\<`F`\[`"answer"`\]\> | The read of the act the query asks about, from the reference and what the landed transaction adds to it. |
 
 ***
@@ -166,13 +171,14 @@ A transaction that carries H, succeeded, and is not the act asked about.
 
 #### Properties
 
-| Property | Modifier | Type |
-| ------ | ------ | ------ |
-| <a id="property-moved"></a> `moved?` | `readonly` | readonly [`Moved`](#moved)[] |
-| <a id="property-position"></a> `position?` | `readonly` | `Position` |
-| <a id="property-reason"></a> `reason` | `readonly` | [`ForeignReason`](#foreignreason) |
-| <a id="property-signer"></a> `signer?` | `readonly` | `string` |
-| <a id="property-transaction"></a> `transaction` | `readonly` | `string` |
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-authority"></a> `authority?` | `readonly` | `string` | The authority the ledger records for its signer, where the read records one. |
+| <a id="property-moved"></a> `moved?` | `readonly` | readonly [`Moved`](#moved)[] | - |
+| <a id="property-position"></a> `position?` | `readonly` | `Position` | - |
+| <a id="property-reason"></a> `reason` | `readonly` | [`ForeignReason`](#foreignreason) | - |
+| <a id="property-signer"></a> `signer?` | `readonly` | `string` | - |
+| <a id="property-transaction"></a> `transaction` | `readonly` | `string` | - |
 
 ***
 
@@ -205,7 +211,8 @@ The longest a signed payment can stay payable where the rail itself bounds it, w
 
 ### Moved
 
-One transfer or deposit an act made, as the read observed it.
+One transfer or deposit an act made, as the read observed it, named by its transaction and its place in it, so that
+two answers that name one transfer are told from two transfers.
 
 #### Properties
 
@@ -213,7 +220,11 @@ One transfer or deposit an act made, as the read observed it.
 | ------ | ------ | ------ | ------ |
 | <a id="property-amount"></a> `amount` | `readonly` | `string` | - |
 | <a id="property-asset"></a> `asset` | `readonly` | `string` | - |
+| <a id="property-decimals"></a> `decimals?` | `readonly` | `number` | Where the ledger states it for the asset, the number of decimals in which `amount` is written: `amount` counts the asset's smallest unit, and the amount in the asset's own unit is `amount` × 10^-`decimals`. Observed, and never compared with anything. |
+| <a id="property-partial"></a> `partial?` | `readonly` | `true` | True where the ledger records that the payer signed the payment as one that may deliver less than the amount it names, and `amount` is then what it delivered; absent otherwise. Observed, and never judged. |
+| <a id="property-place"></a> `place?` | `readonly` | `string` \| `number` | Its place in that transaction, in the pairing's own spelling: on EVM the position of its `Transfer` log among the receipt's logs; elsewhere the position of the instruction, operation, output or event it was read from. |
 | <a id="property-to"></a> `to` | `readonly` | `string` | The account it reached, or the beneficiary a contract names. |
+| <a id="property-transaction-1"></a> `transaction?` | `readonly` | `string` | The transaction it was read from. |
 
 ***
 
@@ -302,7 +313,7 @@ The act `status` is asked about.
 
 ### Binding
 
-> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) & `PushMode` & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
+> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`agentPay`](card.md#agentpay) \| *typeof* [`visaVic`](card.md#visavic) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) \| *typeof* [`checkoutMandateX402`](ap2.md#checkoutmandatex402) \| *typeof* [`agentSigned`](ucp.md#agentsigned) & `PushMode` & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
 
 A pairing of protocol, scheme and rail.
 
@@ -534,7 +545,7 @@ What the basic URL parser gives for an absolute URL's scheme and authority.
 
 ### X402Binding
 
-> **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm)
+> **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCardanoLock`](cardano.md#exactcardanolock) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm)
 
 An x402 pairing of scheme and rail.
 
@@ -640,6 +651,15 @@ The most options lcp reads in one x402 document (`accepts`). x402 sets no count.
 
 ***
 
+### MAX\_REQUEST\_BYTES
+
+> `const` **MAX\_REQUEST\_BYTES**: `1048576` = `1_048_576`
+
+The most bytes the x402 request commitment reads of one part of a request: the body, the RFC 8785 form of an MCP tool
+call's arguments, and a named header field's value, its lines joined. x402 sets no size; a larger part is refused.
+
+***
+
 ### MAX\_SIGNATURE\_BYTES
 
 > `const` **MAX\_SIGNATURE\_BYTES**: `8192` = `8192`
@@ -656,6 +676,28 @@ form) has no length its standard fixes, so lcp bounds it here, for every pairing
 The length of a sale's return value, in bytes.
 
 ## Functions
+
+### agreementValue()
+
+> **agreementValue**(`h`): `Promise`\<`` `0x${string}` ``\>
+
+The agreement's own value for H (read-status.md, rule 1): SHA-256 over the 16 ASCII bytes `lcp-agreement-v1`
+followed by H's 32 bytes, as `0x` and lowercase hex. On a pairing whose single-use value is H itself or H's low bits,
+an agreement carries this value, or its low bits as the pairing takes H's, where a payment carries H, so the two acts
+under one H never share a single-use value; a holder of the ATR compares it with what `recover` reads from an
+agreement's transaction. Rejects with a TypeError when `h` is not a 32-byte hash.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `h` | `` `0x${string}` `` |
+
+#### Returns
+
+`Promise`\<`` `0x${string}` ``\>
+
+***
 
 ### assemble()
 
@@ -1188,7 +1230,7 @@ by one in which the transaction succeeds or holds other logs),
 `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above the finalized height),
 `stacks/not-final` (a failure in a Stacks block fewer than two tenures below the tip, which can be replaced),
 `starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block, which can change),
-`svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`) and
+`svm/not-final` (a transaction at Solana's `confirmed` not found at `finalized`, with an error or none) and
 `tempo/not-final` (as `evm/not-final`, on Tempo). The refusal code reference marks each of them.
 
 False for every other string. A verdict is not a read to repeat: a later read gives the same answer. Nor is a call the

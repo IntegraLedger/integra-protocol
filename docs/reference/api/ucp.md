@@ -7,6 +7,33 @@ description: "The exports of @integraledger/lcp/ucp."
 
 ## Interfaces
 
+### AgentSignedPresented
+
+The platform's signed request as the business received it: its body, as text, and its `Content-Digest` value.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-body"></a> `body` | `string` |
+| <a id="property-contentdigest"></a> `contentDigest` | `string` |
+
+***
+
+### AgentSignedUnsigned
+
+The member the platform writes into the request that completes the checkout, before it signs the request.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-legal_context"></a> `legal_context` | `object` |
+| `legal_context.type` | `"sha256"` |
+| `legal_context.value` | `` `0x${string}` `` |
+
+***
+
 ### UcpBinding
 
 #### Type Parameters
@@ -146,11 +173,18 @@ Who broadcasts what the payer presents: the seller, which completes the payment 
 
 ### Unsigned
 
+The checkout as the business signed it, and the claims the buyer's checkout mandate carries for it: the checkout JWT
+(`checkoutJwt`) and its hash. `complete` takes the signed mandate and returns it beside that JWT.
+
 #### Properties
 
 | Property | Type |
 | ------ | ------ |
 | <a id="property-checkout-1"></a> `checkout` | [`Checkout`](#checkout) |
+| <a id="property-content"></a> `content` | `object` |
+| `content.checkout_hash` | `string` |
+| `content.checkout_jwt` | `string` |
+| `content.vct` | `"mandate.checkout.1"` |
 
 #### Methods
 
@@ -226,6 +260,16 @@ A checkout's own `id`, 1–256 characters.
 
 ## Variables
 
+### agentSigned
+
+> `const` **agentSigned**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`Checkout`](#checkout); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`offer`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AgentSignedUnsigned`](#agentsignedunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"ucp/checkout/agent-signed"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: [`UcpOffer`](#ucpoffer); \}; `tie`: (`options`) => \[`"ucp"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`CheckoutOption`](#checkoutoption); \}\>
+
+`ucp/checkout/agent-signed`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
+executes the payment the signed request completes; nothing here reads it. A value that is not an object gets
+`ucp/request-malformed`, as `bound` refuses it.
+
+***
+
 ### ap2Mandate
 
 > `const` **ap2Mandate**: [`UcpBinding`](#ucpbinding)\<`"ucp/checkout/ap2-mandate"`, [`CheckoutOption`](#checkoutoption)\>
@@ -271,12 +315,43 @@ The option digest the issuer keeps: SHA-256 over the RFC 8785 form.
 
 ### unsigned
 
-> `const` **unsigned**: [`UcpBinding`](#ucpbinding)\<`"ucp/checkout/unsigned"`, [`CheckoutOption`](#checkoutoption)\>
+> `const` **unsigned**: [`UcpBinding`](#ucpbinding)\<`"ucp/checkout/unsigned"`, [`CheckoutOption`](#checkoutoption)\> & `object`
 
 `ucp/checkout/unsigned`. The payee broadcasts (`broadcaster` answers `"payee"`): the business's payment handler
-executes the payment the checkout completed; nothing here reads it.
+executes the payment the checkout completed; nothing here reads it. `reference` names the charge by the seller's own
+reference for it.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `reference()` | (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ChargeRef`](acp.md#chargeref)\> |
 
 ## Functions
+
+### checkoutJwt()
+
+> **checkoutJwt**(`c`): `string` \| [`Refusal`](index.md#refusal)
+
+The checkout JWT a buyer's checkout mandate commits to, for a checkout the business signed: its detached
+`ap2.merchant_authorization` with the payload reinserted, `header.payload.signature`, the payload being the base64url
+of the RFC 8785 form of the checkout without its `ap2` member, the bytes that signature covers (UCP 2026-08-25, the
+AP2 Mandates extension, *Business Authorization*). UCP does not say which bytes are the checkout JWT; this is the
+second of the two readings its open issue 905 sets out, and the profile states it as provisional. A checkout with no
+`ap2.merchant_authorization` of the form `header..signature` is `ucp/ap2-not-active`; one with no RFC 8785 form is
+`ucp/checkout-malformed`. No signature is verified.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `c` | [`Checkout`](#checkout) |
+
+#### Returns
+
+`string` \| [`Refusal`](index.md#refusal)
+
+***
 
 ### legalContextLink()
 
@@ -323,3 +398,15 @@ The binding slot: the checkouts or bookings this ATR was minted for, each by its
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### ChargePresented
+
+Re-exports [ChargePresented](acp.md#chargepresented)
+
+***
+
+### ChargeRef
+
+Re-exports [ChargeRef](acp.md#chargeref)

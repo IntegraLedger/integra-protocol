@@ -9,6 +9,10 @@ description: "The exports of @integraledger/lcp/evm."
 
 ### ReaderError
 
+Why a reader's call gave no answer: it timed out, its answer exceeded the reader's bound or the endpoint refused the
+range asked, it did not complete, its answer was malformed, or the endpoint does not hold the history or state asked
+for (`history`), which a read answers `unreadable`, `history-gap`.
+
 #### Extends
 
 - `Error`
@@ -23,7 +27,7 @@ description: "The exports of @integraledger/lcp/evm."
 
 | Parameter | Type |
 | ------ | ------ |
-| `kind` | `"transport"` \| `"timeout"` \| `"too-large"` \| `"malformed"` |
+| `kind` | `"history"` \| `"transport"` \| `"timeout"` \| `"too-large"` \| `"malformed"` |
 | `message?` | `string` |
 
 ###### Returns
@@ -39,7 +43,7 @@ description: "The exports of @integraledger/lcp/evm."
 | Property | Modifier | Type | Description | Inherited from |
 | ------ | ------ | ------ | ------ | ------ |
 | <a id="property-cause"></a> `cause?` | `public` | `unknown` | - | `Error.cause` |
-| <a id="property-kind"></a> `kind` | `readonly` | `"transport"` \| `"timeout"` \| `"too-large"` \| `"malformed"` | - | - |
+| <a id="property-kind"></a> `kind` | `readonly` | `"history"` \| `"transport"` \| `"timeout"` \| `"too-large"` \| `"malformed"` | - | - |
 | <a id="property-message"></a> `message` | `public` | `string` | - | `Error.message` |
 | <a id="property-name"></a> `name` | `public` | `string` | - | `Error.name` |
 | <a id="property-stack"></a> `stack?` | `public` | `string` | - | `Error.stack` |
@@ -135,6 +139,69 @@ https://v8.dev/docs/stack-trace-api#customizing-stack-traces
 
 ## Interfaces
 
+### AuthCaptureRef
+
+The reference the `auth-capture` reads take.
+
+#### Extends
+
+- `X402EvmRefBase`
+
+#### Properties
+
+| Property | Modifier | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ | ------ |
+| <a id="property-asset"></a> `asset` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-escrow"></a> `escrow` | `readonly` | `` `0x${string}` `` | The escrow deployment and the event of the option's flow. | - |
+| <a id="property-event"></a> `event` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-expiry"></a> `expiry` | `readonly` | `string` | `preApprovalExpiry`, in decimal. | - |
+| <a id="property-h"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
+| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
+| <a id="property-payee"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-payer"></a> `payer` | `readonly` | `` `0x${string}` `` | The escrow's `PaymentInfo.payer`, the token authorization's signer. | - |
+| <a id="property-paymentid"></a> `paymentId` | `readonly` | `` `0x${string}` `` | The escrow's payment hash of the presented `PaymentInfo`, and that hash with payer zero, the signed nonce. | - |
+| <a id="property-salt"></a> `salt` | `readonly` | `` `0x${string}` `` | `PaymentInfo.salt`: H, or the commitment to the receiver authorizer, the policy and H. | - |
+| <a id="property-scheme"></a> `scheme` | `readonly` | `"eip3009"` \| `"permit2"` | - | - |
+| <a id="property-signaturenonce"></a> `signatureNonce` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-transaction"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+
+***
+
+### BatchEvmRef
+
+The reference the read of `x402/batch-settlement/eip155` takes: the channel the opening deposits into, by its id and
+its config whole (the payer, who signs the deposit authorization; the payer authorizer; the receiver; the receiver
+authorizer; the token; the withdrawal delay; the salt), which the id commits to, and the deposit authorization's
+nonce, its bound and the amount it moves.
+
+#### Extends
+
+- `X402EvmRefBase`
+
+#### Properties
+
+| Property | Modifier | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ | ------ |
+| <a id="property-amount"></a> `amount` | `readonly` | `string` | - | - |
+| <a id="property-asset-1"></a> `asset` | `readonly` | `` `0x${string}` `` | The channel's token. | - |
+| <a id="property-channel"></a> `channel` | `readonly` | `` `0x${string}` `` | The channel id, and the config's other members. | - |
+| <a id="property-h-1"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
+| <a id="property-network-1"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
+| <a id="property-nonce"></a> `nonce` | `readonly` | `` `0x${string}` `` | The deposit authorization's nonce, a 32-byte word: keccak256(abi.encode(channelId, authSalt)) on ERC-3009, the permit's nonce on Permit2. | - |
+| <a id="property-payee-1"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-payer-1"></a> `payer` | `readonly` | `` `0x${string}` `` | The channel's payer, the deposit authorization's signer. | - |
+| <a id="property-payerauthorizer"></a> `payerAuthorizer` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-receiver"></a> `receiver` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-receiverauthorizer"></a> `receiverAuthorizer` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-refundauthorizer"></a> `refundAuthorizer?` | `readonly` | `` `0x${string}` `` | In the scheme's refund-authorizer mode, the option's refund authorizer, whose 20 bytes end the channel salt: H is then the deposit authorization's salt, or the permit's nonce, and not the channel salt. | - |
+| <a id="property-salt-1"></a> `salt` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-scheme-1"></a> `scheme` | `readonly` | `"eip3009"` \| `"permit2"` | - | - |
+| <a id="property-settleby"></a> `settleBy` | `readonly` | `string` | The deposit authorization's `validBefore` or `deadline`, and the deposit's amount, in decimal. | - |
+| <a id="property-transaction-1"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+| <a id="property-withdrawdelay"></a> `withdrawDelay` | `readonly` | `number` | - | - |
+
+***
+
 ### Delegation
 
 #### Properties
@@ -145,8 +212,31 @@ https://v8.dev/docs/stack-trace-api#customizing-stack-traces
 | <a id="property-caveats"></a> `caveats` | `object`[] |
 | <a id="property-delegate"></a> `delegate` | `` `0x${string}` `` |
 | <a id="property-delegator"></a> `delegator` | `` `0x${string}` `` |
-| <a id="property-salt"></a> `salt` | `` `0x${string}` `` |
+| <a id="property-salt-2"></a> `salt` | `` `0x${string}` `` |
 | <a id="property-signature"></a> `signature` | `` `0x${string}` `` |
+
+***
+
+### Eip3009Ref
+
+The reference the `exact` EIP-3009 read takes.
+
+#### Extends
+
+- `X402EvmRefBase`
+
+#### Properties
+
+| Property | Modifier | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ | ------ |
+| <a id="property-asset-2"></a> `asset` | `readonly` | `` `0x${string}` `` | The token under whose domain the authorization is signed, the option's `asset`. | - |
+| <a id="property-h-2"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
+| <a id="property-network-2"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
+| <a id="property-payee-2"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-payer-2"></a> `payer` | `readonly` | `` `0x${string}` `` | The authorization's `from`, the signer of H. | - |
+| <a id="property-presented"></a> `presented` | `readonly` | `Signed` | The members of the payment presented: the token, `from`, `to`, `value` and `nonce`, lowercase, value in decimal. | - |
+| <a id="property-transaction-2"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+| <a id="property-validbefore"></a> `validBefore` | `readonly` | `string` | The authorization's `validBefore`, in decimal: the lapse's deadline, no member compared. | - |
 
 ***
 
@@ -175,9 +265,35 @@ https://v8.dev/docs/stack-trace-api#customizing-stack-traces
 
 ***
 
+### Erc7710Ref
+
+The reference the ERC-7710 reads take.
+
+#### Extends
+
+- `X402EvmRefBase`
+
+#### Properties
+
+| Property | Modifier | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ | ------ |
+| <a id="property-asset-3"></a> `asset` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-h-3"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
+| <a id="property-network-3"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
+| <a id="property-payee-3"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-payer-3"></a> `payer` | `readonly` | `` `0x${string}` `` | The payment's `delegator`: at the salt level the root delegator, whose account the transfer comes from. | - |
+| <a id="property-presented-1"></a> `presented?` | `readonly` | `Readonly`\<`Record`\<`string`, `string`\>\> | The payment presented: `delegation`, the EIP-712 hash of the leaf delegation its permission context encodes (`delegationHash`), which covers the leaf's caveats and, through its `authority`, every delegation above it, and which `status` compares with the leaf a `RedeemedDelegation` log carries. Absent where the context does not decode as the reference manager's: the read then shows no member, and `presented` is `unshown`. | - |
+| <a id="property-transaction-3"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+
+***
+
 ### EvmLog
 
 One receipt log: the emitter, its topics and its data.
+
+#### Extended by
+
+- [`EvmLogEntry`](mpp.md#evmlogentry)
 
 #### Properties
 
@@ -195,13 +311,35 @@ Bounded, read-only calls against one network's endpoint. Every failure rejects, 
 rejected `receipt`, `transaction` or `call` reads as unreadable, and a rejected `blockNumber` counts as a mark not
 reached.
 
+#### Extended by
+
+- [`EvmSearchReader`](mpp.md#evmsearchreader)
+
 #### Properties
 
 | Property | Modifier | Type |
 | ------ | ------ | ------ |
-| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` \| `HederaNetwork` |
+| <a id="property-network-4"></a> `network` | `readonly` | `` `eip155:${string}` `` \| `HederaNetwork` |
 
 #### Methods
+
+##### block()?
+
+> `optional` **block**(`at`): `Promise`\<\{ `number`: `bigint`; `timestamp`: `bigint`; \}\>
+
+`eth_getBlockByNumber(at, false)`: its number and timestamp. Rejects with a `ReaderError` of kind `history` where the
+endpoint does not hold that block. Absent where the reader reads no block; a read that needs a block's time then
+reads no lapse.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `at` | `bigint` \| `"safe"` \| `"finalized"` \| `"latest"` |
+
+###### Returns
+
+`Promise`\<\{ `number`: `bigint`; `timestamp`: `bigint`; \}\>
 
 ##### blockNumber()
 
@@ -236,6 +374,29 @@ reached.
 ###### Returns
 
 `Promise`\<`` `0x${string}` ``\>
+
+##### logs()?
+
+> `optional` **logs**(`filter`): `Promise`\<readonly [`EvmLogEntry`](#evmlogentry)[]\>
+
+`eth_getLogs` over `fromBlock` to `toBlock`: `address` absent, every contract's; a topic `null`, any value there.
+Rejects with a `ReaderError` of kind `too-large` for a range the endpoint refuses, and of kind `history` where the
+endpoint does not hold the history of the range. Absent where the reader makes no log query: a read that needs a
+search then holds its search open and answers no `failed` that rests on one.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `filter` | \{ `address?`: `` `0x${string}` ``; `fromBlock`: `bigint`; `toBlock`: `bigint`; `topics`: readonly (`` `0x${string}` `` \| `null`)[]; \} |
+| `filter.address?` | `` `0x${string}` `` |
+| `filter.fromBlock` | `bigint` |
+| `filter.toBlock` | `bigint` |
+| `filter.topics` | readonly (`` `0x${string}` `` \| `null`)[] |
+
+###### Returns
+
+`Promise`\<readonly [`EvmLogEntry`](#evmlogentry)[]\>
 
 ##### receipt()
 
@@ -298,12 +459,12 @@ The read keys for a later settlement read of an EVM payment, and nothing else.
 | ------ | ------ | ------ |
 | <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](#pullauthorization) | The signed pull authorization and where the chain records its use, where the pairing's reference records one. |
 | <a id="property-bindinglog"></a> `bindingLog?` | \{ address: \`0x$\{string\}\`; topic0: \`0x$\{string\}\`; value: \`0x$\{string\}\`; \} & (\{ index: 2 \| 1 \| 3; \} \| \{ dataWord: number; \}) | The log carrying H or its commitment: in topic `index`, or in 32-byte data word `dataWord`. |
-| <a id="property-network-1"></a> `network` | `` `eip155:${string}` `` \| `HederaNetwork` | - |
-| <a id="property-payee"></a> `payee` | `string` | The option's payee, which `reference` takes from the option the payment answers. |
+| <a id="property-network-5"></a> `network` | `` `eip155:${string}` `` \| `HederaNetwork` | - |
+| <a id="property-payee-4"></a> `payee` | `string` | The option's payee, which `reference` takes from the option the payment answers. |
 | <a id="property-search"></a> `search?` | `object` | The log filter that finds the transaction when none is named; absent, only a named transaction is read. |
 | `search.address` | `` `0x${string}` `` | - |
 | `search.topics` | readonly (`` `0x${string}` `` \| `null`)[] | - |
-| <a id="property-settleby"></a> `settleBy?` | `string` | Decimal Unix seconds after which the payment can no longer execute. |
+| <a id="property-settleby-1"></a> `settleBy?` | `string` | Decimal Unix seconds after which the payment can no longer execute. |
 | <a id="property-transferlog"></a> `transferLog?` | [`TransferLog`](#transferlog) | The token transfer this payment made, identified by the digest of the named fields. |
 
 ***
@@ -330,10 +491,10 @@ The reference an EIP-3009 `status` reads: the network, the token, the transactio
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-asset"></a> `asset` | `` `0x${string}` `` |
-| <a id="property-network-2"></a> `network` | `` `eip155:${string}` `` |
-| <a id="property-payee-1"></a> `payee` | `string` |
-| <a id="property-transaction"></a> `transaction` | `` `0x${string}` `` |
+| <a id="property-asset-4"></a> `asset` | `` `0x${string}` `` |
+| <a id="property-network-6"></a> `network` | `` `eip155:${string}` `` |
+| <a id="property-payee-5"></a> `payee` | `string` |
+| <a id="property-transaction-4"></a> `transaction` | `` `0x${string}` `` |
 
 ***
 
@@ -360,12 +521,35 @@ The reference an EIP-3009 `status` reads: the network, the token, the transactio
 | <a id="property-maxfeebps"></a> `maxFeeBps` | `number` |
 | <a id="property-minfeebps"></a> `minFeeBps` | `number` |
 | <a id="property-operator"></a> `operator` | `` `0x${string}` `` |
-| <a id="property-payer"></a> `payer` | `` `0x${string}` `` |
+| <a id="property-payer-4"></a> `payer` | `` `0x${string}` `` |
 | <a id="property-preapprovalexpiry"></a> `preApprovalExpiry` | `bigint` |
-| <a id="property-receiver"></a> `receiver` | `` `0x${string}` `` |
+| <a id="property-receiver-1"></a> `receiver` | `` `0x${string}` `` |
 | <a id="property-refundexpiry"></a> `refundExpiry` | `bigint` |
-| <a id="property-salt-1"></a> `salt` | `` `0x${string}` `` |
+| <a id="property-salt-3"></a> `salt` | `` `0x${string}` `` |
 | <a id="property-token"></a> `token` | `` `0x${string}` `` |
+
+***
+
+### Permit2Ref
+
+The reference the Permit2 reads take.
+
+#### Extends
+
+- `X402EvmRefBase`
+
+#### Properties
+
+| Property | Modifier | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ | ------ |
+| <a id="property-asset-5"></a> `asset` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-deadline"></a> `deadline` | `readonly` | `string` | The permit's `deadline`, in decimal. | - |
+| <a id="property-h-4"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
+| <a id="property-network-7"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
+| <a id="property-payee-6"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-payer-5"></a> `payer` | `readonly` | `` `0x${string}` `` | The permit's owner, the signer of H. | - |
+| <a id="property-presented-2"></a> `presented` | `readonly` | `Signed` | The members of the payment presented: the permit's `token`, `amount`, `nonce` and `deadline`, its `spender`, the `owner`, and the witness's `to` and `validAfter`, with `facilitator` on `upto`. | - |
+| <a id="property-transaction-5"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
 
 ***
 
@@ -406,11 +590,11 @@ execute.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-asset-1"></a> `asset` | `` `0x${string}` `` | The token the authorization moves. |
+| <a id="property-asset-6"></a> `asset` | `` `0x${string}` `` | The token the authorization moves. |
 | <a id="property-at"></a> `at` | `` `0x${string}` `` | The contract that records the nonce's use: the token for `eip3009`, the Permit2 deployment for `permit2`. |
-| <a id="property-deadline"></a> `deadline` | `string` | The signed time bound, in decimal Unix seconds. |
-| <a id="property-nonce"></a> `nonce` | `` `0x${string}` `` | The nonce the payer signed, as that contract records it: `0x` and 64 lowercase hex digits. |
-| <a id="property-scheme"></a> `scheme` | `"eip3009"` \| `"permit2"` | - |
+| <a id="property-deadline-1"></a> `deadline` | `string` | The signed time bound, in decimal Unix seconds. |
+| <a id="property-nonce-1"></a> `nonce` | `` `0x${string}` `` | The nonce the payer signed, as that contract records it: `0x` and 64 lowercase hex digits. |
+| <a id="property-scheme-2"></a> `scheme` | `"eip3009"` \| `"permit2"` | - |
 
 ***
 
@@ -437,32 +621,27 @@ CAIP-2 for EVM chains; the reference is the decimal chain id.
 
 ***
 
-### Eip3009Ref
-
-> **Eip3009Ref** = [`EvmRef`](#evmref) & `object`
-
-What a settlement reference holds for an EIP-3009 payment: read keys only. It is an `EvmRef` naming the
-`AuthorizationUsed` log, the transfer's identity and the authorization as the token records its use, with the
-token, `validBefore` and the transfer digest.
-
-#### Type Declaration
-
-| Name | Type |
-| ------ | ------ |
-| `asset` | [`Hex`](#hex) |
-| `authorization` | [`PullAuthorization`](#pullauthorization) |
-| `idDigest` | [`Hex`](#hex) |
-| `network` | [`Eip155`](#eip155) |
-| `transferLog` | [`TransferLog`](#transferlog) |
-| `validBefore` | `string` |
-
-***
-
 ### EvmBreadthStatus
 
 > **EvmBreadthStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>
 
 What the EVM breadth pairings' `status` answers, in the same terms as `EvmStatus`.
+
+***
+
+### EvmLogEntry
+
+> **EvmLogEntry** = [`EvmLog`](#evmlog) & `object`
+
+A log as `eth_getLogs` gives it: the log, the transaction that emitted it, its block and its index in the block.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `blockNumber` | `bigint` |
+| `logIndex` | `number` |
+| `transactionHash` | [`Hex`](#hex) |
 
 ***
 
@@ -485,6 +664,14 @@ What an EVM `status` answers: its positions are block numbers, its marks `EvmMar
 > **TransferIdentity** = `"from,to,value"` \| `"from,to"` \| `"from"` \| `"to,value"` \| `"to"`
 
 ## Variables
+
+### AUTHORIZATION\_CANCELED\_TOPIC
+
+> `const` **AUTHORIZATION\_CANCELED\_TOPIC**: `` `0x${string}` ``
+
+keccak256("AuthorizationCanceled(address,bytes32)")
+
+***
 
 ### AUTHORIZATION\_STATE\_SELECTOR
 
@@ -519,6 +706,26 @@ The chain ids on which an `erc7710` payment through `DELEGATION_MANAGER` is read
 
 ***
 
+### eip3009Status
+
+> `const` **eip3009Status**: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>
+
+`status` of `x402/exact/eip155/eip3009`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `ref` | [`Eip3009Ref`](#eip3009ref) |
+| `reader` | [`EvmReader`](#evmreader) |
+| `query` | `EvmQuery`\<`unknown`\> |
+
+#### Returns
+
+`Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>
+
+***
+
 ### ESCROW
 
 > `const` **ESCROW**: \{ readonly \[d in "v1.1" \| "v1.0"\]: \{ chargedTopic: Hex; eip3009Collector: Hex; escrow: Hex; permit2Collector: Hex \} \}
@@ -530,6 +737,15 @@ The commerce-payments escrow's two deployments: the escrow, its two token collec
 ### EXACT\_PERMIT2\_PROXY
 
 > `const` **EXACT\_PERMIT2\_PROXY**: `"0x402085c248EeA27D92E8b30b2C58ed07f9E20001"`
+
+***
+
+### MAX\_SEARCH\_PAGES
+
+> `const` **MAX\_SEARCH\_PAGES**: `8` = `8`
+
+lcp's own bound on the pages one `status` call reads, so that one call makes a bounded number of reader calls; a
+search with range left answers its position, from which the next call resumes.
 
 ***
 
@@ -571,6 +787,15 @@ keccak256("nonceBitmap(address,uint256)")[0..4]
 
 ***
 
+### SEARCH\_PAGE\_BLOCKS
+
+> `const` **SEARCH\_PAGE\_BLOCKS**: `10000` = `10_000`
+
+The blocks one page of a search reads: a public endpoint refuses a wider range (Arc's refused a range above 10,000
+blocks on 2026-11-16), and a page an endpoint refuses is halved.
+
+***
+
 ### TRANSFER\_TOPIC
 
 > `const` **TRANSFER\_TOPIC**: `"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"`
@@ -584,6 +809,14 @@ keccak256("Transfer(address,address,uint256)")
 > `const` **TRANSFER\_WITH\_AUTHORIZATION\_TYPEHASH**: `"0x7c7c6cdb67a18743f49ec6fa9b35f50d52ed05cbed4cc592e13b44501c1a2267"`
 
 keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
+
+***
+
+### UNORDERED\_NONCE\_INVALIDATION\_TOPIC
+
+> `const` **UNORDERED\_NONCE\_INVALIDATION\_TOPIC**: `` `0x${string}` ``
+
+keccak256("UnorderedNonceInvalidation(address,uint256,uint256)"), Permit2's cancellation of a word of nonces.
 
 ***
 
@@ -706,44 +939,6 @@ reader that is not an object, a reader for another network, a `tx` that is not a
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
-
-***
-
-### eip3009Status()
-
-> **eip3009Status**(`ref`, `reader`, `query`): `Promise`\<[`EvmStatus`](#evmstatus)\>
-
-Reads the named transaction as this payment's EIP-3009 settlement, and answers as the profile `read-status` does for
-what it observed. The read is settled when the receipt succeeded and holds the pair one authorization produces: a log
-from `asset` with exactly three topics, the first `AuthorizationUsed` and the third equal to `h`, and the `Transfer`
-paired with it, which `transferLog` identifies. The pair follows the order in which EIP-3009's reference
-implementation and USDC's FiatToken emit them, the use and then its transfer; EIP-3009 itself states no order. The
-`Transfer` paired with a use is the first one from its authorizer (topic 1) after it and before the token's next
-`AuthorizationUsed`, or, only when there is none, the last one from its authorizer after the token's previous
-`AuthorizationUsed` and before it. On a token that emits the `Transfer` first, a use followed in the same transaction
-by another authorization of its payer pairs with that authorization's transfer: where their terms differ the
-transaction is not this act, and where the payer signed the use's nonce twice it can read settled on the other's
-transfer. The mark is the highest block mark at or above the receipt's block, and the position the receipt's block.
-Settled at a mark is the act at that mark: `settled` at or above the finality asked for, `below-mark` under it. A
-receipt the reader does not hold, a reverted one (which consumes no nonce), and a transaction without such a use or
-its transfer are no act, and with no search for H yet answer `pending` `search-incomplete`. A reader that rejects is
-unreadable by its error (`rejected`); a reader for another network `chain-mismatch`; a `transaction` or `h` that is
-not a 32-byte hash, an `asset` that is not an address, a `transferLog` that is not one, a reader answer that is
-neither `null` nor a receipt, or a receipt holding a log that is not an object with a string `address`, an array of
-string `topics` and a string `data`, `unparseable`; and a query that is not one `status` takes, `unparseable`, with
-nothing read. At most three calls.
-
-#### Parameters
-
-| Parameter | Type |
-| ------ | ------ |
-| `ref` | [`EvmTxRef`](#evmtxref) & `object` |
-| `reader` | [`EvmReader`](#evmreader) |
-| `query` | `EvmQuery`\<[`EvmTxRef`](#evmtxref) & `object`\> |
-
-#### Returns
-
-`Promise`\<[`EvmStatus`](#evmstatus)\>
 
 ***
 

@@ -7,6 +7,37 @@ description: "The exports of @integraledger/lcp/tron."
 
 ## Interfaces
 
+### TronBlock
+
+A block as `getblockbylimitnext` and `getblockbynum` give it: its `blockID`, the `number` and `parentHash` of its
+header's `raw_data`, and the `raw_data_hex` of each of its `transactions`, in order (java-tron at `4e8389f1`,
+`framework/src/main/java/org/tron/core/services/http/Util.java:137-148`, `:295-298`).
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-blockid"></a> `blockId` | `` `0x${string}` `` |
+| <a id="property-number"></a> `number` | `bigint` |
+| <a id="property-parenthash"></a> `parentHash` | `` `0x${string}` `` |
+| <a id="property-transactions"></a> `transactions` | readonly `string`[] |
+
+***
+
+### TronCursor
+
+The search's position: the last block it linked, by its number and `blockID`, at or below the solidified head. A
+`pending` answer returns it, and the next call takes it as `query.search` and reads on from the block after it.
+
+#### Properties
+
+| Property | Modifier | Type |
+| ------ | ------ | ------ |
+| <a id="property-blockid-1"></a> `blockId` | `readonly` | `` `0x${string}` `` |
+| <a id="property-number-1"></a> `number` | `readonly` | `bigint` |
+
+***
+
 ### TronInfo
 
 #### Properties
@@ -14,8 +45,22 @@ description: "The exports of @integraledger/lcp/tron."
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-blocknumber"></a> `blockNumber` | `bigint` | - |
-| <a id="property-logs"></a> `logs` | readonly `object`[] | `address` is 20-byte hex as the node returns it. |
+| <a id="property-logs"></a> `logs` | readonly `object`[] | `address` is 20-byte hex as the node returns it; `data`, where given, the log's data in hex. |
 | <a id="property-result"></a> `result` | `string` | `receipt.result` as the node returns it: "SUCCESS", "REVERT", … |
+
+***
+
+### TronNow
+
+A node's latest block at a level, as its `getnowblock` names it: its number, its `blockID` and its time in ms.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-blockid-2"></a> `blockId` | `` `0x${string}` `` |
+| <a id="property-number-2"></a> `number` | `bigint` |
+| <a id="property-timestamp"></a> `timestamp` | `bigint` |
 
 ***
 
@@ -43,23 +88,62 @@ any backing.
 | <a id="property-owner"></a> `owner` | `Uint8Array`\<`B`\> |
 | <a id="property-refblockbytes"></a> `refBlockBytes` | `Uint8Array`\<`B`\> |
 | <a id="property-refblockhash"></a> `refBlockHash` | `Uint8Array`\<`B`\> |
-| <a id="property-timestamp"></a> `timestamp` | `bigint` |
+| <a id="property-timestamp-1"></a> `timestamp` | `bigint` |
 
 ***
 
 ### TronReader
 
 Bounded, read-only calls against one network's FullNode: its `/walletsolidity` API for solidified data and its
-`/wallet` API at the head. Every failure rejects, for example with `ReaderError` from `@integraledger/lcp/evm`; any
-rejection reads as unreadable.
+`/wallet` API at the head. Every failure rejects, for example with `ReaderError` from `@integraledger/lcp/evm`, and
+reads as unreadable `transport`; a rejection whose `kind` is `too-large`, as `ReaderError` carries it, is an answer over
+the reader's byte bound.
 
 #### Properties
 
-| Property | Modifier | Type |
-| ------ | ------ | ------ |
-| <a id="property-network"></a> `network` | `readonly` | `` `tron:${number}` `` |
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-archival"></a> `archival?` | `readonly` | `boolean` | Declared by the caller where its node holds the chain's whole history, so that with no position given absence can be read; absent, it is not declared. |
+| <a id="property-network"></a> `network` | `readonly` | `` `tron:${number}` `` | - |
 
 #### Methods
+
+##### block()
+
+> **block**(`num`, `level`): `Promise`\<\{ `block`: [`TronBlock`](#tronblock) \| `null`; `head`: `bigint` \| `null`; \}\>
+
+`getblockbynum` at the level: the block, or null for the node's `{}`; and `head`, as `blocks` gives it.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `num` | `bigint` |
+| `level` | [`TronLevel`](#tronlevel) |
+
+###### Returns
+
+`Promise`\<\{ `block`: [`TronBlock`](#tronblock) \| `null`; `head`: `bigint` \| `null`; \}\>
+
+##### blocks()
+
+> **blocks**(`start`, `end`, `level`): `Promise`\<\{ `blocks`: readonly [`TronBlock`](#tronblock)[]; `head`: `bigint` \| `null`; \}\>
+
+`getblockbylimitnext` under `/walletsolidity` ("solid") or `/wallet` ("head"): the blocks from `start` up to `end`,
+not including it, at most 100, in the order the node gives them, none for its `{}`; and `head`, the number of that
+node's latest block at that level, read from that same node before the call, or null where the reader cannot.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `start` | `bigint` |
+| `end` | `bigint` |
+| `level` | [`TronLevel`](#tronlevel) |
+
+###### Returns
+
+`Promise`\<\{ `blocks`: readonly [`TronBlock`](#tronblock)[]; `head`: `bigint` \| `null`; \}\>
 
 ##### info()
 
@@ -75,21 +159,27 @@ the lookup, or null when the reader cannot read it from that node. A lookup nami
 | Parameter | Type |
 | ------ | ------ |
 | `txid` | `` `0x${string}` `` |
-| `level` | `"head"` \| `"solid"` |
+| `level` | [`TronLevel`](#tronlevel) |
 
 ###### Returns
 
 `Promise`\<[`TronInfo`](#troninfo) \| \{ `notFound`: `true`; `timestamp`: `bigint` \| `null`; \}\>
 
-##### solidHead()
+##### now()
 
-> **solidHead**(): `Promise`\<\{ `number`: `bigint`; `timestamp`: `bigint`; \}\>
+> **now**(`level`): `Promise`\<[`TronNow`](#tronnow)\>
 
-`/walletsolidity/getnowblock`: the latest solidified block's number and time in milliseconds.
+`/walletsolidity/getnowblock` ("solid") or `/wallet/getnowblock` ("head"): the latest block at that level.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `level` | [`TronLevel`](#tronlevel) |
 
 ###### Returns
 
-`Promise`\<\{ `number`: `bigint`; `timestamp`: `bigint`; \}\>
+`Promise`\<[`TronNow`](#tronnow)\>
 
 ##### transaction()
 
@@ -111,8 +201,10 @@ the lookup, or null when the reader cannot read it from that node. A lookup nami
 
 ### TronRef
 
-The read keys `reference` returns, JSON-serialisable. `asset` is the contract's 21-byte address; `expiration` is
-decimal milliseconds; `payee` is the `payTo` of the option the payment answers.
+The read keys `reference` returns, JSON-serialisable. `raw` is the `raw_data` the owner signed, lowercase hex, which
+is the payment presented; `txid` its SHA-256, the single-use value; `asset` the contract's 21-byte address;
+`expiration` decimal milliseconds; `payer` the transaction's owner in base58check, read from the signed bytes; and
+`payee` the `payTo` of the option the payment answers, the key of the two party tests and no search key.
 
 #### Properties
 
@@ -122,6 +214,8 @@ decimal milliseconds; `payee` is the `payTo` of the option the payment answers.
 | <a id="property-expiration-1"></a> `expiration` | `string` |
 | <a id="property-network-1"></a> `network` | `` `tron:${number}` `` |
 | <a id="property-payee"></a> `payee` | `string` |
+| <a id="property-payer"></a> `payer` | `string` |
+| <a id="property-raw"></a> `raw` | `string` |
 | <a id="property-txid"></a> `txid` | `` `0x${string}` `` |
 
 ***
@@ -156,6 +250,14 @@ Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}.
 
 ## Type Aliases
 
+### TronLevel
+
+> **TronLevel** = `"solid"` \| `"head"`
+
+The level a read goes through: the full node's `/walletsolidity` API ("solid") or its `/wallet` API ("head").
+
+***
+
 ### TronNetwork
 
 > **TronNetwork** = `` `tron:${number}` ``
@@ -164,12 +266,23 @@ CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, 
 
 ***
 
+### TronQuery
+
+> **TronQuery** = [`StatusQuery`](index.md#statusquery)\<[`TronRef`](#tronref), `bigint`, `TronMark`, [`TronCursor`](#troncursor)\>
+
+The query `tronStatus` takes: the profile `read-status`'s, its search position a `TronCursor`.
+
+***
+
 ### TronStatus
 
-> **TronStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `TronMark`\>
+> **TronStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `TronMark`, [`TronCursor`](#troncursor)\>
 
 The answer of `tronStatus`, as the profile `read-status` gives it. Its marks are `head` and `solidified`, in that
-order, and its position the block number.
+order, its position the block number and its search position a `TronCursor`. A `settled` answer states `presented`:
+`yes` where the settled transaction's id is the reference's, the id being the SHA-256 of the `raw_data` the owner
+signed, and `no` otherwise; its `signer` is the transaction's owner in base58check, and its `authority` the
+contract's `Permission_id`, as `Permission_id 0`, 0 where the transaction names none.
 
 ## Variables
 
@@ -213,6 +326,22 @@ keccak256("Transfer(address,address,uint256)")
 ### TRIGGER\_URL
 
 > `const` **TRIGGER\_URL**: `"type.googleapis.com/protocol.TriggerSmartContract"` = `"type.googleapis.com/protocol.TriggerSmartContract"`
+
+***
+
+### TRON\_BOUNDS
+
+> `const` **TRON\_BOUNDS**: `Readonly`\<\{ `callData`: `68`; `feeLimit`: `15000000000`; `maxTimeoutSeconds`: `86340`; `rangeBlocks`: `100`; `searchBlocks`: `200`; `signatureBytes`: `65`; `signatures`: `5`; `transactionHex`: `8192`; \}\>
+
+The pairing's bounds, each the chain's, the profile's or lcp's own resource bound, with its reason.
+`transactionHex`: lcp's bound on a signed transaction's hex digits, which the profile's transaction fits many times
+over and which bounds what is decoded. `signatures`: lcp's bound on the signatures decoded, enough for an owner's
+permission of five keys. `signatureBytes`: a secp256k1 signature `r ‖ s ‖ v`. `callData`: `transfer(address,uint256)`,
+its selector and two 32-byte words. `feeLimit`: the network's largest `fee_limit` in sun. `maxTimeoutSeconds`: the
+profile's, which keeps a signed `expiration` within the node's 24-hour cap. `rangeBlocks`: the node's own bound on a
+range of `getblockbylimitnext` (java-tron at `4e8389f1`, `GetBlockByLimitNextServlet.java:18`). `searchBlocks`: lcp's
+resource bound, the blocks one call of `tronStatus` reads of its search, two full ranges, so that each call's reads
+are bounded; the next call takes the search's position.
 
 ## Functions
 
@@ -323,21 +452,29 @@ id, and its `option` the option the payment answers, an object, of which the rea
 
 > **tronStatus**(`ref`, `reader`, `query`): `Promise`\<[`TronStatus`](#tronstatus)\>
 
-Answers the read of the transaction by id as the profile `read-status` gives it. The id is the single-use value: Tron
-derives it from the signed raw data alone, so a transaction with it that was included, succeeded or not, consumed it.
-The read takes the latest solidified block first, then the transaction by id: through the FullNode's
-`/walletsolidity` API for solidified data, at the mark `solidified`, then its `/wallet` API at the head, at the mark
-`head`, and at its block number. A transaction whose receipt result is `SUCCESS` and that holds a `Transfer` log from
-`ref.asset` is the payer's act; one whose result is not `SUCCESS` is the act included with a failed result; one that
-holds no such log carries no act of the payer's. The id's validity has passed once that earlier solidified block is
-two slots past the expiration and neither lookup finds the transaction, each naming a block time at or past that
-earlier block's; a lookup whose node lags the block read first, or that names no time, names no included act. The
-read holds no search for H, so none of these answers `failed`. A read that rejects is unreadable `transport`; an
-answer of neither documented shape, or a ref whose expiration is not decimal milliseconds where the read needs it,
-`unparseable`; and a reader for another network than the ref's `chain-mismatch`. A ref, a reader or a query that is
-not one, a reader that names no network, or a ref whose `txid` is not `0x` and 64 hex digits, or whose `asset` is
-not the token's 21-byte address in hex (`41` and 20 bytes, `0x` optional), is unreadable `unparseable`, with nothing
-read; the reader is given the txid in lowercase, and the answer names it so. At most three calls.
+Answers the read of the act the query asks about as the profile `read-status` gives it, by the pairing's profile, rule
+8. The single-use value is the transaction id, the SHA-256 of the `raw_data` the owner signed, which the reference
+holds whole as the payment presented. The read takes the latest solidified block first, then the transaction by id at
+the solidified level and at the head, each lookup naming its own node's latest block time. Found, the transaction
+consumed the id: it is the payer's act where its owner is the reference's payer and not the option's payee, it
+succeeded where its receipt's result is `SUCCESS`, and what it moved is each `Transfer` log of its receipt whose
+sender is the owner, named by the id and the log's place among the receipt's logs, or, where the receipt holds no
+`Transfer` log and its signed call is a transfer of zero, that call's transfer of zero to its `to`; on the act
+`payment` it is the payment only where one of those names `payTo`. Its owner is the answer's signer, and its
+`Permission_id` the answer's authority. Absent from both lookups, each lookup's node at or past the solidified head's time, and the node holding the
+block at the position the caller gave (or declared archival where it gave none), the id is unconsumed: before the
+lapse, two slots past `expiration`, `instrument-live`. Only a `failed` answer needs the search for H, which the read
+makes only then: it reads every block after the position given, or after the search position an earlier answer
+returned, up to the solidified head read first through `/walletsolidity`, then on to the full node's head under
+`/wallet`, at most `TRON_BOUNDS.rangeBlocks` a call and `TRON_BOUNDS.searchBlocks` a read, each block linked to the one
+before it by its `parentHash`. Each transaction whose `data`, field 10 of its `raw_data`, is H's LCP string, its hex digits
+in either case as `bound` reads it, is read by its id: one of the form whose owner is the payer and that meets the act's tests is the act asked about; any other is
+named as a foreign item where a reason holds. Until a run shows that a block's answer lists every transaction of its
+block, a search read whole proves no absence, so no `failed` but `before-position` is answered. A ref, a reader or a
+query that is not one, a ref whose `raw` does not hash to its `txid`, is not the form's or is not owned by its
+`payer`, or a search position that is not a `TronCursor`, is unreadable `unparseable`, with nothing read; a reader for
+another network `chain-mismatch`; a read that rejects `transport`; one block over the reader's byte bound
+`too-large`; and absence where the node does not hold the history `history-gap`.
 
 #### Parameters
 
@@ -345,7 +482,7 @@ read; the reader is given the txid in lowercase, and the answer names it so. At 
 | ------ | ------ |
 | `ref` | [`TronRef`](#tronref) |
 | `reader` | [`TronReader`](#tronreader) |
-| `query` | [`StatusQuery`](index.md#statusquery)\<[`TronRef`](#tronref), `bigint`, `TronMark`\> |
+| `query` | [`TronQuery`](#tronquery) |
 
 #### Returns
 

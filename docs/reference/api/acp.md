@@ -136,6 +136,31 @@ The buyer's own values for the allowance, and the session it pays.
 
 ***
 
+### ChargePresented
+
+What the seller presents of a charge: its own reference for it, the processor's identifier of the payment.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-charge"></a> `charge` | `string` | 1 to 255 visible ASCII characters: a Stripe PaymentIntent's `id`, an Adyen `pspReference`. |
+
+***
+
+### ChargeRef
+
+The reference of a charge: the checkout of the option it answers, where the option names one, and the charge.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-charge-1"></a> `charge` | `string` |
+| <a id="property-checkout"></a> `checkout?` | `string` |
+
+***
+
 ### Unsigned
 
 #### Properties
@@ -250,10 +275,17 @@ SHA-256 over the RFC 8785 form of an issued handler option.
 
 ### undelegated
 
-> `const` **undelegated**: [`AcpBinding`](#acpbinding)\<`"acp/checkout/undelegated"`\>
+> `const` **undelegated**: [`AcpBinding`](#acpbinding)\<`"acp/checkout/undelegated"`\> & `object`
 
 `acp/checkout/undelegated`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's payment handler
-charges the payment the checkout completed; nothing here reads it.
+charges the payment the checkout completed; nothing here reads it. `reference` names the charge by the seller's own
+reference for it.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `reference()` | (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ChargeRef`](#chargeref)\> |
 
 ## Functions
 
