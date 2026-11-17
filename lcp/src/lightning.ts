@@ -18,7 +18,6 @@ import {
   validate,
   type ExactLnbtcValidation,
   type LnbtcRequest,
-  type Signed,
 } from "./internal/lightning.js";
 import {
   advertiseFor,
@@ -83,6 +82,11 @@ export interface Bolt11<B extends ArrayBufferLike = ArrayBufferLike> {
   metadata: Uint8Array<B> | null;
   /** Every tagged field's type, in invoice order. */
   tags: readonly number[];
+  /**
+   * The compressed secp256k1 public key that signed the invoice, as 66 lowercase hex digits: the `n` field's key where
+   * the invoice has one, and otherwise the key recovered from the signature.
+   */
+  signer: string;
 }
 
 /** The read keys `reference` returns: the invoice's payment hash as lowercase hex, and when the payment can land. */
@@ -109,8 +113,11 @@ export type LnPaymentPayload = {
 const PREIMAGE = /^[0-9a-f]{64}$/;
 
 /**
- * Decodes a BOLT11 invoice of up to 8,192 characters, past Bech32's 90-character limit, which BOLT 11 lets an invoice
- * exceed. The signature is not verified.
+ * Decodes a BOLT11 invoice of up to 8,192 characters strictly, past Bech32's 90-character limit, which BOLT 11 lets an
+ * invoice exceed: exactly one `p` and one `s` field, at most one `n` field, and a signature that verifies, by the `n`
+ * key where the invoice has one (a low `s` required) and otherwise by public-key recovery; `signer` is that key. An
+ * invoice that fails is `ln/invoice-malformed`; one of more characters, or of more than 64 tagged fields, is
+ * `ln/invoice-too-large`.
  */
 export async function decodeBolt11(invoice: string): Promise<Bolt11<ArrayBuffer> | Refusal> {
   return decode(invoice);
@@ -190,14 +197,14 @@ async function lnbtcBuild(c: LnChoice, h: AtrHash): Promise<LnUnsigned | Refusal
   if (isRefusal(lc)) return lc;
   if (lc.h !== nh) return refusal("x402/legal-context-conflict");
   const accepted = c.accepted;
-  const s = optionChecks(accepted) as Signed;
+  const s = optionChecks(accepted) as Bolt11;
   const extra = accepted.extra as { [k: string]: Json };
   const want = requestHash(extra["requestBindingProfile"], extra["requestBindingParams"], c.request, c.required.resource?.url);
   if (isRefusal(want)) return want;
   if (want !== extra["requestHash"]) return refusal("ln/request-hash-mismatch");
-  if (s.b.timestamp > c.now + SKEW_SECONDS) return refusal("ln/created-in-future");
-  if (s.b.timestamp + s.b.expiry <= c.now) return refusal("ln/invoice-expired");
-  const paymentHash = hexOf(s.b.paymentHash);
+  if (s.timestamp > c.now + SKEW_SECONDS) return refusal("ln/created-in-future");
+  if (s.timestamp + s.expiry <= c.now) return refusal("ln/invoice-expired");
+  const paymentHash = hexOf(s.paymentHash);
   return {
     request: { kind: "bolt11-pay", invoice: extra["invoice"] as string },
     complete(preimage: string): LnPaymentPayload | Refusal {
@@ -212,11 +219,11 @@ async function lnbtcBuild(c: LnChoice, h: AtrHash): Promise<LnUnsigned | Refusal
  * preimage is 64 lowercase hex digits (`ln/preimage-malformed`) whose SHA-256 is the invoice's `p`
  * (`ln/preimage-mismatch`), which the filter holds equal to the echoed `extra.paymentHash`.
  */
-function paid(presented: unknown): { accepted: PaymentRequirements; extensions: unknown; s: Signed } | Refusal {
+function paid(presented: unknown): { accepted: PaymentRequirements; extensions: unknown; s: Bolt11 } | Refusal {
   const p = presentedWith(presented, filter);
   if (isRefusal(p)) return p;
-  const s = optionChecks(p.accepted) as Signed;
-  const checked = preimageCheck(p.payload["preimage"], hexOf(s.b.paymentHash));
+  const s = optionChecks(p.accepted) as Bolt11;
+  const checked = preimageCheck(p.payload["preimage"], hexOf(s.paymentHash));
   return isRefusal(checked) ? checked : { accepted: p.accepted, extensions: p.extensions, s };
 }
 
@@ -240,7 +247,7 @@ async function lnbtcReference(presented: unknown, option: PaymentRequirements): 
   const p = paid(presented);
   if (isRefusal(p)) return p;
   if (!isObject(option) || !sameJson(withoutInvoice(p.accepted), withoutInvoice(option))) return refusal("x402/accepted-not-option");
-  const { b } = p.s;
+  const b = p.s;
   return { network: p.accepted.network, paymentHash: hexOf(b.paymentHash), settleBy: b.timestamp + b.expiry + SKEW_SECONDS };
 }
 
@@ -450,7 +457,7 @@ function amountless(v: unknown): boolean {
 /**
  * The echoed challenge's hash, held to the invoice the payer paid: the echoed challenge is held to the pairing's filter
  * (`echoedFor`), which checks the invoice as `build` does, and the invoice's `h` is the hash the challenge's id derives
- * from. On the session, only the open action is the session's payment. No signature is verified here.
+ * from. On the session, only the open action is the session's payment.
  */
 async function lnPaid(pairing: LnMppPairingId, input: unknown): Promise<{ h: AtrHash; b: Bolt11 } | Refusal> {
   const echoed = echoedFor(input, pairing);

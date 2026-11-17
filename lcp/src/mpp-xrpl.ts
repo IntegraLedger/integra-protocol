@@ -33,6 +33,7 @@ import {
   isObject,
   measured,
   mppBroadcaster,
+  offeredFor,
   placeCarrier,
   pushedField,
   read,
@@ -321,7 +322,10 @@ async function build(choice: XrplChargeChoice, h: AtrHash): Promise<XrplChargeUn
   };
 }
 
-/** The placement: MPP's `place`, then `methodDetails.invoiceId` set to H's digits in upper case. */
+/**
+ * The placement, once the offer names this pairing (`offeredFor`, else its refusal or `mpp/not-this-pairing`): MPP's
+ * `place`, then `methodDetails.invoiceId` set to H's digits in upper case.
+ */
 function advertise(
   doc: readonly MppChallenge[],
   h: AtrHash,
@@ -332,6 +336,8 @@ function advertise(
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
+  const offered = offeredFor(offer, ID);
+  if (isRefusal(offered)) return offered;
   const invoice = mppInvoiceId(h);
   return placeCarrier(
     doc,

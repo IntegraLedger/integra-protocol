@@ -49,6 +49,7 @@ import {
   measured,
   measuring,
   measuringAsync,
+  offeredFor,
   place,
   read,
   requestAddress,
@@ -492,17 +493,24 @@ function echoed(
   return echoedFor(presented, pairing);
 }
 
-/** MPP's `place`, with the agreement URL in `opaque` when one is given, and the act. */
-function advertise(
-  doc: readonly MppChallenge[],
-  h: AtrHash,
-  link: string,
-  offer: MppChallenge,
-  position: number | null,
-  act?: Act,
-  agreementUrl?: string,
-): MppChallenge[] | Refusal {
-  return place(doc, h, link, offer, position, act, agreementUrl);
+/**
+ * MPP's `place` for `pairing`, with the agreement URL in `opaque` when one is given, and the act, once the offer names
+ * `pairing` (`offeredFor`, else its refusal or `mpp/not-this-pairing`).
+ */
+function advertiseAs(pairing: ChannelId) {
+  return (
+    doc: readonly MppChallenge[],
+    h: AtrHash,
+    link: string,
+    offer: MppChallenge,
+    position: number | null,
+    act?: Act,
+    agreementUrl?: string,
+  ): MppChallenge[] | Refusal => {
+    const offered = offeredFor(offer, pairing);
+    if (isRefusal(offered)) return offered;
+    return place(doc, h, link, offer, position, act, agreementUrl);
+  };
 }
 
 /**
@@ -2455,7 +2463,7 @@ export const sessionEvm = Object.freeze({
   claims: true as const,
   unplaced,
   tie,
-  advertise,
+  advertise: advertiseAs(SESSION_EVM),
   read,
   build: evmBuild,
   buildWithin: evmBuildWithin,
@@ -2510,7 +2518,7 @@ export const sessionTempo = Object.freeze({
   claims: true as const,
   unplaced,
   tie,
-  advertise,
+  advertise: advertiseAs(SESSION_TEMPO),
   read,
   build: tempoBuild,
   buildWithin: tempoBuildWithin,
@@ -2560,7 +2568,7 @@ export const subscriptionTempo = Object.freeze({
   claims: true as const,
   unplaced,
   tie,
-  advertise,
+  advertise: advertiseAs(SUBSCRIPTION),
   read,
   build: subscriptionBuild,
   bound: subscriptionBound,

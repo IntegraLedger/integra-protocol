@@ -17,7 +17,8 @@ const PREIMAGE =
 /** The MPP pairings' invoice: its description hash is H, which the seller's node signs. */
 const MPP_INVOICE =
   "The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. " +
-  "Its signature is not verified here, and the payer signed nothing that carries the hash. ";
+  "The invoice is decoded strictly and its signer is recovered; no payee key is compared with that signer, and the " +
+  "payer signed nothing that carries the hash. ";
 
 export const LIGHTNING = /* @__PURE__ */ freeze({
   "x402/exact/lnbtc/payment-hash": {

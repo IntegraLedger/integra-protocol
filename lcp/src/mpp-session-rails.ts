@@ -47,6 +47,7 @@ import {
   measured,
   measuring,
   measuringAsync,
+  offeredFor,
   place,
   read,
   sessionBroadcaster,
@@ -192,17 +193,24 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
   return option;
 }
 
-/** MPP's `place`: the id derived from H and `opaque`; `request` is left unchanged. */
-function advertise(
-  doc: readonly MppChallenge[],
-  h: AtrHash,
-  link: string,
-  offer: MppChallenge,
-  position: number | null,
-  act?: Act,
-  agreementUrl?: string,
-) {
-  return place(doc, h, link, offer, position, act, agreementUrl);
+/**
+ * MPP's `place` for `pairing`: the id derived from H and `opaque`; `request` is left unchanged. The offer must name
+ * `pairing` (`offeredFor`, else its refusal or `mpp/not-this-pairing`).
+ */
+function advertiseAs(pairing: typeof XRPL | typeof XRPL_STOCK) {
+  return (
+    doc: readonly MppChallenge[],
+    h: AtrHash,
+    link: string,
+    offer: MppChallenge,
+    position: number | null,
+    act?: Act,
+    agreementUrl?: string,
+  ): MppChallenge[] | Refusal => {
+    const offered = offeredFor(offer, pairing);
+    if (isRefusal(offered)) return offered;
+    return place(doc, h, link, offer, position, act, agreementUrl);
+  };
 }
 
 async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refusal> {
@@ -603,7 +611,7 @@ export const sessionXrpl = Object.freeze({
   claims: true as const,
   unplaced,
   tie,
-  advertise,
+  advertise: advertiseAs(XRPL),
   read,
   build: xrplBuild,
   buildWithin: xrplBuildWithin,
@@ -649,7 +657,7 @@ export const sessionXrplStock = Object.freeze({
   claims: false as const,
   unplaced,
   tie,
-  advertise,
+  advertise: advertiseAs(XRPL_STOCK),
   read,
   bound: stockBound,
   broadcaster: sessionBroadcaster(stockKind, () => "payee", () => refusal("mpp/session-action")),

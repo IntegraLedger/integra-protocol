@@ -41,6 +41,19 @@ describe("x402-headers.json", () => {
     });
   }
 
+  for (const row of rowsOf(V.stockEncoder, "x402-headers.json stockEncoder", { exact: 4 })) {
+    it(`${row.case}: encodes as @x402/core 2.30.0 encodes it`, () => {
+      const value = structuredClone(row.value);
+      for (const path of row.undefinedAt as string[][]) {
+        let at = value;
+        for (const k of path.slice(0, -1)) at = at[k];
+        expect(path.at(-1)! in at, path.join(".")).toBe(true);
+        at[path.at(-1)!] = undefined;
+      }
+      expect(encodeHeader(value)).toBe(row.expect);
+    });
+  }
+
   it(V.composed.case, () => {
     const c = V.composed;
     const advertised = exactEip3009.advertise(c.required, c.h, c.link, c.required.accepts[0]);
@@ -57,8 +70,8 @@ describe("x402-headers.json", () => {
     });
   }
 
-  it("encodeHeader refuses a value that is not a JSON object", () => {
-    for (const v of [null, [], "x", { n: 1n }, { f: () => 1 }]) {
+  it("encodeHeader refuses a value that is not a JSON object, an array item that is undefined among them", () => {
+    for (const v of [null, [], "x", { n: 1n }, { f: () => 1 }, { a: [undefined] }, { o: { n: 1n, u: undefined } }]) {
       expect(encodeHeader(v as never)).toEqual({ refused: true, code: "x402/header-malformed" });
     }
   });

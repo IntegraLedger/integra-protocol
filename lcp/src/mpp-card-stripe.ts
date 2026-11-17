@@ -14,6 +14,7 @@ import {
   deepFreeze,
   echoedFor,
   isObject,
+  offeredFor,
   placeCarrier,
   read,
   tie,
@@ -45,9 +46,10 @@ const pattern: LcpPattern = deepFreeze({
 });
 
 /**
- * MPP's `place`, with the agreement URL when given, then the carrier set to H's LCP string. An issued carrier holding
- * another value is `mpp/carrier-occupied`. On Stripe, metadata that could not take one more key within Stripe's bounds
- * is `mpp/metadata-malformed`.
+ * MPP's `place`, once the offer names `pairing` (`offeredFor`, else its refusal or `mpp/not-this-pairing`), with the
+ * agreement URL when given, then the carrier set to H's LCP string. An issued carrier holding another value is
+ * `mpp/carrier-occupied`. On Stripe, metadata that could not take one more key within Stripe's bounds is
+ * `mpp/metadata-malformed`.
  */
 function advertiseAs(pairing: ConfirmOnly) {
   return (
@@ -59,9 +61,9 @@ function advertiseAs(pairing: ConfirmOnly) {
     act?: Act,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
-    if (!isObject(offer) || offer.intent !== pairing.split("/")[1] || offer.method !== pairing.split("/")[2]) {
-      return refusal("mpp/not-this-pairing");
-    }
+    if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
+    const offered = offeredFor(offer, pairing);
+    if (isRefusal(offered)) return offered;
     if (offer.method === "stripe") {
       const request = typeof offer.request === "string" ? decodeObject(offer.request) : undefined;
       const details = request?.["methodDetails"];
@@ -70,7 +72,6 @@ function advertiseAs(pairing: ConfirmOnly) {
       const ok = stripeMetadataValid(metadata, missing);
       if (ok !== true) return ok;
     }
-    if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
     const value = toLcpString(h);
     return placeCarrier(
       doc,

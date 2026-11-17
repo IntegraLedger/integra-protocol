@@ -21,6 +21,11 @@ export interface HeaderDigest {
 /** RFC 9110 §5.1: a field name is a token. */
 const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
+/** True where `s` is a token, RFC 9110 §5.6.2's `1*tchar`, as a request's method is (§9.1). */
+export function isToken(s: string): boolean {
+  return TOKEN.test(s);
+}
+
 const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
 
 /** True where every character is visible ASCII, the space or the tab. */

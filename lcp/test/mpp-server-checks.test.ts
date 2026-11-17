@@ -79,6 +79,21 @@ describe("mpp-server-checks.json: every pairing's advertise passes the act to pl
   }
 });
 
+describe("mpp-server-checks.json: every pairing's advertise refuses another pairing's challenge", () => {
+  const rows = rowsOf(V.notThisPairing.rows, "mpp-server-checks.json notThisPairing.rows", { exact: 31 });
+  it("names every MPP pairing's advertise and every advertiseBeforeCarrier", () => {
+    const members = MPP_BINDINGS.flatMap((b) => ["advertise", "advertiseBeforeCarrier"].filter((m) => m in b).map((m) => `${b.id} ${m}`));
+    expect(rows.map((r: { pairing: string; member: string }) => `${r.pairing} ${r.member}`).sort()).toEqual(members.sort());
+  });
+  for (const row of rows) {
+    it(row.case, () => {
+      const b = MPP_BINDINGS.find((x) => x.id === row.pairing) as unknown as Record<string, (...a: unknown[]) => unknown>;
+      const offer = structuredClone(row.offer);
+      expect(b[row.member]!([offer], H, link, offer, row.position, "payment", undefined, offer)).toEqual(row.expect);
+    });
+  }
+});
+
 describe("mpp-server-checks.json: tie and issuedDigest over the challenge as unplaced gives it", () => {
   for (const row of rowsOf(V.unplaced.rows, "mpp-server-checks.json unplaced.rows", { exact: 3 })) {
     it(row.case, async () => {

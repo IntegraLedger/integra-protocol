@@ -38,6 +38,44 @@ function set<T>(base: T, changes: Record<string, unknown>): T {
 const challengeOf = (v: { challenge: object; request: Json }, requestSet = {}, challengeSet = {}): MppChallenge =>
   ({ ...set(v.challenge, challengeSet), request: encode(set(v.request, requestSet)) }) as MppChallenge;
 
+describe("mpp/charge/lightning reads its invoice through the one strict BOLT11 decoder", () => {
+  // BOLT 11 (11-payment-encoding.md, at 19146282): a reader "MUST fail the payment if" the invoice has no `s` field,
+  // the payment secret. The invoices are written and signed by bolt11 1.4.1 with BOLT 11's example private key, with
+  // L3's payment hash and H as the description hash, one with an `s` field and one without.
+  const KEY = "e126f68f7eafcc8b74f54d269fe206be715000f94dac067d1c04a8ca3b2db734";
+  const NETWORK = { bech32: "bc", pubKeyHash: 0x00, scriptHash: 0x05, validWitnessVersions: [0, 1] };
+  const written = (secret: boolean): string =>
+    bolt11.sign(
+      bolt11.encode({
+        network: NETWORK,
+        satoshis: 25,
+        timestamp: 1790000000,
+        tags: [
+          { tagName: "payment_hash", data: C.L3.request.methodDetails.paymentHash },
+          ...(secret ? [{ tagName: "payment_secret", data: "22".repeat(32) }] : []),
+          { tagName: "purpose_commit_hash", data: H.slice(2) },
+          { tagName: "expire_time", data: 3600 },
+        ],
+      }),
+      KEY,
+    ).paymentRequest!;
+
+  it("an invoice with its s field: the challenge names the pairing, and decodeBolt11 gives bolt11's signer", async () => {
+    const invoice = written(true);
+    expect(pairingsOf(challengeOf(C.L3, { "methodDetails.invoice": invoice }))).toEqual(["mpp/charge/lightning"]);
+    expect(((await decodeBolt11(invoice)) as Bolt11).signer).toBe(bolt11.decode(invoice).payeeNodeKey);
+  });
+
+  it("the same invoice without an s field: the challenge, advertise and decodeBolt11 refuse it as ln/invoice-malformed", async () => {
+    const invoice = written(false);
+    expect(bolt11.decode(invoice).tags.some((t) => t.tagName === "payment_secret")).toBe(false);
+    const offer = challengeOf(C.L3, { "methodDetails.invoice": invoice });
+    expect(pairingsOf(offer)).toEqual({ refused: true, code: "ln/invoice-malformed" });
+    expect(chargeLightning.advertise([offer], H, C.fixed.link, offer, 0)).toEqual({ refused: true, code: "ln/invoice-malformed" });
+    expect(await decodeBolt11(invoice)).toEqual({ refused: true, code: "ln/invoice-malformed" });
+  });
+});
+
 describe("mpp/charge/lightning", () => {
   const offer = challengeOf(C.L3);
   const placed = () => {
@@ -393,15 +431,16 @@ describe("the Lightning MPP pairings read no amount or currency", () => {
 });
 
 // The pairings read the invoice, never a payment: an account signed the agreement, settlement is the seller's report, a
-// preimage shows only that the secret left the seller's custody, and no signature is verified here. Each record whose
-// invoice carries the hash says so, and none says that the buyer signed, that the payer paid, that the invoice was
-// shown paid, that its node checked a signature, or that the seller did not verify one.
+// preimage shows only that the secret left the seller's custody, and no payee key is compared with the invoice's
+// signer. Each record whose invoice carries the hash says so, and none says that the buyer signed, that the payer paid,
+// that the invoice was shown paid, that its node checked a signature, or that the seller did not verify one.
 describe("the records of the Lightning pairings whose invoice carries the hash", () => {
   for (const b of [chargeLightning, sessionLightning]) {
-    it(`${b.id}: proves states that an account signed the agreement, that no signature is verified here, what a preimage shows and that settlement is the seller's report`, () => {
+    it(`${b.id}: proves states that an account signed the agreement, that no payee key is compared with the signer, what a preimage shows and that settlement is the seller's report`, () => {
       expect(b.data.proves).toContain("An account signed an agreement transaction carrying this ATR's hash");
       expect(b.data.proves).toContain(
-        "Its signature is not verified here, and the payer signed nothing that carries the hash. The preimage, which " +
+        "The invoice is decoded strictly and its signer is recovered; no payee key is compared with that signer, and " +
+          "the payer signed nothing that carries the hash. The preimage, which " +
           "every node on the payment's route learns, shows that the secret behind the hash left the seller's custody, " +
           "never who paid, and to anyone but the seller's node not that the invoice was paid; no public ledger shows " +
           "the payment. Settlement is the seller's report.",

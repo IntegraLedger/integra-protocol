@@ -242,6 +242,7 @@ describe("BOLT11: a description that begins with a byte-order mark", () => {
       timestamp: 1790000000,
       tags: [
         { tagName: "payment_hash", data: "11".repeat(32) },
+        { tagName: "payment_secret", data: "22".repeat(32) },
         { tagName: "description", data: text },
       ],
     }),
@@ -264,7 +265,8 @@ describe("BOLT11: a description that begins with a byte-order mark", () => {
 
 describe("BOLT11: an amount past any fixed-width integer", () => {
   // L7's amount is read as an integer of any length (BOLT 11: the amount is a positive decimal integer, then the
-  // multiplier); the decoded amount is the file's, its digits times 100 millisatoshi for n.
+  // multiplier); the decoded amount is the file's, its digits times 100 millisatoshi for n. L4 has no `n` field, so its
+  // signer is recovered from the signature, and over the changed amount the recovered key is another than L4's.
   it("L7: L4 with a 4,301-digit amount decodes, with that amount and L4's other fields", async () => {
     const hrp = V.L7.invoice.slice(0, V.L7.invoice.lastIndexOf("1"));
     expect(hrp.length).toBe("lnbc".length + 4301 + 1);
@@ -272,6 +274,7 @@ describe("BOLT11: an amount past any fixed-width integer", () => {
     expect("refused" in b).toBe(false);
     expect(b.amountMsat?.toString()).toBe(V.L7.expectAmountMsat);
     const l4 = (await decodeBolt11(V.L4.invoice)) as Bolt11;
-    expect({ ...b, amountMsat: null }).toEqual({ ...l4, amountMsat: null });
+    expect(b.signer).not.toBe(l4.signer);
+    expect({ ...b, amountMsat: null, signer: "" }).toEqual({ ...l4, amountMsat: null, signer: "" });
   });
 });

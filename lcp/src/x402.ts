@@ -82,7 +82,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { sameJson } from "./fields.js";
 import { MAX_REQUEST_BYTES, MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_X402 } from "./internal/data/eip155-x402.js";
-import { headerDigests, type HeaderDigest, type HeaderFields } from "./internal/request-headers.js";
+import { headerDigests, isToken, type HeaderDigest, type HeaderFields } from "./internal/request-headers.js";
 import { isGatewayBatched } from "./internal/evm-gateway-batched.js";
 import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
@@ -239,17 +239,18 @@ const MIN_SIGNED_BYTES = 65;
 const HEX_BODY = /^0x[0-9a-fA-F]*$/;
 
 /**
- * The commitment to the request a challenge answers (x402-request-commitment.md): the method as received, the target
- * split at its first `?`, and SHA-256 over the body bytes exactly as received; and, where `fields` names request header
- * fields, `headers`: for each, in the order named, its lower-cased name and SHA-256 of its value as `r.headers` gives
- * it, the lines of a field given more than once joined by a comma and a space, `cookie`'s by a semicolon and a space,
- * and `null` for a field the request lacks. With no field named the commitment has no `headers` member. Names that are
- * not distinct field names, fields named with no `r.headers`, header fields that are not a record of strings or lists
- * of strings, two keys naming one named field, or a named field's value holding a character outside visible ASCII, the
- * space and the tab, are `x402/request-header-invalid`; a named field's value over 1 MiB is `x402/request-too-large`.
+ * The commitment to the request a challenge answers (x402-request-commitment.md): the method as received, a token (RFC
+ * 9110 §9.1, else `x402/request-target-invalid`), the target split at its first `?`, and SHA-256 over the body bytes
+ * exactly as received; and, where `fields` names request header fields, `headers`: for each, in the order named, its
+ * lower-cased name and SHA-256 of its value as `r.headers` gives it, the lines of a field given more than once joined
+ * by a comma and a space, `cookie`'s by a semicolon and a space, and `null` for a field the request lacks. With no
+ * field named the commitment has no `headers` member. Names that are not distinct field names, fields named with no
+ * `r.headers`, header fields that are not a record of strings or lists of strings, two keys naming one named field, or
+ * a named field's value holding a character outside visible ASCII, the space and the tab, are
+ * `x402/request-header-invalid`; a named field's value over 1 MiB is `x402/request-too-large`.
  */
 export async function requestCommitment(r: HttpRequest, fields?: readonly string[]): Promise<RequestCommitment | Refusal> {
-  if (!isObject(r) || typeof r.method !== "string" || typeof r.target !== "string") {
+  if (!isObject(r) || typeof r.method !== "string" || !isToken(r.method) || typeof r.target !== "string") {
     return refusal("x402/request-target-invalid");
   }
   if (!(r.body instanceof Uint8Array)) return refusal("x402/request-target-invalid");

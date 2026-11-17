@@ -1,8 +1,8 @@
 /**
  * BOLT11 decoding, and the checks of `x402/exact/lnbtc/payment-hash`: the invoice's signature, the option's and the
- * invoice's checks, x402's request binding for the scheme, and the scheme's validation. `../lightning.ts` decodes with
- * `decode` (its `decodeBolt11` returns the result) and reads an invoice's `h` or `m` field with `fieldHash` (its
- * `invoiceH`); `../mpp-challenge.ts` decodes with `decode` and reads `FIELD`.
+ * invoice's checks, x402's request binding for the scheme, and the scheme's validation. `decode` is the one BOLT11
+ * decoder: `../lightning.ts` decodes with it (its `decodeBolt11` returns the result) and reads an invoice's `h` or `m`
+ * field with `fieldHash` (its `invoiceH`); `../mpp-challenge.ts` decodes with `decode` and reads `FIELD`.
  */
 import { secp256k1 } from "@noble/curves/secp256k1.js";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -27,18 +27,54 @@ export const NETWORKS: { readonly [n in LnNetwork]: Bolt11["currency"] } = {
   "lnbtc:000000000019d6689c085ae165831e93": "bc",
   "lnbtc:000000000933ea01ad0ee984209779ba": "tb",
 };
+/** The `n` field's type, as the Bech32 value of its letter, and its length in words: a 33-byte public key. */
+const FIELD_N = 19;
+const N_WORDS = 53;
 /** The `d` field's text: strict UTF-8 with a leading byte-order mark kept as a character. */
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+const ascii = new TextEncoder();
 
-/** A BOLT11 invoice decoded, up to 8 KiB. The signature is not verified. */
-export function decode(invoice: string): Bolt11<ArrayBuffer> | Refusal {
+/**
+ * A BOLT11 invoice of up to 8,192 characters decoded strictly (BOLT 11 at 19146282): Bech32 past its 90-character
+ * limit, which BOLT 11 lets an invoice exceed, exactly one `p` field, `p`, `h` and `s` fields of 52 words, exactly one
+ * `s` field, at most one `n` field of 53 words, and a signature that verifies over the human-readable part and the data
+ * part without the signature, padded with zero bits to a byte, hashed by SHA-256: by the `n` key where the invoice has
+ * one, a low `s` required, and otherwise by public-key recovery, either `s` accepted. Any failure is
+ * `ln/invoice-malformed`; an invoice of more characters, or of more than 64 tagged fields, is `ln/invoice-too-large`.
+ */
+export function decode(invoice: unknown): Bolt11<ArrayBuffer> | Refusal {
+  if (typeof invoice !== "string") return refusal("ln/invoice-malformed");
   const parts = decodeParts(invoice);
-  return isRefusal(parts) ? parts : parts.b;
+  if (isRefusal(parts)) return parts;
+  const { b, hrp, data } = parts;
+  if (b.tags.filter((t) => t === FIELD.s).length !== 1) return refusal("ln/invoice-malformed");
+  const body = data.slice(0, data.length - SIGNATURE_WORDS);
+  const n = fieldsOf(body, FIELD_N);
+  if (n.length > 1 || n.some((w) => w.length !== N_WORDS)) return refusal("ln/invoice-malformed");
+  const digest = sha256(concat(ascii.encode(hrp), padded(body)));
+  const sig = toBytes(data.slice(data.length - SIGNATURE_WORDS));
+  const compact = sig.subarray(0, 64);
+  const recovery = sig[64]!;
+  try {
+    if (n.length === 1) {
+      const key = toBytes(n[0]!);
+      if (!secp256k1.verify(compact, digest, key, { prehash: false, lowS: true })) return refusal("ln/invoice-malformed");
+      return { ...b, signer: hexOf(key) };
+    }
+    if (recovery > 3) return refusal("ln/invoice-malformed");
+    const key = secp256k1.Signature.fromBytes(compact, "compact").addRecoveryBit(recovery).recoverPublicKey(digest);
+    return { ...b, signer: hexOf(key.toBytes(true)) };
+  } catch {
+    return refusal("ln/invoice-malformed");
+  }
 }
 
-/** An invoice decoded, with its human-readable part and its data words, the signature's 104 included. */
+/**
+ * An invoice's fields before its signature is read, its human-readable part, and its data words, the signature's 104
+ * included.
+ */
 interface Parts {
-  b: Bolt11<ArrayBuffer>;
+  b: Omit<Bolt11<ArrayBuffer>, "signer">;
   hrp: string;
   data: readonly number[];
 }
@@ -213,59 +249,16 @@ const POSITIVE = /^[1-9][0-9]{0,77}$/;
 const LOWER_TOKEN = /^[!#$%&'*+\-.^_`|~0-9a-z]+$/;
 /** RFC 9110 §9.1: a method is a token. */
 const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
-/** The `n` field's type, as the Bech32 value of its letter, and its length in words: a 33-byte public key. */
-const FIELD_N = 19;
-const N_WORDS = 53;
 /** The most names lcp reads in one `requestBindingParams` list. The scheme sets no count. */
 const MAX_BOUND_NAMES = 64;
 /** The longest URL or URI lcp reads in a request binding, in characters. The scheme sets no length. */
 const MAX_URI = 8192;
 /** The scheme's default clock-skew allowance, in seconds. */
 export const SKEW_SECONDS = 60;
-const ascii = new TextEncoder();
-
-/** An invoice decoded strictly, with the compressed public key that signed it as 66 lowercase hex digits. */
-export interface Signed {
-  b: Bolt11<ArrayBuffer>;
-  signer: string;
-}
 
 /** The x402 option of this pairing as the checks read it: `exact` on a Lightning network, with an `extra` object. */
 export type LnOption = PaymentRequirements & { extra: { [k: string]: Json } };
 
-/**
- * A BOLT11 invoice decoded strictly (BOLT 11 at 19146282): `decode`'s checks, exactly one `s` field, at most one `n`
- * field of 53 words, and a signature that verifies over the human-readable part and the data part without the
- * signature, padded with zero bits to a byte, hashed by SHA-256: by the `n` key where the invoice has one, a low `s`
- * required, and otherwise by public-key recovery, either `s` accepted. Any failure is `ln/invoice-malformed`, or the
- * decoder's refusal.
- */
-export function decodeSigned(invoice: unknown): Signed | Refusal {
-  if (typeof invoice !== "string") return refusal("ln/invoice-malformed");
-  const parts = decodeParts(invoice);
-  if (isRefusal(parts)) return parts;
-  const { b, hrp, data } = parts;
-  if (b.tags.filter((t) => t === FIELD.s).length !== 1) return refusal("ln/invoice-malformed");
-  const body = data.slice(0, data.length - SIGNATURE_WORDS);
-  const n = fieldsOf(body, FIELD_N);
-  if (n.length > 1 || n.some((w) => w.length !== N_WORDS)) return refusal("ln/invoice-malformed");
-  const digest = sha256(concat(ascii.encode(hrp), padded(body)));
-  const sig = toBytes(data.slice(data.length - SIGNATURE_WORDS));
-  const compact = sig.subarray(0, 64);
-  const recovery = sig[64]!;
-  try {
-    if (n.length === 1) {
-      const key = toBytes(n[0]!);
-      if (!secp256k1.verify(compact, digest, key, { prehash: false, lowS: true })) return refusal("ln/invoice-malformed");
-      return { b, signer: hexOf(key) };
-    }
-    if (recovery > 3) return refusal("ln/invoice-malformed");
-    const key = secp256k1.Signature.fromBytes(compact, "compact").addRecoveryBit(recovery).recoverPublicKey(digest);
-    return { b, signer: hexOf(key.toBytes(true)) };
-  } catch {
-    return refusal("ln/invoice-malformed");
-  }
-}
 
 /** The data of every tagged field of `type`, in invoice order. */
 function fieldsOf(body: readonly number[], type: number): number[][] {
@@ -378,28 +371,28 @@ interface Terms {
  * (`ln/currency-network`); the amount `amount` (`ln/amount-mismatch`); the expiry `maxTimeoutSeconds`
  * (`ln/expiry-mismatch`).
  */
-function invoiceTerms(s: Signed, t: Terms): Refusal | null {
-  const d = fieldHash(s.b, "h");
+function invoiceTerms(s: Bolt11, t: Terms): Refusal | null {
+  const d = fieldHash(s, "h");
   if (isRefusal(d)) return d;
-  if (s.b.tags.includes(FIELD.d)) return refusal("ln/description-inline");
+  if (s.tags.includes(FIELD.d)) return refusal("ln/description-inline");
   if (d !== `0x${t.requestHash}`) return refusal("ln/request-hash-mismatch");
   if (s.signer !== t.payTo) return refusal("ln/signer-not-payee");
-  if (NETWORKS[t.network as LnNetwork] !== s.b.currency) return refusal("ln/currency-network");
-  if (s.b.amountMsat === null || s.b.amountMsat.toString() !== t.amount) return refusal("ln/amount-mismatch");
-  if (s.b.expiry !== t.maxTimeoutSeconds) return refusal("ln/expiry-mismatch");
+  if (NETWORKS[t.network as LnNetwork] !== s.currency) return refusal("ln/currency-network");
+  if (s.amountMsat === null || s.amountMsat.toString() !== t.amount) return refusal("ln/amount-mismatch");
+  if (s.expiry !== t.maxTimeoutSeconds) return refusal("ln/expiry-mismatch");
   return null;
 }
 
 /**
  * The checks of an option with its invoice (the profile's rule 6, a to k): `optionMembers`; the invoice decoded
- * strictly (`decodeSigned`); `invoiceTerms` against the option; and the invoice's `p` equal to `extra.paymentHash`
+ * strictly (`decode`); `invoiceTerms` against the option; and the invoice's `p` equal to `extra.paymentHash`
  * (`ln/payment-hash-mismatch`). No clock and no request is read.
  */
-export function optionChecks(o: PaymentRequirements): Signed | Refusal {
+export function optionChecks(o: PaymentRequirements): Bolt11<ArrayBuffer> | Refusal {
   const members = optionMembers(o);
   if (members !== null) return members;
   const extra = o.extra as { [k: string]: Json };
-  const s = decodeSigned(extra["invoice"]);
+  const s = decode(extra["invoice"]);
   if (isRefusal(s)) return s;
   const terms = invoiceTerms(s, {
     network: o.network,
@@ -409,7 +402,7 @@ export function optionChecks(o: PaymentRequirements): Signed | Refusal {
     requestHash: extra["requestHash"] as string,
   });
   if (terms !== null) return terms;
-  return hexOf(s.b.paymentHash) === extra["paymentHash"] ? s : refusal("ln/payment-hash-mismatch");
+  return hexOf(s.paymentHash) === extra["paymentHash"] ? s : refusal("ln/payment-hash-mismatch");
 }
 
 /** True when SHA-256 of the bytes `preimage` spells in lowercase hex is `paymentHash`, 64 lowercase hex digits. */
@@ -697,7 +690,7 @@ export function validate(payload: unknown, requirements: unknown, now: number, s
   const nonEmpty = (v: unknown) => typeof v === "string" && v.length > 0;
   if (!nonEmpty(re["invoice"]) || !nonEmpty(ae["invoice"])) return no("invalid_exact_lnbtc_invoice_missing");
   // 5
-  const s = decodeSigned(ae["invoice"]);
+  const s = decode(ae["invoice"]);
   if (isRefusal(s)) return no("invalid_exact_lnbtc_invoice_decode_failed");
   const terms = invoiceTerms(s, {
     network,
@@ -707,8 +700,8 @@ export function validate(payload: unknown, requirements: unknown, now: number, s
     requestHash: re["requestHash"] as string,
   });
   if (terms !== null) return no(TERMS_REASON[terms.code]!);
-  if (s.b.timestamp > now + skew) return no("invalid_exact_lnbtc_invoice_created_in_future");
-  const paymentHash = hexOf(s.b.paymentHash);
+  if (s.timestamp > now + skew) return no("invalid_exact_lnbtc_invoice_created_in_future");
+  const paymentHash = hexOf(s.paymentHash);
   if (paymentHash !== re["paymentHash"]) return no("invalid_exact_lnbtc_invoice_payment_hash_mismatch");
   // 6
   const body = isObject(payload) && isObject(payload["payload"]) ? payload["payload"] : {};
@@ -718,6 +711,6 @@ export function validate(payload: unknown, requirements: unknown, now: number, s
   if (preimage.length !== 64) return no("invalid_exact_lnbtc_preimage_length");
   if (!preimageHashes(preimage, paymentHash)) return no("invalid_exact_lnbtc_preimage_hash_mismatch");
   // 7
-  if (now > s.b.timestamp + s.b.expiry + skew) return no("invalid_exact_lnbtc_invoice_expired");
+  if (now > s.timestamp + s.expiry + skew) return no("invalid_exact_lnbtc_invoice_expired");
   return { valid: true, network: network as LnNetwork, paymentHash };
 }

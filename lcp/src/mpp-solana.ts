@@ -46,6 +46,7 @@ import {
   isObject,
   measured,
   mppBroadcaster,
+  offeredFor,
   placeCarrier,
   pushedField,
   read,
@@ -456,7 +457,10 @@ async function build(
   };
 }
 
-/** The placement: MPP's `place`, then `externalId` set to H's LCP string. */
+/**
+ * The placement, once the offer names the spec's pairing (`offeredFor`, else its refusal or `mpp/not-this-pairing`):
+ * MPP's `place`, then `externalId` set to H's LCP string.
+ */
 function advertise(
   spec: SolanaCharge<ChargeId>,
   doc: readonly MppChallenge[],
@@ -468,6 +472,8 @@ function advertise(
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
+  const offered = offeredFor(offer, spec.id);
+  if (isRefusal(offered)) return offered;
   const memo = toLcpString(h);
   return placeCarrier(
     doc,

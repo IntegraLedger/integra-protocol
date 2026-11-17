@@ -26,6 +26,7 @@ import {
   measuring,
   measuringAsync,
   mppBroadcaster,
+  offeredFor,
   placeCarrier,
   read,
   tie,
@@ -133,7 +134,10 @@ async function reference(input: unknown, option: MppChallenge): Promise<SvmRef |
   return isRefusal(ref) ? ref : { ...ref, payer: subscriber };
 }
 
-/** The placement: MPP's `place`, then `externalId` set to H's LCP string; another value is `svm/carrier-occupied`. */
+/**
+ * The placement, once the offer names this pairing (`offeredFor`, else its refusal or `mpp/not-this-pairing`): MPP's
+ * `place`, then `externalId` set to H's LCP string; another value is `svm/carrier-occupied`.
+ */
 function advertise(
   doc: readonly MppChallenge[],
   h: AtrHash,
@@ -144,6 +148,8 @@ function advertise(
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
+  const offered = offeredFor(offer, ID);
+  if (isRefusal(offered)) return offered;
   const memo = toLcpString(h);
   return placeCarrier(
     doc,

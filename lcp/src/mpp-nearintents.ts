@@ -16,6 +16,7 @@ import {
   isChallengeShape,
   memberAt,
   mppBroadcaster,
+  offeredFor,
   opaqueMembers,
   placeCarrier,
   read,
@@ -102,12 +103,13 @@ function holdsStrings(c: MppChallenge, paths: readonly (readonly string[])[]): b
 }
 
 /**
- * The placement of a quoted challenge: MPP's `place`, then `externalId` set to H's LCP string, once the challenge
- * carries every member the draft requires as a string (else `mpp/request-malformed`) and its fixed members are those of
- * `named`, the challenge as the ATR names it: the ATR's binding slot entry, the challenge `advertiseBeforeCarrier`
- * placed at issue, or the seller's challenge before any quote. The two are compared as `unplaced` gives them, every
- * bound member, `opaque` by its seller map: a quoted challenge that differs, or one given no `named`, is
- * `near/fixed-members-differ`. An `externalId` already holding another value is `near/carrier-occupied`.
+ * The placement of a quoted challenge, once it names this pairing (`offeredFor`, else its refusal or
+ * `mpp/not-this-pairing`): MPP's `place`, then `externalId` set to H's LCP string, once the challenge carries every
+ * member the draft requires as a string (else `mpp/request-malformed`) and its fixed members are those of `named`, the
+ * challenge as the ATR names it: the ATR's binding slot entry, the challenge `advertiseBeforeCarrier` placed at issue,
+ * or the seller's challenge before any quote. The two are compared as `unplaced` gives them, every bound member,
+ * `opaque` by its seller map: a quoted challenge that differs, or one given no `named`, is `near/fixed-members-differ`.
+ * An `externalId` already holding another value is `near/carrier-occupied`.
  */
 function advertise(
   doc: readonly MppChallenge[],
@@ -120,6 +122,8 @@ function advertise(
   named?: MppChallenge,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
+  const offered = offeredFor(offer, ID);
+  if (isRefusal(offered)) return offered;
   const placed = placeCarrier(doc, h, link, offer, position, act, carrierFor(h), agreementUrl);
   if (isRefusal(placed)) return placed;
   if (!holdsStrings(offer, [...FIXED, ...QUOTED])) return refusal("mpp/request-malformed");
@@ -130,10 +134,11 @@ function advertise(
 }
 
 /**
- * The placement at issue, before any quote: MPP's `place`, then `externalId` set to H's LCP string, once the challenge
- * carries every fixed member the draft requires as a string (else `mpp/request-malformed`). The quote's members are not
- * read, and a payment challenge without `expires` is placed and given back without one; an agreement challenge without
- * it is `mpp/expires-required`, as `place` refuses it.
+ * The placement at issue, before any quote, once the challenge, under the `expires` it is lent, names this pairing
+ * (`offeredFor`, else its refusal or `mpp/not-this-pairing`): MPP's `place`, then `externalId` set to H's LCP string,
+ * once the challenge carries every fixed member the draft requires as a string (else `mpp/request-malformed`). The
+ * quote's members are not read, and a payment challenge without `expires` is placed and given back without one; an
+ * agreement challenge without it is `mpp/expires-required`, as `place` refuses it.
  */
 function advertiseBeforeCarrier(
   doc: readonly MppChallenge[],
@@ -148,6 +153,8 @@ function advertiseBeforeCarrier(
   const lend = act !== "agreement" && isChallengeShape(offer) && offer.expires === undefined;
   const lent = (c: MppChallenge): MppChallenge =>
     lend && isChallengeShape(c) && sameBound(c, offer) ? { ...c, expires: LENT_EXPIRES } : c;
+  const offered = offeredFor(lent(offer), ID);
+  if (isRefusal(offered)) return offered;
   const given = Array.isArray(doc) ? doc.map(lent) : doc;
   const placed = placeCarrier(given, h, link, lent(offer), position, act, carrierFor(h), agreementUrl);
   if (isRefusal(placed)) return placed;

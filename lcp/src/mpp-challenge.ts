@@ -785,13 +785,13 @@ const LN_CURRENCIES: { readonly [network: string]: string } = Object.freeze({ ma
  * Lightning: the payment hash as 64 lowercase hex digits, in `methodDetails` (charge) or in `request` (session); the
  * request without a `description`; and `methodDetails.network`, when present, a network MPP Lightning defines, else
  * `ln/currency-network`. The invoice (`methodDetails.invoice`, or the session's `depositInvoice`), when present, is a
- * string that decodes as BOLT11 with one `h` field (else `mpp/carrier-not-challenge`, the code its comparison with H
- * gives) and no `d` field (`ln/description-inline`), whose payment hash is the request's (`ln/payment-hash-mismatch`),
- * whose currency is the one `network` names, when it names one (`ln/currency-network`), and whose expiry is no earlier
- * than `expires`, when the challenge carries one (`ln/expires-after-invoice`). The seller's node writes the invoice
- * after the hash, so `pairingsOf` takes a challenge without it; the pairing's filter (`checkedFor`, `pairingsOfPlaced`)
- * refuses one without it that passes the checks that do not read the invoice, `ln/invoice-malformed`.
- * `amount` and `currency` are not read.
+ * string that decodes strictly as BOLT11, its signature verified (`decodeBolt11`, else its refusal), with one `h` field
+ * (else `mpp/carrier-not-challenge`, the code its comparison with H gives) and no `d` field (`ln/description-inline`),
+ * whose payment hash is the request's (`ln/payment-hash-mismatch`), whose currency is the one `network` names, when it
+ * names one (`ln/currency-network`), and whose expiry is no earlier than `expires`, when the challenge carries one
+ * (`ln/expires-after-invoice`). The seller's node writes the invoice after the hash, so `pairingsOf` takes a challenge
+ * without it; the pairing's filter (`checkedFor`, `pairingsOfPlaced`) refuses one without it that passes the checks
+ * that do not read the invoice, `ln/invoice-malformed`. `amount` and `currency` are not read.
  */
 function lightningPairings(pairing: "mpp/charge/lightning" | "mpp/session/lightning"): PairingCheck {
   const charge = pairing === "mpp/charge/lightning";
@@ -1375,6 +1375,16 @@ export interface Echoed {
  */
 export function checkedFor(c: unknown, pairing: MppPairingId): Checked | Refusal {
   const checked = checkChallenge(c, true, true);
+  if (isRefusal(checked)) return checked;
+  return checked.pairings.includes(pairing) ? checked : refusal("mpp/not-this-pairing");
+}
+
+/**
+ * An offer held to `pairing` before its `advertise` places it: `pairingsOf`'s checks over it, whose refusal it gives,
+ * and `pairing` among the pairings they name, else `mpp/not-this-pairing`.
+ */
+export function offeredFor(offer: unknown, pairing: MppPairingId): Checked | Refusal {
+  const checked = checkChallenge(offer, false);
   if (isRefusal(checked)) return checked;
   return checked.pairings.includes(pairing) ? checked : refusal("mpp/not-this-pairing");
 }

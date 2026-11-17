@@ -24,6 +24,7 @@ import {
   issuedDigest,
   measuring,
   measuringAsync,
+  offeredFor,
   place,
   read,
   sessionBroadcaster,
@@ -445,7 +446,10 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
   return option;
 }
 
-/** MPP's `place`: the id derived from H and `opaque`; `request` is left unchanged. */
+/**
+ * MPP's `place`: the id derived from H and `opaque`; `request` is left unchanged. The offer must name this pairing
+ * (`offeredFor`, else its refusal or `mpp/not-this-pairing`).
+ */
 function advertise(
   doc: readonly MppChallenge[],
   h: AtrHash,
@@ -455,6 +459,8 @@ function advertise(
   act?: Act,
   agreementUrl?: string,
 ) {
+  const offered = offeredFor(offer, STOCK);
+  if (isRefusal(offered)) return offered;
   return place(doc, h, link, offer, position, act, agreementUrl);
 }
 

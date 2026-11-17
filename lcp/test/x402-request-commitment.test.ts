@@ -12,13 +12,13 @@ import { rowsOf } from "./rows.js";
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-request-commitment.json", import.meta.url), "utf8"));
 
 describe("x402-request-commitment.json", () => {
-  for (const row of rowsOf(V.http, "x402-request-commitment.json http", { exact: 3 })) {
+  for (const row of rowsOf(V.http, "x402-request-commitment.json http", { exact: 4 })) {
     it(`HTTP: ${row.case}`, async () => {
       const { method, target, bodyUtf8 } = row.request;
       expect(await requestCommitment({ method, target, body: new TextEncoder().encode(bodyUtf8) })).toEqual(row.expect);
     });
   }
-  for (const row of rowsOf(V.httpRefusals, "x402-request-commitment.json httpRefusals", { exact: 11 })) {
+  for (const row of rowsOf(V.httpRefusals, "x402-request-commitment.json httpRefusals", { exact: 15 })) {
     it(`HTTP refuses ${row.case}`, async () => {
       let request = row.request;
       if (typeof request === "object" && request !== null) {

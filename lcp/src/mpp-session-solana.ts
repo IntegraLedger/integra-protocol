@@ -43,6 +43,7 @@ import {
   measured,
   measuring,
   measuringAsync,
+  offeredFor,
   place,
   read,
   sessionBroadcaster,
@@ -316,17 +317,24 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
   return option;
 }
 
-/** MPP's `place`: the id derived from H and `opaque`; `request` is left unchanged. */
-function advertise(
-  doc: readonly MppChallenge[],
-  h: AtrHash,
-  link: string,
-  offer: MppChallenge,
-  position: number | null,
-  act?: Act,
-  agreementUrl?: string,
-) {
-  return place(doc, h, link, offer, position, act, agreementUrl);
+/**
+ * MPP's `place` for `pairing`: the id derived from H and `opaque`; `request` is left unchanged. The offer must name
+ * `pairing` (`offeredFor`, else its refusal or `mpp/not-this-pairing`).
+ */
+function advertiseAs(pairing: SessionId) {
+  return (
+    doc: readonly MppChallenge[],
+    h: AtrHash,
+    link: string,
+    offer: MppChallenge,
+    position: number | null,
+    act?: Act,
+    agreementUrl?: string,
+  ): MppChallenge[] | Refusal => {
+    const offered = offeredFor(offer, pairing);
+    if (isRefusal(offered)) return offered;
+    return place(doc, h, link, offer, position, act, agreementUrl);
+  };
 }
 
 function sessionPattern(profile: string, onChain: boolean): LcpPattern {
@@ -356,7 +364,7 @@ export const sessionSolanaMemo = Object.freeze({
   claims: true as const,
   unplaced,
   tie,
-  advertise,
+  advertise: advertiseAs(MEMO),
   read,
   build: memoBuild,
   bound: memoBound,
@@ -482,7 +490,7 @@ export const sessionSolanaStock = Object.freeze({
   claims: false as const,
   unplaced,
   tie,
-  advertise,
+  advertise: advertiseAs(STOCK),
   read,
   bound: stockBound,
   broadcaster: sessionBroadcaster(stockKind, () => "payer", () => refusal("mpp/not-an-opening")),

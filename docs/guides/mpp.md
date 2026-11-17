@@ -181,18 +181,18 @@ argument other than the challenge keeps the build's own code: a choice that is n
 `svm/input-malformed` on the Solana charges and `mpp/credential-malformed` on Lightning), and the payer, token domain,
 spender, deposit and each other value the choice carries. So no `complete` is handed a challenge `bound` refuses.
 `pairingsOf` makes every check `build`, `bound` and `reference` make on the challenge alone: on Lightning, that the
-invoice decodes with one `h` field and no `d`, carries the request's payment hash and the currency of the `network` the
-challenge names, and expires no earlier than the challenge; on the Solana charges, no `splits` or `confidential`
-transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the build writes; on Permit2, an `amount`
-above its `splits`; on the XRP Ledger charge, no `memos`; the XRPL session recipient's checksum; the Tempo
-subscription's period and expiry within the key authorization's uint64; and, on `usdc`'s EVM and Gateway profiles, a
-request in its RFC 8785 form. So no pairing binds a payment presented under a challenge `pairingsOf` would not name for
-it. Of a challenge the filter takes, each function reads only the request members its own read keys or derivation use,
-such as the network or chain, the currency, the recipient, the escrow, the member that carries H, and `expires` where it
-is the payment's deadline; on the Lightning charge and session, the read keys name the network of the invoice's
-currency. The EVM `transaction` and `hash` charges' `bound` then refuses a credential of another type
-(`mpp/credential-type`) and every other (`mpp/no-signed-place`), and a `fetchPresented` given a signed transaction
-returns it as given.
+invoice decodes strictly, as `decodeBolt11` decodes it, with one `h` field and no `d`, carries the request's payment
+hash and the currency of the `network` the challenge names, and expires no earlier than the challenge; on the Solana
+charges, no `splits` or `confidential` transfer and the form of the `decimals`, `tokenProgram` and `recentBlockhash` the
+build writes; on Permit2, an `amount` above its `splits`; on the XRP Ledger charge, no `memos`; the XRPL session
+recipient's checksum; the Tempo subscription's period and expiry within the key authorization's uint64; and, on `usdc`'s
+EVM and Gateway profiles, a request in its RFC 8785 form. So no pairing binds a payment presented under a challenge
+`pairingsOf` would not name for it. Of a challenge the filter takes, each function reads only the request members its
+own read keys or derivation use, such as the network or chain, the currency, the recipient, the escrow, the member that
+carries H, and `expires` where it is the payment's deadline; on the Lightning charge and session, the read keys name the
+network of the invoice's currency. The EVM `transaction` and `hash` charges' `bound` then refuses a credential of
+another type (`mpp/credential-type`) and every other (`mpp/no-signed-place`), and a `fetchPresented` given a signed
+transaction returns it as given.
 
 The `complete` of each `build` that makes a credential measures it as `bound` measures every credential, its echoed
 challenge included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code
