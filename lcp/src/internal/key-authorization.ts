@@ -23,6 +23,8 @@ export interface KeyAuthorizationRead {
   keyType: bigint;
   /** Item 0, the chain id. */
   chainId: bigint;
+  /** Item 3, the Unix second the key expires at; absent where the item is absent or 0, which Tempo reads as no expiry. */
+  expiry?: bigint;
 }
 
 /**
@@ -41,7 +43,8 @@ export function readKeyAuthorization(signed: Hex): KeyAuthorizationRead | Refusa
   if (keyId.kind !== "bytes" || keyId.bytes.length !== 20) return bad;
   const chainId = rlpUint(auth.items[0]);
   const keyType = rlpUint(auth.items[1]);
-  if (chainId === undefined || keyType === undefined) return bad;
+  const expiry = auth.items[3] === undefined ? 0n : rlpUint(auth.items[3]);
+  if (chainId === undefined || keyType === undefined || expiry === undefined || expiry >= 1n << 64n) return bad;
   for (const i of [4, 5]) {
     const l = auth.items[i];
     if (l !== undefined && !withinScopes(l, i === 5)) return bad;
@@ -56,7 +59,7 @@ export function readKeyAuthorization(signed: Hex): KeyAuthorizationRead | Refusa
     if (w.bytes.length === 32) witness = hexOf(w.bytes);
   }
   const digest = keccakHex(auth.raw);
-  const read = { digest, keyId: hexOf(keyId.bytes), limits, allowedCalls, keyType, chainId };
+  const read = { digest, keyId: hexOf(keyId.bytes), limits, allowedCalls, keyType, chainId, ...(expiry === 0n ? {} : { expiry }) };
   return witness === undefined ? read : { witness, ...read };
 }
 

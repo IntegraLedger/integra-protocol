@@ -576,6 +576,11 @@ export interface MppPermit2Ref extends ChargeRefBase {
    * and `deadline`, the `owner`, the transfer details (`to:requestedAmount`, comma-separated) and the witness's hash.
    */
   readonly presented: Signed;
+  /**
+   * The witness words the search counts: the chosen challenge's, and each of the other challenges of the sale's issue
+   * on this pairing and chain that `reference` was given. Absent, the presented `witness` alone.
+   */
+  readonly witnesses?: readonly Hex[];
 }
 
 const PRESENTED_PERMIT2 = ["permitted", "nonce", "deadline", "owner", "transfers", "witness"] as const;
@@ -588,6 +593,7 @@ function isPermit2Ref(r: unknown): r is MppPermit2Ref {
     normalHash(a["nonce"]) !== null &&
     uint256Of(a["deadline"]) !== undefined &&
     isSigned(r["presented"], PRESENTED_PERMIT2) &&
+    (r["witnesses"] === undefined || (Array.isArray(r["witnesses"]) && r["witnesses"].every((w) => normalHash(w) !== null))) &&
     typeof r["network"] === "string" &&
     /^eip155:[1-9][0-9]*$/.test(r["network"])
   );
@@ -701,9 +707,9 @@ async function bitSet(at: Hex, owner: Hex, nonce: Hex, block: bigint, reader: Mp
 }
 
 /**
- * The acts a transaction holds over Permit2 that carry H: the reference's nonce, or the witness word of the challenge it
- * holds (the presented `witness`, the EIP-712 hash of `PaymentWitness{challengeHash, externalId}`, draft-evm-charge-00
- * at tempoxyz/mpp-specs 08e7dd87, lines 449-483). Each witness transfer found at any byte offset of the input whose owner
+ * The acts a transaction holds over Permit2 that carry H: the reference's nonce, or the witness word of a challenge of
+ * the issue it names (the presented `witness` and `witnesses`, each the EIP-712 hash of
+ * `PaymentWitness{challengeHash, externalId}`, draft-evm-charge-00 at tempoxyz/mpp-specs 08e7dd87, lines 449-483). Each witness transfer found at any byte offset of the input whose owner
  * is the payer and that carries the nonce or the witness word, counted where the receipt holds, for each transfer it
  * names, a `Transfer` of its token from the owner to its recipient of its amount, and the owner's bit for the call's own
  * nonce is set at the receipt's block and unset at the block before; what moved is those transfers, and it consumed the
@@ -742,9 +748,9 @@ async function permit2Classify(ref: MppPermit2Ref, view: TxView, reader: MppEvmR
   if ("unreadable" in tx) return tx;
   const input = bytesOf(tx.input);
   if (input === undefined) return { unreadable: "unparseable" };
-  const witness = lower(ref.presented["witness"] ?? "") as Hex;
-  if (!inputCarries(input, nonce) && !inputCarries(input, witness)) return { seen: acts };
-  const calls = permit2CallsIn(input, tx.to, at).filter((c) => (same(c.nonce, nonce) || same(c.witness, witness)) && same(c.owner, ref.payer));
+  const words = [lower(ref.presented["witness"] ?? ""), ...(ref.witnesses ?? []).map(lower)] as Hex[];
+  if (!inputCarries(input, nonce) && !words.some((w) => inputCarries(input, w))) return { seen: acts };
+  const calls = permit2CallsIn(input, tx.to, at).filter((c) => (same(c.nonce, nonce) || words.some((w) => same(c.witness, w))) && same(c.owner, ref.payer));
   const transfers = transfersIn(receipt.logs);
   if (calls.length === 0) {
     const used = eip3009Uses(receipt, input, nonce, transfers, ref, view.hash);

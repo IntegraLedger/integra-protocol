@@ -47,7 +47,7 @@ import {
 } from "../src/tempo.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { ledgerReader } from "./eip155-tempo-mpp-ledger.js";
-import { C_E, H, b64u, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
+import { C_E, H, V, b64u, challenge, link, load, readerFor, realm, topicOf, withBigints, wordOf } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
 const A = load("mpp-charge-evm-authorization.json");
@@ -473,6 +473,80 @@ describe("mpp-charge-evm-permit2.json", () => {
       call: (_to, d, block) => toHex(d.toLowerCase() === ownWord.toLowerCase() && block >= 100n ? 1n << (nonce & 0xffn) : 0n, { size: 32 }),
     });
     expect(withBigints(await evmPermit2.status(ref, reader, FINAL))).toEqual(row.expect);
+  });
+
+  it("issueOtherChallenge: a permit under another challenge of the issue is met as an act carrying H", async () => {
+    const row = P.issueOtherChallenge;
+    const ch = placedOf(C_E);
+    const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    const cred = u.complete(P.MV6.expectSignature) as MppCredential;
+    // The issue's other challenges: C_E placed at the row's position, and one admitting `authorization` alone.
+    const other = (place([C_E], H, link, C_E, row.position) as MppChallenge[])[0] as MppChallenge & { id: string };
+    const r = JSON.parse(V.fixed.R_E);
+    r.methodDetails.credentialTypes = ["authorization"];
+    const C_A = challenge("evm", "charge", JSON.stringify(r));
+    const authOnly = (place([C_A], H, link, C_A, row.authorizationOnlyPosition) as MppChallenge[])[0]!;
+    const issue = [ch, other, authOnly];
+    const ref = (await evmPermit2.reference(cred, cred.challenge, undefined, issue)) as Exclude<Awaited<ReturnType<typeof evmPermit2.reference>>, { refused: true }>;
+    // The other challenge's permit, built and signed by viem over lcp's typed data, under its own nonce and witness.
+    const uo = eip712(await evmPermit2.build({ challenge: other, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    const td = uo.request.typedData as Permit2TypedData;
+    const word = hashStruct({ data: td.message.witness, primaryType: "PaymentWitness", types: td.types } as Parameters<typeof hashStruct>[0]);
+    expect(word).toBe(row.expectWitness);
+    expect(ref.witnesses).toEqual([ref.presented.witness, row.expectWitness]);
+    const signature = await payer.signTypedData(forViem(td));
+    expect(signature).toBe(row.expectSignature);
+    const p = uo.complete(signature) as MppCredential;
+    const q = p.payload as any;
+    const nonce = BigInt(q.permit.nonce);
+    expect(nonce).toBe(BigInt(challengeHash(other.id, other.realm)));
+    const spend = encodeFunctionData({
+      abi: parseAbi([
+        "function permitWitnessTransferFrom(((address token, uint256 amount) permitted, uint256 nonce, uint256 deadline) permit, (address to, uint256 requestedAmount) transferDetails, address owner, bytes32 witness, string witnessTypeString, bytes signature)",
+      ]),
+      args: [
+        { permitted: { token: q.permit.permitted[0].token, amount: BigInt(q.permit.permitted[0].amount) }, nonce, deadline: BigInt(q.permit.deadline) },
+        { to: q.transferDetails[0].to, requestedAmount: BigInt(q.transferDetails[0].requestedAmount) },
+        A.fixed.payer,
+        word,
+        "PaymentWitness witness)PaymentWitness(bytes32 challengeHash,string externalId)TokenPermissions(address token,uint256 amount)",
+        signature,
+      ],
+    });
+    const ownWord = encodeFunctionData({
+      abi: parseAbi(["function nonceBitmap(address owner, uint256 wordPos) view returns (uint256)"]),
+      args: [A.fixed.payer, nonce >> 8n],
+    });
+    const paid: EvmLog = { address: USDC, topics: [TRANSFER_TOPIC, topicOf(A.fixed.payer), topicOf(RECIPIENT_E)], data: wordOf(10000n) };
+    const reader = ledgerReader({
+      network: "eip155:84532",
+      heads: { latest: 100n, safe: 100n, finalized: 100n },
+      txs: [{ hash: row.transaction, block: 100n, status: 1, from: spender, to: "0x000000000022D473030F116dDEE9F6B43aC78BA3" as ViemHex, input: spend, logs: [paid] }],
+      call: (_to, d, block) => toHex(d.toLowerCase() === ownWord.toLowerCase() && block >= 100n ? 1n << (nonce & 0xffn) : 0n, { size: 32 }),
+    });
+    expect(withBigints(await evmPermit2.status(ref, reader, FINAL))).toEqual(row.expect);
+    // Without the issue the search counts the chosen challenge's word alone, and the permit is not met.
+    const alone = (await evmPermit2.reference(cred, cred.challenge)) as typeof ref;
+    expect(alone.witnesses).toEqual([ref.presented.witness]);
+    expect(withBigints(await evmPermit2.status(alone, reader, FINAL))).toEqual(row.expectWithoutIssue);
+  });
+
+  it("the issue a reference is given: each challenge's id is of H, and the issue is a list of challenges", async () => {
+    const ch = placedOf(C_E);
+    const u = eip712(await evmPermit2.build({ challenge: ch, from: A.fixed.payer, now: A.fixed.now, spender }, H));
+    const cred = u.complete(P.MV6.expectSignature) as MppCredential;
+    const otherH = `0x${"77".repeat(32)}` as typeof H;
+    const foreign = (place([C_E], otherH, link, C_E, 1) as MppChallenge[])[0]!;
+    expect(await evmPermit2.reference(cred, cred.challenge, undefined, [ch, foreign])).toEqual({ refused: true, code: "mpp/id-not-ours" });
+    expect(await evmPermit2.reference(cred, cred.challenge, undefined, [C_E])).toEqual({ refused: true, code: "mpp/input-malformed" });
+    expect(await evmPermit2.reference(cred, cred.challenge, undefined, "x" as never)).toEqual({ refused: true, code: "mpp/input-malformed" });
+    expect(await evmPermit2.reference(cred, cred.challenge, undefined, Array.from({ length: 33 }, () => ch))).toEqual({ refused: true, code: "mpp/input-malformed" });
+    // A challenge on another chain is not of this pairing and network: its word is not counted.
+    const elsewhere = JSON.parse(P.fixed.R_E6b);
+    elsewhere.methodDetails.chainId = 1;
+    const onOther = (place([challenge("evm", "charge", JSON.stringify(elsewhere))], H, link, challenge("evm", "charge", JSON.stringify(elsewhere)), 3) as MppChallenge[])[0]!;
+    const ref = (await evmPermit2.reference(cred, cred.challenge, undefined, [ch, onOther])) as { witnesses: readonly string[]; presented: Readonly<Record<string, string>> };
+    expect(ref.witnesses).toEqual([ref.presented.witness]);
   });
 
   it("plant: a witness for the same ATR's other challenge is not bound to this one", async () => {

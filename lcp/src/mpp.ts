@@ -27,6 +27,7 @@ import { isAddress, normalHash, uint256Of } from "./fields.js";
 import {
   byType,
   mppBroadcaster,
+  challengeH,
   challengeHash,
   checkChallenge,
   checkedFor,
@@ -35,6 +36,7 @@ import {
   decodeObject,
   deepFreeze,
   didPkhAddress,
+  pairingsOfPlaced,
   echoedFor,
   echoedOf,
   expiresOf,
@@ -87,7 +89,7 @@ import {
 } from "./internal/mpp-evm-read.js";
 import { mppPayee } from "./internal/payee.js";
 import type { LcpPattern } from "./x402.js";
-import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
+import { MAX_CHALLENGES, MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
 import type { Entry } from "./internal/registry.js";
 
@@ -591,16 +593,57 @@ async function permit2Bound(input: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * The read keys of a Permit2 charge, with the payee of `option`, the issued challenge the payment answers
- * (`mppPayee`): a refusal of the payment first, then the challenge's.
+ * (`mppPayee`): a refusal of the payment first, then the challenge's. `issue`, which the caller gives beside the chosen
+ * challenge, holds the other challenges of the sale's issue: the charge challenges as the ATR's `mpp` slots hold them
+ * and the agreement challenges as the resource server issued them for H. `witnesses` names the witness word of each one
+ * on this pairing and chain (`issueWitnesses`), the chosen one's first, so that the search counts a permit of the
+ * payer's under any of them.
  */
-async function permit2Reference(input: unknown, option: MppChallenge): Promise<(EvmRef & MppPermit2Ref) | Refusal> {
-  return optionHeld(input, option, withPayee(await permit2Keys(input), mppPayee(option)));
+async function permit2Reference(
+  input: unknown,
+  option: MppChallenge,
+  _given?: unknown,
+  issue?: readonly MppChallenge[],
+): Promise<(EvmRef & MppPermit2Ref) | Refusal> {
+  return optionHeld(input, option, withPayee(await permit2Keys(input, issue), mppPayee(option)));
 }
 
 /** keccak256 of MPP's Permit2 witness type, `PaymentWitness(bytes32 challengeHash,string externalId)`. */
 const PAYMENT_WITNESS_TYPEHASH = keccakHex("PaymentWitness(bytes32 challengeHash,string externalId)");
 
-async function permit2Keys(input: unknown): Promise<(Omit<EvmRef, "payee"> & Omit<MppPermit2Ref, "payee">) | Refusal> {
+/** The EIP-712 hash of `PaymentWitness{challengeHash, externalId}` (draft-evm-charge-00 at tempoxyz/mpp-specs 08e7dd87, lines 449-483). */
+function witnessWord(challengeHashValue: Hex, externalId: string): Hex {
+  return hexOf(keccak(concat([bytesOf(PAYMENT_WITNESS_TYPEHASH)!, bytes32Word(challengeHashValue), keccak(externalId)])));
+}
+
+/**
+ * The witness words of the challenges of the issue (`issue`): every one whose method is `evm`, whose intent is `charge`,
+ * whose request, as placed, admits `permit2` (`pairingsOfPlaced`), and whose `methodDetails.chainId` is `chainId`, each
+ * the EIP-712 hash of `PaymentWitness` over its `challengeHash(id, realm)` and its request's `externalId` (the empty
+ * string where it names none, as `build` signs it). A challenge of `issue` whose id is not of `h` is `mpp/id-not-ours`;
+ * an `issue` that is not a list of at most 32 challenges, each with a string `id` and `realm`, is `mpp/input-malformed`.
+ * None where no `issue` is given.
+ */
+function issueWitnesses(issue: unknown, h: AtrHash, chainId: number): Hex[] | Refusal {
+  if (issue === undefined) return [];
+  if (!Array.isArray(issue) || issue.length > MAX_CHALLENGES) return refusal("mpp/input-malformed");
+  const out: Hex[] = [];
+  for (const c of issue) {
+    if (!isObject(c) || carriesRefused(c) || typeof c["id"] !== "string" || typeof c["realm"] !== "string") return refusal("mpp/input-malformed");
+    const of = challengeH(c["id"]);
+    if (isRefusal(of) || !hashEquals(of, h)) return refusal("mpp/id-not-ours");
+  }
+  for (const c of issue as (MppChallenge & { id: string })[]) {
+    if (c.method !== "evm" || c.intent !== "charge" || !pairingsOfPlaced(c).includes(PERMIT2_ID)) continue;
+    const request = typeof c.request === "string" ? decodeObject(c.request) : undefined;
+    const details = request === undefined ? undefined : request["methodDetails"];
+    if (!isObject(details) || details["chainId"] !== chainId) continue;
+    out.push(witnessWord(challengeHash(c.id, c.realm), str(request!["externalId"])));
+  }
+  return out;
+}
+
+async function permit2Keys(input: unknown, issue?: unknown): Promise<(Omit<EvmRef, "payee"> & Omit<MppPermit2Ref, "payee">) | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const b = permit2Binding(presented);
@@ -642,9 +685,9 @@ async function permit2Keys(input: unknown): Promise<(Omit<EvmRef, "payee"> & Omi
   if (permittedText === undefined || transfersText === undefined || signedNonce === undefined || typeof w["externalId"] !== "string") {
     return refusal("mpp/credential-malformed");
   }
-  const witness = hexOf(
-    keccak(concat([bytesOf(PAYMENT_WITNESS_TYPEHASH)!, bytes32Word(w["challengeHash"] as Hex), keccak(w["externalId"])])),
-  );
+  const witness = witnessWord(w["challengeHash"] as Hex, w["externalId"]);
+  const others = issueWitnesses(issue, b.h, chainId);
+  if (isRefusal(others)) return others;
   const nonce = challengeHash(presented.challenge.id, presented.challenge.realm);
   return {
     network: `eip155:${chainId}`,
@@ -660,6 +703,7 @@ async function permit2Keys(input: unknown): Promise<(Omit<EvmRef, "payee"> & Omi
       transfers: transfersText,
       witness,
     },
+    witnesses: [witness, ...others.filter((x, i) => !sameBytes(x, witness) && others.findIndex((y) => sameBytes(x, y)) === i)],
   };
 }
 

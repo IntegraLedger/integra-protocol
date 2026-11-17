@@ -97,6 +97,37 @@
    "foreign": []
   }
  },
+ "issueOtherChallenge": {
+  "case": "MV6's credential is the chosen challenge's, C_E placed at position 0. The sale's issue holds two more challenges: C_E placed at position 1, whose `PaymentWitness{challengeHash, externalId}` fixes another id and so another witness word and nonce, and C_E with its `credentialTypes` `[\"authorization\"]`, placed at position 2, which admits `authorization` alone and so is not of this pairing. The payer's permit under the position-1 challenge, built over lcp's typed data and signed by viem 2.57.4 with Anvil account 0, is spent by permitWitnessTransferFrom encoded by viem, its own nonce's bit set at block 100 and unset before (Uniswap Permit2 SignatureTransfer _useUnorderedNonce). With the issue, the reference names both challenges' witness words (expectWitness is the position-1 one, viem's hashStruct) and the search meets the permit as an act of the payer carrying H: it settles, presented no, the permit differing from the one presented, its one transfer to the recipient being what moved, while the reference's own value, the bit at the chosen challenge's hash, stays unset. Without the issue the search counts the chosen challenge's word alone and meets nothing: the value is unconsumed at the final mark and at the latest head, before the permit's deadline, so the answer is pending, instrument-live (read-status rule 22).",
+  "position": 1,
+  "authorizationOnlyPosition": 2,
+  "transaction": "0x2525252525252525252525252525252525252525252525252525252525252525",
+  "expectWitness": "0xa44b3ccdc35e3af322511749453aa9c67d90b8fdfc0e8627acf48d3779bf2d0e",
+  "expectSignature": "0x5e95eda145d039ab1dca5efe524b9d2e9253de1389d65f82f77c775b9d68a84731da1c8c016b07910571bec076d63571b78002bfbcff6575bc52e5cb0864f62b1c",
+  "expect": {
+   "state": "settled",
+   "transaction": "0x2525252525252525252525252525252525252525252525252525252525252525",
+   "position": "100",
+   "finality": "finalized",
+   "presented": "no",
+   "signer": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+   "moved": [
+    {
+     "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+     "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+     "amount": "10000",
+     "transaction": "0x2525252525252525252525252525252525252525252525252525252525252525",
+     "place": 0
+    }
+   ],
+   "foreign": []
+  },
+  "expectWithoutIssue": {
+   "state": "pending",
+   "reason": "instrument-live",
+   "foreign": []
+  }
+ },
  "pattern": {
   "pattern": "id-reuse",
   "claims": true,

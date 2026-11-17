@@ -1,9 +1,17 @@
 // A constructed Tempo ledger: eip155-tempo-mpp-ledger.ts's EVM ledger, with the nonce precompile's state derived from
 // the ledger's own transactions (each Tempo transaction takes its value in its block, whatever its result: the chain
 // consumes it before the calls run), the protocol nonce, and each block's transactions. `consumed` adds values taken by
-// no transaction the ledger holds, as a ledger whose consumer the read cannot find. Constructed, not recorded.
-import { bytesOf, concat, hexOf, keccakHex, uintOf, uintWord, type Hex } from "../src/evm-abi.js";
+// no transaction the ledger holds, as a ledger whose consumer the read cannot find. The account keychain's `getKey`
+// answers from the key authorizations the ledger's Tempo transactions carry (each registers its key for its sender in
+// its block, whatever its result) and from `keys`, slots registered or revoked by no transaction the ledger holds.
+// Constructed, not recorded.
+import { addressWord, bytesOf, concat, hexOf, keccakHex, uintOf, uintWord, type Hex } from "../src/evm-abi.js";
 import { ReaderError } from "../src/evm.js";
+import { readKeyAuthorization } from "../src/internal/key-authorization.js";
+import { GET_KEY_SELECTOR } from "../src/internal/tempo-key-slot.js";
+import { carriedKeyAuthorization, tempoSender } from "../src/internal/tempo-envelope.js";
+import { isRefusal } from "../src/refusal.js";
+import { ACCOUNT_KEYCHAIN } from "../src/tempo.js";
 import { EXPIRING_NONCE_KEY, GET_NONCE_SELECTOR, NONCE_PRECOMPILE, tempoValueOf, type TempoSearchReader, type TempoValue } from "../src/internal/tempo-nonce.js";
 import { ledgerReader, type LedgerSpec } from "./eip155-tempo-mpp-ledger.js";
 
@@ -12,6 +20,8 @@ export interface TempoLedgerSpec extends LedgerSpec {
   readonly consumed?: readonly { readonly value: TempoValue; readonly from: bigint }[];
   /** The blocks whose transactions the reader does not list (`eth_getBlockByNumber` rejects). */
   readonly unlisted?: readonly bigint[];
+  /** Key slots registered from block `from` on, and revoked from `revoked` on, by no transaction the ledger holds. */
+  readonly keys?: readonly { readonly account: Hex; readonly keyId: Hex; readonly from: bigint; readonly revoked?: bigint }[];
 }
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
@@ -53,6 +63,26 @@ export function tempoLedgerReader(spec: TempoLedgerSpec): TempoSearchReader & { 
       return next(account, 0n, block);
     },
     async call(to: Hex, data: Hex, block: bigint): Promise<Hex> {
+      if (same(to, ACCOUNT_KEYCHAIN) && data.toLowerCase().startsWith(GET_KEY_SELECTOR)) {
+        base.calls.push("call");
+        visible(block);
+        const d = bytesOf(data)!;
+        const account = hexOf(d.subarray(16, 36));
+        const keyId = hexOf(d.subarray(48, 68));
+        const carried = spec.txs.some((t) => {
+          const wire = t.raw === undefined || t.block > block ? undefined : bytesOf(t.raw);
+          if (wire === undefined || (wire[0] !== 0x76 && wire[0] !== 0x78)) return false;
+          const sender = tempoSender(wire);
+          const k = carriedKeyAuthorization(wire);
+          const read = typeof k === "string" ? readKeyAuthorization(k) : undefined;
+          return !isRefusal(sender) && same(sender, account) && read !== undefined && !isRefusal(read) && same(read.keyId, keyId);
+        });
+        const extra = (spec.keys ?? []).find((k) => same(k.account, account) && same(k.keyId, keyId) && k.from <= block);
+        const revoked = extra?.revoked !== undefined && extra.revoked <= block;
+        const held = (carried || extra !== undefined) && !revoked;
+        // KeyInfo: signatureType, keyId, expiry, enforceLimits, isRevoked; a blank entry where none is held.
+        return hexOf(concat([uintWord(0n), held ? addressWord(keyId) : uintWord(0n), uintWord(held ? 1n << 40n : 0n), uintWord(0n), uintWord(revoked ? 1n : 0n)]));
+      }
       if (same(to, NONCE_PRECOMPILE) && data.toLowerCase().startsWith(GET_NONCE_SELECTOR)) {
         base.calls.push("call");
         visible(block);

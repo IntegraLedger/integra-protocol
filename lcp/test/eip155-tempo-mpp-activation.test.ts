@@ -1,8 +1,9 @@
-// mpp/subscription/tempo's read of an activation by its search (profile mpp-session-evm-tempo.md rule 7), on the live
-// Moderato activation, row "L2" of vectors/mpp-subscription-tempo.json (read from https://rpc.moderato.tempo.xyz on
-// 2026-09-25): the account whose root key signed the key authorization it carries is the witness log's account, and the
-// read settles on it only where that account is the reference's payer and the key authorization's one recipient the
-// option's payee.
+// mpp/subscription/tempo's read of an activation by its key slot and its search (profile mpp-session-evm-tempo.md
+// rule 7), on the live Moderato activation, row "L2" of vectors/mpp-subscription-tempo.json (read from
+// https://rpc.moderato.tempo.xyz on 2026-09-25): the account whose root key signed the key authorization it carries is
+// the witness log's account, and the read settles on it only where that account is the reference's payer and the key
+// authorization's one recipient the option's payee. The keychain's state is constructed from the ledger's own
+// transactions (test/eip155-tempo-mpp-tempo-ledger.ts), whose log search returns no reverted receipt's logs.
 import { readFileSync } from "node:fs";
 import { keccak256 } from "viem";
 import { describe, expect, it } from "vitest";
@@ -12,88 +13,191 @@ import { readKeyAuthorization } from "../src/internal/key-authorization.js";
 import { carriedKeyAuthorization, keyAuthorizationSigner } from "../src/internal/tempo-envelope.js";
 import { subscriptionTempo, type SessionRef } from "../src/mpp.js";
 import { ACCOUNT_KEYCHAIN, KEY_AUTHORIZATION_WITNESS_TOPIC } from "../src/tempo.js";
-import { ledgerReader } from "./eip155-tempo-mpp-ledger.js";
+import { tempoLedgerReader, type TempoLedgerSpec } from "./eip155-tempo-mpp-tempo-ledger.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-subscription-tempo.json", import.meta.url), "utf8"));
 const LIVE = V["L2"] as { raw: Hex; receipt: { status: 0 | 1; blockNumber: string; logs: EvmLog[] }; transferTo: Hex; transferToken: Hex; expectSettled: { transaction: Hex } };
 const TX = LIVE.expectSettled.transaction;
 const BLOCK = BigInt(LIVE.receipt.blockNumber);
 const bytes = (h: string): Uint8Array => new Uint8Array(Buffer.from(h.slice(2), "hex"));
+const carried = carriedKeyAuthorization(bytes(LIVE.raw)) as Hex;
+const witness = LIVE.receipt.logs[0]!;
+const account = `0x${witness.topics[1]!.slice(26)}` as Hex;
+const key = readKeyAuthorization(carried) as { keyId: Hex };
+const OTHER = "0x4444444444444444444444444444444444444444" as Hex;
+const HEADS = { latest: BLOCK + 10n, safe: BLOCK + 5n, finalized: BLOCK + 5n };
+const timestamp = (b: bigint): bigint => 1_800_000_000n + b;
 
-describe("the activation read on the live Moderato activation", () => {
-  const carried = carriedKeyAuthorization(bytes(LIVE.raw)) as Hex;
-  const witness = LIVE.receipt.logs[0]!;
-  const account = `0x${witness.topics[1]!.slice(26)}` as Hex;
-  const key = readKeyAuthorization(carried) as { keyId: Hex };
-  const reader = ledgerReader({
+const ledger = (over: Partial<TempoLedgerSpec> = {}) =>
+  tempoLedgerReader({
     network: "eip155:42431",
-    heads: { latest: BLOCK + 10n, safe: BLOCK + 5n, finalized: BLOCK + 5n },
+    heads: HEADS,
+    timestamp,
     txs: [{ hash: TX, block: BLOCK, status: 1, from: account, to: null, input: "0x", logs: LIVE.receipt.logs, raw: LIVE.raw }],
-  });
-  const ref = (over: Partial<SessionRef>): SessionRef => ({
-    network: "eip155:42431",
-    payee: LIVE.transferTo,
-    bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: witness.topics[2]! as never },
-    accessKey: { keyId: key.keyId.toLowerCase() as Hex, token: LIVE.transferToken, to: `0x${"00".repeat(32)}` },
-    payer: account,
-    signed: keccak256(carried),
     ...over,
   });
-  const query = { act: "payment", finality: "finalized", after: BLOCK - 100n } as const;
+const ref = (over: Partial<SessionRef> = {}): SessionRef => ({
+  network: "eip155:42431",
+  payee: LIVE.transferTo,
+  bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: witness.topics[2]! as never },
+  accessKey: { keyId: key.keyId.toLowerCase() as Hex, token: LIVE.transferToken, to: `0x${"00".repeat(32)}` },
+  payer: account,
+  signed: keccak256(carried),
+  ...over,
+});
+const query = { act: "payment", finality: "finalized", after: BLOCK - 100n } as const;
+const MOVED = [{ asset: LIVE.transferToken, to: LIVE.transferTo, amount: "1000000", transaction: TX, place: 3 }];
 
+describe("the activation read on the live Moderato activation", () => {
   it("recovers the witness log's account as the root key's signer, and settles with what moved from it", async () => {
     expect(witness.topics[0]).toBe(KEY_AUTHORIZATION_WITNESS_TOPIC);
     expect(keyAuthorizationSigner(bytes(carried))).toBe(account);
-    expect(await subscriptionTempo.status(ref({}) as never, reader as never, query)).toEqual({
+    expect(await subscriptionTempo.status(ref() as never, ledger() as never, query)).toEqual({
       state: "settled",
       transaction: TX,
       position: BLOCK,
       finality: "finalized",
       presented: "yes",
       signer: account,
-      moved: [{ asset: LIVE.transferToken, to: LIVE.transferTo, amount: "1000000", transaction: TX, place: 3 }],
+      moved: MOVED,
+      foreign: [],
+    });
+    expect(await subscriptionTempo.status(ref({ signed: `0x${"11".repeat(32)}` }) as never, ledger() as never, query)).toMatchObject({ state: "settled", presented: "no" });
+  });
+
+  it("names the payer's activation for another recipient the consumer of the key's slot, carrying H", async () => {
+    expect(await subscriptionTempo.status(ref({ payee: OTHER }) as never, ledger() as never, query)).toEqual({
+      state: "failed",
+      reason: "instrument-consumed",
+      transaction: TX,
+      position: BLOCK,
+      finality: "finalized",
+      signer: account,
+      moved: MOVED,
+      carries: "other-account",
       foreign: [],
     });
   });
 
-  it("names it a foreign item where the option's payee is another, the payer another, or the key another", async () => {
-    const other = "0x4444444444444444444444444444444444444444" as Hex;
-    const pending = (reason: string) => ({ state: "pending", reason: "search-incomplete", foreign: [{ transaction: TX, position: BLOCK, signer: account, reason }] });
+  it("names it a foreign item where the payer or the key is another, whose slot reads unconsumed: instrument-live", async () => {
     for (const [over, reason] of [
-      [{ payee: other }, "other-account"],
-      [{ payer: other }, "other-signer"],
-      [{ accessKey: { keyId: other, token: LIVE.transferToken, to: `0x${"00".repeat(32)}` as Hex } }, "other-kind"],
+      [{ payer: OTHER }, "other-signer"],
+      [{ accessKey: { keyId: OTHER, token: LIVE.transferToken, to: `0x${"00".repeat(32)}` as Hex } }, "other-kind"],
     ] as const) {
-      expect(await subscriptionTempo.status(ref(over) as never, reader as never, query), reason).toMatchObject(pending(reason));
+      expect(await subscriptionTempo.status(ref(over) as never, ledger() as never, query), reason).toEqual({
+        state: "pending",
+        reason: "instrument-live",
+        foreign: [{ transaction: TX, position: BLOCK, signer: account, moved: MOVED, reason }],
+      });
     }
-    expect(await subscriptionTempo.status(ref({ signed: `0x${"11".repeat(32)}` }) as never, reader as never, query)).toMatchObject({ state: "settled", presented: "no" });
   });
 });
 
-describe("the activation read while a reverted activation's witness log is not shown", () => {
-  // A reverted activation's receipt holds its witness log (the recorded Moderato receipt in
-  // fixtures/tempo-access-key.json), and whether the endpoint's log search returns it is not shown: this ledger's
-  // search returns no reverted receipt's logs, so the search does not meet it.
-  const carried = carriedKeyAuthorization(bytes(LIVE.raw)) as Hex;
-  const witness = LIVE.receipt.logs[0]!;
-  const account = `0x${witness.topics[1]!.slice(26)}` as Hex;
-  const key = readKeyAuthorization(carried) as { keyId: Hex };
-  const reader = ledgerReader({
-    network: "eip155:42431",
-    heads: { latest: BLOCK + 10n, safe: BLOCK + 5n, finalized: BLOCK + 5n },
-    txs: [{ hash: TX, block: BLOCK, status: 0, from: account, to: null, input: "0x", logs: LIVE.receipt.logs, raw: LIVE.raw }],
+describe("the activation read by the key slot", () => {
+  it("finds a reverted activation the log search does not list by its slot, and answers transaction-failed", async () => {
+    const reader = ledger({ txs: [{ hash: TX, block: BLOCK, status: 0, from: account, to: null, input: "0x", logs: LIVE.receipt.logs, raw: LIVE.raw }] });
+    expect(await reader.logs({ address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC], fromBlock: 0n, toBlock: HEADS.latest })).toEqual([]);
+    expect(await subscriptionTempo.status(ref() as never, reader as never, query)).toEqual({
+      state: "failed",
+      reason: "transaction-failed",
+      transaction: TX,
+      position: BLOCK,
+      finality: "finalized",
+      signer: account,
+      moved: MOVED,
+      foreign: [],
+    });
   });
-  const ref: SessionRef = {
-    network: "eip155:42431",
-    payee: LIVE.transferTo,
-    bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: witness.topics[2]! as never },
-    accessKey: { keyId: key.keyId.toLowerCase() as Hex, token: LIVE.transferToken, to: `0x${"00".repeat(32)}` },
-    payer: account,
-    signed: keccak256(carried),
-  };
 
-  it("answers search-incomplete, never not-found, where the search read whole met nothing", async () => {
-    const query = { act: "payment", finality: "finalized", after: BLOCK - 100n } as const;
-    expect(await subscriptionTempo.status(ref as never, reader as never, query)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+  it("answers before-position where the slot reads consumed at the position given, naming the transaction below it", async () => {
+    expect(await subscriptionTempo.status(ref() as never, ledger() as never, { ...query, after: BLOCK + 2n })).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: TX,
+      position: BLOCK,
+      finality: "finalized",
+      signer: account,
+      moved: MOVED,
+      foreign: [],
+    });
+  });
+
+  it("answers instrument-live while the slot is unconsumed, and instrument-unused once its signed expiry has passed", async () => {
+    const empty = ledger({ txs: [] });
+    expect(await subscriptionTempo.status(ref() as never, empty as never, query)).toEqual({ state: "pending", reason: "instrument-live", foreign: [] });
+    const lapsed = { ...ref().accessKey!, expiry: (timestamp(HEADS.finalized) - 1n).toString() };
+    expect(await subscriptionTempo.status(ref({ accessKey: lapsed }) as never, empty as never, query)).toEqual({
+      state: "failed",
+      reason: "instrument-unused",
+      finality: "finalized",
+      foreign: [],
+    });
+    // Passed at the latest head alone: the read waits for the final mark.
+    const above = { ...ref().accessKey!, expiry: (timestamp(HEADS.latest) - 1n).toString() };
+    expect(await subscriptionTempo.status(ref({ accessKey: above }) as never, empty as never, query)).toEqual({ state: "pending", reason: "below-mark", foreign: [] });
+  });
+
+  it("answers search-incomplete where the slot reads consumed and no transaction of its block registers it", async () => {
+    const reader = ledger({ txs: [], keys: [{ account, keyId: key.keyId, from: BLOCK }] });
+    expect(await subscriptionTempo.status(ref() as never, reader as never, query)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+  });
+
+  it("reads a revoked slot as consumed", async () => {
+    const reader = ledger({ txs: [], keys: [{ account, keyId: key.keyId, from: BLOCK, revoked: BLOCK + 1n }] });
+    const lapsed = { ...ref().accessKey!, expiry: (timestamp(HEADS.finalized) - 1n).toString() };
+    expect(await subscriptionTempo.status(ref({ accessKey: lapsed }) as never, reader as never, query)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+  });
+
+  it("holds the search at a transaction of the consuming block whose signed bytes the node does not return", async () => {
+    const reader = ledger({ txs: [{ hash: TX, block: BLOCK, status: 0, from: account, to: null, input: "0x", logs: LIVE.receipt.logs }], keys: [{ account, keyId: key.keyId, from: BLOCK }] });
+    expect(await subscriptionTempo.status(ref() as never, reader as never, query)).toEqual({
+      state: "pending",
+      reason: "search-incomplete",
+      search: query.after,
+      undecoded: [TX.toLowerCase()],
+      foreign: [],
+    });
+  });
+
+  it("refuses a reader without the state reads, and a reference whose expiry is not a Unix second", async () => {
+    const { storageAt: _s, nonceAt: _n, blockTransactions: _b, ...plain } = ledger();
+    expect(await subscriptionTempo.status(ref() as never, plain as never, query)).toEqual({ state: "unreadable", reason: "transport", foreign: [] });
+    for (const expiry of ["0", "01", "-1", "18446744073709551616", 5]) {
+      const bad = { ...ref().accessKey!, expiry } as never;
+      expect(await subscriptionTempo.status(ref({ accessKey: bad }) as never, ledger() as never, query), String(expiry)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
+    }
+  });
+});
+
+describe("the recorded reverted activation (test/fixtures/tempo-access-key.json, revertedActivation)", () => {
+  const F = JSON.parse(readFileSync(new URL("./fixtures/tempo-access-key.json", import.meta.url), "utf8"));
+  const r = F.revertedActivation.receipt as { transactionHash: Hex; status: 0; blockNumber: string; logs: EvmLog[] };
+  const at = BigInt(r.blockNumber);
+  const heads = { latest: BigInt(F.finalized), safe: BigInt(F.finalized), finalized: BigInt(F.finalized) };
+
+  it("its receipt holds the witness log; the slot places it, and without its signed bytes the read holds the search there", async () => {
+    expect(r.status).toBe(0);
+    expect(r.logs[0]!.topics).toEqual([KEY_AUTHORIZATION_WITNESS_TOPIC, `0x${"00".repeat(12)}${F.account.slice(2)}`, F.revertedActivation.witness]);
+    const reader = tempoLedgerReader({
+      network: "eip155:42431",
+      heads,
+      txs: [{ hash: r.transactionHash, block: at, status: 0, from: F.account, to: null, input: "0x", logs: r.logs }],
+      keys: [{ account: F.account, keyId: F.revertedActivation.keyId, from: at }],
+    });
+    const recorded: SessionRef = {
+      network: "eip155:42431",
+      payee: F.recipient,
+      bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: F.revertedActivation.witness },
+      accessKey: { keyId: F.revertedActivation.keyId, token: F.token, to: `0x${"00".repeat(32)}` },
+      payer: F.account,
+    };
+    const q = { act: "payment", finality: "finalized", after: at - 1000n } as const;
+    expect(await subscriptionTempo.status(recorded as never, reader as never, q)).toEqual({
+      state: "pending",
+      reason: "search-incomplete",
+      search: q.after,
+      undecoded: [r.transactionHash.toLowerCase()],
+      foreign: [],
+    });
   });
 });

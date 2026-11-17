@@ -95,6 +95,7 @@ import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readKeyAuthorization, type KeyAuthorizationRead } from "./internal/key-authorization.js";
 import { keyAccount } from "./internal/tempo.js";
 import { consumerOf, readValue, sameValue, takesProtocolNonce, tempoValueOf, type TempoSearchReader, type TempoValue } from "./internal/tempo-nonce.js";
+import { readSlot, slotConsumer, type KeySlot, type SlotRead } from "./internal/tempo-key-slot.js";
 import { authorizationSignatures, carriedKeyAuthorization, keyAuthorizationSigner, tempoSender } from "./internal/tempo-envelope.js";
 import { movedFrom } from "./mpp-tempo.js";
 import { readReceiptAtMark } from "./receipt.js";
@@ -207,10 +208,11 @@ export interface SessionRef extends EvmRef {
   /** The close of an EVM session: a call to `escrow` of one of `EVM_CLOSE_SELECTORS` naming `channel`. */
   closes?: { escrow: Hex; channel: Hex };
   /**
-   * The subscription's access key: its id, the token it spends, and `transferDigest({to: recipient})`. With `account`,
-   * the read keys of a transfer made under the key for that account.
+   * The subscription's access key: its id, the token it spends, and `transferDigest({to: recipient})`; `expiry`, the
+   * key authorization's signed expiry in decimal Unix seconds, absent where it signs none. With `account`, the read keys
+   * of a transfer made under the key for that account.
    */
-  accessKey?: { keyId: Hex; token: Hex; to: Hex; account?: Hex };
+  accessKey?: { keyId: Hex; token: Hex; to: Hex; account?: Hex; expiry?: string };
   /** The close of a subscription: the account keychain's `KeyRevoked` whose topic 1 is `account` and topic 2 `keyId`. */
   revokes?: { account: Hex; keyId: Hex };
   /**
@@ -993,43 +995,49 @@ async function tempoOpeningFacts(
   };
 }
 
-// ── The read of a subscription's activation by its search (read-status; mpp-session-evm-tempo.md rule 7).
+// ── The read of a subscription's activation by its key slot and its search (read-status; mpp-session-evm-tempo.md rule 7).
 
 /**
  * The `status` of a subscription's activation (mpp-session-evm-tempo.md rule 7), as the profile `read-status` answers
- * it, at Tempo's one mark, `finalized`: a query asking any other finality is `unreadable`, `unparseable`. The search
- * reads the account keychain's `KeyAuthorizationWitness` logs whose witness topic is H, from the position the caller
- * gives (or the one an earlier answer returned) to the latest head, the account topic left open so that a log under
- * another account is met, and reads each transaction it met, and the one the reference names, whole: its receipt and
- * its signed bytes (`eth_getRawTransactionByHash`). Each such log is an act carrying H. Its signer is the log's account,
- * the account whose root key signed the key authorization, against the reference's payer and the option's payee. It is
- * of the pairing's kind where the transaction carries a key authorization (`carriedKeyAuthorization`) for the key the
- * reference names, and of another where it carries one for another key, or none. It names the one account the key
- * authorization it carries lets the key pay, its one recipient across its `transfer` and `transferWithMemo` rules,
- * compared with the option's payee; one that names none or several, or allows any recipient, names no account. It moved
- * every token transfer from the log's account the receipt shows (`movedFrom`), a held transfer recorded as moved to the
- * guard, nothing where there is none. A reverted transaction whose receipt holds the witness log is included with a
- * failed result: the keychain registers the key before the transaction's calls run, outside their checkpoint
- * (tempoxyz/tempo@c8b89f9b `crates/evm/src/handler.rs:831-834`), and a reverted activation's receipt recorded on
- * Moderato holds the witness log. Whether the endpoint's log search (`eth_getLogs`) returns a reverted receipt's logs is
- * not shown, so the search is not shown to meet every failed result of the payer's, and where it would answer
- * `not-found` it answers `pending`, `search-incomplete`, as a read with no single-use value does beside a failed result
- * of the payer's (read-status rule 23), until a run shows it. `presented` is `yes` where the key authorization
- * the transaction carries is the one presented, byte for byte (the reference's `signed`, keccak-256 over its bytes), and
- * `no` where it is another; none where the reference holds no `signed`. A transaction whose signed bytes the node does
- * not hold, or that do not decode, is an item the search could not decode, held at its block. The read holds no
- * single-use value and no bound, so it answers no `failed` but `before-position`. The history is shown where the reader
- * serves the block the search starts at. A ref that is not of this form, or a reader for another network, is
- * unreadable.
+ * it, at Tempo's one mark, `finalized`: a query asking any other finality is `unreadable`, `unparseable`.
+ *
+ * The value: the key slot the presented key authorization names in the payer's keychain, `getKey(payer, keyId)` read at
+ * the final head and at the latest head (`readSlot`), consumed where it names the key or reads it revoked. The keychain
+ * registers a key id for an account once, before the transaction's calls run and outside their checkpoint, so a
+ * reverted activation registers it too (tempoxyz/tempo@c8b89f9b `crates/evm/src/handler.rs:831-834`). Its bound is the
+ * key authorization's `expiry` (the reference's `accessKey.expiry`), where it signs one: the keychain registers no key
+ * whose expiry is not after the block's timestamp and never clears a slot, so a slot unconsumed at a head past it is
+ * never consumed. A slot read consumed whose transaction the search did not meet is found in the first block at which
+ * it reads consumed, by halving, as the payer's transaction there whose key authorization names the key id or whose own
+ * call to the keychain authorizes it (`slotConsumer`); a transaction of that block the read cannot decode, where none is
+ * found, holds the search. The transaction so found is read as the search's are, its receipt deciding: a reverted
+ * activation carrying H is the act asked about but for its result, any other the consumer of the value.
+ *
+ * The search: the account keychain's `KeyAuthorizationWitness` logs whose witness topic is H, from the position the
+ * caller gives (or the one an earlier answer returned) to the latest head, the account topic left open so that a log
+ * under another account is met, and the transaction the reference names, each read whole: its receipt and its signed
+ * bytes (`eth_getRawTransactionByHash`). It needs to meet only the acts carrying H that succeeded, whose receipts keep
+ * their logs; a failed one under another key consumed none of this value. Each such transaction is an act carrying H.
+ * Its signer is the log's account, the account whose root key signed the key authorization, against the reference's
+ * payer and the option's payee. It is of the pairing's kind where the transaction carries a key authorization
+ * (`carriedKeyAuthorization`) for the key the reference names, and of another where it carries one for another key, or
+ * none. It names the one account the key authorization it carries lets the key pay, its one recipient across its
+ * `transfer` and `transferWithMemo` rules, compared with the option's payee; one that names none or several, or allows
+ * any recipient, names no account. It moved every token transfer from its account the receipt shows (`movedFrom`), a
+ * held transfer recorded as moved to the guard, nothing where there is none. `presented` is `yes` where the key
+ * authorization the transaction carries is the one presented, byte for byte (the reference's `signed`, keccak-256 over
+ * its bytes), and `no` where it is another; none where the reference holds no `signed`. A transaction whose signed
+ * bytes the node does not hold, or that do not decode, is an item the search could not decode, held at its block.
+ *
+ * The history is shown where the reader serves the block the search starts at; a read of the slot that fails without
+ * it is `history-gap`. A ref that is not of this form, or a reader for another network or without the state reads of
+ * `TempoSearchReader`, is unreadable.
  */
 async function activationStatus(ref: SessionRef, reader: EvmSearchReader, query: EvmQuery<unknown>): Promise<SessionStatus> {
   if (query.finality !== "finalized") return { state: "unreadable", reason: "unparseable", foreign: [] };
   const facts = await activationFacts(ref, reader, query);
   if ("unreadable" in facts) return { state: "unreadable", reason: facts.unreadable, foreign: [] };
-  const answer = decide(facts.facts, query, evmLedger(EIP155_TEMPO_MPP[SUBSCRIPTION].coverage));
-  // A search that met no failed result of the payer's is not shown to have passed none.
-  if (answer.state === "pending" && answer.reason === "not-found") return { ...answer, reason: "search-incomplete" };
-  return answer;
+  return decide(facts.facts, query, evmLedger(EIP155_TEMPO_MPP[SUBSCRIPTION].coverage));
 }
 
 /**
@@ -1056,14 +1064,21 @@ async function activationFacts(
   const binding: unknown = ref.bindingLog;
   const h = isObject(binding) ? normalHash(binding["value"]) : null;
   const keyId = isObject(ref.accessKey) ? ref.accessKey.keyId : undefined;
+  const expiry: unknown = isObject(ref.accessKey) ? ref.accessKey.expiry : undefined;
   if (h === null || !isAddress(ref.payer) || typeof ref.payee !== "string" || !isAddress(keyId)) return { unreadable: "unparseable" };
+  if (expiry !== undefined && (typeof expiry !== "string" || !/^[1-9][0-9]{0,19}$/.test(expiry) || BigInt(expiry) >= 1n << 64n)) {
+    return { unreadable: "unparseable" };
+  }
   if ((ref.signed !== undefined && normalHash(ref.signed) === null) || (ref.transaction !== undefined && normalHash(ref.transaction) === null)) {
     return { unreadable: "unparseable" };
   }
-  if (typeof reader.logs !== "function" || typeof reader.block !== "function" || typeof reader.raw !== "function") return { unreadable: "transport" };
+  if (typeof reader.logs !== "function" || typeof reader.block !== "function" || typeof reader.raw !== "function" || !readsState(reader)) {
+    return { unreadable: "transport" };
+  }
   const heads = await headsOf(reader);
   if ("unreadable" in heads) return heads;
   const markOf = (b: bigint): EvmMark => (b <= heads.final ? "finalized" : "latest");
+  const lo = query.after ?? 0n;
   const start = query.search ?? query.after ?? 0n;
   const s = await searchLogs(reader, { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, h] }, start, heads.latest);
   if ("unreadable" in s) return s;
@@ -1074,13 +1089,21 @@ async function activationFacts(
   } catch {
     history = false;
   }
+  const slot: KeySlot = { account: ref.payer!, keyId, expiry: expiry === undefined ? null : BigInt(expiry) };
+  let read: SlotRead;
+  try {
+    read = await readSlot(slot, reader, await reader.block("finalized"), await reader.block("latest"));
+  } catch (e) {
+    return { unreadable: e instanceof ReaderError && e.kind === "malformed" ? "unparseable" : !history ? "history-gap" : rejected(e) };
+  }
   const hashes = new Map<string, Hex>();
   if (ref.transaction !== undefined) hashes.set(ref.transaction.toLowerCase(), ref.transaction);
   for (const e of s.entries) hashes.set(e.transactionHash.toLowerCase(), e.transactionHash);
   const givenSigned = (query.others ?? []).flatMap((o) => ("ref" in o && isObject(o.ref) && typeof o.ref["signed"] === "string" ? [o.ref["signed"]] : []));
   const seen: Seen<bigint, EvmMark>[] = [];
   const undecoded: { transaction: Hex; at: bigint }[] = [];
-  for (const hash of hashes.values()) {
+  // One transaction, read whole; `sender` where the slot's read found it as the payer's, with no witness log needed.
+  const readOne = async (hash: Hex, sender?: Hex): Promise<{ unreadable: UnreadableReason } | undefined> => {
     let receipt: EvmReceipt | null;
     let raw: unknown;
     try {
@@ -1089,24 +1112,24 @@ async function activationFacts(
     } catch (e) {
       return { unreadable: rejected(e) };
     }
-    if (receipt === null) continue;
+    if (receipt === null) return undefined;
     if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return { unreadable: "unparseable" };
     const witness = receipt.logs.find(
       (l) => l.topics.length === 3 && sameBytes(l.address, ACCOUNT_KEYCHAIN) && sameBytes(l.topics[0], KEY_AUTHORIZATION_WITNESS_TOPIC) && sameBytes(l.topics[2], h),
     );
-    const account = witness === undefined ? undefined : addressIn(witness.topics[1]);
-    if (account === undefined) continue;
+    const account = witness === undefined ? sender : addressIn(witness.topics[1]);
+    if (account === undefined) return undefined;
     const wire = typeof raw === "string" ? bytesOf(raw) : undefined;
     const carried = wire === undefined ? undefined : carriedKeyAuthorization(wire);
     const landed = typeof carried === "string" ? readKeyAuthorization(carried) : undefined;
     if (wire === undefined || isRefusal(carried) || isRefusal(landed)) {
       undecoded.push({ transaction: hash, at: receipt.blockNumber });
-      continue;
+      return undefined;
     }
     const moved = movedFrom(receipt.logs, account, hash);
     if (moved === undefined) {
       undecoded.push({ transaction: hash, at: receipt.blockNumber });
-      continue;
+      return undefined;
     }
     const recipient = landed === undefined ? undefined : landedRecipient(landed);
     const own = landed !== undefined && sameBytes(landed.keyId, keyId);
@@ -1116,8 +1139,10 @@ async function activationFacts(
       position: receipt.blockNumber,
       mark: markOf(receipt.blockNumber),
       result: receipt.status === 1 ? "succeeded" : "failed",
-      consumed: false,
-      carries: true,
+      // The payer's key authorization for the key registers the slot whatever the result; so does the payer's own
+      // keychain call the slot's read found, which counts only where it succeeded.
+      consumed: sameBytes(account, ref.payer) && (own || sender !== undefined),
+      carries: witness !== undefined || (landed?.witness !== undefined && sameBytes(landed.witness, h)),
       party: partyOf(account, ref.payer!, ref.payee),
       signer: account,
       kind: own ? "same" : "other",
@@ -1126,12 +1151,33 @@ async function activationFacts(
       ...(landedSigned !== undefined && givenSigned.some((g) => sameBytes(g, landedSigned)) ? { given: true } : {}),
       ...(ref.signed === undefined ? {} : { presented: landedSigned !== undefined && sameBytes(landedSigned, ref.signed) ? ("yes" as const) : ("no" as const) }),
     });
+    return undefined;
+  };
+  for (const hash of hashes.values()) {
+    const r = await readOne(hash);
+    if (r !== undefined) return r;
+  }
+  if (read.consumedAt !== undefined && !seen.some((x) => x.consumed)) {
+    // A read of a block's state or transactions that fails leaves the consumer unfound: search-incomplete.
+    const c = await slotConsumer(slot, reader, lo, read.consumedAt).catch(() => undefined);
+    if (c !== undefined && "transaction" in c) {
+      const met = seen.findIndex((x) => sameBytes(x.transaction, c.transaction));
+      if (met !== -1) seen[met] = { ...seen[met]!, consumed: true };
+      else {
+        const r = await readOne(c.transaction, c.sender);
+        if (r !== undefined) return r;
+      }
+    } else if (c !== undefined) {
+      // Held at the position the search started from, so that the next call reads every item again.
+      for (const u of c.undecoded) undecoded.push({ transaction: u, at: start });
+    }
   }
   seen.sort((a, b) => (a.position! < b.position! ? -1 : a.position! > b.position! ? 1 : 0));
   undecoded.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
   return {
     facts: {
       seen,
+      value: read.value,
       search: { whole: s.whole, ...(s.at === undefined ? {} : { at: s.at }) },
       ...(undecoded.length === 0 ? {} : { undecoded }),
       history,
@@ -2212,7 +2258,7 @@ async function subscriptionBound(input: unknown): Promise<AtrHash | Refusal> {
  * The activation's read keys, from what the payer signed: the keychain's `KeyAuthorizationWitness` carrying H, and the
  * `Transfer` of the key authorization's token to its recipient (`signedScope`), identified by the recipient alone.
  * `accessKey` records the key, the challenge's issued key that the key authorization authorizes (`authorizedKey`), with
- * that token and recipient for `keySearch`. `payer` is the account whose root key signed the key authorization
+ * that token and recipient for `keySearch`, and the key authorization's `expiry`, the bound of the key's slot. `payer` is the account whose root key signed the key authorization
  * (`keyAuthorizationSigner`), and `signed` the payment presented, keccak-256 over the signed key authorization's bytes
  * whole; with them `status` reads the activation by its search (`activationStatus`). Of the request it reads only the
  * chain.
@@ -2240,7 +2286,7 @@ async function subscriptionKeys(input: unknown): Promise<Omit<SessionRef, "payee
     bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: w.h },
     transferLog: { address: scope.token, topic0: TRANSFER_TOPIC, identity: "to", digest: to },
     search: { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, w.h] },
-    accessKey: { keyId: w.keyId, token: scope.token, to },
+    accessKey: { keyId: w.keyId, token: scope.token, to, ...(w.key.expiry === undefined ? {} : { expiry: w.key.expiry.toString() }) },
     payer,
     signed: keccakHex(signed),
   };

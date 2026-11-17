@@ -88,7 +88,8 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
       fallback: "json-rpc",
       search:
         "Every contract's `Transfer` from the payer, each hit counted only where its transaction carries the nonce or the " +
-        "challenge's witness word in the Permit2 witness transfer whose owner is the payer, naming the hit's token, " +
+        "witness word of a challenge of the sale's issue on this pairing and chain, the chosen one's and each one the " +
+        "caller gives `reference` as `issue`, in the Permit2 witness transfer whose owner is the payer, naming the hit's token, " +
         "recipient and amount, the bit of the call's own nonce set at its block and unset before; a cancellation by Permit2's `UnorderedNonceInvalidation` with the payer as owner; an " +
         "EIP-3009 use of the same nonce the token logged, the `authorization` charge of the same challenge, an act of " +
         "another kind. From the position the caller gives to the latest head, in pages of at most 10,000 blocks.",
@@ -326,14 +327,22 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     read: {
       endpoint: ["json-rpc"],
+      note:
+        "an endpoint that answers `eth_getLogs`, and `eth_call` and `eth_getBlockByNumber` with its transactions at the " +
+        "blocks the key slot is read at",
       search:
         "The account keychain's `KeyAuthorizationWitness` whose witness topic is H and whose account topic is the payer's " +
         "account, whose root key signed the key authorization, from the position given to the latest head; the search " +
         "leaves the account topic open, so that a witness log under another account is met and named a foreign item. " +
-        "Whether the endpoint's log search returns the witness log a reverted activation's receipt holds is not shown " +
-        "until a run shows it, so a search that met nothing answers `pending`, `search-incomplete`, where it would " +
-        "answer `not-found` or `failed`.",
+        "A key slot read consumed whose transaction the search did not find is found in the first block it reads " +
+        "consumed at, by halving the blocks, as the payer's transaction there whose key authorization names the key or " +
+        "whose own keychain call authorizes it, its receipt deciding: a reverted activation is `transaction-failed`.",
       contracts: ["the account keychain"],
+      lapse:
+        "the key authorization's signed `expiry`; one that signs none has no bound. The single-use value is the key slot " +
+        "the presented key authorization names in the payer's keychain, `getKey(account, keyId)` at `finalized` and at " +
+        "`latest`, consumed where it names the key or reads it revoked; the keychain registers a key id once, whatever the " +
+        "transaction's result, and none whose expiry has passed",
     },
     destination:
       "the one account the payer's key authorization lets the key pay, read from the key authorization the landed " +

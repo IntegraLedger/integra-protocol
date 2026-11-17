@@ -16,10 +16,10 @@ import { tempoValueOf } from "../../../src/internal/tempo-nonce.js";
 import { tempoSplitMemo, tempoSplitMemoPush, type TempoSplitRef } from "../../../src/mpp-tempo.js";
 import { evmChannelId, sessionTempo, subscriptionTempo, type SessionRef } from "../../../src/mpp.js";
 import { CHANNEL_OPENED_V1_TOPIC, KEY_AUTHORIZATION_WITNESS_TOPIC, OPEN_V1_SELECTOR, TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC } from "../../../src/tempo.js";
-import { ledgerReader, txHashOf, txNameOf, type LedgerTx } from "../../eip155-tempo-mpp-ledger.js";
+import { txHashOf, txNameOf, type LedgerTx } from "../../eip155-tempo-mpp-ledger.js";
 import { tempoLedgerReader, type TempoLedgerSpec } from "../../eip155-tempo-mpp-tempo-ledger.js";
 import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
-import { ACTS, answering, giving, READ_STATUS } from "../harness.js";
+import { answering, READ_STATUS } from "../harness.js";
 
 // The published Anvil development keys #0, #1 and #2: the payer, the option's payee and another account.
 const KEYS = {
@@ -508,9 +508,9 @@ const KEYCHAIN = "0xaaaaaaaa00000000000000000000000000000000" as Hex;
 const ACCESS_KEY = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8" as Hex;
 const OTHER_KEY = "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc" as Hex;
 
-/** A key authorization in the RLP items `toRlp` writes: its token, key, recipients and expiry. */
-function keyAuthorizationItems(token: Hex, keyId: Hex, recipients: readonly Hex[], expiry: bigint): unknown[] {
-  return [num(BigInt(CHAIN)), "0x", keyId, num(expiry), [[token, num(10_000_000n), num(2_592_000n)]], [[token, [[TRANSFER_WITH_MEMO_SELECTOR, [...recipients]]]]], H];
+/** A key authorization in the RLP items `toRlp` writes: its token, key, recipients, expiry and witness. */
+function keyAuthorizationItems(token: Hex, keyId: Hex, recipients: readonly Hex[], expiry: bigint, witness: Hex): unknown[] {
+  return [num(BigInt(CHAIN)), "0x", keyId, num(expiry), [[token, num(10_000_000n), num(2_592_000n)]], [[token, [[TRANSFER_WITH_MEMO_SELECTOR, [...recipients]]]]], witness];
 }
 
 /** The key authorization `items` signed by `key` over keccak-256 of its bytes, as the RLP items and as its signed bytes. */
@@ -520,49 +520,78 @@ async function signedKeyAuthorization(key: Hex, items: unknown[]): Promise<{ ite
   return { item, bytes: toRlp(item as never) as Hex };
 }
 
-/** A signed `0x76` transaction carrying a key authorization, item 13, before the sender's signature. */
-async function activationTx(key: Hex, keyAuthorization: unknown[], gas: bigint): Promise<Hex> {
-  const fields = [num(BigInt(CHAIN)), num(1n), num(2n), num(gas), [], [], num(LANE), "0x", "0x", "0x", "0x", "0x", [], keyAuthorization];
+/** A signed `0x76` transaction carrying a key authorization, item 13, before the sender's signature, with `calls`. */
+async function activationTx(key: Hex, keyAuthorization: unknown[] | undefined, gas: bigint, calls: readonly [Hex, Hex][] = []): Promise<Hex> {
+  const fields = [
+    num(BigInt(CHAIN)), num(1n), num(2n), num(gas), calls.map(([to, data]) => [to, "0x", data]), [], num(LANE), "0x", "0x", "0x", "0x", "0x", [],
+    ...(keyAuthorization === undefined ? [] : [keyAuthorization]),
+  ];
   const s = await sign({ hash: keccak256(concat(["0x76", toRlp(fields as never)])), privateKey: key });
   return concat(["0x76", toRlp([...fields, concat([s.r, s.s, toHex(Number(s.v), { size: 1 })])] as never)]) as Hex;
 }
+
+/** `authorizeAdminKey(keyId, secp256k1, witness)`: a keychain call that authorizes `keyId` for the caller. */
+const authorizeCall = (keyId: Hex, witness: Hex): Hex => `0x9a424307${word(keyId).slice(2)}${uint(0n).slice(2)}${witness.slice(2)}` as Hex;
 
 /** The case's facts as a subscription's activation on the ledger, or why they cannot be. */
 async function activationLedger(c: ReadCase, act: Act) {
   const f = c.facts;
   const m = new Mapping(c);
+  const v = f.value;
+  if (v !== undefined && v.head === undefined && !v.lapsed && !v.consumed) throw new Cannot("the read reads the slot at `latest` whenever it reads it at `finalized`");
   const latest = f.search.whole ? 3000n : 200_000n;
+  // The bound: passed at the final head, at the latest head alone, or not signed. A case that gives no value is made
+  // with the bound passed and the slot unconsumed where no transaction of it registers the key, so that the slot's read
+  // decides nothing the case does not state.
+  const expiry =
+    v === undefined
+      ? f.seen.some((s) => s.consumed) ? undefined : timestamp(FINAL) - 100n
+      : !v.lapsed ? undefined : v.mark === "final" ? timestamp(FINAL) - 100n : timestamp(FINAL) + 50n;
   const txs: LedgerTx[] = [];
+  const keys: { account: Hex; keyId: Hex; from: bigint }[] = [];
   const comparing = f.seen.some((s) => s.presented !== undefined);
   let signed: Hex | undefined;
   const witness = (account: Hex): EvmLog => ({ address: KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, word(account), H], data: "0x" });
   for (const [i, s] of f.seen.entries()) {
     if (s.position === undefined) throw new Cannot("every transaction the search meets is in a block, so the read places it");
-    if (!s.carries) throw new Cannot("every transaction the search meets carries H, the witness topic it searches by");
     const block = blockOf(s.position, s.mark);
     m.blocks.set(block, s.position);
     m.marks.set(s.transaction, s.mark);
+    // A consumer is the payer's: only the account's own transaction registers a key in its keychain.
+    const party = s.consumed ? "payer" : s.party;
     const recipients = s.account === "payee" ? [ADDRESS.payee] : s.account === "other" ? [ELSEWHERE] : [ADDRESS.payee, ELSEWHERE];
-    const items = keyAuthorizationItems(TOKENS.A!, s.kind === "same" ? ACCESS_KEY : OTHER_KEY, recipients, 1_900_000_000n + BigInt(i));
-    const ka = await signedKeyAuthorization(KEYS[s.party], items);
+    // The payer's key authorization for the issued key registers the slot whatever its result.
+    if (party === "payer" && s.kind === "same" && !s.consumed) throw new Cannot("the payer's key authorization for the key registers its slot");
+    // A consumer of another kind registers the key by its own keychain call, which a revert undoes.
+    const byCall = s.consumed && s.kind === "other";
+    if (byCall && s.result === "failed") throw new Cannot("a reverted keychain call registers no key");
+    const items = keyAuthorizationItems(TOKENS.A!, s.kind === "same" ? ACCESS_KEY : OTHER_KEY, recipients, 1_900_000_000n + BigInt(i), s.carries ? H : H2);
+    const ka = await signedKeyAuthorization(KEYS[party], items);
     if (s.presented === "yes") signed = keccak256(ka.bytes) as Hex;
-    if (s.presented === "no") signed = keccak256((await signedKeyAuthorization(KEYS[s.party], keyAuthorizationItems(TOKENS.A!, ACCESS_KEY, recipients, 1_950_000_000n))).bytes) as Hex;
+    if (s.presented === "no") signed = keccak256((await signedKeyAuthorization(KEYS[party], keyAuthorizationItems(TOKENS.A!, ACCESS_KEY, recipients, 1_950_000_000n, H))).bytes) as Hex;
     // The log's place in the receipt is the place each transfer names; the others hold the witness and fillers.
     const transfers = (s.moved ?? []).map((mv, j) => ({ mv, place: typeof mv.place === "number" ? mv.place : j + 1 }));
     const logs: EvmLog[] = [];
     const size = Math.max(1, ...transfers.map((t) => t.place + 1));
     for (let p = 0; p < size; p++) logs.push({ address: FILLER, topics: [H2], data: "0x" });
     const free = logs.findIndex((_, p) => !transfers.some((t) => t.place === p));
-    logs[free === -1 ? logs.length : free] = witness(ADDRESS[s.party]);
+    if (s.carries) logs[free === -1 ? logs.length : free] = witness(ADDRESS[party]);
     for (const { mv, place } of transfers) {
       const to = mv.to === "payee" ? ADDRESS.payee : ELSEWHERE;
-      logs[place] = { address: TOKENS[mv.asset]!, topics: [TRANSFER_TOPIC, word(ADDRESS[s.party]), word(to)], data: uint(BigInt(mv.amount)) };
+      logs[place] = { address: TOKENS[mv.asset]!, topics: [TRANSFER_TOPIC, word(ADDRESS[party]), word(to)], data: uint(BigInt(mv.amount)) };
     }
-    const raw = await activationTx(KEYS[s.party], ka.item, 200_000n + BigInt(i));
+    const calls: [Hex, Hex][] = byCall ? [[KEYCHAIN, authorizeCall(ACCESS_KEY, H2)]] : [];
+    if (byCall) keys.push({ account: ADDRESS.payer, keyId: ACCESS_KEY, from: block });
+    const raw = await activationTx(KEYS[party], ka.item, 200_000n + BigInt(i), calls);
     // A reverted activation's receipt holds its witness log, as the recorded Moderato receipt in
-    // test/fixtures/tempo-access-key.json does; the ledger's log search returns no reverted receipt's logs, since
-    // whether the endpoint's `eth_getLogs` returns them is not shown.
-    txs.push({ hash: txHashOf(s.transaction), block, status: s.result === "succeeded" ? 1 : 0, from: ADDRESS[s.party], to: null, input: "0x", logs, raw });
+    // test/fixtures/tempo-access-key.json does; the ledger's log search returns no reverted receipt's logs, so the read
+    // meets a reverted activation by the key slot alone.
+    txs.push({ hash: txHashOf(s.transaction), block, status: s.result === "succeeded" ? 1 : 0, from: ADDRESS[party], to: null, input: "0x", logs, raw });
+  }
+  // The slot's state where no transaction of the case registers it: registered by a transaction the read cannot find.
+  if (v !== undefined && !f.seen.some((s) => s.consumed)) {
+    if (v.consumed) keys.push({ account: ADDRESS.payer, keyId: ACCESS_KEY, from: 1n });
+    else if (v.head?.consumed === true) keys.push({ account: ADDRESS.payer, keyId: ACCESS_KEY, from: FINAL + 10n });
   }
   for (const u of f.undecoded ?? []) {
     if (u.at === undefined) throw new Cannot("every item the search meets is in a block, so the read holds the search at it");
@@ -574,8 +603,10 @@ async function activationLedger(c: ReadCase, act: Act) {
   let named: Hex | undefined;
   if (f.unreadable === "too-large" || f.unreadable === "unparseable") named = txHashOf("t-named");
   const network = f.unreadable === "chain-mismatch" ? "eip155:1" : NETWORK;
-  const base = ledgerReader({ network, heads: { latest, safe: FINAL, finalized: FINAL }, txs, timestamp });
-  const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
+  const base = tempoLedgerReader({ network, heads: { latest, safe: FINAL, finalized: FINAL }, txs, timestamp, keys });
+  const old = (block: bigint): void => {
+    if (!f.history && block < latest) throw new ReaderError("transport", "no state for that block");
+  };
   const reader = {
     ...base,
     async logs(filter: Parameters<typeof base.logs>[0]) {
@@ -588,15 +619,19 @@ async function activationLedger(c: ReadCase, act: Act) {
       return base.receipt(tx);
     },
     async block(at: "latest" | "safe" | "finalized" | bigint) {
-      if (typeof at === "bigint" && !f.history && at < latest) throw new ReaderError("transport", "no state for that block");
+      if (typeof at === "bigint") old(at);
       return base.block(at);
+    },
+    async call(to: Hex, data: Hex, block: bigint) {
+      old(block);
+      return base.call(to, data, block);
     },
   };
   const ref: SessionRef = {
     network: NETWORK as SessionRef["network"],
     payee: ADDRESS.payee,
     bindingLog: { address: KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: H as never },
-    accessKey: { keyId: ACCESS_KEY, token: TOKENS.A!, to: H },
+    accessKey: { keyId: ACCESS_KEY, token: TOKENS.A!, to: H, ...(expiry === undefined ? {} : { expiry: expiry.toString() }) },
     payer: ADDRESS.payer,
     ...(comparing && signed !== undefined ? { signed } : {}),
     ...(named === undefined ? {} : { transaction: named }),
@@ -612,67 +647,34 @@ async function activationLedger(c: ReadCase, act: Act) {
   return { m, ref, reader, query };
 }
 
-const SUBSCRIPTION_NO_VALUE = STATED(
-  "on `subscription/tempo`, every other case whose facts give a single-use value, `instrument-live` among them, since its " +
-    "read holds no single-use value and no bound, only the " +
-    "search for the witness log that carries H, so it answers no `failed` but `before-position`",
+const SUBSCRIPTION_HOLDS = STATED(
+  "on `subscription/tempo`, since the read holds its single-use value, the key slot the presented key authorization " +
+    "names, and reads it at `finalized` and at `latest`",
   "mpp-session-evm-tempo.md, rule 8",
 );
 
-const SUBSCRIPTION_UNSHOWN = STATED(
-  "on `subscription/tempo`, at coverage `full`, `instrument-unused`, `instrument-consumed` and `transaction-failed`, " +
-    "whose search rests on a fact not yet shown, whether the endpoint's log search returns the witness log a reverted " +
-    "activation's receipt holds, the search's one means of meeting it; the read answers `pending`, `search-incomplete`, " +
-    "where it would answer them, until a run on a Tempo network that reverts an activation shows whether its log search " +
-    "returns that log, and the statement goes then",
+const SUBSCRIPTION_REGISTERS = STATED(
+  "on `subscription/tempo`, since the payer's key authorization for the issued key registers the key's slot whatever " +
+    "the transaction's result, before its calls run, so every act of the payer's of the pairing's kind consumed the value",
   "mpp-session-evm-tempo.md, rule 8",
 );
-
-const SUBSCRIPTION_NOT_FOUND = STATED(
-  "on `subscription/tempo`, `not-found`, since until that run the read answers `pending`, `search-incomplete`, where it " +
-    "would answer it, its search not shown to meet a failed result of the payer's",
-  "mpp-session-evm-tempo.md, rule 8",
-);
-
-/** The statements among `all` of cases at coverage `full`. */
-const atFull = (all: readonly Inapplicable[]): Inapplicable[] =>
-  all.filter((d) => READ_STATUS.cases.find((c) => c.case === d.case)?.coverage === "full");
-
-/** Each case on each act once, under the first statement that names it there. */
-function firstStated(all: readonly Inapplicable[]): Inapplicable[] {
-  const taken = new Set<string>();
-  return all.flatMap((d) => {
-    const acts = (d.acts ?? ACTS).filter((act) => !taken.has(`${d.case}\u0000${act}`));
-    for (const act of acts) taken.add(`${d.case}\u0000${act}`);
-    if (acts.length === 0) return [];
-    return [acts.length === ACTS.length && d.acts === undefined ? d : { ...d, acts }];
-  });
-}
 
 /** `mpp/subscription/tempo`'s declarations, as the profile mpp-session-evm-tempo.md rule 8 states them. */
-const SUBSCRIPTION: Inapplicable[] = firstStated([
-  ...atFull(answering("instrument-unused", SUBSCRIPTION_UNSHOWN)),
-  ...atFull(answering("instrument-consumed", SUBSCRIPTION_UNSHOWN)),
-  ...atFull(answering("transaction-failed", SUBSCRIPTION_UNSHOWN)),
-  ...atFull(answering("not-found", SUBSCRIPTION_NOT_FOUND)),
-  ...giving("a single-use value", SUBSCRIPTION_NO_VALUE),
+const SUBSCRIPTION: Inapplicable[] = [
+  ...answering("not-found", SUBSCRIPTION_HOLDS),
+  ...opening("a read with no means to read the single-use value", SUBSCRIPTION_HOLDS),
+  ...opening("a read that did not read the value at the latest head", SUBSCRIPTION_HOLDS),
+  ...opening("an act carrying H that names no account and consumed nothing", SUBSCRIPTION_REGISTERS),
+  ...opening("an act the caller gave as another act under the same H", SUBSCRIPTION_REGISTERS),
+  ...opening("transactions carrying H with a failed result, the payer's own and one the payee signed", SUBSCRIPTION_REGISTERS),
+  ...opening("a failed result that left the value unconsumed", SUBSCRIPTION_REGISTERS),
   ...opening(
     "an act read at the finality asked for, below the final mark",
     STATED("on the four pairings that live on Tempo alone, since no finality below `finalized`, Tempo's one mark, is asked", "mpp-session-evm-tempo.md, rule 8"),
   ),
   ...opening("an act the read cannot place against the position given", STATED(PLACED, "mpp-session-evm-tempo.md, rule 8")),
   ...opening("an item the search could not decode that gives no position", STATED(PLACED, "mpp-session-evm-tempo.md, rule 8")),
-  ...opening(
-    "before-position is decided before any other reason, an act otherwise settled included",
-    STATED(
-      "on `subscription/tempo`, *before-position is decided before any other reason, an act otherwise settled included*, " +
-        "whose act lies below the position given, since the search starts at the position given, the read holds no value " +
-        "whose read there would show an act below it, and the reference names no transaction to read beside the search, " +
-        "the credential carrying the key authorization alone",
-      "mpp-session-evm-tempo.md, rule 8",
-    ),
-  ),
-]);
+];
 
 /** `mpp/subscription/tempo`'s form: each activation arranged on the keychain's ledger and read by its own `status`. */
 const subscriptionForm: DeclaredForm = {

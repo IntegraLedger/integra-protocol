@@ -1584,8 +1584,9 @@ describe("mpp-subscription-tempo.json", () => {
       bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: H },
       transferLog: { address: U.SUB3.expectToken, topic0: TRANSFER_TOPIC, identity: "to", digest: U.SUB3.expectTransferDigest },
       search: { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, H] },
-      // The key's read keys: the signed authorization's key id, its token and its recipient's digest.
-      accessKey: { keyId: f.accessKey.toLowerCase(), token: U.SUB3.expectToken, to: U.SUB3.expectTransferDigest },
+      // The key's read keys: the signed authorization's key id, its token and its recipient's digest; and its signed
+      // expiry, the bound of the key's slot.
+      accessKey: { keyId: f.accessKey.toLowerCase(), token: U.SUB3.expectToken, to: U.SUB3.expectTransferDigest, expiry: U.SUB1.authorization.expiry },
       // The payment presented: the account whose root key signed the key authorization, and its bytes' keccak-256.
       payer: f.payer.toLowerCase(),
       signed: keccak256(cred.payload["signature"] as ViemHex),
@@ -1638,7 +1639,7 @@ describe("mpp-subscription-tempo.json", () => {
     const ref = (await echoedRef(subscriptionTempo.reference)(await credentialOf(toOther))) as SessionRef;
     const digest = await transferDigest({ to: other });
     expect(ref.transferLog).toEqual({ address: f.pathUSD, topic0: TRANSFER_TOPIC, identity: "to", digest });
-    expect(ref.accessKey).toEqual({ keyId: f.accessKey.toLowerCase(), token: f.pathUSD, to: digest });
+    expect(ref.accessKey).toEqual({ keyId: f.accessKey.toLowerCase(), token: f.pathUSD, to: digest, expiry: U.SUB1.authorization.expiry });
     // A transfer of any amount of the signed token to the signed recipient is the activation's.
     const transfer = { address: f.pathUSD, topics: [TRANSFER_TOPIC, topicOf(f.payer), topicOf(other)], data: wordOf(1n) };
     const witness = { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, topicOf(f.payer), H], data: "0x" as const };
