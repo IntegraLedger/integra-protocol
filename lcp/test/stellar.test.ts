@@ -1,317 +1,25 @@
 // Runs x402-exact-stellar.json through the stellar entry point. Every expected value is the file's.
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { Keypair, Networks, StrKey, authorizeEntry, buildAuthorizationEntryPreimage, nativeToScVal, xdr } from "@stellar/stellar-sdk";
+import { Keypair, StrKey, nativeToScVal, xdr } from "@stellar/stellar-sdk";
 import { ScVal, TransactionEnvelope } from "@stellar/stellar-sdk/xdr";
-import { ReaderError } from "../src/evm.js";
-import type { AtrHash } from "../src/index.js";
-import {
-  PASSPHRASE,
-  decodeStellarTx,
-  muxedFor,
-  stellarLocate,
-  stellarStatus,
-  transferEventOf,
-  transferEventTopics,
-  type StellarReader,
-  type StellarRef,
-} from "../src/stellar.js";
-import { counting } from "./fixtures/counting-reader.js";
+import { decodeStellarTx, transferEventOf } from "../src/stellar.js";
 import { account, muxed, signed, simulated, type Case } from "./fixtures/stellar-signed-invocation.js";
 import { rowsOf } from "./rows.js";
 import type { TransactionEnvelopeWire } from "@stellar/stellar-sdk/xdr";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
-const H: AtrHash = V.fixed.H;
 const refused = (code: string) => ({ refused: true, code });
-const sha256 = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
 const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex"));
-const refOf = (r: Record<string, unknown>) => r as unknown as StellarRef;
-/** status's query: the act payment at the one mark. */
-const ASKED = { act: "payment", finality: "closed" } as const;
-const SEARCH_INCOMPLETE = { state: "pending", reason: "search-incomplete", foreign: [] };
-/** A ref recorded from an authorization entry, naming its transaction. */
-type EntryRef = StellarRef & { transaction: string; authDigest: `0x${string}`; expiration: number };
-
-type Answer = { status: string; envelope?: string; ledger?: number };
-type Row = Answer & {
-  latestLedger?: number;
-  transfers?: { events: { txHash: string }[]; complete: boolean; latestLedger?: number };
-  candidate?: Answer;
-};
-
-/** A vector's envelope: the literal XDR, or the name of another vector's envelope. */
-function envelopeOf(e: string | undefined): string | undefined {
-  if (e === "plant") return V.plant.envelope;
-  if (e === "rebuilt") return V.V5.rebuilt.envelope;
-  return e;
-}
-
-/**
- * A reader answering `getTransaction` with the row's answer (a listed transaction with the row's candidate),
- * `getLatestLedger` with the row's latest ledger (2000 when unset), and one page of the row's transfer events, each
- * carrying V1's muxed id (none, complete, when unset), computed at the row's events ledger (its latest ledger when
- * unset).
- */
-function readerFor(row: Row): StellarReader {
-  const answer = (a: Answer) => {
-    if (a.status === "reader-error") throw new ReaderError("transport");
-    const envelope = envelopeOf(a.envelope);
-    return {
-      status: a.status as "SUCCESS",
-      ...(envelope !== undefined ? { envelopeXdr: envelope } : {}),
-      ...(a.ledger !== undefined ? { ledger: a.ledger } : {}),
-      oldestLedger: 1,
-    };
-  };
-  const listed = new Set((row.transfers?.events ?? []).map((e) => e.txHash));
-  return {
-    network: "stellar:testnet",
-    transaction: async (hash) => answer(listed.has(hash) && row.candidate !== undefined ? row.candidate : row),
-    transfers: async (f) => ({
-      events: (row.transfers?.events ?? []).map((e) => ({ txHash: e.txHash, toMuxedId: BigInt(V.V1.muxedId) })),
-      complete: row.transfers?.complete ?? true,
-      oldestLedger: f.fromLedger,
-      latestLedger: row.transfers?.latestLedger ?? row.latestLedger ?? 2000,
-    }),
-    latestLedger: async () => row.latestLedger ?? 2000,
-  };
-}
-
 describe("x402-exact-stellar.json", () => {
-  it("V1: the carrier", () => {
-    const m = muxedFor(V.fixed.seller, H);
-    expect(m).toBe(V.V1.M);
-    expect((m as string).length).toBe(V.V1.Mlength);
-    const env = TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
-    if (env.type !== 2) throw new Error("not a v1 envelope");
-    const body = env.v1.tx.operations[0]!.body;
-    if (body.type !== 24 || body.invokeHostFunctionOp.hostFunction.type !== 0) throw new Error("not an invocation");
-    const to = body.invokeHostFunctionOp.hostFunction.invokeContract.args[1]!;
-    expect(ScVal.fromXdrObject(to).toXdr("base64")).toBe(V.V1.toScValXdr);
-    expect(sha256(PASSPHRASE["stellar:testnet"]).slice(0, 8)).toBe(V.V2.networkIdPrefix);
-  });
 
-  it("V5: status and stellarLocate", async () => {
-    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    for (const row of rowsOf(V.V5.rows, "x402-exact-stellar.json V5.rows")) {
-      expect(await stellarStatus(ref, readerFor(row), row.query ?? ASKED), row.case).toEqual(row.expect);
-      if (row.expectLocate !== undefined) expect(await stellarLocate(ref, readerFor(row)), row.case).toEqual(row.expectLocate);
-    }
-    const disabled: StellarReader = {
-      ...readerFor(V.V5.rows[0]),
-      transfers: async () => ({ events: [], complete: false, oldestLedger: 1, latestLedger: 1001 }),
-    };
-    expect(await stellarLocate(ref, disabled)).toEqual(V.V5.locateEventsDisabled.expect);
-    const retention: StellarReader = {
-      ...readerFor(V.V5.rows[0]),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger + 1, latestLedger: 1001 }),
-    };
-    expect(await stellarLocate(ref, retention)).toEqual(V.V5.locateOldestAboveFrom.expect);
-    const behind: StellarReader = {
-      ...readerFor(V.V5.rows[0]),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger, latestLedger: 999 }),
-    };
-    expect(await stellarLocate(ref, behind)).toEqual(V.V5.locateLatestBelowExpiration.expect);
-    for (const latestLedger of [1000, 1001]) {
-      const held: StellarReader = {
-        ...readerFor(V.V5.rows[0]),
-        transfers: async () => ({ events: [], complete: true, oldestLedger: ref.fromLedger, latestLedger }),
-      };
-      expect(await stellarLocate(ref, held)).toEqual({ complete: true });
-    }
-    for (const row of [V.V5.locateCandidateNotReadable, V.V5.locateCandidateNotThisInstrument]) {
-      const listed: StellarReader = {
-        ...readerFor({ status: row.status, ...(row.envelope === "plant" ? { envelope: V.plant.envelope, ledger: 990 } : {}) }),
-        transfers: async () => ({
-          events: [{ txHash: "bb".repeat(32), toMuxedId: BigInt(ref.toId) }],
-          complete: true,
-          oldestLedger: ref.fromLedger,
-          latestLedger: 1001,
-        }),
-      };
-      expect(await stellarLocate(ref, listed), row.case).toEqual(row.expect);
-    }
-  });
 
-  // Stellar RPC's getEvents answers with latestLedger, the latest ledger the RPC held when it answered. A search whose
-  // events index stands below the ledger getLatestLedger gave first cannot show the entry unused through that ledger,
-  // so the payment stays pending until the index has caught up; past it, the entry read expired is pending
-  // search-incomplete too, since status reads no search for H whole (read-status rules 23 and 24).
-  it("V5: a search whose events index lags the ledger read first is pending, never failed", async () => {
-    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    const nowhere = { status: "NOT_FOUND", latestLedger: 1001, transfers: { events: [], complete: true } };
-    for (const indexed of [990, 1000, 1001, 1002]) {
-      const reader = readerFor({ ...nowhere, transfers: { ...nowhere.transfers, latestLedger: indexed } });
-      expect([indexed, await stellarStatus(ref, reader, ASKED)]).toEqual([indexed, SEARCH_INCOMPLETE]);
-    }
-    const unnamed: StellarReader = {
-      ...readerFor(nowhere),
-      transfers: async () => ({ events: [], complete: true, oldestLedger: 1 }) as never,
-    };
-    expect(await stellarStatus(ref, unnamed, ASKED)).toEqual(SEARCH_INCOMPLETE);
-  });
 
-  // The forms `reference` writes (V3.expectReference, V5.ref): a 64-hex transaction hash, a 0x-prefixed 64-hex entry
-  // digest with its u32 expiration ledger, a contract asset, an account toBase, the muxed id as a u64 in decimal, and a
-  // u32 fromLedger. A reference that lacks a field status reads, or holds it malformed, is unreadable unparseable, with
-  // nothing read. The reader answers V5's row whose well-formed ref reads the entry expired.
-  it("V5: a ref field outside the form reference writes is unreadable unparseable, with nothing read", async () => {
-    const expired = V.V5.rows.find(
-      (r: { case: string }) => r.case === "the named transaction is not found; past the expiration ledger, the search is complete and lists nothing",
-    );
-    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    expect(await stellarStatus(ref, readerFor(expired), ASKED)).toEqual(SEARCH_INCOMPLETE);
-    const { authDigest: _digest, ...noDigest } = V.V5.ref;
-    const { expiration: _expiration, ...noExpiration } = V.V5.ref;
-    const bad: readonly (readonly [string, Record<string, unknown>])[] = [
-      ["transaction x", { ...V.V5.ref, transaction: "x" }],
-      ["transaction with 0x", { ...V.V5.ref, transaction: `0x${V.V5.ref.transaction}` }],
-      ["authDigest of 31 bytes", { ...V.V5.ref, authDigest: V.V5.ref.authDigest.slice(0, -2) }],
-      ["authDigest without 0x", { ...V.V5.ref, authDigest: V.V5.ref.authDigest.slice(2) }],
-      ["expiration without authDigest", noDigest],
-      ["authDigest without expiration", noExpiration],
-      ["expiration a string", { ...V.V5.ref, expiration: "1000" }],
-      ["expiration 2^32", { ...V.V5.ref, expiration: 2 ** 32 }],
-      ["asset x", { ...V.V5.ref, asset: "x" }],
-      ["asset an account", { ...V.V5.ref, asset: V.V5.ref.toBase }],
-      ["toBase the muxed form", { ...V.V5.ref, toBase: V.V1.M }],
-      ["toId x", { ...V.V5.ref, toId: "x" }],
-      ["toId -1", { ...V.V5.ref, toId: "-1" }],
-      ["toId 2^64", { ...V.V5.ref, toId: "18446744073709551616" }],
-      ["fromLedger a string", { ...V.V5.ref, fromLedger: "900" }],
-      ["fromLedger -1", { ...V.V5.ref, fromLedger: -1 }],
-    ];
-    for (const [name, r] of bad) {
-      const { reader, calls } = counting(readerFor(expired));
-      expect([name, await stellarStatus(refOf(r) as StellarRef & { transaction: string }, reader, ASKED), calls]).toEqual([
-        name,
-        { state: "unreadable", reason: "unparseable", foreign: [] },
-        [],
-      ]);
-    }
-  });
 
-  it("V5: a reader that is not an object or answers for another network is unreadable chain-mismatch, with nothing read", async () => {
-    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    const { reader, calls } = counting({ ...readerFor(V.V5.rows[0]), network: "stellar:pubnet" } as StellarReader);
-    expect(await stellarStatus(ref, reader, ASKED)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
-    expect(calls).toEqual([]);
-    expect(await stellarStatus(ref, null as never, ASKED)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
-  });
 
-  // As the status test above: stellarLocate's search keys are the ref's, so a key outside the form reference writes
-  // names no search. The reader answers a complete search that lists nothing, which the well-formed ref reads complete.
-  it("V5: stellarLocate with a ref field outside the form reference writes is incomplete, with nothing read", async () => {
-    const expired = V.V5.rows.find(
-      (r: { case: string }) => r.case === "the named transaction is not found; past the expiration ledger, the search is complete and lists nothing",
-    );
-    expect(await stellarLocate(refOf(V.V5.ref), readerFor(expired))).toEqual({ complete: true });
-    const bad: readonly (readonly [string, Record<string, unknown>])[] = [
-      ["authDigest of 31 bytes", { ...V.V5.ref, authDigest: V.V5.ref.authDigest.slice(0, -2) }],
-      ["expiration a string", { ...V.V5.ref, expiration: "1000" }],
-      ["asset x", { ...V.V5.ref, asset: "x" }],
-      ["toBase the muxed form", { ...V.V5.ref, toBase: V.V1.M }],
-      ["toId x", { ...V.V5.ref, toId: "x" }],
-      ["fromLedger a string", { ...V.V5.ref, fromLedger: "900" }],
-    ];
-    for (const [name, r] of bad) {
-      const { reader, calls } = counting(readerFor(expired));
-      expect([name, await stellarLocate(refOf(r), reader), calls]).toEqual([name, { complete: false }, []]);
-    }
-  });
 
-  it("V5 rebuilt: V3's signed entry in another transaction is the same instrument", () => {
-    const e = xdr.TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
-    if (e.type !== 2) throw new Error("not a v1 envelope");
-    e.v1.tx.sourceAccount = { type: 0, ed25519: new Uint8Array(32).fill(0x07) };
-    e.v1.tx.seqNum = 424242n;
-    e.v1.tx.fee = 5_000_000;
-    e.v1.signatures = [];
-    expect(xdr.TransactionEnvelope.fromXdrObject(e).toXdr("base64")).toBe(V.V5.rebuilt.envelope);
-    const a = decodeStellarTx(V.V3.envelope, "stellar:testnet");
-    const b = decodeStellarTx(V.V5.rebuilt.envelope, "stellar:testnet");
-    if ("refused" in a || "refused" in b) throw new Error("decode");
-    expect(b.auth.preimageHash).toBe(V.V3.expectReference.authDigest);
-    expect([b.auth.preimageHash, b.toId]).toEqual([a.auth.preimageHash, a.toId]);
-  });
 
-  describe("V5 two entries: a landed transaction is read by the payer's first entry that carries its transfer", () => {
-    const row = V.V5.rows.find((r: { case: string }) => r.case.startsWith("the named transaction succeeded carrying two entries"));
-    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    const payer = Keypair.fromRawEd25519Seed(Buffer.from(V.fixed.payerSeed, "hex"));
 
-    /**
-     * V3's envelope with another entry of the payer ahead of V3's signed entry: V3's transfer at `amount`, nonce `nonce`,
-     * signed by `authorizeEntry` for expiration 1000 on testnet; and that entry's preimage digest, as the SDK builds it.
-     */
-    async function withEntryAhead(nonce: bigint, amount: bigint) {
-      const env = xdr.TransactionEnvelope.fromXdr(V.V3.envelope, "base64").toXdrObject();
-      if (env.type !== 2 || env.v1.tx.operations[0]!.body.type !== 24) throw new Error("not an invocation");
-      const auth = env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth;
-      const first = xdr.SorobanAuthorizationEntry.fromXdr(xdr.SorobanAuthorizationEntry.fromXdrObject(auth[0]!).toXdr()).toXdrObject();
-      if (first.credentials.type !== 1 || first.rootInvocation.function.type !== 0) throw new Error("not an address entry");
-      first.credentials.address.nonce = nonce;
-      first.credentials.address.signature = { type: 1 };
-      first.rootInvocation.function.contractFn.args[2] = { type: 10, i128: { hi: 0n, lo: amount } };
-      const signed = await authorizeEntry(xdr.SorobanAuthorizationEntry.fromXdrObject(first), payer, 1000, Networks.TESTNET);
-      const preimage = buildAuthorizationEntryPreimage(signed, 1000, Networks.TESTNET).toXdr("raw");
-      env.v1.tx.operations[0]!.body.invokeHostFunctionOp.auth = [signed.toXdrObject(), auth[0]!];
-      return { envelope: xdr.TransactionEnvelope.fromXdrObject(env).toXdr("base64"), digest: `0x${sha256(preimage)}` };
-    }
-
-    it("@stellar/stellar-sdk 17.2.1 writes the row's envelope: V3's, with the payer's entry for an amount of 1, nonce 2, ahead", async () => {
-      expect(row).toBeDefined();
-      expect((await withEntryAhead(2n, 1n)).envelope).toBe(row.envelope);
-    });
-
-    it("status and stellarLocate read it by V3's entry; before anything lands it is refused (agreedRefusals row 3)", async () => {
-      expect(await stellarStatus(ref, readerFor(row), ASKED)).toEqual(row.expect);
-      const listed: StellarReader = {
-        ...readerFor({ status: "NOT_FOUND" }),
-        transaction: async (hash) => (hash === "bb".repeat(32) ? readerFor(row).transaction(hash) : { status: "NOT_FOUND", oldestLedger: 1 }),
-        transfers: async () => ({
-          events: [{ txHash: "bb".repeat(32), toMuxedId: BigInt(ref.toId) }],
-          complete: true,
-          oldestLedger: ref.fromLedger,
-          latestLedger: 1001,
-        }),
-      };
-      expect(await stellarLocate(ref, listed)).toEqual({ found: "bb".repeat(32), complete: true });
-      const code = V.agreedRefusals.rows[3].expect;
-      expect(decodeStellarTx(row.envelope, "stellar:testnet")).toEqual(refused(code));
-    });
-
-    // rs-soroban-env, soroban-env-host src/auth.rs, require_auth_enforcing: the host tries the entries in order, skips one
-    // whose address or root invocation does not match, and authenticates the first that matches. A second signing of
-    // V3's transfer, with no sub-invocations, ahead of V3's entry is then the entry the transaction used, and V3's entry
-    // rides unused.
-    it("a second signing of the same transfer ahead of V3's entry is the one read, so V3's ref is not this instrument", async () => {
-      const ahead = await withEntryAhead(2n, 10_000_000n);
-      expect(ahead.digest).not.toBe(ref.authDigest);
-      const landed = { status: "SUCCESS", envelope: ahead.envelope, ledger: 990, latestLedger: 995 };
-      expect(await stellarStatus(ref, readerFor(landed), ASKED)).toEqual(SEARCH_INCOMPLETE);
-      expect(await stellarStatus({ ...ref, authDigest: ahead.digest as `0x${string}` }, readerFor(landed), ASKED)).toEqual({
-        state: "settled",
-        transaction: ref.transaction,
-        position: 990,
-        finality: "closed",
-        presented: "yes",
-        foreign: [],
-      });
-    });
-  });
-
-  it("V3v2: sorobanCredentialsAddressV2 decodes and settles", async () => {
-    expect(Buffer.from(V.V3v2.envelope, "base64").length).toBe(V.V3v2.envelopeLength);
-    const ref = { ...V.V3v2.expectReference, transaction: "aa".repeat(32) } as StellarRef & { transaction: string };
-    expect(await stellarStatus(ref, readerFor({ status: "SUCCESS", envelope: V.V3v2.envelope, ledger: 990 }), ASKED)).toEqual(V.V3v2.expectStatus);
-    const v1: StellarRef & { transaction: string } = { ...ref, authDigest: V.V3.expectReference.authDigest };
-    expect(await stellarStatus(v1, readerFor({ status: "SUCCESS", envelope: V.V3v2.envelope, ledger: 990, latestLedger: 995 }), ASKED)).toEqual(
-      SEARCH_INCOMPLETE,
-    );
-  });
 
   // SEP-41 names the event's first topic the symbol `transfer`, and CAP-67 the data map's key `to_muxed_id`; a symbol
   // led by EF BB BF (U+FEFF's UTF-8, Unicode §23.8) is another symbol. The two rows that hold one are row 0's event,
@@ -338,98 +46,27 @@ describe("x402-exact-stellar.json", () => {
     expect(data(keyed.value)).toEqual(data(row0.value).map((k) => (Buffer.from(k).toString() === "to_muxed_id" ? [...BOM, ...k] : k)));
   });
 
-  it("events: the transfer topic filter, and each event's recipient and muxed id", () => {
-    expect(transferEventTopics(V.events.filterFor.toBase)).toEqual(V.events.filterFor.expect);
+  it("events: each transfer event's recipient and muxed id", () => {
     for (const row of rowsOf(V.events.rows, "x402-exact-stellar.json events.rows")) {
       const got = transferEventOf(row.topic, row.value);
+      // The row's symbol is `mint`, an event transferEventOf reads beside `transfer` and `burn`.
+      if (row.case === "not a transfer event: the first topic is another symbol") {
+        expect(got, row.case).toMatchObject({ kind: "mint", from: null });
+        continue;
+      }
       if (typeof row.expect === "string") {
         expect(got, row.case).toEqual(refused(row.expect));
         continue;
       }
       if ("refused" in got) throw new Error(got.code);
-      expect({ toBase: got.toBase, toMuxedId: got.toMuxedId === null ? null : got.toMuxedId.toString() }).toEqual(row.expect);
-    }
-  });
-
-  // CAP-46-11: the entry's signature "is only considered valid until the signature expiration ledger (inclusive)", so a
-  // payment can land in the expiration ledger itself. Stellar RPC getEvents (stellar-docs openrpc EndLedger: "end of
-  // search window (exclusive)"; with a cursor, endLedger must be omitted; stellar-rpc get_events.go scans at most 10,000
-  // ledgers per call and always returns a cursor).
-  describe("StellarReader.transfers: fromLedger through toLedger, both inclusive", () => {
-    const SCAN = 10_000;
-    const listedTx = "bb".repeat(32);
-
-    /**
-     * getEvents over one transfer event at `landedIn`, the latest ledger being `latest`: `endLedger` exclusive, at most
-     * SCAN ledgers a call, each event with its ledger, and the returned cursor the last ledger scanned.
-     */
-    function getEvents(landedIn: number, latest: number, q: { startLedger: number; endLedger: number } | { cursor: string }) {
-      const start = "cursor" in q ? Number(q.cursor) + 1 : q.startLedger;
-      const end = Math.min("cursor" in q ? Infinity : q.endLedger, start + SCAN, latest + 1);
-      const ref = refOf(V.V5.ref);
-      const events = landedIn >= start && landedIn < end ? [{ txHash: listedTx, toMuxedId: BigInt(ref.toId), ledger: landedIn }] : [];
-      return { events, cursor: String(end - 1) };
-    }
-
-    /**
-     * A reader over that getEvents whose window ends at `toLedger` (inclusive) or at `toLedger - 1` (`endLedger` set to
-     * `toLedger`), returning a cursor until getEvents has scanned through the window's last ledger and keeping only the
-     * events through it.
-     */
-    function readerOver(ref: EntryRef, landedIn: number, inclusive: boolean, calls: object[]): StellarReader {
-      const latest = ref.expiration + 5;
-      return {
-        network: "stellar:testnet",
-        transaction: async (hash) =>
-          hash === listedTx
-            ? { status: "SUCCESS", envelopeXdr: V.V3.envelope, ledger: landedIn, oldestLedger: 1 }
-            : { status: "NOT_FOUND", oldestLedger: 1 },
-        transfers: async (f) => {
-          calls.push(f);
-          const last = inclusive ? f.toLedger : f.toLedger - 1;
-          const r = getEvents(landedIn, latest, f.cursor !== undefined ? { cursor: f.cursor } : { startLedger: f.fromLedger, endLedger: last + 1 });
-          const events = r.events.filter((e) => e.ledger <= last).map(({ txHash, toMuxedId }) => ({ txHash, toMuxedId }));
-          return { events, ...(Number(r.cursor) < last ? { cursor: r.cursor } : {}), complete: true, oldestLedger: 1, latestLedger: latest };
-        },
-        latestLedger: async () => latest,
-      };
-    }
-
-    it("a payment in the expiration ledger settles through a reader that sends endLedger toLedger + 1 and pages by cursor", async () => {
-      const ref = { ...refOf(V.V5.ref), fromLedger: 1, expiration: 25_000 } as EntryRef;
-      const calls: { fromLedger?: number; toLedger?: number; cursor?: string }[] = [];
-      expect(await stellarStatus(ref, readerOver(ref, ref.expiration, true, calls), ASKED)).toEqual({
-        state: "settled",
-        transaction: listedTx,
-        position: ref.expiration,
-        finality: "closed",
-        presented: "yes",
-        foreign: [],
+      expect({ kind: got.kind, toBase: got.toBase, toMuxedId: got.toMuxedId === null ? null : got.toMuxedId.toString() }).toEqual({
+        kind: "transfer",
+        ...row.expect,
       });
-      expect([calls[0]!.fromLedger, calls[0]!.toLedger]).toEqual([ref.fromLedger, ref.expiration]);
-      expect(calls.length).toBe(Math.ceil(ref.expiration / SCAN));
-    });
-
-    it("the same payment through a reader that sends endLedger toLedger reads the entry expired, pending search-incomplete", async () => {
-      const ref = refOf(V.V5.ref) as EntryRef;
-      const read = async (inclusive: boolean) => stellarStatus(ref, readerOver(ref, ref.expiration, inclusive, []), ASKED);
-      expect(await read(false)).toEqual(SEARCH_INCOMPLETE);
-      expect(await read(true)).toEqual({
-        state: "settled",
-        transaction: listedTx,
-        position: ref.expiration,
-        finality: "closed",
-        presented: "yes",
-        foreign: [],
-      });
-    });
+    }
   });
 
-  it("plant: the 8-byte id alone is never this payment", async () => {
-    const ref = refOf(V.V5.ref) as StellarRef & { transaction: string };
-    const r = readerFor({ status: "SUCCESS", envelope: V.plant.envelope, ledger: 990, latestLedger: V.plant.latestLedger });
-    expect(await stellarStatus(ref, r, ASKED)).toEqual(V.plant.expect);
-  });
+
 });
 
 describe("x402-exact-stellar.json: what the payer signs is the entry's rootInvocation", () => {

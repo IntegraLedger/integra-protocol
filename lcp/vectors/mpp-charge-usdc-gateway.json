@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/gateway. Expected values were computed with canonicalize 5.1.0 and viem keccak256, canonicalize and js-sha3, and Python json.dumps with eth-utils keccak, which agreed. The TransferSpec runs from Arc Testnet (domain 26) to Base Sepolia (domain 6), the testnet wallet and minter of gateway-api-testnet.circle.com /v1/info, each address left-padded to 32 bytes. The payer key is the published Anvil development key #0; the signature is made at test time and is not verified by bound.",
+ "about": "Vectors for mpp/charge/usdc/gateway. Expected values were computed with canonicalize 5.1.0 and viem keccak256, canonicalize and js-sha3, and Python json.dumps with eth-utils keccak, which agreed. The TransferSpec runs from Arc Testnet (domain 26) to Base Sepolia (domain 6), the testnet wallet and minter of gateway-api-testnet.circle.com /v1/info, each address left-padded to 32 bytes. The payer key is the published Anvil development key #0; the signature is made at test time and is not verified by bound. The ceiling section's oracles: Circle's Gateway API reference for GET /v1/info (developers.circle.com/api-reference/gateway/all/get-gateway-info, read 2026-11-17), which serves burnIntentExpirationHeight per network as a decimal string, the current minimum accepted burn intent expiration height; Circle's Gateway technical guide (developers.circle.com/gateway/references/technical-guide, read 2026-11-17), under which Gateway takes a transfer request only while its maxBlockHeight is at least the wallet's withdrawalDelay above the source chain's current block; and Circle's own client, @circle-fin/x402-batching 4.0.0 (this workspace's pinned devDependency), whose GatewayClient reads withdrawalDelay as the Gateway Wallet's uint256 view withdrawalDelay() (dist/client/index.mjs:763-769, :1642-1647) and whose createBurnIntent (dist/client/index.mjs:1472-1495) signs maxBlockHeight 2^256 - 1, run at test time on Arc Testnet to Base Sepolia with the payer key above, which gives M5's spec but for its random salt. Each expectMaxBlockHeight is burnIntentExpirationHeight + ceil(withdrawalDelay x 100 / 604800), computed with Python 3.12.3 integer arithmetic, h + -(-d * 100 // 604800), refused where it exceeds 2^256 - 1. The heights and delays are chosen to exercise the arithmetic and were not read from a network.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "realm": "api.seller.example",
@@ -110,6 +110,10 @@
      ],
      "servesHex": "616264",
      "account": "eip155:5042002:0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+     "inputs": {
+      "burnIntentExpirationHeight": "39349999",
+      "withdrawalDelay": "1234567"
+     },
      "signer": "counting"
     },
     "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -220,6 +224,176 @@
      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
     },
     "expect": "mpp/request-malformed"
+   }
+  ]
+ },
+ "ceiling": {
+  "case": "build is given the served burnIntentExpirationHeight and the source wallet's withdrawalDelay, each a decimal string below 2^256, and writes maxBlockHeight, their ceiling, into the request; complete refuses a signed burn intent whose maxBlockHeight is not that value read as a decimal. good is the choice's inputs for M5's burn intent, whose maxBlockHeight is 39350204; each refusal changes one member of good, or of M5's burn intent.",
+  "good": {
+   "burnIntentExpirationHeight": "39349999",
+   "withdrawalDelay": "1234567",
+   "expectMaxBlockHeight": "39350204"
+  },
+  "built": [
+   {
+    "case": "a 12-second chain's 7 days, 50400 blocks: 100 s is 8.33 blocks, rounded up to 9",
+    "burnIntentExpirationHeight": "24000000",
+    "withdrawalDelay": "50400",
+    "expectMaxBlockHeight": "24000009"
+   },
+   {
+    "case": "a delay of 604800 blocks: 100 blocks exactly",
+    "burnIntentExpirationHeight": "24000000",
+    "withdrawalDelay": "604800",
+    "expectMaxBlockHeight": "24000100"
+   },
+   {
+    "case": "M5's: 205 blocks, 204.12 rounded up",
+    "burnIntentExpirationHeight": "39349999",
+    "withdrawalDelay": "1234567",
+    "expectMaxBlockHeight": "39350204"
+   },
+   {
+    "case": "a delay of 0: no margin",
+    "burnIntentExpirationHeight": "24000000",
+    "withdrawalDelay": "0",
+    "expectMaxBlockHeight": "24000000"
+   },
+   {
+    "case": "a ceiling of 2^256 - 1 exactly",
+    "burnIntentExpirationHeight": "115792089237316195423570985008687907853269984665640564039457584007913129639934",
+    "withdrawalDelay": "6048",
+    "expectMaxBlockHeight": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+   }
+  ],
+  "buildRefusals": [
+   {
+    "case": "burnIntentExpirationHeight absent",
+    "omit": "burnIntentExpirationHeight",
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   },
+   {
+    "case": "withdrawalDelay absent",
+    "omit": "withdrawalDelay",
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   },
+   {
+    "case": "burnIntentExpirationHeight a JSON number, where /v1/info serves a string",
+    "set": {
+     "burnIntentExpirationHeight": 39349999
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   },
+   {
+    "case": "withdrawalDelay as hex",
+    "set": {
+     "withdrawalDelay": "0x12d687"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   },
+   {
+    "case": "burnIntentExpirationHeight empty",
+    "set": {
+     "burnIntentExpirationHeight": ""
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   },
+   {
+    "case": "burnIntentExpirationHeight negative",
+    "set": {
+     "burnIntentExpirationHeight": "-1"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   },
+   {
+    "case": "burnIntentExpirationHeight 2^256, above uint256",
+    "set": {
+     "burnIntentExpirationHeight": "115792089237316195423570985008687907853269984665640564039457584007913129639936"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   },
+   {
+    "case": "a ceiling above 2^256 - 1: height 2^256 - 1 and a delay of 1, whose margin is 1",
+    "set": {
+     "burnIntentExpirationHeight": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+     "withdrawalDelay": "1"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/input-malformed"
+    }
+   }
+  ],
+  "completeRefusals": [
+   {
+    "case": "the stock client's own maxBlockHeight, 2^256 - 1, an intent that never lapses: createBurnIntent's output with its salt set to M5's",
+    "stock": true,
+    "expectStockMaxBlockHeight": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+    "expect": {
+     "refused": true,
+     "code": "mpp/max-block-height-changed"
+    }
+   },
+   {
+    "case": "one block above the ceiling",
+    "set": "39350205",
+    "expect": {
+     "refused": true,
+     "code": "mpp/max-block-height-changed"
+    }
+   },
+   {
+    "case": "one block below the ceiling",
+    "set": "39350203",
+    "expect": {
+     "refused": true,
+     "code": "mpp/max-block-height-changed"
+    }
+   },
+   {
+    "case": "the served height without the margin",
+    "set": "39349999",
+    "expect": {
+     "refused": true,
+     "code": "mpp/max-block-height-changed"
+    }
+   },
+   {
+    "case": "the ceiling as hex",
+    "set": "0x2586fbc",
+    "expect": {
+     "refused": true,
+     "code": "mpp/max-block-height-changed"
+    }
+   },
+   {
+    "case": "maxBlockHeight absent",
+    "omit": true,
+    "expect": {
+     "refused": true,
+     "code": "mpp/max-block-height-changed"
+    }
    }
   ]
  }

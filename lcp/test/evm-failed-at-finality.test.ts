@@ -274,6 +274,7 @@ describe("an EVM failed read answers pending search-incomplete, at or below the 
       "x402/auth-capture/eip155/eip3009",
       "x402/auth-capture/eip155/permit2",
       "x402/batch-settlement/eip155",
+      "spend-permissions/eip155",
     ]);
     // The MPP charges on EVM chains read by a search and by the named transaction's own facts, not by these reasons:
     // the read kit's forms and test/eip155-tempo-mpp-evm.test.ts hold them. The Tempo split-memo charge reads through

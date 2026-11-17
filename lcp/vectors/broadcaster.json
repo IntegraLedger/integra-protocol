@@ -112,6 +112,11 @@
       "source": "x402 v2 specification §2, step 4: \"Server verifies the payment authorization and initiates blockchain settlement\""
     },
     {
+      "pairing": "x402/exact/stellar/precondition",
+      "broadcaster": "payee",
+      "source": "x402 v2 specification §2, step 4: \"Server verifies the payment authorization and initiates blockchain settlement\""
+    },
+    {
       "pairing": "x402/exact/sui",
       "broadcaster": "payee",
       "source": "x402 v2 specification §2, step 4: \"Server verifies the payment authorization and initiates blockchain settlement\""
@@ -257,6 +262,11 @@
       "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87: the client sends the open and a topUp itself and names each by txHash; the server redeems vouchers and sends the close"
     },
     {
+      "pairing": "mpp/charge/lcp/hedera",
+      "broadcaster": null,
+      "source": "by credential type: see kinds"
+    },
+    {
       "pairing": "mpp/charge/card",
       "broadcaster": "payee",
       "source": "draft-card-charge-00 at tempoxyz/mpp-specs 08e7dd87: \"The Server Enabler decrypts and processes the payment through existing card network rails.\""
@@ -370,6 +380,11 @@
       "pairing": "ack/payment-request",
       "broadcaster": "payer",
       "source": "ACK: the client pays the Payment Request through its payment service and presents the receipt"
+    },
+    {
+      "pairing": "spend-permissions/eip155",
+      "broadcaster": null,
+      "source": "by route: see kinds"
     }
   ],
   "kinds": [
@@ -620,6 +635,48 @@
       },
       "expect": "payer",
       "source": "draft-xrpl-charge-00 at tempoxyz/mpp-specs 08e7dd87: \"The client submits the transaction itself and sends only the 64-hex transaction hash.\""
+    },
+    {
+      "case": "mpp/charge/lcp/hedera: a transaction credential",
+      "pairing": "mpp/charge/lcp/hedera",
+      "presented": {
+        "challenge": {
+          "expires": "2023-11-14T22:18:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "intent": "charge",
+          "method": "lcp",
+          "realm": "api.seller.example",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9",
+          "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+        },
+        "payload": {
+          "type": "transaction",
+          "transaction": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDqSmxj4pxSCr71UHsTLsX5lUd2rr6+e5JCHuppFEbSLBpAQXmT2c6MwK48okJkvgrCPntTU+cmvTHdmAPBOvqgwiQX4uEShAksITbhnATiN4Xdw+LkIeOMnfk6Zyx3ncvABg=="
+        }
+      },
+      "expect": "payee",
+      "source": "mpp-method-lcp.md, rule 5: the party that submits sends the buyer's bytes unchanged; the credential is mpp-method-lcp.json's credentials.transaction"
+    },
+    {
+      "case": "mpp/charge/lcp/hedera: a hash credential",
+      "pairing": "mpp/charge/lcp/hedera",
+      "presented": {
+        "challenge": {
+          "expires": "2023-11-14T22:18:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "intent": "charge",
+          "method": "lcp",
+          "realm": "api.seller.example",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9",
+          "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+        },
+        "payload": {
+          "type": "hash",
+          "transactionId": "0.0.5555@1700000000.000000000"
+        }
+      },
+      "expect": "payer",
+      "source": "mpp-method-lcp.md, rule 5: the payer broadcast the body; the credential is mpp-method-lcp.json's credentials.hash"
     },
     {
       "case": "mpp/session/evm: an authorization opening",
@@ -1202,6 +1259,50 @@
       },
       "expect": "payee",
       "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87, its four actions: the client sends the open and a topUp and names each by txHash; the server redeems vouchers and sends the close"
+    },
+    {
+      "case": "spend-permissions/eip155: a signature return",
+      "pairing": "spend-permissions/eip155",
+      "presented": {
+        "network": "eip155:84532",
+        "manager": "0xf85210b21cc50302f477ba56686d2019dc9b67ad",
+        "permission": {
+          "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+          "spender": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "allowance": "1000000",
+          "period": "86400",
+          "start": "1790000000",
+          "end": "1800000000",
+          "salt": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
+          "extraData": "0x"
+        },
+        "signature": "0xf274f2d2c3dcecb073740345b6b298020a5ae637a9a74597cf67bd638a80f58f6c2c8da0953bf9c9435768fe4e0c0d538280a79a98ae1dfde6060decd8bcba4a1b"
+      },
+      "expect": "payee",
+      "source": "the profile spend-permissions-eip155.md, rule 10: on \"signature\" the resource server submits approveWithSignature itself, as spender"
+    },
+    {
+      "case": "spend-permissions/eip155: a transaction return",
+      "pairing": "spend-permissions/eip155",
+      "presented": {
+        "network": "eip155:84532",
+        "manager": "0xf85210b21cc50302f477ba56686d2019dc9b67ad",
+        "permission": {
+          "account": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+          "spender": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+          "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+          "allowance": "1000000",
+          "period": "86400",
+          "start": "1790000000",
+          "end": "1800000000",
+          "salt": "84342368487090800366523834928142263660104883695016514377462985829716817089965",
+          "extraData": "0x"
+        },
+        "transaction": "0x7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      "expect": "payer",
+      "source": "the profile spend-permissions-eip155.md, rule 7: on \"transaction\" the account itself calls approve and waits for it to succeed"
     }
   ],
   "refusals": [

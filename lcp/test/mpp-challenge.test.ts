@@ -278,9 +278,9 @@ describe("problem", () => {
   const answered500 = rows.filter((r) => r.expect.status === 500 && REFUSAL_CODES.has(r.code)).map((r) => r.code);
 
   it("answers every code the package returns with a 402, except a read to repeat and a call that cannot read the payment, which are 500", () => {
-    // MV10's 500 rows: 10 reads to repeat, and 7 calls that cannot read the payment: four wrong-reader and three
+    // MV10's 500 rows: 10 reads to repeat, and 8 calls that cannot read the payment: four wrong-reader and four
     // read-first codes.
-    expect(answered500.length).toBe(17);
+    expect(answered500.length).toBe(18);
     for (const code of rowsOf([...REFUSAL_CODES], "REFUSAL_CODES, the codes the package returns")) {
       const p = problem(code);
       const row = rows.find((r) => r.code === code);
@@ -290,7 +290,7 @@ describe("problem", () => {
   });
 
   it("answers each read to repeat 500 internal-payment-error, on every rail", () => {
-    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 41 })) {
+    for (const code of rowsOf(READS_TO_REPEAT, "refusal-classes.ts READS_TO_REPEAT", { exact: 43 })) {
       expect([code, problem(code)]).toEqual([code, internal]);
     }
   });

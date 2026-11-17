@@ -202,7 +202,7 @@ process.stdout.write(JSON.stringify(out));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 /** The entry points that export types alone, so a module that loads one holds no binding. */
-const TYPES_ONLY: ReadonlySet<string> = new Set(["./x402-exact-stellar"]);
+const TYPES_ONLY: ReadonlySet<string> = new Set([]);
 
 describe("each public entry point bundled for a Worker with no optional peer installed", () => {
   it("each optional peer is unresolvable in the consumer's install", async () => {

@@ -17,7 +17,7 @@ import {
   type EvmReader,
   type EvmRef,
 } from "./evm.js";
-import { isAddress, normalHash, uint256Of } from "./fields.js";
+import { UINT256_LIMIT, isAddress, normalHash, uint256Of } from "./fields.js";
 import { c32Address } from "./internal/c32.js";
 import { withPayee, type EvmQuery } from "./internal/evm.js";
 import {
@@ -455,9 +455,15 @@ export type UsdcUnsigned =
       complete(serializedTx: Uint8Array): MppCredential | Refusal;
     }
   | {
+      /**
+       * The salt's preimage from the chosen challenge, and the `maxBlockHeight` the burn intent signs, a decimal
+       * string. `complete` refuses a burn intent whose `maxBlockHeight`, read as a decimal, is not that value, with
+       * `mpp/max-block-height-changed`.
+       */
       request: {
         kind: "gateway-burn-intent";
         preimage: GatewayPreimage;
+        maxBlockHeight: string;
       };
       complete(c: {
         source: string;
@@ -667,6 +673,34 @@ export const chargeUsdcStacks = Object.freeze({
 // ── mpp/charge/usdc/gateway.
 
 /**
+ * The buyer's inputs to the Gateway build: the chosen challenge, the `burnIntentExpirationHeight` Circle Gateway's
+ * `GET /v1/info` serves for the source network, and the source network's Gateway Wallet's `withdrawalDelay()`, in
+ * blocks, each a decimal string below 2^256.
+ */
+export interface GatewayChargeChoice {
+  challenge: MppChallenge & { id: string };
+  burnIntentExpirationHeight: string;
+  withdrawalDelay: string;
+}
+
+/** The 100 seconds of margin, and the 7 days `withdrawalDelay` spans, in seconds. */
+const MARGIN_SECONDS = 100n;
+const DELAY_SECONDS = 604_800n;
+
+/**
+ * The `maxBlockHeight` a Gateway burn intent signs: `burnIntentExpirationHeight` plus 100 seconds counted in blocks at
+ * the pace of `withdrawalDelay`'s 7 days, ceil(withdrawalDelay × 100 / 604,800), as a decimal string; undefined where
+ * an input is not a decimal string below 2^256 or the sum exceeds 2^256 − 1.
+ */
+function gatewayMaxBlockHeight(height: unknown, delay: unknown): string | undefined {
+  const h = uint256Of(height);
+  const d = uint256Of(delay);
+  if (h === undefined || d === undefined) return undefined;
+  const ceiling = h + (d * MARGIN_SECONDS + DELAY_SECONDS - 1n) / DELAY_SECONDS;
+  return ceiling < UINT256_LIMIT ? ceiling.toString() : undefined;
+}
+
+/**
  * CAIP-10 of a TransferSpec `bytes32` account on `network`: on `eip155:*` the last 20 bytes as `0x` lowercase hex, the
  * first 12 being zero; on `solana:*` base58 of the 32 bytes. Anything else is undefined.
  */
@@ -754,19 +788,25 @@ async function gatewayBound(input: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The chosen challenge's values of the salt's preimage, as data: the buyer's Gateway client adds its own values,
- * computes `usdcGatewaySalt` and sets the result as `spec.salt` before signing. `complete` wraps the signed burn intent.
+ * The chosen challenge's values of the salt's preimage, as data, and the `maxBlockHeight` the burn intent signs,
+ * `gatewayMaxBlockHeight` of the choice's `burnIntentExpirationHeight` and `withdrawalDelay`: the buyer's Gateway client
+ * adds its own values, computes `usdcGatewaySalt`, sets the result as `spec.salt` and `maxBlockHeight` as given, then
+ * signs. An input that is absent, not a decimal string below 2^256, or whose ceiling exceeds 2^256 − 1 is
+ * `mpp/input-malformed`. `complete` wraps the signed burn intent, and refuses one whose `maxBlockHeight`, read as a
+ * decimal string or a safe integer, is not the one built, `mpp/max-block-height-changed`.
  */
-async function gatewayBuild(choice: MppChoice, h: AtrHash) {
+async function gatewayBuild(choice: GatewayChargeChoice, h: AtrHash) {
   if (!isObject(choice)) return refusal("mpp/input-malformed");
   const o = chosenFor(choice.challenge, h, GATEWAY);
   if (isRefusal(o)) return o;
+  const maxBlockHeight = gatewayMaxBlockHeight(choice.burnIntentExpirationHeight, choice.withdrawalDelay);
+  if (maxBlockHeight === undefined) return refusal("mpp/input-malformed");
   const requestHash = await usdcRequestHash(o.challenge.request);
   if (isRefusal(requestHash)) return requestHash;
   const challenge = o.challenge;
   const preimage: GatewayPreimage = { id: challenge.id, realm: challenge.realm, requestHash, recipient: str(o.request["recipient"]) };
   return {
-    request: { kind: "gateway-burn-intent" as const, preimage },
+    request: { kind: "gateway-burn-intent" as const, preimage, maxBlockHeight },
     complete(c: {
       source: string;
       sourceNetwork: string;
@@ -781,6 +821,7 @@ async function gatewayBuild(choice: MppChoice, h: AtrHash) {
       for (const k of ["source", "sourceNetwork", "destinationNetwork", "maxFee"] as const) {
         if (typeof c[k] !== "string" || c[k] === "") return refusal("mpp/credential-malformed");
       }
+      if (decimalOf(c.burnIntent["maxBlockHeight"]) !== maxBlockHeight) return refusal("mpp/max-block-height-changed");
       return measured({
         challenge,
         source: c.source,
@@ -823,5 +864,5 @@ export const chargeUsdcGateway = Object.freeze({
   MppCredential,
   never,
   never,
-  MppForms & NoRead & { choice: MppChoice; unsigned: UsdcUnsigned }
+  MppForms & NoRead & { choice: GatewayChargeChoice; unsigned: UsdcUnsigned }
 >;

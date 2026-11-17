@@ -51,6 +51,57 @@ export const HEDERA = /* @__PURE__ */ freeze({
       "account it credits, recorded with the asset and amount it moved. The memo is in the public transaction " +
       "record, readable by transaction id. It compares no amount, asset or time with the ATR's terms.",
   },
+  "mpp/charge/lcp/hedera": {
+    coverage: "full",
+    carrier: { signed: "the memo of the TransferTransaction body the buyer signs: H's LCP string (77 bytes), all of H, in lowercase hex" },
+    source: "lcp's client; no stock client implements the `lcp` method",
+    nonce: "single-use",
+    broadcasts: "either",
+    read: {
+      endpoint: ["mirror-rest"],
+      note: "the mirror node's REST interface",
+      search:
+        "Found by the transaction id fixed in what the buyer signs (`GET /api/v1/transactions/{id}`). Before every `failed` " +
+        "but `before-position`, the search for H over the debited account's transactions after the position " +
+        "(`GET /api/v1/transactions?account.id=`), 100 a page, at most 8 pages a read, to the mirror's latest consensus " +
+        "timestamp, each `memo_base64` compared with H's string; never read whole until a run shows the three facts it " +
+        "rests on, so it proves no absence and every such `failed` is `pending`, `search-incomplete`.",
+      history:
+        "the mirror holds records back to the valid start, and for the search back to the position, by the first timestamp " +
+        "of its oldest block or the endpoint's archival declaration; otherwise `unreadable`, `history-gap`",
+      contracts: [],
+      lapse:
+        "the transaction id consumed by a record that does not settle the payment, or unconsumed with valid start plus " +
+        "`validDuration` strictly before the mirror's latest consensus timestamp; each only once the search for H, read " +
+        "whole, finds no record that settles",
+      life: {
+        value: 180,
+        unit: "seconds",
+        rule: "the body's `validDuration` from the valid start, which the chain holds to its `transaction.maxValidDuration`, 180 seconds as lcp holds it; a valid start later than the clock reading `validate` is given is refused",
+      },
+    },
+    destination:
+      "the credited account of the mirror record's `transfers` (HBAR) or `token_transfers`, compared on a charge with the " +
+      "challenge's `recipient`",
+    asset: "HBAR (0.0.0) from `transfers`, or the token id from `token_transfers`; recorded and compared with nothing",
+    payer:
+      "the one account the signed body debits (`is_approval` false): never the account the transaction id names where " +
+      "`feePayer` is true, and that account where it is not",
+    confirmed: "no",
+    agreement: {
+      floor: "1",
+      fee: "the account the transaction id names: the submitter's `feePayerAccountId` where `feePayer` is true, else the buyer",
+      succeeded:
+        "the mirror's record of the transaction id with nonce 0 and `scheduled` false has result `SUCCESS`, its " +
+        "`memo_base64` decodes to H's LCP string, and its transfers debit the buyer with `is_approval` false; what they " +
+        "credit is recorded as observed",
+    },
+    proves:
+      "The payer's own signed act carries this ATR's hash: a Hedera crypto transfer whose memo is the hash's LCP " +
+      "string reached consensus with SUCCESS, debiting the payer, the one account its rows debit, and paid the " +
+      "account it credits, recorded with the asset and amount it moved. The memo is in the public transaction " +
+      "record, readable by transaction id. It compares no amount, asset or time with the ATR's terms.",
+  },
   "x402/exact/hedera/transfer-executor": {
     coverage: "none",
     carrier: { signed: null },

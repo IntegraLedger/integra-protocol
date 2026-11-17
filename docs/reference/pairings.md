@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 74 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 77 pairings on 8 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `spend-permissions`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -49,6 +49,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/evm/hash` | `evmHash` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
 | `mpp/charge/evm/permit2` | `evmPermit2` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/evm/transaction` | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/lcp/hedera` | `chargeLcpHedera` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/method/lcp`](../../lcp/profiles/mpp-method-lcp.md) |
 | `mpp/charge/lightning` | `chargeLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | `mpp/charge/nearintents` | `chargeNearIntents` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge/nearintents`](../../lcp/profiles/mpp-charge-nearintents.md) |
 | `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
@@ -72,6 +73,12 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/subscription/solana` | `subscriptionSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/subscription/solana`](../../lcp/profiles/mpp-subscription-solana.md) |
 | `mpp/subscription/stripe` | `subscriptionStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/subscription/stripe`](../../lcp/profiles/mpp-subscription-stripe.md) |
 | `mpp/subscription/tempo` | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
+
+## `spend-permissions`
+
+| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
+|---|---|---|---|---|---|---|---|
+| `spend-permissions/eip155` | `spendPermissionsEip155` from `@integraledger/lcp/spend-permissions` | `full` | no | `native-field` | yes | no | [`spend-permissions/eip155`](../../lcp/profiles/spend-permissions-eip155.md) |
 
 ## `ucp`
 
@@ -110,6 +117,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | no | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
 | `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes | [`x402/exact/solana`](../../lcp/profiles/x402-exact-solana.md) |
 | `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | no |  | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
+| `x402/exact/stellar/precondition` | `exactStellarPrecondition` from `@integraledger/lcp/x402-exact-stellar` | `full` | no | `native-field` | yes | yes | [`x402/exact/stellar/precondition`](../../lcp/profiles/x402-exact-stellar-precondition.md) |
 | `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | no | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
 | `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | no | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
 | `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | no | `native-field` | yes | yes |  |
@@ -185,6 +193,10 @@ The payer signed a Permit2 transfer, single or batch, whose witness carries kecc
 ### `mpp/charge/evm/transaction`
 
 Before this payment, an account signed an agreement carrying this ATR's hash on <network>, recorded in <transaction>; that shows neither that the account is the payer nor when this charge was taken. The payment is an ERC-20 transfer signed as a whole transaction (`transaction`), or broadcast by its signer and named by its hash (`hash`), answering a challenge whose id and opaque carry this ATR's hash. The payment transaction does not carry the hash; the read found that the named transaction succeeded and moved a token to the challenge's recipient. This does not show that amount, payee, asset or timing match the ATR's content.
+
+### `mpp/charge/lcp/hedera`
+
+The payer's own signed act carries this ATR's hash: a Hedera crypto transfer whose memo is the hash's LCP string reached consensus with SUCCESS, debiting the payer, the one account its rows debit, and paid the account it credits, recorded with the asset and amount it moved. The memo is in the public transaction record, readable by transaction id. It compares no amount, asset or time with the ATR's terms.
 
 ### `mpp/charge/lightning`
 
@@ -277,6 +289,10 @@ An account signed an agreement transaction carrying this ATR's hash on <network>
 ### `mpp/subscription/tempo`
 
 The ATR's hash is the MPP subscription challenge's id, in base64url. The payer's root key signed a Tempo key authorization whose witness is this ATR's hash, granting the seller's access key a per-period limit. The chain verified that signature when the activation transaction registered the key, and the account keychain's KeyAuthorizationWitness event carries the payer's account and this hash as topics. The key authorization names one recipient the key may pay; what the same transaction transferred from the payer's account, if anything, is recorded as what moved, with its recipient. This does not show that amount, period, payee, asset or timing match the ATR's content.
+
+### `spend-permissions/eip155`
+
+The account named signed a Spend Permission whose salt is this ATR's hash, naming the payee as spender, and the SpendPermissionManager approved it: the hash is on chain in the permission its SpendPermissionApproved event carries in the approval's transaction. The approval moves nothing. This does not show that any amount was later spent, nor that the allowance, period, token or timing match the ATR's content.
 
 ### `ucp/booking/ap2-mandate`
 
@@ -389,6 +405,10 @@ The payer's own signed act carries this ATR's hash: a Solana transaction the buy
 ### `x402/exact/starknet`
 
 The payer's own signed SNIP-9 outside execution carries the low 250 bits of this ATR's hash as its nonce (on an agreement, of the agreement's value of it), which the payer's account verified when it executed it. It paid the account each `Transfer` from the payer, or a transfer call of zero, names the amount it states, zero included: on a payment, the option's `payTo` among them; where the read observed no transfer, the payer signed it. A holder of the ATR confirms the hash's low 250 bits from the nonce; the chain holds no more of it. This does not show that the amount, the asset or the timing match the ATR's content.
+
+### `x402/exact/stellar/precondition`
+
+Signed: the buyer's account signed a Soroban authorization of a transfer and the 40-byte payload of this ATR's hash and that authorization's nonce, carried as a signed-payload precondition of the transaction that consumed it, so the buyer's own signed act carries the hash. The transaction succeeded on the asset contract its event names; where the transfer moved a nonzero amount, it paid the account the event's to names. This states nothing of the amount, nor that the asset, the account reached or the time meet a term of the ATR.
 
 ### `x402/exact/sui`
 

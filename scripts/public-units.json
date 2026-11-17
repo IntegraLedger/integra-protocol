@@ -91,6 +91,7 @@
         "./mpp": ["Broadcaster"],
         "./near": ["Broadcaster"],
         "./polkadot": ["Broadcaster"],
+        "./spend-permissions": ["Broadcaster"],
         "./starknet": ["Broadcaster"],
         "./sui": ["Broadcaster"],
         "./tron": ["Broadcaster"],
@@ -294,6 +295,14 @@
       "fixedBy": "mpp-charge.md; mpp-charge-tempo-split-memo.md; mpp-charge-solana.md; mpp-charge-usdc-stacks.md; mpp-charge-nearintents.md; each method's MPP draft."
     },
     {
+      "unit": "The lcp MPP method",
+      "exports": {
+        "./mpp": ["chargeLcpHedera", "LcpHederaChoice", "LcpHederaLanded", "LcpHederaRef", "LcpHederaUnsigned", "LcpRail", "LcpValidation"]
+      },
+      "use": "A seller's own MPP server on Hedera issues an lcp challenge and validates the payment that answers it, any client written to the profile builds the transfer whose signed memo carries H, the seller's own node submits the buyer's bytes unchanged, and anyone reads the payment back from the Mirror Node.",
+      "fixedBy": "mpp-method-lcp.md; MPP's charge intent and Hedera charge drafts; Hedera's transaction format and Mirror Node API."
+    },
+    {
       "unit": "MPP sessions and subscriptions",
       "exports": {
         "./mpp": ["sessionHederaStock", "hederaStockStatus", "HederaStockReader", "HederaStockRef", "HederaStockStatus", "RailSessionUnsigned", "SessionChoice", "SessionRef", "SessionStatus", "SessionUnsigned", "SessionWithin", "VoucherTypedData", "WithinSigningRequest", "StripeSubscriptionReceipt", "evmChannelId", "keySearch", "sessionEvm", "sessionResume", "sessionStatus", "sessionTempo", "sessionXrpl", "sessionXrplStock", "sessionSolanaMemo", "sessionSolanaStock", "SolanaSessionChoice", "SolanaSessionUnsigned", "subscriptionSolana", "subscriptionStripe", "subscriptionTempo"]
@@ -378,10 +387,18 @@
     {
       "unit": "Stellar",
       "exports": {
-        "./stellar": ["PASSPHRASE", "SCVAL_MAX_DEPTH", "StellarNetwork", "StellarPayment", "StellarReader", "StellarRef", "StellarStatus", "StellarUnsigned", "decodeStellarTx", "muxedFor", "stellarLocate", "stellarStatus", "transferEventOf", "transferEventTopics"]
+        "./stellar": ["MAX_CANDIDATES", "MAX_ORDER", "MAX_PAGES", "PASSPHRASE", "PAYLOAD_BYTES", "PayloadSigner", "SCVAL_MAX_DEPTH", "StellarCandidate", "StellarEvent", "StellarEventRow", "StellarLanded", "StellarMark", "StellarNetwork", "StellarPayment", "StellarQuery", "StellarReader", "StellarRef", "StellarSearch", "StellarStatus", "StellarUnsigned", "decodeStellarTx", "muxedFor", "parseStellarPosition", "readSignedPayload", "signedPayload", "stellarLocate", "stellarPosition", "stellarRecover", "stellarStatus", "transferEventOf", "transferEventTopics"]
       },
-      "use": "Any Stellar buyer's client builds the Soroban transfer a payer signs and derives its muxed address, and any settler, seller or third party recomputes that address and reads the payment back.",
-      "fixedBy": "Stellar's Soroban token interface (SEP-41) and muxed accounts; x402's exact scheme on Stellar."
+      "use": "Any Stellar buyer's client builds the Soroban transfer a payer signs and the 40-byte signed-payload precondition over H, and derives the muxed address of a transaction's position; any settler, seller or third party recomputes them, searches the buyer's events and reads the agreement back.",
+      "fixedBy": "Stellar's Soroban authorization (CAP-46), signed-payload signers (CAP-40), the Stellar Asset Contract's events (CAP-67) and muxed accounts; x402's exact scheme on Stellar."
+    },
+    {
+      "unit": "x402/exact/stellar/precondition",
+      "exports": {
+        "./x402-exact-stellar": ["StellarPreconditionChoice", "exactStellarPrecondition"]
+      },
+      "use": "Any seller offering an agreement on Stellar under x402, any buyer's client signing it, and any settler or third party checking it, with no Integra software: the profile x402-exact-stellar-precondition defines the form.",
+      "fixedBy": "The profile x402-exact-stellar-precondition; x402's exact scheme on Stellar."
     },
     {
       "unit": "Hedera transactions",
@@ -494,6 +511,21 @@
       },
       "use": "Any TON buyer's client sends a Jetton transfer whose forward payload is H as a text comment, any server validates it before it is relayed, and anyone reads it back, reads whether it settled, and reads its lapse from the wallet's state and its linked list of transactions.",
       "fixedBy": "x402's exact scheme on TON; TEP-74; x402-exact-tvm.md."
+    },
+    {
+      "unit": "The Spend Permission exchange",
+      "exports": {
+        "./spend-permissions": [
+          "spendPermissionsEip155", "tie", "SPEND_PERMISSION_HEADER", "encodeSpendPermissionHeader", "decodeSpendPermissionHeader",
+          "checkReturn", "approvedIn", "permissionHash", "SPEND_PERMISSION_TYPEHASH", "SPEND_PERMISSION_DOMAIN", "APPROVE_SELECTOR",
+          "APPROVE_WITH_SIGNATURE_SELECTOR", "IS_APPROVED_SELECTOR", "IS_REVOKED_SELECTOR", "SPEND_PERMISSION_APPROVED_TOPIC",
+          "SPEND_PERMISSION_REVOKED_TOPIC", "SpendPermission", "OfferedPermission", "SpendPermissionRoute", "SpendPermissionRef",
+          "SpendPermissionError", "SpendPermissionOffer", "SpendPermissionBody", "SpendPermissionOfferInput", "SpendPermissionReturn",
+          "SpendPermissionChoice", "SpendPermissionTypedData", "SpendPermissionUnsigned"
+        ]
+      },
+      "use": "A seller's server offers a Spend Permission whose salt is the ATR hash in a 402 response, a buyer's client checks the offer against the ATR it fetched and gets the typed data its account signs or the approve call it makes, and the seller's server decodes the returned permission, makes its checks before it submits or serves, and reads the SpendPermissionManager's approval by the permission's hash, with Coinbase's SpendPermissionManager and its own stock clients and no other software.",
+      "fixedBy": "spend-permissions-eip155.md; SpendPermissionManager.sol at coinbase/spend-permissions e0004e63; spend-permissions-eip155.json."
     }
-  ]
+]
 }

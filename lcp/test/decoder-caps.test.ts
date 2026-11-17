@@ -13,14 +13,8 @@ import {
   type SorobanAuthorizedInvocationWire,
   type TransactionEnvelopeWire,
 } from "@stellar/stellar-sdk/xdr";
-import {
-  decodeStellarTx,
-  SCVAL_MAX_DEPTH,
-  stellarLocate,
-  stellarStatus,
-  type StellarReader,
-  type StellarRef,
-} from "../src/stellar.js";
+import { decodeStellarTx, SCVAL_MAX_DEPTH } from "../src/stellar.js";
+import { readSignedTransfer } from "../src/internal/stellar.js";
 import { decodeBlob, XRPL_MAX_DEPTH } from "../src/xrpl.js";
 import { rowsOf } from "./rows.js";
 import { wellFormedUtf8 } from "./utf8-syntax.js";
@@ -499,33 +493,19 @@ describe("ScVal: vector and map nesting, and invocation nesting, in what decodeS
     for (const r of decoded) expect(decodeStellarTx(r.xdr, "stellar:testnet"), r.name).toEqual(payment);
   });
 
-  // x402-exact-stellar.json V5: its ref is V2's (V3's) payer entry, and its first row is that envelope landed. Each row
-  // that adds an unused entry, a footprint or a delegate is that payment, whatever the depth of what it adds.
-  it("a landed payment whose envelope nests anything lcp does not read, at any depth, settles and is found", async () => {
-    const ref = X.V5.ref as StellarRef & { transaction: string };
-    const landed = X.V5.rows[0];
+  // Each row that adds an unused entry, a footprint or a delegate to V2's payment is read, landed, as that payment,
+  // whatever the depth of what it adds.
+  it("a landed payment whose envelope nests anything lcp does not read, at any depth, reads as that payment", () => {
     const unusedRows = rowsOf(envelopes, "decoder-caps.json scval.envelopes", {
       exact: 43,
       keep: ["the rows whose nesting is in a part lcp does not read, with V2's payment", (r, i) => !built[i]!.reads && r.expect === undefined],
       leave: ["the rows that nest in what lcp reads, or are not one transfer", (r, i) => built[i]!.reads || r.expect !== undefined],
     });
+    const payment = decodeStellarTx(X.V2.expectEnvelope, "stellar:testnet");
     for (const r of unusedRows) {
-      const reader: StellarReader = {
-        network: "stellar:testnet",
-        transaction: async (hash) =>
-          hash === ref.transaction
-            ? { status: "SUCCESS", envelopeXdr: r.xdr, ledger: landed.ledger, oldestLedger: 1 }
-            : { status: "NOT_FOUND", oldestLedger: 1 },
-        transfers: async (f) => ({
-          events: [{ txHash: ref.transaction, toMuxedId: BigInt(ref.toId) }],
-          complete: true,
-          oldestLedger: f.fromLedger,
-          latestLedger: landed.latestLedger,
-        }),
-        latestLedger: async () => landed.latestLedger,
-      };
-      expect(await stellarStatus(ref, reader, { act: "payment", finality: "closed" }), r.name).toEqual(landed.expect);
-      expect(await stellarLocate(ref, reader), r.name).toEqual({ found: ref.transaction, complete: true });
+      const got = readSignedTransfer(r.xdr, "stellar:testnet", true);
+      if ("refused" in got) throw new Error(`${r.name}: ${got.code}`);
+      expect(got.payment, r.name).toEqual(payment);
     }
   });
 

@@ -1,8 +1,8 @@
 /**
  * The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the
  * signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and
- * EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents and
- * `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported from their
+ * EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents, `usdc`
+ * and `lcp` charges, and the session and subscription pairings other than Lightning's, are re-exported from their
  * modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
@@ -72,6 +72,7 @@ import { subscriptionSolana } from "./mpp-subscription-solana.js";
 import { sessionSolanaMemo, sessionSolanaStock, solanaSessionResume } from "./mpp-session-solana.js";
 import { tempoSplitMemo, tempoSplitMemoPush } from "./mpp-tempo.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
+import { chargeLcpHedera } from "./mpp-lcp-hedera.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpDecode, rlpUint } from "./rlp.js";
 import { withPayee, type EvmQuery } from "./internal/evm.js";
@@ -153,6 +154,14 @@ export {
   type TempoSplitStatus,
 } from "./mpp-tempo.js";
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
+export {
+  chargeLcpHedera,
+  type LcpHederaChoice,
+  type LcpHederaLanded,
+  type LcpHederaRef,
+  type LcpHederaUnsigned,
+} from "./mpp-lcp-hedera.js";
+export type { LcpRail, LcpValidation } from "./mpp-lcp.js";
 export {
   sessionXrpl,
   sessionXrplStock,
@@ -363,6 +372,8 @@ export function network(challenge: MppChallenge): string | Refusal {
       return xrplNetworkOf(d);
     case "charge/nearintents":
       return d["originNetwork"] as string;
+    case "charge/lcp":
+      return d["network"] as string;
     case "charge/usdc": {
       const profile = usdcProfile(d);
       if (isRefusal(profile)) return profile;
@@ -1069,6 +1080,7 @@ export const MPP_BINDINGS = Object.freeze([
   sessionXrpl,
   sessionXrplStock,
   sessionHederaStock,
+  chargeLcpHedera,
   chargeCard,
   chargeStripe,
   subscriptionStripe,

@@ -34,6 +34,8 @@ const vector = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${n
 const TVM = vector("x402-exact-tvm.json");
 const SUI = vector("x402-exact-sui.json");
 const STELLAR = vector("x402-exact-stellar.json");
+const STELLAR_POSITION = vector("stellar-position.json");
+const STELLAR_PRECONDITION = vector("x402-exact-stellar-precondition.json");
 const NEAR = vector("x402-exact-near.json");
 const AVM = vector("x402-exact-algorand.json");
 const XRPL = vector("x402-exact-xrpl.json");
@@ -213,14 +215,15 @@ export function suiRecoverDecodes(): RecoverDecode[] {
 /** A strkey with one character in its payload changed, so that its checksum does not match. */
 const badChecksum = (s: string) => s.slice(0, 10) + (s[10] === "A" ? "B" : "A") + s.slice(11);
 
-/** A base and H `muxedFor` refuses with the code given, before it reads the base's strkey. */
-export function muxedForArgs(): { case: string; base: unknown; h: unknown; expect: string }[] {
-  const { seller, H } = STELLAR.fixed;
+/** A payee and position `muxedFor` refuses with the code given, before it reads the payee's strkey. */
+export function muxedForArgs(): { case: string; base: unknown; position: unknown; expect: string }[] {
+  const { seller } = STELLAR.fixed;
+  const { position } = STELLAR_POSITION.muxed;
   return [
-    { case: "a base that is null", base: null, h: H, expect: "stellar/option-malformed" },
-    { case: "a base that is a number", base: 7, h: H, expect: "stellar/option-malformed" },
-    { case: "an H of one byte", base: seller, h: "0x12", expect: "x402/payload-malformed" },
-    { case: "an H that is not a string", base: seller, h: undefined, expect: "x402/payload-malformed" },
+    { case: "a payee that is null", base: null, position, expect: "stellar/option-malformed" },
+    { case: "a payee that is a number", base: 7, position, expect: "stellar/option-malformed" },
+    { case: "a position whose low 12 bits are not zero", base: seller, position: "4294971393", expect: "stellar/position-malformed" },
+    { case: "a position that is not a string", base: seller, position: undefined, expect: "stellar/position-malformed" },
   ];
 }
 
@@ -312,7 +315,7 @@ export function stellarEnvelopeInputs(): { case: string; xdr: unknown; network: 
 /** Topics and a value `transferEventOf` refuses before it needs @stellar/stellar-sdk: every refusal is one code. */
 export function stellarEventInputs(): { case: string; topic: unknown; value: unknown }[] {
   return [
-    { case: "two topics", topic: ["AAAA", "AAAA"], value: "AAAA" },
+    { case: "one topic", topic: ["AAAA"], value: "AAAA" },
     { case: "a topic that is not a string", topic: ["AAAA", 7, "AAAA"], value: "AAAA" },
     { case: "a topic that is not base64", topic: ["AAAA", "AA=A", "AAAA"], value: "AAAA" },
     { case: "a topic over 1,024 characters", topic: ["AAAA", "AAAA", "A".repeat(1028)], value: "AAAA" },
@@ -489,6 +492,14 @@ export function choiceMembers(): { id: string; members: Record<string, unknown>;
         { case: "a public key that is not one", member: "publicKey", value: "ed25519:0", expect: malformed },
         { case: "an access key nonce below 0", member: "accessKeyNonce", value: -1n, expect: malformed },
         { case: "a final height of 2^64", member: "finalHeight", value: 2n ** 64n, expect: malformed },
+      ],
+    },
+    {
+      id: "x402/exact/stellar/precondition",
+      members: { simulatedXdr: STELLAR_PRECONDITION.build.simulatedXdr, currentLedger: STELLAR_PRECONDITION.build.currentLedger, payer: STELLAR_PRECONDITION.fixed.buyer },
+      bad: [
+        { case: "a current ledger below 0", member: "currentLedger", value: -1, expect: "stellar/tx-malformed" },
+        { case: "a payer that is not an account strkey", member: "payer", value: "x", expect: "stellar/payer-mismatch" },
       ],
     },
     {
@@ -676,7 +687,7 @@ function strkey(version: number, payload: Uint8Array, flip = 0): string {
 
 /**
  * Strkeys in the places an x402 Stellar option holds one, its `payTo` and its `asset`, and each answer, which needs no
- * SDK: `isAccount`, `isContract`, and `muxedFor` of the strkey and H.
+ * SDK: `isAccount`, `isContract`, and `muxedFor` of the strkey and stellar-position.json's position.
  */
 export function stellarStrkeyRows(): {
   case: string;
@@ -688,14 +699,14 @@ export function stellarStrkeyRows(): {
 }[] {
   const { seller, asset } = STELLAR.fixed;
   const key = base32.decode(seller).subarray(1, 33);
-  const M = STELLAR.V1.M;
+  const M = STELLAR_POSITION.muxed.M;
   const notThis = { muxedFor: "stellar/option-malformed" };
   const neither = { isAccount: false, isContract: false, ...notThis };
   const payTo = "payTo" as const;
   const inAsset = "asset" as const;
   return [
     { case: "the seller's account", s: seller, member: payTo, isAccount: true, isContract: false, muxedFor: M },
-    { case: "the seller's account muxed with H", s: M, member: payTo, isAccount: false, isContract: false, muxedFor: "stellar/option-malformed" },
+    { case: "the seller's account muxed with the position", s: M, member: payTo, isAccount: false, isContract: false, muxedFor: "stellar/option-malformed" },
     {
       case: "the seller's account muxed with the id 0",
       s: strkey(12 << 3, Uint8Array.from([...key, ...zeros(8)])),
@@ -736,76 +747,17 @@ export async function stellarStrkeyAnswers(
   f: {
     isAccount: (s: unknown) => boolean;
     isContract: (s: unknown) => boolean;
-    muxedFor: (base: never, h: never) => Answer;
+    muxedFor: (base: never, position: never) => Answer;
   },
 ): Promise<Omit<StrkeyRow, "s" | "member">> {
-  const { H } = STELLAR.fixed;
+  const { position } = STELLAR_POSITION.muxed;
   const code = (r: Answer) => (typeof r === "object" && r !== null && "refused" in r ? (r as unknown as { code: string }).code : r);
   return {
     case: row.case,
     isAccount: f.isAccount(row.s),
     isContract: f.isContract(row.s),
-    muxedFor: code(f.muxedFor(row.s as never, H as never)) as string,
+    muxedFor: code(f.muxedFor(row.s as never, position as never)) as string,
   };
-}
-
-/**
- * Searches `stellarLocate` makes for x402-exact-stellar.json's V5 ref, each through a reader whose calls are counted,
- * and its answer and calls with @stellar/stellar-sdk. A search that lists a candidate the ref's `toId` names reads its
- * transaction; only one that succeeded is decoded (`decodes`), which needs the SDK: without it that search is
- * incomplete after the same calls. Every other search gives the same answer, after the same calls, without the SDK.
- */
-export function stellarLocateRows(): {
-  case: string;
-  reader: () => { reader: unknown; calls: () => number };
-  expect: { found?: string; complete: boolean };
-  calls: number;
-  decodes: boolean;
-}[] {
-  const ref = STELLAR.V5.ref as { network: string; fromLedger: number; expiration: number; toId: string };
-  const candidate = "bb".repeat(32);
-  type Page = { events: { txHash: string; toMuxedId: bigint }[]; complete: boolean; oldestLedger: number; latestLedger: number; cursor?: string };
-  const page = (p: Partial<Page> = {}): Page => ({ events: [], complete: true, oldestLedger: ref.fromLedger, latestLedger: ref.expiration + 1, ...p });
-  const listed = [{ txHash: candidate, toMuxedId: BigInt(ref.toId) }];
-  /** A reader whose `transfers` answers each page in turn (a function throws) and whose `transaction` answers `tx`. */
-  const readerOf = (pages: (Page | (() => never))[], tx?: () => unknown) => () => {
-    let calls = 0;
-    let at = 0;
-    const reader = {
-      network: ref.network,
-      transfers: async () => {
-        calls++;
-        const p = pages[at++]!;
-        return typeof p === "function" ? p() : p;
-      },
-      transaction: async () => {
-        calls++;
-        if (tx === undefined) throw new Error("no transaction is read");
-        return tx();
-      },
-      latestLedger: async () => (calls++, ref.expiration + 1),
-    };
-    return { reader, calls: () => calls };
-  };
-  const fails = (): never => {
-    throw new Error("transport");
-  };
-  const succeeded = (envelopeXdr: string) => () => ({ status: "SUCCESS", envelopeXdr, ledger: 995, oldestLedger: 1 });
-  return [
-    { case: "a search that lists no transfer, with every ledger held", reader: readerOf([page()]), expect: { complete: true }, calls: 1, decodes: false },
-    { case: "a search through the expiration ledger itself", reader: readerOf([page({ latestLedger: ref.expiration })]), expect: { complete: true }, calls: 1, decodes: false },
-    { case: "two pages that list no transfer", reader: readerOf([page({ cursor: "c1" }), page()]), expect: { complete: true }, calls: 2, decodes: false },
-    { case: "a transfer whose muxed id is another", reader: readerOf([page({ events: [{ txHash: candidate, toMuxedId: BigInt(ref.toId) + 1n }] })]), expect: { complete: true }, calls: 1, decodes: false },
-    { case: "events the RPC reports disabled", reader: readerOf([page({ complete: false })]), expect: { complete: false }, calls: 1, decodes: false },
-    { case: "an RPC whose oldest ledger is above fromLedger", reader: readerOf([page({ oldestLedger: ref.fromLedger + 1 })]), expect: { complete: false }, calls: 1, decodes: false },
-    { case: "an events index below the expiration ledger", reader: readerOf([page({ latestLedger: ref.expiration - 1 })]), expect: { complete: false }, calls: 1, decodes: false },
-    { case: "an events read that fails", reader: readerOf([fails]), expect: { complete: false }, calls: 1, decodes: false },
-    { case: "a candidate whose transaction is not found", reader: readerOf([page({ events: listed })], () => ({ status: "NOT_FOUND", oldestLedger: 1 })), expect: { complete: false }, calls: 2, decodes: false },
-    { case: "a candidate whose transaction failed", reader: readerOf([page({ events: listed })], () => ({ status: "FAILED", ledger: 995, oldestLedger: 1 })), expect: { complete: true }, calls: 2, decodes: false },
-    { case: "a candidate whose transaction read fails", reader: readerOf([page({ events: listed })], fails), expect: { complete: false }, calls: 2, decodes: false },
-    { case: "a candidate that succeeded with the ref's entry", reader: readerOf([page({ events: listed })], succeeded(STELLAR.V5.rebuilt.envelope)), expect: { found: candidate, complete: true }, calls: 2, decodes: true },
-    { case: "a candidate that succeeded with another entry", reader: readerOf([page({ events: listed })], succeeded(STELLAR.plant.envelope)), expect: { complete: true }, calls: 2, decodes: true },
-  ];
 }
 
 /**
@@ -968,81 +920,6 @@ export function tvmStatusRows(): StatusRow[] {
     { case: "a reader for another network", ref: { ...ref, network: "tvm:-3" }, reader: () => tonStatusReader(rows[0]![1]), expect: { state: "unreadable", reason: "chain-mismatch", foreign: [] }, reads: 0, query },
   ];
 }
-
-type StellarStatusFixture = { status: string; envelope?: string; ledger?: number };
-type StellarStatusRow = StellarStatusFixture & {
-  case: string;
-  latestLedger?: number;
-  transfers?: { events: { txHash: string }[]; complete: boolean; latestLedger?: number };
-  candidate?: StellarStatusFixture;
-  query?: object;
-  expect: unknown;
-};
-/** A Stellar reader answering a V5 row as stellar.test.ts's does, its calls counted. */
-function stellarStatusReader(row: StellarStatusRow): Counted {
-  const envelopeOf = (e: string | undefined) => (e === "plant" ? STELLAR.plant.envelope : e === "rebuilt" ? STELLAR.V5.rebuilt.envelope : e);
-  const answer = (a: StellarStatusFixture) => {
-    if (a.status === "reader-error") throw new Error("transport");
-    const envelope = envelopeOf(a.envelope);
-    return { status: a.status, ...(envelope !== undefined ? { envelopeXdr: envelope } : {}), ...(a.ledger !== undefined ? { ledger: a.ledger } : {}), oldestLedger: 1 };
-  };
-  const listed = new Set((row.transfers?.events ?? []).map((e) => e.txHash));
-  return countedBy(STELLAR.V5.ref.network, (method, args) => {
-    if (method === "transaction") return answer(listed.has(args[0] as string) && row.candidate !== undefined ? row.candidate : row);
-    if (method === "latestLedger") return row.latestLedger ?? 2000;
-    if (method === "transfers") {
-      const f = args[0] as { fromLedger: number };
-      return {
-        events: (row.transfers?.events ?? []).map((e) => ({ txHash: e.txHash, toMuxedId: BigInt(STELLAR.V1.muxedId) })),
-        complete: row.transfers?.complete ?? true,
-        oldestLedger: f.fromLedger,
-        latestLedger: row.transfers?.latestLedger ?? row.latestLedger ?? 2000,
-      };
-    }
-    return null;
-  });
-}
-
-/**
- * `stellarStatus` reads of x402-exact-stellar.json's V5 rows, each with the query it takes (the act payment at the mark
- * `closed` where the row gives none). Only a transaction that succeeded is decoded with the SDK: without it a named one
- * is unreadable `unparseable` after its one read, and a search's candidate leaves the search incomplete, pending
- * `search-incomplete`, after the same reads.
- */
-export function stellarStatusRows(): (StatusRow & { query: object })[] {
-  const ref = STELLAR.V5.ref;
-  const rows = STELLAR.V5.rows as StellarStatusRow[];
-  const reads = [1, 2, 3, 3, 4, 2, 3, 2, 3, 1, 1, 3, 4, 1];
-  const unparseable = { expect: { state: "unreadable", reason: "unparseable", foreign: [] }, reads: 1 };
-  const incomplete = { expect: { state: "pending", reason: "search-incomplete", foreign: [] }, reads: 4 };
-  const without: (StatusRow["without"] | undefined)[] = [
-    unparseable,
-    undefined,
-    undefined,
-    undefined,
-    incomplete,
-    unparseable,
-    unparseable,
-    undefined,
-    undefined,
-    undefined,
-    unparseable,
-    undefined,
-    incomplete,
-    unparseable,
-  ];
-  return rows.map((row, i) => ({
-    case: row.case,
-    ref,
-    query: row.query ?? { act: "payment", finality: "closed" },
-    reader: () => stellarStatusReader(row),
-    expect: row.expect,
-    reads: reads[i]!,
-    ...(without[i] !== undefined ? { without: without[i] } : {}),
-  }));
-}
-
-// ── Every function of a pairing with an optional peer, up to the one step that decodes or writes with it.
 
 type Fn = (...args: never[]) => unknown;
 

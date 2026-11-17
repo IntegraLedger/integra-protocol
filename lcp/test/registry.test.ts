@@ -78,6 +78,8 @@ import {
   sessionSolanaStock,
   subscriptionSolana,
   sessionHederaStock,
+  chargeLcpHedera,
+  type LcpHederaRef,
   type HederaStockReader,
   type HederaStockRef,
   subscriptionStripe,
@@ -97,6 +99,10 @@ import type { MppEip3009Ref, MppEvmReader, MppNamedRef, MppPermit2Ref } from "..
 import { exactNear, type NearReader, type NearRef } from "../src/near.js";
 import { exactPolkadotRemark, type PolkadotReader, type PolkadotRef } from "../src/polkadot.js";
 import { exactStarknet, type StarknetReader, type StarknetRef } from "../src/starknet.js";
+import { spendPermissionsEip155, type SpendPermissionRef, type SpendPermissionReturn } from "../src/spend-permissions.js";
+import type { StellarPaymentPayload } from "../src/internal/stellar.js";
+import type { StellarReader, StellarRef } from "../src/stellar.js";
+import { exactStellarPrecondition } from "../src/x402-exact-stellar.js";
 import { exactSui, type SuiReader, type SuiRef } from "../src/sui.js";
 import { exactTronMemo, type TronReader, type TronRef } from "../src/tron.js";
 import { exactTvm, type TvmReader, type TvmRef } from "../src/tvm.js";
@@ -169,6 +175,7 @@ const OWN = {
   "x402/exact/solana": exactSvm satisfies Entry<"x402/exact/solana", SvmPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof exactSvm>>,
   "x402/upto/solana": uptoSvm satisfies Entry<"x402/upto/solana", UptoSvmPaymentPayload, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof uptoSvm>>,
   "x402/exact/starknet": exactStarknet satisfies Entry<"x402/exact/starknet", StarknetPayment, StarknetRef, StarknetReader, Own<typeof exactStarknet>>,
+  "x402/exact/stellar/precondition": exactStellarPrecondition satisfies Entry<"x402/exact/stellar/precondition", StellarPaymentPayload, StellarRef, StellarReader, Own<typeof exactStellarPrecondition>>,
   "x402/exact/sui": exactSui satisfies Entry<"x402/exact/sui", SuiPaymentPayload, SuiRef, SuiReader, Own<typeof exactSui>>,
   "x402/exact/tron/lcp-trc20-memo": exactTronMemo satisfies Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TronReader, Own<typeof exactTronMemo>>,
   "x402/exact/tvm": exactTvm satisfies Entry<"x402/exact/tvm", TvmPayment, TvmRef, TvmReader, Own<typeof exactTvm>>,
@@ -195,6 +202,7 @@ const OWN = {
   "mpp/session/xrpl": sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof sessionXrpl>>,
   "mpp/session/xrpl/stock": sessionXrplStock satisfies Entry<"mpp/session/xrpl/stock", MppCredential, Omit<XrplChannelRef, "fromLedger">, XrplReader, Own<typeof sessionXrplStock>>,
   "mpp/session/hedera/stock": sessionHederaStock satisfies Entry<"mpp/session/hedera/stock", MppCredential, HederaStockRef, HederaStockReader, Own<typeof sessionHederaStock>>,
+  "mpp/charge/lcp/hedera": chargeLcpHedera satisfies Entry<"mpp/charge/lcp/hedera", MppCredential, LcpHederaRef, HederaReader, Own<typeof chargeLcpHedera>>,
   "mpp/charge/card": chargeCard satisfies Entry<"mpp/charge/card", MppCredential, never, never, Own<typeof chargeCard>>,
   "mpp/charge/stripe": chargeStripe satisfies Entry<"mpp/charge/stripe", MppCredential, never, never, Own<typeof chargeStripe>>,
   "mpp/subscription/stripe": subscriptionStripe satisfies Entry<"mpp/subscription/stripe", MppCredential, never, never, Own<typeof subscriptionStripe>>,
@@ -218,6 +226,7 @@ const OWN = {
   "ucp/booking/unsigned": bookingUnsigned satisfies Entry<"ucp/booking/unsigned", Ap2Presented, never, never, Own<typeof bookingUnsigned>>,
   "ap2/checkout-mandate/x402": checkoutMandateX402 satisfies Entry<"ap2/checkout-mandate/x402", Ap2X402Presented, Ap2X402Ref, EvmReader, Own<typeof checkoutMandateX402>>,
   "ucp/checkout/agent-signed": agentSigned satisfies Entry<"ucp/checkout/agent-signed", AgentSignedPresented, never, never, Own<typeof agentSigned>>,
+  "spend-permissions/eip155": spendPermissionsEip155 satisfies Entry<"spend-permissions/eip155", SpendPermissionReturn, SpendPermissionRef, EvmReader, Own<typeof spendPermissionsEip155>>,
 } satisfies { readonly [I in PairingId]: { readonly id: I } };
 
 // ── Compile time: no codec satisfies Entry with another family's reader. Each alias differs from the line above only
@@ -374,7 +383,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 74 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 77 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.
@@ -552,7 +561,7 @@ describe("the registry's type test", () => {
 
   it("CARRIER is the table the MPP entries' carrier datum gives, and the entries of one intent and method agree", () => {
     const table: { [intent: string]: { [method: string]: readonly string[] | null } } = {};
-    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 28 });
+    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 29 });
     for (const b of mpp) {
       const [, intent, method] = b.id.split("/") as [string, string, string];
       if (method === "usdc") continue;

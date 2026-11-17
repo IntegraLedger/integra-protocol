@@ -94,7 +94,7 @@ beforeAll(() => {
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 /** The entry points that export types alone, so a module that loads one holds no binding. */
-const TYPES_ONLY: ReadonlySet<string> = new Set(["./x402-exact-stellar"]);
+const TYPES_ONLY: ReadonlySet<string> = new Set([]);
 
 describe("each public entry point in one bundle behind a lazy import()", () => {
   it.each(ENTRIES)("%s loads", (key) => {

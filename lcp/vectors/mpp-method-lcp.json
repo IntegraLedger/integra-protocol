@@ -1,0 +1,642 @@
+{
+ "about": "Vectors for the lcp MPP method's challenge, filter, credential and receipt (profile mpp/method/lcp, rules 2 to 5 and 10). H is SHA-256(\"abc\") from FIPS 180-2. Each challenge was written and parsed by mppx 0.17.6's Challenge.from, serialize and deserialize (a method-agnostic parser and serializer, dist/Challenge.js), its request's bytes being canonicalize 5.1.0's RFC 8785 form, written in base64url without padding; challenges.*.header is the WWW-Authenticate value mppx writes and .wire the members it parses back, the request re-encoded. The filter rows have no oracle outside the profile: each is the profile's schema (rules 3 and 4) applied to a challenge whose encoding mppx and canonicalize fixed, one member changed from a good one, and its expected code. The credentials and receipts were written by mppx 0.17.6's Credential and Receipt codecs (dist/Credential.js, dist/Receipt.js): credentials.*.header is the Authorization value, whose base64url JSON is the wire credential; the Hedera transaction a credential carries is the hiero-sdk-python 0.2.10 output of mpp-method-lcp-hedera.json. Assembled 2026-11-17 by a script run in the lcp package's directory, outside its source.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+  "realm": "api.seller.example",
+  "expires": "2023-11-14T22:18:20Z",
+  "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0"
+ },
+ "challenges": {
+  "hedera": {
+   "header": "Payment id=\"ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0\", realm=\"api.seller.example\", method=\"lcp\", intent=\"charge\", request=\"eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ\", expires=\"2023-11-14T22:18:20Z\", opaque=\"eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9\"",
+   "wire": {
+    "expires": "2023-11-14T22:18:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "intent": "charge",
+    "method": "lcp",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}"
+  },
+  "hederaBuyerPays": {
+   "header": "Payment id=\"ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0\", realm=\"api.seller.example\", method=\"lcp\", intent=\"charge\", request=\"eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6ImhlZGVyYTp0ZXN0bmV0IiwicmFpbCI6ImhlZGVyYSIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0\", expires=\"2023-11-14T22:18:20Z\", opaque=\"eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9\"",
+   "wire": {
+    "expires": "2023-11-14T22:18:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "intent": "charge",
+    "method": "lcp",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6ImhlZGVyYTp0ZXN0bmV0IiwicmFpbCI6ImhlZGVyYSIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}"
+  },
+  "hederaToken": {
+   "header": "Payment id=\"ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0\", realm=\"api.seller.example\", method=\"lcp\", intent=\"charge\", request=\"eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuNTQ0OSIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ\", expires=\"2023-11-14T22:18:20Z\", opaque=\"eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9\"",
+   "wire": {
+    "expires": "2023-11-14T22:18:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "intent": "charge",
+    "method": "lcp",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuNTQ0OSIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.5449\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}"
+  }
+ },
+ "filter": [
+  {
+   "case": "the Hedera rail's challenge, the submitter paying the fee",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": [
+    "mpp/charge/lcp/hedera"
+   ]
+  },
+  {
+   "case": "the Hedera rail's challenge, the buyer paying the fee (both fee members absent)",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6ImhlZGVyYTp0ZXN0bmV0IiwicmFpbCI6ImhlZGVyYSIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": [
+    "mpp/charge/lcp/hedera"
+   ]
+  },
+  {
+   "case": "the Hedera rail's challenge, feePayer false alone",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOmZhbHNlLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":false,\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": [
+    "mpp/charge/lcp/hedera"
+   ]
+  },
+  {
+   "case": "an HTS token as currency",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuNTQ0OSIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.5449\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": [
+    "mpp/charge/lcp/hedera"
+   ]
+  },
+  {
+   "case": "description and externalId given",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsImRlc2NyaXB0aW9uIjoiYSBxdW90ZSIsImV4dGVybmFsSWQiOiJvcmRlci03IiwibWV0aG9kRGV0YWlscyI6eyJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJBY2NvdW50SWQiOiIwLjAuMTIzNSIsIm5ldHdvcmsiOiJoZWRlcmE6dGVzdG5ldCIsInJhaWwiOiJoZWRlcmEiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"description\":\"a quote\",\"externalId\":\"order-7\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": [
+    "mpp/charge/lcp/hedera"
+   ]
+  },
+  {
+   "case": "rail absent",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/not-this-pairing"
+  },
+  {
+   "case": "rail \"solana\", neither of the method's",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoic29sYW5hIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"solana\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/not-this-pairing"
+  },
+  {
+   "case": "method \"hedera\", the stock method, with the same request",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "hedera",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/not-this-pairing"
+  },
+  {
+   "case": "intent \"session\"",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "session",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/not-this-pairing"
+  },
+  {
+   "case": "no expires",
+   "rail": "hedera",
+   "challenge": {
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/expires-required"
+  },
+  {
+   "case": "expires \"tomorrow\", not a date-time (mppx writes none such: set on the parsed members)",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "tomorrow",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/expires-required"
+  },
+  {
+   "case": "supportedModes absent",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIn0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\"},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/modes-not-pull"
+  },
+  {
+   "case": "supportedModes [\"push\"]",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVzaCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"push\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/modes-not-pull"
+  },
+  {
+   "case": "supportedModes [\"pull\",\"push\"]",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCIsInB1c2giXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\",\"push\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "mpp/modes-not-pull"
+  },
+  {
+   "case": "network absent",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/network-malformed"
+  },
+  {
+   "case": "network \"stellar:testnet\", another rail's",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0IiwicmFpbCI6ImhlZGVyYSIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"stellar:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/network-malformed"
+  },
+  {
+   "case": "network \"hedera:296\", not a CAIP-2 Hedera network lcp names",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOjI5NiIsInJhaWwiOiJoZWRlcmEiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:296\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/network-malformed"
+  },
+  {
+   "case": "amount \"0\"",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"0\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "amount \"01000\", a leading zero",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIwMTAwMCIsImN1cnJlbmN5IjoiMC4wLjAiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJmZWVQYXllckFjY291bnRJZCI6IjAuMC4xMjM1IiwibmV0d29yayI6ImhlZGVyYTp0ZXN0bmV0IiwicmFpbCI6ImhlZGVyYSIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"01000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "amount 2^63, above int64",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiI5MjIzMzcyMDM2ODU0Nzc1ODA4IiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"9223372036854775808\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "amount 2^63 - 1, the largest",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiI5MjIzMzcyMDM2ODU0Nzc1ODA3IiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"9223372036854775807\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": [
+    "mpp/charge/lcp/hedera"
+   ]
+  },
+  {
+   "case": "currency \"HBAR\", not an entity id",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiJIQkFSIiwibWV0aG9kRGV0YWlscyI6eyJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJBY2NvdW50SWQiOiIwLjAuMTIzNSIsIm5ldHdvcmsiOiJoZWRlcmE6dGVzdG5ldCIsInJhaWwiOiJoZWRlcmEiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"HBAR\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "recipient an EVM address",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwNGQyIn0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0x00000000000000000000000000000000000004d2\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "splits given",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3BsaXRzIjpbeyJhbW91bnQiOiIxIiwicmVjaXBpZW50IjoiMC4wLjQ0NDQifV0sInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"splits\":[{\"amount\":\"1\",\"recipient\":\"0.0.4444\"}],\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "an unlisted request member",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1lbW8iOiJ4IiwibWV0aG9kRGV0YWlscyI6eyJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJBY2NvdW50SWQiOiIwLjAuMTIzNSIsIm5ldHdvcmsiOiJoZWRlcmE6dGVzdG5ldCIsInJhaWwiOiJoZWRlcmEiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"memo\":\"x\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "methodDetails.version 1",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdLCJ2ZXJzaW9uIjoxfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"],\"version\":1},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "description a number",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsImRlc2NyaXB0aW9uIjo3LCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJmZWVQYXllckFjY291bnRJZCI6IjAuMC4xMjM1IiwibmV0d29yayI6ImhlZGVyYTp0ZXN0bmV0IiwicmFpbCI6ImhlZGVyYSIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"description\":7,\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "feePayer true with no feePayerAccountId",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsIm5ldHdvcmsiOiJoZWRlcmE6dGVzdG5ldCIsInJhaWwiOiJoZWRlcmEiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "feePayer true with feePayerAccountId \"0.0.x\"",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLngiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":true,\"feePayerAccountId\":\"0.0.x\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "feePayerAccountId without feePayer",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXJBY2NvdW50SWQiOiIwLjAuMTIzNSIsIm5ldHdvcmsiOiJoZWRlcmE6dGVzdG5ldCIsInJhaWwiOiJoZWRlcmEiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "feePayerAccountId with feePayer false",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOmZhbHNlLCJmZWVQYXllckFjY291bnRJZCI6IjAuMC4xMjM1IiwibmV0d29yayI6ImhlZGVyYTp0ZXN0bmV0IiwicmFpbCI6ImhlZGVyYSIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IjAuMC4xMjM0In0"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":false,\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "feePayer \"true\", a string",
+   "rail": "hedera",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOiJ0cnVlIiwiZmVlUGF5ZXJBY2NvdW50SWQiOiIwLjAuMTIzNSIsIm5ldHdvcmsiOiJoZWRlcmE6dGVzdG5ldCIsInJhaWwiOiJoZWRlcmEiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiIwLjAuMTIzNCJ9"
+   },
+   "requestJcs": "{\"amount\":\"1000\",\"currency\":\"0.0.0\",\"methodDetails\":{\"feePayer\":\"true\",\"feePayerAccountId\":\"0.0.1235\",\"network\":\"hedera:testnet\",\"rail\":\"hedera\",\"supportedModes\":[\"pull\"]},\"recipient\":\"0.0.1234\"}",
+   "expect": "hedera/option-malformed"
+  },
+  {
+   "case": "the Stellar rail's challenge: its schema holds, and no pairing of the package serves the rail",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyYWlsIjoic3RlbGxhciIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IkdERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haRFFQIn0"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "mpp/not-this-pairing"
+  },
+  {
+   "case": "amount \"0\", admitted on Stellar",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIwIiwiY3VycmVuY3kiOiJDQURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTVNTVCIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InN0ZWxsYXI6dGVzdG5ldCIsInJhaWwiOiJzdGVsbGFyIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiR0RGSkhMQVhBVU1IQTRPV1BPQjRQN1lPNzJBUVIySE1JVVlGT1hMWEUyRFpHTTYzM0s3SFpEUVAifQ"
+   },
+   "requestJcs": "{\"amount\":\"0\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "mpp/not-this-pairing"
+  },
+  {
+   "case": "no expires",
+   "rail": "stellar",
+   "challenge": {
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyYWlsIjoic3RlbGxhciIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IkdERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haRFFQIn0"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "mpp/expires-required"
+  },
+  {
+   "case": "supportedModes [\"push\"]",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyYWlsIjoic3RlbGxhciIsInN1cHBvcnRlZE1vZGVzIjpbInB1c2giXX0sInJlY2lwaWVudCI6IkdERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haRFFQIn0"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"push\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "mpp/modes-not-pull"
+  },
+  {
+   "case": "network \"stellar:futurenet\"",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJzdGVsbGFyOmZ1dHVyZW5ldCIsInJhaWwiOiJzdGVsbGFyIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiR0RGSkhMQVhBVU1IQTRPV1BPQjRQN1lPNzJBUVIySE1JVVlGT1hMWEUyRFpHTTYzM0s3SFpEUVAifQ"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:futurenet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "stellar/network-malformed"
+  },
+  {
+   "case": "feePayer true",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyIjp0cnVlLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0IiwicmFpbCI6InN0ZWxsYXIiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiJHREZKSExBWEFVTUhBNE9XUE9CNFA3WU83MkFRUjJITUlVWUZPWExYRTJEWkdNNjMzSzdIWkRRUCJ9"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"feePayer\":true,\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "stellar/option-malformed"
+  },
+  {
+   "case": "feePayerAccountId given",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7ImZlZVBheWVyQWNjb3VudElkIjoiR0RGSkhMQVhBVU1IQTRPV1BPQjRQN1lPNzJBUVIySE1JVVlGT1hMWEUyRFpHTTYzM0s3SFpEUVAiLCJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0IiwicmFpbCI6InN0ZWxsYXIiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiJHREZKSExBWEFVTUhBNE9XUE9CNFA3WU83MkFRUjJITUlVWUZPWExYRTJEWkdNNjMzSzdIWkRRUCJ9"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"feePayerAccountId\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\",\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "stellar/option-malformed"
+  },
+  {
+   "case": "recipient muxed (M…) of the same base",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyYWlsIjoic3RlbGxhciIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6Ik1ERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haT1RZQzI3WTZBT1A1TEpRTyJ9"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZOTYC27Y6AOP5LJQO\"}",
+   "expect": "stellar/option-malformed"
+  },
+  {
+   "case": "currency a G… account",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiR0RGSkhMQVhBVU1IQTRPV1BPQjRQN1lPNzJBUVIySE1JVVlGT1hMWEUyRFpHTTYzM0s3SFpEUVAiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyYWlsIjoic3RlbGxhciIsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IkdERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haRFFQIn0"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "stellar/option-malformed"
+  },
+  {
+   "case": "amount 2^127",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxNzAxNDExODM0NjA0NjkyMzE3MzE2ODczMDM3MTU4ODQxMDU3MjgiLCJjdXJyZW5jeSI6IkNBREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNU1NUIiwibWV0aG9kRGV0YWlscyI6eyJuZXR3b3JrIjoic3RlbGxhcjp0ZXN0bmV0IiwicmFpbCI6InN0ZWxsYXIiLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdWxsIl19LCJyZWNpcGllbnQiOiJHREZKSExBWEFVTUhBNE9XUE9CNFA3WU83MkFRUjJITUlVWUZPWExYRTJEWkdNNjMzSzdIWkRRUCJ9"
+   },
+   "requestJcs": "{\"amount\":\"170141183460469231731687303715884105728\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "stellar/option-malformed"
+  },
+  {
+   "case": "splits given",
+   "rail": "stellar",
+   "challenge": {
+    "expires": "2023-11-14T22:18:20Z",
+    "intent": "charge",
+    "method": "lcp",
+    "realm": "api.seller.example",
+    "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiQ0FEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1CUUdBWURBTUJRR0FZREFNQlFHQVlEQU1TU1QiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJzdGVsbGFyOnRlc3RuZXQiLCJyYWlsIjoic3RlbGxhciIsInNwbGl0cyI6W10sInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX0sInJlY2lwaWVudCI6IkdERkpITEFYQVVNSEE0T1dQT0I0UDdZTzcyQVFSMkhNSVVZRk9YTFhFMkRaR002MzNLN0haRFFQIn0"
+   },
+   "requestJcs": "{\"amount\":\"10000000\",\"currency\":\"CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST\",\"methodDetails\":{\"network\":\"stellar:testnet\",\"rail\":\"stellar\",\"splits\":[],\"supportedModes\":[\"pull\"]},\"recipient\":\"GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP\"}",
+   "expect": "stellar/option-malformed"
+  }
+ ],
+ "credentials": {
+  "transaction": {
+   "header": "Payment eyJjaGFsbGVuZ2UiOnsiZXhwaXJlcyI6IjIwMjMtMTEtMTRUMjI6MTg6MjBaIiwiaWQiOiJ1bmdXdjQ4QnotcEJRVURlWGE0aUk3QURZYU9XRjNxY3RCRF9ZZklBRmEwLjAiLCJpbnRlbnQiOiJjaGFyZ2UiLCJtZXRob2QiOiJsY3AiLCJyZWFsbSI6ImFwaS5zZWxsZXIuZXhhbXBsZSIsIm9wYXF1ZSI6ImV5SnNaV2RoYkVOdmJuUmxlSFFpT2lKc1kzQTZjMmhoTWpVMk9qQjRZbUUzT0RFMlltWTRaakF4WTJabFlUUXhOREUwTUdSbE5XUmhaVEl5TWpOaU1EQXpOakZoTXprMk1UYzNZVGxqWWpReE1HWm1OakZtTWpBd01UVmhaQ0lzSW14bFoyRnNRMjl1ZEdWNGRGVnliQ0k2SW1oMGRIQnpPaTh2WVhSeUxuTmxiR3hsY2k1bGVHRnRjR3hsTHpkak9HRmpabUV5TFdZNE1EQXROREU1TWkwNE9XVTVMVEZqWldZNU9ETXpNVGd3WmlKOSIsInJlcXVlc3QiOiJleUpoYlc5MWJuUWlPaUl4TURBd0lpd2lZM1Z5Y21WdVkza2lPaUl3TGpBdU1DSXNJbTFsZEdodlpFUmxkR0ZwYkhNaU9uc2labVZsVUdGNVpYSWlPblJ5ZFdVc0ltWmxaVkJoZVdWeVFXTmpiM1Z1ZEVsa0lqb2lNQzR3TGpFeU16VWlMQ0p1WlhSM2IzSnJJam9pYUdWa1pYSmhPblJsYzNSdVpYUWlMQ0p5WVdsc0lqb2lhR1ZrWlhKaElpd2ljM1Z3Y0c5eWRHVmtUVzlrWlhNaU9sc2ljSFZzYkNKZGZTd2ljbVZqYVhCcFpXNTBJam9pTUM0d0xqRXlNelFpZlEifSwicGF5bG9hZCI6eyJ0eXBlIjoidHJhbnNhY3Rpb24iLCJ0cmFuc2FjdGlvbiI6Ikt1NEJDb01CQ2cwS0JnaUE0cytxQmhJREdOTUpFZ0lZQXhpQXd0Y3ZJZ0lJZURKTmJHTndPbk5vWVRJMU5qb3dlR0poTnpneE5tSm1PR1l3TVdObVpXRTBNVFF4TkRCa1pUVmtZV1V5TWpJellqQXdNell4WVRNNU5qRTNOMkU1WTJJME1UQm1aall4WmpJd01ERTFZV1J5RmdvVUNnZ0tBeGl6S3hEUER3b0lDZ01ZMGdrUTBBOFNaZ3BrQ2lEcVNteGo0cHhTQ3I3MVVIc1RMc1g1bFVkMnJyNitlNUpDSHVwcEZFYlNMQnBBUVhtVDJjNk13SzQ4b2tKa3ZnckNQbnRUVStjbXZUSGRtQVBCT3ZxZ3dpUVg0dUVTaEFrc0lUYmhuQVRpTjRYZHcrTGtJZU9NbmZrNlp5eDNuY3ZBQmc9PSJ9fQ"
+  },
+  "hash": {
+   "header": "Payment eyJjaGFsbGVuZ2UiOnsiZXhwaXJlcyI6IjIwMjMtMTEtMTRUMjI6MTg6MjBaIiwiaWQiOiJ1bmdXdjQ4QnotcEJRVURlWGE0aUk3QURZYU9XRjNxY3RCRF9ZZklBRmEwLjAiLCJpbnRlbnQiOiJjaGFyZ2UiLCJtZXRob2QiOiJsY3AiLCJyZWFsbSI6ImFwaS5zZWxsZXIuZXhhbXBsZSIsIm9wYXF1ZSI6ImV5SnNaV2RoYkVOdmJuUmxlSFFpT2lKc1kzQTZjMmhoTWpVMk9qQjRZbUUzT0RFMlltWTRaakF4WTJabFlUUXhOREUwTUdSbE5XUmhaVEl5TWpOaU1EQXpOakZoTXprMk1UYzNZVGxqWWpReE1HWm1OakZtTWpBd01UVmhaQ0lzSW14bFoyRnNRMjl1ZEdWNGRGVnliQ0k2SW1oMGRIQnpPaTh2WVhSeUxuTmxiR3hsY2k1bGVHRnRjR3hsTHpkak9HRmpabUV5TFdZNE1EQXROREU1TWkwNE9XVTVMVEZqWldZNU9ETXpNVGd3WmlKOSIsInJlcXVlc3QiOiJleUpoYlc5MWJuUWlPaUl4TURBd0lpd2lZM1Z5Y21WdVkza2lPaUl3TGpBdU1DSXNJbTFsZEdodlpFUmxkR0ZwYkhNaU9uc2labVZsVUdGNVpYSWlPblJ5ZFdVc0ltWmxaVkJoZVdWeVFXTmpiM1Z1ZEVsa0lqb2lNQzR3TGpFeU16VWlMQ0p1WlhSM2IzSnJJam9pYUdWa1pYSmhPblJsYzNSdVpYUWlMQ0p5WVdsc0lqb2lhR1ZrWlhKaElpd2ljM1Z3Y0c5eWRHVmtUVzlrWlhNaU9sc2ljSFZzYkNKZGZTd2ljbVZqYVhCcFpXNTBJam9pTUM0d0xqRXlNelFpZlEifSwicGF5bG9hZCI6eyJ0eXBlIjoiaGFzaCIsInRyYW5zYWN0aW9uSWQiOiIwLjAuNTU1NUAxNzAwMDAwMDAwLjAwMDAwMDAwMCJ9fQ"
+  }
+ },
+ "receipts": {
+  "hedera": {
+   "encoded": "eyJtZXRob2QiOiJsY3AiLCJyZWZlcmVuY2UiOiIwLjAuMTIzNUAxNzAwMDAwMDAwLjAwMDAwMDAwMCIsInN0YXR1cyI6InN1Y2Nlc3MiLCJ0aW1lc3RhbXAiOiIyMDIzLTExLTE0VDIyOjEzOjI1WiJ9",
+   "decoded": {
+    "method": "lcp",
+    "reference": "0.0.1235@1700000000.000000000",
+    "status": "success",
+    "timestamp": "2023-11-14T22:13:25Z"
+   }
+  }
+ }
+}

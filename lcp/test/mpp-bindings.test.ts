@@ -29,6 +29,7 @@ import {
   sessionXrpl,
   sessionXrplStock,
   sessionHederaStock,
+  chargeLcpHedera,
   type MppChallenge,
   type MppCredential,
   type SessionUnsigned,
@@ -84,6 +85,7 @@ describe("MPP_BINDINGS", () => {
       "mpp/session/xrpl",
       "mpp/session/xrpl/stock",
       "mpp/session/hedera/stock",
+      "mpp/charge/lcp/hedera",
       "mpp/charge/card",
       "mpp/charge/stripe",
       "mpp/subscription/stripe",
@@ -114,6 +116,7 @@ describe("MPP_BINDINGS", () => {
               sessionXrpl,
               sessionXrplStock,
       sessionHederaStock,
+      chargeLcpHedera,
       chargeCard,
       chargeStripe,
       subscriptionStripe,
@@ -122,7 +125,7 @@ describe("MPP_BINDINGS", () => {
       chargeUsdcStacks,
       chargeUsdcGateway,
     ]);
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 28 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 29 })) {
       expect(Object.isFrozen(b)).toBe(true);
       expect(Object.isFrozen(b.pattern)).toBe(true);
     }
@@ -251,7 +254,7 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
       { ...challenge("usdc", "charge", "{}"), request: b64u(JSON.stringify(US.fixed.request)) },
     ];
     const placedBy = new Set<string>();
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 28 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 29 })) {
       for (const option of issued) {
         const offered = pairingsOf(option);
         if (!Array.isArray(offered) || !offered.includes(b.id as never)) continue;

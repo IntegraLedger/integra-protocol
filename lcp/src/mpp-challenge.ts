@@ -39,6 +39,7 @@ import {
   xrplChargePairings,
   xrplSessionPairings,
 } from "./mpp-rail-checks.js";
+import { lcpChargePairings } from "./mpp-lcp.js";
 import { base64UrlBytes, fromBase64Url, toBase64Url } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, readToRepeat, refusal, type Refusal } from "./refusal.js";
 import { MAX_CHALLENGE_DEPTH, MAX_CHALLENGES, MAX_CREDENTIAL_BYTES, MAX_LINK_LENGTH } from "./internal/bounds.js";
@@ -93,7 +94,8 @@ export type MppMethod =
   | "nearintents"
   | "stellar"
   | "xrpl"
-  | "hedera";
+  | "hedera"
+  | "lcp";
 export type MppIntent = "charge" | "session" | "subscription";
 
 const INTENTS: readonly MppIntent[] = ["charge", "session", "subscription"];
@@ -109,6 +111,7 @@ const METHODS: readonly MppMethod[] = [
   "stellar",
   "xrpl",
   "hedera",
+  "lcp",
 ];
 
 type CarrierTable = { [i in MppIntent]: { [m in MppMethod]?: readonly string[] | null } };
@@ -171,6 +174,7 @@ export type MppPairingId =
   | "mpp/session/xrpl"
   | "mpp/session/xrpl/stock"
   | "mpp/session/hedera/stock"
+  | "mpp/charge/lcp/hedera"
   | "mpp/charge/card"
   | "mpp/charge/stripe"
   | "mpp/subscription/stripe"
@@ -836,6 +840,7 @@ const PAIRING_CHECKS: { readonly [intentAndMethod: string]: PairingCheck } = Obj
   "charge/nearintents": nearIntentsChargePairings,
   "session/xrpl": xrplSessionPairings,
   "session/hedera": hederaSessionPairings,
+  "charge/lcp": lcpChargePairings,
   "charge/card": cardChargePairings,
   "charge/stripe": stripeChargePairings,
   "subscription/stripe": stripeSubscriptionPairings,
@@ -1541,6 +1546,7 @@ const CANNOT_READ = [
   "hedera/wrong-reader",
   "svm/read-first",
   "xrpl/read-first",
+  "hedera/read-first",
 ];
 
 /**
@@ -1555,7 +1561,8 @@ const CANNOT_READ = [
  * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
  *   changes the call: a reader that is not for the network the challenge or reference names, or a ref `recover`
  *   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound`
- *   or `reference` on a push credential before `fetchPresented` has read it (`svm/read-first` and `xrpl/read-first`);
+ *   or `reference` on a push credential before `fetchPresented` has read it (`svm/read-first`, `xrpl/read-first` and
+ *   `hedera/read-first`);
  * - 402 `verification-failed`: every other code this package returns;
  * - 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
  *

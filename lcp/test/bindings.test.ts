@@ -42,6 +42,7 @@ describe("BINDINGS", () => {
       "mpp/session/xrpl",
       "mpp/session/xrpl/stock",
       "mpp/session/hedera/stock",
+      "mpp/charge/lcp/hedera",
       "mpp/charge/card",
       "mpp/charge/stripe",
       "mpp/subscription/stripe",
@@ -76,6 +77,7 @@ describe("BINDINGS", () => {
       "x402/exact/polkadot/lcp-assets-remark",
       "x402/exact/solana",
       "x402/exact/starknet",
+      "x402/exact/stellar/precondition",
       "x402/exact/sui",
       "x402/exact/tron/lcp-trc20-memo",
       "x402/exact/tvm",
@@ -84,6 +86,7 @@ describe("BINDINGS", () => {
       "x402/upto/solana",
       "x402/exact/eip155/gateway-batched",
       "x402/upto/xrpl",
+      "spend-permissions/eip155",
     ]);
     expect(BINDINGS[0]).toBe(exactEip3009);
     expect(BINDINGS).toContain(exactTronMemo);
@@ -101,7 +104,7 @@ describe("the record's members", () => {
     expect([...fields].sort()).toEqual(["forwardIndexable", "onChain", "pattern", "profile", "zeroPartyRecoverable"]);
   });
   it("every pairing's record carries only those members, and every one but x402/exact/starknet's names its pattern", () => {
-    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 74 })) {
+    for (const b of rowsOf(BINDINGS, "BINDINGS, the implemented pairings", { exact: 77 })) {
       for (const k of rowsOf(Object.keys(b.pattern), `${b.id}: its record's members`)) expect(fields.has(k), `${b.id}: ${k}`).toBe(true);
       expect(b.pattern.pattern === undefined, b.id).toBe(b.id === "x402/exact/starknet");
     }

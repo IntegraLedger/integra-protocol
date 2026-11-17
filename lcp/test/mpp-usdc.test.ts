@@ -16,6 +16,7 @@ import {
   type TypedDataDefinition,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { CHAIN_CONFIGS, GatewayClient } from "@circle-fin/x402-batching/client";
 import {
   chargeSolana,
   chargeUsdcEvm,
@@ -401,12 +402,14 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
     expect(await chargeUsdcGateway.bound(await credential())).toBe(GW.M5.expectBound);
   });
 
-  it("build's request carries the salt's preimage as data; the client's salt, set before signing, is bound to H", async () => {
+  it("build's request carries the salt's preimage as data and the ceiling; the client's salt, set before signing, is bound to H", async () => {
     const challenge = placedWith(chargeUsdcGateway, c);
-    const u = await chargeUsdcGateway.build({ challenge, from: G.payer, now: 0 }, G.H);
+    const { expectMaxBlockHeight, ...served } = GW.ceiling.good;
+    const u = await chargeUsdcGateway.build({ challenge, ...served }, G.H);
     if ("refused" in u) throw new Error(u.code);
     const preimage = { id: G.MV1, realm: G.realm, requestHash: GW.M5.expectRequestHash, recipient: GW.M5.saltInput.recipient };
-    expect(u.request).toEqual({ kind: "gateway-burn-intent", preimage });
+    expect(u.request).toEqual({ kind: "gateway-burn-intent", preimage, maxBlockHeight: expectMaxBlockHeight });
+    expect(GW.M5.payload.authorization.transfer.burnIntent.maxBlockHeight).toBe(expectMaxBlockHeight);
     expect(JSON.parse(JSON.stringify(u.request))).toEqual(u.request);
     const { recipient: _r, ...own } = GW.M5.saltInput;
     expect(usdcGatewaySalt({ ...u.request.preimage, ...own })).toBe(GW.M5.expectSalt);
@@ -432,6 +435,58 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
     expect(JSON.stringify(GW.M5.payload)).toBe(JSON.stringify({ ...byHand.payload, authorization: GW.M5.payload.authorization }));
     expect(JSON.stringify(cred)).toBe(JSON.stringify(byHand));
     expect(await chargeUsdcGateway.bound(cred)).toBe(GW.M5.expectBound);
+  });
+
+  describe("the ceiling: maxBlockHeight at the served burnIntentExpirationHeight plus 100 s in the wallet's withdrawalDelay pace", () => {
+    const { expectMaxBlockHeight: _m, ...good } = GW.ceiling.good;
+    const challenge = () => placedWith(chargeUsdcGateway, c);
+
+    for (const row of rowsOf(GW.ceiling.built as { case: string; burnIntentExpirationHeight: string; withdrawalDelay: string; expectMaxBlockHeight: string }[], "mpp-charge-usdc-gateway.json ceiling.built", { exact: 5 })) {
+      it(`build writes ${row.case}`, async () => {
+        const u = await chargeUsdcGateway.build({ challenge: challenge(), burnIntentExpirationHeight: row.burnIntentExpirationHeight, withdrawalDelay: row.withdrawalDelay }, G.H);
+        if ("refused" in u) throw new Error(u.code);
+        expect(u.request.maxBlockHeight).toBe(row.expectMaxBlockHeight);
+      });
+    }
+
+    for (const row of rowsOf(GW.ceiling.buildRefusals as { case: string; omit?: string; set?: Record<string, unknown>; expect: unknown }[], "mpp-charge-usdc-gateway.json ceiling.buildRefusals", { exact: 8 })) {
+      it(`build refuses ${row.case}`, async () => {
+        const choice: Record<string, unknown> = { challenge: challenge(), ...good, ...row.set };
+        if (row.omit !== undefined) delete choice[row.omit];
+        expect(await chargeUsdcGateway.build(choice as never, G.H)).toEqual(row.expect);
+      });
+    }
+
+    async function completed(burnIntent: Record<string, unknown>) {
+      const u = await chargeUsdcGateway.build({ challenge: challenge(), ...good }, G.H);
+      if ("refused" in u) throw new Error(u.code);
+      const signature = await privateKeyToAccount(G.payerKey).signTypedData(burnIntentTypedData(GW.M5.payload.authorization.transfer.burnIntent));
+      const { authorization: _a, type: _t, ...own } = GW.M5.payload;
+      return u.complete({ source: GW.M5.source, ...own, burnIntent: burnIntent as never, signature });
+    }
+
+    it("complete takes the burn intent signed at the ceiling", async () => {
+      const cred = await completed(structuredClone(GW.M5.payload.authorization.transfer.burnIntent));
+      if ("refused" in cred) throw new Error(cred.code);
+      expect(await chargeUsdcGateway.bound(cred)).toBe(GW.M5.expectBound);
+    });
+
+    for (const row of rowsOf(GW.ceiling.completeRefusals as { case: string; stock?: boolean; expectStockMaxBlockHeight?: string; set?: string; omit?: boolean; expect: unknown }[], "mpp-charge-usdc-gateway.json ceiling.completeRefusals", { exact: 6 })) {
+      it(`complete refuses ${row.case}`, async () => {
+        const burnIntent: Record<string, unknown> = structuredClone(GW.M5.payload.authorization.transfer.burnIntent);
+        if (row.stock === true) {
+          const stock = stockBurnIntent(G.payerKey);
+          expect(stock.maxBlockHeight).toBe(row.expectStockMaxBlockHeight);
+          expect({ ...stock.spec, salt: GW.M5.expectSalt }).toEqual(burnIntent["spec"]);
+          stock.spec.salt = GW.M5.expectSalt;
+          expect(await completed(stock)).toEqual(row.expect);
+          return;
+        }
+        if (row.omit === true) delete burnIntent["maxBlockHeight"];
+        else burnIntent["maxBlockHeight"] = row.set;
+        expect(await completed(burnIntent)).toEqual(row.expect);
+      });
+    }
   });
 
   it("a salt computed for another realm gives mpp/salt-not-usdc-derivation", async () => {
@@ -461,6 +516,18 @@ describe("mpp/charge/usdc/gateway (M5)", () => {
     expect({ ...chargeUsdcGateway.pattern, proves: chargeUsdcGateway.data.proves, claims: chargeUsdcGateway.claims }).toEqual(GW.pattern);
   });
 });
+
+/**
+ * The burn intent Circle's own client builds, `GatewayClient.createBurnIntent` (@circle-fin/x402-batching 4.0.0,
+ * dist/client/index.mjs:1472-1495), from Arc Testnet to Base Sepolia for M5's value, fee and recipient, as that client
+ * writes it to Gateway's `/transfer` (bigints as decimal strings, :1420-1423). Nothing is fetched or signed.
+ */
+function stockBurnIntent(key: `0x${string}`): { maxBlockHeight: string; maxFee: string; spec: Record<string, unknown> } {
+  const client = new GatewayClient({ chain: "arcTestnet", privateKey: key });
+  const make = (client as unknown as { createBurnIntent: (...a: unknown[]) => unknown }).createBurnIntent.bind(client);
+  const intent = make(client.chainConfig, CHAIN_CONFIGS.baseSepolia, { address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" }, 25000000n, GW.M5.saltInput.recipient, 500000n);
+  return JSON.parse(JSON.stringify(intent, (_, v) => (typeof v === "bigint" ? v.toString() : v)));
+}
 
 /** The Circle Gateway burn intent as EIP-712 typed data: domain `{GatewayWallet, 1}` only, as Circle Gateway defines it. */
 function burnIntentTypedData(b: { maxBlockHeight: string; maxFee: string; spec: Record<string, unknown> }): TypedDataDefinition {

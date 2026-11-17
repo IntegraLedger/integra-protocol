@@ -339,7 +339,7 @@ describe("what a node answers, with a pad bit set", () => {
     const row = V.events.rows[1];
     const topic = (t: string) => row.topic.map((x: string, i: number) => (i === 2 ? t : x));
     expect(row.topic[2].endsWith("=")).toBe(true);
-    expect(transferEventOf(row.topic, row.value)).toEqual({ toBase: row.expect.toBase, toMuxedId: null });
+    expect(transferEventOf(row.topic, row.value)).toMatchObject({ kind: "transfer", toBase: row.expect.toBase, toMuxedId: null });
     expect(transferEventOf(topic(NOT_BASE64), row.value)).toEqual(refused("stellar/event-malformed"));
     expect(transferEventOf(topic(raised(row.topic[2])), row.value)).toEqual(refused("stellar/event-malformed"));
   });

@@ -37,6 +37,7 @@ const ROWS: readonly [file: string, path: string, id: string][] = [
   ["x402-upto-solana", "fixed.option", "x402/upto/solana"],
   ["x402-upto-xrpl", "fixed.O", "x402/upto/xrpl"],
   ["x402-exact-starknet", "fixed.O", "x402/exact/starknet"],
+  ["x402-exact-stellar-precondition", "fixed.option", "x402/exact/stellar/precondition"],
   ["x402-exact-sui", "fixed.O", "x402/exact/sui"],
   ["x402-exact-tron-lcp-trc20-memo", "fixed.O", "x402/exact/tron/lcp-trc20-memo"],
   ["x402-exact-tvm", "fixed.O", "x402/exact/tvm"],

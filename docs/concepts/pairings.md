@@ -10,7 +10,7 @@ from the protocol outward: the surface (`x402`), the scheme or intent (`exact`),
 (`eip155`, `eip3009`). Each pairing is one frozen object that carries the whole binding for that combination, on both
 sides of the payment.
 
-The package holds 58 pairings on seven surfaces: `x402`, `mpp`, `acp`, `ucp`, `ap2`, `ack` and `card`. The
+The package holds 58 pairings on eight surfaces: `x402`, `mpp`, `acp`, `ucp`, `ap2`, `ack`, `card` and `spend-permissions`. The
 [pairings reference](../reference/pairings.md) lists each one, generated from the registry.
 
 ## The members
@@ -146,7 +146,7 @@ console.log([...new Set(BINDINGS.map((b) => b.id.split("/")[0]))].sort().join(" 
 ```text
 x402/exact/eip155/eip3009
 x402/exact/eip155/permit2
-ack acp ap2 card mpp ucp x402
+ack acp ap2 card mpp spend-permissions ucp x402
 ```
 
 ## What no pairing serves

@@ -209,7 +209,7 @@ const CODES = join(lcp, "src", "internal", "codes.ts");
 const REFUSALS = join(reference, "refusals.md");
 
 /** A row of refusals.md: its code, and whether its meaning begins with the read-to-repeat mark. */
-const REFUSAL_ROW = /^(\| `([a-z0-9]+\/[A-Za-z0-9./-]+)` \| )(\*\*Read to repeat\.\*\* )?/gm;
+const REFUSAL_ROW = /^(\| `([a-z0-9]+(?:-[a-z0-9]+)*\/[A-Za-z0-9./-]+)` \| )(\*\*Read to repeat\.\*\* )?/gm;
 const READ_TO_REPEAT_MARK = "**Read to repeat.** ";
 
 /**
@@ -226,8 +226,11 @@ function readToRepeatMarks(text) {
   return { marked, wrong };
 }
 
-/** A code: a lowercase namespace, a slash, and a reason that may hold further slashes and dotted member paths. */
-const CODE = String.raw`[a-z0-9]+\/[A-Za-z0-9./-]+`;
+/**
+ * A code: a lowercase namespace, its words joined by hyphens, a slash, and a reason that may hold further slashes and
+ * dotted member paths.
+ */
+const CODE = String.raw`[a-z0-9]+(?:-[a-z0-9]+)*\/[A-Za-z0-9./-]+`;
 /** A string literal, in double or single quotes, whose text is one code. */
 const CODE_LITERAL = new RegExp(String.raw`^(?:"(${CODE})"|'(${CODE})')$`);
 
@@ -307,7 +310,7 @@ function refusalCodes() {
   const counts = [];
   if (existsSync(page)) {
     const text = readFileSync(page, "utf8");
-    const rows = [...text.matchAll(/^\| `([a-z0-9]+\/[A-Za-z0-9./-]+)` \|/gm)].map((m) => m[1]);
+    const rows = [...text.matchAll(/^\| `([a-z0-9]+(?:-[a-z0-9]+)*\/[A-Za-z0-9./-]+)` \|/gm)].map((m) => m[1]);
     for (const c of rows) listed.add(c);
     const repeated = [...new Set(rows.filter((c, i) => rows.indexOf(c) !== i))].sort();
     if (repeated.length > 0) counts.push(`it lists ${repeated.join(", ")} more than once`);
@@ -320,7 +323,7 @@ function refusalCodes() {
       byNamespace.set(ns, (byNamespace.get(ns) ?? 0) + 1);
     }
     const cells = new Map();
-    for (const m of text.matchAll(/^\| \[`([a-z0-9]+)`\]\(#\1\) \| (\d+) \|/gm)) {
+    for (const m of text.matchAll(/^\| \[`([a-z0-9]+(?:-[a-z0-9]+)*)`\]\(#\1\) \| (\d+) \|/gm)) {
       cells.set(m[1], [...(cells.get(m[1]) ?? []), Number(m[2])]);
     }
     for (const ns of new Set([...byNamespace.keys(), ...cells.keys()])) {

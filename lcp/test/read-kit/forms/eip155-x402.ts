@@ -15,7 +15,7 @@
 // the case treats the two alike, and says so where it is made. The cases each pairing skips are those its read cannot
 // meet on the ledger, each declared with the reason in the lists below (`*_DECLARED`).
 import { x402ExactPermit2ProxyABI, x402UptoPermit2ProxyABI, eip3009ABI } from "@x402/evm";
-import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, hashStruct, keccak256, parseAbi, toBytes, zeroAddress, type Hex as ViemHex } from "viem";
+import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, hashStruct, hashTypedData, keccak256, parseAbi, toBytes, zeroAddress, type Hex as ViemHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { agreementValue, type AtrHash } from "../../../src/core.js";
 import { DELEGATION_MANAGER, ESCROW, EXACT_PERMIT2_PROXY, PAYMENT_AUTHORIZED_TOPIC, PERMIT2, REDEEMED_DELEGATION_TOPIC, ReaderError, UPTO_PERMIT2_PROXY, type Hex } from "../../../src/evm.js";
@@ -23,9 +23,10 @@ import type { Act, StatusAnswer } from "../../../src/internal/read.js";
 import { BATCH_SETTLEMENT, CHANNEL_CREATED_TOPIC, DEPOSITED_TOPIC, batchChannelId, batchEvm } from "../../../src/x402-batch-settlement.js";
 import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, uptoPermit2 } from "../../../src/x402.js";
 import { checkoutMandateX402 } from "../../../src/ap2.js";
+import { spendPermissionsEip155 } from "../../../src/spend-permissions.js";
 import { abiStringOf, readerOf, topicOf, wordOf, type Chain, type ChainTx } from "../../evm-chain.js";
 import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
-import { ACTS, answering, READ_STATUS } from "../harness.js";
+import { ACTS, answering, giving, READ_STATUS } from "../harness.js";
 
 // ── The parties, tokens and keys of every form.
 
@@ -871,6 +872,161 @@ function arrangeErc7710Salt(c: ReadCase, act: Act) {
   };
 }
 
+// ── `spend-permissions/eip155`: the SpendPermissionManager's approval of a permission whose `salt` is H, by its hash.
+
+/** The manager's events and calls, as SpendPermissionManager.sol states them (coinbase/spend-permissions e0004e63). */
+const SPEND_ABI = parseAbi([
+  "struct SpendPermission { address account; address spender; address token; uint160 allowance; uint48 period; uint48 start; uint48 end; uint256 salt; bytes extraData; }",
+  "event SpendPermissionApproved(bytes32 indexed hash, SpendPermission spendPermission)",
+  "event SpendPermissionRevoked(bytes32 indexed hash, SpendPermission spendPermission)",
+  "function revoke(SpendPermission spendPermission)",
+  "function revokeAsSpender(SpendPermission spendPermission)",
+  "function isApproved(SpendPermission spendPermission) view returns (bool)",
+  "function isRevoked(SpendPermission spendPermission) view returns (bool)",
+]);
+const SPEND_TYPES = {
+  SpendPermission: [
+    { name: "account", type: "address" },
+    { name: "spender", type: "address" },
+    { name: "token", type: "address" },
+    { name: "allowance", type: "uint160" },
+    { name: "period", type: "uint48" },
+    { name: "start", type: "uint48" },
+    { name: "end", type: "uint48" },
+    { name: "salt", type: "uint256" },
+    { name: "extraData", type: "bytes" },
+  ],
+} as const;
+/** The SpendPermissionManager's address that Coinbase's developer platform SDK 1.60.0 names. */
+const MANAGER = "0xf85210b21cc50302f477ba56686d2019dc9b67ad" as Hex;
+/** The permission of every case: the payer's account, the payee as spender, `salt` H. */
+const SPEND_PERMISSION = {
+  account: PAYER,
+  spender: PAYEE,
+  token: ASSET,
+  allowance: AMOUNT.toString(),
+  period: "86400",
+  start: T0.toString(),
+  end: (T0 + 1_000_000n).toString(),
+  salt: BigInt(H).toString(),
+  extraData: "0x" as Hex,
+};
+const spendMessage = (p: typeof SPEND_PERMISSION) => ({
+  account: p.account,
+  spender: p.spender,
+  token: p.token,
+  allowance: BigInt(p.allowance),
+  period: Number(p.period),
+  start: Number(p.start),
+  end: Number(p.end),
+  salt: BigInt(p.salt),
+  extraData: p.extraData,
+});
+const SPEND_HASH = lower(
+  hashTypedData({
+    domain: { name: "Spend Permission Manager", version: "1", chainId: CHAIN_ID, verifyingContract: MANAGER },
+    types: SPEND_TYPES,
+    primaryType: "SpendPermission",
+    message: spendMessage(SPEND_PERMISSION),
+  }),
+);
+const SPEND_DATA = encodeAbiParameters([{ type: "tuple", components: SPEND_TYPES.SpendPermission }], [spendMessage(SPEND_PERMISSION)]) as Hex;
+const spendLog = (eventName: "SpendPermissionApproved" | "SpendPermissionRevoked") => ({
+  address: MANAGER,
+  topics: (encodeEventTopics({ abi: SPEND_ABI, eventName, args: { hash: SPEND_HASH } }) as Hex[]).map(lower),
+  data: SPEND_DATA,
+});
+
+/**
+ * One transaction of the case on the manager's ledger. Every act that consumed the value under the permission's hash
+ * is its one approval, which the manager accepts only from the account or under its signature, so a consumer another
+ * account signed is made as the account's; an act of another kind that consumed it is a revocation, by the account's
+ * `revoke` or the spender's `revokeAsSpender`, or with a call the read does not decode where another account sent it.
+ * A failed result is a reverted transaction, which emits nothing. An act that carries H and consumed nothing is no
+ * transaction the manager's events for the hash show: the approval is emitted once, on the approval that consumes.
+ */
+function spendTx(s: Seen, l: Layout): ChainTx | undefined {
+  const hash = HASH[s.transaction]!;
+  const block = l.block(s.position!);
+  if (s.result === "failed") return { hash, block, status: 0, logs: [], from: ADDRESS[s.party], to: MANAGER, input: "0x" };
+  if (!s.consumed) return undefined;
+  if (s.kind === "same") return { hash, block, status: 1, from: PAYER, to: MANAGER, input: "0x", logs: [spendLog("SpendPermissionApproved")] };
+  const call = s.party === "payer" ? "revoke" : s.party === "payee" ? "revokeAsSpender" : undefined;
+  const input = call === undefined ? ("0x" as Hex) : (encodeFunctionData({ abi: SPEND_ABI, functionName: call, args: [spendMessage(SPEND_PERMISSION)] }) as Hex);
+  return { hash, block, status: 1, from: ADDRESS[s.party], to: MANAGER, input, logs: [spendLog("SpendPermissionRevoked")] };
+}
+
+/**
+ * `isApproved` and `isRevoked` of the permission, each true from its block, and false for any other permission, whose
+ * hash the manager has never marked; every other call reverts.
+ */
+function spendCalls(approvedFrom: bigint | undefined, revokedFrom: bigint | undefined, history: boolean): NonNullable<Chain["call"]> {
+  const isApproved = encodeFunctionData({ abi: SPEND_ABI, functionName: "isApproved", args: [spendMessage(SPEND_PERMISSION)] }).toLowerCase();
+  const isRevoked = encodeFunctionData({ abi: SPEND_ABI, functionName: "isRevoked", args: [spendMessage(SPEND_PERMISSION)] }).toLowerCase();
+  return async (to, data, block) => {
+    if (!history) throw new ReaderError("history");
+    const d = data.toLowerCase();
+    if (to.toLowerCase() !== MANAGER || (!d.startsWith(isApproved.slice(0, 10)) && !d.startsWith(isRevoked.slice(0, 10)))) {
+      throw new Error("execution reverted");
+    }
+    const from = d === isApproved ? approvedFrom : d === isRevoked ? revokedFrom : undefined;
+    return wordOf(from !== undefined && block >= from ? 1n : 0n);
+  };
+}
+
+/**
+ * The case on the manager's ledger, read by the pairing's own `status` for the act `agreement`, its one act. The value
+ * reads consumed from the block of the approval or revocation that consumed it, else from where the case reads it
+ * consumed. A case whose facts give no value is read with the manager's value, which this read always reads: where its
+ * search has range left, the approval lies in that range, above the final mark, so the value reads consumed at the
+ * latest head alone. A case this ledger cannot hold is not made, and the form says why: an act carrying H that consumed
+ * nothing, an act whose signed message differs from the payment presented, two approvals of the one hash, a validity
+ * passed, and an item the search could not decode.
+ */
+function arrangeSpend(c: ReadCase, act: Act) {
+  if (c.facts.seen.filter((s) => s.result === "succeeded" && s.consumed && s.kind === "same").length > 1) {
+    return { inapplicable: "two approvals of one hash: the manager emits SpendPermissionApproved once for a hash, on the approval that consumes it" };
+  }
+  if (c.facts.value?.lapsed === true) return { inapplicable: "a validity passed: the approval has no lapse by time" };
+  if ((c.facts.undecoded ?? []).length > 0) {
+    return { inapplicable: "an item the search could not decode: the search meets only the manager's own events for the hash, written in its ABI" };
+  }
+  if (c.facts.seen.some((s) => s.result === "succeeded" && !s.consumed)) {
+    return {
+      inapplicable:
+        "an act carrying H that consumed nothing: the manager emits SpendPermissionApproved once for a hash, on the approval that consumes it, so the search by the permission's hash meets no such act",
+    };
+  }
+  if (c.facts.seen.some((s) => s.presented === "no")) {
+    return {
+      inapplicable:
+        "an act whose signed message differs from the payment presented: the search keys on the permission's hash, which commits to every member presented compares, so the act it finds is the permission presented; and the approval moves nothing, where the case's act moved a transfer",
+    };
+  }
+  return {
+    run: async (): Promise<CaseAnswer> => {
+      const l = layout(c, "never");
+      const txs = c.facts.seen.flatMap((s) => {
+        const t = spendTx(s, l);
+        return t === undefined ? [] : [t];
+      });
+      const first = (topic: Hex): bigint | undefined => {
+        const by = txs.filter((t) => t.status === 1 && t.logs.some((g) => g.topics[0] === topic)).map((t) => t.block);
+        return by.length === 0 ? undefined : by.reduce((a, b) => (a < b ? a : b));
+      };
+      const v = c.facts.value;
+      const unread = v === undefined && !c.facts.search.whole && c.facts.seen.length === 0;
+      const approvedFrom =
+        first(spendLog("SpendPermissionApproved").topics[0]!) ??
+        (v?.consumed === true ? l.heads.finalized - 50n : v?.head?.consumed === true || unread ? l.heads.finalized + 50n : undefined);
+      const revokedFrom = first(spendLog("SpendPermissionRevoked").topics[0]!);
+      const chain = faulted(c, { network: NETWORK, heads: l.heads, time: l.time, txs, call: spendCalls(approvedFrom, revokedFrom, c.facts.history) });
+      const ref = { network: NETWORK, payee: PAYEE, h: H, manager: MANAGER, hash: SPEND_HASH, permission: SPEND_PERMISSION };
+      return back(await spendPermissionsEip155.status(ref as never, readerOf(chain), queryOf(c, act, l)), l);
+    },
+  };
+}
+
 // ── The declarations: the cases each read cannot meet on the ledger, with the reason.
 
 /** The cases whose text opens with `words`, on both acts. */
@@ -940,7 +1096,7 @@ export const EIP3009_DECLARED: readonly Inapplicable[] = meeting(once(TX_FAILED,
 function formOf(
   subject: DeclaredForm["form"]["subject"],
   declared: readonly Inapplicable[],
-  arrange: (c: ReadCase, act: Act) => { run: () => Promise<CaseAnswer> },
+  arrange: (c: ReadCase, act: Act) => { run: () => Promise<CaseAnswer> } | { inapplicable: string },
 ): DeclaredForm {
   return {
     form: {
@@ -1027,6 +1183,53 @@ export const NO_SEARCH_DECLARED: readonly Inapplicable[] = meeting(once(TX_FAILE
   ["search-incomplete is answered before not-found", BOTH],
 ]);
 
+const SPEND = `${MARKS}: on spend-permissions/eip155, read for the act agreement alone`;
+const SPEND_UNUSED = answering("instrument-unused", `${MARKS}: instrument-unused on spend-permissions/eip155, which has no lapse by time`);
+const SPEND_MOVED = [
+  "a payment act carrying H that transferred zero",
+  "an act carrying H that transferred zero",
+  "a payment act carrying H that moved another asset and amount",
+  "an act carrying H that transferred to another account",
+  "each transfer of what moved is named by its transaction and its place",
+].flatMap((words) => opening(words, `${SPEND}, the cases of what moved, since the approval moves nothing`));
+const SPEND_NEVER_MET = [
+  "an act carrying H that names no account",
+  "an act the option's payee signed",
+  "an act carrying H under another account's signature",
+  "an act of another pairing or kind carrying H",
+  "a transaction for which two reasons hold",
+  "a second act of the payer that meets every test",
+  "the settled act's answer names every foreign item",
+].flatMap((words) =>
+  opening(
+    words,
+    `${SPEND}, since its search reads the manager's events for the permission's hash, which commits to every member of the permission as offered, account among them, which the exchange holds apart from spender, and the manager emits SpendPermissionApproved once for a hash, so every act the search meets is that permission's one approval, signed by its account; the cost: an approval the account makes of another permission carrying H is named in no answer unless the caller gives it, and decides nothing, being no act the option constructs`,
+  ),
+);
+const SPEND_VALIDITY = giving("a validity passed", `${SPEND}, every case whose facts give a validity passed, since the approval has no lapse by time`);
+const SPEND_UNDECODED = [
+  "a search that met an item it cannot decode",
+  "the answer names every item the search could not decode",
+  "the search's range left to read and an item it could not decode",
+  "an act the search found is settled, whatever items it could not decode",
+  "instrument-live is answered before an item the search could not decode",
+].flatMap((words) => opening(words, `${SPEND}, since the search meets only the manager's own events for the hash, written in the manager's ABI`));
+
+const SPEND_ONE_MESSAGE = opening(
+  "an act whose signed message differs in a member from the payment presented",
+  `${SPEND}, an act whose signed message differs in a member from the payment presented, since its search keys on the permission's hash, which commits to every member presented compares, so the act it meets is the permission presented`,
+);
+const SPEND_GIVEN_UNCONSUMED = opening(
+  "an act the caller gave as another act under the same H",
+  `${SPEND}, an act the caller gave as another act under the same H that consumed nothing, since the manager emits SpendPermissionApproved once for a hash, on the approval that consumes it; the cost: the read does not fetch a transaction the caller gives, so such a transaction is named in no answer`,
+);
+
+/** The declarations of `spend-permissions/eip155`, transcribed from what its profile states, on the act `agreement`. */
+export const SPEND_DECLARED: readonly Inapplicable[] = meeting(
+  once(TX_FAILED, NOT_FOUND, SPEND_UNUSED, NOPOS, HELD_HEAD, SPEND_MOVED, SPEND_NEVER_MET, SPEND_VALIDITY, SPEND_UNDECODED, SPEND_ONE_MESSAGE, SPEND_GIVEN_UNCONSUMED),
+  [["search-incomplete is answered before not-found", BOTH]],
+);
+
 const AP2_MARKS = "Declared inapplicable to the read kit on ap2/checkout-mandate/x402, whose read is the EIP-3009 read, the authorization's nonce standing where H stands, read at the final mark and at the latest head";
 const AP2_HOLDS_VALUE = `${AP2_MARKS}: the read holds its single-use value and reads it at both marks, so it answers instrument-unused or instrument-consumed by that value, which no item the search could not decode changes`;
 
@@ -1048,6 +1251,7 @@ export const forms: readonly DeclaredForm[] = [
   formOf("x402/auth-capture/eip155/permit2", NO_SEARCH_DECLARED, arrangeAuthCapture("permit2")),
   formOf("x402/batch-settlement/eip155", NO_SEARCH_DECLARED, arrangeBatch()),
   formOf("ap2/checkout-mandate/x402", AP2_X402_DECLARED, (c, act) => arrangeEip3009(c, act, AP2_X402)),
+  formOf("spend-permissions/eip155", SPEND_DECLARED, arrangeSpend),
 ];
 
 /**

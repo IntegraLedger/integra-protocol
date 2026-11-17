@@ -11,7 +11,7 @@ import { avmCarrier, exactAvm } from "../src/avm.js";
 import { isAccount, isContract } from "../src/internal/stellar.js";
 import { chargeSolana, sessionXrpl } from "../src/mpp.js";
 import { exactNear, nearCarrier } from "../src/near.js";
-import { decodeStellarTx, muxedFor, stellarLocate, stellarStatus, transferEventOf, transferEventTopics } from "../src/stellar.js";
+import { decodeStellarTx, muxedFor, transferEventOf, transferEventTopics } from "../src/stellar.js";
 import { decodeSuiTx, exactSui, suiStatus } from "../src/sui.js";
 import { exactTvm, lcpComment, tvmCarrier, tvmStatus } from "../src/tvm.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
@@ -24,8 +24,6 @@ import {
   solanaChargeBlockhashRows,
   stellarEnvelopeInputs,
   stellarEventInputs,
-  stellarLocateRows,
-  stellarStatusRows,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
   SUI_STATUS_QUERY,
@@ -46,8 +44,6 @@ import {
 import { rowsOf } from "./rows.js";
 
 const refused = (code: string) => ({ refused: true, code });
-/** x402-exact-stellar.json's V5 ref, which stellarLocate's searches read. */
-const STELLAR_V5_REF = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8")).V5.ref;
 /** x402-exact-algorand.json's H. */
 const AVM_H = JSON.parse(readFileSync(new URL("../vectors/x402-exact-algorand.json", import.meta.url), "utf8")).fixed.H as `0x${string}`;
 
@@ -86,16 +82,6 @@ describe("the Stellar strkeys with @stellar/stellar-sdk", () => {
   });
 });
 
-describe("stellarLocate with @stellar/stellar-sdk", () => {
-  it("each search, its answer and its calls", async () => {
-    for (const row of rowsOf(stellarLocateRows(), "peer-free-inputs.ts", { exact: 13 })) {
-      const { reader, calls } = row.reader();
-      const got = await stellarLocate(STELLAR_V5_REF, reader as never);
-      expect([row.case, got, calls()]).toEqual([row.case, row.expect, row.calls]);
-    }
-  });
-});
-
 // Each rail's peer-missing test gives the same reads the same answers, after the same reads, without the peer, except a
 // read that reaches a step that decodes with it.
 describe("status with each rail's optional peer", () => {
@@ -115,13 +101,7 @@ describe("status with each rail's optional peer", () => {
     }
   });
 
-  it("stellarStatus: each read's answer, after the reads stated", async () => {
-    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 14 })) {
-      const c = row.reader();
-      const got = await stellarStatus(row.ref as never, c.reader as never, row.query as never);
-      expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);
-    }
-  });
+
 });
 
 describe("x402/exact/algorand's build with algosdk", () => {

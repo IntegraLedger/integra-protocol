@@ -34,6 +34,8 @@ export const READS_TO_REPEAT: readonly string[] = [
   "starknet/not-final",
   "starknet/not-found",
   "starknet/unreadable",
+  "stellar/not-found",
+  "stellar/unreadable",
   "sui/not-found",
   "sui/unreadable",
   "svm/not-final",
@@ -54,6 +56,10 @@ export const READS_TO_REPEAT: readonly string[] = [
 /** Every other code the package returns, by namespace. */
 export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = {
   return: ["header-malformed", "serves-malformed"],
+  "spend-permissions": [
+    "account-is-spender", "choice-malformed", "ended", "header-malformed", "legal-context-malformed", "link-not-https",
+    "not-approved", "not-bound", "option-malformed", "revoked", "route-not-accepted", "signature-invalid",
+  ],
   a2a: [
     "legal-context-conflict", "legal-context-malformed", "link-not-https", "no-legal-context", "no-signed-place",
     "too-large",
@@ -123,7 +129,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   hedera: [
     "deprecated-fields", "executor-malformed", "executor-not-offered", "list-inconsistent",
     "memo-not-lcp", "no-legal-context", "no-memo", "not-success", "option-malformed", "payer-not-buyer", "tx-malformed",
-    "tx-too-large", "valid-duration", "valid-start-future", "wrong-reader",
+    "tx-too-large", "valid-duration", "valid-start-future", "wrong-reader", "expired", "network-malformed", "read-first",
+    "transaction-id-mismatch", "transfer-mismatch",
   ],
   ln: [
     "amount-mismatch", "created-in-future", "currency-network", "description-inline", "description-present",
@@ -137,7 +144,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "carrier-occupied", "carrier-taken", "chain-id-required", "challenge-malformed", "challenge-not-option", "channel-named",
     "channel-not-bound", "credential-malformed", "credential-type", "credential-types", "escrow-malformed",
     "expires-required", "fee-payer-unnamed", "gateway-unread", "header-malformed", "id-not-ours", "input-malformed",
-    "legal-context-conflict", "legal-context-malformed", "link-not-https", "machine-token-enabled", "metadata-malformed",
+    "legal-context-conflict", "legal-context-malformed", "link-not-https", "machine-token-enabled", "max-block-height-changed",
+    "metadata-malformed",
     "modes-not-pull", "network-unnamed",
     "no-legal-context", "no-signed-place", "nonce-not-challenge-hash", "nonce-not-channel", "nonce-not-usdc-derivation",
     "not-an-opening", "not-bound-within", "not-this-pairing", "opaque-malformed", "opaque-not-this-hash",
@@ -164,8 +172,9 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "signature-malformed", "typed-data-malformed", "wrong-reader",
   ],
   stellar: [
-    "event-malformed", "network-malformed", "no-address-auth", "not-one-transfer", "option-malformed", "peer-missing",
-    "tx-malformed", "tx-too-large",
+    "amount-mismatch", "asset-mismatch", "carrier-mismatch", "event-malformed", "network-malformed", "no-address-auth",
+    "no-carrier", "not-one-transfer", "option-malformed", "payee-mismatch", "payer-mismatch", "peer-missing",
+    "position-malformed", "tx-malformed", "tx-too-large", "wrong-reader",
   ],
   sui: [
     "aborted", "ambiguous", "hash-not-carried", "network-malformed", "not-as-sent", "not-programmable", "peer-missing",

@@ -1,13 +1,12 @@
 /**
- * Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8
- * bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. XDR, strkeys and
- * hashing use the base part of @stellar/stellar-sdk, loaded once when this module is; without it every function that
- * needs it refuses `stellar/peer-missing`, after the checks that need no peer (an envelope's network, size, base64 and
- * union tags, an event's form, a strkey), which give the codes they give with it, except the reads: `stellarStatus` and
- * `stellarLocate` read as they do with the SDK, and their one step that needs it, the decode of a transaction that
- * succeeded, is pending `unreadable` (a search's candidate leaves the search incomplete) when it is reached.
- * Strkeys (`G…`, `C…` and `M…`) are read and written without it (`stellar-strkey.ts`), so `isAccount`, `isContract`,
- * `isMuxed`, `unmux` and `muxedFor` need no peer. The public names are re-exported by `../stellar.ts`.
+ * Stellar rail pieces: the payer-signed Soroban `transfer` and the authorization entry that signs it, the digest of
+ * that entry, the signed-payload precondition over H (`stellar-position.ts` writes and reads its 40-byte payload), the
+ * events that show what moved, the search for a buyer's acts through a bounded reader, and the read of the agreement
+ * `x402/exact/stellar/precondition`. XDR and hashing use the base part of @stellar/stellar-sdk, loaded once when this
+ * module is; without it every function that needs it refuses `stellar/peer-missing`, after the checks that need no
+ * peer (an envelope's network, size, base64 and union tags, an event's form, a strkey), which give the codes they give
+ * with it. Strkeys (`G…`, `C…` and `M…`) are read and written without it (`stellar-strkey.ts`). The public names are
+ * re-exported by `../stellar.ts`.
  */
 import type * as StellarBase from "@stellar/stellar-sdk/base";
 import type {
@@ -27,9 +26,21 @@ import { isObject, normalHash } from "../fields.js";
 import type { Hex } from "../evm.js";
 import { fromBase64, toBase64 } from "../rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
-import { decide, type Facts, type Ledger, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./read.js";
+import {
+  decide,
+  type Facts,
+  type Moved,
+  type RecoverInput,
+  type Seen,
+  type StatusAnswer,
+  type StatusQuery,
+  type Undecoded,
+  type UnreadableReason,
+} from "./read.js";
+import { bigintOrder, isQuery, ledgerOf } from "./read-ledger.js";
+import { isLedgerSequence, lastPositionOf, parseStellarPosition, readSignedPayload, stellarPosition } from "./stellar-position.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
-import { accountKey, contractId, isAccount, isContract, muxedOf, unmux } from "./stellar-strkey.js";
+import { accountKey, contractId, isAccount, isContract, unmux } from "./stellar-strkey.js";
 
 export { isAccount, isContract, unmux };
 
@@ -69,11 +80,21 @@ export const SCVAL_MAX_DEPTH = 64;
  * creation's constructor argument. js-xdr's default depth, 1,500, is below the bound.
  */
 export const XDR_MAX_DEPTH = 2500;
-const MAX_LOCATE_PAGES = 10;
-const MAX_CANDIDATES = 50;
+/** The events pages one search reads in one call. */
+export const MAX_PAGES = 10;
+/**
+ * The candidate transactions one search reads in one call. Any contract can emit an event naming the buyer, so a
+ * stranger can fill it; a search that reaches it is not read through, and resumes at the position it returns.
+ */
+export const MAX_CANDIDATES = 50;
 /** The symbols read here, as bytes: a symbol is compared byte for byte, so one led by a byte-order mark is another. */
-const TRANSFER = new TextEncoder().encode("transfer");
-const TO_MUXED_ID = new TextEncoder().encode("to_muxed_id");
+const symbol = (s: string): Uint8Array => new TextEncoder().encode(s);
+const TRANSFER = symbol("transfer");
+const BURN = symbol("burn");
+const MINT = symbol("mint");
+const AMOUNT_KEY = symbol("amount");
+const TO_MUXED_ID = symbol("to_muxed_id");
+const PUBLIC_KEY = symbol("public_key");
 
 export function isStellarNetwork(s: unknown): s is StellarNetwork {
   return s === "stellar:pubnet" || s === "stellar:testnet";
@@ -89,119 +110,123 @@ export interface StellarPayment {
   auth: { address: string; nonce: bigint; expiration: number; v2: boolean; preimageHash: Hex };
 }
 
+/** One event `getEvents` answers, as the reader gives it. */
+export interface StellarEventRow {
+  /** The RPC's event id: the operation's TOID in 19 decimal digits, `-`, and the event's index in 10. */
+  readonly id: string;
+  readonly ledger: number;
+  readonly txHash: string;
+  /** The contract that emitted it, a `C…` strkey. */
+  readonly contractId: string;
+  /** Its topics, each the base64 XDR of an ScVal. */
+  readonly topic: readonly string[];
+  /** Its data, the base64 XDR of an ScVal. */
+  readonly value: string;
+}
+
 /**
- * Bounded, read-only calls against one network's RPC. Every failure rejects, for example with `ReaderError` from
+ * Bounded, read-only calls against one network's Stellar RPC. Every failure rejects, for example with `ReaderError` from
  * `@integraledger/lcp/evm`: a `ReaderError` reads by its kind (`too-large` as `too-large`, `malformed` as
- * `unparseable`), and any other rejection as `transport`.
+ * `unparseable`), and any other rejection as `transport`. A throttled call is retried by the reader, never answered as
+ * absence.
  */
 export interface StellarReader {
-  readonly network: StellarNetwork;
-  /** `getTransaction`. */
+  /** `getNetwork`: the network's passphrase. */
+  passphrase(): Promise<string>;
+  /** `getLatestLedger`: the latest closed ledger's sequence, and its close time in Unix seconds where the RPC gives it. */
+  latestLedger(): Promise<{ sequence: number; closeTime?: number }>;
+  /**
+   * `getTransaction`: its status, and, where it was included, its envelope, its ledger and its application order in
+   * that ledger; with the oldest and latest ledgers the RPC holds.
+   */
   transaction(hash: string): Promise<{
     status: "SUCCESS" | "FAILED" | "NOT_FOUND";
     envelopeXdr?: string;
     ledger?: number;
-    oldestLedger: number;
-  }>;
-  /**
-   * One page of SEP-41 `transfer` events of `asset` to `toBase` from `fromLedger` through `toLedger`, both inclusive,
-   * with each event's `to_muxed_id`. `stellarLocate` passes the authorization entry's expiration ledger as `toLedger`,
-   * and the entry can still be used in that ledger. `cursor` is present while more pages remain: until the search has
-   * read through `toLedger`, or through the `latestLedger` the node reported where that is lower (a short page, which
-   * `stellarLocate` reads as behind). `complete` is false when the RPC reports events disabled. `oldestLedger` is the oldest
-   * ledger the RPC still holds, and `latestLedger` the latest ledger it held when it answered (`getEvents`'
-   * `latestLedger`). Stellar RPC's `getEvents` treats `endLedger` as exclusive, takes a cursor or a ledger range but
-   * not both, and scans a bounded number of ledgers per call (10,000 in stellar-rpc), so a reader over it sends
-   * `startLedger: fromLedger` and `endLedger: toLedger + 1` on the first page and only the cursor on later pages, and
-   * returns a `cursor` until `getEvents` has scanned through `toLedger` or its own `latestLedger`, whichever is lower,
-   * whether or not a page holds events. A cursor
-   * page can scan past `toLedger`, so the reader keeps only the events through `toLedger`.
-   */
-  transfers(f: {
-    asset: string;
-    toBase: string;
-    fromLedger: number;
-    toLedger: number;
-    cursor?: string;
-  }): Promise<{
-    events: readonly { txHash: string; toMuxedId: bigint | null }[];
-    cursor?: string;
-    complete: boolean;
+    applicationOrder?: number;
     oldestLedger: number;
     latestLedger: number;
   }>;
-  /** `getLatestLedger`. */
-  latestLedger(): Promise<number>;
+  /**
+   * One page of `getEvents` of contract events on every contract, by a filter that names no contract and holds
+   * `topics`, each a topic filter of base64 XDR segments, `*` and `**`, from `fromLedger` through `toLedger`, both
+   * inclusive. `cursor` is present while more pages remain: until the RPC has scanned through `toLedger`, or through its
+   * own `latestLedger` where that is lower. Stellar RPC's `getEvents` treats `endLedger` as exclusive and takes a cursor
+   * or a ledger range but not both, so a reader over it sends `startLedger: fromLedger` and `endLedger: toLedger + 1` on
+   * the first page and only the cursor on later pages, and keeps only the events through `toLedger`.
+   */
+  events(f: {
+    fromLedger: number;
+    toLedger: number;
+    topics: readonly (readonly string[])[];
+    cursor?: string;
+  }): Promise<{ events: readonly StellarEventRow[]; cursor?: string; oldestLedger: number; latestLedger: number }>;
+  /** `getLedgerEntries` of an account: its sequence number, or null where the account does not exist. */
+  sequence?(account: string): Promise<bigint | null>;
 }
 
-/** The read keys `reference` returns. */
+/**
+ * The read keys `reference` returns for `x402/exact/stellar/precondition`: the
+ * network; the option's payee (`payTo`), the key of the read's two party tests; the buyer; the asset and the `to` base
+ * account of the transfer the buyer's entry signs; that entry's nonce (an `int64` in decimal), its expiration ledger and
+ * the SHA-256 of its `HashIDPreimage` (`authDigest`, `0x` and 64 lowercase hex digits), which names the entry under any
+ * envelope; and the 40-byte payload as presented (`0x` and 80 lowercase hex digits), whose first 32 bytes are H.
+ */
 export interface StellarRef {
   network: StellarNetwork;
-  transaction?: string;
-  /**
-   * SHA-256 of the payer's authorization entry's `HashIDPreimage`. Absent, with `expiration`, for an MPP push payment
-   * the payer authorized as the transaction's source account: `transaction` then names the instrument.
-   */
-  authDigest?: Hex;
+  payee: string;
+  buyer: string;
   asset: string;
   toBase: string;
-  /** The muxed id, as a decimal string. */
-  toId: string;
-  /** The entry's expiration ledger. Absent with `authDigest`. */
-  expiration?: number;
+  nonce: string;
+  expiration: number;
+  authDigest: Hex;
+  payload: string;
+}
+
+/** What the caller adds to the reference for `stellarStatus`: `fromLedger`, the ledger the search starts from, the ledger recorded at issue. */
+export interface StellarLanded {
   fromLedger: number;
-  /** The option's `payTo`. */
-  payee: string;
 }
 
-/**
- * The answer of `stellarStatus`: positions are ledger sequence numbers, and the one mark is `closed`, a transaction in
- * a closed ledger, which is final.
- */
-export type StellarStatus = StatusAnswer<number, "closed", number>;
+/** The one mark: a transaction in a closed ledger, which is final. */
+export type StellarMark = "finalized";
 
-/** What the payer signs (the signer signs SHA-256 of `preimage`), and how the signature completes the transaction. */
+/**
+ * What `stellarStatus` takes beside the reference and the reader: the act, the finality, and, where the caller gives
+ * them, `after`, the ledger sequence a transaction must come after (one in that ledger or below answers
+ * `before-position`), `search`, the position an earlier answer returned, and the other acts under the same H.
+ */
+export type StellarQuery = Omit<StatusQuery<StellarRef, string, StellarMark, string>, "after"> & { readonly after?: number };
+
+/**
+ * The answer of `stellarStatus`: positions, and the search position, are positions P (`stellar-position.ts`), and the
+ * one mark is `finalized`.
+ */
+export type StellarStatus = StatusAnswer<string, StellarMark, string>;
+
+/**
+ * What the buyer signs for `x402/exact/stellar/precondition`, with one key: SHA-256 of `preimage`, the authorization
+ * entry's `HashIDPreimage`, and `payload` itself, the 40 bytes of the signed-payload precondition (CAP-40); and how the
+ * two signatures complete the payment.
+ */
 export interface StellarUnsigned {
-  request: { kind: "stellar-auth"; preimage: Uint8Array<ArrayBuffer> };
+  request: { kind: "stellar-precondition"; preimage: Uint8Array<ArrayBuffer>; payload: Uint8Array<ArrayBuffer> };
   /**
-   * The base64 XDR of the transaction with the entry signed. One over 8,192 characters is `stellar/tx-too-large`, as
-   * the read of a signed transfer refuses it.
+   * The x402 payment: the entry's signature written as a Stellar account's, the payload's as a decorated signature of
+   * the envelope. A signature that is not 64 bytes is `stellar/tx-malformed`, and a signed envelope over 8,192
+   * characters `stellar/tx-too-large`.
    */
-  complete(signature: Uint8Array): string | Refusal;
+  complete(signatures: { entry: Uint8Array; payload: Uint8Array }): StellarPaymentPayload | Refusal;
 }
 
-/**
- * A Stellar x402 payment: the base64 XDR of the transaction with the payer's entry signed. The root names it among the
- * payments `Presented` covers; no pairing in this package takes it, and no entry point exports it.
- */
+/** A Stellar x402 payment: the base64 XDR of the transaction with the payer's entry signed. */
 export interface StellarPaymentPayload {
   x402Version: 2;
   resource?: PaymentRequired["resource"];
   accepted: PaymentRequirements;
   payload: { transaction: string };
   extensions?: PaymentRequired["extensions"];
-}
-
-// ── the carrier ──────────────────────────────────────────────────────────────────────────────────────────────────
-
-/** The hash's first 8 bytes, big-endian, as a u64. Throws TypeError when `h` is not a 32-byte hash. */
-function muxedId(h: AtrHash): bigint {
-  const b = toRawBytes(h);
-  let v = 0n;
-  for (let i = 0; i < 8; i++) v = (v << 8n) | BigInt(b[i]!);
-  return v;
-}
-
-/**
- * The `M…` strkey of a `G…` account and `muxedId(h)`. A `base` that is not a string is `stellar/option-malformed`, then
- * an `h` that is not a 32-byte hash `x402/payload-malformed`, as the other rails' carrier writers answer one, then a
- * `base` that is not a `G…` strkey `stellar/option-malformed`, the code of a recipient that cannot take a muxed id. The
- * strkeys are read and written without @stellar/stellar-sdk, so every answer is the same with it and without it.
- */
-export function muxedFor(base: string, h: AtrHash): string | Refusal {
-  if (typeof base !== "string") return refusal("stellar/option-malformed");
-  if (normalHash(h) === null) return refusal("x402/payload-malformed");
-  return muxedOf(base, muxedId(h)) ?? refusal("stellar/option-malformed");
 }
 
 export function isMuxed(s: unknown): s is string {
@@ -602,19 +627,124 @@ export function decodeStellarTx(xdrB64: string, network: StellarNetwork): Stella
   return p.agrees ? p.payment : refusal("stellar/not-one-transfer");
 }
 
+/** A signed-payload signer of a transaction's preconditions: its Ed25519 key as a `G…` strkey, and its payload. */
+export interface PayloadSigner {
+  readonly key: string;
+  readonly payload: Uint8Array;
+}
+
+/** The signed-payload signers of a v1 transaction's preconditions, in order: none where they are not `PRECOND_V2`. */
+function payloadSignersOf(S: typeof StellarBase, v1: TransactionV1EnvelopeWire): PayloadSigner[] {
+  const c = v1.tx.cond;
+  if (c.type !== 2) return [];
+  return c.v2.extraSigners.flatMap((k) =>
+    k.type === 3
+      ? [{ key: S.StrKey.encodeEd25519PublicKey(k.ed25519SignedPayload.ed25519), payload: k.ed25519SignedPayload.payload }]
+      : [],
+  );
+}
+
 /**
- * Sets the `from` entry's expiration ledger in a simulated envelope and returns its `HashIDPreimage` bytes, the payment
- * that entry signs, whether the operation invokes exactly that, and a completion that writes the payer's signature as
- * `authorizeEntry` does for an account: a vector of one map `{public_key, signature}`. The completion refuses a signed
- * envelope over `MAX_XDR` (8,192) characters with `stellar/tx-too-large`, as `readSignedTransfer` refuses it.
- * `written` writes the same envelope without that bound, for a caller that measures what carries it first.
+ * The `G…` keys whose signatures an address entry carries, as a Stellar account's entry carries them: a vector of maps
+ * `{public_key, signature}`, each `public_key` 32 bytes. None where the signature has another form.
  */
-export function signingFor(
+function entryKeysOf(S: typeof StellarBase, c: SorobanAddressCredentialsWire): string[] {
+  const sig = c.signature;
+  if (sig.type !== 16) return [];
+  const keys: string[] = [];
+  for (const m of sig.vec ?? []) {
+    if (m.type !== 17) return [];
+    const pk = (m.map ?? []).find((e) => e.key.type === 15 && equalBytes(e.key.sym.bytes, PUBLIC_KEY));
+    if (pk === undefined || pk.val.type !== 13 || pk.val.bytes.length !== 32) return [];
+    keys.push(S.StrKey.encodeEd25519PublicKey(pk.val.bytes));
+  }
+  return keys;
+}
+
+/**
+ * What an envelope of the precondition form shows: the payment the buyer's entry signs and whether the operation
+ * invokes exactly that (as `readSignedTransfer` reads them), the signed-payload signers of its preconditions, and the
+ * keys whose signatures the buyer's entry carries.
+ */
+export interface PreconditionEnvelope {
+  readonly payment: StellarPayment;
+  readonly agrees: boolean;
+  readonly signers: readonly PayloadSigner[];
+  readonly entryKeys: readonly string[];
+}
+
+/** An envelope of the precondition form, read as `readSignedTransfer` reads it, with its preconditions. */
+export function readPrecondition(xdrB64: string, network: StellarNetwork, landed: boolean): PreconditionEnvelope | Refusal {
+  const bytes = envelopeOf(xdrB64, network);
+  if (isRefusal(bytes)) return bytes;
+  const S = need();
+  if (S === null) return refusal("stellar/peer-missing");
+  const p = parse(S, bytes, network, landed);
+  if (isRefusal(p)) return p;
+  const v1 = v1Of(p.wire);
+  if (v1 === null) return refusal("stellar/tx-malformed");
+  try {
+    return { payment: p.payment, agrees: p.agrees, signers: payloadSignersOf(S, v1), entryKeys: entryKeysOf(S, p.cred.c) };
+  } catch {
+    return refusal("stellar/tx-malformed");
+  }
+}
+
+/**
+ * Every address-credential entry of every `invokeHostFunction` operation of an envelope, by its address and nonce, and
+ * the signed-payload signers of its preconditions: what a read needs of a landed transaction that is not of one form.
+ * `envelopeOf`'s checks come first; XDR that does not decode whole is `stellar/tx-malformed`.
+ */
+export function scanEnvelope(
+  xdrB64: string,
+  network: StellarNetwork,
+): { entries: { address: string; nonce: bigint }[]; signers: PayloadSigner[] } | Refusal {
+  const bytes = envelopeOf(xdrB64, network);
+  if (isRefusal(bytes)) return bytes;
+  const S = need();
+  if (S === null) return refusal("stellar/peer-missing");
+  try {
+    const v1 = v1Of(readXdr(S.xdr.TransactionEnvelope, bytes));
+    if (v1 === null) return refusal("stellar/tx-malformed");
+    const entries: { address: string; nonce: bigint }[] = [];
+    for (const op of v1.tx.operations) {
+      if (op.body.type !== 24) continue;
+      for (const e of op.body.invokeHostFunctionOp.auth) {
+        const a = addressCredentials(e);
+        const who = a === null ? null : addressOf(S, a.c.address);
+        if (a !== null && who !== null) entries.push({ address: who.s, nonce: a.c.nonce });
+      }
+    }
+    return { entries, signers: payloadSignersOf(S, v1) };
+  } catch {
+    return refusal("stellar/tx-malformed");
+  }
+}
+
+/**
+ * The precondition form's signing inputs from a simulated envelope: the buyer's entry's expiration ledger set, the
+ * transaction's preconditions set to `PRECOND_V2` holding one signed-payload signer, the buyer's key with `payload`
+ * (which the caller writes from H and the entry's nonce), its time bounds, ledger bounds and sequence conditions kept;
+ * the entry's `HashIDPreimage`, the payment that entry signs, whether the operation invokes exactly that, and a
+ * completion that writes the entry's signature as `authorizeEntry` does for an account (a vector of one map
+ * `{public_key, signature}`) and appends the payload's signature as a decorated signature whose hint is the key's last
+ * 4 bytes XOR the payload's last 4 (CAP-40). `signingInput`'s checks come first; a buyer that is not an account is
+ * `stellar/no-address-auth`, and a simulated transaction that already holds an extra signer `stellar/tx-malformed`.
+ */
+export function preconditionSigningFor(
   simulatedXdr: string,
   network: StellarNetwork,
   expiration: number,
-  zeroSource: boolean,
-): { payment: StellarPayment; agrees: boolean; unsigned: StellarUnsigned; written(signature: Uint8Array): string | Refusal } | Refusal {
+  payload: (nonce: bigint) => Uint8Array<ArrayBuffer> | Refusal,
+):
+  | {
+      payment: StellarPayment;
+      agrees: boolean;
+      preimage: Uint8Array<ArrayBuffer>;
+      payload: Uint8Array<ArrayBuffer>;
+      written(signatures: { entry: Uint8Array; payload: Uint8Array }): string | Refusal;
+    }
+  | Refusal {
   const bytes = signingInput(simulatedXdr, network, expiration);
   if (isRefusal(bytes)) return bytes;
   const S = need();
@@ -625,81 +755,107 @@ export function signingFor(
   if (!S.StrKey.isValidEd25519PublicKey(payment.from)) return refusal("stellar/no-address-auth");
   // `signingInput` refused a fee bump; this narrows the envelope's type.
   if (wire.type !== 2) return refusal("stellar/tx-malformed");
-  if (zeroSource) wire.v1.tx.sourceAccount = { type: 0, ed25519: new Uint8Array(32) };
+  const tx = wire.v1.tx;
+  const v2 = tx.cond.type === 2 ? tx.cond.v2 : null;
+  if (v2 !== null && v2.extraSigners.length > 0) return refusal("stellar/tx-malformed");
+  const signed = payload(cred.c.nonce);
+  if (isRefusal(signed)) return signed;
+  const key = S.StrKey.decodeEd25519PublicKey(payment.from);
+  tx.cond = {
+    type: 2,
+    v2: {
+      timeBounds: tx.cond.type === 1 ? tx.cond.timeBounds : (v2?.timeBounds ?? null),
+      ledgerBounds: v2?.ledgerBounds ?? null,
+      minSeqNum: v2?.minSeqNum ?? null,
+      minSeqAge: v2?.minSeqAge ?? 0n,
+      minSeqLedgerGap: v2?.minSeqLedgerGap ?? 0,
+      extraSigners: [{ type: 3, ed25519SignedPayload: { ed25519: Uint8Array.from(key), payload: Uint8Array.from(signed) } }],
+    },
+  };
   cred.c.signatureExpirationLedger = expiration;
   const preimage = Uint8Array.from(preimageOf(S, network, entry, cred));
-  const publicKey = S.StrKey.decodeEd25519PublicKey(payment.from);
+  const hint = Uint8Array.from(key.subarray(28), (b, i) => b ^ signed[signed.length - 4 + i]!);
   const x = S.xdr;
-  const written = (signature: Uint8Array): string | Refusal => {
-    if (!(signature instanceof Uint8Array) || signature.length !== 64) return refusal("stellar/tx-malformed");
+  const written = (signatures: { entry: Uint8Array; payload: Uint8Array }): string | Refusal => {
+    if (!isObject(signatures)) return refusal("stellar/tx-malformed");
+    const { entry: e, payload: p } = signatures;
+    if (!(e instanceof Uint8Array) || e.length !== 64 || !(p instanceof Uint8Array) || p.length !== 64) {
+      return refusal("stellar/tx-malformed");
+    }
     cred.c.signature = {
       type: 16,
       vec: [
         {
           type: 17,
           map: [
-            { key: { type: 15, sym: new x.XdrString("public_key") }, val: { type: 13, bytes: Uint8Array.from(publicKey) } },
-            { key: { type: 15, sym: new x.XdrString("signature") }, val: { type: 13, bytes: new Uint8Array(signature) } },
+            { key: { type: 15, sym: new x.XdrString("public_key") }, val: { type: 13, bytes: Uint8Array.from(key) } },
+            { key: { type: 15, sym: new x.XdrString("signature") }, val: { type: 13, bytes: new Uint8Array(e) } },
           ],
         },
       ],
     };
     try {
-      return toBase64(writeXdr(x.TransactionEnvelope, wire));
+      const out = writeXdr(x.TransactionEnvelope, {
+        type: 2,
+        v1: { tx: wire.v1.tx, signatures: [...wire.v1.signatures, { hint, signature: new Uint8Array(p) }] },
+      });
+      const text = toBase64(out);
+      return text.length > MAX_XDR ? refusal("stellar/tx-too-large") : text;
     } catch {
       return refusal("stellar/tx-malformed");
     }
   };
-  return {
-    payment,
-    agrees: parsed.agrees,
-    written,
-    unsigned: {
-      request: { kind: "stellar-auth", preimage },
-      complete(signature: Uint8Array): string | Refusal {
-        const signed = written(signature);
-        if (isRefusal(signed)) return signed;
-        return signed.length > MAX_XDR ? refusal("stellar/tx-too-large") : signed;
-      },
-    },
-  };
+  return { payment, agrees: parsed.agrees, preimage, payload: Uint8Array.from(signed), written };
 }
 
-// ── transfer events ──────────────────────────────────────────────────────────────────────────────────────────
+// ── events ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 const MAX_EVENT_XDR = 1024;
 
+/** What a Stellar Asset Contract event shows: its kind, its `from` and its `to` (non-muxed), `to_muxed_id`, and the amount. */
+export interface StellarEvent {
+  readonly kind: "transfer" | "burn" | "mint";
+  /** The `from` topic: absent from a `mint`. */
+  readonly from: string | null;
+  /** The `to` topic, its base account: absent from a `burn`. */
+  readonly toBase: string | null;
+  readonly toMuxedId: bigint | null;
+  readonly amount: bigint;
+}
+
 /**
- * The `getEvents` topic filter for SEP-41 `transfer` events to `toBase`, as base64 XDR segments: the symbol
- * `transfer`, any `from`, `toBase` as an address, and any trailing topics (the Stellar Asset Contract adds its asset).
- * A `toBase` that is not an account or contract strkey is `stellar/option-malformed`, which needs no SDK: the SDK is
- * needed after it, to write the XDR.
+ * The `getEvents` topic filters of the buyer's acts, as base64 XDR segments: `transfer` events whose `from` topic is
+ * the buyer, and `burn` events whose `from` topic is the buyer, each with any trailing topics. A `mint` event names no
+ * `from` (CAP-67 removed the admin from its topics), so no filter of `mint` names the buyer. A buyer that is not an
+ * account or contract strkey is `stellar/option-malformed`, which needs no SDK: the SDK is needed after it, to write
+ * the XDR.
  */
-export function transferEventTopics(toBase: string): readonly string[] | Refusal {
-  const key = accountKey(toBase);
-  const id = key === null ? contractId(toBase) : null;
+export function transferEventTopics(buyer: string): readonly (readonly string[])[] | Refusal {
+  const key = accountKey(buyer);
+  const id = key === null ? contractId(buyer) : null;
   if (key === null && id === null) return refusal("stellar/option-malformed");
   const S = need();
   if (S === null) return refusal("stellar/peer-missing");
   const x = S.xdr;
-  const to: ScAddressWire = key !== null ? { type: 0, accountId: { type: 0, ed25519: key } } : { type: 1, contractId: id! };
+  const from: ScAddressWire = key !== null ? { type: 0, accountId: { type: 0, ed25519: key } } : { type: 1, contractId: id! };
+  const sym = (s: string): string => x.ScVal.fromXdrObject({ type: 15, sym: new x.XdrString(s) }).toXdr("base64");
+  const who = x.ScVal.fromXdrObject({ type: 18, address: from }).toXdr("base64");
   return [
-    x.ScVal.fromXdrObject({ type: 15, sym: new x.XdrString("transfer") }).toXdr("base64"),
-    "*",
-    x.ScVal.fromXdrObject({ type: 18, address: to }).toXdr("base64"),
-    "**",
+    [sym("transfer"), who, "*", "**"],
+    [sym("burn"), who, "**"],
   ];
 }
 
 /**
- * A `transfer` event's recipient (the non-muxed `to` topic) and its `to_muxed_id`: the u64 in the event's data map, or
- * null when the data carries none, or carries the string or bytes form. The first topic and the data map's key are the
- * symbols `transfer` and `to_muxed_id`, byte for byte. Every refusal is `stellar/event-malformed`. The topics' and the
- * value's form (3 or 4 topics, each one and the value base64 of at most 1,024 characters) is checked before the SDK is
+ * A Stellar Asset Contract event, as CAP-67 writes it: `transfer` (`from`, `to`, then any trailing topic), `burn`
+ * (`from`), or `mint` (`to`; or `admin` then `to`, where the third topic is an address); its data the `i128` amount, or
+ * a map holding `amount` and, for a muxed recipient, `to_muxed_id` (read where it is a `u64`). The first topic and the
+ * map's keys are symbols, compared byte for byte. Every refusal is `stellar/event-malformed`. The topics' and the
+ * value's form (2 to 4 topics, each one and the value base64 of at most 1,024 characters) is checked before the SDK is
  * needed, which reads the XDR.
  */
-export function transferEventOf(topic: readonly string[], value: string): { toBase: string; toMuxedId: bigint | null } | Refusal {
-  if (!Array.isArray(topic) || topic.length < 3 || topic.length > 4 || typeof value !== "string" || value.length > MAX_EVENT_XDR) {
+export function transferEventOf(topic: readonly string[], value: string): StellarEvent | Refusal {
+  if (!Array.isArray(topic) || topic.length < 2 || topic.length > 4 || typeof value !== "string" || value.length > MAX_EVENT_XDR) {
     return refusal("stellar/event-malformed");
   }
   const topicBytes: Uint8Array[] = [];
@@ -717,294 +873,389 @@ export function transferEventOf(topic: readonly string[], value: string): { toBa
     const t = topicBytes.map((bytes) => x.ScVal.fromXdr(bytes).toXdrObject());
     if (!scValsWithinCaps(t)) return refusal("stellar/event-malformed");
     const name = t[0]!;
-    if (name.type !== 15 || !equalBytes(name.sym.bytes, TRANSFER)) return refusal("stellar/event-malformed");
-    const to = t[2]!;
-    const who = to.type === 18 ? addressOf(S, to.address) : null;
-    if (who === null) return refusal("stellar/event-malformed");
+    if (name.type !== 15) return refusal("stellar/event-malformed");
+    const address = (v: ScValWire | undefined): string | null => {
+      const a = v !== undefined && v.type === 18 ? addressOf(S, v.address) : null;
+      return a === null ? null : a.base;
+    };
+    let kind: StellarEvent["kind"];
+    let from: string | null = null;
+    let toBase: string | null = null;
+    if (equalBytes(name.sym.bytes, TRANSFER) && t.length >= 3) {
+      kind = "transfer";
+      from = address(t[1]);
+      toBase = address(t[2]);
+      if (from === null || toBase === null) return refusal("stellar/event-malformed");
+    } else if (equalBytes(name.sym.bytes, BURN)) {
+      kind = "burn";
+      from = address(t[1]);
+      if (from === null) return refusal("stellar/event-malformed");
+    } else if (equalBytes(name.sym.bytes, MINT)) {
+      kind = "mint";
+      toBase = address(t[2]) ?? address(t[1]);
+      if (toBase === null) return refusal("stellar/event-malformed");
+    } else return refusal("stellar/event-malformed");
     const data = x.ScVal.fromXdr(valueBytes).toXdrObject();
     if (!scValsWithinCaps(data)) return refusal("stellar/event-malformed");
+    let amount: bigint | null = null;
     let toMuxedId: bigint | null = null;
     if (data.type === 17) {
-      const entry = (data.map ?? []).find((e) => e.key.type === 15 && equalBytes(e.key.sym.bytes, TO_MUXED_ID));
-      if (entry !== undefined && entry.val.type === 5) toMuxedId = entry.val.u64;
-    } else if (data.type !== 10) return refusal("stellar/event-malformed");
-    return { toBase: who.base, toMuxedId };
+      const map = data.map ?? [];
+      const at = (k: Uint8Array) => map.find((e) => e.key.type === 15 && equalBytes(e.key.sym.bytes, k));
+      const a = at(AMOUNT_KEY);
+      amount = a === undefined ? null : i128(a.val);
+      const m = at(TO_MUXED_ID);
+      if (m !== undefined && m.val.type === 5) toMuxedId = m.val.u64;
+    } else amount = i128(data);
+    if (amount === null) return refusal("stellar/event-malformed");
+    return { kind, from, toBase, toMuxedId, amount };
   } catch {
     return refusal("stellar/event-malformed");
   }
 }
 
-// ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────
+// ── the search ───────────────────────────────────────────────────────────────────────────────────────────────
 
-/** One transaction read by hash: settled on this instrument, not final, or a transaction that is not this one's use. */
-type Named =
-  | { state: "settled"; ledger: number }
-  | { state: "pending"; why: "not-found" }
-  | { state: "unreadable"; why: UnreadableReason }
-  | { state: "other"; why: "transaction-failed"; ledger?: number }
-  | { state: "other"; why: "not-this-instrument" };
+/** A transaction the search found, read whole: its hash, its position P, its result, its envelope, and its events. */
+export interface StellarCandidate {
+  readonly transaction: string;
+  readonly position: string;
+  readonly result: "succeeded" | "failed";
+  readonly envelopeXdr: string;
+  /** The events of the transaction the search met, each with its id and its contract, in the RPC's order. */
+  readonly events: readonly (StellarEvent & { readonly id: string; readonly contract: string })[];
+}
 
-/** The reason a rejected read gives: a `ReaderError` by its kind, any other rejection `transport`. */
+/**
+ * What a search found: the candidates read whole; the items it could not decode, each with the position held at it;
+ * whether it read through to the latest closed ledger at the read within its bounds; the position the next call resumes
+ * at where it did not; and that ledger.
+ */
+export interface StellarSearch {
+  readonly candidates: readonly StellarCandidate[];
+  readonly undecoded: readonly { readonly transaction: string; readonly at?: string }[];
+  readonly through: boolean;
+  readonly at?: string;
+  readonly latest: number;
+}
+
+const TX_HASH = /^[0-9a-f]{64}$/;
+const EVENT_ID = /^([0-9]{19})-[0-9]{10}$/;
+
+/** An answer out of the reader's documented form. */
+class Malformed extends Error {}
+
+/** A rejected read: an answer out of form `unparseable`, a `ReaderError` by its kind, anything else `transport`. */
 function rejected(e: unknown): UnreadableReason {
-  const kind = e instanceof Error && e.name === "ReaderError" ? (e as { kind?: unknown }).kind : undefined;
+  if (e instanceof Malformed) return "unparseable";
+  const kind = isObject(e) && e["name"] === "ReaderError" ? e["kind"] : undefined;
   return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
 }
 
-const TX_HASH = /^[0-9a-fA-F]{64}$/;
-const AUTH_DIGEST = /^0x[0-9a-fA-F]{64}$/;
-const U64_DECIMAL = /^(0|[1-9][0-9]{0,19})$/;
-
-/** A ledger sequence number: an integer from 0 to 2^32 − 1. */
-function isLedger(n: unknown): n is number {
-  return Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
-}
-
 /**
- * True when the fields a read compares the payment with, or looks it up by, are in the forms `reference` writes and
- * the caller completes: a Stellar network; an `authDigest` of `0x` and 64 hex digits with an `expiration` ledger, or
- * neither (the MPP push form whose payer is the transaction's source account); `asset` a contract strkey and `toBase`
- * an account or contract strkey; `toId` a u64 in decimal; and a `fromLedger` ledger.
- */
-function refWellFormed(ref: StellarRef): boolean {
-  const entry = ref.authDigest !== undefined || ref.expiration !== undefined;
-  return (
-    isStellarNetwork(ref.network) &&
-    (!entry || (typeof ref.authDigest === "string" && AUTH_DIGEST.test(ref.authDigest) && isLedger(ref.expiration))) &&
-    isContract(ref.asset) &&
-    (isAccount(ref.toBase) || isContract(ref.toBase)) &&
-    typeof ref.toId === "string" &&
-    U64_DECIMAL.test(ref.toId) &&
-    BigInt(ref.toId) < 1n << 64n &&
-    isLedger(ref.fromLedger)
-  );
-}
-
-/**
- * Reads one transaction. Settled when it succeeded and the payer's first address-credential entry that carries its
- * `transfer` has the preimage digest and `to` id the ref records. A transaction that failed, or succeeded with another
- * entry, is `other`: the entry was not used there. For a ref without `authDigest`, settled when it succeeded as a
- * transfer the payer authorized as its source account (`readSourceTransfer`) whose `to` carries the ref's `toId`. One
- * call. A rejected read is `transport` or the `ReaderError`'s kind, and an answer that is not one of the forms
- * `getTransaction` documents `unparseable`. Only a transaction that succeeded is decoded: without @stellar/stellar-sdk
- * the decode refuses `stellar/peer-missing` and such a transaction is `unparseable`, while one not found or failed
- * reads as it does with the SDK.
- */
-async function readNamed(ref: StellarRef, hash: string, reader: StellarReader): Promise<Named> {
-  let r: Awaited<ReturnType<StellarReader["transaction"]>>;
-  try {
-    r = await reader.transaction(hash);
-  } catch (e) {
-    return { state: "unreadable", why: rejected(e) };
-  }
-  if (typeof r !== "object" || r === null) return { state: "unreadable", why: "unparseable" };
-  if (r.status === "NOT_FOUND") return { state: "pending", why: "not-found" };
-  if (r.status === "FAILED") return isLedger(r.ledger) ? { state: "other", why: "transaction-failed", ledger: r.ledger } : { state: "other", why: "transaction-failed" };
-  if (r.status !== "SUCCESS" || typeof r.envelopeXdr !== "string" || !Number.isInteger(r.ledger)) {
-    return { state: "unreadable", why: "unparseable" };
-  }
-  const digest = ref.authDigest;
-  if (digest === undefined) {
-    const s = readSourceTransfer(r.envelopeXdr, ref.network);
-    if (isRefusal(s) && s.code === "stellar/peer-missing") return { state: "unreadable", why: "unparseable" };
-    if (isRefusal(s) || s.toId === null || s.toId.toString() !== ref.toId) {
-      return { state: "other", why: "not-this-instrument" };
-    }
-    return { state: "settled", ledger: r.ledger! };
-  }
-  const t = readSignedTransfer(r.envelopeXdr, ref.network, true);
-  if (isRefusal(t) && t.code === "stellar/peer-missing") return { state: "unreadable", why: "unparseable" };
-  if (isRefusal(t) || !t.agrees) return { state: "other", why: "not-this-instrument" };
-  const p = t.payment;
-  if (p.auth.preimageHash !== digest.toLowerCase() || p.toId === null || p.toId.toString() !== ref.toId) {
-    return { state: "other", why: "not-this-instrument" };
-  }
-  return { state: "settled", ledger: r.ledger! };
-}
-
-/** What the read of the instrument observed, before the profile's rules choose the answer. */
-type StellarRead =
-  | { state: "settled"; transaction: string; ledger: number }
-  | Exclude<Named, { state: "settled" }>
-  | { state: "failed"; why: "expired" };
-
-/**
- * Reads the instrument through a named transaction. Settled when that transaction succeeded and used the authorization
- * entry `ref.authDigest` names. A landed transaction is read by the payer's first address-credential entry whose
- * `rootInvocation` is the operation's `transfer`, byte for byte, with no sub-invocations; other entries of the payer in
- * it are not read. Otherwise the entry can still be used by another transaction until its expiration ledger, so a named
- * transaction that is not found, failed, or succeeded with another entry is read as such. Past that ledger
- * (`latestLedger()` above `expiration`) `stellarLocate`'s search decides: settled on a transaction it finds that used
- * the entry, `expired` when it is complete, finds none, and each events page names a `latestLedger` at or above the
- * one read first, and otherwise what the named transaction read as: an events index that lags the ledger read first is
- * never read as absence. A ref that lacks a field the read uses, or holds one in another form than `reference` writes,
- * is `unparseable`, with nothing read: a `transaction` other than 64 hex digits (looked up in lower case), an
- * `authDigest` other than `0x` and 64 hex digits, an `authDigest` without an `expiration` or an `expiration` without an
- * `authDigest`, an `asset` that is not a contract strkey, a `toBase` that is not an account or contract strkey, a
- * `toId` that is not a u64 in decimal, or an `expiration` or `fromLedger` that is not an integer from 0 to 2^32 − 1.
- * Then a reader that is not an object or answers for another network is `chain-mismatch`. The read needs no
- * @stellar/stellar-sdk but to decode a transaction that succeeded: without it a named transaction that succeeded is
- * `unparseable` after its one call, a search's candidate that succeeded leaves the search incomplete, and every other
- * answer is the one with the SDK, after the same calls. One call when the named transaction settles or a read fails,
- * two before the expiration ledger has passed, and after it `stellarLocate`'s calls as well. A ref without
- * `authDigest` (an MPP push payment the payer authorized as the transaction's source account, with no `expiration`
- * either) is settled when the named transaction succeeded as that transfer: there is no expiration ledger to pass.
- */
-async function readStellar(ref: StellarRef & { transaction: string }, reader: StellarReader): Promise<StellarRead> {
-  if (!isObject(ref) || typeof ref.transaction !== "string" || !TX_HASH.test(ref.transaction) || !refWellFormed(ref)) {
-    return { state: "unreadable", why: "unparseable" };
-  }
-  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
-  const hash = ref.transaction.toLowerCase();
-  const named = await readNamed(ref, hash, reader);
-  if (named.state === "settled") return { state: "settled", transaction: hash, ledger: named.ledger };
-  if (named.state === "unreadable") return named;
-  const expiration = ref.expiration;
-  if (ref.authDigest === undefined || expiration === undefined) return named;
-  let latest: number;
-  try {
-    latest = await reader.latestLedger();
-  } catch (e) {
-    return { state: "unreadable", why: rejected(e) };
-  }
-  if (!Number.isSafeInteger(latest)) return { state: "unreadable", why: "unparseable" };
-  if (latest <= expiration) return named;
-  const l = await locate(ref, expiration, reader, latest);
-  if (l.found !== undefined) return { state: "settled", transaction: l.found.hash, ledger: l.found.ledger };
-  return l.complete ? { state: "failed", why: "expired" } : named;
-}
-
-/**
- * The facts of a read of the instrument. A transaction that used the entry is the act, at `closed`; a named
- * transaction that failed is a failed act that left the entry's nonce unconsumed, since a failed transaction is
- * rolled back; the entry expired with no transaction found is a value read unconsumed past its validity; and a
- * transaction not found, or one that succeeded with another entry, is no act the read identified. The act is the
- * payment presented: the read settles only on the entry whose `HashIDPreimage` digest is the one the reference holds,
- * which covers every member the payer signed, or, with no entry, on the transaction the credential names; a failed
- * transaction is not decoded, and shows no member.
- */
-function factsOfStellar(read: StellarRead, ref: StellarRef & { transaction: string }): Facts<number, "closed", number> {
-  const none = { seen: [], search: { whole: false }, history: false } as const;
-  const row = { mark: "closed", carries: true, party: "payer", kind: "same", account: "payee" } as const;
-  switch (read.state) {
-    case "unreadable":
-      return { ...none, unreadable: read.why };
-    case "settled":
-      return {
-        ...none,
-        seen: [{ ...row, transaction: read.transaction, position: read.ledger, result: "succeeded", consumed: true, presented: "yes" }],
-      };
-    case "failed":
-      return { ...none, value: { consumed: false, lapsed: true, mark: "closed" } };
-    case "pending":
-      return none;
-    case "other":
-      if (read.why !== "transaction-failed") return none;
-      return {
-        ...none,
-        seen: [
-          {
-            ...row,
-            transaction: ref.transaction.toLowerCase(),
-            ...(read.ledger === undefined ? {} : { position: read.ledger }),
-            result: "failed",
-            consumed: false,
-            presented: "unshown",
-          },
-        ],
-      };
-  }
-}
-
-/**
- * The read's ledger: one mark, `closed`, and positions that are ledger sequence numbers. Its coverage is `full`: the
- * payer's signed authorization entry carries H's first 8 bytes in its `to`. No registry entry holds the pairing.
- */
-const STELLAR_LEDGER: Ledger<number, "closed"> = {
-  coverage: "full",
-  final: "closed",
-  markOrder: () => 0,
-  positionOrder: (a, b) => a - b,
-};
-
-/**
- * The read of the instrument, as the profile `read-status` answers it: a transaction that used the authorization
- * entry is the act, settled at `closed` at its ledger. A named transaction that failed, one not found or one that
- * succeeded with another entry, and an entry expired with no transaction found answer `pending`, `search-incomplete`,
- * since the read's search for H is not read whole.
- */
-export async function stellarStatus(
-  ref: StellarRef & { transaction: string },
-  reader: StellarReader,
-  query: StatusQuery<StellarRef & { transaction: string }, number, "closed", number>,
-): Promise<StellarStatus> {
-  return decide(factsOfStellar(await readStellar(ref, reader), ref), query, STELLAR_LEDGER);
-}
-/**
- * Finds the instrument when no transaction was named: the asset's transfer events to `toBase` from `fromLedger` through
- * the entry's expiration ledger, both inclusive, keeping those whose muxed id is `toId`, each read as `stellarStatus`
- * reads its named transaction. A candidate that settles is `found`, on any page. With none found, `complete` is true
- * only when every page was read, the reader reported events enabled on each, the RPC still held `fromLedger`
- * (`oldestLedger` ≤ `fromLedger`) and had reached the expiration ledger (`latestLedger` ≥ `expiration`), and every
- * candidate was read: a listed candidate whose transaction is not found, or cannot be read, leaves the search
- * incomplete. At most 10 pages and 50 candidates. A ref without `authDigest` or `expiration` names its transaction and
- * has no entry to search for: `complete` is false. A ref or reader that is not an object, a reader for another network,
- * or a ref with a field the search uses in another form than `stellarStatus` reads (an `authDigest`, `expiration`,
- * `asset`, `toBase`, `toId` or `fromLedger`), is `complete` false too, with nothing read. The search needs no
- * @stellar/stellar-sdk but to decode a candidate's transaction that succeeded, so without it every answer that decodes
- * none is the answer with it (a search that lists no candidate, for one); a candidate whose transaction succeeded
- * cannot be read without it (`stellar/peer-missing` at the decode), which leaves the search incomplete.
+ * The search for a buyer's acts: `getEvents` on every contract with `transferEventTopics(buyer)`, from `fromLedger`
+ * (or, given `search`, the position an earlier search returned, from which it resumes) through the latest closed ledger
+ * at the read, and each candidate transaction read whole by `getTransaction`. An event's transaction is placed by its
+ * id's position, the operation's TOID with its low 12 bits cleared, which must be the position `getTransaction` gives
+ * it (its ledger and application order); an event that does not decode, or whose transaction is not found, does not
+ * decode or sits at another position, is an item the search could not decode, held at that position. At most
+ * `MAX_PAGES` pages and `MAX_CANDIDATES` candidates: a search that reaches either, or whose events index answers below
+ * the latest closed ledger read first, is not read through, and gives the position the next call resumes at. A network
+ * whose passphrase is not the reference's is `chain-mismatch`; an RPC whose oldest ledger is above the ledger the search
+ * starts from, `history-gap`; an answer out of the reader's form, `unparseable`; a rejected read by its reason. The
+ * search needs @stellar/stellar-sdk to write its filter and decode events: without it, it is `unparseable`.
  */
 export async function stellarLocate(
-  ref: StellarRef,
+  q: { readonly network: StellarNetwork; readonly buyer: string; readonly fromLedger: number; readonly search?: string },
   reader: StellarReader,
-): Promise<{ found?: string; complete: boolean }> {
-  if (!isObject(ref) || !isObject(reader)) return { complete: false };
-  if (reader.network !== ref.network || typeof ref.authDigest !== "string" || ref.expiration === undefined) return { complete: false };
-  if (!refWellFormed(ref)) return { complete: false };
-  const l = await locate(ref, ref.expiration, reader, ref.expiration);
-  return l.found !== undefined ? { found: l.found.hash, complete: true } : { complete: l.complete };
+): Promise<StellarSearch | { readonly unreadable: UnreadableReason }> {
+  if (!isObject(q) || !isStellarNetwork(q.network) || !isLedgerSequence(q.fromLedger)) return { unreadable: "unparseable" };
+  const resume = q.search === undefined ? undefined : parseStellarPosition(q.search);
+  if (resume !== undefined && isRefusal(resume)) return { unreadable: "unparseable" };
+  const topics = transferEventTopics(q.buyer);
+  if (isRefusal(topics)) return { unreadable: "unparseable" };
+  if (!isObject(reader) || typeof reader.passphrase !== "function") return { unreadable: "chain-mismatch" };
+  try {
+    if ((await reader.passphrase()) !== PASSPHRASE[q.network]) return { unreadable: "chain-mismatch" };
+    const head = await reader.latestLedger();
+    if (!isObject(head) || !isLedgerSequence(head.sequence)) throw new Malformed();
+    const latest = head.sequence;
+    const resumeAt = resume === undefined ? undefined : BigInt(q.search!);
+    const start = resume === undefined ? q.fromLedger : Math.max(q.fromLedger, resume.ledger);
+    const byTx = new Map<string, { position: string; read?: Omit<StellarCandidate, "events">; events: StellarCandidate["events"][number][] }>();
+    const undecoded: { transaction: string; at?: string }[] = [];
+    const held = new Set<string>();
+    let cursor: string | undefined;
+    let through = false;
+    let at: string | undefined;
+    let behind: number | undefined;
+    let last: string | undefined;
+    pages: for (let page = 0; page < MAX_PAGES; page++) {
+      const r = await reader.events({ fromLedger: start, toLedger: latest, topics, ...(cursor === undefined ? {} : { cursor }) });
+      if (!isObject(r) || !Array.isArray(r.events) || !isLedgerSequence(r.oldestLedger) || !isLedgerSequence(r.latestLedger)) {
+        throw new Malformed();
+      }
+      if (r.oldestLedger > start) return { unreadable: "history-gap" };
+      if (r.latestLedger < latest) behind = Math.min(behind ?? r.latestLedger, r.latestLedger);
+      for (const e of r.events) {
+        const id = isObject(e) && typeof e.id === "string" ? EVENT_ID.exec(e.id) : null;
+        if (id === null || typeof e.txHash !== "string" || !TX_HASH.test(e.txHash.toLowerCase()) || !isLedgerSequence(e.ledger)) {
+          throw new Malformed();
+        }
+        if (e.ledger > latest) continue;
+        const position = (BigInt(id[1]!) & ~0xfffn).toString();
+        if (resumeAt !== undefined && BigInt(position) < resumeAt) continue;
+        const hash = e.txHash.toLowerCase();
+        last = position;
+        if (held.has(hash)) continue;
+        const ev = transferEventOf(e.topic, e.value);
+        if (isRefusal(ev)) {
+          if (ev.code === "stellar/peer-missing") throw new Malformed();
+          held.add(hash);
+          undecoded.push({ transaction: hash, at: position });
+          continue;
+        }
+        let tx = byTx.get(hash);
+        if (tx === undefined) {
+          if (byTx.size >= MAX_CANDIDATES) {
+            at = position;
+            break pages;
+          }
+          tx = { position, events: [] };
+          byTx.set(hash, tx);
+          const read = await readCandidate(reader, hash, position);
+          if (read === null) {
+            held.add(hash);
+            byTx.delete(hash);
+            undecoded.push({ transaction: hash, at: position });
+            continue;
+          }
+          tx.read = read;
+        }
+        tx.events.push({ ...ev, id: e.id, contract: typeof e.contractId === "string" ? e.contractId : "" });
+      }
+      if (r.cursor === undefined) {
+        through = behind === undefined;
+        break;
+      }
+      cursor = r.cursor;
+      if (page === MAX_PAGES - 1) at = last;
+    }
+    if (behind !== undefined && at === undefined) {
+      const next = stellarPosition(behind + 1, 1);
+      at = isRefusal(next) ? undefined : next;
+    }
+    const candidates = [...byTx.entries()].flatMap(([, t]) => (t.read === undefined ? [] : [{ ...t.read, events: t.events }]));
+    return { candidates, undecoded, through, ...(through || at === undefined ? {} : { at }), latest };
+  } catch (e) {
+    return { unreadable: rejected(e) };
+  }
 }
 
 /**
- * The search through `expiration`. A candidate that settles is found on any page; with none found, the search is
- * complete only when every events page names a `latestLedger` at or above `through`: the ledger the caller read its
- * reference point at, or the expiration ledger itself.
+ * A candidate read whole by `getTransaction`: null where it is not found, is out of the documented form, or sits at
+ * another position than its event's.
  */
-async function locate(
-  ref: StellarRef,
-  expiration: number,
+async function readCandidate(
   reader: StellarReader,
-  through: number,
-): Promise<{ found?: { hash: string; ledger: number }; complete: boolean }> {
-  let cursor: string | undefined;
-  let candidates = 0;
-  let behind = false;
-  for (let page = 0; page < MAX_LOCATE_PAGES; page++) {
-    let r: Awaited<ReturnType<StellarReader["transfers"]>>;
-    try {
-      r = await reader.transfers({
-        asset: ref.asset,
-        toBase: ref.toBase,
-        fromLedger: ref.fromLedger,
-        toLedger: expiration,
-        ...(cursor !== undefined ? { cursor } : {}),
-      });
-    } catch {
-      return { complete: false };
-    }
-    if (typeof r !== "object" || r === null || !Array.isArray(r.events) || r.complete !== true) return { complete: false };
-    if (!Number.isInteger(r.oldestLedger) || r.oldestLedger > ref.fromLedger) return { complete: false };
-    if (!Number.isInteger(r.latestLedger) || r.latestLedger < through) behind = true;
-    for (const e of r.events) {
-      if (typeof e?.toMuxedId !== "bigint" || e.toMuxedId.toString() !== ref.toId || typeof e.txHash !== "string") continue;
-      if (++candidates > MAX_CANDIDATES) return { complete: false };
-      const s = await readNamed(ref, e.txHash, reader);
-      if (s.state === "settled") return { found: { hash: e.txHash, ledger: s.ledger }, complete: true };
-      if (s.state === "pending" || s.state === "unreadable") return { complete: false };
-    }
-    if (r.cursor === undefined) return { complete: !behind };
-    cursor = r.cursor;
-  }
-  return { complete: false };
+  hash: string,
+  position: string,
+): Promise<Omit<StellarCandidate, "events"> | null> {
+  const t = await reader.transaction(hash);
+  if (!isObject(t) || (t.status !== "SUCCESS" && t.status !== "FAILED")) return null;
+  if (typeof t.envelopeXdr !== "string" || !isLedgerSequence(t.ledger) || !Number.isInteger(t.applicationOrder)) return null;
+  const p = stellarPosition(t.ledger, t.applicationOrder!);
+  if (isRefusal(p) || p !== position) return null;
+  return { transaction: hash, position, result: t.status === "SUCCESS" ? "succeeded" : "failed", envelopeXdr: t.envelopeXdr };
 }
 
+// ── the agreement's read ─────────────────────────────────────────────────────────────────────────────────────
+
+const MARKS: readonly StellarMark[] = ["finalized"];
+const LEDGER = ledgerOf<string, StellarMark>("full", MARKS, (a, b) => bigintOrder(BigInt(a), BigInt(b)));
+const DIGEST = /^0x[0-9a-f]{64}$/;
+const PAYLOAD = /^0x[0-9a-f]{80}$/;
+const INT64 = /^-?(0|[1-9][0-9]{0,18})$/;
+
+/** The reference as the read compares it, or null where a member is not in the form `reference` writes. */
+function refOf(ref: unknown): (StellarRef & StellarLanded & { h: AtrHash; value: bigint }) | null {
+  if (!isObject(ref)) return null;
+  const r = ref as unknown as StellarRef & StellarLanded;
+  if (!isStellarNetwork(r.network) || !isAccount(r.buyer) || typeof r.payee !== "string" || r.payee === "") return null;
+  if (!isContract(r.asset) || !(isAccount(r.toBase) || isContract(r.toBase))) return null;
+  if (typeof r.nonce !== "string" || !INT64.test(r.nonce) || !isLedgerSequence(r.expiration) || !isLedgerSequence(r.fromLedger)) {
+    return null;
+  }
+  if (typeof r.authDigest !== "string" || !DIGEST.test(r.authDigest) || typeof r.payload !== "string" || !PAYLOAD.test(r.payload)) {
+    return null;
+  }
+  const value = BigInt(r.nonce);
+  if (value < -(1n << 63n) || value >= 1n << 63n) return null;
+  const last = new Uint8Array(8);
+  new DataView(last.buffer).setBigInt64(0, value, false);
+  if (r.payload.slice(66) !== hexOf(last)) return null;
+  return { ...r, h: `0x${r.payload.slice(2, 66)}` as AtrHash, value };
+}
+
+/** The `0x` hex of bytes. */
+function hex0x(b: Uint8Array): string {
+  return `0x${hexOf(b)}`;
+}
+
+/**
+ * The read of `x402/exact/stellar/precondition`, as the profile `read-status` answers it, through `stellarLocate`'s
+ * search from the reference's `fromLedger`. A candidate that succeeded and is of the form (its one operation the
+ * `transfer` the buyer's entry signs) is the agreement where the five checks hold for H and the buyer: its
+ * preconditions hold exactly one signed-payload signer, whose payload is H then the nonce of the entry the transaction
+ * consumed; that payload's key is a key whose signature the entry carries; the transfer's `from` is not the option's
+ * payee; and the buyer is an account whose entry has address credentials. A candidate whose payload key is the payee's,
+ * or whose `from` is the payee, is the payee's; one whose payload key the entry did not sign carries H under another
+ * account's signature; one of the form that fails the payload's layout is of another kind. A candidate that consumed
+ * the entry's nonce is its consumer; one not of the form that holds an entry of the buyer's over that nonce is an item
+ * the search could not decode, since the read cannot tell whether the host used that entry. The nonce is read only by
+ * the search read through, which shows it consumed where a candidate consumed it, and its validity passed where the
+ * latest closed ledger is above the entry's expiration ledger; a search not read through, or that met an item it could
+ * not decode, reads it neither consumed nor unconsumed. The search proves no absence until a run shows that the event
+ * search with no contract named holds every act of the buyer, so the read never reports it read whole, and every
+ * answer it decides but `before-position` is `pending`, `search-incomplete`. `presented` is `yes` where the landed
+ * entry's digest and payload are the reference's, `no` otherwise. Each transfer is named by its transaction and its
+ * event's id. A reference, reader or query that is not one is `unparseable`, with nothing read.
+ */
+export async function stellarStatus(
+  ref: StellarRef & StellarLanded,
+  reader: StellarReader,
+  query: StellarQuery,
+): Promise<StellarStatus> {
+  const unparseable: StellarStatus = { state: "unreadable", reason: "unparseable", foreign: [] };
+  if (!isQuery(query, MARKS, isLedgerSequence)) return unparseable;
+  if (query.search !== undefined && isRefusal(parseStellarPosition(query.search))) return unparseable;
+  const r = refOf(ref);
+  if (r === null) return unparseable;
+  const found = await stellarLocate(
+    { network: r.network, buyer: r.buyer, fromLedger: r.fromLedger, ...(query.search === undefined ? {} : { search: query.search }) },
+    reader,
+  );
+  if ("unreadable" in found) return { state: "unreadable", reason: found.unreadable, foreign: [] };
+  const givenRefs = (query.others ?? []).flatMap((o) => ("ref" in o && isObject(o.ref) ? [(o.ref as StellarRef).authDigest] : []));
+  const seen: Seen<string, StellarMark>[] = [];
+  const undecoded: Undecoded<string>[] = [...found.undecoded];
+  for (const c of found.candidates) {
+    const s = classify(c, r, givenRefs);
+    if (s === "undecodable") undecoded.push({ transaction: c.transaction, at: c.position });
+    else if (s !== undefined) seen.push(s);
+  }
+  const readThrough = found.through && undecoded.length === 0;
+  const consumed = seen.some((s) => s.consumed && s.result === "succeeded");
+  const facts: Facts<string, StellarMark, string> = {
+    seen,
+    undecoded,
+    ...(readThrough ? { value: { consumed, lapsed: found.latest > r.expiration, mark: "finalized", head: { consumed } } } : {}),
+    search: { whole: false, ...(found.at === undefined ? {} : { at: found.at }) },
+    history: true,
+  };
+  const { after, ...rest } = query;
+  return decide(facts, { ...rest, ...(after === undefined ? {} : { after: lastPositionOf(after) }) }, LEDGER);
+}
+
+/** A candidate as the agreement's read classifies it, undefined where it bears on nothing the read decides. */
+function classify(
+  c: StellarCandidate,
+  r: StellarRef & StellarLanded & { h: AtrHash; value: bigint },
+  givenRefs: readonly string[],
+): Seen<string, StellarMark> | undefined | "undecodable" {
+  const carriesH = (signers: readonly PayloadSigner[]): PayloadSigner | undefined =>
+    signers.find((s) => s.payload.length === 40 && hex0x(s.payload.subarray(0, 32)) === r.h);
+  const moved = (toBase?: string): Moved[] =>
+    c.events.map((e) => ({
+      asset: e.contract,
+      amount: e.amount.toString(),
+      to: e.toBase ?? toBase ?? "",
+      transaction: c.transaction,
+      place: e.id,
+    }));
+  const p = readPrecondition(c.envelopeXdr, r.network, true);
+  if (isRefusal(p)) {
+    if (p.code === "stellar/peer-missing") return "undecodable";
+    const scan = scanEnvelope(c.envelopeXdr, r.network);
+    if (isRefusal(scan)) return "undecodable";
+    if (scan.entries.some((e) => e.address === r.buyer && e.nonce === r.value)) return "undecodable";
+    const carrier = carriesH(scan.signers);
+    if (carrier === undefined) return undefined;
+    return {
+      transaction: c.transaction,
+      position: c.position,
+      mark: "finalized",
+      result: c.result,
+      consumed: false,
+      carries: true,
+      party: carrier.key === r.payee ? "payee" : carrier.key === r.buyer ? "payer" : "other",
+      kind: "other",
+      account: "none",
+      presented: "no",
+      moved: moved(),
+      signer: carrier.key,
+    };
+  }
+  const { payment, signers, entryKeys } = p;
+  const carrier = carriesH(signers);
+  const consumed = c.result === "succeeded" && payment.from === r.buyer && payment.auth.nonce === r.value;
+  if (carrier === undefined && !consumed) return undefined;
+  const one = signers.length === 1 ? signers[0]! : undefined;
+  const layout = one !== undefined && carrier === one && readSignedPayload(one.payload);
+  const sameKind = p.agrees && layout !== false && !isRefusal(layout) && layout.value === payment.auth.nonce && isAccount(payment.from);
+  const party =
+    payment.from === r.payee || carrier?.key === r.payee
+      ? "payee"
+      : carrier !== undefined && !entryKeys.includes(carrier.key)
+        ? "other"
+        : payment.from === r.buyer
+          ? "payer"
+          : "other";
+  const presented = payment.auth.preimageHash === r.authDigest && carrier !== undefined && hex0x(carrier.payload) === r.payload;
+  return {
+    transaction: c.transaction,
+    position: c.position,
+    mark: "finalized",
+    result: c.result,
+    consumed,
+    carries: carrier !== undefined,
+    party,
+    kind: sameKind ? "same" : "other",
+    account: payment.toBase === r.payee ? "payee" : "other",
+    ...(givenRefs.includes(payment.auth.preimageHash) ? { given: true } : {}),
+    presented: presented ? "yes" : "no",
+    moved: c.result === "succeeded" ? moved(payment.toBase) : [],
+    signer: payment.from,
+  };
+}
+
+/**
+ * H as the landed transaction `tx` carries it: the first 32 bytes of the one signed-payload signer of its
+ * preconditions, whose payload is 40 bytes. A transaction with none or more than one is `stellar/no-carrier`, and a
+ * payload of another length `stellar/carrier-mismatch`; a transaction the reader does not know is `stellar/not-found`;
+ * a rejected read, or an answer out of the reader's form, is `stellar/unreadable`. An input that is not one, a `tx`
+ * that is not 64 hex digits, or a reader whose passphrase is not the network's, is `stellar/wrong-reader`. The
+ * envelope is read as `scanEnvelope` reads it. H is recovered whatever the transaction's result.
+ */
+export async function stellarRecover(
+  input: RecoverInput<StellarNetwork, unknown>,
+  reader: StellarReader,
+): Promise<AtrHash | Refusal> {
+  if (!isObject(input) || !isStellarNetwork(input.network) || !isObject(reader)) return refusal("stellar/wrong-reader");
+  if (typeof input.tx !== "string" || !TX_HASH.test(input.tx.toLowerCase())) return refusal("stellar/wrong-reader");
+  let t: Awaited<ReturnType<StellarReader["transaction"]>>;
+  try {
+    if ((await reader.passphrase()) !== PASSPHRASE[input.network]) return refusal("stellar/wrong-reader");
+    t = await reader.transaction(input.tx.toLowerCase());
+  } catch {
+    return refusal("stellar/unreadable");
+  }
+  if (!isObject(t)) return refusal("stellar/unreadable");
+  if (t.status === "NOT_FOUND") return refusal("stellar/not-found");
+  if ((t.status !== "SUCCESS" && t.status !== "FAILED") || typeof t.envelopeXdr !== "string") return refusal("stellar/unreadable");
+  const scan = scanEnvelope(t.envelopeXdr, input.network);
+  if (isRefusal(scan)) return scan;
+  if (scan.signers.length !== 1) return refusal("stellar/no-carrier");
+  const read = readSignedPayload(scan.signers[0]!.payload);
+  return isRefusal(read) ? read : read.h;
+}

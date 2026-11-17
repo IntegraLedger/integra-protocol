@@ -375,7 +375,8 @@ console.log(recoverable.sort().join("\n"));
 ```
 
 ```text
-30
+32
+mpp/charge/lcp/hedera
 mpp/charge/solana
 mpp/charge/solana/unsponsored
 mpp/charge/usdc/solana
@@ -401,6 +402,7 @@ x402/exact/hedera
 x402/exact/near
 x402/exact/polkadot/lcp-assets-remark
 x402/exact/solana
+x402/exact/stellar/precondition
 x402/exact/sui
 x402/exact/tron/lcp-trc20-memo
 x402/exact/tvm

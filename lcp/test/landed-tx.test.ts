@@ -20,6 +20,7 @@ const ROWS: readonly [id: string, payload: Record<string, unknown>, landed: stri
   ["mpp/charge/xrpl", { type: "hash", hash: XRPL.refusals[0].payload.hash }, XRPL.refusals[0].payload.hash],
   ["mpp/charge/tempo/split-memo/push", { type: "hash", hash: PUSHED_HASH }, PUSHED_HASH],
   ["mpp/session/solana/stock", SESSION_SOLANA.stock.credential.payload, SESSION_SOLANA.stock.expectTransaction],
+  ["mpp/charge/lcp/hedera", { type: "hash", transactionId: "0.0.5555@1700000000.000000000" }, "0.0.5555-1700000000-000000000"],
 ];
 
 describe("landedTx on push-mode pairings", () => {

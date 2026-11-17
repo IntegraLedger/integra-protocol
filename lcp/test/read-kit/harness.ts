@@ -58,8 +58,9 @@ export function giving(fact: GivenFact, stated: string): Inapplicable[] {
 
 /**
  * Why a case does not run through a pairing's `status` by the pairing's own data, or undefined where it runs: a case at
- * another coverage than the pairing's, or the act `agreement` on a pairing whose payment cannot be an agreement (its
- * data has no `agreement`). The machinery, `decide`, takes every case.
+ * another coverage than the pairing's, the act `agreement` on a pairing whose payment cannot be an agreement (its data
+ * has no `agreement`), or the act `payment` on a pairing offered as an agreement alone (its `agreement` has `only`). The
+ * machinery, `decide`, takes every case.
  */
 export function leftOutByData(form: ReadKitForm, c: ReadCase, act: Act): string | undefined {
   if (form.subject === "decide") return undefined;
@@ -67,6 +68,7 @@ export function leftOutByData(form: ReadKitForm, c: ReadCase, act: Act): string 
   if (entry === undefined) throw new Error(`${form.subject}: no pairing of the registry has this id`);
   if (c.coverage !== entry.data.coverage) return `the case is at coverage ${c.coverage}, the pairing at ${entry.data.coverage}`;
   if (act === "agreement" && entry.data.agreement === undefined) return "the pairing's data has no agreement";
+  if (act === "payment" && entry.data.agreement?.only === true) return "the pairing's data offers it as an agreement alone";
   return undefined;
 }
 

@@ -351,4 +351,51 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       "not a ledger's. The seller reported it paid. This does not show that amount, payee, asset or timing match the " +
       "ATR's content.",
   },
+  "spend-permissions/eip155": {
+    coverage: "full",
+    carrier: {
+      signed:
+        "the Spend Permission's `salt`, which is H, all of H: a member of the EIP-712 hash the account signs in the " +
+        "SpendPermissionManager's domain, or of the permission the account's own `approve` call carries",
+    },
+    source: "lcp's client; or Coinbase's developer platform SDK given the salt (`@coinbase/cdp-sdk` 1.60.0, `createSpendPermission`)",
+    nonce: "single-use",
+    broadcasts: "either",
+    read: {
+      endpoint: ["json-rpc"],
+      note: "receipt, logs, a transaction (a revocation's input), `eth_call` (`isApproved` and `isRevoked` of the permission), a block by mark",
+      search:
+        "The manager's `[SpendPermissionApproved, hash]` and `[SpendPermissionRevoked, hash]` logs, `hash` the " +
+        "permission's, from the block after the position the caller gives to the latest head, in pages; the act the " +
+        "approval, the permission decoding whole with `salt` H, signed by its `account`." +
+        " Where the value reads consumed and the search has found no transaction that consumed it, the value is read at " +
+        "the position the caller gives; consumed there, the first block at which it reads consumed is found by halving " +
+        "the range from the network's first block, and the same two logs in that block name the transaction: `failed`, " +
+        "`before-position`, naming it, or, where none is found, `pending`, `search-incomplete`.",
+      history: "the log search from the position the caller gives to the latest head",
+      contracts: ["the SpendPermissionManager"],
+      lapse:
+        "none: the manager approves at any time, so an unapproved permission is `pending`, `instrument-live`, for as " +
+        "long as the caller asks; `failed`, `instrument-consumed` on the manager's `SpendPermissionRevoked` before any approval",
+    },
+    destination: "the permission's `spender`, compared with nothing: the approval moves nothing and is held to no account",
+    asset: "the permission's `token`, compared with nothing",
+    payer: "the permission's `account`, the signer of H, never the transaction's sender",
+    confirmed: "no",
+    agreement: {
+      floor: "0",
+      fee:
+        "the party that submits: the spender on the signature route, which calls `approveWithSignature`; the account, " +
+        "or the paymaster its user operation names, on the transaction route",
+      succeeded:
+        "the receipt's `status` is 1, and in it the SpendPermissionManager emitted `SpendPermissionApproved` with the " +
+        "permission's hash as its topic and the permission whole, `salt` H, as its data",
+      only: true,
+    },
+    proves:
+      "The account named signed a Spend Permission whose salt is this ATR's hash, naming the payee as spender, and " +
+      "the SpendPermissionManager approved it: the hash is on chain in the permission its SpendPermissionApproved " +
+      "event carries in the approval's transaction. The approval moves nothing. This does not show that any amount " +
+      "was later spent, nor that the allowance, period, token or timing match the ATR's content.",
+  },
 });

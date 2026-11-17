@@ -1558,7 +1558,7 @@ function record(p: LcpPattern): LcpPattern {
 
 /** The x402 EVM breadth pairings: those with data in the EVM family's module but EIP-3009 `exact`. */
 type BreadthId = Exclude<
-  keyof typeof EIP155_X402,
+  Extract<keyof typeof EIP155_X402, `x402/${string}`>,
   typeof ID | "x402/batch-settlement/eip155" | "x402/batch-settlement/cloudflare" | "x402/exact/eip155/gateway-batched"
 >;
 

@@ -40,7 +40,8 @@ const groups: { file: string; group: Group }[] = rowsOf(
     keep: ["the files with buyer rows", (f) => f.data.buyer !== undefined],
     leave: [
       "the files with no buyer member: buyer.json, whose rows vectors.test.ts and buyer-vectors.test.ts run, the files that " +
-        "hold no one pairing's vectors (core, discovery, the MPP challenge, A2A, SD-JWT, the decoder caps), and the files " +
+        "hold no one pairing's vectors (core, discovery, the MPP challenge, the lcp method's challenge and filter, A2A, SD-JWT, " +
+        "the decoder caps), and the files " +
         "that hold the stellar and tempo entry points' vectors and no pairing's (x402-exact-stellar, " +
         "mpp-charge-tempo-memo)",
       (f) => f.data.buyer === undefined,

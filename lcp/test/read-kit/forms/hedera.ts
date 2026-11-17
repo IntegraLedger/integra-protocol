@@ -4,8 +4,9 @@
 // and its transactions Hedera transaction ids; the answer is put back in the case's terms. The stock session's cases
 // are made on the network's JSON-RPC relay and its mirror's account and contract-result reads, from HS7's rows of
 // mpp-session-hedera-solana-xrpl.json, its positions block numbers. The cases that cannot arise on these pairings are
-// listed with the reason each profile states (x402-exact-hedera.md, rule 17; the session's in
-// mpp-session-hedera-solana-xrpl.md, clause 1).
+// listed with the reason each profile states (x402-exact-hedera.md, rule 17; the lcp method's Hedera rail's in
+// mpp-method-lcp.md, rule 24; the session's in mpp-session-hedera-solana-xrpl.md, clause 1). The lcp method's Hedera rail
+// reads its reference from mpp-method-lcp-hedera.json's first accepted credential through its own `reference`.
 import { readFileSync } from "node:fs";
 import {
   executorStatus,
@@ -17,6 +18,7 @@ import {
   type MirrorEntry,
 } from "../../../src/hedera.js";
 import { hederaStockStatus, type HederaStockReader, type HederaStockRef, type HederaStockStatus } from "../../../src/hedera-session.js";
+import { chargeLcpHedera, type LcpHederaRef, type MppCredential } from "../../../src/mpp.js";
 import type { EvmLog, EvmReceipt } from "../../../src/internal/evm.js";
 import type { Act, ForeignItem } from "../../../src/internal/read.js";
 import type { CaseAnswer, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
@@ -451,6 +453,24 @@ const charge: Inapplicable[] = [
   ]).filter((d) => READ_STATUS.cases.find((c) => c.case === d.case)!.coverage === "full"),
 ];
 
+/** The lcp method's Hedera rail: the charge's declarations, each stated by the method's profile (mpp-method-lcp.md). */
+const lcpCharge: Inapplicable[] = charge.map((d) => ({ ...d, stated: d.stated.replace(/\(x402-exact-hedera\.md, rules? [^)]*\)/, "(mpp-method-lcp.md, rules 21 and 24)") }));
+
+const M = JSON.parse(readFileSync(new URL("../../../vectors/mpp-method-lcp-hedera.json", import.meta.url), "utf8"));
+const MC = JSON.parse(readFileSync(new URL("../../../vectors/mpp-method-lcp.json", import.meta.url), "utf8"));
+let lcpRef: Promise<LcpHederaRef> | undefined;
+/** The reference `chargeLcpHedera.reference` gives for the file's credential under the challenge it answers. */
+function lcpReference(): Promise<LcpHederaRef> {
+  lcpRef ??= (async () => {
+    const header = MC.credentials.transaction.header as string;
+    const wire = JSON.parse(Buffer.from(header.replace(/^Payment /, ""), "base64url").toString("utf8")) as MppCredential;
+    const ref = await chargeLcpHedera.reference({ ...wire, payload: { type: "transaction", transaction: M.accepted[0].transactionBase64 } }, wire.challenge);
+    if ("refused" in ref) throw new Error(ref.code);
+    return ref;
+  })();
+  return lcpRef;
+}
+
 /** A form that states each case its declaration names, and runs every other. */
 function declared(subject: DeclaredForm["form"]["subject"], arrange: DeclaredForm["form"]["arrange"], inapplicable: readonly Inapplicable[]): DeclaredForm {
   return {
@@ -479,6 +499,20 @@ export const forms: readonly DeclaredForm[] = [
       }
     },
     charge,
+  ),
+  declared(
+    "mpp/charge/lcp/hedera",
+    (c, act) => {
+      const m = new Mapping();
+      try {
+        const { reader, query } = x402Mirror(c, act, m);
+        return { run: async () => back(await chargeLcpHedera.status(await lcpReference(), reader, query as never), m) };
+      } catch (e) {
+        if (e instanceof Cannot) return { inapplicable: e.message };
+        throw e;
+      }
+    },
+    lcpCharge,
   ),
   declared("x402/exact/hedera/transfer-executor", (c, act) => ({ run: () => executorRun(c, act) }), [
     ...answering("not-found", EXECUTOR),

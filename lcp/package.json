@@ -111,6 +111,10 @@
       "types": "./dist/polkadot.d.ts",
       "default": "./dist/polkadot.js"
     },
+    "./spend-permissions": {
+      "types": "./dist/spend-permissions.d.ts",
+      "default": "./dist/spend-permissions.js"
+    },
     "./stacks": {
       "types": "./dist/stacks.d.ts",
       "default": "./dist/stacks.js"

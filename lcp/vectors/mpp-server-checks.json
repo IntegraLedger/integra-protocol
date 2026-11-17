@@ -814,6 +814,23 @@
      "refused": true,
      "code": "mpp/expires-required"
     }
+   },
+   {
+    "case": "mpp/charge/lcp/hedera, advertise: the Hedera rail's challenge of mpp-method-lcp.json without expires",
+    "pairing": "mpp/charge/lcp/hedera",
+    "member": "advertise",
+    "issued": {
+     "intent": "charge",
+     "method": "lcp",
+     "realm": "api.seller.example",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiIwLjAuMCIsIm1ldGhvZERldGFpbHMiOnsiZmVlUGF5ZXIiOnRydWUsImZlZVBheWVyQWNjb3VudElkIjoiMC4wLjEyMzUiLCJuZXR3b3JrIjoiaGVkZXJhOnRlc3RuZXQiLCJyYWlsIjoiaGVkZXJhIiwic3VwcG9ydGVkTW9kZXMiOlsicHVsbCJdfSwicmVjaXBpZW50IjoiMC4wLjEyMzQifQ"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
    }
   ]
  },
@@ -1220,6 +1237,23 @@
      "method": "evm",
      "intent": "session",
      "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+     "expires": "2020-01-01T00:00:00Z"
+    },
+    "position": 0,
+    "expect": {
+     "refused": true,
+     "code": "mpp/not-this-pairing"
+    }
+   },
+   {
+    "case": "mpp/charge/lcp/hedera, advertise: the challenge of mpp/session/hedera/stock's advertise row, with expires",
+    "pairing": "mpp/charge/lcp/hedera",
+    "member": "advertise",
+    "offer": {
+     "realm": "api.seller.example",
+     "method": "hedera",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
      "expires": "2020-01-01T00:00:00Z"
     },
     "position": 0,

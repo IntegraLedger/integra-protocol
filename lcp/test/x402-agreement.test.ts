@@ -94,6 +94,7 @@ const ROWS: readonly [id: string, file: string, option: string, h: string][] = [
   ["x402/upto/solana", "x402-upto-solana", "fixed.option", "fixed.H"],
   ["x402/upto/xrpl", "x402-upto-xrpl", "fixed.O", "fixed.H"],
   ["x402/exact/starknet", "x402-exact-starknet", "fixed.O", "fixed.H"],
+  ["x402/exact/stellar/precondition", "x402-exact-stellar-precondition", "fixed.option", "fixed.H"],
   ["x402/exact/sui", "x402-exact-sui", "fixed.O", "fixed.H"],
   ["x402/exact/tron/lcp-trc20-memo", "x402-exact-tron-lcp-trc20-memo", "fixed.O", "fixed.H"],
   ["x402/exact/tvm", "x402-exact-tvm", "fixed.O", "fixed.H"],

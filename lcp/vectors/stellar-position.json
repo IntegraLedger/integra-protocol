@@ -1,0 +1,141 @@
+{
+ "about": "Vectors for the Stellar position P = ledger x 2^32 + order x 2^12 (an unsigned 64-bit integer whose low 12 bits are zero, ledger a uint32, order the application order from 1 to 2^20 - 1), written as a decimal string with no leading zero: stellarPosition, parseStellarPosition and muxedFor of @integraledger/lcp/stellar. The compose rows were computed with Python 3.12.3's integers. The horizon rows are the transactions of Stellar's Horizon API reference examples, stellar/stellar-docs openapi/horizon/components/examples/responses/Transactions/RetrieveATransaction.yml at a4643b46 (paging_token 120103542047408128, ledger 27963785) and ListAllTransactions.yml (fetched 2026-11-17): each paging_token parses to the example's ledger. muxed.M is MuxedAccount(seller, id = the position).account_muxed of stellar-sdk 13.0.0 (Python), the seller being the account of Ed25519 seed 04x32. The refusal rows hold one member changed from a row that parses; no tool writes them, and the codes are the profile's.",
+ "compose": [
+  {
+   "ledger": 1,
+   "order": 1,
+   "p": "4294971392"
+  },
+  {
+   "ledger": 27963785,
+   "order": 8,
+   "p": "120103542047408128"
+  },
+  {
+   "ledger": 1000,
+   "order": 1,
+   "p": "4294967300096"
+  },
+  {
+   "ledger": 2147483647,
+   "order": 1,
+   "p": "9223372032559812608"
+  },
+  {
+   "ledger": 4294967295,
+   "order": 1048575,
+   "p": "18446744073709547520"
+  },
+  {
+   "ledger": 0,
+   "order": 1,
+   "p": "4096"
+  }
+ ],
+ "horizon": [
+  {
+   "source": "RetrieveATransaction.yml",
+   "paging_token": "120103542047408128",
+   "ledger": 27963785
+  },
+  {
+   "source": "ListAllTransactions.yml",
+   "paging_token": "12884905984",
+   "ledger": 3
+  },
+  {
+   "source": "ListAllTransactions.yml",
+   "paging_token": "33676838572032",
+   "ledger": 7841
+  },
+  {
+   "source": "ListAllTransactions.yml",
+   "paging_token": "33736968114176",
+   "ledger": 7855
+  }
+ ],
+ "parseRefused": [
+  {
+   "case": "order 0: ledger 1 with no order",
+   "p": "4294967296",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "a low bit set",
+   "p": "4294971393",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "the 12th bit set",
+   "p": "4294973440",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "a leading zero",
+   "p": "04294971392",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "zero",
+   "p": "0",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "2^64",
+   "p": "18446744073709551616",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "a sign",
+   "p": "+4294971392",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "a space",
+   "p": " 4294971392",
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "a number, not a string",
+   "p": 4294971392,
+   "expect": "stellar/position-malformed"
+  }
+ ],
+ "composeRefused": [
+  {
+   "case": "order 0",
+   "ledger": 1,
+   "order": 0,
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "order 2^20",
+   "ledger": 1,
+   "order": 1048576,
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "ledger 2^32",
+   "ledger": 4294967296,
+   "order": 1,
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "ledger -1",
+   "ledger": -1,
+   "order": 1,
+   "expect": "stellar/position-malformed"
+  },
+  {
+   "case": "order 1.5",
+   "ledger": 1,
+   "order": 1.5,
+   "expect": "stellar/position-malformed"
+  }
+ ],
+ "muxed": {
+  "payee": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+  "position": "4294967300096",
+  "M": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HYAAAAPUAAAAQADDHM"
+ }
+}

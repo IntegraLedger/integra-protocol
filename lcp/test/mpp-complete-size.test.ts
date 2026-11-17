@@ -48,6 +48,8 @@ type Inputs = {
   deposit?: string;
   credentialType?: "authorization" | "permit2";
   xrpl?: { publicKey: string; settleDelay: number; fee: string; sequence: number; lastLedgerSequence: number };
+  burnIntentExpirationHeight?: string;
+  withdrawalDelay?: string;
 };
 /** A buyer row of an MPP vector file: B2's build inputs, or B6's payment. */
 type BuyerRow = {
@@ -204,7 +206,9 @@ const P: Record<string, Pairing> = {
     file: "mpp-charge-usdc-gateway.json",
     bound: chargeUsdcGateway.bound,
     run: async (challenge, b2, b6) => {
-      const u = built(await chargeUsdcGateway.build({ challenge, from: accountOf(b2) as Hex, now: b2.input.now ?? 0 }, b2.advertised)) as {
+      const i = b2.input.inputs!;
+      const choice = { challenge, burnIntentExpirationHeight: i.burnIntentExpirationHeight!, withdrawalDelay: i.withdrawalDelay! };
+      const u = built(await chargeUsdcGateway.build(choice, b2.advertised)) as {
         complete(c: unknown): unknown;
       };
       const transfer = (b6.payload["authorization"] as { transfer: { burnIntent: Json; signature: Hex } }).transfer;

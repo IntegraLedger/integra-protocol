@@ -1,0 +1,607 @@
+{
+ "about": "Vectors for x402/exact/stellar/precondition (x402-exact-stellar-precondition.md): the 40-byte payload, the signed-payload signer, the build of the transaction the buyer signs, bound and reference, and every refusal of the profile. The fixed inputs are H = SHA-256(\"abc\") (FIPS 180-2), the seller from Ed25519 seed 04x32, the buyer from 05x32, a stranger from 09x32, the asset the contract strkey of 06x32, on testnet, and x402-exact-stellar.json's V2 simulated envelope (nonce 1) with its transfer set to transfer(buyer, seller, 10000000). The expected values were computed outside the workspace with stellar-sdk 13.0.0 (Python 3.12.3; its xdr, keypair, auth and signer_key modules): the payload as H then the nonce by int.to_bytes(8, 'big', signed=True); the signer as xdr.SignerKey SIGNER_KEY_TYPE_ED25519_SIGNED_PAYLOAD; the preimage as xdr.HashIDPreimage ENVELOPE_TYPE_SOROBAN_AUTHORIZATION; the transaction with xdr.PreconditionsV2 holding the time bounds the simulated envelope carried and that one signer, the entry signed by auth.authorize_entry and the payload by Keypair.sign_payload_decorated; command: python3 -I gen.py x402-exact-stellar.json <out>. Each envelope of refusedBound is that build with one member changed, written by the same tool; the option and choice rows of refusedFilter and refusedBuild change one member, and no tool writes their codes, which are the profile's.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "seller": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+  "buyer": "GBXHUHG5FGYLPD6RHL2MKWMP572O6KUXCZXDZJXS4T57ZTMAKBN7DWXN",
+  "stranger": "GD6ROJBYLKQMOW3E7N4M2YBPUHMZD7PL65VRHRMO24BOVSBV5H3BQRSL",
+  "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+  "network": "stellar:testnet",
+  "option": {
+   "scheme": "exact",
+   "network": "stellar:testnet",
+   "amount": "10000000",
+   "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+   "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "assetTransferMethod": "lcp-precondition",
+    "areFeesSponsored": true
+   }
+  },
+  "resource": {
+   "url": "https://api.seller.example/v1/quote"
+  },
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+ },
+ "payload": [
+  {
+   "case": "H and the entry's nonce 1",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "value": "1",
+   "payload": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000001",
+   "signerKeyXdr": "AAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAE=",
+   "hint": "0x80505bf0"
+  },
+  {
+   "case": "H and a sequence number 2^62 + 5",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "value": "4611686018427387909",
+   "payload": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad4000000000000005",
+   "signerKeyXdr": "AAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtQAAAAAAAAAU="
+  },
+  {
+   "case": "H and the int64 -1",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "value": "-1",
+   "payload": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015adffffffffffffffff",
+   "signerKeyXdr": "AAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWt//////////8="
+  }
+ ],
+ "build": {
+  "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
+  "currentLedger": 988,
+  "expectExpiration": 1000,
+  "expectPreimageSha256": "50573b8553247d64d473c3c4a378f19ed9da751d0697a69e2d7654f791db41e9",
+  "expectPayload": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000001",
+  "entrySignature": "269ecb879393d7092b0f35e756837a0fdb7a4c0bf7890c8e5a63031e81a66403a25fec667b56b24878b2e21103bafac1ab400e7784b68712319999c6c253860e",
+  "payloadSignature": "641098276a0f7444ccef3ac67d4c8662c420152edb3a42e21b3afffc210f5e534804ccddb438fbf641c96a73dc8708bde6041c6bc568b93ddc77d564971c4801",
+  "expectEnvelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAJp7Lh5OT1wkrDzXnVoN6D9t6TAv3iQyOWmMDHoGmZAOiX+xme1aySHiy4hEDuvrBq0AOd4S2hxIxmZnGwlOGDgAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAABgFBb8AAAAEBkEJgnag90RMzvOsZ9TIZixCAVLts6QuIbOv/8IQ9eU0gEzN20OPv2Qclqc9yHCL3mBBxrxWi5Pdx31WSXHEgB",
+  "expectReference": {
+   "network": "stellar:testnet",
+   "payee": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+   "buyer": "GBXHUHG5FGYLPD6RHL2MKWMP572O6KUXCZXDZJXS4T57ZTMAKBN7DWXN",
+   "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+   "toBase": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+   "nonce": "1",
+   "expiration": 1000,
+   "authDigest": "0x50573b8553247d64d473c3c4a378f19ed9da751d0697a69e2d7654f791db41e9",
+   "payload": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000001"
+  },
+  "expectPayment": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "exact",
+    "network": "stellar:testnet",
+    "amount": "10000000",
+    "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+    "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "assetTransferMethod": "lcp-precondition",
+     "areFeesSponsored": true
+    }
+   },
+   "payload": {
+    "transaction": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAJp7Lh5OT1wkrDzXnVoN6D9t6TAv3iQyOWmMDHoGmZAOiX+xme1aySHiy4hEDuvrBq0AOd4S2hxIxmZnGwlOGDgAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAABgFBb8AAAAEBkEJgnag90RMzvOsZ9TIZixCAVLts6QuIbOv/8IQ9eU0gEzN20OPv2Qclqc9yHCL3mBBxrxWi5Pdx31WSXHEgB"
+   }
+  }
+ },
+ "refusedBound": [
+  {
+   "case": "no signed-payload signer",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAGAAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQCaey4eTk9cJKw8151aDeg/bekwL94kMjlpjAx6BpmQDol/sZntWskh4suIRA7r6watADneEtocSMZmZxsJThg4AAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAAAAAAAypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAYBQW/AAAABAZBCYJ2oPdETM7zrGfUyGYsQgFS7bOkLiGzr//CEPXlNIBMzdtDj79kHJanPchwi95gQca8VouT3cd9VklxxIAQ==",
+   "expect": "stellar/no-carrier"
+  },
+  {
+   "case": "two signed-payload signers",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAADbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAoungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0AAAAAAAAAAgAAAAAAAAABAAAAAAAAABgAAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAAAAAAAypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAEAAAABAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAAAAAAABAAAD6AAAABAAAAABAAAAAQAAABEAAAABAAAAAgAAAA8AAAAKcHVibGljX2tleQAAAAAADQAAACBuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAA8AAAAJc2lnbmF0dXJlAAAAAAAADQAAAEAmnsuHk5PXCSsPNedWg3oP23pMC/eJDI5aYwMegaZkA6Jf7GZ7VrJIeLLiEQO6+sGrQA53hLaHEjGZmcbCU4YOAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAGAUFvwAAAAQGQQmCdqD3REzO86xn1MhmLEIBUu2zpC4hs6//whD15TSATM3bQ4+/ZByWpz3IcIveYEHGvFaLk93HfVZJccSAE=",
+   "expect": "stellar/no-carrier"
+  },
+  {
+   "case": "a payload of 39 bytes",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAJ7p4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAJp7Lh5OT1wkrDzXnVoN6D9t6TAv3iQyOWmMDHoGmZAOiX+xme1aySHiy4hEDuvrBq0AOd4S2hxIxmZnGwlOGDgAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAABgFBb8QAAAEDcnrVvL+IIe4DpnjAhG5/4tLpVB/Zc1LLvRhwl/Ik91dEXe5TcDjBI2gOevPP5wKgk7zdiIak9EJvLCo8N6v8F",
+   "expect": "stellar/carrier-mismatch"
+  },
+  {
+   "case": "a payload of 41 bytes",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKbp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAAAAAAAAAAAAAEAAAAAAAAAGAAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAQAAAAEAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAAAAAAAEAAAPoAAAAEAAAAAEAAAABAAAAEQAAAAEAAAACAAAADwAAAApwdWJsaWNfa2V5AAAAAAANAAAAIG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAADwAAAAlzaWduYXR1cmUAAAAAAAANAAAAQCaey4eTk9cJKw8151aDeg/bekwL94kMjlpjAx6BpmQDol/sZntWskh4suIRA7r6watADneEtocSMZmZxsJThg4AAAAAAAAAAQYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGAAAACHRyYW5zZmVyAAAAAwAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAEgAAAAAAAAAAypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAKAAAAAAAAAAAAAAAAAJiWgAAAAAAAAAAAAAAAAYBQWvEAAABA/FPDv7wxdMigqtZlKrYVyRGMLJXBPrqEd3tRJS9fmSyfr8uI50olwJw5qIf79MbOO2QpLrBs24kkO+u3fVN1AA==",
+   "expect": "stellar/carrier-mismatch"
+  },
+  {
+   "case": "a payload whose last 8 bytes are another nonce",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAIAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAJp7Lh5OT1wkrDzXnVoN6D9t6TAv3iQyOWmMDHoGmZAOiX+xme1aySHiy4hEDuvrBq0AOd4S2hxIxmZnGwlOGDgAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAABgFBb8wAAAEBtBKpXQ3gsQGsvbRpLa3TATnWs+4tip++MU/jpp6yv3hiZdyz/EUKrfkiLzx139qsYKhEkX/YCZbVc5BD3lsoA",
+   "expect": "stellar/carrier-mismatch"
+  },
+  {
+   "case": "a payload key whose signature the entry does not carry",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA/0XJDhaoMdbZPt4zWAvodmR/ev3axPFjtcC6sg16fYYAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAJp7Lh5OT1wkrDzXnVoN6D9t6TAv3iQyOWmMDHoGmZAOiX+xme1aySHiy4hEDuvrBq0AOd4S2hxIxmZnGwlOGDgAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAABNen2GQAAAEBXv6DVBNwXNcBL8HI/7gNULEaaCX4rdGszfcksLOLNvHCiWg7eN6EdEKXRpq268Le1DfEiTUFPaFL0J5j/n1IO",
+   "expect": "stellar/carrier-mismatch"
+  },
+  {
+   "case": "a transfer whose from is the option's payTo",
+   "envelope": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA8qTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAABIAAAAAAAAAAG56HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAYGC86huoAQqURE/A8uoOdr3nBqortIFH850/DOzFfHDuDko4Iljr4rgefKkjyJZCgmM2jfuSw4TTRiyBABvwDQAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAypOsFwUYcHHWe4PH/w7+gQjo7EUwV113JoeTM9vavnwAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAAB29q+fQAAAEDlUuF3H86KN0zdlOgGBc7BuW+rc1t1/cGMYssNOTR1wZoWG7ZfB6qf1sSGNRInlf84kmseOg1eSFpGi0R6fvII",
+   "expect": "stellar/payee-mismatch"
+  }
+ ],
+ "refusedBuild": [
+  {
+   "case": "a current ledger that is not a ledger sequence",
+   "change": {
+    "currentLedger": -1
+   },
+   "expect": "stellar/tx-malformed"
+  },
+  {
+   "case": "a payer that is not an account strkey",
+   "change": {
+    "payer": "x"
+   },
+   "expect": "stellar/payer-mismatch"
+  },
+  {
+   "case": "a payer that is not the transfer's from",
+   "change": {
+    "payer": "GD6ROJBYLKQMOW3E7N4M2YBPUHMZD7PL65VRHRMO24BOVSBV5H3BQRSL"
+   },
+   "expect": "stellar/payer-mismatch"
+  },
+  {
+   "case": "a transfer on another asset",
+   "change": {
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA="
+   },
+   "expect": "stellar/asset-mismatch"
+  },
+  {
+   "case": "a transfer of another amount",
+   "change": {
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloEAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloEAAAAAAAAAAAAAAAA="
+   },
+   "expect": "stellar/amount-mismatch"
+  },
+  {
+   "case": "a transfer to another account than payTo",
+   "change": {
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAP0XJDhaoMdbZPt4zWAvodmR/ev3axPFjtcC6sg16fYYAAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAP0XJDhaoMdbZPt4zWAvodmR/ev3axPFjtcC6sg16fYYAAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA="
+   },
+   "expect": "stellar/payee-mismatch"
+  },
+  {
+   "case": "a simulated transaction that already holds an extra signer",
+   "change": {
+    "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA="
+   },
+   "expect": "stellar/tx-malformed"
+  }
+ ],
+ "refusedFilter": [
+  {
+   "case": "fees not sponsored",
+   "change": {
+    "extra": {
+     "assetTransferMethod": "lcp-precondition",
+     "areFeesSponsored": false
+    }
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a muxed payTo",
+   "change": {
+    "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HYAAAAAAAAAAAAFKZE"
+   },
+   "expect": "stellar/option-malformed"
+  },
+  {
+   "case": "a contract payTo",
+   "change": {
+    "payTo": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST"
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "an account asset",
+   "change": {
+    "asset": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP"
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a negative amount",
+   "change": {
+    "amount": "-1"
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "an amount with a leading zero",
+   "change": {
+    "amount": "01"
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "an amount of 2^127",
+   "change": {
+    "amount": "170141183460469231731687303715884105728"
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a timeout of 0",
+   "change": {
+    "maxTimeoutSeconds": 0
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "a timeout whose fifth exceeds a ledger count",
+   "change": {
+    "maxTimeoutSeconds": 21474836476
+   },
+   "expect": "x402/option-malformed"
+  },
+  {
+   "case": "another assetTransferMethod: not this pairing's",
+   "change": {
+    "extra": {
+     "assetTransferMethod": "lcp-linked",
+     "areFeesSponsored": true
+    }
+   },
+   "expect": "x402/option-not-this-pairing"
+  },
+  {
+   "case": "no assetTransferMethod: not this pairing's",
+   "change": {
+    "extra": {
+     "areFeesSponsored": true
+    }
+   },
+   "expect": "x402/option-not-this-pairing"
+  }
+ ],
+ "acceptedFilter": [
+  {
+   "case": "an amount of zero, the floor",
+   "change": {
+    "amount": "0"
+   }
+  }
+ ],
+ "refusedReference": [
+  {
+   "case": "an option whose amount differs from the presented accepted",
+   "change": {
+    "amount": "10000001"
+   },
+   "expect": "x402/accepted-not-option"
+  }
+ ],
+ "boundAccepted": {
+  "case": "The file's payment presented under options this pairing's read does not offer, each the payment's own option with one member changed as refusedFilter names it: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option. payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "fees not sponsored",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": false
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "a muxed payTo",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "MDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HYAAAAAAAAAAAAFKZE",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "stellar/option-malformed"
+   },
+   {
+    "case": "a contract payTo",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "an account asset",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "a negative amount",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "-1",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "an amount with a leading zero",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "01",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "an amount of 2^127",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "170141183460469231731687303715884105728",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "a timeout of 0",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "a timeout whose fifth exceeds a ledger count",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 21474836476,
+     "extra": {
+      "assetTransferMethod": "lcp-precondition",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "another assetTransferMethod: not this pairing's",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "assetTransferMethod": "lcp-linked",
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "no assetTransferMethod: not this pairing's",
+    "pairing": "x402/exact/stellar/precondition",
+    "payment": "/build/expectPayment",
+    "accepted": {
+     "scheme": "exact",
+     "network": "stellar:testnet",
+     "amount": "10000000",
+     "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+     "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "areFeesSponsored": true
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer row B2: the document advertises H = SHA-256(\"abc\"), and the link serves \"abd\", whose SHA-256 is servedHash; the buyer's client declines before anything is signed. The document's legal context is x402-exact-near.json's B2's.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/exact/stellar/precondition",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "stellar:testnet",
+        "amount": "10000000",
+        "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+        "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "assetTransferMethod": "lcp-precondition",
+         "areFeesSponsored": true
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "inputs": {
+      "simulatedXdr": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAAAAAAAABAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAAAAAAAAAAAAAA=",
+      "currentLedger": 988,
+      "payer": "GBXHUHG5FGYLPD6RHL2MKWMP572O6KUXCZXDZJXS4T57ZTMAKBN7DWXN"
+     },
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/stellar/precondition",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepted": {
+       "scheme": "exact",
+       "network": "stellar:testnet",
+       "amount": "10000000",
+       "asset": "CADAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMBQGAYDAMSST",
+       "payTo": "GDFJHLAXAUMHA4OWPOB4P7YO72AQR2HMIUYFOXLXE2DZGM633K7HZDQP",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "assetTransferMethod": "lcp-precondition",
+        "areFeesSponsored": true
+       }
+      },
+      "payload": {
+       "transaction": "AAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGQAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAA256HN0psLeP0Tr0xVmP7/TvKpcWbjym8uT7/M2AUFvxAAAAKLp4Fr+PAc/qQUFA3l2uIiOwA2Gjlhd6nLQQ/2HyABWtAAAAAAAAAAEAAAAAAAAAAQAAAAAAAAAYAAAAAAAAAAEGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAh0cmFuc2ZlcgAAAAMAAAASAAAAAAAAAABuehzdKbC3j9E69MVZj+/07yqXFm48pvLk+/zNgFBb8QAAABIAAAAAAAAAAMqTrBcFGHBx1nuDx/8O/oEI6OxFMFdddyaHkzPb2r58AAAACgAAAAAAAAAAAAAAAACYloAAAAABAAAAAQAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAAAAAAAQAAA+gAAAAQAAAAAQAAAAEAAAARAAAAAQAAAAIAAAAPAAAACnB1YmxpY19rZXkAAAAAAA0AAAAgbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAAPAAAACXNpZ25hdHVyZQAAAAAAAA0AAABAJp7Lh5OT1wkrDzXnVoN6D9t6TAv3iQyOWmMDHoGmZAOiX+xme1aySHiy4hEDuvrBq0AOd4S2hxIxmZnGwlOGDgAAAAAAAAABBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAIdHJhbnNmZXIAAAADAAAAEgAAAAAAAAAAbnoc3Smwt4/ROvTFWY/v9O8qlxZuPKby5Pv8zYBQW/EAAAASAAAAAAAAAADKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fAAAAAoAAAAAAAAAAAAAAAAAmJaAAAAAAAAAAAAAAAABgFBb8AAAAEBkEJgnag90RMzvOsZ9TIZixCAVLts6QuIbOv/8IQ9eU0gEzN20OPv2Qclqc9yHCL3mBBxrxWi5Pdx31WSXHEgB"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's build.expectPayment."
+   }
+  ]
+ }
+}

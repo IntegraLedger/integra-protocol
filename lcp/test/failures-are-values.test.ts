@@ -51,7 +51,7 @@ import {
 import { nearRecover, nearStatus } from "../src/near.js";
 import { polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
-import { muxedFor, stellarLocate, stellarStatus } from "../src/stellar.js";
+import { muxedFor, stellarRecover, stellarStatus } from "../src/stellar.js";
 import { decodeSuiTx, suiCarrier, suiRecover, suiStatus } from "../src/sui.js";
 import {
   channelInstruction,
@@ -643,32 +643,32 @@ describe("starknet", () => {
 });
 
 describe("stellar", () => {
-  statusReads([["stellarStatus", stellarStatus, "x402-exact-stellar.json", { act: "payment", finality: "closed" }, load("x402-exact-stellar.json").V5.ref]]);
-  reads([["stellarLocate", stellarLocate, "x402-exact-stellar.json", { complete: false }]]);
-  it("stellarStatus and stellarLocate: a ref whose authDigest is not a string reads nothing", async () => {
-    const ref = refIn("x402-exact-stellar.json");
+  const V = load("x402-exact-stellar-precondition.json");
+  const ref = { ...V.build.expectReference, fromLedger: V.build.currentLedger };
+  statusReads([["stellarStatus", stellarStatus, "x402-exact-stellar-precondition.json", { act: "agreement", finality: "finalized" }, ref]]);
+  reads([["stellarRecover", stellarRecover, "x402-exact-stellar-precondition.json", refused("stellar/wrong-reader")]]);
+  it("stellarStatus: a ref whose authDigest is not a string reads nothing", async () => {
     for (const authDigest of [null, 1, {}]) {
       const reader = quietReader(ref.network);
       const bad = { ...ref, authDigest } as never;
-      expect(await stellarStatus(bad, reader as never, { act: "payment", finality: "closed" }), String(authDigest)).toEqual(UNPARSEABLE);
-      expect(await stellarLocate(bad, reader as never), String(authDigest)).toEqual({ complete: false });
+      expect(await stellarStatus(bad, reader as never, { act: "agreement", finality: "finalized" }), String(authDigest)).toEqual(UNPARSEABLE);
       expect(reader.reads(), String(authDigest)).toBe(0);
     }
   });
-  // muxedFor's type carries a refusal: a base or H it cannot write from is refused, never thrown. The rows of
-  // peer-free-inputs.ts get the same codes without the SDK (stellar-peer-missing.test.ts); a string that is not a `G…`
-  // account, here a muxed address and the account's text cut short, needs the SDK to be read.
-  it("muxedFor: a base that is not a G account is stellar/option-malformed, and an H that is not a 32-byte hash x402/payload-malformed", () => {
-    const V = load("x402-exact-stellar.json");
+  // muxedFor's type carries a refusal: a payee or position it cannot write from is refused, never thrown. The rows of
+  // peer-free-inputs.ts get the same codes without the SDK (stellar-peer-missing.test.ts).
+  it("muxedFor: a payee that is not a G account is stellar/option-malformed, and a position the codec refuses stellar/position-malformed", () => {
+    const P = load("stellar-position.json");
     for (const row of rowsOf(muxedForArgs(), "peer-free-inputs.ts", { exact: 4 })) {
-      expect([row.case, muxedFor(row.base as never, row.h as never)]).toEqual([row.case, refused(row.expect)]);
+      expect([row.case, muxedFor(row.base as never, row.position as never)]).toEqual([row.case, refused(row.expect)]);
     }
-    for (const base of ["", V.V1.M, V.fixed.seller.slice(0, -1)]) {
-      expect(muxedFor(base, V.fixed.H), base).toEqual(refused("stellar/option-malformed"));
+    for (const base of ["", P.muxed.M, P.muxed.payee.slice(0, -1)]) {
+      expect(muxedFor(base, P.muxed.position), base).toEqual(refused("stellar/option-malformed"));
     }
-    expect(muxedFor(V.fixed.seller, V.fixed.H)).toBe(V.V1.M);
+    expect(muxedFor(P.muxed.payee, P.muxed.position)).toBe(P.muxed.M);
   });
 });
+
 
 describe("tron", () => {
   reads([

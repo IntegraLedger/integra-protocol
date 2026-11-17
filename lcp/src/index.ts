@@ -110,6 +110,8 @@ import { MPP_BINDINGS, type MppCredential } from "./mpp.js";
 import { exactNear } from "./near.js";
 import { exactPolkadotRemark } from "./polkadot.js";
 import { exactStarknet } from "./starknet.js";
+import { spendPermissionsEip155, type SpendPermissionReturn } from "./spend-permissions.js";
+import { exactStellarPrecondition } from "./x402-exact-stellar-precondition.js";
 import { exactSui } from "./sui.js";
 import { exactTronMemo } from "./tron.js";
 import { exactTvm } from "./tvm.js";
@@ -145,6 +147,7 @@ export type X402Binding =
   | typeof exactPolkadotRemark
   | typeof exactSvm
   | typeof exactStarknet
+  | typeof exactStellarPrecondition
   | typeof exactSui
   | typeof exactTronMemo
   | typeof exactTvm
@@ -195,6 +198,7 @@ export type Binding = (
   | typeof unsigned
   | typeof checkoutMandateX402
   | typeof agentSigned
+  | typeof spendPermissionsEip155
 ) &
   PushMode &
   CarrierAfterH &
@@ -215,6 +219,7 @@ interface PresentedOn {
   ap2: Ap2Presented | Ap2X402Presented;
   card: TapPresented | VicPresented | ViAutonomous | ViImmediate;
   mpp: MppCredential;
+  "spend-permissions": SpendPermissionReturn;
   ucp: Ap2Presented | AgentSignedPresented;
   x402:
     | PaymentPayload
@@ -287,6 +292,7 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   exactPolkadotRemark,
   exactSvm,
   exactStarknet,
+  exactStellarPrecondition,
   exactSui,
   exactTronMemo,
   exactTvm,
@@ -295,6 +301,7 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   uptoSvm,
   exactGatewayBatched,
   uptoXrpl,
+  spendPermissionsEip155,
 ]))();
 
 /** Whether a pairing is an x402 pairing. */

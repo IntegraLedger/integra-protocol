@@ -2,23 +2,22 @@
 // it absent, the stellar entry point and the package root still import, and each function whose type carries a refusal
 // and needs the XDR refuses `stellar/peer-missing` (the vectors' refusal), never throwing, after every check that needs
 // none, each of which gives the code it gives with the peer. Strkeys (`G…`, `C…` and `M…`) are read and written
-// without the SDK, so isAccount, isContract and muxedFor give every input the answer they give with it;
-// stellarStatus and stellarLocate read as they do with the SDK, unreadable or incomplete only where they must decode a
-// transaction.
+// without the SDK, so isAccount, isContract and muxedFor give every input the answer they give with it; stellarStatus,
+// whose search writes its event filter with the SDK, is unreadable before any read.
 import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   muxedForArgs,
   stellarEnvelopeInputs,
   stellarEventInputs,
-  stellarLocateRows,
-  stellarStatusRows,
   stellarStrkeyAnswers,
   stellarStrkeyRows,
 } from "./peer-free-inputs.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar.json", import.meta.url), "utf8"));
+const P = JSON.parse(readFileSync(new URL("../vectors/stellar-position.json", import.meta.url), "utf8"));
+const S = JSON.parse(readFileSync(new URL("../vectors/x402-exact-stellar-precondition.json", import.meta.url), "utf8"));
 const CODE = V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === "stellar/peer-missing").expect as string;
 
 vi.mock("@stellar/stellar-sdk/base", () => {
@@ -41,7 +40,7 @@ describe("without @stellar/stellar-sdk", () => {
     expect(st.transferEventTopics(V.fixed.seller)).toEqual(refused);
     expect(st.transferEventTopics(V.fixed.asset)).toEqual(refused);
     expect(st.transferEventOf(V.events.rows[0].topic, V.events.rows[0].value)).toEqual(refused);
-    expect(st.muxedFor(V.fixed.seller, V.fixed.H)).toBe(V.V1.M);
+    expect(st.muxedFor(P.muxed.payee, P.muxed.position)).toBe(P.muxed.M);
   });
 
   // A base that is not a string and an H that is not a 32-byte hash get the code they get with the SDK
@@ -49,7 +48,7 @@ describe("without @stellar/stellar-sdk", () => {
   it("muxedFor answers a base or H it refuses as it does with the peer", { timeout: IMPORT_MS }, async () => {
     const { muxedFor } = await import("../src/stellar.js");
     for (const row of rowsOf(muxedForArgs(), "peer-free-inputs.ts", { exact: 4 })) {
-      expect([row.case, muxedFor(row.base as never, row.h as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
+      expect([row.case, muxedFor(row.base as never, row.position as never)]).toEqual([row.case, { refused: true, code: row.expect }]);
     }
   });
 
@@ -84,27 +83,18 @@ describe("without @stellar/stellar-sdk", () => {
     }
   });
 
-  // peer-free-inputs.test.ts gives V5's reads with the SDK. Only a transaction that succeeded is decoded: a named one is
-  // unreadable unparseable after its one read, and a search's candidate leaves the search incomplete, pending
-  // search-incomplete, after the same reads.
-  it("stellarStatus reads as it does with the peer, pending only where it must decode a transaction", { timeout: IMPORT_MS }, async () => {
+  // The search writes its event filter with the SDK, before any read: without it the read is unreadable unparseable,
+  // with nothing read.
+  it("stellarStatus is unreadable unparseable without the peer, with nothing read", { timeout: IMPORT_MS }, async () => {
     const { stellarStatus } = await import("../src/stellar.js");
-    for (const row of rowsOf(stellarStatusRows(), "peer-free-inputs.ts", { exact: 14 })) {
-      const c = row.reader();
-      const got = await stellarStatus(row.ref as never, c.reader as never, row.query as never);
-      const want = row.without ?? { expect: row.expect, reads: row.reads };
-      expect([row.case, got, c.reads()]).toEqual([row.case, want.expect, want.reads]);
-    }
-  });
-
-  // peer-free-inputs.test.ts gives the same searches with the SDK. Only a candidate's transaction that succeeded is
-  // decoded: without the SDK that decode refuses stellar/peer-missing, and the search is incomplete after the same calls.
-  it("stellarLocate searches as it does with the peer, incomplete only where it must decode a candidate's transaction", { timeout: IMPORT_MS }, async () => {
-    const { stellarLocate } = await import("../src/stellar.js");
-    for (const row of rowsOf(stellarLocateRows(), "peer-free-inputs.ts", { exact: 13 })) {
-      const { reader, calls } = row.reader();
-      const got = await stellarLocate(V.V5.ref, reader as never);
-      expect([row.case, got, calls()]).toEqual([row.case, row.decodes ? { complete: false } : row.expect, row.calls]);
-    }
+    let reads = 0;
+    const reader = new Proxy({}, { get: (_, k) => (k === "then" ? undefined : async () => { reads++; throw new Error("read"); }) });
+    const ref = { ...S.build.expectReference, fromLedger: S.build.currentLedger };
+    expect(await stellarStatus(ref, reader as never, { act: "agreement", finality: "finalized" })).toEqual({
+      state: "unreadable",
+      reason: "unparseable",
+      foreign: [],
+    });
+    expect(reads).toBe(0);
   });
 });
