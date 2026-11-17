@@ -647,7 +647,18 @@ const AUTH_CAPTURE_REQUIRED = [
 /** What a breadth pairing's `build` asks the buyer's signer for, and how the answer completes the payment. */
 export type X402Unsigned =
   | {
-      request: { kind: "eip712"; typedData: Permit2TypedData | Eip3009TypedData | ReceiveTypedData };
+      /**
+       * On `x402/auth-capture/eip155`, `paymentInfo` and `escrow` are what the typed data's nonce is the hash of:
+       * `paymentHash(chainId, escrow, paymentInfo)`, `chainId` the typed data's domain's, `paymentInfo`'s payer the
+       * zero address, as the escrow's collectors compute it. They name the operator, the receiver and both expiries the
+       * signature grants, so a client can show them and hold the nonce to them. No other pairing gives them.
+       */
+      request: {
+        kind: "eip712";
+        typedData: Permit2TypedData | Eip3009TypedData | ReceiveTypedData;
+        paymentInfo?: PaymentInfo;
+        escrow?: Hex;
+      };
       complete(sig: Hex): PaymentPayload | Refusal;
     }
   | {
@@ -1318,9 +1329,11 @@ function authCaptureBuild(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
     const { required, accepted, from } = choice;
     const t = authCaptureTerms(accepted) as AuthCaptureTerms;
     const salt = t.bound ? (bindSalt(t.receiverAuthorizer, t.policy, c.h) as Hex) : c.h;
-    const signatureNonce = paymentHash(t.chainId, t.deployment.escrow, t.info(ZERO_ADDRESS, salt, c.deadline));
+    const paymentInfo = t.info(ZERO_ADDRESS, salt, c.deadline);
+    const signatureNonce = paymentHash(t.chainId, t.deployment.escrow, paymentInfo);
     if (isRefusal(signatureNonce)) return refusal("x402/option-malformed");
     const salts = t.bound ? { salt, saltNonce: c.h } : { salt };
+    const preimage = { paymentInfo: structuredClone(paymentInfo), escrow: t.deployment.escrow };
     if (id === AC_EIP3009) {
       const typedData = receiveTypedData({
         network: accepted.network as Eip155,
@@ -1344,7 +1357,7 @@ function authCaptureBuild(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
         nonce: signatureNonce,
       };
       return {
-        request: { kind: "eip712", typedData },
+        request: { kind: "eip712", typedData, ...preimage },
         complete(signature: Hex): PaymentPayload | Refusal {
           if (!isSignature(signature, MIN_SIGNED_BYTES)) return refusal("x402/signature-malformed");
           return paymentWith(required, accepted, { signature, authorization: { ...authorization }, ...salts });
@@ -1367,7 +1380,7 @@ function authCaptureBuild(id: typeof AC_EIP3009 | typeof AC_PERMIT2) {
       deadline: c.deadline.toString(),
     };
     return {
-      request: { kind: "eip712", typedData },
+      request: { kind: "eip712", typedData, ...preimage },
       complete(signature: Hex): PaymentPayload | Refusal {
         if (!isSignature(signature, MIN_SIGNED_BYTES)) return refusal("x402/signature-malformed");
         return paymentWith(required, accepted, {

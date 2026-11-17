@@ -1082,6 +1082,8 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     const u = await unsigned(authCaptureEip3009, f);
     if (u.request.kind !== "eip712") throw new Error("kind");
     const td = u.request.typedData as any;
+    // The request carries the preimage of its nonce: the PaymentInfo (payer the zero address) and the escrow.
+    expect(paymentHash(84532, u.request.escrow!, u.request.paymentInfo!)).toBe(A3.EV3.bound.expectSignatureNonce);
     expect(td.primaryType).toBe("ReceiveWithAuthorization");
     expect(td.message.to).toBe(A3.EV4.expectTo);
     expect(td.message.nonce).toBe(A3.EV3.bound.expectSignatureNonce);
@@ -1136,6 +1138,7 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     const u = await unsigned(authCapturePermit2, g);
     if (u.request.kind !== "eip712") throw new Error("kind");
     expect(u.request.typedData.primaryType).toBe("PermitTransferFrom");
+    expect(paymentHash(84532, u.request.escrow!, u.request.paymentInfo!)).toBe(A3.EV3.bound.expectSignatureNonce);
     expect((u.request.typedData.message as any).spender).toBe(AP.EV4.expectSpender);
     expect(hashTypedData(u.request.typedData as TypedDataDefinition)).toBe(AP.EV4.expectDigest);
     const p = await signed(authCapturePermit2, g);

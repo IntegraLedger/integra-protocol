@@ -54,9 +54,10 @@ base58 for `solana-message` and `ed25519-raw`.
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-requests"></a> `requests` | readonly [`SigningRequest`](#signingrequest)[] |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-config"></a> `config?` | [`ChannelConfig`](#channelconfig) | On an EVM opening, the channel's configuration: `batchChannelId(chainId, config)` is the `channelId` the deposit authorization and the voucher sign, `chainId` their domain's. It names the receiver and the authorizers the signatures grant, so a client can show them and hold the channel id to them. No other build gives it. |
+| <a id="property-requests"></a> `requests` | readonly [`SigningRequest`](#signingrequest)[] | - |
 
 #### Methods
 

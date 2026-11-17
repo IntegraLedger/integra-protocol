@@ -289,6 +289,12 @@ export type SigningRequest =
  */
 export interface BatchUnsigned {
   requests: readonly SigningRequest[];
+  /**
+   * On an EVM opening, the channel's configuration: `batchChannelId(chainId, config)` is the `channelId` the deposit
+   * authorization and the voucher sign, `chainId` their domain's. It names the receiver and the authorizers the
+   * signatures grant, so a client can show them and hold the channel id to them. No other build gives it.
+   */
+  config?: ChannelConfig;
   complete(signatures: readonly string[]): BatchPaymentPayload | Refusal;
 }
 
@@ -658,6 +664,7 @@ async function evmBuild(c: BatchEvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   const channelConfig = { ...config } as unknown as Json;
   return {
     requests,
+    config: { ...config },
     complete(signatures: readonly string[]): BatchPaymentPayload | Refusal {
       const [s1, s2] = signatures;
       if (signatures.length !== 2 || !isHexSignature(s1) || !isHexSignature(s2)) return refusal("x402/signature-malformed");

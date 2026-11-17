@@ -154,6 +154,8 @@ describe("x402-batch-settlement.json: EVM", () => {
     expect(erc3009DepositNonce(V.EB1.channelId, E.authSalt)).toBe(V.EB3.depositNonce);
     const { u, payment } = await evmOpening();
     const [auth, voucher] = u.requests;
+    // The opening carries the preimage of the channel id both signatures name.
+    expect(batchChannelId(84532, u.config!)).toBe(V.EB1.channelId);
     expect(hashTypedData(forViem(auth!.kind === "eip712" ? auth!.typedData : undefined))).toBe(V.EB3.digest);
     expect(hashTypedData(forViem(voucher!.kind === "eip712" ? voucher!.typedData : undefined))).toBe(V.EB2.digest);
     const p = payment.payload as Record<string, any>;
