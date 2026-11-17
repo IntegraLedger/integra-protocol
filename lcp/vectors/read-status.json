@@ -1,5 +1,5 @@
 {
- "about": "The cases common to every pairing's read, the public half of the read kit, for the profile read-status (lcp/profiles/read-status.md). Each case states what a read observed, in the profile's own terms: the transactions it met, each with its position, the mark it was read at, what it moved (each transfer with its asset, amount, recipient, and where given its transaction and place in it), its result, whether it consumed the act's single-use value, whether it carries H, its signer against the payer and the option's payee, its pairing and kind, and the account it names; the single-use value as read at the final mark, with whether it is consumed at the latest head where the read read it there (head), absent where the read has no means to read it; whether the search or lookup was read whole, and its position where it was not; the items the search met and could not decode (undecoded), each with the search position held at it; and whether the reader showed its history. Positions are integers; marks are 'included', 'safe' and 'final', in that order. Each expected answer was derived by hand from the rules of read-status.md the case names, for the act 'payment' and for the act 'agreement', and none was taken from the package's output. A transaction may also state presented, whether the message the payer signed in it equals what was presented (yes, no or unshown), absent where the read made no comparison; a settled answer states it where the facts give it, and none where they do not. An expected answer lists the members the answer must hold; foreign items are listed with their transaction and reason, and the items a search-incomplete answer names as ones its search could not decode by their transactions (undecoded). A pairing's own vectors run each case through its reader, mapping each transaction and position to its ledger's, or state that the case cannot arise on its ledger.",
+ "about": "The cases common to every pairing's read, the public half of the read kit, for the profile read-status (lcp/profiles/read-status.md). Each case states what a read observed, in the profile's own terms: the transactions it met, each with its position, the mark it was read at, what it moved (each transfer with its asset, amount, recipient, and where given its transaction and place in it), its result, whether it consumed the act's single-use value, whether it carries H, its signer against the payer and the option's payee, its pairing and kind, and the account it names; the single-use value as read at the final mark, with whether it is consumed at the latest head where the read read it there (head), absent where the read has no means to read it; whether the search or lookup was read whole, and its position where it was not; the items the search met and could not decode (undecoded), each with the search position held at it; and whether the reader showed its history. Positions are integers; marks are 'included', 'safe' and 'final', in that order. Each expected answer was derived by hand from the rules of read-status.md the case names, for the act 'payment' and for the act 'agreement', and none was taken from the package's output. A transaction may also state presented, whether the message the payer signed in it equals what was presented (yes, no or unshown), absent where the read made no comparison; a settled answer states it where the facts give it, and none where they do not. Only the cases about presented state it, in their facts and their expected answer, and a pairing's read is held to presented only where the expected answer states it, so that a read which compares every act answers each other case with whatever its comparison gives. An expected answer lists the members the answer must hold; foreign items are listed with their transaction and reason, and the items a search-incomplete answer names as ones its search could not decode by their transactions (undecoded). A pairing's own vectors run each case through its reader, mapping each transaction and position to its ledger's, or state that the case cannot arise on its ledger.",
  "marks": [
   "included",
   "safe",
@@ -1072,8 +1072,7 @@
       "carries": true,
       "party": "payer",
       "kind": "same",
-      "account": "payee",
-      "presented": "unshown"
+      "account": "payee"
      }
     ],
     "search": {
@@ -1090,14 +1089,12 @@
      "state": "settled",
      "transaction": "t1",
      "finality": "safe",
-     "presented": "unshown",
      "foreign": []
     },
     "agreement": {
      "state": "settled",
      "transaction": "t1",
      "finality": "safe",
-     "presented": "unshown",
      "foreign": []
     }
    }
@@ -1624,6 +1621,113 @@
      "transaction": "t1",
      "finality": "final",
      "position": 10
+    }
+   }
+  },
+  {
+   "case": "a failed result that consumed the value, of a transaction of the payer's that carries no H: instrument-consumed, never transaction-failed",
+   "rules": "7, 12, 20",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "t1",
+      "position": 10,
+      "mark": "final",
+      "result": "failed",
+      "consumed": true,
+      "carries": false,
+      "party": "payer",
+      "kind": "same",
+      "account": "payee"
+     }
+    ],
+    "value": {
+     "consumed": true,
+     "lapsed": false,
+     "mark": "final",
+     "head": {
+      "consumed": true
+     }
+    },
+    "search": {
+     "whole": true
+    },
+    "history": true
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "t1",
+     "position": 10,
+     "finality": "final",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "t1",
+     "position": 10,
+     "finality": "final",
+     "foreign": []
+    }
+   }
+  },
+  {
+   "case": "a failed result that consumed the value, of a payment act carrying H to another account: instrument-consumed for a payment, transaction-failed for an agreement",
+   "rules": "9, 12, 13, 20",
+   "coverage": "full",
+   "facts": {
+    "seen": [
+     {
+      "transaction": "t1",
+      "position": 10,
+      "mark": "final",
+      "result": "failed",
+      "consumed": true,
+      "carries": true,
+      "party": "payer",
+      "kind": "same",
+      "account": "other"
+     }
+    ],
+    "value": {
+     "consumed": true,
+     "lapsed": false,
+     "mark": "final",
+     "head": {
+      "consumed": true
+     }
+    },
+    "search": {
+     "whole": true
+    },
+    "history": true
+   },
+   "query": {
+    "finality": "final"
+   },
+   "expect": {
+    "payment": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "t1",
+     "position": 10,
+     "finality": "final",
+     "carries": "other-account",
+     "foreign": []
+    },
+    "agreement": {
+     "state": "failed",
+     "reason": "transaction-failed",
+     "transaction": "t1",
+     "position": 10,
+     "finality": "final",
+     "foreign": []
     }
    }
   },

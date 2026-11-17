@@ -1,7 +1,7 @@
 // The profile read-status's vectors, the read kit's common cases, run on both acts through every form of
 // read-kit/forms/: the shared machinery every pairing's `status` answers with, and each pairing's own read.
 import { describe, expect, it } from "vitest";
-import type { DeclaredForm, ReadCase, ReadKitForm } from "./read-kit/form.js";
+import type { CaseAnswer, DeclaredForm, ReadCase, ReadKitForm } from "./read-kit/form.js";
 import { formModules, loadForms, pairingsWithRead, pairingsWithoutForm, subjectFaults } from "./read-kit/forms.js";
 import { ACTS, READ_STATUS, answering, declarationFaults, readKit, runCase } from "./read-kit/harness.js";
 import { rowsOf } from "./rows.js";
@@ -60,18 +60,37 @@ describe("the read kit's cases", () => {
 });
 
 describe("the read kit's settled cases", () => {
-  it("state presented yes, no and unshown as the act's facts give it, and none where they give none", () => {
-    const settled = READ_STATUS.cases.flatMap((c) =>
-      ACTS.flatMap((act) => {
-        const want = c.expect[act];
-        if (want.state !== "settled") return [];
-        const seen = c.facts.seen.find((s) => s.transaction === want.transaction);
-        return [{ want: want.presented, given: seen?.presented }];
-      }),
-    );
-    for (const p of ["yes", "no", "unshown"] as const) expect(settled.some((s) => s.want === p && s.given === p), p).toBe(true);
+  const settled = READ_STATUS.cases.flatMap((c) =>
+    ACTS.flatMap((act) => {
+      const want = c.expect[act];
+      if (want.state !== "settled") return [];
+      const seen = c.facts.seen.find((s) => s.transaction === want.transaction);
+      return [{ c, act, want: want.presented, given: seen?.presented }];
+    }),
+  );
+
+  it("state presented yes and no as the act's facts give it, only in the cases about it, and none elsewhere", () => {
+    for (const p of ["yes", "no"] as const) expect(settled.some((s) => s.want === p && s.given === p), p).toBe(true);
     expect(settled.some((s) => s.given === undefined && s.want === undefined), "absent, none").toBe(true);
-    expect(settled.filter((s) => s.want !== s.given)).toEqual([]);
+    expect(settled.filter((s) => s.want !== s.given).map((s) => s.c.case)).toEqual([]);
+  });
+
+  it("through the machinery, state presented as the act's facts give it, unshown included, and none where they give none", async () => {
+    const decideForm = (FORMS.find((f) => f.form.subject === "decide") as DeclaredForm).form;
+    const no = settled.find((s) => s.given === "no") as (typeof settled)[number];
+    const unshown: ReadCase = {
+      ...no.c,
+      facts: { ...no.c.facts, seen: no.c.facts.seen.map((s) => ({ ...s, presented: "unshown" as const })) },
+    };
+    const runs = [...settled.map((s) => ({ c: s.c, act: s.act })), ...ACTS.map((act) => ({ c: unshown, act }))];
+    for (const { c, act } of runs) {
+      const arranged = decideForm.arrange(c, act);
+      if ("inapplicable" in arranged) throw new Error("the machinery skips no case");
+      const answer = await arranged.run();
+      const given = c.facts.seen.find((s) => answer.state === "settled" && s.transaction === answer.transaction)?.presented;
+      expect("presented" in answer, `${c.case} (act ${act})`).toBe(given !== undefined);
+      if (given !== undefined) expect(answer).toMatchObject({ state: "settled", presented: given });
+    }
   });
 });
 
@@ -101,6 +120,27 @@ describe("the read kit's harness", () => {
     const stated = [{ case: settledZero.case, stated: "the profile" }];
     expect(await runCase({ form: decideForm, inapplicable: stated }, settledZero, "payment")).toBe("ran-stated");
     expect(await runCase({ form: decideForm, inapplicable: [] }, settledZero, "payment")).toBe("ran");
+  });
+
+  it("holds presented only in a case that states it", async () => {
+    const stating = cases.find((c) => c.expect.payment.state === "settled" && c.expect.payment.presented === "no") as ReadCase;
+    const silent = cases.find((c) => c.case === "a read that made no comparison with the payment presented states no presented, never yes") as ReadCase;
+    const answering = (c: ReadCase, presented: "yes" | "no" | undefined): DeclaredForm => ({
+      form: {
+        subject: "decide",
+        arrange: (_c, act) => ({
+          run: async () => {
+            const { presented: _, ...want } = c.expect[act] as CaseAnswer & { presented?: string };
+            return (presented === undefined ? want : { ...want, presented }) as CaseAnswer;
+          },
+        }),
+      },
+      inapplicable: [],
+    });
+    expect(await runCase(answering(silent, "yes"), silent, "payment")).toBe("ran");
+    expect(await runCase(answering(stating, "no"), stating, "payment")).toBe("ran");
+    await expect(runCase(answering(stating, "yes"), stating, "payment")).rejects.toThrow();
+    await expect(runCase(answering(stating, undefined), stating, "payment")).rejects.toThrow();
   });
 
   it("fails a case whose answer differs from the case's", async () => {

@@ -199,7 +199,9 @@ const PENDING_ORDER: readonly PendingReason[] = ["below-mark", "instrument-live"
  * The answer the profile `read-status` gives for what a read observed. A query that is not an object naming the act
  * `payment` or `agreement` is `unreadable`, `unparseable`, as a malformed reference is. Applies, in order:
  * `before-position` first; the act asked about, identified by its binding and its parties and never one the caller
- * gave, settled at or above the finality asked for and `below-mark` under it; `failed` only at the final mark and, at
+ * gave, settled at or above the finality asked for and `below-mark` under it; `transaction-failed` only for the act
+ * asked about but for its result, any other transaction that consumed the value, whatever its result, being the
+ * transaction of `instrument-consumed`; `failed` only at the final mark and, at
  * coverage `full`, only once the search was read whole, an item it could not decode that the caller did not give
  * holding it; a value read consumed, at the final mark or at the latest head, with no transaction found as
  * `search-incomplete`; `instrument-live` only where the value reads unconsumed at the final mark and at the latest
@@ -240,9 +242,17 @@ export function decide<Ref, Position, Mark, Cursor>(
     !isGiven(s) &&
     s.kind === "same" &&
     (query.act === "agreement" || s.account === "payee");
+  // The act asked about but for its result (rules 7 to 9): at coverage `full` it carries H, and an act `payment` names
+  // the payee's account. Only such a transaction answers `transaction-failed`.
   const ownFailed = (s: Seen<Position, Mark>): boolean =>
-    s.result === "failed" && s.party === "payer" && s.kind === "same" && !isGiven(s);
-  const consumer = (s: Seen<Position, Mark>): boolean => s.result === "succeeded" && s.consumed && !isAct(s);
+    s.result === "failed" &&
+    bindsAct(s) &&
+    s.party === "payer" &&
+    !isGiven(s) &&
+    s.kind === "same" &&
+    (query.act === "agreement" || s.account === "payee");
+  // Any other transaction that consumed the value, whatever its result, is the transaction of `instrument-consumed`.
+  const consumer = (s: Seen<Position, Mark>): boolean => s.consumed && !isAct(s) && !ownFailed(s);
 
   const reasonOf = (s: Seen<Position, Mark>): ForeignReason | undefined =>
     FOREIGN_ORDER.find((r) => {
