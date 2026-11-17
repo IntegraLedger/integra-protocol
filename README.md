@@ -106,8 +106,8 @@ The same pages are published at [lcp.integraledger.com](https://lcp.integraledge
 
 ## Building and testing
 
-You need Node.js `26.11.1` (see `.node-version`) and pnpm `12.11.2`. CI takes Node.js as
-`node-v26.11.1-linux-x64.tar.xz` from `nodejs.org/dist`, checked against the SHA-256 the workflow holds, and pnpm as
+You need Node.js `26.13.1` (see `.node-version`) and pnpm `12.11.2`. CI takes Node.js as
+`node-v26.13.1-linux-x64.tar.xz` from `nodejs.org/dist`, checked against the SHA-256 the workflow holds, and pnpm as
 two tarballs checked against their SHA-512. These are the commands CI runs:
 
 ```sh

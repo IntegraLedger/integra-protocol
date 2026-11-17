@@ -33,13 +33,15 @@
 // Usage, from the repository root:
 //   node scripts/check-public-package.mjs                  check every file `git ls-files` lists
 //   node scripts/check-public-package.mjs --root <dir>     check the files git lists in another work tree
+//   node scripts/check-public-package.mjs --dir <dir>      check every file under a directory git need not hold, such
+//                                                          as an unpacked package
 //   node scripts/check-public-package.mjs --file <path>    also read this file, which git need not list (repeatable)
 //   node scripts/check-public-package.mjs --key-file <p>   read the key, in hex, from this file, not PUBLIC_CHECK_KEY
 // It exits 0 when it finds nothing, 1 when it finds an item, and 2 when it did not run: no key, a refused key or a
 // usage error.
 import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
-import { existsSync, readFileSync, readlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 /**
@@ -278,19 +280,48 @@ function textOf(path) {
 }
 
 /**
- * Checks the files git lists in `root`, and each path in `extra`, with a scan. It returns the exit code and the lines
- * to print.
+ * Every file under `dir`, each `[path, path in dir, is a symbolic link]`, its path relative to `dir` with "/" between
+ * names, sorted. A symbolic link is not followed: it is read as the path it points to.
  */
-export function check(root, extra, scan) {
-  // Each entry is `<mode> <object> <stage>\t<path>`; a submodule (160000) is not read, a symbolic link (120000) is read
-  // as the path it points to, and a file git lists but the work tree no longer holds is not read.
-  const ls = ["-C", root, "ls-files", "-z", "--stage"];
-  const listed = execFileSync("git", ls, { encoding: "utf8", maxBuffer: 1 << 28 })
-    .split("\0")
-    .filter((e) => e !== "")
-    .map((e) => [e.slice(0, 6), e.slice(e.indexOf("\t") + 1)]);
+function walk(dir) {
   const files = [];
-  for (const [mode, path] of listed) if (mode !== "160000") files.push([path, join(root, path), mode === "120000"]);
+  const visit = (rel) => {
+    for (const e of readdirSync(join(dir, rel), { withFileTypes: true })) {
+      const path = rel === "" ? e.name : `${rel}/${e.name}`;
+      if (e.isDirectory()) visit(path);
+      else if (e.isFile() || e.isSymbolicLink()) files.push([path, join(dir, path), e.isSymbolicLink()]);
+    }
+  };
+  visit("");
+  return files.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * Checks the files git lists in `root`, or with `{ dir: true }` every file under `root`, and each path in `extra`, with
+ * a scan. It returns the exit code and the lines to print.
+ */
+export function check(root, extra, scan, { dir = false } = {}) {
+  const files = [];
+  if (dir) {
+    if (!existsSync(root)) return { code: 2, lines: [`check-public-package: no directory ${root}`] };
+    files.push(...walk(root));
+  } else {
+    // Each entry is `<mode> <object> <stage>\t<path>`; a submodule (160000) is not read, a symbolic link (120000) is
+    // read as the path it points to, and a file git lists but the work tree no longer holds is not read.
+    const ls = ["-C", root, "ls-files", "-z", "--stage"];
+    let out;
+    try {
+      out = execFileSync("git", ls, { encoding: "utf8", maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "pipe"] });
+    } catch (e) {
+      const why = String(e.stderr ?? e.message).trim().split("\n")[0];
+      return { code: 2, lines: [`check-public-package: git lists no files in ${root} (${why}); --dir reads a directory`] };
+    }
+    const listed = out
+      .split("\0")
+      .filter((e) => e !== "")
+      .map((e) => [e.slice(0, 6), e.slice(e.indexOf("\t") + 1)]);
+    for (const [mode, path] of listed) if (mode !== "160000") files.push([path, join(root, path), mode === "120000"]);
+  }
   for (const path of extra) {
     if (!existsSync(path)) return { code: 2, lines: [`check-public-package: no file ${path}`] };
     files.push([path, path, false]);
@@ -324,19 +355,28 @@ export function check(root, extra, scan) {
 
 function main(argv, env) {
   let root = process.cwd();
+  let dir = false;
+  let given = 0;
   let keyFile;
   const extra = [];
+  const usage = "usage: [--root <dir> | --dir <dir>] [--file <path>]... [--key-file <path>]";
   for (let i = 0; i < argv.length; i++) {
-    if ((argv[i] === "--root" || argv[i] === "--file" || argv[i] === "--key-file") && i + 1 < argv.length) {
-      if (argv[i] === "--root") root = resolve(argv[++i]);
-      else if (argv[i] === "--file") extra.push(resolve(argv[++i]));
+    const flag = argv[i];
+    if (["--root", "--dir", "--file", "--key-file"].includes(flag) && i + 1 < argv.length) {
+      if (flag === "--root" || flag === "--dir") {
+        root = resolve(argv[++i]);
+        dir = flag === "--dir";
+        given++;
+      } else if (flag === "--file") extra.push(resolve(argv[++i]));
       else keyFile = resolve(argv[++i]);
     } else {
-      console.error(
-        `check-public-package: unknown argument ${argv[i]}; usage: [--root <dir>] [--file <path>]... [--key-file <path>]`,
-      );
+      console.error(`check-public-package: unknown argument ${flag}; ${usage}`);
       return 2;
     }
+  }
+  if (given > 1) {
+    console.error(`check-public-package: one --root or --dir; ${usage}`);
+    return 2;
   }
   const { key, reason } = keyOf(keyFile, env);
   let scan;
@@ -347,7 +387,7 @@ function main(argv, env) {
     console.error(`check-public-package: did not run: ${e.message}`);
     return 2;
   }
-  const { code, lines } = check(root, extra, scan);
+  const { code, lines } = check(root, extra, scan, { dir });
   for (const line of lines) (code === 2 ? console.error : console.log)(line);
   return code;
 }

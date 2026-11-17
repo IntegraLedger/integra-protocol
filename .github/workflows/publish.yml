@@ -7,18 +7,20 @@ on:
         description: The package folder to publish
         required: true
         type: choice
-        options: [lcp]
+        options: [lcp, settler]
 
 permissions: {}
 
 jobs:
-  # A release is the annotated tag v<version> on the version's commit on main: publish runs from that tag and no
-  # other ref.
+  # A release is the annotated tag on the version's commit on main, v<version> for lcp and settler-v<version> for the
+  # settler: publish runs from that tag and no other ref.
   tag:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: read
+    env:
+      PACKAGE: ${{ inputs.package }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,28 +30,33 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
-      - name: The run's ref is the annotated tag v<version> of lcp/package.json's version, and its commit is on main
+      - name: The run's ref is the annotated tag of the package's version, v<version> or settler-v<version>, and its commit is on main
         run: |
           set -eu
-          version=$(node -p 'require("./lcp/package.json").version')
-          if [ "$GITHUB_REF" != "refs/tags/v$version" ]; then
-            echo "publish runs from the tag v$version, lcp/package.json's version; this run's ref is $GITHUB_REF"
+          version=$(node -p 'require("./" + process.env.PACKAGE + "/package.json").version')
+          case "$PACKAGE" in
+            lcp) tag="v$version" ;;
+            settler) tag="settler-v$version" ;;
+            *) echo "no release tag for the folder $PACKAGE"; exit 1 ;;
+          esac
+          if [ "$GITHUB_REF" != "refs/tags/$tag" ]; then
+            echo "publish runs from the tag $tag, $PACKAGE/package.json's version; this run's ref is $GITHUB_REF"
             exit 1
           fi
           if [ "$(git cat-file -t "$GITHUB_REF")" != tag ]; then
-            echo "the tag v$version is not an annotated tag; a release is tagged with git tag -a"
+            echo "the tag $tag is not an annotated tag; a release is tagged with git tag -a"
             exit 1
           fi
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "the tag v$version names $GITHUB_SHA, which is not a commit on main"
+            echo "the tag $tag names $GITHUB_SHA, which is not a commit on main"
             exit 1
           fi
-          echo "the annotated tag v$version names $GITHUB_SHA, a commit on main"
+          echo "the annotated tag $tag names $GITHUB_SHA, a commit on main"
 
   # Every check CI makes, on the commit to be packed: the pack waits for all of them.
   ci:
@@ -64,6 +71,17 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: [5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -h 127.0.0.1"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     env:
       PACKAGE: ${{ inputs.package }}
     steps:
@@ -73,10 +91,10 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
       - name: Fetch pnpm
         run: |
@@ -91,12 +109,28 @@ jobs:
           echo "$RUNNER_TEMP/pnpm" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r --if-present run build
-      - run: pnpm -r --if-present run test
-      - name: Pack
+      - name: The tests, the settler's against the Postgres service
+        env:
+          INTEGRA_DATABASE_URL: postgres://postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/postgres
+        run: pnpm -r --if-present run test
+      - name: Pack; the settler only once lcp's version in this commit is on npm, with its peer dependency on lcp naming that version
         run: |
           set -eu
           mkdir pack
           (cd "$PACKAGE" && pnpm pack --pack-destination ../pack)
+          if [ "$PACKAGE" = settler ]; then
+            lcp=$(node -p 'require("./lcp/package.json").version')
+            if [ "$(npm view "@integraledger/lcp@$lcp" version)" != "$lcp" ]; then
+              echo "@integraledger/lcp $lcp, the version this commit's settler is packed against, is not on npm: release lcp $lcp first"
+              exit 1
+            fi
+            peer=$(tar -xzOf pack/*.tgz package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).peerDependencies["@integraledger/lcp"]')
+            if [ "$peer" != "~$lcp" ]; then
+              echo "the packed settler's peer dependency on @integraledger/lcp is $peer, not ~$lcp"
+              exit 1
+            fi
+            echo "the packed settler's peer dependency on @integraledger/lcp is ~$lcp, and @integraledger/lcp $lcp is on npm"
+          fi
           for f in pack/*.tgz; do
             echo "$f sha512-$(openssl dgst -sha512 -binary "$f" | base64 -w0)"
           done
@@ -117,10 +151,10 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:

@@ -17,7 +17,7 @@ pages, does not run them.
 npm install @integraledger/profile-facilitator @integraledger/lcp
 ```
 
-It needs Node.js `>=24`, Postgres (the tests run on Postgres 18), and, for each network it serves, the node its module
+It needs Node.js `>=24.22.1`, Postgres (the tests run on Postgres 18), and, for each network it serves, the node its module
 reads. It is ESM only. `@integraledger/lcp` is its peer dependency: install it with the settler. A module that holds a
 key takes it as the signer object of x402's class for that chain; make it with that chain's x402 package at 2.31.0, the
 release the settler's classes are pinned to (`@x402/evm`, `@x402/svm`, `@x402/avm`, and so on).

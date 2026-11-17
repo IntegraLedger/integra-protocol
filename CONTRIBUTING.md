@@ -13,8 +13,8 @@ all welcome.
 
 ## Setting up
 
-You need Node.js `26.11.1` (see `.node-version`) and pnpm `12.11.2`. CI and the publish workflow take Node.js as
-`node-v26.11.1-linux-x64.tar.xz` from `nodejs.org/dist`, checked against the SHA-256 the workflow holds, and pnpm as
+You need Node.js `26.13.1` (see `.node-version`) and pnpm `12.11.2`. CI and the publish workflow take Node.js as
+`node-v26.13.1-linux-x64.tar.xz` from `nodejs.org/dist`, checked against the SHA-256 the workflow holds, and pnpm as
 two tarballs checked against their SHA-512.
 
 ```sh
@@ -88,13 +88,14 @@ node scripts/check-public-units.mjs
   three words, so a hyphen, a space, an underscore or a capital between words matches alike, as do a plural in `s` or
   `es`, a possessive, the words run together, percent-encoded text and text with zero-width characters. It prints each
   finding as the file, the line and the item's number, never the text. `--file <path>` also reads a file git does not
-  list. It takes the key in hex from the environment variable `PUBLIC_CHECK_KEY` or from the file `--key-file <path>`
+  list, and `--dir <dir>` reads every file under a directory git does not hold, such as an unpacked package. It takes the key in hex from the environment variable `PUBLIC_CHECK_KEY` or from the file `--key-file <path>`
   names. **With no key it does not pass:** it prints that it did not run and exits 2, as it does when the key is not
   the one the list was made with. A maintainer who holds the key runs it.
-- `check-public-units.mjs` checks `scripts/public-units.json` against the built package: every export of every entry
-  point is in exactly one unit, each unit names exports the package has, states what it does for anyone using the
-  protocol and names the specification or profile that fixes it, and the file passes `check-public-package.mjs`, with
-  the same key, so with no key it exits 2 when it finds no other problem.
+- `check-public-units.mjs` checks `scripts/public-units.json` against the built packages, lcp and the settler: every
+  export of every entry point is in exactly one unit, each unit names exports its package has, states what it does for
+  anyone using the protocol and names the specification or profile that fixes it, and the file passes
+  `check-public-package.mjs`, with the same key, so with no key it exits 2 when it finds no other problem. `--root
+  <dir>` reads the packages from `<dir>/lcp` and `<dir>/settler`, such as packages installed from their tarballs.
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm run browser && pnpm build` inside that
   folder, on Linux x64. `pnpm run browser` fetches, retrying a failed download five times, the browser build the
   Mermaid diagrams are drawn in, Chrome Headless Shell, which `website/scripts/browser.mjs` pins by version and by the
@@ -163,7 +164,8 @@ and from the publish workflow before it packs. Its other steps check:
 - **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in one
   step, byte for byte the same in every job, before its first other step that runs. The `floor` job then fetches the
   Node.js `.node-version-floor` names, in one step of its own checked against one SHA-256 that adds nothing to `PATH`,
-  and runs lcp's tests on it; that version's major is the one `lcp/package.json`'s `engines.node` allows. Every download in a workflow is
+  and runs lcp's and the settler's tests on it; `engines.node` in `lcp/package.json` and `settler/package.json` is `>=`
+  that version. Every download in a workflow is
   `curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/<file>" https://<address>`, which retries a failed transfer
   five times whatever the error, and writes one file. No workflow uses `setup-node`, `continue-on-error`, `if:`,
   `container:`, `shell:` or a `PATH:` key, or writes `$GITHUB_ENV`, and only the Node.js and pnpm fetches write
@@ -261,17 +263,22 @@ request. To sign off commits you already made, run `git rebase --signoff origin/
 
 ## Releases
 
-Each release of `@integraledger/lcp` is the annotated tag `v<version>` on the commit on `main` that sets that version,
-made in this order:
+Each release of `@integraledger/lcp` is the annotated tag `v<version>`, and each release of the settler,
+`@integraledger/profile-facilitator`, the annotated tag `settler-v<version>`, on the commit on `main` that sets that
+version, made in this order:
 
-1. A pull request sets the version in `lcp/package.json`.
+1. A pull request sets the version in `lcp/package.json` or `settler/package.json`.
 2. It is merged to `main`.
-3. A maintainer tags that commit `v<version>` with an annotated tag (`git tag -a v<version> -m v<version> <commit>`)
-   and pushes the tag.
-4. A maintainer dispatches the publish workflow from the tag. Its first job fails unless the run's ref is the
-   annotated tag `v<version>` of the version `lcp/package.json` names and the tag's commit is on `main`. CI then runs every check on
-   that commit, and only then does the `pack` job pack the package and the `stage` job stage it on npm, where a
-   maintainer approves it.
+3. A maintainer tags that commit with an annotated tag, `v<version>` for lcp (`git tag -a v<version> -m v<version>
+   <commit>`) or `settler-v<version>` for the settler, and pushes the tag.
+4. A maintainer dispatches the publish workflow from the tag, naming the package's folder, `lcp` or `settler`. Its
+   first job fails unless the run's ref is the annotated tag of the version that folder's `package.json` names and the
+   tag's commit is on `main`. CI then runs every check on that commit, and only then does the `pack` job pack the
+   package and the `stage` job stage it on npm, where a maintainer approves it.
+
+The settler's peer dependency on `@integraledger/lcp` is packed as `~<version>`, the version `lcp/package.json` names
+in the settler's commit, so lcp is released first: the `pack` job packs the settler only once that version of lcp is on
+npm, and fails unless the packed peer dependency names it.
 
 To link the documentation of a release, link the tag's copy:
 `https://github.com/IntegraLedger/integra-protocol/tree/v<version>/docs`.

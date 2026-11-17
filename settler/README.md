@@ -60,10 +60,40 @@ or legal logic beyond that.
 npm install @integraledger/profile-facilitator @integraledger/lcp
 ```
 
-It needs Node.js `>=24`, Postgres (the tests run on Postgres 18), and, for each network it serves, the node its module
+It needs Node.js `>=24.22.1`, Postgres (the tests run on Postgres 18), and, for each network it serves, the node its module
 reads. It is ESM only. `@integraledger/lcp` is its peer dependency: install it with the settler. A module that holds a
 key takes it as the signer object of x402's class for that chain; make it with that chain's x402 package at 2.31.0, the
 release the settler's classes are pinned to (`@x402/evm`, `@x402/svm`, `@x402/avm`, and so on).
+
+Two packages in its dependency tree have install scripts that it runs without: `protobufjs` (through `@hiero-ledger/sdk`
+and `@concordium/web-sdk`) and `secp256k1` (through `@x402/near`). This repository installs with both denied, and runs
+the settler's tests so. pnpm 12 stops an install at a build script it has no decision for (`ERR_PNPM_IGNORED_BUILDS`);
+deny both in your `pnpm-workspace.yaml`:
+
+```yaml
+permissions:
+  protobufjs: {build: false}
+  secp256k1: {build: false}
+```
+
+With npm, `npm install --ignore-scripts` runs neither.
+
+A project that installs under pnpm's `trustPolicy: no-downgrade`, as this repository does, excludes exactly two
+versions from it, and nothing wider:
+
+```yaml
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - '@noble/ed25519@1.7.5'
+  - '@noble/secp256k1@1.7.2'
+```
+
+The Casper module registers `@x402/casper` 2.31.0, which pins `casper-js-sdk` 5.1.1; every `casper-js-sdk` from 5.1.1
+to 5.3.1 requires `@noble/ed25519` `^1.7.5` and `@noble/secp256k1` `^1.7.2`, with which it verifies a payer's ed25519
+and secp256k1 signatures and signs with the settler's key, and no version of either package avoids them. Both were
+published in April 2025 as maintenance releases of the packages' 1.x lines without provenance, after each package's
+2.1.0 had been published with it in March 2024, so `no-downgrade` refuses them. Every other version of the two
+packages, and every other package, stays under the policy.
 
 ## Quickstart
 

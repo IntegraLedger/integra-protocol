@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// Checks scripts/public-units.json, the table of every public unit of @integraledger/lcp, against the built package.
-// The package's exports are every entry point `lcp/package.json` lists under `exports`, and for each, the names its
-// built module exports at run time and the type names its declaration file exports, read as
-// scripts/docs-reference.mjs reads them.
+// Checks scripts/public-units.json, the table of every public unit of @integraledger/lcp and of the settler,
+// @integraledger/profile-facilitator, against the built packages. A package's exports are every entry point its
+// `package.json` lists under `exports`, and for each, the names its built module exports at run time and the type names
+// its declaration file exports, read as scripts/docs-reference.mjs reads them.
 //
 // Each unit in the file names its exports, a map from each entry point (`.` for the package root) to the names it
-// exports into the unit; its use for anyone using the protocol; and, in `fixedBy`, the published specification or
-// profile that fixes its behaviour. The file's `pending` list names, with a reason, exports a unit may name before the
-// package exports them.
+// exports into the unit; `package`, the package's name, where the unit is not lcp's; its use for anyone using the
+// protocol; and, in `fixedBy`, the published specification or profile that fixes its behaviour. The file's `pending`
+// list names, with a reason, exports a unit may name before the package exports them; it is lcp's.
 //
 // It fails when an export belongs to no unit or to more than one; when a unit names an entry point the package does
 // not have, or an export the package does not export and `pending` does not list; when `pending` lists an export the
@@ -18,6 +18,9 @@
 // Usage, from the repository root after lcp is built:
 //   node scripts/check-public-units.mjs
 //   node scripts/check-public-units.mjs --table <path>      check another file of the same form in its place
+//   node scripts/check-public-units.mjs --root <dir>        read the packages from <dir>/lcp and <dir>/settler, each a
+//                                                           built package's folder or one installed from its tarball,
+//                                                           in place of this repository's
 //   node scripts/check-public-units.mjs --key-file <path>   read the scan's key, in hex, from this file
 // It exits 0 when the file holds every export in one unit and the scan finds no held item, 1 naming each problem
 // otherwise, and 2 when it finds no other problem but the scan did not run: no key, or a key that is refused.
@@ -27,16 +30,26 @@ import { pathToFileURL } from "node:url";
 import { keyOf, scanner } from "./check-public-package.mjs";
 
 const root = join(import.meta.dirname, "..");
-const lcp = join(root, "lcp");
+const rootAt = process.argv.indexOf("--root");
+const packagesRoot = rootAt === -1 ? root : resolve(process.argv[rootAt + 1] ?? "");
+const LCP = "@integraledger/lcp";
+/** Each package the table covers: its name and its folder. */
+const PACKAGES = [
+  [LCP, join(packagesRoot, "lcp")],
+  ["@integraledger/profile-facilitator", join(packagesRoot, "settler")],
+];
 const at = process.argv.indexOf("--table");
 const TABLE = at === -1 ? join(root, "scripts", "public-units.json") : resolve(process.argv[at + 1] ?? "");
 const keyAt = process.argv.indexOf("--key-file");
 const KEY_FILE = keyAt === -1 ? undefined : resolve(process.argv[keyAt + 1] ?? "");
 const FILE = TABLE.startsWith(`${root}/`) ? relative(root, TABLE) : TABLE;
 
+/** An entry point as a finding names it: lcp's as `.` or `./x`, another package's as its import specifier. */
+const label = (pkg, e) => (pkg === LCP ? e : `${pkg}${e.slice(1)}`);
+
 /** The type names a declaration file exports, following `export type { … } from` and `export { type … }`. */
-function typeExports(name) {
-  const text = readFileSync(join(lcp, "dist", `${name}.d.ts`), "utf8");
+function typeExports(dir, name) {
+  const text = readFileSync(join(dir, "dist", `${name}.d.ts`), "utf8");
   const names = new Set();
   for (const m of text.matchAll(/^export (?:declare )?(?:type|interface) ([A-Za-z0-9_$]+)/gm)) names.add(m[1]);
   for (const m of text.matchAll(/^export type \{([^}]*)\}/gm)) {
@@ -56,30 +69,36 @@ function typeExports(name) {
   return names;
 }
 
-/** Every export of every entry point: a map from the entry point (`.` or `./x`) to its names. */
+/** Every export of every entry point of every package: a map from the entry point's label to its names. */
 async function packageExports() {
-  const pkg = JSON.parse(readFileSync(join(lcp, "package.json"), "utf8"));
   const out = new Map();
-  for (const key of Object.keys(pkg.exports)) {
-    const file = key === "." ? "index" : key.slice(2);
-    if (!existsSync(join(lcp, "dist", `${file}.js`))) {
-      throw new Error(`lcp/dist/${file}.js is missing: build lcp first (pnpm -r --if-present run build)`);
+  for (const [name, dir] of PACKAGES) {
+    const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+    if (pkg.name !== name) throw new Error(`${dir}/package.json names ${pkg.name}, not ${name}`);
+    for (const key of Object.keys(pkg.exports)) {
+      const file = key === "." ? "index" : key.slice(2);
+      if (!existsSync(join(dir, "dist", `${file}.js`))) {
+        throw new Error(`${dir}/dist/${file}.js is missing: build the packages first (pnpm -r --if-present run build)`);
+      }
+      const mod = await import(pathToFileURL(join(dir, "dist", `${file}.js`)).href);
+      out.set(label(name, key), new Set([...Object.keys(mod), ...typeExports(dir, file)]));
     }
-    const mod = await import(pathToFileURL(join(lcp, "dist", `${file}.js`)).href);
-    out.set(key, new Set([...Object.keys(mod), ...typeExports(file)]));
   }
   return out;
 }
 
-/** The `[entry point, name]` pairs an `exports` map names, or a string saying why it cannot be read. */
-function exportsOf(map) {
+/**
+ * The `[entry point, name]` pairs an `exports` map of package `pkg` names, each entry point by its label, or a string
+ * saying why it cannot be read.
+ */
+function exportsOf(map, pkg = LCP) {
   if (map === null || typeof map !== "object" || Array.isArray(map)) return "its exports are not a map";
   const out = [];
   for (const [e, names] of Object.entries(map)) {
     if (!Array.isArray(names) || names.length === 0) return `its exports under ${e} are not a list of names`;
     for (const n of names) {
       if (typeof n !== "string" || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(n)) return `${JSON.stringify(n)} is not a name`;
-      out.push([e, n]);
+      out.push([label(pkg, e), n]);
     }
   }
   return out;
@@ -118,7 +137,12 @@ units.forEach((u, i) => {
   if (text(u.unit) === "") problems.push(`${where} has no name`);
   if (text(u.use) === "") problems.push(`${where} states no use`);
   if (text(u.fixedBy) === "") problems.push(`${where} names no specification or profile`);
-  const names = exportsOf(u.exports);
+  const pkg = u.package ?? LCP;
+  if (!PACKAGES.some(([name]) => name === pkg)) {
+    problems.push(`${where}: ${JSON.stringify(pkg)} is not a package the table covers`);
+    return;
+  }
+  const names = exportsOf(u.exports, pkg);
   if (typeof names === "string") {
     problems.push(`${where}: ${names}`);
     return;
@@ -126,7 +150,7 @@ units.forEach((u, i) => {
   for (const [e, n] of names) {
     const key = `${e} ${n}`;
     unitsOf.set(key, [...(unitsOf.get(key) ?? []), i + 1]);
-    if (!exported.has(e)) problems.push(`${where}: lcp has no entry point ${e}`);
+    if (!exported.has(e)) problems.push(`${where}: ${pkg} has no entry point ${e}`);
     else if (!exported.get(e).has(n) && !pending.has(key)) {
       problems.push(`${where}: ${e} does not export ${n}, and pending does not list it`);
     }

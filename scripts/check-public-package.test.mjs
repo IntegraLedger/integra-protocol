@@ -160,3 +160,25 @@ test("the check reads every file git lists, its content and its path, and finds 
     rmSync(dir, { recursive: true });
   }
 });
+
+test("over a directory git does not hold, such as an unpacked package, --dir reads every file and a git listing exits 2", () => {
+  const dir = mkdtempSync(join(tmpdir(), "check-public-package-"));
+  try {
+    mkdirSync(join(dir, "package", "marmots"), { recursive: true });
+    writeFileSync(join(dir, "package", "README.md"), "nothing held here\nbut two quill boxes\n");
+    writeFileSync(join(dir, "package", "marmots", "notes.txt"), "text\n");
+    const root = join(dir, "package");
+    assert.equal(check(root, [], scan).code, 2);
+    assert.match(check(root, [], scan).lines[0], /^check-public-package: git lists no files in .*; --dir reads a directory$/);
+    assert.deepEqual(check(root, [], scan, { dir: true }), {
+      code: 1,
+      lines: [
+        "README.md:2: item 1",
+        "marmots/notes.txt: item 2 in its path",
+        "check-public-package: read 2 files; 2 findings",
+      ],
+    });
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});

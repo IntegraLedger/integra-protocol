@@ -22,10 +22,10 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
       - name: A DCO sign-off and no agent trailer on every commit in the checked commit's history
         env:
@@ -68,10 +68,10 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
       - name: One-way imports (lcp depends on and names no other @integraledger package; the settler depends on and names only @integraledger/lcp, from this workspace; the site names only @integraledger/lcp), and each workspace package's scripts
         run: |
@@ -166,14 +166,18 @@ jobs:
           if (process.version !== `v${v}`) bad.push(`node ${process.version} runs this step, where .node-version names ${v}`);
           const tarball = `node-v${v}-linux-x64.tar.xz`;
           const url = `https://nodejs.org/dist/v${v}/${tarball}`;
-          // The oldest Node.js the published package's engines allow, which the floor job runs its tests on: its own pin
-          // and SHA-256, fetched by one step of its own that changes no PATH, and the major that engines.node names.
+          // The oldest Node.js the published packages' engines allow, which the floor job runs their tests on: its own
+          // pin and SHA-256, fetched by one step of its own that changes no PATH, and the version lcp's and the settler's
+          // engines.node name, each >= that version.
           const floor = fs.readFileSync(".node-version-floor", "utf8").trim();
           const floorTarball = `node-v${floor}-linux-x64.tar.xz`;
           const floorUrl = `https://nodejs.org/dist/v${floor}/${floorTarball}`;
           const engines = JSON.parse(fs.readFileSync("lcp/package.json", "utf8")).engines?.node;
-          if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(floor) || engines !== `>=${floor.split(".")[0]}`) {
-            bad.push(`.node-version-floor names ${floor}, where lcp/package.json's engines.node is ${engines}: it is >= that version's major`);
+          for (const manifest of ["lcp/package.json", "settler/package.json"]) {
+            const named = JSON.parse(fs.readFileSync(manifest, "utf8")).engines?.node;
+            if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(floor) || named !== `>=${floor}`) {
+              bad.push(`.node-version-floor names ${floor}, where ${manifest}'s engines.node is ${named}: it is >= that version`);
+            }
           }
           const files = fs.readdirSync(".github/workflows").filter((f) => /\.ya?ml$/.test(f)).sort().map((f) => `.github/workflows/${f}`);
           const text = new Map(files.map((f) => [f, fs.readFileSync(f, "utf8").split("\n")]));
@@ -283,7 +287,7 @@ jobs:
             console.log(`${bad.join("\n")}\nEvery job that runs a step holds, before its first other step that runs, the step:\n${step.join("\n")}`);
             process.exit(1);
           }
-          console.log(`node ${process.version}: each of the ${jobs} jobs that runs a step fetches ${url} first and checks it against ${digests[0]}; ${floorUrl}, the floor lcp's engines.node ${engines} names, is fetched only by its own step, against ${floorDigests[0]}; every download is ${FETCH} -o "$RUNNER_TEMP/<file>" https://<address>`);
+          console.log(`node ${process.version}: each of the ${jobs} jobs that runs a step fetches ${url} first and checks it against ${digests[0]}; ${floorUrl}, the floor lcp's and the settler's engines.node ${engines} names, is fetched only by its own step, against ${floorDigests[0]}; every download is ${FETCH} -o "$RUNNER_TEMP/<file>" https://<address>`);
           JS
       - name: Fetch pnpm
         run: |
@@ -625,10 +629,10 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
       - name: Fetch pnpm
         run: |
@@ -674,10 +678,10 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
       - name: Fetch pnpm
         run: |
@@ -716,10 +720,10 @@ jobs:
       - name: Fetch Node.js
         run: |
           set -eu
-          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.11.1/node-v26.11.1-linux-x64.tar.xz
-          echo "3883bfc73f9a680ca4eab04b196068aaaab1373ffa77d8fc1a4408222495b651  $RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" | sha256sum -c -
+          curl -fsSL --retry 5 --retry-all-errors -o "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.xz
+          echo "5c063e46bab0fbc1c17cc445d7ff129cbdcd0471be6ed83b6ab864f8143bc864  $RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" | sha256sum -c -
           mkdir "$RUNNER_TEMP/node"
-          tar -xJf "$RUNNER_TEMP/node-v26.11.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
+          tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
       - name: Fetch pnpm
         run: |

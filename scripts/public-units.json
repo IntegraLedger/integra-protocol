@@ -1,5 +1,5 @@
 {
-  "about": "Every export of every entry point of @integraledger/lcp belongs to exactly one unit below. A unit may group a family's codec, its types and its helpers. Each unit states its use: what it does for anyone who implements or uses the Legal Context Protocol, with no other software than a protocol's own stock clients and servers. Each names, in fixedBy, the published specification or profile that fixes its behaviour; a profile named by its file is in lcp/profiles/, and a vector file in lcp/vectors/. An export with no use for such a user does not belong in the package. `exports` maps each entry point, `.` for the package root, to the names it exports into the unit. `pending` lists exports a unit may name before the package exports them, each with its reason; once the package exports one, it leaves that list. node scripts/check-public-units.mjs checks this file against the built package.",
+  "about": "Every export of every entry point of @integraledger/lcp and of the settler, @integraledger/profile-facilitator, belongs to exactly one unit below; `package` names the package of a unit that is not lcp's. A unit may group a family's codec, its types and its helpers. Each unit states its use: what it does for anyone who implements or uses the Legal Context Protocol, with no other software than a protocol's own stock clients and servers. Each names, in fixedBy, the published specification or profile that fixes its behaviour; a profile named by its file is in lcp/profiles/, and a vector file in lcp/vectors/. An export with no use for such a user does not belong in the package. `exports` maps each entry point, `.` for the package root, to the names it exports into the unit. `pending` lists exports a unit may name before the package exports them, each with its reason; once the package exports one, it leaves that list. node scripts/check-public-units.mjs checks this file against the built package.",
   "units": [
     {
       "unit": "The ATR and its hash",
@@ -526,6 +526,15 @@
       },
       "use": "A seller's server offers a Spend Permission whose salt is the ATR hash in a 402 response, a buyer's client checks the offer against the ATR it fetched and gets the typed data its account signs or the approve call it makes, and the seller's server decodes the returned permission, makes its checks before it submits or serves, and reads the SpendPermissionManager's approval by the permission's hash, with Coinbase's SpendPermissionManager and its own stock clients and no other software.",
       "fixedBy": "spend-permissions-eip155.md; SpendPermissionManager.sol at coinbase/spend-permissions e0004e63; spend-permissions-eip155.json."
+    },
+    {
+      "unit": "The x402 facilitator",
+      "package": "@integraledger/profile-facilitator",
+      "exports": {
+        ".": ["serveProfileFacilitator", "ProfileFacilitatorConfig", "FeeBudgetConfig"]
+      },
+      "use": "Any x402 resource server calls it as its facilitator, over x402's facilitator API (GET /supported, POST /verify and POST /settle), for the x402 pairings lcp ships: it checks that each payment carries H in its pairing's form, submits what the payer signed, records each payment once in Postgres and answers what the chain shows, with x402's published facilitator classes, the chains' own nodes and no other software.",
+      "fixedBy": "The x402 v2 specification's facilitator API and each scheme's facilitator rules; the profile of each x402 pairing in lcp/profiles/; lcp's x402 vectors, which its tests run through its HTTP surface."
     }
 ]
 }
