@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 72 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 73 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -115,6 +115,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | no | `id-reuse` | yes | no | [`x402/exact/xrpl`](../../lcp/profiles/x402-exact-xrpl.md) |
 | `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
 | `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `full` | no | `native-field` | yes | yes | [`x402/upto/solana`](../../lcp/profiles/x402-upto-solana.md) |
+| `x402/upto/xrpl` | `uptoXrpl` from `@integraledger/lcp/x402-upto-xrpl` | `none` | no | `http-advisory` | no | no | [`x402/upto/xrpl`](../../lcp/profiles/x402-upto-xrpl.md) |
 
 ## What each binding proves
 
@@ -407,4 +408,8 @@ The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with
 ### `x402/upto/solana`
 
 The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one Memo instruction is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. The deposit is the signed maximum a one-request channel escrows; the amount charged from it, which may be zero, is the seller's metering, settled in a later transaction that does not carry the hash, and the rest returns to the payer. It compares no amount, mint or time with the ATR's terms.
+
+### `x402/upto/xrpl`
+
+Before this payment, an account signed an agreement transaction carrying this ATR's hash on the payment's XRPL network. The channel's create is in a validated ledger with tesSUCCESS: the account the payment's payer names deposited the create's Amount into the channel the payment names, whose beneficiary is the account its Destination names, after the ledger the agreement was recorded at. The create does not carry the hash, and this does not show that the account that signed the agreement is the one that opened the channel unless the record compares the two. The claim that closes the channel signs the channel id and an amount, not the hash, and is not read. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.
 

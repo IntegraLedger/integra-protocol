@@ -101,7 +101,8 @@
         "./x402-exact-solana": ["Broadcaster"],
         "./x402-exact-stellar": ["Broadcaster"],
         "./x402-exact-xrpl": ["Broadcaster"],
-        "./x402-upto-solana": ["Broadcaster"]
+        "./x402-upto-solana": ["Broadcaster"],
+        "./x402-upto-xrpl": ["Broadcaster"]
       },
       "use": "A resource server composing a challenge learns, before any payment exists, whether a payment through the pairing arrives already sent by the payer or is put on its rail by the payee.",
       "fixedBy": "Each protocol's specification for each credential type; broadcaster.json."
@@ -349,6 +350,14 @@
       },
       "use": "Any XRPL buyer's client signs a Payment whose InvoiceID carries H, any server checks the signed blob, and anyone reads the payment, or a payment channel's opening, claim and close, back.",
       "fixedBy": "The XRP Ledger's Payment and PayChannel transactions; x402's exact scheme on the XRP Ledger; mpp-session-hedera-solana-xrpl.md."
+    },
+    {
+      "unit": "x402 upto on the XRP Ledger",
+      "exports": {
+        "./x402-upto-xrpl": ["uptoXrpl", "UptoXrplPayload", "UptoXrplPaymentPayload"]
+      },
+      "use": "Any x402 resource server that takes x402's upto scheme on the XRP Ledger after an agreement on the same network reads the presented payment's channel and payer, refuses an option a payment channel cannot pay, and reads the channel's create back from the ledger, so it and any auditor learn which account opened the channel to the payee, and when.",
+      "fixedBy": "x402's upto scheme on the XRP Ledger; x402-upto-xrpl.md; x402-upto-xrpl.json."
     },
     {
       "unit": "x402 batch settlement",

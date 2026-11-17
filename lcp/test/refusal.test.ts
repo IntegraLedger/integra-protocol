@@ -276,6 +276,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "x402/exact/starknet",
     "x402/exact/sui",
     "x402/exact/tron/lcp-trc20-memo",
+    "x402/upto/xrpl",
     "x402/batch-settlement/eip155",
     "x402/batch-settlement/cloudflare",
   ];
@@ -442,7 +443,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
   it("the x402 and MPP pairings whose unplaced removes a carrier are these eighteen", () => {
     const pairings = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 28 + 28,
+      exact: 29 + 28,
       keep: ["the x402 and MPP pairings", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
       leave: ["the ACK, ACP, AP2, card and UCP pairings, whose unplaced the checkout tests above take", (b) => options[b.id.split("/")[0]!] !== undefined],
     });
@@ -525,12 +526,12 @@ describe("every placement function refuses a seller document carrying a refused 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
   // the carrier (unplaced).
   const x402 = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 28,
+    exact: 29,
     keep: ["the x402 pairings", (b) => b.id.startsWith("x402/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("x402/")],
   });
-  it("the x402 pairings are twenty-eight, each with an advertised document of one option", () => {
-    expect(x402.length).toBe(28);
+  it("the x402 pairings are twenty-nine, each with an advertised document of one option", () => {
+    expect(x402.length).toBe(29);
     for (const b of x402) expect((advertisedDoc.get(b.id) as { accepts: unknown[] }).accepts.length, b.id).toBe(1);
   });
   // The Cardano address method takes coinsPerUtxoByte after the offer, before the agreement URL: V8's parameter.

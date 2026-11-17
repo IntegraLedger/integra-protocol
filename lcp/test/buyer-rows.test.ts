@@ -107,6 +107,7 @@ describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
       "ucp/booking/unsigned",
       "ucp/checkout/unsigned",
       "x402/exact/aptos",
+      "x402/upto/xrpl",
     ]);
   });
 

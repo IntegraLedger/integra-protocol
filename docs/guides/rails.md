@@ -90,9 +90,10 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | | | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | The challenge only; the payment transaction carries nothing. |
 | Tempo | `tempo` | `mpp/session/tempo`, `mpp/subscription/tempo` | The channel's salt, or the key authorization's witness. |
 | Solana | `svm`, `x402-exact-solana`, `x402-upto-solana` | `x402/exact/solana`, `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/charge/solana`, `mpp/charge/usdc/solana` | The one Memo instruction holding H's LCP string; on the MPP charges, Memo instructions whose data is not an LCP string are not read. An `x402/batch-settlement/solana` opening also carries x402's receiver-authorizer binding memo. |
-| XRP Ledger | `xrpl`, `x402-exact-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. The blob is single-signed or multisigned: the payment is found by the payer's `Account` and signed `Sequence` or ticket, so a copy signed by another quorum, under another hash, is the same payment. The blob carries `NetworkID` as rippled requires of the option's network, none where its id is at most 1024 and that id above 1024, else `xrpl/network-mismatch`, which `build`'s `complete` also gives. |
+| XRP Ledger | `xrpl`, `x402-exact-xrpl`, `x402-upto-xrpl` | `x402/exact/xrpl` | The Payment's `InvoiceID`: SHA-256 of H's LCP string. The blob is single-signed or multisigned: the payment is found by the payer's `Account` and signed `Sequence` or ticket, so a copy signed by another quorum, under another hash, is the same payment. The blob carries `NetworkID` as rippled requires of the option's network, none where its id is at most 1024 and that id above 1024, else `xrpl/network-mismatch`, which `build`'s `complete` also gives. |
 | | | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H. The payer signs with a single key, as for `x402/exact/xrpl`. |
 | | | `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo holding an LCP string: H's. The payer signs the opening with a single key. |
+| | | `x402/upto/xrpl` | Nothing: the payer opens a payment channel itself, after an agreement on the same network, and presents the channel and its account; the read finds the channel's create. |
 | Hedera | `hedera` | `x402/exact/hedera` | The signed transaction body's memo: H's LCP string. |
 | | | `x402/exact/hedera/transfer-executor` | The challenge only. |
 | Algorand | `avm` | `x402/exact/algorand` | The asset transfer's `note`: H's LCP string. The payment entry is read as the x402 facilitator decodes it and as algod decodes the bytes the facilitator submits: an entry either reader refuses, or that the two read as different signed transactions, is `avm/txn-malformed`, and the transaction id is the one algod computes, from the transaction's canonical encoding. The facilitator decodes an entry's base64 with Node's `Buffer.from(entry, "base64")`, which takes other spellings of the same bytes; `avmCarrier` reads the canonical form only (RFC 4648 §3.5). |
@@ -469,6 +470,7 @@ x402/exact/aptos
 x402/exact/eip155/erc7710
 x402/exact/eip155/gateway-batched
 x402/exact/hedera/transfer-executor
+x402/upto/xrpl
 ```
 
 The checkout pairings are the same where the buyer's approval does not sign H; see

@@ -119,6 +119,7 @@ import { batchCloudflare, batchEvm, batchSvm } from "./x402-batch-settlement.js"
 import { exactSvm } from "./x402-exact-solana.js";
 import { exactXrpl } from "./x402-exact-xrpl.js";
 import { uptoSvm } from "./x402-upto-solana.js";
+import { uptoXrpl, type UptoXrplPaymentPayload } from "./x402-upto-xrpl.js";
 
 /** An x402 pairing of scheme and rail. */
 export type X402Binding =
@@ -149,7 +150,8 @@ export type X402Binding =
   | typeof exactXrpl
   | typeof uptoPermit2
   | typeof uptoSvm
-  | typeof exactGatewayBatched;
+  | typeof exactGatewayBatched
+  | typeof uptoXrpl;
 /** An MPP pairing of intent and method. */
 export type MppBinding = (typeof MPP_BINDINGS)[number];
 /** The optional member of a push-mode pairing: the transaction its credential names, or undefined. */
@@ -234,6 +236,7 @@ interface PresentedOn {
     | TronPayment
     | TvmPayment
     | UptoSvmPaymentPayload
+    | UptoXrplPaymentPayload
     | XrplPaymentPayload;
 }
 /** What the buyer presents as payment. */
@@ -289,6 +292,7 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   uptoPermit2,
   uptoSvm,
   exactGatewayBatched,
+  uptoXrpl,
 ]))();
 
 /** Whether a pairing is an x402 pairing. */

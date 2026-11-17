@@ -171,6 +171,10 @@
       "types": "./dist/x402-upto-solana.d.ts",
       "default": "./dist/x402-upto-solana.js"
     },
+    "./x402-upto-xrpl": {
+      "types": "./dist/x402-upto-xrpl.d.ts",
+      "default": "./dist/x402-upto-xrpl.js"
+    },
     "./xrpl": {
       "types": "./dist/xrpl.d.ts",
       "default": "./dist/xrpl.js"

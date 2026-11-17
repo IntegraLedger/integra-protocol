@@ -482,6 +482,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "x402/manager-not-reference",
   "x402/no-legal-context",
   "x402/no-payable-option",
+  "x402/no-signed-place",
   "x402/nonce-malformed",
   "x402/nonce-not-agreement",
   "x402/nonce-not-payment",

@@ -203,7 +203,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "nonce-not-payment", "not-an-opening", "not-bound-within", "not-v2", "option-malformed", "option-not-in-document",
     "option-not-this-pairing", "payload-malformed", "permission-context-malformed", "request-header-invalid", "request-target-invalid",
     "request-too-large", "salt-malformed", "salt-not-bound", "signature-malformed", "signed-not-bound",
-    "spender-not-proxy", "batched-not-eip3009", "nonce-not-agreement", "splits-not-carried", "signer-not-from",
+    "spender-not-proxy", "batched-not-eip3009", "nonce-not-agreement", "splits-not-carried", "signer-not-from", "no-signed-place",
   ],
   xrpl: [
     "blob-malformed", "blob-too-large", "carrier-mismatch", "carrier-not-lcp", "carrier-occupied", "currency-not-xrp",

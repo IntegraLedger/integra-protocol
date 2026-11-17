@@ -132,6 +132,11 @@
       "source": "x402 v2 specification §2, step 4: \"Server verifies the payment authorization and initiates blockchain settlement\""
     },
     {
+      "pairing": "x402/upto/xrpl",
+      "broadcaster": "payer",
+      "source": "specs/schemes/upto/scheme_upto_xrpl.md at x402-foundation/x402 88b66dd4, :29-31: \"The channel is opened before the payment is presented\", and :77: \"Client submits a PaymentChannelCreate to payTo\"; the payment names that channel (:172-188)"
+    },
+    {
       "pairing": "x402/batch-settlement/cloudflare",
       "broadcaster": "payee",
       "source": "Cloudflare verifies the agent's signed request and bills its registered identity; the payer sends nothing"

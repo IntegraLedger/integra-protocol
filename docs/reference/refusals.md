@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 521 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 522 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -27,7 +27,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 |---|---|---|
 | [`core`](#core) | 6 | The core: `assemble` and the JSON checks under it. |
 | [`discovery`](#discovery) | 20 | The discovery document (`@integraledger/lcp/discovery`). |
-| [`x402`](#x402) | 39 | x402 documents, the request commitment, and the checks every x402 pairing shares (`@integraledger/lcp/x402` and the x402 pairings on each rail). |
+| [`x402`](#x402) | 40 | x402 documents, the request commitment, and the checks every x402 pairing shares (`@integraledger/lcp/x402` and the x402 pairings on each rail). |
 | [`mpp`](#mpp) | 59 | MPP challenges and credentials, and the checks every MPP pairing shares (`@integraledger/lcp/mpp`). |
 | [`ack`](#ack) | 10 | ACK Payment Requests and receipts (`@integraledger/lcp/ack`). |
 | [`acp`](#acp) | 16 | ACP checkout sessions and delegated payments (`@integraledger/lcp/acp`). |
@@ -118,6 +118,7 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 | `x402/link-not-https` | The link or agreement URL given to `advertise` is not an `https` link, or the link or agreement URL in the document's `extensions.legalContext.info` read by `read`, or the legal context's link read by the Cloudflare batch pairing's `build` and `bound` or by the Stellar pairing's `bound` and `reference`, is an absolute URL of at most 2048 characters whose scheme is not `https`. |
 | `x402/manager-not-reference` | At the ERC-7710 salt level, the payment's `delegationManager` is not the reference DelegationManager on a chain where it is deployed. |
 | `x402/no-legal-context` | The document or presented payment has no `extensions.legalContext`, or (for the unsigned ERC-7710 level and Aptos `bound`) the echoed `extensions.legalContext.info` does not decode. |
+| `x402/no-signed-place` | `bound` of `x402/upto/xrpl` refuses every payment, nothing the payer signs carrying H at coverage `none`, neither the channel's create nor its claim, once the presented `accepted` passes the pairing's option filter and its payload names a channel, 64 hex digits, and a payer, a classic XRPL address, whose refusal it gives. |
 | `x402/no-payable-option` | `read` finds no option in the document's `accepts` that this pairing serves. Every pairing's option filter reads its options without the rail's optional peer, so `read` gives a document the same answer with the peer or without it. |
 | `x402/nonce-malformed` | A presented `exact` or `upto` Permit2 payment's `nonce` is not a decimal below 2^256 or `0x` followed by 64 hex digits (on `auth-capture`, a nonce that does not decode is `x402/nonce-not-payment`). |
 | `x402/nonce-not-agreement` | `bound` or `reference` of `x402/exact/eip155/eip3009` or `x402/exact/eip155/permit2`, given the act `agreement` and H, is given a payment whose signed nonce is not the agreement's own value, `agreementValue` of that H. |
@@ -465,7 +466,7 @@ The XRP Ledger (`@integraledger/lcp/xrpl` and the XRPL pairings).
 | `xrpl/carrier-mismatch` | The option's `extra.invoiceId` or the challenge's `invoiceId` is not the one derived from H when `build` is called, or the signed `Payment`'s `InvoiceID` is not the one the option or challenge names. |
 | `xrpl/carrier-not-lcp` | The x402 XRPL option's `extra.invoiceId` is not an ATR hash in LCP string form. |
 | `xrpl/carrier-occupied` | `advertise` finds the option's `extra.invoiceId`, or the MPP challenge's `invoiceId`, already holding a value other than the one derived from H. |
-| `xrpl/currency-not-xrp` | An MPP XRPL session challenge names a `currency` other than `XRP`. |
+| `xrpl/currency-not-xrp` | An MPP XRPL session challenge names a `currency` other than `XRP`, or an `x402/upto/xrpl` option, `upto` on an XRPL network, names an `asset` other than `XRP`, a payment channel holding XRP alone. |
 | `xrpl/memo-count` | The XRPL session opening carries more than 8 memos, or more than one memo carrying an LCP string (`bound`, `reference`, and `channel.ref` of the opening). |
 | `xrpl/network-malformed` | The MPP XRPL challenge's `methodDetails.network` is not one of the XRPL network names this package maps. |
 | `xrpl/network-mismatch` | The signed blob of an `x402/exact/xrpl` payment, an `mpp/charge/xrpl` credential or an `mpp/session/xrpl` opening (to `channel.ref` too), or one given to their `build`'s `complete`, carries a `NetworkID` a node of the option's or challenge's network does not take, as rippled 3.4.1's `preflight0` reads it (`src/libxrpl/tx/Transactor.cpp` L73-93): a network whose id is at most 1024, as each network the MPP pairings name is, takes no `NetworkID`, and one above 1024 takes its own id only. |

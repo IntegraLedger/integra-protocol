@@ -67,3 +67,14 @@ export function docOf(option: PaymentRequirements): PaymentRequired {
 }
 /** The x402 pairings whose `read` offers the option, in BINDINGS order. */
 export const offeredBy = (option: PaymentRequirements): string[] => X402.filter((b) => !isRefusal(b.read(docOf(option)))).map((b) => b.id);
+/**
+ * The x402 pairings whose profile states that nothing the payer signs carries H (x402-upto-xrpl.md rule 7): each one's
+ * `bound` takes a payment by refusing it `x402/no-signed-place` once the payment passes its gates.
+ */
+export const NO_SIGNED_PLACE: readonly string[] = ["x402/upto/xrpl"];
+/**
+ * Whether pairing `id`'s `bound` takes a payment: it binds it, or, on a pairing of NO_SIGNED_PLACE, refuses it
+ * `x402/no-signed-place`. Any other pairing's refusal, that code included, is not taking it.
+ */
+export const takes = (id: string, answer: unknown): boolean =>
+  !isRefusal(answer) || (NO_SIGNED_PLACE.includes(id) && answer.code === "x402/no-signed-place");

@@ -45,6 +45,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/x402-exact-stellar`](#integraledgerlcpx402-exact-stellar) | The `x402-exact-stellar` entry point: the `Broadcaster` type, which every pairing's `broadcaster` answers. |
 | [`@integraledger/lcp/x402-exact-xrpl`](#integraledgerlcpx402-exact-xrpl) | The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`, read back from the signed blob, single-signed or multisigned, and settlement read by the payer's instrument, its `Account` with the signed `Sequence` or ticket. |
 | [`@integraledger/lcp/x402-upto-solana`](#integraledgerlcpx402-upto-solana) | The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the one Memo instruction of the transaction that opens a one-request payment channel escrowing the signed maximum; read back from that transaction, and settlement read from the opening. |
+| [`@integraledger/lcp/x402-upto-xrpl`](#integraledgerlcpx402-upto-xrpl) | The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`. The payer opens a payment channel to the option's `payTo` itself and presents the channel and its own account, so nothing it signs carries the ATR hash; the payment follows an agreement on the same network. Settlement is read from the channel's create. |
 | [`@integraledger/lcp/xrpl`](#integraledgerlcpxrpl) | XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, the reads of a payment, an opening, a channel and a close through a bounded reader, and the payment channel's id and claim. |
 
 ## `@integraledger/lcp`
@@ -500,6 +501,20 @@ import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 **Values (1):** `uptoSvm`.
 
 **Types (3):** `Broadcaster`, `UptoSvmChoice`, `UptoSvmPayload`.
+
+## `@integraledger/lcp/x402-upto-xrpl`
+
+The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`. The payer opens a payment channel to the option's `payTo` itself and presents the channel and its own account, so nothing it signs carries the ATR hash; the payment follows an agreement on the same network. Settlement is read from the channel's create.
+
+```ts no-check
+import { uptoXrpl } from "@integraledger/lcp/x402-upto-xrpl";
+```
+
+**Pairings:** `x402/upto/xrpl`.
+
+**Values (1):** `uptoXrpl`.
+
+**Types (3):** `Broadcaster`, `UptoXrplPayload`, `UptoXrplPaymentPayload`.
 
 ## `@integraledger/lcp/xrpl`
 

@@ -21,7 +21,7 @@ type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: st
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
 type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
-const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 72 });
+const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 73 });
 const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 36 });
 const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 27 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
@@ -108,6 +108,7 @@ const BINDS_NOTHING: Readonly<Record<string, string>> = {
   "mpp/session/xrpl/stock": "mpp/no-signed-place",
   "mpp/session/solana/stock": "mpp/no-signed-place",
   "mpp/session/hedera/stock": "mpp/no-signed-place",
+  "x402/upto/xrpl": "x402/no-signed-place",
   "ack/payment-request": "ack/no-signed-place",
   "acp/checkout/undelegated": "acp/not-buyer-signed",
   "ucp/checkout/unsigned": "ucp/not-buyer-signed",

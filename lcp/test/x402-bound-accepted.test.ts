@@ -16,13 +16,15 @@
 // `reference` takes the payee from the option the payment answers, so under an offered option with no `payTo` it
 // refuses that option `x402/option-malformed`; the pairings whose `read` offers such an option are listed. Then each
 // vector file's `boundAccepted` rows: the file's payment under an option the pairing's `read` does not offer, refused
-// with the row's code.
+// with the row's code. A pairing whose profile states that nothing the payer signs carries H (NO_SIGNED_PLACE in
+// x402-presentations.ts) binds no payment: its `bound` takes a payment by refusing it `x402/no-signed-place` once the
+// payment passes its gates (`takes`).
 import { beforeAll, describe, expect, it } from "vitest";
 import { isRefusal, type AtrHash } from "../src/index.js";
 import type { PaymentPayload, PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { x402Payee } from "../src/internal/payee.js";
 import { rowsOf } from "./rows.js";
-import { FILES, OPTIONS, PAYMENTS, X402, docOf, vector, type X402Pairing } from "./x402-presentations.js";
+import { FILES, OPTIONS, PAYMENTS, X402, docOf, takes, vector, type X402Pairing } from "./x402-presentations.js";
 
 const LINK = "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f";
 /** SHA-256("abc"), FIPS 180-2. */
@@ -158,10 +160,10 @@ const batchModeOf = (o: PaymentRequirements): string | undefined => {
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 36842;
-const NOT_OFFERED = 1019714;
-const OFFERED_OWN_BINDS = 1547;
-const OFFERED_COUNTS = [1366, 181, 1164];
+const PRESENTED = 39823;
+const NOT_OFFERED = 1141897;
+const OFFERED_OWN_BINDS = 1549;
+const OFFERED_COUNTS = [1366, 183, 1164];
 const OTHER_MODE = 34;
 
 const PRESENTATIONS = rowsOf(
@@ -231,9 +233,9 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
     }
   }, 0);
 
-  it("each presentation is answered by each of the 28 x402 pairings", () => {
-    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 28 });
-    expect(answers.length).toBe(PRESENTATIONS.length * 28);
+  it("each presentation is answered by each of the 29 x402 pairings", () => {
+    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 29 });
+    expect(answers.length).toBe(PRESENTATIONS.length * 29);
   });
 
   it("under an option its read does not offer, each pairing's bound refuses the payment with the code its advertise gives", () => {
@@ -308,7 +310,7 @@ const X402_FILES = rowsOf(
   FILES,
   "the x402 vector files",
   {
-    exact: 25,
+    exact: 26,
     keep: ["the x402 pairings' vector files", (f) => f.startsWith("x402-") && !NO_PAIRING.includes(f)],
     leave: ["buyer.json, and the x402 files that hold no x402 pairing's vectors", (f) => f === "buyer.json" || NO_PAIRING.includes(f)],
   },
@@ -319,7 +321,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 312 },
+  { exact: 317 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {
@@ -330,7 +332,7 @@ describe("the x402 vector files' boundAccepted rows", () => {
   it.each(ROWS.map((r) => [`${r.file} boundAccepted.rows[${r.i}]: ${r.row.case}`, r] as const))("%s", async (_, { row, payment }) => {
     const pairing = X402.find((b) => b.id === row.pairing)!;
     const doc: PaymentRequired = { x402Version: 2, resource: { url: "https://pairing.invalid/" }, accepts: [row.accepted] };
-    expect(isRefusal(await pairing.bound(payment))).toBe(false);
+    expect(takes(pairing.id, await pairing.bound(payment))).toBe(true);
     expect(await pairing.bound({ ...payment, accepted: row.accepted })).toEqual({ refused: true, code: row.expect });
     expect(pairing.read(docOf(row.accepted))).toEqual({ refused: true, code: "x402/no-payable-option" });
     expect(pairing.advertise(doc, H, LINK, row.accepted)).toEqual({ refused: true, code: row.expect });
@@ -362,7 +364,7 @@ describe("auth-capture: a bound payment under its option with the receiver autho
 // x402 v2's PaymentPayload carries `accepted`, the PaymentRequirements object the payer chose
 // (specs/x402-specification-v2.md at x402-foundation/x402 e95b06661e), and docs/reference/refusals.md gives
 // `x402/payload-malformed` for a presented payment whose `accepted` is not an object. Each pairing is given a vector
-// payment its `bound` binds, with `accepted` replaced by each value that is not an object, or removed.
+// payment its `bound` takes (`takes`), with `accepted` replaced by each value that is not an object, or removed.
 const NOT_AN_OBJECT: [string, unknown][] = [
   ["null", null],
   ["a string", "exact"],
@@ -375,7 +377,7 @@ describe("a presented payment whose accepted is not an object", () => {
   it.each(X402.map((b) => [b.id, b] as const))("%s: bound and reference refuse it with x402/payload-malformed", async (_, pairing) => {
     let payment: PaymentPayload | undefined;
     for (const [, p] of PAYMENTS) {
-      if (!isRefusal(await pairing.bound(p))) {
+      if (takes(pairing.id, await pairing.bound(p))) {
         payment = p;
         break;
       }

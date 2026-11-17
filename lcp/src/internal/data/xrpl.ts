@@ -146,4 +146,45 @@ export const XRPL = /* @__PURE__ */ freeze({
       "unless the record compares the two. Vouchers sign the channel id and an amount, not the hash. This does not " +
       "show that amount, deposit, destination, settle delay or timing match the ATR's content.",
   },
+  "x402/upto/xrpl": {
+    coverage: "none",
+    carrier: { signed: null },
+    link: "none",
+    source: "none: the payer's client opens the channel to `payTo` itself, and neither its create nor its claim carries H",
+    nonce: "single-use",
+    broadcasts: "payer",
+    read: {
+      endpoint: ["rippled"],
+      note: NOTE,
+      search:
+        "The channel `payload.channelId` names: its `PayChannel` at the validated ledger, then the `PaymentChannelCreate` " +
+        "whose metadata creates that entry, in the `account_tx` of the channel's `Account`, or, where the validated ledger " +
+        "does not show the channel, of the payer `payload.payer` names, from the ledger the create must come after to " +
+        "the latest ledger the server serves",
+      history: HISTORY,
+      contracts: [],
+      lapse:
+        "none: a create the read finds has landed and succeeded, its `Sequence` or ticket the single-use value. A channel " +
+        "another account opened, or one to another account, is `failed`, `instrument-consumed`; one whose create is found " +
+        "at or before the position, `failed`, `before-position`. One the validated ledger shows whose create the search, " +
+        "read whole, does not hold was created at or before the position only if `account_tx` lists every transaction of " +
+        "the account, which no run has yet shown: until one does, `pending`, `search-incomplete`, the search's position " +
+        "held where it began; on a server that does not hold the range, `unreadable`, `history-gap`. One the validated " +
+        "ledger does not show whose create the search, read whole, does not hold, `pending`, `not-found`",
+    },
+    destination: "the PayChannel's `Destination`, compared with the option's payee",
+    asset: "XRP, the only asset of a channel; the create's `Amount` recorded as observed",
+    payer: PAYER,
+    agreementOn: "same-network",
+    confirmed: "no",
+    proves:
+      "Before this payment, an account signed an agreement transaction carrying this ATR's hash on the payment's " +
+      "XRPL network. The channel's create is in a validated ledger with tesSUCCESS: the account the payment's payer " +
+      "names deposited the create's Amount into the channel the payment names, whose beneficiary is the account its " +
+      "Destination names, after the ledger the agreement was recorded at. The create does not carry the hash, and " +
+      "this does not show that the account that signed the agreement is the one that opened the channel unless the " +
+      "record compares the two. The claim that closes the channel signs the channel id and an amount, not the hash, " +
+      "and is not read. This does not show that amount, deposit, destination, settle delay or timing match the ATR's " +
+      "content.",
+  },
 });

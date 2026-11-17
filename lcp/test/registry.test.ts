@@ -106,6 +106,7 @@ import { batchCloudflare, batchEvm, batchSvm } from "../src/x402-batch-settlemen
 import { exactSvm } from "../src/x402-exact-solana.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import { uptoSvm } from "../src/x402-upto-solana.js";
+import { uptoXrpl, type UptoXrplPaymentPayload } from "../src/x402-upto-xrpl.js";
 import type { StacksReader, StacksRef } from "../src/stacks.js";
 import type { TempoSearchReader } from "../src/tempo.js";
 import { rowsOf } from "./rows.js";
@@ -171,6 +172,7 @@ const OWN = {
   "x402/exact/tron/lcp-trc20-memo": exactTronMemo satisfies Entry<"x402/exact/tron/lcp-trc20-memo", TronPayment, TronRef, TronReader, Own<typeof exactTronMemo>>,
   "x402/exact/tvm": exactTvm satisfies Entry<"x402/exact/tvm", TvmPayment, TvmRef, TvmReader, Own<typeof exactTvm>>,
   "x402/exact/xrpl": exactXrpl satisfies Entry<"x402/exact/xrpl", XrplPaymentPayload, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof exactXrpl>>,
+  "x402/upto/xrpl": uptoXrpl satisfies Entry<"x402/upto/xrpl", UptoXrplPaymentPayload, Omit<XrplChannelRef, "fromLedger">, XrplReader, Own<typeof uptoXrpl>>,
   "mpp/charge/evm/authorization": evmAuthorization satisfies Entry<"mpp/charge/evm/authorization", MppCredential, EvmRef & MppEip3009Ref, MppEvmReader, Own<typeof evmAuthorization>>,
   "mpp/charge/evm/permit2": evmPermit2 satisfies Entry<"mpp/charge/evm/permit2", MppCredential, EvmRef & MppPermit2Ref, MppEvmReader, Own<typeof evmPermit2>>,
   "mpp/charge/evm/transaction": evmTransaction satisfies Entry<"mpp/charge/evm/transaction", MppCredential, EvmRef & MppNamedRef & { asset: Hex }, MppEvmReader, Own<typeof evmTransaction>>,
@@ -371,7 +373,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 72 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 73 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.

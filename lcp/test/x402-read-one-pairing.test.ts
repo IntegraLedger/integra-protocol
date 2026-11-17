@@ -5,10 +5,12 @@
 // pairing's `read` offers it. One case differs, and the test states it: both ERC-7710 levels offer an `erc7710` option,
 // which they share (the root pairingOf names `x402/exact/eip155/erc7710`; `pairingOfPayment` names the level from the
 // payment). Each presented payment in those vector files is bound only by pairings whose `read`
-// offers its `accepted`: an opening by `bound`, and a channel's within payment by `channel.boundWithin`.
+// offers its `accepted`: an opening by `bound`, and a channel's within payment by `channel.boundWithin`; a payment of a
+// pairing whose profile states that nothing the payer signs carries H (NO_SIGNED_PLACE in x402-presentations.ts) is
+// taken by its `bound` refusing it `x402/no-signed-place`.
 import { describe, expect, it } from "vitest";
-import { isRefusal, pairingOf } from "../src/index.js";
-import { OPTIONS, PAYMENTS, X402, offeredBy } from "./x402-presentations.js";
+import { pairingOf } from "../src/index.js";
+import { OPTIONS, PAYMENTS, X402, offeredBy, takes } from "./x402-presentations.js";
 
 const ERC7710 = "x402/exact/eip155/erc7710";
 const ERC7710_SALT = "x402/exact/eip155/erc7710-salt";
@@ -44,7 +46,8 @@ describe("each x402 option is offered by one pairing's read, the one the root pa
       const bound: string[] = [];
       for (const b of X402) {
         const within = b.channel !== undefined && b.channel.kind(p) === "within";
-        if (!isRefusal(await (within ? b.channel!.boundWithin(p) : b.bound(p)))) bound.push(b.id);
+        const answer = await (within ? b.channel!.boundWithin(p) : b.bound(p));
+        if (takes(b.id, answer)) bound.push(b.id);
       }
       expect([where, bound.length]).not.toEqual([where, 0]);
       expect([where, bound.filter((id) => !offering.includes(id))]).toEqual([where, []]);

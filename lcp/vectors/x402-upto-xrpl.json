@@ -1,0 +1,1279 @@
+{
+ "about": "Vectors for the x402/upto/xrpl pairing (the x402-upto-xrpl entry point of @integraledger/lcp), x402's upto scheme on the XRP Ledger (specs/schemes/upto/scheme_upto_xrpl.md at x402-foundation/x402 88b66dd4, cited by line as :N). No published software implements the scheme (@x402/xrpl 2.30.0 ships exact alone), so every value is computed from the scheme's text by independent tools: fixed.O and fixed.OSettle are the scheme's own examples (:110-124, :128-142), verbatim. The keys are Ed25519 by XRPL's key derivation (xrpl.org, Cryptographic Keys, Ed25519 Key Derivation: the private key is SHA-512Half of 16 bytes of entropy, the public key 0xED and the curve point), entropy 01x16 the payer, 03x16 another account, 04x16 another destination, the account base58check of 0x00 and RIPEMD-160(SHA-256(public key)) (@noble/hashes 2.4.0 legacy, ripple-binary-codec 2.11.0's AccountID). create.txJson is written by hand from xrpl.org's PaymentChannelCreate fields; create.blob is ripple-binary-codec 2.11.0's encode with SigningPubKey and TxnSignature, the signature @noble/curves 2.4.0's Ed25519 over ripple-binary-codec's encodeForSigning; each hash is SHA-512Half of TXN\\0 and the blob (node:crypto). Each channel id is the PayChannel ID format (xrpl.org, PayChannel, PayChannel ID Format; :56): node:crypto's SHA-512Half of 0x0078, the two AccountIDs and the sequence or ticket, big-endian. claim.expect is ripple-binary-codec 2.11.0's encodeForSigningClaim({channel, amount}), the bytes :251-254 state, and claim.signature the payer's Ed25519 signature over them, which fixed.P presents. Expected answers of status are written by hand from the profiles read-status and x402-upto-xrpl, each row read on a constructed server holding ledgers 1 to 1001, 1000 validated, unless complete says otherwise (test/fixtures/xrpl-reader.ts): the reference of fixed.P with the row's channel, plus fromLedger 950, read for the act payment at the mark validated after the position 950. ledger_entry answers the row's PayChannel at the validated ledger, or entryNotFound where the row names none; account_tx answers the row's creates for the row's opener alone, each with tesSUCCESS at its ledger, validated unless the row says otherwise, its metadata creating the row's channel unless metadata is false. Refusal rows change one member of fixed.P or of fixed.O, as a JSON Pointer (RFC 6901) and its value, or remove it; their codes have no outside oracle and are the profile's rules 5 and 7 over the scheme's members (:144-150, :172-188, :236-243).",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "link": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
+  "resource": {
+   "url": "https://example.com/weather"
+  },
+  "O": {
+   "scheme": "upto",
+   "network": "xrpl:1",
+   "asset": "XRP",
+   "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+   "amount": "10000000",
+   "maxTimeoutSeconds": 300,
+   "extra": {
+    "areFeesSponsored": false,
+    "minSettleDelay": 600,
+    "validAfter": 1754136000
+   }
+  },
+  "OSettle": {
+   "scheme": "upto",
+   "network": "xrpl:1",
+   "asset": "XRP",
+   "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+   "amount": "2470000",
+   "maxTimeoutSeconds": 300,
+   "extra": {
+    "areFeesSponsored": false,
+    "minSettleDelay": 600,
+    "validAfter": 1754136000
+   }
+  },
+  "payer": {
+   "entropy": "01x16",
+   "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+   "publicKey": "ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9"
+  },
+  "other": {
+   "entropy": "03x16",
+   "account": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+   "publicKey": "EDC1410EC4922A21B6F3CA7F376AD88074293F0F94119EB211FE83E75C7C7AC643"
+  },
+  "elsewhere": {
+   "entropy": "04x16",
+   "account": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R"
+  },
+  "P": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://example.com/weather"
+   },
+   "accepted": {
+    "scheme": "upto",
+    "network": "xrpl:1",
+    "asset": "XRP",
+    "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+    "amount": "10000000",
+    "maxTimeoutSeconds": 300,
+    "extra": {
+     "areFeesSponsored": false,
+     "minSettleDelay": 600,
+     "validAfter": 1754136000
+    }
+   },
+   "payload": {
+    "channelId": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "maxAmount": "10000000",
+    "signature": "19F8930C7F2A84B2872C4A9DFA963E6F61DD4FC2225FD6D539DC3CDE3E90497D0C2D319D5812C0E962A21769992C3E5FB3A747980F564E816BEEA49DCDFC1307",
+    "publicKey": "ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9",
+    "payer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC"
+   },
+   "extensions": {
+    "legalContext": {
+     "info": {
+      "type": "sha256",
+      "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+     },
+     "schema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+       "type": {
+        "const": "sha256"
+       },
+       "value": {
+        "type": "string",
+        "pattern": "^0x[0-9a-f]{64}$"
+       },
+       "legalContextUrl": {
+        "type": "string",
+        "pattern": "^https://"
+       }
+      },
+      "required": [
+       "type",
+       "value",
+       "legalContextUrl"
+      ]
+     }
+    }
+   }
+  }
+ },
+ "create": {
+  "txJson": {
+   "TransactionType": "PaymentChannelCreate",
+   "Flags": 0,
+   "Account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+   "Destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+   "Amount": "10000000",
+   "SettleDelay": 600,
+   "PublicKey": "ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9",
+   "CancelAfter": 807454800,
+   "Fee": "12",
+   "LastLedgerSequence": 1000,
+   "Sequence": 7,
+   "SigningPubKey": "ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9"
+  },
+  "blob": "12000D22000000002400000007201B000003E820243020C85020270000025861400000000098968068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974409959A5A27AB16EE47B18806B95796E4087ED6B25EA791BE10E1EABBEC4A6ADB7AD0C84D48061889AB3F1FC42327C90CC75972D2C0DD257C76979BE3470DFC50681144D34F18EEBFD64C25996D2C5BD8C699DDEB946268314F667B0CA50CC7709A220B0561B85E53A48461FA8",
+  "hash": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491",
+  "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+  "ticket": {
+   "txJson": {
+    "TransactionType": "PaymentChannelCreate",
+    "Flags": 0,
+    "Account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "Destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+    "Amount": "10000000",
+    "SettleDelay": 600,
+    "PublicKey": "ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9",
+    "CancelAfter": 807454800,
+    "Fee": "12",
+    "LastLedgerSequence": 1000,
+    "Sequence": 0,
+    "TicketSequence": 12,
+    "SigningPubKey": "ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9"
+   },
+   "blob": "12000D22000000002400000000201B000003E820243020C85020270000025820290000000C61400000000098968068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974403B42351C7529FC18E9FA116B2931141FFD1D6AE6E42E850053EA5131C7A4300035A6F0D82CAC7071731429EE624A9390B004B8AAEDF165D091C79B5221EEFB0E81144D34F18EEBFD64C25996D2C5BD8C699DDEB946268314F667B0CA50CC7709A220B0561B85E53A48461FA8",
+   "hash": "A37317D42B5617F9DA7557C0227B2511FABD259997F7F1F8C374579709BFE7AD",
+   "channel": "590EE40DAFC7CE51F589D5640F637F35066F7A9F39CB9E22E6CAC14B3B894DD1"
+  }
+ },
+ "claim": {
+  "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+  "drops": "10000000",
+  "expect": "434C4D000FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA690000000000989680",
+  "signature": "19F8930C7F2A84B2872C4A9DFA963E6F61DD4FC2225FD6D539DC3CDE3E90497D0C2D319D5812C0E962A21769992C3E5FB3A747980F564E816BEEA49DCDFC1307"
+ },
+ "filter": {
+  "rows": [
+   {
+    "case": "the scheme's verify-time example",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/upto/xrpl",
+    "source": "scheme_upto_xrpl.md:110-124"
+   },
+   {
+    "case": "the scheme's settle-time example",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "2470000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/upto/xrpl",
+    "source": "scheme_upto_xrpl.md:128-142"
+   },
+   {
+    "case": "extra.minSettleDelay null",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": null,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/upto/xrpl",
+    "source": "an absent one MUST be accepted whether omitted or null, :241-243"
+   },
+   {
+    "case": "extra.validAfter null",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": null
+     }
+    },
+    "expect": "x402/upto/xrpl",
+    "source": ":241-243"
+   },
+   {
+    "case": "extra.minSettleDelay and extra.validAfter removed",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false
+     }
+    },
+    "expect": "x402/upto/xrpl",
+    "source": ":146-150, neither required"
+   },
+   {
+    "case": "extra.minSettleDelay 0",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 0,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/upto/xrpl",
+    "source": "a non-negative integer, :241-243"
+   },
+   {
+    "case": "extra.minSettleDelay 4294967295, the largest SettleDelay",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 4294967295,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/upto/xrpl",
+    "source": "SettleDelay is a UInt32, definitions.json L552-558"
+   },
+   {
+    "case": "amount 99999999999999999 drops, below 10^17",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "99999999999999999",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/upto/xrpl"
+   },
+   {
+    "case": "asset USD: an issued currency",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "USD",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "xrpl/currency-not-xrp",
+    "source": "XRP only, :62-66"
+   },
+   {
+    "case": "asset USD:rH9ESAdrFfDAZtCZGa7JiwNJfKnC6CmGFQ: an issued currency with its issuer",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "USD:rH9ESAdrFfDAZtCZGa7JiwNJfKnC6CmGFQ",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "xrpl/currency-not-xrp",
+    "source": ":62-66"
+   },
+   {
+    "case": "asset removed",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "xrpl/currency-not-xrp",
+    "source": ":62-66, asset MUST be \"XRP\""
+   },
+   {
+    "case": "amount \"0\"",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "0",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": "a create's Amount is a positive drops amount"
+   },
+   {
+    "case": "amount \"010\", a leading zero",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "010",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": "amount canonical drops, :241-242"
+   },
+   {
+    "case": "amount \"1.5\"",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "1.5",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": ":241-242"
+   },
+   {
+    "case": "amount 100000000000000000, 10^17 drops",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "100000000000000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "amount removed",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "payTo whose checksum does not hold",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYf",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "payTo removed",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "maxTimeoutSeconds 0",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": "a positive integer, :240-241"
+   },
+   {
+    "case": "maxTimeoutSeconds \"300\"",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": "300",
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": ":240-241"
+   },
+   {
+    "case": "extra removed",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300
+    },
+    "expect": "x402/option-malformed",
+    "source": "extra.areFeesSponsored is required, :148"
+   },
+   {
+    "case": "extra.areFeesSponsored true",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": true,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": "always false, :148"
+   },
+   {
+    "case": "extra.areFeesSponsored removed",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": ":148"
+   },
+   {
+    "case": "extra.minSettleDelay -1",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": -1,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": "a malformed value MUST be rejected, :241-243"
+   },
+   {
+    "case": "extra.minSettleDelay \"600\"",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": "600",
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": ":241-243"
+   },
+   {
+    "case": "extra.minSettleDelay 1.5",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 1.5,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": ":241-243"
+   },
+   {
+    "case": "extra.minSettleDelay 4294967296, above any SettleDelay",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 4294967296,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": "definitions.json L552-558"
+   },
+   {
+    "case": "extra.validAfter -1",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": -1
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": ":241-243"
+   },
+   {
+    "case": "extra.validAfter \"1754136000\"",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": "1754136000"
+     }
+    },
+    "expect": "x402/option-malformed",
+    "source": ":241-243"
+   },
+   {
+    "case": "scheme exact: another pairing's",
+    "option": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "network xrpl:01, not canonical",
+    "option": {
+     "scheme": "upto",
+     "network": "xrpl:01",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-not-this-pairing",
+    "source": "identifiers MUST be canonical, :51-53"
+   },
+   {
+    "case": "network eip155:8453",
+    "option": {
+     "scheme": "upto",
+     "network": "eip155:8453",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ },
+ "bound": {
+  "expect": "x402/no-signed-place",
+  "rows": [
+   {
+    "case": "payload.channelId of 63 hex digits",
+    "path": "/payload/channelId",
+    "value": "FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "payload.channelId not hex",
+    "path": "/payload/channelId",
+    "value": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA6G",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "payload.channelId removed",
+    "path": "/payload/channelId",
+    "remove": true,
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "payload.payer whose checksum does not hold",
+    "path": "/payload/payer",
+    "value": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTD",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "payload.payer removed",
+    "path": "/payload/payer",
+    "remove": true,
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "payload not an object",
+    "path": "/payload",
+    "value": "x",
+    "expect": "x402/payload-malformed"
+   },
+   {
+    "case": "accepted with asset USD: an issued currency",
+    "path": "/accepted/asset",
+    "value": "USD",
+    "expect": "xrpl/currency-not-xrp"
+   },
+   {
+    "case": "accepted with amount \"0\"",
+    "path": "/accepted/amount",
+    "value": "0",
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "accepted with scheme exact",
+    "path": "/accepted/scheme",
+    "value": "exact",
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "x402Version 1",
+    "path": "/x402Version",
+    "value": 1,
+    "expect": "x402/not-v2"
+   }
+  ]
+ },
+ "reference": {
+  "expect": {
+   "network": "xrpl:1",
+   "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+   "payer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+   "payee": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe"
+  },
+  "lowerCase": {
+   "case": "payload.channelId in lower case: the reference names the channel in upper case",
+   "value": "0fe0ab883c082f7ea0c77869222a68e1590b5ffc495fd935fd3b2391cd09ba69",
+   "expect": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69"
+  },
+  "notOption": {
+   "case": "fixed.P given to reference beside another option the seller offers (fixed.O with payTo another account, and fixed.O with amount 20000000): it answers another option, x402/accepted-not-option, the two compared by their RFC 8785 forms",
+   "options": [
+    {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "20000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    }
+   ],
+   "expect": "x402/accepted-not-option"
+  }
+ },
+ "status": {
+  "blobs": {
+   "create": "12000D22000000002400000007201B000003E820243020C85020270000025861400000000098968068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974409959A5A27AB16EE47B18806B95796E4087ED6B25EA791BE10E1EABBEC4A6ADB7AD0C84D48061889AB3F1FC42327C90CC75972D2C0DD257C76979BE3470DFC50681144D34F18EEBFD64C25996D2C5BD8C699DDEB946268314F667B0CA50CC7709A220B0561B85E53A48461FA8",
+   "ticket": "12000D22000000002400000000201B000003E820243020C85020270000025820290000000C61400000000098968068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974403B42351C7529FC18E9FA116B2931141FFD1D6AE6E42E850053EA5131C7A4300035A6F0D82CAC7071731429EE624A9390B004B8AAEDF165D091C79B5221EEFB0E81144D34F18EEBFD64C25996D2C5BD8C699DDEB946268314F667B0CA50CC7709A220B0561B85E53A48461FA8",
+   "other": "12000D22000000002400000005201B000003E820243020C85020270000025861400000000098968068400000000000000C7121EDC1410EC4922A21B6F3CA7F376AD88074293F0F94119EB211FE83E75C7C7AC6437321EDC1410EC4922A21B6F3CA7F376AD88074293F0F94119EB211FE83E75C7C7AC6437440881C3EC7AE872377E453CAC5F6D5E1E0C8D78CD72A0E5E34AFEEEFD1034DCD21813E968CBFFCC18AA3FDFA73F75DFA0BA10E21CA69510F3511398174D3092A0C8114F59A8039C40BF1A6ADF7CEC4374C6449CBD0F1148314F667B0CA50CC7709A220B0561B85E53A48461FA8",
+   "elsewhere": "12000D22000000002400000008201B000003E820243020C85020270000025861400000000098968068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440EBB908DC0728F83602D3204743AD31CD68CD7ED1ECDDB5618F317A916637E5A25CA06C197FE93B12C586B8FA177BF15A159E281E6EBDE67E2C92FE9F8484530381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831445FE4723604B77DB91D959DD0551CA67E0BFCB85"
+  },
+  "rows": [
+   {
+    "case": "the payer's create after the position, the channel shown: settled on the create, presented yes, the create's Account being the payer the payment names",
+    "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "create",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "10000000",
+       "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the payer's create by a ticket: the channel's id is derived from its TicketSequence, and the read settles on it",
+    "channel": "590EE40DAFC7CE51F589D5640F637F35066F7A9F39CB9E22E6CAC14B3B894DD1",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "ticket",
+      "ledgerIndex": 990,
+      "metadata": false
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "A37317D42B5617F9DA7557C0227B2511FABD259997F7F1F8C374579709BFE7AD",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "10000000",
+       "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "transaction": "A37317D42B5617F9DA7557C0227B2511FABD259997F7F1F8C374579709BFE7AD"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel since closed, the validated ledger not showing it: the read finds its create in the payer's account_tx and settles on it",
+    "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "entry": null,
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "create",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "10000000",
+       "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a payer that is not the create's Account: the payment names the payer, the channel another account opened to the payee, so its create is not the payer's act and took the channel: failed, instrument-consumed, named with its signer",
+    "channel": "38F2B92BA4FC60300B8ECA793144B98C0807ACBE11A45F742C915B47CBCF004B",
+    "entry": {
+     "account": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+     "destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000"
+    },
+    "opener": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+    "creates": [
+     {
+      "blob": "other",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "26B339F3C0B99C991F531C3F4A1E66CD8A98E784D07912A44CFD0ED80E4A69FB",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "10000000",
+       "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "transaction": "26B339F3C0B99C991F531C3F4A1E66CD8A98E784D07912A44CFD0ED80E4A69FB"
+      }
+     ],
+     "signer": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel naming another destination: the payer's create to another account pays no deposit to the option's payee: failed, instrument-consumed",
+    "channel": "EDDAAB757C6F3E12286E5179B4E6411A021703A58DC243349162307FF79AFE14",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
+     "amount": "10000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "elsewhere",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "498EBCF18632A4F1A996ECE13B82B2D14517890EE7D998A11D7519FDC9E45D5B",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "10000000",
+       "to": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
+       "transaction": "498EBCF18632A4F1A996ECE13B82B2D14517890EE7D998A11D7519FDC9E45D5B"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a create at the position, ledger 950: failed, before-position, the channel never the sale",
+    "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "create",
+      "ledgerIndex": 950
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491",
+     "position": 950,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "10000000",
+       "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel the ledger shows whose create the payer's account_tx, read whole from the position, does not hold: created at or before the position only if account_tx lists every transaction of the account, which no run has shown: pending, search-incomplete, the search's position held where it began",
+    "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": 950,
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same on a server whose complete_ledgers, 980-1001, does not hold the range from the position: unreadable, history-gap, never absence",
+    "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [],
+    "complete": "980-1001",
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel the validated ledger does not show, no create in the payer's account_tx read whole: pending, not-found",
+    "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "entry": null,
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [],
+    "expect": {
+     "state": "pending",
+     "reason": "not-found",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the payer's create in ledger 1001, which the server has not validated, the validated ledger not showing the channel: pending, below-mark, read at current, no mark, naming it with what it moved and its signer",
+    "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
+    "entry": null,
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "create",
+      "ledgerIndex": 1001,
+      "validated": false
+     }
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491",
+     "position": 1001,
+     "finality": "current",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "10000000",
+       "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "foreign": []
+    }
+   }
+  ]
+ },
+ "buyer": {
+  "about": "The buyer gate's row for this file's pairing, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR abc (SHA-256, FIPS 180-2 B.1), and the link serves the planted ATR abd; the gate declines hash-mismatch and never calls the signer. SHA-256 values are node:crypto's. noSignedPayment names the pairing, which has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "x402/upto/xrpl",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://example.com/weather"
+      },
+      "accepts": [
+       {
+        "scheme": "upto",
+        "network": "xrpl:1",
+        "asset": "XRP",
+        "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+        "amount": "10000000",
+        "maxTimeoutSeconds": 300,
+        "extra": {
+         "areFeesSponsored": false,
+         "minSettleDelay": 600,
+         "validAfter": 1754136000
+        }
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "x402/upto/xrpl": "its payer opens the channel itself and signs a claim over the channel id and the maximum: neither the create nor the claim has a place for H"
+  }
+ },
+ "boundAccepted": {
+  "case": "fixed.P presented under options this pairing's read does not offer, each fixed.O changed as the row's case names: bound holds the presented accepted to the option filter read applies and refuses each with the row's code, the code advertise gives that option. payment is a JSON Pointer (RFC 6901) into this file.",
+  "rows": [
+   {
+    "case": "the option with maxTimeoutSeconds 0, which is not positive",
+    "pairing": "x402/upto/xrpl",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 0,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with amount \"0\", which is zero",
+    "pairing": "x402/upto/xrpl",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "0",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with asset USD, an issued currency",
+    "pairing": "x402/upto/xrpl",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "USD",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "xrpl/currency-not-xrp"
+   },
+   {
+    "case": "the option with extra.areFeesSponsored true",
+    "pairing": "x402/upto/xrpl",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "upto",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": true,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with scheme exact, another pairing's",
+    "pairing": "x402/upto/xrpl",
+    "payment": "/fixed/P",
+    "accepted": {
+     "scheme": "exact",
+     "network": "xrpl:1",
+     "asset": "XRP",
+     "payTo": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+     "amount": "10000000",
+     "maxTimeoutSeconds": 300,
+     "extra": {
+      "areFeesSponsored": false,
+      "minSettleDelay": 600,
+      "validAfter": 1754136000
+     }
+    },
+    "expect": "x402/option-not-this-pairing"
+   }
+  ]
+ }
+}

@@ -17,7 +17,8 @@
 // rule 9 answers alike. What moved is put back in the case's terms by asset (XRP is `A`, the issued currency `B`),
 // account and transaction; a create deposits XRP alone, so a case's other asset on an opening or a channel is spelled
 // as XRP of the case's amount, which read-status rule 10 answers alike, and put back as the case's asset. The form
-// skips exactly the cases each pairing's profile declares inapplicable to the read kit (`declared`).
+// skips exactly the cases each pairing's profile declares inapplicable to the read kit (`declared`). `x402/upto/xrpl`'s
+// channel is made as the stock session's is: the payment names the channel and its payer, and the read finds the create.
 import { createHash } from "node:crypto";
 import { encode } from "ripple-binary-codec";
 import { ReaderError } from "../../../src/evm.js";
@@ -27,6 +28,7 @@ import { isRefusal } from "../../../src/refusal.js";
 import { chargeXrpl } from "../../../src/mpp-xrpl.js";
 import { sessionXrpl, sessionXrplStock } from "../../../src/mpp-session-rails.js";
 import { exactXrpl } from "../../../src/x402-exact-xrpl.js";
+import { uptoXrpl } from "../../../src/x402-upto-xrpl.js";
 import type { XrplLanded, XrplReader, XrplStatus } from "../../../src/xrpl.js";
 import type { Arranged, CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, answering, READ_STATUS } from "../harness.js";
@@ -270,6 +272,9 @@ const NOT_FOUND =
 const CHANNELS =
   "on the stock session's channel, `instrument-live`, `instrument-unused` and `transaction-failed`, since a create whose " +
   "metadata creates the channel's entry has landed and succeeded";
+const UPTO_CHANNEL =
+  "on `x402/upto/xrpl`'s channel, `instrument-live`, `instrument-unused` and `transaction-failed`, since a create whose " +
+  "metadata creates the channel's entry has landed and succeeded";
 const BELOW_CASE = "an act read at the finality asked for, below the final mark";
 const BELOW = `*${BELOW_CASE}*, since a seller names \`validated\` alone`;
 const EACH_CASE = "each transfer of what moved is named by its transaction and its place in it";
@@ -312,12 +317,12 @@ function once(list: readonly Inapplicable[]): Inapplicable[] {
 }
 
 /** The cases a form's profile declares inapplicable to the read kit, as its pairing's entry in the profile states them. */
-function declared(form: Form): Inapplicable[] {
-  const at = (text: string): string => `${STATED[form]}: ${text}`;
+function declared(form: Form, where: string = STATED[form], channels: string = CHANNELS): Inapplicable[] {
+  const at = (text: string): string => `${where}: ${text}`;
   const coverageFull = form !== "channel";
   return once([
     ...(form === "x402" || form === "memo" ? answering("not-found", at(NOT_FOUND)) : []),
-    ...(form === "channel" ? ["instrument-live", "instrument-unused", "transaction-failed"].flatMap((r) => answering(r, at(CHANNELS))) : []),
+    ...(form === "channel" ? ["instrument-live", "instrument-unused", "transaction-failed"].flatMap((r) => answering(r, at(channels))) : []),
     ...byWords(BELOW_CASE, at(BELOW)),
     ...byWords(EACH_CASE, at(EACH)),
     ...(coverageFull ? ZERO_CASES.flatMap((w) => byWords(w, at(ZERO))) : []),
@@ -362,4 +367,8 @@ export const forms: readonly DeclaredForm[] = [
   { form: formOf("mpp", "mpp/charge/xrpl", chargeXrpl.status as never), inapplicable: declared("mpp") },
   { form: formOf("memo", "mpp/session/xrpl", sessionXrpl.status as never), inapplicable: declared("memo") },
   { form: formOf("channel", "mpp/session/xrpl/stock", sessionXrplStock.status as never), inapplicable: declared("channel") },
+  {
+    form: formOf("channel", "x402/upto/xrpl", uptoXrpl.status as never),
+    inapplicable: declared("channel", "the profile x402-upto-xrpl.md, rule 18", UPTO_CHANNEL),
+  },
 ];
