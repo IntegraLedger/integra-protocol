@@ -46,6 +46,8 @@ node scripts/check-public-package.mjs
 node scripts/check-public-units.mjs
 ```
 
+- The settler's tests need Postgres: set `INTEGRA_DATABASE_URL` to a connection string whose user may create
+  databases; each test file makes and drops its own. CI runs them against a Postgres 18 service.
 - `idna-data.mjs --check` fetches the Unicode 17.0.0 files `scripts/idna/sources.tsv` lists, each checked against its
   SHA-256 before it is read, retrying a failed download five times, and checks that `lcp/src/internal/idna-data.ts`, the
   tables the URL Standard's host parser in `lcp/src/internal/url-host.ts` reads, and `scripts/idna/_idna_data.py`, the
@@ -194,8 +196,9 @@ and from the publish workflow before it packs. Its other steps check:
   pnpm's reading of them and the workflows' lines. A workflow step that rewrites a checked file before the install, such
   as a `sed -i` on `pnpm-workspace.yaml`, or that builds a setting's name at run time, is code, like a step that deletes
   this check, and this check does not read it.
-- **One-way imports:** no package here, nor the root `package.json`, depends on or names another `@integraledger`
-  package, however the name is loaded or resolved; the site names only `@integraledger/lcp`. Each workspace package
+- **One-way imports:** neither lcp nor the root `package.json` depends on or names another `@integraledger` package,
+  however the name is loaded or resolved; the settler depends on and names only `@integraledger/lcp`, from this
+  workspace by a `workspace:` specifier; the site names only `@integraledger/lcp`. Each workspace package
   has a `build`, `typecheck` and `test` script that is not empty, since `pnpm -r` skips a package without one.
 
 No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change once it is on
