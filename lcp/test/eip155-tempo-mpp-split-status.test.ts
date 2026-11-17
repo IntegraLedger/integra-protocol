@@ -7,7 +7,7 @@
 // who signed it, and a reverted transaction of the payer's own.
 import { describe, expect, it } from "vitest";
 import type { Hex } from "../src/evm-abi.js";
-import type { EvmLog } from "../src/evm.js";
+import { ReaderError, type EvmLog } from "../src/evm.js";
 import type { TempoSearchReader } from "../src/tempo.js";
 import { tempoSplitMemo, tempoSplitMemoPush, type TempoSplitQuery, type TempoSplitRef } from "../src/mpp-tempo.js";
 import { RECEIVE_POLICY_GUARD, TRANSFER_WITH_MEMO_TOPIC } from "../src/tempo.js";
@@ -96,16 +96,16 @@ describe("mpp/charge/tempo/split-memo status on a constructed ledger", () => {
     const filters: { address?: Hex; topics: readonly (Hex | null)[]; fromBlock: bigint; toBlock: bigint }[] = [];
     const reader: TempoSearchReader = { ...inner, logs: async (f) => (filters.push(f), inner.logs(f)) };
 
-    // Pages of 10,000 blocks, halved where the endpoint refuses one; at most 16 pages a call, the position reached returned,
+    // Pages of 10,000 blocks, halved where the endpoint refuses one; at most 8 pages a call, the position reached returned,
     // the value read unconsumed at both heads (instrument-live, answered before search-incomplete).
     // Each page reads every contract's TransferWithMemo by payer and H, and the guard's TransferBlocked by its topic alone.
-    expect(await tempoSplitMemo.status(ref, reader, query())).toEqual({ state: "pending", reason: "instrument-live", search: 80_000n, foreign: [] });
+    expect(await tempoSplitMemo.status(ref, reader, query())).toEqual({ state: "pending", reason: "instrument-live", search: 40_000n, foreign: [] });
     expect([filters[0]!.fromBlock, filters[0]!.toBlock, filters[1]!.fromBlock, filters[1]!.toBlock]).toEqual([0n, 9_999n, 0n, 4_999n]);
     const memo = filters.filter((f) => f.address === undefined);
     const guard = filters.filter((f) => f.address !== undefined);
     expect(new Set(memo.map((f) => JSON.stringify(f.topics)))).toEqual(new Set([JSON.stringify([TRANSFER_WITH_MEMO_TOPIC, word(PAYER), null, H])]));
     expect(new Set(guard.map((f) => JSON.stringify([f.address, f.topics])))).toEqual(new Set([JSON.stringify([RECEIVE_POLICY_GUARD, [TRANSFER_BLOCKED_TOPIC]])]));
-    expect(await tempoSplitMemo.status(ref, reader, query({ search: 80_000n }))).toEqual({ state: "pending", reason: "instrument-live", search: 160_000n, foreign: [] });
+    expect(await tempoSplitMemo.status(ref, reader, query({ search: 40_000n }))).toEqual({ state: "pending", reason: "instrument-live", search: 80_000n, foreign: [] });
 
     // The search finds the payment from the position given.
     const spec = ledger([tx("pay", 170_000n, pay.raw, paidLogs(pay.raw))], heads, 6_000n);
@@ -119,6 +119,19 @@ describe("mpp/charge/tempo/split-memo status on a constructed ledger", () => {
     expect(await tempoSplitMemo.status(ref, ledgerReader(ledger([])), query())).toEqual({ state: "pending", reason: "instrument-live", foreign: [] });
     const unnamed = { ...ref, named: txHashOf("gone") };
     expect(await tempoSplitMemoPush.status(unnamed, ledgerReader(ledger([])), query())).toEqual({ state: "pending", reason: "not-found", foreign: [] });
+  });
+
+  it("rule 10, the search's pages: a range refused at one block is transport", async () => {
+    const ref = await pullRef((await pulled()).credential);
+    const refused = ledgerReader({ ...ledger([]), fault: { method: "logs", error: new ReaderError("too-large", "range refused") } });
+    expect(await tempoSplitMemo.status(ref, refused, query())).toEqual({ state: "unreadable", reason: "transport", foreign: [] });
+  });
+
+  it("rule 10, the search's pages: a page holding an entry that is no log is unparseable", async () => {
+    const ref = await pullRef((await pulled()).credential);
+    const inner = ledgerReader(ledger([]));
+    const malformed: TempoSearchReader = { ...inner, logs: async () => [{ address: RECEIVE_POLICY_GUARD, topics: [TRANSFER_BLOCKED_TOPIC], data: "0x" }] as never };
+    expect(await tempoSplitMemo.status(ref, malformed, query())).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
   });
 
   it("rule 2, the act's own instrument: the presented transaction on pull, the named one on push; presented decides no answer", async () => {

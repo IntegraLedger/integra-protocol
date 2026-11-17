@@ -38,7 +38,7 @@ export interface LedgerSpec {
   readonly timestamp?: (block: bigint) => bigint;
   /** `eth_call` of `data` to `to` in the state after `block`; rejects as `transport` where absent. */
   readonly call?: (to: Hex, data: Hex, block: bigint) => Hex | Promise<Hex>;
-  /** The largest range, `toBlock - fromBlock + 1`, that `logs` answers; larger ranges reject `transport`. */
+  /** The largest range, `toBlock - fromBlock + 1`, that `logs` answers; larger ranges reject `too-large`. */
   readonly logRange?: bigint;
   readonly fault?: LedgerFault;
 }
@@ -82,7 +82,7 @@ export function ledgerReader(spec: LedgerSpec): EvmSearchReader & { readonly cal
       guard("logs");
       const { address, topics, fromBlock, toBlock } = filter;
       if (spec.logRange !== undefined && toBlock - fromBlock + 1n > spec.logRange) {
-        throw new ReaderError("transport", "range refused");
+        throw new ReaderError("too-large", "range refused");
       }
       const out: EvmLogEntry[] = [];
       const ordered = [...spec.txs].sort((a, b) => (a.block < b.block ? -1 : a.block > b.block ? 1 : 0));

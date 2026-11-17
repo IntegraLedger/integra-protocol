@@ -341,8 +341,9 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
       lapse:
         "the key authorization's signed `expiry`; one that signs none has no bound. The single-use value is the key slot " +
         "the presented key authorization names in the payer's keychain, `getKey(account, keyId)` at `finalized` and at " +
-        "`latest`, consumed where it names the key or reads it revoked; the keychain registers a key id once, whatever the " +
-        "transaction's result, and none whose expiry has passed",
+        "`latest`, consumed where it names the key or reads it revoked, together with H's burn mark for the payer, " +
+        "`isKeyAuthorizationWitnessBurned(account, H)` at the same heads, consumed where it reads burned; the keychain " +
+        "registers a key id once, whatever the transaction's result, and none whose expiry has passed",
     },
     destination:
       "the one account the payer's key authorization lets the key pay, read from the key authorization the landed " +

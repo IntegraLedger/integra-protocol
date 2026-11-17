@@ -89,13 +89,14 @@ import {
 } from "./internal/evm.js";
 import { mppPayee } from "./internal/payee.js";
 import { decide, type Facts, type Moved, type Presented, type RecoverInput, type Seen, type UnreadableReason } from "./internal/read.js";
-import type { EvmLogEntry, EvmSearchReader } from "./internal/evm-search.js";
+import type { EvmSearchReader } from "./internal/evm-search.js";
+import { search } from "./internal/evm-x402.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
 import { readKeyAuthorization, type KeyAuthorizationRead } from "./internal/key-authorization.js";
 import { keyAccount } from "./internal/tempo.js";
 import { consumerOf, readValue, sameValue, takesProtocolNonce, tempoValueOf, type TempoSearchReader, type TempoValue } from "./internal/tempo-nonce.js";
-import { readSlot, slotConsumer, type KeySlot, type SlotRead } from "./internal/tempo-key-slot.js";
+import { KEY_AUTHORIZATION_WITNESS_BURNED_TOPIC, burnConsumer, readSlot, slotConsumer, type KeySlot, type SlotRead } from "./internal/tempo-key-slot.js";
 import { authorizationSignatures, carriedKeyAuthorization, keyAuthorizationSigner, tempoSender } from "./internal/tempo-envelope.js";
 import { movedFrom } from "./mpp-tempo.js";
 import { readReceiptAtMark } from "./receipt.js";
@@ -653,11 +654,6 @@ async function readSession(ref: SessionRef & { transaction: Hex }, reader: EvmRe
 
 // ── The read of an opening by its search (read-status; mpp-session-evm-tempo.md rule 6).
 
-/** The blocks one page of a search reads, as the EVM reads fix it, a page an endpoint refuses being halved. */
-const SESSION_SEARCH_PAGE_BLOCKS = 10_000;
-/** The pages one `status` call reads; a search with range left answers its position, from which the next call resumes. */
-const SESSION_SEARCH_PAGES = 8;
-
 /** One deposit an opening made: the channel's token, the deposit, and the channel's payee as the beneficiary. */
 type OpeningMoved = Moved & { readonly transaction: Hex; readonly place: number };
 
@@ -680,45 +676,6 @@ async function headsOf(reader: EvmSearchReader): Promise<{ final: bigint; safe: 
   }
 }
 
-/**
- * The logs of `filter` from `from` to `to`, in pages of at most `SESSION_SEARCH_PAGE_BLOCKS` blocks, halved where the
- * endpoint refuses a page as too large; at most `SESSION_SEARCH_PAGES` pages, after which the search answers where it
- * stopped. A range refused at one block is `transport`, never absence.
- */
-async function searchLogs(
-  reader: EvmSearchReader,
-  filter: { address: Hex; topics: readonly (Hex | null)[] },
-  from: bigint,
-  to: bigint,
-): Promise<{ entries: EvmLogEntry[]; whole: boolean; at?: bigint } | { unreadable: UnreadableReason }> {
-  const entries: EvmLogEntry[] = [];
-  let pos = from;
-  let span = BigInt(SESSION_SEARCH_PAGE_BLOCKS);
-  for (let pages = 0; pos <= to; ) {
-    if (pages === SESSION_SEARCH_PAGES) return { entries, whole: false, at: pos };
-    const end = pos + span - 1n < to ? pos + span - 1n : to;
-    let got: unknown;
-    try {
-      got = await reader.logs({ address: filter.address, topics: filter.topics, fromBlock: pos, toBlock: end });
-    } catch (e) {
-      if (e instanceof Error && (e as { kind?: string }).kind === "too-large") {
-        if (end === pos) return { unreadable: "transport" };
-        span = (end - pos + 1n) / 2n;
-        continue;
-      }
-      return { unreadable: rejected(e) };
-    }
-    const isEntry = (l: unknown): boolean =>
-      isLog(l) && normalHash((l as EvmLogEntry).transactionHash) !== null && typeof (l as EvmLogEntry).blockNumber === "bigint";
-    if (!Array.isArray(got) || !got.every(isEntry)) {
-      return { unreadable: "unparseable" };
-    }
-    entries.push(...(got as EvmLogEntry[]));
-    pages++;
-    pos = end + 1n;
-  }
-  return { entries, whole: true };
-}
 
 /** The address in a 32-byte topic or word, lowercase, or undefined. */
 function addressIn(w: unknown): Hex | undefined {
@@ -855,7 +812,7 @@ async function tempoOpeningFacts(
   const markOf = (b: bigint): EvmMark => (b <= heads.final ? "finalized" : "latest");
   const lo = query.after ?? 0n;
   const start = query.search ?? (query.after !== undefined ? query.after + 1n : 0n);
-  const s = await searchLogs(reader, { address: o.address, topics: [topic0, o.channel] }, start, heads.latest);
+  const s = await search(reader, [{ address: o.address, topics: [topic0, o.channel] }], start, heads.latest);
   if ("unreadable" in s) return s;
   let history = true;
   try {
@@ -1007,7 +964,11 @@ async function tempoOpeningFacts(
  * reverted activation registers it too (tempoxyz/tempo@c8b89f9b `crates/evm/src/handler.rs:831-834`). Its bound is the
  * key authorization's `expiry` (the reference's `accessKey.expiry`), where it signs one: the keychain registers no key
  * whose expiry is not after the block's timestamp and never clears a slot, so a slot unconsumed at a head past it is
- * never consumed. A slot read consumed whose transaction the search did not meet is found in the first block at which
+ * never consumed by the presented key authorization. Beside the slot the read holds H's burn mark for the payer,
+ * `isKeyAuthorizationWitnessBurned(payer, H)` at the same two heads (`readSlot`): a burned witness makes every key
+ * authorization of the payer carrying it unlandable, so the value is consumed where either reads consumed. A mark read
+ * burned whose transaction the search did not meet is found by its `KeyAuthorizationWitnessBurned` log in the first
+ * block it reads burned at (`burnConsumer`), an act of another kind carrying H that consumed the value. A slot read consumed whose transaction the search did not meet is found in the first block at which
  * it reads consumed, by halving, as the payer's transaction there whose key authorization names the key id or whose own
  * call to the keychain authorizes it (`slotConsumer`); a transaction of that block the read cannot decode, where none is
  * found, holds the search. The transaction so found is read as the search's are, its receipt deciding: a reverted
@@ -1081,7 +1042,7 @@ async function activationFacts(
   const markOf = (b: bigint): EvmMark => (b <= heads.final ? "finalized" : "latest");
   const lo = query.after ?? 0n;
   const start = query.search ?? query.after ?? 0n;
-  const s = await searchLogs(reader, { address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, h] }, start, heads.latest);
+  const s = await search(reader, [{ address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_TOPIC, null, h] }], start, heads.latest);
   if ("unreadable" in s) return s;
   let history = true;
   try {
@@ -1090,7 +1051,7 @@ async function activationFacts(
   } catch {
     history = false;
   }
-  const slot: KeySlot = { account: ref.payer!, keyId, expiry: expiry === undefined ? null : BigInt(expiry) };
+  const slot: KeySlot = { account: ref.payer!, keyId, expiry: expiry === undefined ? null : BigInt(expiry), witness: h };
   let read: SlotRead;
   try {
     read = await readSlot(slot, reader, await reader.block("finalized"), await reader.block("latest"));
@@ -1154,6 +1115,45 @@ async function activationFacts(
     });
     return undefined;
   };
+  // The burn's transaction, read by its receipt: the keychain's `KeyAuthorizationWitnessBurned` of the payer and H.
+  const readBurn = async (hash: Hex): Promise<{ unreadable: UnreadableReason } | undefined> => {
+    let receipt: EvmReceipt | null;
+    try {
+      receipt = await reader.receipt(hash);
+    } catch (e) {
+      return { unreadable: rejected(e) };
+    }
+    if (receipt === null) return undefined;
+    if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return { unreadable: "unparseable" };
+    const burned = receipt.logs.some(
+      (l) =>
+        l.topics.length === 3 &&
+        sameBytes(l.address, ACCOUNT_KEYCHAIN) &&
+        sameBytes(l.topics[0], KEY_AUTHORIZATION_WITNESS_BURNED_TOPIC) &&
+        sameBytes(addressIn(l.topics[1]) ?? "0x", ref.payer!) &&
+        sameBytes(l.topics[2], h),
+    );
+    const moved = movedFrom(receipt.logs, ref.payer!, hash);
+    if (receipt.status !== 1 || !burned || moved === undefined) {
+      undecoded.push({ transaction: hash, at: receipt.blockNumber });
+      return undefined;
+    }
+    seen.push({
+      transaction: hash,
+      position: receipt.blockNumber,
+      mark: markOf(receipt.blockNumber),
+      result: "succeeded",
+      consumed: true,
+      carries: true,
+      party: "payer",
+      signer: ref.payer!.toLowerCase() as Hex,
+      kind: "other",
+      account: "none",
+      moved,
+      presented: "no",
+    });
+    return undefined;
+  };
   for (const hash of hashes.values()) {
     const r = await readOne(hash);
     if (r !== undefined) return r;
@@ -1171,6 +1171,19 @@ async function activationFacts(
     } else if (c !== undefined) {
       // Held at the position the search started from, so that the next call reads every item again.
       for (const u of c.undecoded) undecoded.push({ transaction: u, at: start });
+    }
+  }
+  if (read.burnedAt !== undefined && !seen.some((x) => x.consumed)) {
+    // The payer's burn of H as a key authorization witness: an act of another kind carrying H that consumed the value.
+    const c = await burnConsumer(slot, reader, lo, read.burnedAt);
+    if ("unreadable" in c) return c;
+    if (c.transaction !== undefined) {
+      const met = seen.findIndex((x) => sameBytes(x.transaction, c.transaction!));
+      if (met !== -1) seen[met] = { ...seen[met]!, consumed: true };
+      else {
+        const r = await readBurn(c.transaction);
+        if (r !== undefined) return r;
+      }
     }
   }
   seen.sort((a, b) => (a.position! < b.position! ? -1 : a.position! > b.position! ? 1 : 0));

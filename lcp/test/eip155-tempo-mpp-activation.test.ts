@@ -8,8 +8,9 @@ import { readFileSync } from "node:fs";
 import { keccak256 } from "viem";
 import { describe, expect, it } from "vitest";
 import type { Hex } from "../src/evm-abi.js";
-import type { EvmLog } from "../src/evm.js";
+import { ReaderError, type EvmLog } from "../src/evm.js";
 import { readKeyAuthorization } from "../src/internal/key-authorization.js";
+import { KEY_AUTHORIZATION_WITNESS_BURNED_TOPIC } from "../src/internal/tempo-key-slot.js";
 import { carriedKeyAuthorization, keyAuthorizationSigner } from "../src/internal/tempo-envelope.js";
 import { subscriptionTempo, type SessionRef } from "../src/mpp.js";
 import { ACCOUNT_KEYCHAIN, KEY_AUTHORIZATION_WITNESS_TOPIC } from "../src/tempo.js";
@@ -166,6 +167,93 @@ describe("the activation read by the key slot", () => {
       const bad = { ...ref().accessKey!, expiry } as never;
       expect(await subscriptionTempo.status(ref({ accessKey: bad }) as never, ledger() as never, query), String(expiry)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
     }
+  });
+});
+
+describe("the activation read by the witness's burn mark", () => {
+  // The payer's `burnKeyAuthorizationWitness(H)` (tempoxyz/tempo@c8b89f9b `crates/precompiles/src/account_keychain/mod.rs:457-465`),
+  // with its `KeyAuthorizationWitnessBurned(account, H)` log, in a block of its own; no activation lands.
+  const BURN = `0x${"b0".repeat(32)}` as Hex;
+  const burnTx = (block: bigint) => ({
+    hash: BURN,
+    block,
+    status: 1 as const,
+    from: account,
+    to: ACCOUNT_KEYCHAIN,
+    input: "0x" as Hex,
+    logs: [{ address: ACCOUNT_KEYCHAIN, topics: [KEY_AUTHORIZATION_WITNESS_BURNED_TOPIC, witness.topics[1]!, witness.topics[2]!], data: "0x" as Hex }],
+  });
+
+  it("answers instrument-consumed where the payer burned H, naming the burn, of another kind, carrying H", async () => {
+    expect(await subscriptionTempo.status(ref() as never, ledger({ txs: [burnTx(BLOCK + 1n)] }) as never, query)).toEqual({
+      state: "failed",
+      reason: "instrument-consumed",
+      transaction: BURN,
+      position: BLOCK + 1n,
+      finality: "finalized",
+      signer: account,
+      moved: [],
+      carries: "other-kind",
+      foreign: [],
+    });
+  });
+
+  it("answers before-position where the burn lies at or before the position given", async () => {
+    expect(await subscriptionTempo.status(ref() as never, ledger({ txs: [burnTx(BLOCK + 1n)] }) as never, { ...query, after: BLOCK + 2n })).toEqual({
+      state: "failed",
+      reason: "before-position",
+      transaction: BURN,
+      position: BLOCK + 1n,
+      finality: "finalized",
+      signer: account,
+      moved: [],
+      foreign: [],
+    });
+  });
+
+  it("answers search-incomplete where the mark reads burned and its block holds no burn log", async () => {
+    const reader = ledger({ txs: [], burns: [{ account, witness: witness.topics[2]!, from: BLOCK }] });
+    expect(await subscriptionTempo.status(ref() as never, reader as never, query)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+  });
+
+  it("answers history-gap where the endpoint does not hold the state the burn's first block needs", async () => {
+    const base = ledger({ txs: [], burns: [{ account, witness: witness.topics[2]!, from: query.after - 50n }] });
+    const reader = {
+      ...base,
+      call: async (to: Hex, data: Hex, block: bigint) => {
+        if (block < query.after) throw new ReaderError("history", "state pruned");
+        return base.call(to, data, block);
+      },
+    };
+    expect(await subscriptionTempo.status(ref() as never, reader as never, query)).toEqual({ state: "unreadable", reason: "history-gap", foreign: [] });
+  });
+});
+
+describe("the witness burn's vector row (vectors/mpp-subscription-tempo.json, BURN)", () => {
+  const F = V["fixed"] as { payer: Hex; H: Hex; accessKey: Hex };
+  const B = V["BURN"] as { expectCall: Hex; expectBurnedTopics: Hex[]; burnedAnswer: Hex; expectStatus: object };
+
+  it("asks the keychain for the burn mark and finds the burn by its log, answering as the row states", async () => {
+    const asked: Hex[] = [];
+    const hash = `0x${"b1".repeat(32)}` as Hex;
+    const base = ledger({ txs: [{ hash, block: BLOCK + 1n, status: 1, from: F.payer, to: ACCOUNT_KEYCHAIN, input: "0x", logs: [{ address: ACCOUNT_KEYCHAIN, topics: B.expectBurnedTopics, data: "0x" }] }] });
+    const reader = {
+      ...base,
+      call: async (to: Hex, data: Hex, block: bigint) => {
+        asked.push(data);
+        const answer = await base.call(to, data, block);
+        if (data === B.expectCall && block >= BLOCK + 1n) expect(answer).toBe(B.burnedAnswer);
+        return answer;
+      },
+    };
+    const r = ref({
+      payer: F.payer,
+      bindingLog: { address: ACCOUNT_KEYCHAIN, topic0: KEY_AUTHORIZATION_WITNESS_TOPIC, index: 2, value: F.H as never },
+      accessKey: { keyId: F.accessKey.toLowerCase() as Hex, token: LIVE.transferToken, to: `0x${"00".repeat(32)}` },
+    });
+    const answer = await subscriptionTempo.status(r as never, reader as never, query);
+    expect(asked).toContain(B.expectCall);
+    expect(answer).toMatchObject({ ...B.expectStatus, transaction: hash });
   });
 });
 

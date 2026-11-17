@@ -36,13 +36,13 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { decodeTempoTx, expiringNonceHash, RECEIVE_POLICY_GUARD, TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC } from "./tempo.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
 import { ReaderError, rejected, TRANSFER_TOPIC, type EvmMark, type EvmQuery } from "./internal/evm.js";
-import type { EvmSearchReader } from "./internal/evm-search.js";
 import { decide, type Facts, type Moved, type Seen, type StatusAnswer, type Undecoded, type UnreadableReason } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 import { deepFreeze } from "./mpp-challenge.js";
 import type { LcpPattern } from "./x402.js";
 import { decodeEnvelope, tempoSender } from "./internal/tempo-envelope.js";
 import { echoesOption } from "./internal/mpp-evm-read.js";
+import { search } from "./internal/evm-x402.js";
 import {
   consumerOf,
   heldTransferOf,
@@ -66,10 +66,6 @@ const TRANSFER_SELECTOR = "0xa9059cbb";
 /** Envelope positions of the nonce key and the nonce. */
 const NONCE_KEY = 6;
 const NONCE = 7;
-/** The largest range one log page reads, and how many pages one call of `status` reads before it answers. */
-const PAGE_BLOCKS = 10_000n;
-const PAGES_PER_CALL = 16;
-
 /**
  * The read keys of a split-memo payment: the network, the payer (the transaction's sender), the option's payee (the
  * request's `recipient`), the token the split names (`currency`), H, the signed `validBefore` in decimal Unix seconds
@@ -373,7 +369,7 @@ const isBlock = (v: unknown): v is bigint => typeof v === "bigint" && v >= 0n;
  *
  * The search for H reads, from the caller's search position, else the position it must come after, else block 0, to the
  * latest head, in pages of at most 10,000 blocks halved for a range the endpoint refuses (a range refused at one block
- * answering `transport`), at most 16 pages a call: every contract's `TransferWithMemo` logs with the payer as sender and H
+ * answering `transport`), at most 8 pages a call (`search`): every contract's `TransferWithMemo` logs with the payer as sender and H
  * as memo, and the receive-policy guard's `TransferBlocked` logs, each receipt decoded (`heldTransferOf`) and kept where
  * its originator is the payer and its memo H, one that does not decode holding the search at its block. Each transaction
  * found, the act's own where the caller gives it or the credential names it, and, where the value reads consumed and no
@@ -461,7 +457,7 @@ async function splitFacts(
       if (!history || (!(e instanceof ReaderError) && final.number < latest.number)) return nothing("history-gap");
       throw e;
     }
-    // The search, page by page.
+    // The search, in the pages the EVM reads share (`search`): a page halved only for a range the endpoint refuses.
     const h = normalHash(ref.h)! as Hex;
     const memoTopics = [TRANSFER_WITH_MEMO_TOPIC, hexOf(addressWord(ref.payer)), null, h] as const;
     const hits: { transaction: Hex; block: bigint }[] = [];
@@ -469,37 +465,21 @@ async function splitFacts(
     const hit = (tx: Hex, block: bigint): void => {
       if (!hits.some((x) => sameBytes(x.transaction, tx))) hits.push({ transaction: tx, block });
     };
-    let from = start;
-    let size = PAGE_BLOCKS;
-    let pages = 0;
-    while (from <= latest.number && pages < PAGES_PER_CALL) {
-      const to = from + size - 1n < latest.number ? from + size - 1n : latest.number;
-      let logs: Awaited<ReturnType<EvmSearchReader["logs"]>>;
-      let held: Awaited<ReturnType<EvmSearchReader["logs"]>>;
-      try {
-        logs = await reader.logs({ topics: memoTopics, fromBlock: from, toBlock: to });
-        held = await reader.logs({ address: RECEIVE_POLICY_GUARD, topics: [TRANSFER_BLOCKED_TOPIC], fromBlock: from, toBlock: to });
-      } catch (err) {
-        if (to === from) throw err;
-        size = (to - from + 1n) / 2n;
+    const found = await search(reader, [{ topics: memoTopics }, { address: RECEIVE_POLICY_GUARD, topics: [TRANSFER_BLOCKED_TOPIC] }], start, latest.number);
+    if ("unreadable" in found) return nothing(found.unreadable);
+    for (const l of found.entries) {
+      const tx = normalHash(l.transactionHash)!;
+      if (sameBytes(l.topics[0], TRANSFER_WITH_MEMO_TOPIC)) {
+        hit(tx as Hex, l.blockNumber);
         continue;
       }
-      pages++;
-      for (const l of [...logs, ...held]) {
-        const tx = normalHash(l.transactionHash);
-        if (tx === null || !isBlock(l.blockNumber)) throw new Error("ill-formed log");
-        if (sameBytes(l.topics[0], TRANSFER_WITH_MEMO_TOPIC)) {
-          hit(tx as Hex, l.blockNumber);
-          continue;
-        }
-        const r = heldTransferOf(l.data);
-        if (r === undefined) {
-          if (!undecoded.some((u) => sameBytes(u.transaction, tx))) undecoded.push({ transaction: tx, at: l.blockNumber });
-        } else if (sameBytes(r.originator, ref.payer) && sameBytes(r.memo, h)) hit(tx as Hex, l.blockNumber);
-      }
-      from = to + 1n;
+      const r = heldTransferOf(l.data);
+      if (r === undefined) {
+        if (!undecoded.some((u) => sameBytes(u.transaction, tx))) undecoded.push({ transaction: tx, at: l.blockNumber });
+      } else if (sameBytes(r.originator, ref.payer) && sameBytes(r.memo, h)) hit(tx as Hex, l.blockNumber);
     }
-    const whole = from > latest.number;
+    const whole = found.whole;
+    const from = found.at;
     hits.sort((a, b) => (a.block < b.block ? -1 : a.block > b.block ? 1 : 0));
     // The act's own transaction, where the caller gives it or the credential names it, read whether or not it was found.
     const own = [ref.named, ref.transaction].flatMap((t) => (t === undefined ? [] : [normalHash(t)! as Hex]));
@@ -525,7 +505,7 @@ async function splitFacts(
     return {
       seen,
       ...(read === undefined ? {} : { value: read.value }),
-      search: whole ? { whole: true } : { whole: false, at: from },
+      search: whole || from === undefined ? { whole } : { whole: false, at: from },
       ...(undecoded.length === 0 ? {} : { undecoded }),
       history,
     };

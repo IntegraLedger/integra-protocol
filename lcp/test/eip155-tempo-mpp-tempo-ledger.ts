@@ -3,12 +3,13 @@
 // consumes it before the calls run), the protocol nonce, and each block's transactions. `consumed` adds values taken by
 // no transaction the ledger holds, as a ledger whose consumer the read cannot find. The account keychain's `getKey`
 // answers from the key authorizations the ledger's Tempo transactions carry (each registers its key for its sender in
-// its block, whatever its result) and from `keys`, slots registered or revoked by no transaction the ledger holds.
-// Constructed, not recorded.
+// its block, whatever its result) and from `keys`, slots registered or revoked by no transaction the ledger holds; its
+// `isKeyAuthorizationWitnessBurned` from the `KeyAuthorizationWitnessBurned` logs of the ledger's succeeded transactions
+// and from `burns`, witnesses burned by no transaction the ledger holds. Constructed, not recorded.
 import { addressWord, bytesOf, concat, hexOf, keccakHex, uintOf, uintWord, type Hex } from "../src/evm-abi.js";
 import { ReaderError } from "../src/evm.js";
 import { readKeyAuthorization } from "../src/internal/key-authorization.js";
-import { GET_KEY_SELECTOR } from "../src/internal/tempo-key-slot.js";
+import { GET_KEY_SELECTOR, KEY_AUTHORIZATION_WITNESS_BURNED_TOPIC, WITNESS_BURNED_SELECTOR } from "../src/internal/tempo-key-slot.js";
 import { carriedKeyAuthorization, tempoSender } from "../src/internal/tempo-envelope.js";
 import { isRefusal } from "../src/refusal.js";
 import { ACCOUNT_KEYCHAIN } from "../src/tempo.js";
@@ -22,6 +23,8 @@ export interface TempoLedgerSpec extends LedgerSpec {
   readonly unlisted?: readonly bigint[];
   /** Key slots registered from block `from` on, and revoked from `revoked` on, by no transaction the ledger holds. */
   readonly keys?: readonly { readonly account: Hex; readonly keyId: Hex; readonly from: bigint; readonly revoked?: bigint }[];
+  /** Witnesses burned for an account from block `from` on by no transaction the ledger holds. */
+  readonly burns?: readonly { readonly account: Hex; readonly witness: Hex; readonly from: bigint }[];
 }
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
@@ -82,6 +85,28 @@ export function tempoLedgerReader(spec: TempoLedgerSpec): TempoSearchReader & { 
         const held = (carried || extra !== undefined) && !revoked;
         // KeyInfo: signatureType, keyId, expiry, enforceLimits, isRevoked; a blank entry where none is held.
         return hexOf(concat([uintWord(0n), held ? addressWord(keyId) : uintWord(0n), uintWord(held ? 1n << 40n : 0n), uintWord(0n), uintWord(revoked ? 1n : 0n)]));
+      }
+      if (same(to, ACCOUNT_KEYCHAIN) && data.toLowerCase().startsWith(WITNESS_BURNED_SELECTOR)) {
+        base.calls.push("call");
+        visible(block);
+        const d = bytesOf(data)!;
+        const account = hexOf(d.subarray(16, 36));
+        const witness = hexOf(d.subarray(36, 68));
+        const logged = spec.txs.some(
+          (t) =>
+            t.status === 1 &&
+            t.block <= block &&
+            t.logs.some(
+              (l) =>
+                same(l.address, ACCOUNT_KEYCHAIN) &&
+                l.topics.length === 3 &&
+                same(l.topics[0]!, KEY_AUTHORIZATION_WITNESS_BURNED_TOPIC) &&
+                same(l.topics[1]!, hexOf(addressWord(account))) &&
+                same(l.topics[2]!, witness),
+            ),
+        );
+        const extra = (spec.burns ?? []).some((b) => same(b.account, account) && same(b.witness, witness) && b.from <= block);
+        return hexOf(uintWord(logged || extra ? 1n : 0n));
       }
       if (same(to, NONCE_PRECOMPILE) && data.toLowerCase().startsWith(GET_NONCE_SELECTOR)) {
         base.calls.push("call");

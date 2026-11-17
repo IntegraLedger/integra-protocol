@@ -208,15 +208,15 @@ async function splitLedger(c: ReadCase, act: Act, push: boolean) {
   let network: string = NETWORK;
   if (f.unreadable === "chain-mismatch") network = "eip155:1";
   const base = tempoLedgerReader({ ...spec, network });
-  const fault = (method: string): boolean =>
-    (f.unreadable === "transport" && method === "logs") || (f.unreadable === "too-large" && method === "logs");
+  // A range the endpoint refuses is halved, so a reader's bound is met where an answer exceeds it: the final head's.
   const reader = {
     ...base,
     async logs(filter: Parameters<typeof base.logs>[0]) {
-      if (fault("logs")) throw new ReaderError(f.unreadable === "too-large" ? "too-large" : "transport");
+      if (f.unreadable === "transport") throw new ReaderError("transport");
       return base.logs(filter);
     },
     async block(at: "latest" | "safe" | "finalized" | bigint) {
+      if (f.unreadable === "too-large" && at === "finalized") throw new ReaderError("too-large", "answer past the reader's bound");
       if (f.unreadable === "unparseable" && at === "finalized") return { number: "x" } as never;
       if (typeof at === "bigint" && !f.history && at < latest) throw new ReaderError("transport", "no such block on this node");
       return base.block(at);
@@ -654,14 +654,16 @@ async function activationLedger(c: ReadCase, act: Act) {
 }
 
 const SUBSCRIPTION_HOLDS = STATED(
-  "on `subscription/tempo`, since the read holds its single-use value, the key slot the presented key authorization " +
+  "on `subscription/tempo`, since its read holds its single-use value, the key slot the presented key authorization " +
     "names, and reads it at `finalized` and at `latest`",
   "mpp-session-evm-tempo.md, rule 8",
 );
 
 const SUBSCRIPTION_REGISTERS = STATED(
-  "on `subscription/tempo`, since the payer's key authorization for the issued key registers the key's slot whatever " +
-    "the transaction's result, before its calls run, so every act of the payer's of the pairing's kind consumed the value",
+  "on `subscription/tempo`, whose facts each give an act of the payer's of the pairing's kind that consumed nothing, " +
+    "since an act is of that kind only where its key authorization names the issued key id, and the keychain registers " +
+    "that key's slot whatever the transaction's result, a transaction whose key authorization it refuses being not " +
+    "included, so every such act consumed the value",
   "mpp-session-evm-tempo.md, rule 8",
 );
 

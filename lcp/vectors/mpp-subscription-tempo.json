@@ -151,6 +151,22 @@
    "code": "tempo/witness-not-bound"
   }
  },
+ "BURN": {
+  "about": "The payer's burn of H as a key authorization witness (TIP-1053 burnKeyAuthorizationWitness, tempoxyz/tempo@c8b89f9b crates/precompiles/src/account_keychain/mod.rs:457-465, :1198-1221), which leaves the presented key authorization unlandable with its key slot unconsumed. expectCall is isKeyAuthorizationWitnessBurned(fixed.payer, fixed.H) on the account keychain (crates/contracts/src/precompiles/account_keychain.rs:214-215) and expectBurnedTopics the KeyAuthorizationWitnessBurned(account, witness) topics (:106-107), both by viem 2.57.4's encodeFunctionData and encodeEventTopics over viem/tempo Abis.accountKeychain; burnedAnswer is its encodeFunctionResult of true. A read whose mark reads burned, with the burn's transaction in the first block it reads burned, answers expectStatus.",
+  "expectCall": "0x8e6c7e11000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectBurnedTopics": [
+   "0x90c05384a0773712c636a71fde10916abfd2af82c26066b33f082119b47786c2",
+   "0x000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+   "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  ],
+  "burnedAnswer": "0x0000000000000000000000000000000000000000000000000000000000000001",
+  "expectStatus": {
+   "state": "failed",
+   "reason": "instrument-consumed",
+   "carries": "other-kind",
+   "foreign": []
+  }
+ },
  "pattern": {
   "pattern": "native-field",
   "claims": true,
