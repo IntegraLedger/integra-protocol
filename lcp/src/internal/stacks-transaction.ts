@@ -17,10 +17,22 @@ export interface StacksTransaction {
   chainId: number;
   /** True for a standard authorization, false for a sponsored one. */
   standard: boolean;
-  /** The origin's spending condition: its hash mode, signer hash160 and nonce. */
-  origin: { hashMode: number; signer: Uint8Array; nonce: bigint };
+  /** The origin's spending condition: its hash mode, signer hash160, nonce and fee. */
+  origin: { hashMode: number; signer: Uint8Array; nonce: bigint; fee: bigint };
   /** A contract call's contract (address version, hash160 and name), function and each argument's bytes; else null. */
   call: { version: number; hash160: Uint8Array; contract: string; functionName: string; args: Uint8Array[] } | null;
+  /**
+   * A token transfer's recipient (the principal's consensus serialization), amount and 34-byte memo; else null.
+   */
+  transfer: { recipient: Uint8Array; amount: bigint; memo: Uint8Array } | null;
+  /**
+   * The transaction in the form its origin signs it, whose SHA-512/256 is the initial signature hash: the origin's
+   * spending condition cleared (its nonce and fee zero, and a single signature's 65 bytes zero or a multisignature's
+   * auth fields an empty list, the hash mode, signer, key encoding and required count kept), and on a sponsored
+   * authorization the sponsor's spending condition in the empty form the origin signs (P2PKH, a zero signer, nonce and
+   * fee, a compressed key encoding and a zero signature). Every other byte is the transaction's own.
+   */
+  originForm: Uint8Array;
 }
 
 /** clarity-types/src/types/mod.rs:48, :54 and :62. */
@@ -404,17 +416,20 @@ function value(r: Reader, level: number): ClarityType {
  * A spending condition (:1321-1347): singlesig (:1186-1222), multisig (:805-871) or order-independent multisig
  * (:997-1060).
  */
-function spendingCondition(r: Reader): StacksTransaction["origin"] {
+function spendingCondition(r: Reader): StacksTransaction["origin"] & { cleared: Uint8Array } {
   const hashMode = r.u8();
   const signer = r.bytes(20);
   const nonce = r.u64();
-  r.u64(); // fee
+  const fee = r.u64();
+  // The condition cleared as the origin signs it: hash mode, signer, a zero nonce and fee, then the rest below.
+  const head = [hashMode, ...signer, ...new Uint8Array(16)];
   if (hashMode === 0x00 || hashMode === 0x02) {
     const keyEncoding = r.u8();
     need(keyEncoding === 0x00 || keyEncoding === 0x01);
     r.bytes(65);
     // P2WPKH signs with a compressed key.
     need(hashMode === 0x00 || keyEncoding === 0x00);
+    return { hashMode, signer, nonce, fee, cleared: Uint8Array.from([...head, keyEncoding, ...new Uint8Array(65)]) };
   } else {
     need(hashMode === 0x01 || hashMode === 0x03 || hashMode === 0x05 || hashMode === 0x07);
     const count = r.u32();
@@ -440,9 +455,12 @@ function spendingCondition(r: Reader): StacksTransaction["origin"] {
     need(hashMode === 0x01 || hashMode === 0x03 ? signatures === required : signatures >= required);
     // P2WSH takes compressed keys only.
     need(!uncompressed || hashMode === 0x01 || hashMode === 0x05);
+    return { hashMode, signer, nonce, fee, cleared: Uint8Array.from([...head, 0, 0, 0, 0, required >> 8, required & 0xff]) };
   }
-  return { hashMode, signer, nonce };
 }
+
+/** The sponsor's spending condition in the empty form the origin signs: P2PKH, all zero, a compressed key encoding. */
+const EMPTY_SPONSOR = /* @__PURE__ */ new Uint8Array(1 + 20 + 8 + 8 + 1 + 65);
 
 /** A post-condition's principal (:2345-2368): the origin, an address, or an address and a contract name. */
 function postConditionPrincipal(r: Reader): void {
@@ -510,18 +528,20 @@ function littleEndian(b: Uint8Array): bigint {
 }
 
 /** The payload (:2915-3007): its type, and a contract call's fields. */
-function payload(r: Reader): { type: number; call: StacksTransaction["call"] } {
+function payload(r: Reader): { type: number; call: StacksTransaction["call"]; transfer?: StacksTransaction["transfer"] } {
   const type = r.u8();
   switch (type) {
     case 0x00: {
       // A token transfer: the recipient is a principal (clarity-types/src/types/serialization.rs:289-311), an
       // amount and a 34-byte memo.
+      const at = r.at;
       const prefix = r.u8();
       need(prefix === 0x05 || prefix === 0x06);
       r.address();
       if (prefix === 0x06) r.name(0, 128, CONTRACT_NAME);
-      r.bytes(8 + 34);
-      return { type, call: null };
+      const recipient = r.wire.subarray(at, r.at);
+      const amount = big(r.bytes(8));
+      return { type, call: null, transfer: { recipient, amount, memo: r.bytes(34) } };
     }
     case 0x02: {
       // A contract call (:2114-2135).
@@ -601,17 +621,24 @@ export function readStacksTransaction(wire: Uint8Array): StacksTransaction | und
     const chainId = r.u32();
     const auth = r.u8();
     need(auth === 0x04 || auth === 0x05);
-    const origin = spendingCondition(r);
+    const { cleared, ...origin } = spendingCondition(r);
     if (auth === 0x05) spendingCondition(r);
+    const rest = r.at;
     const anchor = r.u8();
     const postConditionMode = r.u8();
     const count = r.u32();
     for (let i = 0; i < count; i++) postCondition(r);
-    const { type, call } = payload(r);
+    const { type, call, transfer } = payload(r);
     need(anchor >= 1 && anchor <= 3 && postConditionMode >= 1 && postConditionMode <= 3);
     need(anchor === 1 || ![0x03, 0x04, 0x05, 0x08].includes(type));
     need(r.at === wire.length);
-    return { version, chainId, standard: auth === 0x04, origin, call };
+    const originForm = Uint8Array.from([
+      ...wire.subarray(0, 6),
+      ...cleared,
+      ...(auth === 0x05 ? EMPTY_SPONSOR : []),
+      ...wire.subarray(rest),
+    ]);
+    return { version, chainId, standard: auth === 0x04, origin, call, transfer: transfer ?? null, originForm };
   } catch {
     return undefined;
   }

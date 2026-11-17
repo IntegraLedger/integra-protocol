@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed, except agreedRefusals' row 22, buyer row B6's settlementBoc with a bit set past the last byte in its last base64 character before the padding, and the agreedRefusals rows whose case says their settlement message is written bit by bit. Status fixtures model TON Center v3 answers: byInBodyRequest answers the lookup by the signed W5 request's body hash, byInMessage the lookups by message hash, keyed by the hash, byInBody a lookup by the Jetton transfer's body hash, which status does not make, and headUtime the masterchain head's gen_utime; each byInBody answer also names the gen_utime of a masterchain block through which its index holds every block, indexedUtime where the row gives it and the row's headUtime where it does not; inBody is a BoC in hex. Status counts only the payer Jetton wallet's transaction that took the message the payer's W5 wallet emitted in a transaction with the request: W5 checks the request's signature before any action runs (wallet_v5.fc). W5 refuses a request once valid_until <= now() (wallet_v5.fc), and an internal request that aborts leaves its seqno unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before valid_until: a lookup in which no transaction with the request emitted the Jetton transfer shows that the request never sends it only when its index holds every block through the head read first. A W5 transaction runs at its shard block's time, which a masterchain block references only later, so such a request reads failed only once the head read first is more than 60 seconds past valid_until. An internal message carries no expiry, so a request whose W5 transaction emitted the Jetton transfer is still in flight at any head. V4's status rows and the plant are read with the act payment at the finality the row gives, finalized where it gives none, and answer as the profile read-status gives them, naming the W5 wallet's transaction: since the read holds no search for H, an aborted, bounced or expired request, one that emitted nothing, one in flight or not final, and one not found answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
+ "about": "Vectors for the x402/exact/tvm pairing: the tvm entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The expected cell hashes, BoC and signature prefixes were computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2; fixed.attachNanotons is 30,000,000 nanotons, the stock settler's cap above a forward TON amount of 0 (@x402/tvm 2.30.0, src/exact/facilitator/scheme.ts:326-329, DEFAULT_JETTON_WALLET_MESSAGE_AMOUNT in src/constants.ts:14), and V2's and V2b's members that depend on it, with the settlement BoC buyer row B6 presents, were recomputed at it by a script that builds the request from the profile's layout (x402-exact-tvm.md, rule 2) with @ton/core 0.63.1 and @noble/curves 2.4.0 and imports nothing of this package, after that script reproduced, at the earlier 50,000,000, every one of those values pytoniq-core 0.2.0 and PyNaCl 1.6.2 gave, byte for byte; the request body hashes by a script that builds the settlement message with those tools and reproduces the vector's settlement root hash first. The payer's key is the Ed25519 seed 01 repeated 32 times. Negative settlement BoCs are V2's request with one part changed, except agreedRefusals' row 22, buyer row B6's settlementBoc with a bit set past the last byte in its last base64 character before the padding, and the agreedRefusals rows whose case says their settlement message is written bit by bit. status is read through a TON Center v3 reader as the profile x402-exact-tvm states it (rule 6); its cases are the read kit's, read-status.json's cases arranged on a constructed ledger (test/tvm-ledger.ts, test/read-kit/forms/tvm.ts), and the recorded answers of a tvm:-3 index are owed by the run at step 4. V4.recover's rows model the one call recover makes, byHash, with inBody a BoC in hex. V6 is the payment the stock client of @x402/tvm 2.30.0, which this package pins as a devDependency, writes from the stock server's option once H is placed in it, run offline against a constructed provider as its case states; its settlementBoc is that client's output, byte for byte.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -31,7 +31,7 @@
   "walletId": 2147483409,
   "seqno": 5,
   "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
-  "attachNanotons": "50000000",
+  "attachNanotons": "30000000",
   "now": 1790000000,
   "resource": {
    "url": "https://api.seller.example/v1/quote"
@@ -44,35 +44,38 @@
   "expectBoc": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
  },
  "V2": {
-  "case": "build({required: {x402Version: 2, resource, accepts: [placed]}, accepted: placed, wallet, walletId, seqno, jettonWallet, attachNanotons, now}, H), then complete(signature). expectSettlementBoc is the settlement BoC complete writes, as pytoniq-core 0.2.0 serializes the settlement cell tree, Cell.to_boc(has_idx=False, hash_crc32=True): the root's hash is expectSettlementRootHash, and the text is buyer row B6's presented settlementBoc, which the same call reproduces byte for byte",
+  "case": "build({required: {x402Version: 2, resource, accepts: [placed]}, accepted: placed, wallet, walletId, seqno, jettonWallet, attachNanotons, now}, H), then complete(signature). expectSettlementBoc is the settlement BoC complete writes, in the serialization pytoniq-core 0.2.0 gives the settlement cell tree, Cell.to_boc(has_idx=False, hash_crc32=True), recomputed at attachNanotons 30,000,000 as the file's about states, with @ton/core 0.63.1: the root's hash is expectSettlementRootHash, and the text is buyer row B6's presented settlementBoc, which the same call reproduces byte for byte",
   "expectTransferBodyBits": 391,
   "expectTransferBodyHash": "2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
   "expectOutMessageHash": {
-   "prefix": "d0935b60",
-   "suffix": "666222fae"
+   "prefix": "cd94d416",
+   "suffix": "6e0692d69"
   },
   "expectActionsHash": {
-   "prefix": "a79f2b0a",
-   "suffix": "3d9477456"
+   "prefix": "93dff7fd",
+   "suffix": "224e13969"
   },
-  "expectRequestHash": "d5741edc93f80783ae005269cec93696cb7bf058f046ef34fe8e87e05cdb465a",
+  "expectRequestHash": "b915c87e8e447f72434b7dde3c562b56b22984fe562d09832c12fc5e12aa4d80",
   "expectSignature": {
-   "prefix": "6483cff80194d94e",
-   "suffix": "761f183506"
+   "prefix": "d46bcfaf35fb2a8f",
+   "suffix": "2f44ea6e0a"
   },
-  "expectSettlementRootHash": "696775c946299a6249d2856c9284735961758c91dca2ea084e278380cb3e1f15",
-  "expectSettlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87w=="
+  "expectSettlementRootHash": "a9d4443fec8aa811c048fc4c2974758aabba95109e27a96c929a6ae49e80cd80",
+  "expectSettlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkcflUwQ=="
  },
  "V3": {
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectReference": {
    "network": "tvm:-239",
    "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
    "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
    "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
-   "requestBodyHash": "0xd2a6d348458c3d5213503704aba9674b8f47dffdcce88950bb0b5c3331f4116f",
+   "requestBodyHash": "0xf03f617ece65db0c491a55b45da80ff56012deb59fc382763abf666c95184999",
+   "signedHash": "0xb915c87e8e447f72434b7dde3c562b56b22984fe562d09832c12fc5e12aa4d80",
    "wallet": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-   "validUntil": 1790000060
+   "validUntil": 1790000060,
+   "seqno": 5
   },
   "refusals": [
    {
@@ -128,7 +131,7 @@
    },
    {
     "case": "an option whose forwardPayload is another comment",
-    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87w==",
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkcflUwQ==",
     "accepted": {
      "scheme": "exact",
      "network": "tvm:-239",
@@ -145,7 +148,7 @@
    },
    {
     "case": "a comment of 0x00000000, a byte-order mark (EF BB BF) and H's LCP string, which the option's forwardPayload holds too",
-    "settlementBoc": "te6cckECBwEAAVMAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFi4JjtG9eYMhQL2BN7oPIoMx/iJBrj53IhunqYiIcJ3zdxYCKt7SXA5UXWMmDEBAu8KcZfj1fR9EC2NfZYB3yw6ACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCoAAAAAO+7v2xjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkwir3hA==",
+    "settlementBoc": "te6cckECBwEAAVMAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFoN4bIGsQOXFZMpdt/0+qjrk7WWPtudhcxcUF6n6S/5y2QqgSgQp6Jx5rafLabInnouS52+h19Y2VUiwIgN5JgWACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCoAAAAAO+7v2xjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk8qlpGA==",
     "accepted": {
      "scheme": "exact",
      "network": "tvm:-239",
@@ -166,479 +169,15 @@
   "ref": {
    "network": "tvm:-239",
    "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
    "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
    "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
-   "requestBodyHash": "0xd2a6d348458c3d5213503704aba9674b8f47dffdcce88950bb0b5c3331f4116f",
+   "requestBodyHash": "0xf03f617ece65db0c491a55b45da80ff56012deb59fc382763abf666c95184999",
+   "signedHash": "0xb915c87e8e447f72434b7dde3c562b56b22984fe562d09832c12fc5e12aa4d80",
    "wallet": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-   "validUntil": 1790000060
+   "validUntil": 1790000060,
+   "seqno": 5
   },
-  "status": [
-   {
-    "case": "finality 2 and 2",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-jetton-transfer",
-        "opcode": 260734629
-       }
-      ]
-     }
-    ],
-    "byInMessage": {
-     "msg-jetton-transfer": [
-      {
-       "hash": "tx-payer",
-       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-       "aborted": false,
-       "finality": 2,
-       "inBody": null,
-       "outMsgs": [
-        {
-         "hash": "msg-internal",
-         "opcode": 395134233
-        }
-       ]
-      }
-     ],
-     "msg-internal": [
-      {
-       "hash": "tx-payee",
-       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-       "aborted": false,
-       "finality": 2,
-       "inBody": null,
-       "outMsgs": []
-      }
-     ]
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "tx-w5",
-     "finality": "finalized",
-     "foreign": []
-    }
-   },
-   {
-    "case": "finality 2 and 1",
-    "finality": "confirmed",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-jetton-transfer",
-        "opcode": 260734629
-       }
-      ]
-     }
-    ],
-    "byInMessage": {
-     "msg-jetton-transfer": [
-      {
-       "hash": "tx-payer",
-       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-       "aborted": false,
-       "finality": 2,
-       "inBody": null,
-       "outMsgs": [
-        {
-         "hash": "msg-internal",
-         "opcode": 395134233
-        }
-       ]
-      }
-     ],
-     "msg-internal": [
-      {
-       "hash": "tx-payee",
-       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-       "aborted": false,
-       "finality": 1,
-       "inBody": null,
-       "outMsgs": []
-      }
-     ]
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "tx-w5",
-     "finality": "confirmed",
-     "foreign": []
-    }
-   },
-   {
-    "case": "finality 2 and 0",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-jetton-transfer",
-        "opcode": 260734629
-       }
-      ]
-     }
-    ],
-    "byInMessage": {
-     "msg-jetton-transfer": [
-      {
-       "hash": "tx-payer",
-       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-       "aborted": false,
-       "finality": 2,
-       "inBody": null,
-       "outMsgs": [
-        {
-         "hash": "msg-internal",
-         "opcode": 395134233
-        }
-       ]
-      }
-     ],
-     "msg-internal": [
-      {
-       "hash": "tx-payee",
-       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-       "aborted": false,
-       "finality": 0,
-       "inBody": null,
-       "outMsgs": []
-      }
-     ]
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the payer Jetton wallet's transaction aborted",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-jetton-transfer",
-        "opcode": 260734629
-       }
-      ]
-     }
-    ],
-    "byInMessage": {
-     "msg-jetton-transfer": [
-      {
-       "hash": "tx-payer",
-       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-       "aborted": true,
-       "finality": 2,
-       "inBody": null,
-       "outMsgs": [
-        {
-         "hash": "msg-internal",
-         "opcode": 395134233
-        }
-       ]
-      }
-     ]
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the payee Jetton wallet's transaction aborted",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-jetton-transfer",
-        "opcode": 260734629
-       }
-      ]
-     }
-    ],
-    "byInMessage": {
-     "msg-jetton-transfer": [
-      {
-       "hash": "tx-payer",
-       "account": "0:1111111111111111111111111111111111111111111111111111111111111111",
-       "aborted": false,
-       "finality": 2,
-       "inBody": null,
-       "outMsgs": [
-        {
-         "hash": "msg-internal",
-         "opcode": 395134233
-        }
-       ]
-      }
-     ],
-     "msg-internal": [
-      {
-       "hash": "tx-payee",
-       "account": "0:3333333333333333333333333333333333333333333333333333333333333333",
-       "aborted": true,
-       "finality": 2,
-       "inBody": null,
-       "outMsgs": []
-      }
-     ]
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "nothing found, the lookup's index at the head read first, headUtime 1790000120 (60 seconds past validUntil)",
-    "byInBodyRequest": [],
-    "headUtime": 1790000120,
-    "indexedUtime": 1790000120,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "nothing found, the lookup's index at the head read first, headUtime 1790000121 (more than 60 seconds past validUntil)",
-    "byInBodyRequest": [],
-    "headUtime": 1790000121,
-    "indexedUtime": 1790000121,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the W5 wallet executed the request and emitted the Jetton transfer, headUtime 1790000200",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-jetton-transfer",
-        "opcode": 260734629
-       }
-      ]
-     }
-    ],
-    "byInMessage": {
-     "msg-jetton-transfer": []
-    },
-    "headUtime": 1790000200,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the W5 wallet executed the request and emitted nothing, headUtime 1790000200",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "headUtime": 1790000200,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the W5 wallet executed the request and emitted nothing, headUtime 1790000060",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "headUtime": 1790000060,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000200",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": true,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "headUtime": 1790000200,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000060",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": true,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "headUtime": 1790000060,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "nothing found and the head read fails",
-    "byInBodyRequest": [],
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    }
-   },
-   {
-    "case": "a ReaderError on the lookup of the message the W5 transaction emitted",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": [
-       {
-        "hash": "msg-jetton-transfer",
-        "opcode": 260734629
-       }
-      ]
-     }
-    ],
-    "byInMessage": {
-     "msg-jetton-transfer": "reader-error"
-    },
-    "headUtime": 1790000200,
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    }
-   },
-   {
-    "case": "a ReaderError on the request lookup",
-    "byInBodyRequest": "reader-error",
-    "headUtime": 1790000200,
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    }
-   },
-   {
-    "case": "nothing found, headUtime 1790000200, the lookup's index at 1790000040",
-    "byInBodyRequest": [],
-    "headUtime": 1790000200,
-    "indexedUtime": 1790000040,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the W5 wallet's only transaction with the request aborted, headUtime 1790000200, the lookup's index at 1790000040",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": true,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "headUtime": 1790000200,
-    "indexedUtime": 1790000040,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the W5 wallet executed the request and emitted nothing, headUtime 1790000200, the lookup's index at 1790000040",
-    "byInBodyRequest": [
-     {
-      "hash": "tx-w5",
-      "account": "0:1da21a6e33ef22840029ae77900f61ba820b94e813a3b7bef4e3ea471007645f",
-      "aborted": false,
-      "finality": 2,
-      "inBody": null,
-      "outMsgs": []
-     }
-    ],
-    "headUtime": 1790000200,
-    "indexedUtime": 1790000040,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   }
-  ],
   "recover": [
    {
     "case": "the payer Jetton wallet's transaction with V2's Jetton body",
@@ -647,45 +186,6 @@
     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    }
   ]
- },
- "plant": {
-  "case": "an equal Jetton body and an equal W5 request executed on other accounts, and nothing else",
-  "byInBody": [
-   {
-    "hash": "tx-payer",
-    "account": "0:2222222222222222222222222222222222222222222222222222222222222222",
-    "aborted": false,
-    "finality": 2,
-    "inBody": null,
-    "outMsgs": [
-     {
-      "hash": "msg-internal",
-      "opcode": 395134233
-     }
-    ]
-   }
-  ],
-  "byInBodyRequest": [
-   {
-    "hash": "tx-w5",
-    "account": "0:2222222222222222222222222222222222222222222222222222222222222222",
-    "aborted": false,
-    "finality": 2,
-    "inBody": null,
-    "outMsgs": [
-     {
-      "hash": "msg-jetton-transfer",
-      "opcode": 260734629
-     }
-    ]
-   }
-  ],
-  "headUtime": 1790000200,
-  "expect": {
-   "state": "pending",
-   "reason": "search-incomplete",
-   "foreign": []
-  }
  },
  "agreedRefusals": {
   "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript and Python implementations both apply the option, build, complete and bound rows, the Python one the option rows through build. The advertise, recover and missing-peer rows are the TypeScript implementation's alone: the Python one has no advertise, no recover and no optional peer. A build row that gives a stateInit builds with V2's choice and that state init, its wallet the row's stateInitWallet when the row gives one, else the state init's representation hash on workchain 0.",
@@ -894,7 +394,7 @@
    },
    {
     "case": "bound with a settlementBoc whose last character before the padding has a bit set past the last byte (buyer row B6's): the same bytes, not in canonical form (RFC 4648 §3.5)",
-    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87x==",
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkcflUwR==",
     "expect": "tvm/boc-malformed"
    },
    {
@@ -1138,34 +638,34 @@
     "expect": "tvm/boc-malformed"
    },
    {
-    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 7 (+1, +2, +4): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); under +2 it skips the message from global version 13 (skipped_actions 1), so nothing is sent",
+    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 7 (+1, +2, +4): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); under +2 it skips the message from global version 13 (skipped_actions 1), so nothing is sent; x402's TON scheme admits only modes 1 and 3 for the one action (specs/schemes/exact/scheme_exact_ton.md:170 at x402-foundation/x402@88b66dd4), and the stock settler's codec refuses any other as an invalid action list (@x402/tvm 2.30.0, src/exact/codec.ts:66-72), so bound refuses it tvm/actions",
     "settlementBoc": "te6cckECHQEABAMAAmFCAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAPABwEBoXNpbnR///8RarE7vAAAAACsPDHn1187v99owLtDunzfDFhRZaGWiqYVKDf4JwKl7vqd8KdaYF291mMQaFgMDmoCGiMxzCbWarQEfqolZ+jDoAICCg7DyG0HBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAACATQJCABRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riABFP8A9KQT9LzyyAsKAgEgDQsBAvIMAR4g1wsfghBzaWduuvLgin8YAgFIFw4CASAQDwAZvl8PaiaECAoOuQ+gLAIBIBQRAgFIExIAEbJi+1E0NcKAIAAXsyX7UTQcdch1wsfgAgFuFhUAGa8d9qJoQBDrkOuFj8AAGa3OdqJoQCDrkOuF/8AC3NAg10nBIJFbj2Mg1wsfIIIQZXh0br0hghBzaW50vbCSXwPgghBleHRuuo60gCDXIQHQdNch+kAw+kT4KPpEMFi9kVvg7UTQgQFB1yH0BYMH9A5voTGRMOGAQNchcH/bPOAxINdJgQKAuZEw4HDiGRgB5o7w7aLt+yGDCNciAoMI1yMggCDXIdMf0x/TH+1E0NIA0x8g0x/T/9cKAAr5AUDM+RCaKJRfCtsx4fLAh98Cs1AHsPLQhFEluvLghVA2uvLghvgju/LQiCKS+ADeAaR/yMoAyx8BzxbJ7VQgkvgP3nDbPNgZA/btou37AvQEIW6SbCGOTAIh1zkwcJQhxwCzji0B1yggdh5DbCDXScAI8uCTINdKwALy4JMg1x0GxxLCAFIwsPLQiddM1zkwAaTobBKEB7vy4JPXSsAA8uCT7VXi0gABwACRW+Dr1ywIFCCRcJYB1ywIHBLiUhCx4w8g10ocGxoAEJNb2zHh10zQAHIw1ywIJI4tIfLgktIA7UTQ0gBRE7ry0I9UUDCRMZwBgQFA1yHXCgDy4I7iyMoAWM8Wye1Uk/LAjeIAlgH6QAH6RPgo+kQwWLry4JHtRNCBAUHXGPQFBJ1/yMoAQASDB/RT8uCLjhQDgwf0W/LgjCLXCgAhbgGzsPLQkOLIUAPPFhL0AMntVMD9WWg=",
-    "expect": "tvm/not-jetton-transfer"
+    "expect": "tvm/actions"
    },
    {
-    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 11 (+1, +2, +8): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); under +2 it skips the message from global version 13 (skipped_actions 1), so nothing is sent",
+    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 11 (+1, +2, +8): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); under +2 it skips the message from global version 13 (skipped_actions 1), so nothing is sent; x402's TON scheme admits only modes 1 and 3 for the one action (specs/schemes/exact/scheme_exact_ton.md:170 at x402-foundation/x402@88b66dd4), and the stock settler's codec refuses any other as an invalid action list (@x402/tvm 2.30.0, src/exact/codec.ts:66-72), so bound refuses it tvm/actions",
     "settlementBoc": "te6cckECHQEABAMAAmFCAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAPABwEBoXNpbnR///8RarE7vAAAAACQhTFQvIeUk5X5S5jQ/yo6RZrZkJzr9qkGz8Lyrs3UE27tEbajmlucqL3L2nbT8+3jeL3UBkzGTTtI4cVWxDiCoAICCg7DyG0LBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAACATQJCABRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riABFP8A9KQT9LzyyAsKAgEgDQsBAvIMAR4g1wsfghBzaWduuvLgin8YAgFIFw4CASAQDwAZvl8PaiaECAoOuQ+gLAIBIBQRAgFIExIAEbJi+1E0NcKAIAAXsyX7UTQcdch1wsfgAgFuFhUAGa8d9qJoQBDrkOuFj8AAGa3OdqJoQCDrkOuF/8AC3NAg10nBIJFbj2Mg1wsfIIIQZXh0br0hghBzaW50vbCSXwPgghBleHRuuo60gCDXIQHQdNch+kAw+kT4KPpEMFi9kVvg7UTQgQFB1yH0BYMH9A5voTGRMOGAQNchcH/bPOAxINdJgQKAuZEw4HDiGRgB5o7w7aLt+yGDCNciAoMI1yMggCDXIdMf0x/TH+1E0NIA0x8g0x/T/9cKAAr5AUDM+RCaKJRfCtsx4fLAh98Cs1AHsPLQhFEluvLghVA2uvLghvgju/LQiCKS+ADeAaR/yMoAyx8BzxbJ7VQgkvgP3nDbPNgZA/btou37AvQEIW6SbCGOTAIh1zkwcJQhxwCzji0B1yggdh5DbCDXScAI8uCTINdKwALy4JMg1x0GxxLCAFIwsPLQiddM1zkwAaTobBKEB7vy4JPXSsAA8uCT7VXi0gABwACRW+Dr1ywIFCCRcJYB1ywIHBLiUhCx4w8g10ocGxoAEJNb2zHh10zQAHIw1ywIJI4tIfLgktIA7UTQ0gBRE7ry0I9UUDCRMZwBgQFA1yHXCgDy4I7iyMoAWM8Wye1Uk/LAjeIAlgH6QAH6RPgo+kQwWLry4JHtRNCBAUHXGPQFBJ1/yMoAQASDB/RT8uCLjhQDgwf0W/LgjCLXCgAhbgGzsPLQkOLIUAPPFhL0AMntVGJ4hNg=",
-    "expect": "tvm/not-jetton-transfer"
+    "expect": "tvm/actions"
    },
    {
-    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 195 (+1, +2, +64, +128): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); under +2 it skips the message from global version 13 (skipped_actions 1), so nothing is sent",
+    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 195 (+1, +2, +64, +128): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); under +2 it skips the message from global version 13 (skipped_actions 1), so nothing is sent; x402's TON scheme admits only modes 1 and 3 for the one action (specs/schemes/exact/scheme_exact_ton.md:170 at x402-foundation/x402@88b66dd4), and the stock settler's codec refuses any other as an invalid action list (@x402/tvm 2.30.0, src/exact/codec.ts:66-72), so bound refuses it tvm/actions",
     "settlementBoc": "te6cckECHQEABAMAAmFCAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAPABwEBoXNpbnR///8RarE7vAAAAAC31IQGU4DamiiGfYqSlfOILurB5Z8HchiLgkbhYPvvHbSRXE6dFPazyFDaSDkBxmSAm9RNZmCfjBFXAIOygO8DoAICCg7DyG3DBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAACATQJCABRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riABFP8A9KQT9LzyyAsKAgEgDQsBAvIMAR4g1wsfghBzaWduuvLgin8YAgFIFw4CASAQDwAZvl8PaiaECAoOuQ+gLAIBIBQRAgFIExIAEbJi+1E0NcKAIAAXsyX7UTQcdch1wsfgAgFuFhUAGa8d9qJoQBDrkOuFj8AAGa3OdqJoQCDrkOuF/8AC3NAg10nBIJFbj2Mg1wsfIIIQZXh0br0hghBzaW50vbCSXwPgghBleHRuuo60gCDXIQHQdNch+kAw+kT4KPpEMFi9kVvg7UTQgQFB1yH0BYMH9A5voTGRMOGAQNchcH/bPOAxINdJgQKAuZEw4HDiGRgB5o7w7aLt+yGDCNciAoMI1yMggCDXIdMf0x/TH+1E0NIA0x8g0x/T/9cKAAr5AUDM+RCaKJRfCtsx4fLAh98Cs1AHsPLQhFEluvLghVA2uvLghvgju/LQiCKS+ADeAaR/yMoAyx8BzxbJ7VQgkvgP3nDbPNgZA/btou37AvQEIW6SbCGOTAIh1zkwcJQhxwCzji0B1yggdh5DbCDXScAI8uCTINdKwALy4JMg1x0GxxLCAFIwsPLQiddM1zkwAaTobBKEB7vy4JPXSsAA8uCT7VXi0gABwACRW+Dr1ywIFCCRcJYB1ywIHBLiUhCx4w8g10ocGxoAEJNb2zHh10zQAHIw1ywIJI4tIfLgktIA7UTQ0gBRE7ry0I9UUDCRMZwBgQFA1yHXCgDy4I7iyMoAWM8Wye1Uk/LAjeIAlgH6QAH6RPgo+kQwWLry4JHtRNCBAUHXGPQFBJ1/yMoAQASDB/RT8uCLjhQDgwf0W/LgjCLXCgAhbgGzsPLQkOLIUAPPFhL0AMntVL+mUl0=",
-    "expect": "tvm/not-jetton-transfer"
+    "expect": "tvm/actions"
    },
    {
-    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 5 (+1, +4): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); the action phase fails (result 34) and nothing is sent",
+    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 5 (+1, +4): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); the action phase fails (result 34) and nothing is sent; x402's TON scheme admits only modes 1 and 3 for the one action (specs/schemes/exact/scheme_exact_ton.md:170 at x402-foundation/x402@88b66dd4), and the stock settler's codec refuses any other as an invalid action list (@x402/tvm 2.30.0, src/exact/codec.ts:66-72), so bound refuses it tvm/actions",
     "settlementBoc": "te6cckECHQEABAMAAmFCAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAPABwEBoXNpbnR///8RarE7vAAAAAC4U/waeV0mbeMIWxhZ6v5aS2J94EBVZDbg8TUWrnJyYELa/ixSJvDjakqlMcpKtxlUDUcWNqnt6VHDB+PxNfACIAICCg7DyG0FBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAACATQJCABRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riABFP8A9KQT9LzyyAsKAgEgDQsBAvIMAR4g1wsfghBzaWduuvLgin8YAgFIFw4CASAQDwAZvl8PaiaECAoOuQ+gLAIBIBQRAgFIExIAEbJi+1E0NcKAIAAXsyX7UTQcdch1wsfgAgFuFhUAGa8d9qJoQBDrkOuFj8AAGa3OdqJoQCDrkOuF/8AC3NAg10nBIJFbj2Mg1wsfIIIQZXh0br0hghBzaW50vbCSXwPgghBleHRuuo60gCDXIQHQdNch+kAw+kT4KPpEMFi9kVvg7UTQgQFB1yH0BYMH9A5voTGRMOGAQNchcH/bPOAxINdJgQKAuZEw4HDiGRgB5o7w7aLt+yGDCNciAoMI1yMggCDXIdMf0x/TH+1E0NIA0x8g0x/T/9cKAAr5AUDM+RCaKJRfCtsx4fLAh98Cs1AHsPLQhFEluvLghVA2uvLghvgju/LQiCKS+ADeAaR/yMoAyx8BzxbJ7VQgkvgP3nDbPNgZA/btou37AvQEIW6SbCGOTAIh1zkwcJQhxwCzji0B1yggdh5DbCDXScAI8uCTINdKwALy4JMg1x0GxxLCAFIwsPLQiddM1zkwAaTobBKEB7vy4JPXSsAA8uCT7VXi0gABwACRW+Dr1ywIFCCRcJYB1ywIHBLiUhCx4w8g10ocGxoAEJNb2zHh10zQAHIw1ywIJI4tIfLgktIA7UTQ0gBRE7ry0I9UUDCRMZwBgQFA1yHXCgDy4I7iyMoAWM8Wye1Uk/LAjeIAlgH6QAH6RPgo+kQwWLry4JHtRNCBAUHXGPQFBJ1/yMoAQASDB/RT8uCLjhQDgwf0W/LgjCLXCgAhbgGzsPLQkOLIUAPPFhL0AMntVHXBKig=",
-    "expect": "tvm/not-jetton-transfer"
+    "expect": "tvm/actions"
    },
    {
-    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 9 (+1, +8): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); the action phase fails (result 34) and nothing is sent",
+    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 9 (+1, +8): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); the action phase fails (result 34) and nothing is sent; x402's TON scheme admits only modes 1 and 3 for the one action (specs/schemes/exact/scheme_exact_ton.md:170 at x402-foundation/x402@88b66dd4), and the stock settler's codec refuses any other as an invalid action list (@x402/tvm 2.30.0, src/exact/codec.ts:66-72), so bound refuses it tvm/actions",
     "settlementBoc": "te6cckECHQEABAMAAmFCAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAPABwEBoXNpbnR///8RarE7vAAAAACkwS1sH3oM5hoSojI0Nna1qV24jtJRC5cTZmwqJpEqNi+bGphajIcht+hrGCBLHAHURpz07hk/Sf+JIpGaT7aDoAICCg7DyG0JBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAACATQJCABRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riABFP8A9KQT9LzyyAsKAgEgDQsBAvIMAR4g1wsfghBzaWduuvLgin8YAgFIFw4CASAQDwAZvl8PaiaECAoOuQ+gLAIBIBQRAgFIExIAEbJi+1E0NcKAIAAXsyX7UTQcdch1wsfgAgFuFhUAGa8d9qJoQBDrkOuFj8AAGa3OdqJoQCDrkOuF/8AC3NAg10nBIJFbj2Mg1wsfIIIQZXh0br0hghBzaW50vbCSXwPgghBleHRuuo60gCDXIQHQdNch+kAw+kT4KPpEMFi9kVvg7UTQgQFB1yH0BYMH9A5voTGRMOGAQNchcH/bPOAxINdJgQKAuZEw4HDiGRgB5o7w7aLt+yGDCNciAoMI1yMggCDXIdMf0x/TH+1E0NIA0x8g0x/T/9cKAAr5AUDM+RCaKJRfCtsx4fLAh98Cs1AHsPLQhFEluvLghVA2uvLghvgju/LQiCKS+ADeAaR/yMoAyx8BzxbJ7VQgkvgP3nDbPNgZA/btou37AvQEIW6SbCGOTAIh1zkwcJQhxwCzji0B1yggdh5DbCDXScAI8uCTINdKwALy4JMg1x0GxxLCAFIwsPLQiddM1zkwAaTobBKEB7vy4JPXSsAA8uCT7VXi0gABwACRW+Dr1ywIFCCRcJYB1ywIHBLiUhCx4w8g10ocGxoAEJNb2zHh10zQAHIw1ywIJI4tIfLgktIA7UTQ0gBRE7ry0I9UUDCRMZwBgQFA1yHXCgDy4I7iyMoAWM8Wye1Uk/LAjeIAlgH6QAH6RPgo+kQwWLry4JHtRNCBAUHXGPQFBJ1/yMoAQASDB/RT8uCLjhQDgwf0W/LgjCLXCgAhbgGzsPLQkOLIUAPPFhL0AMntVGcNs8o=",
-    "expect": "tvm/not-jetton-transfer"
+    "expect": "tvm/actions"
    },
    {
-    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 193 (+1, +64, +128): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); the action phase fails (result 34) and nothing is sent",
+    "case": "bound with a settlement message written bit by bit (an undeployed W5 wallet's state init by reference, the wallet its hash, the request signed with fixed.seedHex) whose W5 action sends the Jetton transfer with mode 193 (+1, +64, +128): TON's action phase sends a message only with a mode of +1, +2, +32, +64 and +128, +16 set aside as bounce-on-fail, and never +64 with +128 (ton-blockchain/ton crypto/block/transaction.cpp, try_action_send_msg); the action phase fails (result 34) and nothing is sent; x402's TON scheme admits only modes 1 and 3 for the one action (specs/schemes/exact/scheme_exact_ton.md:170 at x402-foundation/x402@88b66dd4), and the stock settler's codec refuses any other as an invalid action list (@x402/tvm 2.30.0, src/exact/codec.ts:66-72), so bound refuses it tvm/actions",
     "settlementBoc": "te6cckECHQEABAMAAmFCAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAPABwEBoXNpbnR///8RarE7vAAAAAC3e6AeRvHddMZ1C5NaKAqhVZZcI3Q9zhcXp4tJJkisp87bh1zoQZR5FN/JkeWUwkmnjSjA4aqGT6qeRJIbKOgDYAICCg7DyG3BBgMBaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEEAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBQCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAACATQJCABRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riABFP8A9KQT9LzyyAsKAgEgDQsBAvIMAR4g1wsfghBzaWduuvLgin8YAgFIFw4CASAQDwAZvl8PaiaECAoOuQ+gLAIBIBQRAgFIExIAEbJi+1E0NcKAIAAXsyX7UTQcdch1wsfgAgFuFhUAGa8d9qJoQBDrkOuFj8AAGa3OdqJoQCDrkOuF/8AC3NAg10nBIJFbj2Mg1wsfIIIQZXh0br0hghBzaW50vbCSXwPgghBleHRuuo60gCDXIQHQdNch+kAw+kT4KPpEMFi9kVvg7UTQgQFB1yH0BYMH9A5voTGRMOGAQNchcH/bPOAxINdJgQKAuZEw4HDiGRgB5o7w7aLt+yGDCNciAoMI1yMggCDXIdMf0x/TH+1E0NIA0x8g0x/T/9cKAAr5AUDM+RCaKJRfCtsx4fLAh98Cs1AHsPLQhFEluvLghVA2uvLghvgju/LQiCKS+ADeAaR/yMoAyx8BzxbJ7VQgkvgP3nDbPNgZA/btou37AvQEIW6SbCGOTAIh1zkwcJQhxwCzji0B1yggdh5DbCDXScAI8uCTINdKwALy4JMg1x0GxxLCAFIwsPLQiddM1zkwAaTobBKEB7vy4JPXSsAA8uCT7VXi0gABwACRW+Dr1ywIFCCRcJYB1ywIHBLiUhCx4w8g10ocGxoAEJNb2zHh10zQAHIw1ywIJI4tIfLgktIA7UTQ0gBRE7ry0I9UUDCRMZwBgQFA1yHXCgDy4I7iyMoAWM8Wye1Uk/LAjeIAlgH6QAH6RPgo+kQwWLry4JHtRNCBAUHXGPQFBJ1/yMoAQASDB/RT8uCLjhQDgwf0W/LgjCLXCgAhbgGzsPLQkOLIUAPPFhL0AMntVNeSktE=",
-    "expect": "tvm/not-jetton-transfer"
+    "expect": "tvm/actions"
    },
    {
     "case": "an option whose network is tvm: and a global id, -1, other than the two networks the pairing serves: tvm:-239 (mainnet) and tvm:-3 (testnet), as x402's scheme_exact_ton.md names them, whose configuration the messages are read at",
@@ -1307,15 +807,15 @@
   ]
  },
  "V2b": {
-  "case": "An undeployed wallet: build({…V2's choice, wallet: the state init's address, seqno: 0, stateInit: the base64 BoC}, H), then complete(signature). The internal message to the wallet carries init = the state init as a reference (Maybe 1, Either 1) and the signed body as a reference, as V2 lays the body out. The state init's code is a one-cell fixture (32 bits 0xdeadbeef); its data is W5's layout for the payer key: is_signature_allowed 1, seqno 0, wallet_id, the public key, no extensions. Computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2 by a script that reproduces V2's settlement root 696775c9…1f15 exactly before adding the init.",
+  "case": "An undeployed wallet: build({…V2's choice, wallet: the state init's address, seqno: 0, stateInit: the base64 BoC}, H), then complete(signature). The internal message to the wallet carries init = the state init as a reference (Maybe 1, Either 1) and the signed body as a reference, as V2 lays the body out. The state init's code is a one-cell fixture (32 bits 0xdeadbeef); its data is W5's layout for the payer key: is_signature_allowed 1, seqno 0, wallet_id, the public key, no extensions. Computed with pytoniq-core 0.2.0 and PyNaCl 1.6.2, at the earlier attachNanotons of 50,000,000, by a script that reproduced V2's settlement root at that amount exactly before adding the init; its members that depend on attachNanotons were recomputed at 30,000,000 as the file's about states.",
   "stateInit": "te6cckEBAwEANgACATQBAgAI3q2+7wBRgAAAAD///4jFRHHuugT4yv6pbZaeXS65ZTOE347KCQ35ukQA2ge3riAa6z05",
   "expectStateInitHash": "6e1691b4371386ec5126b3bd61b991397c798f0b78435f44d4046f7fae460990",
   "wallet": "0:6e1691b4371386ec5126b3bd61b991397c798f0b78435f44d4046f7fae460990",
   "seqno": 0,
   "expectTransferBodyHash": "2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
-  "expectRequestHash": "eecf21626b99c76772ddf26e39d67eb73975396ca9293fa3fe0c7460db0b41c9",
-  "expectSignature": "8f11b3d78f88a7af96ebdc34f70ddb46ec8dac7e268b2ef4772b8a14f803600cc84e92bdd00a93e97aeeed4cc7f4922ab55584272acd89bdc59d16970403b20c",
-  "expectSettlementRootHash": "a658a2c0cfde01ec9f131c2331050c7fab4a19c9825b783bf8439c51c043bdba",
+  "expectRequestHash": "ccc557c9afde58e69af3f1f45c9e07231d5149157aa808f617f29b537da14a80",
+  "expectSignature": "9a70bf9b5c45b8e6e3149a975d06ba176416b1c842a923749a068fe9746e4f5e2baeccc3129ca6def88ea1278de283c998cb941f08d75d2b4eb99b16fe089606",
+  "expectSettlementRootHash": "87ecbbb838773a6ec292e21a0bd95305d14787463b20dec2fd2822d755cde80d",
   "refusals": [
    {
     "case": "a stateInit that is not base64",
@@ -1328,12 +828,25 @@
     "expect": "tvm/boc-malformed"
    }
   ],
-  "expectRequestBodyHash": "cd43a7ab468a41f98db3beb579d3432c2bf292bec07d80254aed2c815cfff4f2",
+  "expectRequestBodyHash": "fcf8f6a8ef4e9eaba92f3c2cde4529696d78afd561723c64b5cd462190c49b88",
   "nonCanonicalLibraries": {
    "case": "build with V2b's choice and a state init that holds a libraries dictionary: V2b's code and data, and one private library (the code cell, keyed by its representation hash) whose root edge label is hml_short, 514 bits, where hml_long, 267 bits, is the shortest. From global version 15, TON deploys no account from a state init whose libraries dictionary is not empty (ton-blockchain/ton crypto/block/transaction.cpp, unpack_msg_state, \"libraries are not null\"; doc/GlobalVersions.md, version 15), so build refuses it, as a base64 BoC and as a cell. bound reads a settlement message carrying it, since whether TON deploys the wallet is chain state. The wallet is the state init cell's representation hash, as x402's Python SDK 2.25.0 derives it (address_from_state_init); computed with pytoniq-core 0.2.0.",
    "stateInit": "te6cckEBBAEAewADATwDAQIAUYAAAAA///+IxURx7roE+Mr+qW2Wnl0uuWUzhN+OygkN+bpEANoHt64gAYF//////////////////////////////////////////4nCQb9FxucQ/N6NTBZpz+8AuBWgYjsMBhq+EbK79CbjEAMACN6tvu/TCWJo",
    "wallet": "0:83bb9e74219b46bb27b584229219c3d4016bad2e27f47b2a83bb42b4feb6af04",
    "expect": "x402/option-malformed"
+  },
+  "expectReference": {
+   "network": "tvm:-239",
+   "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
+   "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+   "requestBodyHash": "0xfcf8f6a8ef4e9eaba92f3c2cde4529696d78afd561723c64b5cd462190c49b88",
+   "signedHash": "0xccc557c9afde58e69af3f1f45c9e07231d5149157aa808f617f29b537da14a80",
+   "wallet": "0:6e1691b4371386ec5126b3bd61b991397c798f0b78435f44d4046f7fae460990",
+   "validUntil": 1790000060,
+   "seqno": 0,
+   "codeHash": "0x270906fd171b9c43f37a353059a73fbc02e0568188ec30186af846caefd09b8c"
   }
  },
  "V3b": {
@@ -1346,11 +859,15 @@
     "expectReference": {
      "network": "tvm:-239",
      "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x895cc0c0deeeab7177cb57383492285052c3498e4d423c7c6f543b6e904455b6",
+     "signedHash": "0x707c4aa0ca62869916baff6bbc4198e9435cea6ca64be149dd880d742d3eb33f",
      "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
-     "validUntil": 1790000060
+     "validUntil": 1790000060,
+     "seqno": 0,
+     "codeHash": "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f"
     }
    },
    {
@@ -1360,11 +877,15 @@
     "expectReference": {
      "network": "tvm:-239",
      "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x0124884d6313a4aea6931c2abb3e84749700216cb1a66a36f32215e9438b075d",
+     "signedHash": "0xe16f5c4ddda2063c63d358cc48d93898353aef7830820c6934f7911cc40288c2",
      "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
-     "validUntil": 1790000060
+     "validUntil": 1790000060,
+     "seqno": 0,
+     "codeHash": "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f"
     }
    },
    {
@@ -1374,11 +895,15 @@
     "expectReference": {
      "network": "tvm:-239",
      "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x2b904ff7a73ad88540e3cb3f45d93599703c3b1f0e7d9509fb0dbc6276b04e44",
+     "signedHash": "0xffd6286f7a3b07c1f57e9d4250ed87ae281691c5b9ebb16d66b6b348e11af45d",
      "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
-     "validUntil": 1790000060
+     "validUntil": 1790000060,
+     "seqno": 0,
+     "codeHash": "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f"
     }
    },
    {
@@ -1388,11 +913,15 @@
     "expectReference": {
      "network": "tvm:-239",
      "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x72376c3d35f817105fa77477e0be4dc48c9bfa80bc4827328947c609f78600ff",
+     "signedHash": "0x0db42740316634e46fcbe58760aadcf1a92b295dedba71d5a1b82875ece4e273",
      "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
-     "validUntil": 1790000060
+     "validUntil": 1790000060,
+     "seqno": 0,
+     "codeHash": "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f"
     }
    },
    {
@@ -1402,11 +931,15 @@
     "expectReference": {
      "network": "tvm:-239",
      "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x72771e3503b1a5f3f1d770430072f5e2760b46f6c4b93d416245b8655ee96fe4",
+     "signedHash": "0x349ea53e832f2b1e73e4deec74b62d408c6771b9a1d1fe7925fe2ae4464c3da3",
      "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
-     "validUntil": 1790000060
+     "validUntil": 1790000060,
+     "seqno": 0,
+     "codeHash": "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f"
     }
    },
    {
@@ -1416,11 +949,15 @@
     "expectReference": {
      "network": "tvm:-239",
      "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
      "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
      "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
      "requestBodyHash": "0x4603931450c677130bd0db6445f5caf90a62a42fb4094749326930c9873209b2",
+     "signedHash": "0x81f7bf18a581ab57e517f3f34781d22c8bbc3b1333017091dc0b8883231ec01c",
      "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
-     "validUntil": 1790000060
+     "validUntil": 1790000060,
+     "seqno": 0,
+     "codeHash": "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f"
     }
    }
   ]
@@ -1524,7 +1061,7 @@
        }
       },
       "payload": {
-       "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFmSDz/gBlNlON5gH47Go3vuJ4ZvDoUr2P2IVD0n8iWOBIswH1SiuYAh6BLIh8oQtAo0XggDQKZc0K/fjdh8YNQaACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigF9eEAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkRIi87w==",
+       "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkcflUwQ==",
        "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe"
       }
      },
@@ -1696,24 +1233,6 @@
     "expect": "tvm/option-malformed"
    },
    {
-    "case": "the option with amount \"0\", which is zero",
-    "pairing": "x402/exact/tvm",
-    "payment": "/buyer/rows/1/input/presented",
-    "accepted": {
-     "scheme": "exact",
-     "network": "tvm:-239",
-     "amount": "0",
-     "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
-     "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
-     "maxTimeoutSeconds": 60,
-     "extra": {
-      "areFeesSponsored": true,
-      "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg="
-     }
-    },
-    "expect": "tvm/option-malformed"
-   },
-   {
     "case": "the option with amount \"010\", which has a leading zero",
     "pairing": "x402/exact/tvm",
     "payment": "/buyer/rows/1/input/presented",
@@ -1804,5 +1323,212 @@
     "expect": "tvm/option-malformed"
    }
   ]
+ },
+ "V5": {
+  "about": "Step 3.2's forms of this pairing (lcp/profiles/x402-exact-tvm.md, rules 1 to 3), each against an oracle outside this package; the cells are written with @ton/core 0.63.1. placeholder: the option a stock server issues, whose extra.forwardPayload is the cell of one zero bit as @x402/tvm 2.30.0 writes it (beginCell().storeBit(0).endCell().toBoc(), src/utils.ts:60-62, filled in at src/exact/server/scheme.ts:98-99 and :116, which also set forwardTonAmount \"0\"): advertise reads it as an empty carrier and places H's comment, the file's placed BoC. occupied: other forward payloads an offer may carry; only the same cell in another serialization is placed, every other refused tvm/carrier-occupied. cap: build's attached value against the stock settler's cap, forwardTonAmount plus 30,000,000 nanotons (@x402/tvm 2.30.0, src/exact/facilitator/scheme.ts:326-329; DEFAULT_JETTON_WALLET_MESSAGE_AMOUNT, src/constants.ts:14), with the file's fixed choice and the option's forwardTonAmount where the row gives one; at 30,000,000 the request is V2's. sendModes: V2's settlement with its one action's send mode changed and the request left as signed, as V3's negatives are; x402's TON scheme admits modes 1 and 3 (specs/schemes/exact/scheme_exact_ton.md:170 at x402-foundation/x402@88b66dd4) and the stock settler's codec refuses every other as invalid actions (@x402/tvm 2.30.0, src/exact/codec.ts:66-72), so bound gives H for 1 and 3 and tvm/actions for every other.",
+  "placeholder": {
+   "offered": {
+    "scheme": "exact",
+    "network": "tvm:-239",
+    "amount": "10000",
+    "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+    "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "areFeesSponsored": true,
+     "forwardPayload": "te6cckEBAQEAAwAAAUD20kA0",
+     "forwardTonAmount": "0"
+    }
+   },
+   "expectPlaced": {
+    "scheme": "exact",
+    "network": "tvm:-239",
+    "amount": "10000",
+    "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+    "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "areFeesSponsored": true,
+     "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg=",
+     "forwardTonAmount": "0"
+    }
+   }
+  },
+  "occupied": [
+   {
+    "case": "the stock placeholder, the cell of one zero bit, written with an index and no CRC32C: the same cell",
+    "forwardPayload": "te6ccoEBAQEAAwADAAFA",
+    "expect": "placed"
+   },
+   {
+    "case": "a cell of no bits",
+    "forwardPayload": "te6cckEBAQEAAgAAAEysuc0=",
+    "expect": "tvm/carrier-occupied"
+   },
+   {
+    "case": "a cell of one 1 bit",
+    "forwardPayload": "te6cckEBAQEAAwAAAcCO6ba2",
+    "expect": "tvm/carrier-occupied"
+   },
+   {
+    "case": "a cell of two zero bits",
+    "forwardPayload": "te6cckEBAQEAAwAAASCUQYZV",
+    "expect": "tvm/carrier-occupied"
+   },
+   {
+    "case": "a cell of one zero bit and a reference",
+    "forwardPayload": "te6cckEBAgEABgABAUABAADsrHCv",
+    "expect": "tvm/carrier-occupied"
+   }
+  ],
+  "cap": [
+   {
+    "attachNanotons": "30000000",
+    "expect": "built",
+    "expectRequestHash": "b915c87e8e447f72434b7dde3c562b56b22984fe562d09832c12fc5e12aa4d80"
+   },
+   {
+    "attachNanotons": "30000001",
+    "expect": "tvm/value-too-high"
+   },
+   {
+    "attachNanotons": "50000000",
+    "expect": "tvm/value-too-high"
+   },
+   {
+    "attachNanotons": "50000000",
+    "forwardTonAmount": "20000000",
+    "expect": "built"
+   },
+   {
+    "attachNanotons": "50000001",
+    "forwardTonAmount": "20000000",
+    "expect": "tvm/value-too-high"
+   },
+   {
+    "attachNanotons": "20000000",
+    "forwardTonAmount": "20000000",
+    "expect": "tvm/value-too-low"
+   }
+  ],
+  "sendModes": [
+   {
+    "mode": 0,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAAMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkJtcmcg==",
+    "expect": "tvm/actions"
+   },
+   {
+    "mode": 1,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAQMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk6zL3HA==",
+    "expect": "bound"
+   },
+   {
+    "mode": 2,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAgMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkvByFrw==",
+    "expect": "tvm/actions"
+   },
+   {
+    "mode": 3,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htAwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkcflUwQ==",
+    "expect": "bound"
+   },
+   {
+    "mode": 17,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htEQMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkHViA7Q==",
+    "expect": "tvm/actions"
+   },
+   {
+    "mode": 19,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htEwMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkh5MjMA==",
+    "expect": "tvm/actions"
+   },
+   {
+    "mode": 64,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htQAMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk7efPuQ==",
+    "expect": "tvm/actions"
+   },
+   {
+    "mode": 128,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htgAMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkQcAY4A==",
+    "expect": "tvm/actions"
+   },
+   {
+    "mode": 130,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htggMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk2wu7PQ==",
+    "expect": "tvm/actions"
+   },
+   {
+    "mode": 160,
+    "settlementBoc": "te6cckECBwEAAVAAAWBCAA7RDTcZ95FCABTXO8gHsN1BBcp0CdHb33px9SOIA7IvgAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7wAAAAFtRrz681+yqPBaKrUs6p0ihO0gqReMx5J7TopnZLT412diQDrBILz2HIr4YcFBx7JFl+oNbtUIYPCKXRL0TqbgqACAgoOw8htoAMEAAABaGIACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIigDk4cAAAAAAAAAAAAAAAAAAEFAWEPin6lAAAAAAAAAAAicQgBJIZ0rtl8rYm5kNspaS9FnjFTdVOQUH/UUdSH1nhLn9oDBgCiAAAAAGxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkXGMaBw==",
+    "expect": "tvm/actions"
+   }
+  ]
+ },
+ "V6": {
+  "case": "A payment the stock client wrote from a placed option, the stock server's option among those placed: @x402/tvm 2.30.0 (npm, the devDependency this package pins), run offline in test/stock-tvm.ts. The stock server's enhancePaymentRequirements of fixed.O gives V5.placeholder.offered, its forward payload the cell of one zero bit and its forward TON amount \"0\" (src/exact/server/scheme.ts:98-99, :116); advertise places H's comment in it, giving V5.placeholder.expectPlaced, this row's presented.accepted. The stock client (src/exact/client/scheme.ts createPaymentPayload) writes the payment from that option, signed by the W5R1 wallet toClientTvmSigner derives from the Ed25519 seed 01x32 at subwallet 0 (src/signer.ts), the clock at now, so valid_until is now plus the option's maxTimeoutSeconds less 5. Its provider's three reads, expectAsked, are answered by a constructed TON Center v3 (no request leaves the process; the recorded answers of a tvm:-3 index are owed by the run at step 4): get_wallet_address of the asset gives ton.jettonWallet, the payer's account is an active W5R1 wallet at ton.seqno, and the emulated trace gives the source Jetton wallet's forward and compute fees and the receiver's compute fee, ton.fees, which the client adds to DEFAULT_TVM_INNER_GAS_BUFFER (7,100,000 nanotons, src/constants.ts) as the inner TON it attaches. The client's output is presented.payload, byte for byte. Its layout differs from build's (V2): the settlement message carries the request by reference, its action's send mode is 1, and the outgoing message's Jetton transfer is inline, as @ton/core 0.63.1 reads it, expectLayout. bound gives H; reference, given V5.placeholder.offered, gives the keys, which @ton/core reads from the same cells: the request's body hash, the hash of what the wallet's key signed (the request less its last 512 bits, the signature, which Ed25519 verifies under fixed.publicKey), the sequence number and valid_until, the transfer body's hash (the same cell build writes, V3's), the Jetton wallet and the payer's wallet.",
+  "now": 1790000000,
+  "ton": {
+   "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+   "seqno": 5,
+   "balance": "1000000000",
+   "receiverWallet": "0:3333333333333333333333333333333333333333333333333333333333333333",
+   "fees": {
+    "sourceFwd": "1000000",
+    "sourceCompute": "4000000",
+    "receiverCompute": "3000000"
+   }
+  },
+  "expectAsked": [
+   "POST /api/v3/runGetMethod",
+   "GET /api/v3/accountStates",
+   "POST /api/emulate/v1/emulateTrace"
+  ],
+  "presented": {
+   "x402Version": 2,
+   "resource": {
+    "url": "https://api.seller.example/v1/quote"
+   },
+   "accepted": {
+    "scheme": "exact",
+    "network": "tvm:-239",
+    "amount": "10000",
+    "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe",
+    "payTo": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "areFeesSponsored": true,
+     "forwardPayload": "te6cckEBAQEAUwAAogAAAABsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZLfLPfg=",
+     "forwardTonAmount": "0"
+    }
+   },
+   "payload": {
+    "settlementBoc": "te6cckECBgEAAUwAAWBiAE6PDCGxJiaLrTStRhb0UtMPgdyZm3RlUnCyX7Zd1ZAvAAAAAAAAAAAAAAAAAAEBAaFzaW50f///EWqxO7cAAAAFtUrGy5iOzLVuy8FgE8QC5+Xp1VvboLaQezRd9ieDuwQOiCNw9QTv9ODFuSgqg+dsUFRD7OLj7cGi2mo4cpEgQaACAgoOw8htAQMEAAABx2IACIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIifM0MAAAAAAAAAAAAAAAAAAA+KfqUAAAAAAAAAACJxCAEkhnSu2XytibmQ2ylpL0WeMVN1U5BQf9RR1IfWeEuf2gMFAKIAAAAAbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWTDz7WL",
+    "asset": "0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe"
+   }
+  },
+  "expectLayout": {
+   "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
+   "settlementBounce": true,
+   "settlementValue": "0",
+   "stateInit": false,
+   "requestByReference": true,
+   "sendMode": 1,
+   "outBounce": true,
+   "attachNanotons": "15100000",
+   "transferInline": true
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReference": {
+   "network": "tvm:-239",
+   "payee": "0:92433a576cbe56c4dcc86d94b497a2cf18a9baa9c8283fea28ea43eb3c25cfed",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+   "transferBodyHash": "0x2c4bd4bd5a5fa80d1b67a29c3564a33c7384bcafe08ff9c19a45143e93741a17",
+   "jettonWallet": "0:1111111111111111111111111111111111111111111111111111111111111111",
+   "requestBodyHash": "0x6e64848f44e1da070e37af3d790d05234172530b206a70c5c5e71cc418a8cf1a",
+   "signedHash": "0x9577b11c14fcdff4937ca6fb35b7a4f0ed5452ca76a39ec2f5f018b14d81e638",
+   "wallet": "0:9d1e1843624c4d175a695a8c2de8a5a61f03b93336e8caa4e164bf6cbbab205e",
+   "validUntil": 1790000055,
+   "seqno": 5
+  }
  }
 }

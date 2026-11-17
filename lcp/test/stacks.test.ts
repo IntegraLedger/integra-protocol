@@ -5,15 +5,8 @@ import * as S from "@stacks/transactions";
 import { describe, expect, it } from "vitest";
 import { ReaderError } from "../src/evm.js";
 import { chargeUsdcStacks, network, pairingsOf, type MppChallenge, type MppCredential } from "../src/mpp.js";
-import {
-  stacksRecover,
-  stacksStatus,
-  stacksTxid,
-  type StacksLanded,
-  type StacksMempool,
-  type StacksReader,
-  type StacksRef,
-} from "../src/stacks.js";
+import { stacksRecover, stacksStatus, stacksTxid, type StacksQuery, type StacksReader, type StacksRef } from "../src/stacks.js";
+import { ledgerReader, type Ledger, type LedgerTx } from "./stacks-ledger.js";
 import { b64u, load } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
 
@@ -94,6 +87,26 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     expect(pairingsOf({ ...c, id: undefined, opaque: undefined } as unknown as MppChallenge)).toEqual(["mpp/charge/usdc/stacks"]);
     expect(network(c)).toBe(F.network);
   });
+
+  // The read compares the payee with the API's addresses as written, so the filter takes only a recipient spelled as a
+  // Stacks node writes a principal; @stacks/transactions 7.6.0's c32check round trip is the oracle for each row.
+  it.each(rowsOf(V.recipients.rows as { case: string; recipient: string; expect: unknown }[], "mpp-charge-usdc-stacks.json recipients.rows"))(
+    "recipient: $case",
+    (row) => {
+      const c = challenge();
+      const request = b64u(JSON.stringify({ ...F.request, recipient: row.recipient }));
+      expect(pairingsOf({ ...c, request, id: undefined, opaque: undefined } as unknown as MppChallenge)).toEqual(row.expect);
+      const [address, name] = row.recipient.split(".") as [string, string | undefined];
+      let roundTrip: string | undefined;
+      try {
+        roundTrip = S.Address.stringify(S.Address.parse(address));
+      } catch {
+        roundTrip = undefined;
+      }
+      const accepted = roundTrip === address && (name === undefined || /^[a-zA-Z][a-zA-Z0-9_-]{0,127}$/.test(name));
+      expect(Array.isArray(row.expect)).toBe(accepted);
+    },
+  );
 
   it("the signed transfer's bytes and txid are the vector's", async () => {
     const wire = await withMemo();
@@ -690,6 +703,35 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
     expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
   });
 
+  // M4s: the origin's digest is @stacks/transactions 7.6.0's sigHashPreSign(signBegin(), Standard, fee, nonce) of each
+  // body, recomputed here; under a sponsored authorization it is one for the origin's bytes and for every sponsor's,
+  // and the reference names no transaction, a sponsored id being fixed only by the sponsor's signature.
+  it("reference of a sponsored payment names the origin's digest and no transaction, whoever sponsors it (M4s)", async () => {
+    const digest = (h: string) => {
+      const tx = S.deserializeTransaction(h.slice(2));
+      const c = tx.auth.spendingCondition;
+      return `0x${S.sigHashPreSign(tx.signBegin(), S.AuthType.Standard, c.fee, c.nonce)}`;
+    };
+    const bodies = [V.M4s.originWireHex, V.M4s.sponsorA.wireHex, V.M4s.sponsorB.wireHex];
+    for (const h of bodies) {
+      expect(digest(h)).toBe(V.M4s.expectSigned);
+      expect(await stacksReference(credential(Buffer.from(h.slice(2), "hex")))).toEqual({ ...V.M4s.expectReference, payee: F.request.recipient });
+    }
+    expect(stacksTxid(Buffer.from(V.M4s.sponsorA.wireHex.slice(2), "hex"))).toBe(V.M4s.sponsorA.txid);
+    expect(stacksTxid(Buffer.from(V.M4s.sponsorB.wireHex.slice(2), "hex"))).toBe(V.M4s.sponsorB.txid);
+    expect(digest(V.M4.wireHex)).toBe(V.M4.expectReference.signed);
+    expect(digest(V.M4s.otherFee.wireHex)).toBe(V.M4s.otherFee.expectSigned);
+    expect(V.M4s.otherFee.expectSigned).not.toBe(V.M4.expectReference.signed);
+  });
+
+  it("reference refuses a credential whose echoed challenge is not the option given", async () => {
+    const c = credential(await withMemo());
+    const other = { ...c.challenge, expires: "2026-09-21T14:14:21Z" };
+    expect(await chargeUsdcStacks.reference(c, other)).toEqual({ refused: true, code: "mpp/challenge-not-option" });
+    const reordered = { ...c.challenge, request: b64u(JSON.stringify({ methodDetails: F.request.methodDetails, ...F.request })) };
+    expect(await chargeUsdcStacks.reference(c, reordered)).toEqual({ ...V.M4.expectReference, payee: F.request.recipient });
+  });
+
   // A Stacks node takes a transaction only on its own chain id, and on mainnet only at version 0x00, elsewhere only at
   // 0x80 (stacks-core 4.0.5, stackslib/src/chainstate/stacks/db/transactions/processing/validation.rs:49-79); a mainnet
   // node runs chain id 1 and no other (stackslib/src/config/mod.rs:1844-1857). The agreedRefusals rows whose wire is M4's
@@ -776,359 +818,159 @@ describe("mpp/charge/usdc/stacks (M4)", () => {
   });
 });
 
+/** A transaction of a row's ledger, as the vector file writes it: L or a filler with overrides, or an unmined one. */
+type TxSpec = { like?: "L" | "filler"; mined?: false; [k: string]: unknown };
+
 type Row = {
   case: string;
-  finality?: "block" | "bitcoin";
-  tip?: string;
-  status?: string;
-  senderNonce?: string;
-  memo?: string;
-  tx?: "reader-error" | { mined: false; status: string; height?: string } | { notFound: true; height: string };
-  txAnswer?: unknown;
-  confirmedNonce?: { nonce: string | null; height: string } | "reader-error" | "number";
+  txs: TxSpec[];
+  ref?: "sponsored" | "nohint";
+  query?: { act?: "payment" | "agreement"; finality?: "block" | "bitcoin"; after?: string; others?: unknown[] };
+  finalThrough?: string;
+  faults?: Ledger["faults"];
+  answers?: Record<string, unknown>;
+  byNonce?: Record<string, { txid: string; sender: string; nonce: string }[]>;
+  unknownHeights?: string[];
+  fillers?: { from: string; to: string; blockHeight: string };
   readerNetwork?: string;
   expect: unknown;
 };
 
-function landed(row: Partial<Row>): StacksLanded {
+const RAW: Record<string, string> = { M4: V.M4.wireHex, otherFee: V.M4s.otherFee.wireHex, sponsorA: V.M4s.sponsorA.wireHex, sponsorB: V.M4s.sponsorB.wireHex };
+
+/** A row's transaction as the ledger holds it: L's members, or a filler's, with the row's own in their place. */
+function txOf(spec: TxSpec): LedgerTx {
+  if (spec.mined === false) return spec as unknown as LedgerTx;
+  const { like, memo, recipient, nonce, ...rest } = spec;
   const L = V.M4b.L;
-  const args = [...L.call.args];
-  if (row.memo !== undefined) args[3] = row.memo;
+  const base =
+    like === "filler"
+      ? { ...L, call: { contractId: L.call.contractId, functionName: "ping", args: ["0x09"] }, events: [], raw: null, sender: { address: L.sender.address, nonce: nonce as string } }
+      : { ...L };
+  const t = { ...base, ...rest } as Record<string, unknown> & typeof L;
+  if (memo !== undefined) t.call = { ...t.call, args: [...t.call.args.slice(0, 3), memo as string] };
+  if (recipient !== undefined) t.events = t.events.map((e: { recipient: string }) => ({ ...e, recipient: recipient as string }));
   return {
+    ...(t as object),
     mined: true,
-    status: (row.status ?? L.status) as StacksLanded["status"],
-    sender: { address: L.sender.address, nonce: BigInt(row.senderNonce ?? L.sender.nonce) },
-    blockHeight: BigInt(L.blockHeight),
-    call: { contractId: L.call.contractId, functionName: L.call.functionName, args },
-  };
+    sender: { address: t.sender.address, nonce: BigInt(t.sender.nonce) },
+    blockHeight: BigInt(t.blockHeight),
+    transfer: t.transfer === null ? null : { ...(t.transfer as object), amount: BigInt((t.transfer as { amount: string }).amount) },
+    events: t.events.map((e: { amount: string }) => ({ ...e, amount: BigInt(e.amount) })),
+    raw: t.raw === null ? null : Buffer.from((RAW[t.raw as string] ?? (t.raw as string)).slice(2), "hex"),
+  } as unknown as LedgerTx;
 }
 
-type NotFound = { notFound: true; height: bigint };
-
-/** A `txAnswer` as the reader returns it: a mined answer's decimal-string integers read as bigints. */
-function answer(v: unknown): StacksLanded | StacksMempool | NotFound {
-  if (typeof v !== "object" || v === null || (v as { mined?: unknown }).mined !== true) return v as StacksMempool;
-  const o = { ...(v as Record<string, unknown>) };
-  if (typeof o["blockHeight"] === "string") o["blockHeight"] = BigInt(o["blockHeight"]);
-  const sender = o["sender"] as { address: string; nonce: string } | undefined;
-  if (sender !== undefined) o["sender"] = { address: sender.address, nonce: BigInt(sender.nonce) };
-  return o as unknown as StacksLanded;
+/** A row's faults, a scan page's nonces as the reader gives them, numbers. */
+function faultsOf(faults: NonNullable<Ledger["faults"]>): NonNullable<Ledger["faults"]> {
+  const page = faults.byOrigin;
+  if (page === undefined || !("answer" in page)) return faults;
+  const a = page.answer as { results: { nonce: string }[]; total: number };
+  return { ...faults, byOrigin: { answer: { ...a, results: a.results.map((r) => ({ ...r, nonce: BigInt(r.nonce) })) } } };
 }
 
-function readerFor(row: Partial<Row>): StacksReader & { calls: number; order: string[] } {
-  const r = {
-    calls: 0,
-    order: [] as string[],
-    network: (row.readerNetwork ?? F.network) as StacksReader["network"],
-    async transaction(): Promise<StacksLanded | StacksMempool | NotFound> {
-      r.calls++;
-      r.order.push("transaction");
-      if (row.txAnswer !== undefined) return answer(row.txAnswer);
-      if (row.tx === "reader-error") throw new ReaderError("transport");
-      if (row.tx !== undefined && "notFound" in row.tx) return { notFound: true, height: BigInt(row.tx.height) };
-      // An unmined row names its API's height as a decimal string, or no height (null).
-      if (row.tx !== undefined) return { ...row.tx, height: row.tx.height === undefined ? null : BigInt(row.tx.height) };
-      return landed(row);
-    },
-    async blockTenure(height: bigint) {
-      r.calls++;
-      if (height !== BigInt(V.M4b.L.blockHeight)) throw new ReaderError("malformed");
-      return BigInt(V.M4b.blockTenure);
-    },
-    async tipTenure() {
-      r.calls++;
-      if (row.tip === "reader-error") throw new ReaderError("timeout");
-      return BigInt(row.tip ?? "0");
-    },
-    async confirmedNonce() {
-      r.calls++;
-      r.order.push("confirmedNonce");
-      const n = row.confirmedNonce;
-      if (n === "reader-error") throw new ReaderError("transport");
-      if (n === "number") return { nonce: 0 as unknown as bigint, height: 9021840n };
-      if (n === undefined) return { nonce: null, height: 9021840n };
-      return { nonce: n.nonce === null ? null : BigInt(n.nonce), height: BigInt(n.height) };
-    },
-  };
-  return r;
+/** The reader over a row's ledger. */
+function rowReader(row: Partial<Row>): StacksReader & { calls: string[] } {
+  const txs = row.txs!.map(txOf);
+  if (row.fillers !== undefined) {
+    for (let n = BigInt(row.fillers.from); n <= BigInt(row.fillers.to); n++) {
+      txs.push(txOf({ like: "filler", txid: `0x${n.toString(16).padStart(64, "e")}`, nonce: n.toString(), blockHeight: row.fillers.blockHeight }));
+    }
+  }
+  const byNonce = row.byNonce === undefined ? undefined
+    : new Map(Object.entries(row.byNonce).map(([n, l]) => [BigInt(n), l.map((x) => ({ ...x, txid: x.txid as `0x${string}`, nonce: BigInt(x.nonce) }))]));
+  const reader = ledgerReader({
+    network: (row.readerNetwork ?? F.network) as `stacks:${string}`,
+    txs,
+    tipHeight: BigInt(V.M4b.tipHeight),
+    finalThrough: BigInt(row.finalThrough ?? V.M4b.finalThrough),
+    ...(row.unknownHeights === undefined ? {} : { unknownHeights: row.unknownHeights.map(BigInt) }),
+    ...(byNonce === undefined ? {} : { byNonce }),
+    ...(row.faults === undefined ? {} : { faults: faultsOf(row.faults) }),
+  });
+  const answers = row.answers ?? {};
+  const transaction = reader.transaction.bind(reader);
+  reader.transaction = async (txid) => (txid.toLowerCase() in answers ? (answers[txid.toLowerCase()] as never) : transaction(txid));
+  return reader;
 }
 
-const ref: StacksRef & { transaction: `0x${string}`; h: `0x${string}` } = {
-  ...V.M4.expectReference,
-  payee: F.request.recipient,
-  h: F.H,
-};
+const ref: StacksRef & { h: `0x${string}` } = { ...V.M4.expectReference, payee: F.request.recipient, h: F.H };
+const sponsoredRef: StacksRef & { h: `0x${string}` } = { ...V.M4s.expectReference, payee: F.request.recipient, h: F.H };
 const Q = { act: "payment", finality: "bitcoin" } as const;
 /** The recover input: the transaction id, and the challenge whose request names the contract. */
-const R = { network: ref.network, tx: ref.transaction, option: challenge() };
-const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
+const R = { network: ref.network, tx: ref.transaction!, option: challenge() };
 const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
-const settledAt = (height: bigint) => ({ state: "settled", transaction: ref.transaction, position: height.toString(), finality: "bitcoin", foreign: [] });
 
-describe("usdc/stacks status and recover (M4b)", () => {
+function queryOf(row: Partial<Row>): StacksQuery {
+  const q = row.query ?? {};
+  return {
+    act: q.act ?? "payment",
+    finality: q.finality ?? "bitcoin",
+    ...(q.after === undefined ? {} : { after: BigInt(q.after) }),
+    ...(q.others === undefined ? {} : { others: q.others as never }),
+  };
+}
+
+describe("usdc/stacks status and recover (M4b, a constructed API ledger)", () => {
   it.each(rowsOf(V.M4b.rows as Row[], "mpp-charge-usdc-stacks.json M4b.rows"))("$case", async (row) => {
-    const reader = readerFor(row);
-    expect(withBigints(await stacksStatus(ref, reader, { ...Q, finality: row.finality ?? "bitcoin" }))).toEqual(row.expect);
-    expect(reader.calls).toBeLessThanOrEqual(4);
-    if (reader.calls > 0) expect(reader.order[0]).toBe("confirmedNonce");
+    const { transaction: _, ...nohint } = ref;
+    const r = row.ref === "sponsored" ? sponsoredRef : row.ref === "nohint" ? nohint : ref;
+    const reader = rowReader(row);
+    expect(withBigints(await stacksStatus(r, reader, queryOf(row)))).toEqual(row.expect);
+    // A row the scan for nonce 0 fails is read through the fallback: its nonce at a height, and where it settles, the
+    // block's transactions.
+    if (row.faults?.byOrigin !== undefined) {
+      expect(reader.calls.filter((c) => c === "lastNonce").length).toBeGreaterThan(1);
+      if ((row.expect as { state: string }).state === "settled") expect(reader.calls).toContain("inBlock");
+    }
   });
 
-  // A failed transaction's block is read for its tenure and the tip's, as status reads a failed answer's finality: one
-  // call for the transaction, and two for a failed one's tenures.
   it.each(rowsOf(V.M4b.recover as Row[], "mpp-charge-usdc-stacks.json M4b.recover"))("recover: $case", async (row) => {
-    const reader = readerFor(row);
-    expect(await stacksRecover(R, reader)).toEqual(row.expect);
-    expect(reader.calls).toBe(row.status === undefined ? 1 : 3);
-  });
-
-  // A Stacks block is final once the tip's tenure height is at least its own plus two (status's `bitcoin` finality, the
-  // vector's M4b.rows "L with abort_by_response, tip tenure 256358", tip tenure 256358 over block tenure 256356); a block
-  // above that can be replaced. A refusal names no finality, so recover gives a failed transaction's verdict only at
-  // that mark, and a read to repeat below it, as status answers the same failure below-mark at `block` (M4b.rows "L with
-  // abort_by_response").
-  it("recover refuses a failed transaction stacks/not-success only where status reads bitcoin finality", async () => {
-    const r = R;
-    const rows = rowsOf(V.M4b.rows as Row[], "mpp-charge-usdc-stacks.json M4b.rows", {
-      keep: ["the failed rows", (row) => row.status !== undefined],
-      leave: ["the rows of a successful or unmined transaction", (row) => row.status === undefined],
-      exact: 3,
-    });
-    for (const row of rows) {
-      const code = BigInt(row.tip ?? "0") >= BigInt(V.M4b.blockTenure) + 2n ? "stacks/not-success" : "stacks/not-final";
-      expect([row.case, await stacksRecover(r, readerFor(row))]).toEqual([row.case, { refused: true, code }]);
-    }
-  });
-
-  // A mined transaction's status is one of success, abort_by_response, abort_by_post_condition and problematic_skipped
-  // (StacksReader's documented answer, `StacksLanded`); another value is an answer out of that form, which status reads
-  // as unreadable unparseable (docs/reference/refusals.md, `stacks/unreadable`), with no tenure read.
-  it("recover refuses a mined status of none of the documented values as stacks/unreadable", async () => {
-    const r = R;
-    for (const status of ["pending", "abort_by_timeout", "Success", ""]) {
-      const reader = readerFor({ status, tip: "256358" });
-      expect([status, await stacksRecover(r, reader)]).toEqual([status, { refused: true, code: "stacks/unreadable" }]);
-      expect(reader.calls).toBe(1);
-      expect(await stacksStatus(ref, readerFor({ status, tip: "256358" }), Q)).toEqual(UNPARSEABLE);
-    }
-  });
-
-  // A nonce the origin's account has confirmed at or above the transaction's means the transaction can never be
-  // mined (SIP-005: a transaction's nonce must equal its origin's next nonce). The reader below answers from an API
-  // at which the transaction is mined, and the origin's nonce confirmed, between the two reads; each answer names the
-  // API's chain-tip height, one block higher with every read.
-  it("the confirmed nonce is read before the transaction, so a transaction mined between reads is never nonce-used", async () => {
-    for (const minedAt of [0, 1, 2]) {
-      let reads = 0;
-      const mined = () => reads > minedAt;
-      const height = () => 9021831n + BigInt(reads);
-      const reader: StacksReader = {
-        network: F.network as StacksReader["network"],
-        async confirmedNonce() {
-          const n = { nonce: mined() ? 0n : null, height: height() };
-          reads++;
-          return n;
-        },
-        async transaction() {
-          const t = mined() ? landed({}) : { notFound: true as const, height: height() };
-          reads++;
-          return t;
-        },
-        async blockTenure() {
-          return BigInt(V.M4b.blockTenure);
-        },
-        async tipTenure() {
-          return 0n;
-        },
-      };
-      const got = await stacksStatus(ref, reader, Q);
-      expect([minedAt, got.state]).not.toEqual([minedAt, "failed"]);
-    }
-  });
-
-  // The same rule read across two APIs: the confirmed nonce from one whose tip has the block that mined the
-  // transaction (9021832), the lookup from one whose tip does not yet. Each answer names its API's chain-tip height,
-  // so an empty lookup shows the transaction unmined only up to that height.
-  it("a lookup from an API behind the nonce read is pending, and nonce-used waits for one that has caught up", async () => {
-    const minedAt = BigInt(V.M4b.L.blockHeight);
-    const nonceAt = minedAt + 8n;
-    const readerAt = (lookupAt: bigint, ours: boolean): StacksReader => ({
-      ...readerFor({ tip: "256358" }),
-      confirmedNonce: async () => ({ nonce: 0n, height: nonceAt }),
-      transaction: async () => (ours && lookupAt >= minedAt ? landed({}) : { notFound: true, height: lookupAt }),
-    });
-    for (const lookupAt of [minedAt - 2n, minedAt - 1n, minedAt, nonceAt - 1n, nonceAt, nonceAt + 1n]) {
-      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true), Q));
-      const want = lookupAt >= minedAt ? settledAt(minedAt) : SEARCH;
-      expect([lookupAt.toString(), got]).toEqual([lookupAt.toString(), want]);
-      // A nonce taken by another act, or no answer that decides, is pending search-incomplete (read-status rule 23).
-      const other = await stacksStatus(ref, readerAt(lookupAt, false), Q);
-      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), SEARCH]);
-    }
-    const unnamed = { ...readerAt(nonceAt, false), transaction: async () => ({ notFound: true }) as never };
-    expect(await stacksStatus(ref, unnamed, Q)).toEqual(SEARCH);
-    const bare = { ...readerAt(nonceAt, false), transaction: async () => null as never };
-    expect(await stacksStatus(ref, bare, Q)).toEqual(UNPARSEABLE);
-    const oldNonce = { ...readerAt(nonceAt, false), confirmedNonce: async () => 0n as never };
-    expect(await stacksStatus(ref, oldNonce, Q)).toEqual(UNPARSEABLE);
-    const r = R;
-    expect(await stacksRecover(r, readerAt(nonceAt, false))).toEqual({ refused: true, code: "stacks/not-found" });
-    expect(await stacksRecover(r, bare)).toEqual({ refused: true, code: "stacks/unreadable" });
-  });
-
-  // A transaction the API lists as dropped can still be mined (SIP-005: it stays valid until its origin's nonce is
-  // used), and an API learns of that only once its index holds the block. Below, block 9021832 mines the transaction
-  // and confirms the origin's nonce 0; the confirmed nonce comes from an API whose tip has it, and the lookup from one
-  // whose tip is at `lookupAt` and lists the transaction as dropped until its index holds 9021832. Each answer names
-  // its API's chain-tip height, so a dropped answer shows the transaction unmined only up to that height. The dropped
-  // states are the Stacks Blockchain API's mempool transaction statuses other than `pending`.
-  it("a dropped answer from an API behind the nonce read is pending dropped, and nonce-used waits for one that has caught up", async () => {
-    const minedAt = BigInt(V.M4b.L.blockHeight);
-    const nonceAt = minedAt + 8n;
-    const dropped = (height: bigint | null): StacksMempool => ({ mined: false, status: "dropped_replace_by_fee", height });
-    const readerAt = (lookupAt: bigint, ours: boolean): StacksReader => ({
-      ...readerFor({ tip: "256358" }),
-      confirmedNonce: async () => ({ nonce: 0n, height: nonceAt }),
-      transaction: async () => (ours && lookupAt >= minedAt ? landed({}) : dropped(lookupAt)),
-    });
-    for (const lookupAt of [minedAt - 2n, minedAt - 1n, minedAt, nonceAt - 1n, nonceAt, nonceAt + 1n]) {
-      const got = withBigints(await stacksStatus(ref, readerAt(lookupAt, true), Q));
-      const want = lookupAt >= minedAt ? settledAt(minedAt) : SEARCH;
-      expect([lookupAt.toString(), got]).toEqual([lookupAt.toString(), want]);
-      const other = await stacksStatus(ref, readerAt(lookupAt, false), Q);
-      expect([lookupAt.toString(), other]).toEqual([lookupAt.toString(), SEARCH]);
-    }
-    for (const status of ["dropped_replace_across_fork", "dropped_too_expensive", "dropped_stale_garbage_collect", "dropped_problematic"]) {
-      const at = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status, height: nonceAt }) };
-      expect([status, await stacksStatus(ref, at, Q)]).toEqual([status, SEARCH]);
-      const behind = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status, height: nonceAt - 1n }) };
-      expect([status, await stacksStatus(ref, behind, Q)]).toEqual([status, SEARCH]);
-    }
-    const unnamed = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false, status: "dropped_replace_by_fee" }) as never };
-    expect(await stacksStatus(ref, unnamed, Q)).toEqual(SEARCH);
-    const pending = { ...readerAt(nonceAt, false), transaction: async () => ({ mined: false as const, status: "pending", height: minedAt - 1n }) };
-    expect(await stacksStatus(ref, pending, Q)).toEqual(SEARCH);
-    const r = R;
-    expect(await stacksRecover(r, readerAt(nonceAt, false))).toEqual({ refused: true, code: "stacks/not-found" });
-  });
-
-  // A block can land between a reader's two calls to one node. The nonce read's height is read after the nonce
-  // (GET /extended's chain_tip.block_height), so the nonce read is at or below it, and a lookup's height before the
-  // lookup, so the lookup is at or above it. Below, block 9021832 mines the transaction, confirming the origin's nonce
-  // 0, just before the nonce call or between that call and its height read; the lookup comes from a node one block
-  // behind.
-  it("a nonce read's height read after the nonce keeps a lookup one block behind pending", async () => {
-    const minedAt = BigInt(V.M4b.L.blockHeight);
-    for (const landsAt of [0, 1]) {
-      let tip = minedAt - 1n;
-      let step = 0;
-      const advance = () => {
-        if (step++ === landsAt) tip = minedAt;
-      };
-      const reader: StacksReader = {
-        ...readerFor({ tip: "256358" }),
-        async confirmedNonce() {
-          advance();
-          const nonce = tip >= minedAt ? 0n : null;
-          advance();
-          return { nonce, height: tip };
-        },
-        transaction: async () => ({ notFound: true, height: minedAt - 1n }),
-      };
-      expect([landsAt, await stacksStatus(ref, reader, Q)]).toEqual([landsAt, SEARCH]);
-    }
-  });
-
-  // The Stacks Blockchain API's 404 for an unknown transaction and its nonces answer name no height, so a reader takes
-  // the height from a second call (/extended), which a load-balanced endpoint can send to another node. A reader that
-  // cannot read the height from the node that answered names none: an unknown or dropped transaction then never reads
-  // nonce-used.
-  it("a lookup or nonce read naming a null height leaves an unknown or dropped transaction pending", async () => {
-    const at = 9021840n;
-    const readerWith = (nonceAt: bigint | null, lookup: { notFound: true; height: bigint | null } | StacksMempool): StacksReader => ({
-      ...readerFor({ tip: "256358" }),
-      confirmedNonce: async () => ({ nonce: 0n, height: nonceAt }),
-      transaction: async () => lookup,
-    });
-    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: null }), Q)).toEqual(SEARCH);
-    expect(await stacksStatus(ref, readerWith(null, { notFound: true, height: at }), Q)).toEqual(SEARCH);
-    expect(await stacksStatus(ref, readerWith(at, { notFound: true, height: at }), Q)).toEqual(SEARCH);
-    const dropped = (height: bigint | null): StacksMempool => ({ mined: false, status: "dropped_stale_garbage_collect", height });
-    expect(await stacksStatus(ref, readerWith(at, dropped(null)), Q)).toEqual(SEARCH);
-    expect(await stacksStatus(ref, readerWith(null, dropped(at)), Q)).toEqual(SEARCH);
-    expect(await stacksStatus(ref, readerWith(at, dropped(at)), Q)).toEqual(SEARCH);
-    const r = R;
-    expect(await stacksRecover(r, readerWith(at, { notFound: true, height: null }))).toEqual({ refused: true, code: "stacks/not-found" });
-  });
-
-  // An origin or contract not in the form reference writes cannot name the landed call, so the read is unreadable,
-  // never failed (docs/guides/rails.md, "Reading settlement"). c32check writes an address in upper case (c32check 2.0.0's
-  // c32address); a contract principal is that address, "." and the contract's name.
-  it("a ref whose origin or contract is malformed is unreadable unparseable, with nothing read", async () => {
-    const settled = (V.M4b.rows as Row[]).find((r) => (r.expect as { state: string }).state === "settled")!;
-    const [address, name] = ref.contract.split(".") as [string, string];
-    const malformed = [
-      { origin: ref.origin.toLowerCase() }, { origin: undefined }, { origin: `${ref.origin}.${name}` },
-      { contract: `${address.toLowerCase()}.${name}` }, { contract: undefined }, { contract: address }, { contract: `${address}.` },
-    ];
-    for (const change of malformed) {
-      const reader = readerFor(settled);
-      expect(await stacksStatus({ ...ref, ...change } as typeof ref, reader, Q)).toEqual(UNPARSEABLE);
-      expect(reader.calls).toBe(0);
-    }
-    expect(withBigints(await stacksStatus(ref, readerFor(settled), Q))).toEqual(settled.expect);
-  });
-
-  // Principals at the edges of the forms reference writes settle when the landed call is theirs: an origin of 28
-  // characters, version 20 and the zero hash160; the boot contract SP000000000000000000002Q6VF78.pox-4 (version 22, the
-  // zero hash160; the Stacks mainnet PoX-4 contract); and a contract name of 40 characters in mixed case (SIP-005: a
-  // contract name is a letter, then letters, digits, "-" or "_"). The addresses are as @stacks/transactions 7.6.0's
-  // c32check encoding writes them.
-  it("a ref whose origin or contract is at the edge of the written forms settles", async () => {
-    const settled = (V.M4b.rows as Row[]).find((r) => (r.expect as { state: string }).state === "settled")!;
-    const multisig = "SM0000000000000000000062QV6X";
-    const boot = "SP000000000000000000002Q6VF78";
-    expect(S.addressToString(S.addressFromVersionHash(20, "00".repeat(20)))).toBe(multisig);
-    expect(S.addressToString(S.addressFromVersionHash(22, "00".repeat(20)))).toBe(boot);
-    const [address] = ref.contract.split(".") as [string, string];
-    const edges = [
-      [multisig, ref.contract],
-      [ref.origin, `${boot}.pox-4`],
-      [ref.origin, `${address}.Token_A-${"x".repeat(32)}`],
-    ] as const;
-    for (const [origin, contract] of edges) {
-      const tx = landed(settled);
-      const txAnswer = { ...tx, sender: { ...tx.sender, address: origin }, call: { ...tx.call, contractId: contract } };
-      const got = withBigints(await stacksStatus({ ...ref, origin, contract }, readerFor({ ...settled, txAnswer }), Q));
-      expect([origin, contract, got]).toEqual([origin, contract, settled.expect]);
-    }
+    expect(await stacksRecover(R, rowReader(row))).toEqual(row.expect);
   });
 
   it("plant: a post-condition abort is never settled, and recover refuses it", async () => {
-    const row = { status: V.plant.status, tip: V.plant.tip };
-    expect(withBigints(await stacksStatus(ref, readerFor(row), Q))).toEqual(V.plant.expectStatus);
-    expect(await stacksRecover(R, readerFor(row))).toEqual(V.plant.expectRecover);
+    expect(withBigints(await stacksStatus(ref, rowReader(V.plant), Q))).toEqual(V.plant.expectStatus);
+    expect(await stacksRecover(R, rowReader(V.plant))).toEqual(V.plant.expectRecover);
   });
 
-  it("status on the act agreement and at a position, and recover with an option that names no contract", async () => {
-    const settled = (V.M4b.rows as Row[]).find((r) => r.case === "L, tip tenure 256358")!;
-    expect(withBigints(await stacksStatus(ref, readerFor(settled), { act: "agreement", finality: "bitcoin" }))).toEqual(settled.expect);
-    const height = BigInt(V.M4b.L.blockHeight);
-    // The settled transaction at its own block height is at the position given: before-position (read-status rule 16).
-    expect(withBigints(await stacksStatus(ref, readerFor(settled), { ...Q, after: height }))).toEqual({
-      state: "failed",
-      reason: "before-position",
-      transaction: ref.transaction,
-      position: height.toString(),
-      finality: "bitcoin",
-      foreign: [],
-    });
-    expect(withBigints(await stacksStatus(ref, readerFor(settled), { ...Q, after: height - 1n }))).toEqual(settled.expect);
-    expect(await stacksStatus(ref, readerFor(settled), { ...Q, finality: "final" } as never)).toEqual(UNPARSEABLE);
+  // An origin, a nonce, a payee or a hash not of its form cannot name the payer's act, so the read is unreadable
+  // unparseable with nothing read; so is a query not of its form (read-status rule 12).
+  it("a reference or query not of its form is unreadable unparseable, with nothing read", async () => {
+    const row = (V.M4b.rows as Row[])[0]!;
+    const bad = [
+      { origin: ref.origin.toLowerCase() }, { origin: undefined }, { nonce: "01" }, { nonce: (1n << 64n).toString() },
+      { payee: "" }, { payee: ref.payee.toLowerCase() }, { payee: `${ref.payee.slice(0, -1)}R` }, { h: "0x12" }, { signed: "0x12" }, { transaction: "0x12" },
+    ];
+    for (const change of bad) {
+      const reader = rowReader(row);
+      expect([change, await stacksStatus({ ...ref, ...change } as typeof ref, reader, Q)]).toEqual([change, UNPARSEABLE]);
+      expect(reader.calls).toEqual([]);
+    }
+    for (const q of [{ ...Q, finality: "final" }, { ...Q, after: 5 }, { ...Q, search: -1n }, { act: "charge", finality: "bitcoin" }]) {
+      const reader = rowReader(row);
+      expect(await stacksStatus(ref, reader, q as never)).toEqual(UNPARSEABLE);
+      expect(reader.calls).toEqual([]);
+    }
+  });
+
+  // The search position an answer returns is where the next read resumes (read-status rule 19): given back, the
+  // search reads the next 32 nonces, and from past the last executed nonce it is read whole.
+  it("the search resumes from the position an answer returned", async () => {
+    const row = (V.M4b.rows as Row[]).find((r) => r.case.startsWith("one read searches at most 32"))!;
+    const first = await stacksStatus(ref, rowReader(row), Q);
+    expect(withBigints(first)).toEqual(row.expect);
+    const second = await stacksStatus(ref, rowReader(row), { ...Q, search: 33n });
+    expect(withBigints(second)).toMatchObject({ state: "failed", reason: "instrument-consumed", transaction: `0x${"f0".repeat(32)}` });
+  });
+
+  it("recover with an option that names no contract is stacks/wrong-reader, with nothing read", async () => {
+    const row = (V.M4b.rows as Row[])[0]!;
     const noContract = { ...challenge(), request: b64u(JSON.stringify({ ...F.request, methodDetails: { type: "stacks" } })) };
     for (const option of [undefined, {}, noContract]) {
-      const reader = readerFor(settled);
+      const reader = rowReader(row);
       expect(await stacksRecover({ ...R, option } as never, reader)).toEqual({ refused: true, code: "stacks/wrong-reader" });
-      expect(reader.calls).toBe(0);
+      expect(reader.calls).toEqual([]);
     }
   });
 });

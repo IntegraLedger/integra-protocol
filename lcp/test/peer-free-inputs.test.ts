@@ -108,7 +108,7 @@ describe("status with each rail's optional peer", () => {
   });
 
   it("tvmStatus: each read's answer, after the reads stated", async () => {
-    for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 20 })) {
+    for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 11 })) {
       const c = row.reader();
       const got = await tvmStatus(row.ref as never, c.reader as never, row.query as never);
       expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);

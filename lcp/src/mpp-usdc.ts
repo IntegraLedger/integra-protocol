@@ -22,13 +22,14 @@ import { c32Address } from "./internal/c32.js";
 import { withPayee, type EvmBreadthStatus, type EvmQuery } from "./internal/evm.js";
 import { boundStatus } from "./internal/evm-status.js";
 import { mppPayee } from "./internal/payee.js";
-import { memoArgument } from "./internal/stacks.js";
+import { memoArgument, originSigned } from "./internal/stacks.js";
 import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
 import { keyString, type SvmReader, type SvmRef, type SolanaNetwork, type SvmQuery, type SvmStatus } from "./internal/svm.js";
 import {
   byType,
   chosenFor,
   credentialOf,
+  decodeObject,
   deepFreeze,
   echoedFor,
   expiresOf,
@@ -51,7 +52,17 @@ import {
 import { isJcsRequest, stacksNetworkOf } from "./mpp-method-checks.js";
 import { solanaChargePairing, type SolanaChargeChoice, type SolanaChargeUnsigned } from "./mpp-solana.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
-import { stacksRecover, stacksStatus, stacksTxid, type StacksReader, type StacksRef, type StacksNetwork, type StacksStatus } from "./stacks.js";
+import {
+  MAX_STACKS_TX_BYTES,
+  stacksRecover,
+  stacksStatus,
+  stacksTxid,
+  type StacksNetwork,
+  type StacksQuery,
+  type StacksReader,
+  type StacksRef,
+  type StacksStatus,
+} from "./stacks.js";
 import type { LcpPattern } from "./x402.js";
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
@@ -66,10 +77,10 @@ type UsdcDirect = typeof EVM | typeof STACKS | typeof GATEWAY;
 
 const MAX_REQUEST = 8192;
 /**
- * The size bound of a `usdc` Stacks transaction, which `bound`, `reference` and `build`'s `complete` share: 1 to 16,384
- * bytes, else `mpp/stacks-tx-malformed`.
+ * The size bound of a `usdc` Stacks transaction, which `bound`, `reference` and `build`'s `complete` share: 1 to
+ * `MAX_STACKS_TX_BYTES` bytes, else `mpp/stacks-tx-malformed`.
  */
-const MAX_STACKS_TX = 16_384;
+const MAX_STACKS_TX = MAX_STACKS_TX_BYTES;
 /** Stacks mainnet's chain id, `CHAIN_ID_MAINNET` (stacks-core 4.0.5, stacks-common/src/libcommon.rs:58). */
 const STACKS_MAINNET_CHAIN = 1;
 const STACKS_FORMAT = "stacks_transaction_v1";
@@ -537,34 +548,63 @@ async function stacksBound(input: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The read keys of the decoded transaction: the profile's network, the called contract, the origin's c32 address and
- * spending-condition nonce, and, for a standard authorization, the transaction id. Each address is written in c32check
- * as a Stacks node writes it (`c32Address`). The contract's address is the call's version and hash160. The origin's is
- * its signer's hash160 at its hash mode's version on the transaction's network, as stacks-core 4.0.5 gives a
- * transaction's origin address (stacks-codec/src/transaction.rs:3441-3458): P2PKH's single-signature version, 22 on
- * mainnet and 26 on testnet, and every other hash mode's multisig version, 20 and 21 (transaction.rs:897-905,
- * :1087-1095, :1245-1261; stacks-common/src/address/mod.rs:31-34). With them, the payee of `option`, the issued
- * challenge the payment answers (`mppPayee`), whose refusal comes after the payment's.
+ * The read keys of the decoded transaction: the profile's network, the origin's c32 address and spending-condition
+ * nonce, `signed`, the digest of what the origin signed, which a read compares with the landed transaction's
+ * (`presented`), and, for a standard authorization, the transaction id, a hint the read takes first. The origin's
+ * address is written in c32check as a Stacks node writes it (`c32Address`): its signer's hash160 at its hash mode's
+ * version on the transaction's network, as stacks-core 4.0.5 gives a transaction's origin address
+ * (stacks-codec/src/transaction.rs:3441-3458): P2PKH's single-signature version, 22 on mainnet and 26 on testnet, and
+ * every other hash mode's multisig version, 20 and 21 (transaction.rs:897-905, :1087-1095, :1245-1261;
+ * stacks-common/src/address/mod.rs:31-34). With them, the payee of `option`, the issued challenge the payment answers
+ * (`mppPayee`), whose refusal comes after the payment's; a credential whose echoed challenge is not `option`, member by
+ * member, its `request` and `opaque` by their decoded members, is `mpp/challenge-not-option`.
  */
 async function stacksReference(
   input: unknown,
   option: MppChallenge,
 ): Promise<(Omit<StacksRef, "payee"> & { payee: string }) | Refusal> {
-  return withPayee(await stacksKeys(input), mppPayee(option));
+  const keys = await stacksKeys(input, option);
+  return isRefusal(keys) ? keys : withPayee(keys, mppPayee(option));
 }
 
-async function stacksKeys(input: unknown): Promise<Omit<StacksRef, "payee"> | Refusal> {
+async function stacksKeys(input: unknown, option: MppChallenge): Promise<Omit<StacksRef, "payee"> | Refusal> {
   const b = await stacksBinding(input);
   if (isRefusal(b)) return b;
   const network = stacksNetworkOf(b.checked.details);
   if (network === undefined) return refusal("mpp/request-malformed");
-  const { tx, call } = b;
+  if (!sameChallenge(b.checked.challenge, option)) return refusal("mpp/challenge-not-option");
+  const { tx } = b;
   const single = tx.origin.hashMode === 0x00;
   const version = tx.version === 0x00 ? (single ? 22 : 20) : single ? 26 : 21;
   const origin = c32Address(version, tx.origin.signer);
-  const contract = `${c32Address(call.version, call.hash160)}.${call.contract}`;
-  const ref: Omit<StacksRef, "payee"> = { network, contract, origin, nonce: tx.origin.nonce.toString() };
+  const signed = originSigned(b.wire)!;
+  const ref: Omit<StacksRef, "payee"> = { network, origin, nonce: tx.origin.nonce.toString(), signed };
   return tx.standard ? { ...ref, transaction: stacksTxid(b.wire) } : ref;
+}
+
+/**
+ * Whether an echoed challenge is the option given: every member equal, `request` and `opaque` compared by their
+ * decoded members as canonical JSON, and a member absent from one absent from the other. A value that is not a
+ * challenge is none.
+ */
+function sameChallenge(echoedChallenge: MppChallenge, option: unknown): boolean {
+  if (!isObject(option)) return false;
+  const echoed: Record<string, unknown> = { ...echoedChallenge };
+  const decoded = (v: unknown): string | undefined | null => {
+    if (v === undefined) return undefined;
+    const o = typeof v === "string" ? decodeObject(v) : undefined;
+    if (o === undefined) return null;
+    const c = canonicalJson(o);
+    return typeof c === "string" ? c : null;
+  };
+  const plain = ["id", "realm", "method", "intent", "expires", "digest", "description"] as const;
+  for (const m of plain) if (echoed[m] !== option[m]) return false;
+  for (const m of ["request", "opaque"] as const) {
+    const a = decoded(echoed[m]);
+    const b = decoded(option[m]);
+    if (a === null || b === null || a !== b) return false;
+  }
+  return true;
 }
 
 /**
@@ -601,9 +641,9 @@ export const chargeUsdcStacks = Object.freeze({
   MppForms & {
     choice: StacksChargeChoice;
     unsigned: UsdcUnsigned;
-    landed: { transaction: Hex; h: AtrHash };
+    landed: { h: AtrHash };
     network: StacksNetwork;
-    query: Parameters<typeof stacksStatus>[2];
+    query: StacksQuery;
     answer: StacksStatus;
   }
 >;

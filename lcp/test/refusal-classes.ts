@@ -129,7 +129,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   mpp: [
     "access-key-malformed", "attribution-malformed", "attribution-mismatch", "carrier-not-challenge",
-    "carrier-occupied", "carrier-taken", "chain-id-required", "challenge-malformed", "channel-named",
+    "carrier-occupied", "carrier-taken", "chain-id-required", "challenge-malformed", "challenge-not-option", "channel-named",
     "channel-not-bound", "credential-malformed", "credential-type", "credential-types", "escrow-malformed",
     "expires-required", "gateway-unread", "header-malformed", "id-not-ours", "input-malformed",
     "legal-context-conflict", "legal-context-malformed", "link-not-https", "metadata-malformed", "network-unnamed",
@@ -181,7 +181,7 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   tvm: [
     "actions", "boc-malformed", "boc-too-large", "carrier-mismatch", "carrier-occupied", "network-malformed",
-    "not-jetton-transfer", "not-w5-signed", "option-malformed", "payload-not-lcp", "peer-missing", "value-too-low",
+    "not-jetton-transfer", "not-w5-signed", "option-malformed", "payload-not-lcp", "peer-missing", "value-too-high", "value-too-low",
     "wrong-reader",
   ],
   ucp: [

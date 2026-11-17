@@ -4,6 +4,7 @@
  */
 import { canonicalJson, type Json } from "./core.js";
 import { isAddress } from "./fields.js";
+import { isCanonicalPrincipal } from "./internal/c32.js";
 import type { MppChallenge, MppPairingId } from "./mpp-challenge.js";
 import { solanaChargePairings, solanaNetworkOf } from "./mpp-rail-checks.js";
 import { toBase64Url } from "./rail-bytes.js";
@@ -94,7 +95,8 @@ export function isJcsRequest(requestParam: string, parsed: unknown): boolean {
 /**
  * `charge` on `usdc`: the active profile, `amount` a positive integer string, `recipient` a string, and what each
  * profile's build reads: EVM `chainId` and addresses; the Solana charge's checks on the Solana details, whose `network`
- * is required, and on `externalId`, its carrier; Stacks `chainId` and the token contract. The Gateway build reads
+ * is required, and on `externalId`, its carrier; Stacks `chainId`, the token contract, and `recipient` as a Stacks node
+ * writes a principal (`isCanonicalPrincipal`), the spelling the read compares with. The Gateway build reads
  * `recipient` and the request's hash, and none of the Gateway details. No other profile reads `externalId`. The EVM and
  * Gateway derivations hash the request as received, so on those profiles it is in its RFC 8785 form
  * (`mpp/request-not-jcs`).
@@ -130,6 +132,7 @@ export function usdcChargePairings(r: Obj, d: Obj, c: MppChallenge): readonly Mp
       if (typeof p["contractName"] !== "string" || p["contractName"].length > 128 || !STACKS_NAME.test(p["contractName"])) {
         return refusal("mpp/request-malformed");
       }
+      if (!isCanonicalPrincipal(r["recipient"])) return refusal("mpp/request-malformed");
       return ["mpp/charge/usdc/stacks"];
     }
     default:

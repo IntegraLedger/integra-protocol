@@ -11,6 +11,9 @@
 //   (below);
 // - Sui `exact` takes "0" as an agreement's floor where a sponsor or the buyer pays gas (lcp/profiles/x402-exact-sui.md,
 //   rule 16), so its `read` offers "0" on those paths and refuses the other five;
+// - TON `exact` takes "0" as an agreement's floor: its scheme asks the transfer to equal the amount with no floor, and the
+//   stock settler and the standard Jetton wallet take a zero (lcp/profiles/x402-exact-tvm.md, rule 8), so its `read`
+//   offers "0" and refuses the other five;
 // - XRPL `exact` gives an issued currency's `amount` as "the exact XRPL issued-currency `value` string", with "10.5" and
 //   "0.01" as examples (specs/schemes/exact/scheme_exact_xrpl.md, "IOU (Issued Currency)"), so an issued-currency option
 //   takes that value, in the canonical decimal form of a positive STAmount value (below).
@@ -34,7 +37,7 @@ const OUTSIDE: readonly [string, unknown][] = [
 ];
 
 /** The pairings whose scheme or profile takes a zero price, so their `read` offers an option whose amount is "0". */
-const ZERO_PRICE = ["x402/batch-settlement/eip155", "x402/batch-settlement/solana", "x402/exact/sui"];
+const ZERO_PRICE = ["x402/batch-settlement/eip155", "x402/batch-settlement/solana", "x402/exact/sui", "x402/exact/tvm"];
 
 const withAmount = (o: PaymentRequirements, amount: unknown): PaymentRequirements => ({ ...o, amount }) as PaymentRequirements;
 const offered = (b: X402Pairing, accepts: PaymentRequirements[]): unknown => {
@@ -70,13 +73,13 @@ describe("every x402 pairing's read offers an option's amount only as the canoni
     expect(offered(pairing, all)).toEqual(zero ? [withAmount(option!, "0"), option] : [option]);
   });
 
-  it("26 options set to \"10\" are offered, 153 set outside are not, and 3 set to \"0\" on a zero-price scheme are", () => {
+  it("26 options set to \"10\" are offered, 152 set outside are not, and 4 set to \"0\" on a zero-price scheme are", () => {
     const answers = ROWS.flatMap(({ pairing, option }) => [
       [pairing.id, '"10"', offered(pairing, [option!])],
       ...OUTSIDE.map(([what, amount]) => [pairing.id, what, offered(pairing, [withAmount(option!, amount)])]),
     ]);
     const refused = rowsOf(answers, "each pairing's read of its option at each amount", {
-      exact: 153,
+      exact: 152,
       keep: ["the options its read does not offer", ([, , a]) => isRefusal(a)],
       leave: ["the options its read offers", ([, , a]) => !isRefusal(a)],
     });

@@ -84,7 +84,7 @@ describe("without the TON and NEAR peers", () => {
   // itself.
   it("TON: status gives every read the answer it gives with the peer, after the same reads", { timeout: IMPORT_MS }, async () => {
     const { exactTvm } = await import("../src/tvm.js");
-    for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 20 })) {
+    for (const row of rowsOf(tvmStatusRows(), "peer-free-inputs.ts", { exact: 11 })) {
       const c = row.reader();
       const got = await exactTvm.status(row.ref as never, c.reader as never, row.query as never);
       expect([row.case, got, c.reads()]).toEqual([row.case, row.expect, row.reads]);

@@ -221,6 +221,9 @@ importers:
       '@x402/svm':
         specifier: 2.31.0
         version: 2.31.0(@solana/kit@8.4.0(typescript@7.0.2))(@solana/sysvars@8.4.0(typescript@7.0.2))(typescript@7.0.2)
+      '@x402/tvm':
+        specifier: 2.30.0
+        version: 2.30.0
       algosdk:
         specifier: 3.8.0
         version: 3.8.0
@@ -1375,6 +1378,9 @@ packages:
     resolution: {integrity: sha512-aCWYmVeSCGViyEU5k7GMoW8zxE4Gs+C1s1Pp2XLesvSNlnZ4PMES9HUnTB3hl0b3RVj7C61yze3IWyrncqg4MA==}
     engines: {node: '>=22'}
 
+  '@x402/core@2.30.0':
+    resolution: {integrity: sha512-gvMxCum2QlNI6jI/3NL1jdrmOgtX9sWEWxSIOmeI67/5ndOJvYOtP7JZLSO8o8af+O+A+Vhhjza1NCda0yVppg==}
+
   '@x402/core@2.31.0':
     resolution: {integrity: sha512-7ToCOwHfftfFEERW5Mp6Fc5U1+JrtCLTkbQnEVsBl13IutltP9lWIBYi/J+zy8vQWaLUmACq8A2qywzdt/RRIQ==}
 
@@ -1385,6 +1391,9 @@ packages:
     resolution: {integrity: sha512-nWoh/wVG/rbIB9tY3GZKh7G/E1vUVFCP8Y+CAQJVSH+weqMpenqIRzoX8Q3Y94L6ZL5QD9BEgUSIkJmbuVb3ig==}
     peerDependencies:
       '@solana/kit': '>=8.0.0'
+
+  '@x402/tvm@2.30.0':
+    resolution: {integrity: sha512-WNLSuRSHuKcSHetuJcwbz7ia9mk/aSdT7xTP/rNSo23jdXOx0hnmTBP/IagKqiFJaQqJG4kfQUIxqS0JLU5LsQ==}
 
   '@xrplf/isomorphic@1.0.2':
     resolution: {integrity: sha512-ncZUdMXr6VlSXtdoiDi0jTH+gBrgGxwVeEidhoegII3PmyErbQsyj6e+j7acmR4LW/lvBkPkzb9QzRfJH0n3rA==}
@@ -3554,6 +3563,10 @@ snapshots:
     dependencies:
       '@wallet-standard/base': 1.1.1
 
+  '@x402/core@2.30.0':
+    dependencies:
+      zod: 4.6.7
+
   '@x402/core@2.31.0':
     dependencies:
       zod: 4.6.7
@@ -3582,6 +3595,12 @@ snapshots:
       - '@solana/zk-sdk'
       - fastestsmallesttextencoderdecoder
       - typescript
+
+  '@x402/tvm@2.30.0':
+    dependencies:
+      '@ton/core': 0.63.1(@ton/crypto@3.3.0)
+      '@ton/crypto': 3.3.0
+      '@x402/core': 2.30.0
 
   '@xrplf/isomorphic@1.0.2':
     dependencies:

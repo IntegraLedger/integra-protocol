@@ -9,7 +9,7 @@ import type * as TonCore from "@ton/core";
 import type { Address, Cell, Slice } from "@ton/core";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";
-import { deepFreeze, isObject, normalHash } from "./fields.js";
+import { deepFreeze, isObject, normalHash, sameJson } from "./fields.js";
 import { crc32c, type TvmPayment } from "./internal/tvm.js";
 import {
   advertiseFor,
@@ -46,8 +46,17 @@ import {
 import { TVM } from "./internal/data/tvm.js";
 import type { Entry } from "./internal/registry.js";
 import { x402Payee } from "./internal/payee.js";
-import { decide, type Facts, type RecoverInput, type Seen, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
-import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import {
+  decide,
+  type Facts,
+  type Moved,
+  type RecoverInput,
+  type Seen,
+  type StatusAnswer,
+  type StatusQuery,
+  type UnreadableReason,
+} from "./internal/read.js";
+import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -66,9 +75,29 @@ export const OP = {
   sendMsg: 0x0ec3c86d,
 } as const;
 
+/** An account's status as TON Center v3 states it. */
+export type TonAccountStatus = "active" | "uninit" | "nonexist" | "frozen";
+
+/** An account's status and data hash, as TON Center v3 states them before or after a transaction. */
+export interface TonAccountState {
+  status: TonAccountStatus;
+  /** The representation hash of the account's data, in the index's spelling; null where the account holds none. */
+  dataHash: string | null;
+}
+
+/** A transaction's out message: its hash, its body's opcode (null where it has none), and its body as a BoC. */
+export interface TonOutMsg {
+  hash: string;
+  opcode: number | null;
+  /** The body as a bag of cells (`message_content.body`); absent or null where the index gives none. */
+  body?: Uint8Array | null;
+}
+
 /**
  * A transaction as a TON Center v3 endpoint reports it. `inBody` is the inbound message body as a BoC, or null when the
- * transaction has no inbound message body (its `in_msg`, or that message's `message_content.body`, is null).
+ * transaction has no inbound message body (its `in_msg`, or that message's `message_content.body`, is null). The members
+ * after `outMsgs` are the ones the expiry read takes, from `/api/v3/transactions`: a transaction lacking one cannot be
+ * placed, linked or classed, and the read holds its search there.
  */
 export interface TonTx {
   hash: string;
@@ -77,35 +106,83 @@ export interface TonTx {
   /** TON Center v3's `FinalityState`: 0 pending, 1 confirmed, 2 finalized. */
   finality: 0 | 1 | 2;
   inBody: Uint8Array | null;
-  outMsgs: readonly { hash: string; opcode: number | null }[];
+  outMsgs: readonly TonOutMsg[];
+  /** The inbound message's source, raw (`in_msg.source`); null for an external message. */
+  inSource?: string | null;
+  /** The masterchain block that holds it (`mc_block_seqno`); null while none does. */
+  mcSeqno?: bigint | null;
+  /** Its logical time, in decimal (`lt`). */
+  lt?: string;
+  /** Its predecessor on the account (`prev_trans_hash`, `prev_trans_lt`); null for the account's first. */
+  prev?: { hash: string; lt: string } | null;
+  /** The account's state before it (`account_state_before`, with `orig_status`). */
+  before?: TonAccountState;
+  /** The account's state after it (`account_state_after`, with `end_status`). */
+  after?: TonAccountState;
+}
+
+/** A wallet's state as the index holds it (`walletStates`): status, code hash, sequence number, last transaction. */
+export interface TonWalletState {
+  status: TonAccountStatus;
+  /** The representation hash of the account's code, `0x` and 64 hex digits; null where it holds none. */
+  codeHash: Hex | null;
+  /** The wallet's sequence number; null where the account holds no data. */
+  seqno: number | null;
+  /** The account's last transaction; null where it has none. */
+  last: { hash: string; lt: string } | null;
+}
+
+/** The index's statement of the masterchain blocks it holds: every block from `first` through `last`, a finalized block. */
+export interface TonIndexed {
+  first: bigint;
+  last: bigint;
+  /** `last`'s `gen_utime`. */
+  utime: number;
 }
 
 /**
  * Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects, for example with
- * `ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ * `ReaderError` from `@integraledger/lcp/evm`: one of kind `too-large` reads as `too-large`, one of kind `malformed` as
+ * `unparseable`, and any other rejection as `transport`.
  */
 export interface TvmReader {
   readonly network: TvmNetwork;
-  /**
-   * GET /api/v3/transactionsByMessage?body_hash=…&direction=in, with `headUtime`: the `gen_utime` of a masterchain
-   * block through which the index that answered holds every block, read from that same index before the lookup, or null
-   * when the reader cannot read it from that index. `masterchainInfo`'s `last` can be ahead of an earlier block the
-   * index has not finished writing, so on its own it does not name such a block. A lookup naming no time never reads
-   * `expired`, nor `no-transfer` or `aborted` from the W5 wallet's transactions.
-   */
-  byInBody(bodyHash: Hex): Promise<{ transactions: readonly TonTx[]; headUtime: number | null }>;
+  /** GET /api/v3/transactionsByMessage?body_hash=…&direction=in: the transactions that took a message with this body. */
+  byInBody(bodyHash: Hex): Promise<readonly TonTx[]>;
   /** GET /api/v3/transactionsByMessage?msg_hash=…&direction=in */
   byInMessage(msgHash: string): Promise<readonly TonTx[]>;
   /** GET /api/v3/transactions?hash=… */
   byHash(txHash: string): Promise<TonTx | null>;
-  /** GET /api/v3/masterchainInfo: the last indexed block's gen_utime. */
+  /** GET /api/v3/masterchainInfo: the latest masterchain block's gen_utime, the latest head the endpoint serves. */
   headUtime(): Promise<number>;
+  /**
+   * The index's own statement of the masterchain blocks through which it holds every block, from the same index that
+   * answers the other calls, or null where it states none. `masterchainInfo`'s `last` is no such statement: it can be
+   * ahead of an earlier block the index has not finished writing.
+   */
+  indexed(): Promise<TonIndexed | null>;
+  /** GET /api/v3/walletStates?address=…: the wallet's state as the index holds it. */
+  walletState(account: string): Promise<TonWalletState>;
+  /**
+   * GET /api/v3/transactions?account=…&end_lt=…&sort=desc&limit=…: the account's transactions from `from` back, newest
+   * first, at most `limit`, each with the members the expiry read takes.
+   */
+  transactions(account: string, from: { hash: string; lt: string }, limit: number): Promise<readonly TonTx[]>;
+  /** `runGetMethod` `get_wallet_data` on a Jetton wallet: its master, raw. */
+  jettonMaster(jettonWallet: string): Promise<string>;
+  /** `runGetMethod` `get_wallet_address` on a Jetton master for an owner: the owner's Jetton wallet, raw. */
+  jettonWallet(master: string, owner: string): Promise<string>;
 }
 
-/** The read keys a payment's settlement is read by, and the payee, the `payTo` of the option the payment answers. */
+/**
+ * The read keys a payment's settlement is read by, the members of the payment presented, and the payee, the `payTo` of
+ * the option the payment answers, for both party tests and no search key. It names no asset.
+ */
 export interface TvmRef {
   network: TvmNetwork;
   payee: string;
+  /** H, which the request's Jetton transfer carries: the search for H looks for it in every run of the wallet. */
+  h: AtrHash;
   /** The representation hash of the Jetton transfer body the W5 request sends. */
   transferBodyHash: Hex;
   /** The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. */
@@ -115,31 +192,49 @@ export interface TvmRef {
    * signature and any bit or reference after `has_other_actions` 0, which W5 does not read, included.
    */
   requestBodyHash: Hex;
+  /**
+   * The representation hash of the W5 request with its signature removed, its last 512 bits: the hash the wallet's key
+   * signs. It holds the members of the payment presented, the request the payer signed, whole, its signature apart.
+   */
+  signedHash?: Hex;
   /** The payer's W5 wallet, raw: the address TON sends the settlement message to. */
   wallet: string;
   validUntil: number;
+  /** The sequence number the request was signed against: the single-use value. */
+  seqno: number;
+  /** The representation hash of the code in the state init the payment carries; absent where it carries none. */
+  codeHash?: Hex;
+}
+
+
+/** A transaction of the wallet's list by the two members its successor links it by: its hash and its logical time. */
+export interface TonLink {
+  readonly hash: string;
+  /** In decimal. */
+  readonly lt: string;
 }
 
 /**
- * The answer of `tvmStatus`, as the profile `read-status` gives it. Its marks are `confirmed` and `finalized`, TON
- * Center v3's finality states 1 and 2, in that order; it reads no ledger position, so a position given as `after`
- * places nothing.
+ * The search position of the expiry read, from which the next read resumes: `top`, the newest transaction of the
+ * wallet the search had listed, and `next`, the transaction it reads next, at or below which nothing is read yet. The
+ * next read lists the wallet's transactions above `top`, which landed since, then reads on from `next`; the ones
+ * between were read.
  */
-export type TvmStatus = StatusAnswer<bigint, TvmMark>;
+export interface TvmSearch {
+  readonly top: TonLink;
+  readonly next: TonLink;
+}
+
+/**
+ * The answer of `tvmStatus`, as the profile `read-status` gives it: each transfer of what moved named by the W5
+ * transaction and, as its `place`, the hash of the Jetton `transfer` message that made it. Its marks are
+ * `confirmed` and `finalized`, TON Center v3's finality states 1 and 2, in that order; a position is a masterchain
+ * block's sequence number, and the search position a `TvmSearch`.
+ */
+export type TvmStatus = StatusAnswer<bigint, TvmMark, TvmSearch>;
 
 type TvmMark = "confirmed" | "finalized";
 const MARKS: readonly TvmMark[] = ["confirmed", "finalized"];
-
-/**
- * What the read of the request and the transfers it led to found. `transaction` is the W5 wallet's transaction that
- * took the request, and `finality` the lower TON Center finality state of the transactions the answer rests on.
- */
-type TvmRead =
-  | { state: "settled"; transaction: string; finality: 0 | 1 | 2 }
-  | { state: "pending"; why: "not-found" | "in-flight" }
-  | { state: "failed"; why: "aborted" | "bounced"; transaction: string; finality: 0 | 1 | 2; consumed: boolean }
-  | { state: "failed"; why: "no-transfer" | "expired" }
-  | { state: "unreadable"; reason: UnreadableReason };
 
 interface TvmChoice {
   required: PaymentRequired;
@@ -176,9 +271,29 @@ export interface TvmUnsigned {
 }
 
 const ID = "x402/exact/tvm" as const;
-const MAX_BOC_BYTES = 8192;
-const MAX_CELLS = 512;
-const MAX_DEPTH = 32;
+/**
+ * The largest bag of cells the pairing reads, in bytes: lcp's own resource bound, far above the settlement message
+ * of one W5 request with a deploying state init (a few hundred bytes).
+ */
+export const MAX_TVM_BOC_BYTES = 8192;
+/** The most distinct cells a bag of cells the pairing reads may hold: lcp's own resource bound, as above. */
+export const MAX_TVM_CELLS = 512;
+/** The deepest a bag of cells the pairing reads may be: lcp's own resource bound, as above. */
+export const MAX_TVM_DEPTH = 32;
+/**
+ * The most nanotons `build` attaches above the option's forward TON amount: the stock settler refuses a request whose
+ * attached value is above `forwardTonAmount` plus this (`@x402/tvm` 2.30.0, `src/exact/facilitator/scheme.ts:326-329`,
+ * `DEFAULT_JETTON_WALLET_MESSAGE_AMOUNT` in `src/constants.ts:14`).
+ */
+export const MAX_TVM_ATTACHED_ABOVE_FORWARD = 30_000_000n;
+/**
+ * The most transactions of the payer's wallet one read lists, back from its latest: lcp's own resource bound. Past it
+ * the search is held at the last masterchain block read.
+ */
+export const MAX_TVM_LISTED = 256;
+const MAX_BOC_BYTES = MAX_TVM_BOC_BYTES;
+const MAX_CELLS = MAX_TVM_CELLS;
+const MAX_DEPTH = MAX_TVM_DEPTH;
 /** The three bag-of-cells magics TON reads: ton-blockchain/ton `crypto/vm/boc.h`, `boc_generic`, `boc_idx`, `boc_idx_crc32c`. */
 const BOC_GENERIC = 0xb5ee9c72;
 const BOC_INDEXED = 0x68ff65f3;
@@ -236,11 +351,12 @@ const CONFIGURATIONS: ReadonlyMap<string, TonConfiguration> = new Map([
   ["tvm:-3", TESTNET],
 ]);
 /**
- * The send modes TON's action phase sends a message with (`try_action_send_msg`): +16 is bounce-on-fail and is set
- * aside from global version 4, and the rest must be +1, +2, +32, +64 and +128 alone (`0xe3`), never +64 with +128. Any
- * other mode is refused, or skipped under +2 from global version 13: the message is not sent either way.
+ * The send modes the scheme admits for the request's one action, 1 (`PAY_FEES_SEPARATELY`) and 3 (with
+ * `IGNORE_ERRORS`) (`scheme_exact_ton.md:170` at `x402-foundation/x402@88b66dd4`); the stock settler's codec admits the
+ * same two (`@x402/tvm` 2.30.0 `src/exact/codec.ts:66-72`). TON's other modes include those that remove the sending
+ * account once its balance reaches zero, and with it the sequence number the read rests on.
  */
-const SEND_MODES = 0xe3;
+const SCHEME_SEND_MODES: ReadonlySet<number> = new Set([1, 3]);
 const COINS_LIMIT = 1n << 120n;
 const UINT32_LIMIT = 2 ** 32;
 const RAW_ADDRESS = /^-?[0-9]{1,10}:[0-9a-fA-F]{64}$/;
@@ -252,12 +368,12 @@ const SIGNATURE_BITS = 512;
 const REQUEST_MIN_BITS = 32 + 32 + 32 + 32 + SIGNATURE_BITS;
 const SEND_MODE = 3;
 /**
- * The head read first must pass `validUntil` by more than this many seconds before a request whose Jetton transfer no
- * W5 transaction emitted reads failed. A W5 transaction runs at its shard block's time, and a masterchain block
- * references that shard block only later, so the masterchain head can pass `validUntil` before an index holds a
- * transaction that ran in time.
+ * The seconds a masterchain block's time must pass `validUntil` by before the read takes the request's validity as
+ * passed at that block: a W5 transaction runs at its shard block's time, and a masterchain block references that shard
+ * block only later, so the masterchain head can pass `validUntil` before an index holds a transaction that ran in time.
  */
-const EXPIRY_MARGIN = 60;
+export const TVM_EXPIRY_MARGIN = 60;
+const EXPIRY_MARGIN = TVM_EXPIRY_MARGIN;
 
 const utf8 = new TextEncoder();
 /** A comment's text: strict UTF-8, a leading byte-order mark kept, so a comment that begins with one holds no hash. */
@@ -661,13 +777,15 @@ function jettonTransfer(body: Cell): { payload: Cell | null } | Refusal {
  *   cell on each path, a `^StateInit` and a referenced body;
  * - at most `MAX_MERKLE_DEPTH` Merkle proofs and updates nest under the init and the body.
  */
-function messageOf(c: Cell, from: string | null, config: TonConfiguration): { dest: string; body: Cell } | null {
+function messageOf(c: Cell, from: string | null, config: TonConfiguration): { dest: string; body: Cell; init: Cell | null; bounce: boolean } | null {
   const T = peer!;
   if (c.isExotic) return null;
   try {
     const s = c.beginParse();
     if (s.loadBit()) return null;
-    s.skip(3);
+    s.skip(1);
+    const bounce = s.loadBit();
+    s.skip(1);
     const src = msgAddress(s, config);
     if (src.tag !== 0 && (src.tag !== 2 || src.raw === null || (from !== null && src.raw !== from))) return null;
     const dest = msgAddress(s, config);
@@ -711,7 +829,7 @@ function messageOf(c: Cell, from: string | null, config: TonConfiguration): { de
       if (!hashmap(extra, 32, currency) || count > config.maxMsgExtraCurrencies) return null;
     }
     if (merkleDepth([...(init === null ? [] : [init]), ...(bodyRef ? [body] : body.refs)]) > MAX_MERKLE_DEPTH) return null;
-    return { dest: dest.raw, body };
+    return { dest: dest.raw, body, init, bounce };
   } catch {
     return null;
   }
@@ -796,7 +914,10 @@ function merkleDepth(cells: readonly Cell[], memo = new Map<string, number>()): 
  * validated as TON validates it, a referenced body that is an ordinary cell with nothing after it, and at most two
  * nested Merkle proofs or updates; the W5 action's send mode is one TON sends with. The network is `tvm:-239` (mainnet)
  * or `tvm:-3` (testnet), and any other is `tvm/network-malformed`. The settlement message TON would not send is
- * `tvm/boc-malformed`, and the outgoing one, or a send mode TON refuses or skips, `tvm/not-jetton-transfer`. The
+ * `tvm/boc-malformed`, and the outgoing one `tvm/not-jetton-transfer`; a send mode other than 1 or 3, the two the
+ * scheme admits, is `tvm/actions`. It also gives the request's sequence number, `signedHash`, the representation hash of
+ * the request less its signature, which the wallet's key signs, and, where the message carries a state init, the
+ * hash of its code. The
  * settlement message's source names the account that relays it, which the BoC cannot show: one naming another account
  * is read, and TON sends it when that account relays it. `wallet` and `jettonWallet` are the addresses TON sends to: an
  * `addr_var` of 256 bits names its `addr_std`. The network, the base64, the 8 KiB bound, the bag-of-cells layout and
@@ -808,8 +929,11 @@ export function tvmCarrier(settlementBoc: string, network: TvmNetwork): {
   transferBodyHash: Hex;
   jettonWallet: string;
   requestBodyHash: Hex;
+  signedHash: Hex;
   wallet: string;
   validUntil: number;
+  seqno: number;
+  codeHash?: Hex;
   payload: TonCell;
 } | Refusal {
   const config = CONFIGURATIONS.get(network);
@@ -824,14 +948,19 @@ function carrierIn(root: Cell, config: TonConfiguration): {
   transferBodyHash: Hex;
   jettonWallet: string;
   requestBodyHash: Hex;
+  signedHash: Hex;
   wallet: string;
   validUntil: number;
+  seqno: number;
+  codeHash?: Hex;
   payload: Cell;
 } | Refusal {
   const message = messageOf(root, null, config);
   if (message === null) return refusal("tvm/boc-malformed");
 
   let validUntil: number;
+  let seqno: number;
+  let signedHash: Hex;
   let actions: Cell;
   try {
     const body = message.body;
@@ -841,10 +970,12 @@ function carrierIn(root: Cell, config: TonConfiguration): {
     }
     const signedPart = peer!.beginCell().storeBits(body.bits.substring(0, body.bits.length - SIGNATURE_BITS));
     for (const r of body.refs) signedPart.storeRef(r);
-    const s = signedPart.endCell().beginParse().skip(32);
+    const signed = signedPart.endCell();
+    signedHash = `0x${signed.hash().toString("hex")}`;
+    const s = signed.beginParse().skip(32);
     s.loadUint(32);
     validUntil = s.loadUint(32);
-    s.loadUint(32);
+    seqno = s.loadUint(32);
     const list = s.loadMaybeRef();
     const hasOtherActions = s.loadBit();
     if (list === null || hasOtherActions) return refusal("tvm/actions");
@@ -855,9 +986,12 @@ function carrierIn(root: Cell, config: TonConfiguration): {
 
   const send = sendMessage(actions);
   if (isRefusal(send)) return send;
-  if (!sendsWith(send.mode, config)) return refusal("tvm/not-jetton-transfer");
+  if (!SCHEME_SEND_MODES.has(send.mode)) return refusal("tvm/actions");
   const out = messageOf(send.message, message.dest, config);
   if (out === null) return refusal("tvm/not-jetton-transfer");
+  // The scheme's message to the Jetton wallet is bounceable; the stock codec refuses one that is not as it refuses a
+  // wrong mode (`@x402/tvm` 2.30.0 `src/exact/codec.ts:61`).
+  if (!out.bounce) return refusal("tvm/actions");
   const transfer = jettonTransfer(out.body);
   if (isRefusal(transfer)) return transfer;
   if (transfer.payload === null) return refusal("tvm/payload-not-lcp");
@@ -868,10 +1002,23 @@ function carrierIn(root: Cell, config: TonConfiguration): {
     transferBodyHash: `0x${out.body.hash().toString("hex")}`,
     jettonWallet: out.dest,
     requestBodyHash: `0x${message.body.hash().toString("hex")}`,
+    signedHash,
     wallet: message.dest,
     validUntil,
+    seqno,
+    ...codeOf(message.init),
     payload: transfer.payload,
   };
+}
+
+/** The representation hash of the code a state init holds, where it holds one, as `codeHash`. */
+function codeOf(init: Cell | null): { codeHash?: Hex } {
+  if (init === null) return {};
+  const s = init.beginParse();
+  if (s.loadBit()) s.skip(5);
+  if (s.loadBit()) s.skip(2);
+  const code = s.loadMaybeRef();
+  return code === null ? {} : { codeHash: `0x${code.hash().toString("hex")}` };
 }
 
 /**
@@ -888,112 +1035,465 @@ function sendMessage(actions: Cell): { mode: number; message: Cell } | Refusal {
   return { mode: s.loadUint(8), message: actions.refs[1]! };
 }
 
-/** True when TON's action phase sends a message with this mode at the configuration (`SEND_MODES`). */
-function sendsWith(mode: number, config: TonConfiguration): boolean {
-  const m = config.globalVersion >= 4 ? mode & ~16 : mode;
-  return (m & ~SEND_MODES) === 0 && (m & 0xc0) !== 0xc0;
-}
 
 // ── Settlement.
 
+/** W5R1's code hash, the one entry of the scheme's list of wallets (`scheme_exact_ton.md:166` at `x402-foundation/x402@88b66dd4`). */
+export const W5R1_CODE_HASH = "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f";
+/** W5's `external_signed` op: a request its owner sends as an external message, laid out and signed as `internal_signed` is. */
+const EXTERNAL_SIGNED = 0x7369676e;
+/** W5's `extn` op: an installed extension's actions, which the wallet runs with no signature and no sequence number. */
+const EXTENSION_ACTION = 0x6578746e;
+/** TEP-74's text comment op. */
+const TEXT_COMMENT = 0;
+
 /**
- * Answers the read of the request as the profile `read-status` gives it. The read takes the head's time first. Then it
- * finds the signed request by its body hash on the payer's W5 wallet: only a W5 transaction there that did not abort
- * and emitted the Jetton transfer counts, because W5 checks the request's signature before any action runs, so a
- * request the payer did not sign sends nothing from that wallet. It follows that message to the payer's Jetton wallet,
- * and that wallet's `internal_transfer` to whichever Jetton wallet takes it, which is not compared with `payTo`. The
- * W5 transaction is the payer's act where both Jetton wallets executed without aborting, at the lower finality of the
- * two, `confirmed` (1) or `finalized` (2); at TON Center's state 0 it names no included act. An equal Jetton body
- * executed any other way is never counted. A W5 transaction that emitted the Jetton transfer names no included act
- * until the Jetton wallet takes it, because an internal message carries no expiry. The payer's Jetton wallet's
- * transaction aborted, or an aborted delivery, is the act included with a failed result, the W5 transaction having
- * taken the request; one with no `internal_transfer` carries no act that binds H. When no W5 transaction with the
- * request emitted the Jetton transfer, the head read first decides, because W5 refuses the request once
- * `valid_until <= now()`: up to 60 seconds past `validUntil` it names no included act, since a W5 transaction runs at
- * its shard block's time, which a masterchain block references only later; past that, the request's validity has
- * passed when the W5 wallet holds no transaction with it, a W5 transaction that executed and emitted nothing carries no
- * act, and one where every W5 transaction aborted is the act included with a failed result that left the seqno
- * unused, each only when the lookup names an indexed time at or past the head read first. The lookup shows the W5
- * wallet's transactions only through the blocks its index holds, and an internal request that aborts leaves its seqno
- * unused (wallet_v5.fc commits the seqno only for an external request), so the request can run again before
- * `validUntil`: a lookup whose index lags that head, or that names no time, names no included act. A transaction on any
- * other account is ignored. The read holds no search for H, so none of these answers `failed`. A read that rejects is
- * unreadable `transport`, an answer out of the reader's form `unparseable`, and a reader for another network than the
- * ref's `chain-mismatch`. A ref, a reader or a query that is not one, a reader that names no network, or a malformed
- * reference (a `requestBodyHash` that is not `0x` and 64 hex digits included) is unreadable `unparseable`, with nothing
- * read; the request's body hash is looked up in lowercase. At most four calls. The read decodes no cell, and the
- * accounts are raw addresses, compared without @ton/core (`rawKey`), so every answer is the same with it and without
- * it.
+ * Answers the read of the request as the profile `read-status` gives it, from the facts the profile `x402-exact-tvm`
+ * (rule 6) names, with `presented` on `settled`. The read takes, from one TON Center v3 index: the latest head's time;
+ * the index's statement of the masterchain blocks it holds; the W5 wallet's transactions with the request's body; the
+ * wallet's state; and, for a W5 wallet, its transactions from the latest back, each by its predecessor, to the first at
+ * or before the position given (the expiry read, which is the search for H). Every run of the wallet whose Jetton
+ * `transfer` carries H is followed to the payer's Jetton wallet and from its `internal_transfer` to the Jetton wallet
+ * that took it, and tested by the two party tests: the W5 wallet is not the option's payee, on either act; and, on the
+ * act `payment`, the delivering account is the payee's Jetton wallet of the payer's Jetton wallet's master, read by
+ * `get_wallet_address` for `payTo` through the reader. Positions are masterchain block sequence numbers. The single-use
+ * value is the signed sequence number: consumed where a listed run is at it, where the active wallet's number is above
+ * it, or where a listed transaction removed or deployed the account; lapsed where the latest head is more than 60
+ * seconds past `validUntil`, and read at the final mark only where the stated finalized block is too. The search is
+ * read whole only through a reader that declares `listsWhole`. A wallet that is not W5 gets no expiry read: its value
+ * is not read, and the body-hash lookup is its search, read whole where the stated block is at or past the latest head.
+ * The read decodes the cells it reads itself, without @ton/core, and compares raw addresses itself, so every answer is
+ * the same with it and without it. A ref, a reader or a query that is not one, or a ref whose hashes are not `0x` and
+ * 64 hex digits, is unreadable `unparseable`, with nothing read; a reader for another network than the ref's is
+ * `chain-mismatch`; a rejected read is `transport`, or `too-large` or `unparseable` for a `ReaderError` of that kind;
+ * an answer out of the reader's form is `unparseable`. A frozen account, its code removed, runs no request until a
+ * message restores the state its hash fixes, its number among it, so it reads as `uninit` and `nonexist` do: the number
+ * not passed.
  */
-export async function tvmStatus(ref: TvmRef, reader: TvmReader, query: StatusQuery<TvmRef, bigint, TvmMark>): Promise<TvmStatus> {
-  if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;
-  return decide(factsOf(await readTvm(ref, reader)), query, LEDGER);
+export async function tvmStatus(ref: TvmRef, reader: TvmReader, query: StatusQuery<TvmRef, bigint, TvmMark, TvmSearch>): Promise<TvmStatus> {
+  if (!isQuery(query, MARKS, isPosition) || (query.search !== undefined && !isSearch(query.search))) return UNPARSEABLE;
+  return decide(await readTvm(ref, reader, query), query, LEDGER);
 }
+
+const LT = /^(?:0|[1-9][0-9]{0,19})$/;
+const isSearchLink = (v: unknown): v is TonLink =>
+  isObject(v) && typeof v["hash"] === "string" && v["hash"] !== "" && typeof v["lt"] === "string" && LT.test(v["lt"]);
+function isSearch(v: unknown): v is TvmSearch {
+  return isObject(v) && isSearchLink(v["top"]) && isSearchLink(v["next"]);
+}
+const linkOf = (t: { hash: string; lt?: string }): TonLink => ({ hash: t.hash, lt: t.lt ?? "" });
+const sameLink = (a: { hash: string; lt?: string }, b: TonLink): boolean => a.hash === b.hash && a.lt === b.lt;
 
 const LEDGER = ledgerOf<bigint, TvmMark>(TVM[ID].coverage, MARKS, bigintOrder);
 
-async function readTvm(ref: TvmRef, reader: TvmReader): Promise<TvmRead> {
-  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
-  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") return unparseable;
-  const request = normalHash(ref.requestBodyHash);
-  if (
-    typeof ref.network !== "string" ||
-    request === null ||
-    rawKey(ref.jettonWallet) === null ||
-    rawKey(ref.wallet) === null ||
-    !isUint32(ref.validUntil)
-  ) {
-    return unparseable;
-  }
-  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
-  const head = await headTime(reader);
-  const w5 = await transactionsOn(reader, request, ref.wallet);
-  if (typeof w5 === "string") return { state: "unreadable", reason: w5 };
-  let took: TonTx | undefined;
-  let transfer: TonTx["outMsgs"][number] | undefined;
-  for (const t of w5.transactions) {
-    if (t.aborted) continue;
-    transfer = t.outMsgs.find((m) => m.opcode === OP.jettonTransfer);
-    if (transfer !== undefined) {
-      took = t;
-      break;
-    }
-  }
-  if (took === undefined || transfer === undefined) return unsent(ref, w5, head);
-  const taken = await transactionsTaking(reader, transfer.hash);
-  if (typeof taken === "string") return { state: "unreadable", reason: taken };
-  const mine = taken.filter((t) => sameAccount(t.account, ref.jettonWallet));
-  if (mine.length === 0) return { state: "pending", why: "in-flight" };
-  const first = mine.find((t) => !t.aborted);
-  if (first === undefined) {
-    const finality = Math.min(took.finality, ...mine.map((t) => t.finality)) as 0 | 1 | 2;
-    return { state: "failed", why: "aborted", transaction: took.hash, finality, consumed: true };
-  }
-  const internal = first.outMsgs.find((m) => m.opcode === OP.internalTransfer);
-  if (internal === undefined) return { state: "failed", why: "no-transfer" };
-  const delivered = await transactionsTaking(reader, internal.hash);
-  if (typeof delivered === "string") return { state: "unreadable", reason: delivered };
-  const second = delivered[0];
-  if (second === undefined) return { state: "pending", why: "in-flight" };
-  const finality = Math.min(first.finality, second.finality) as 0 | 1 | 2;
-  if (second.aborted) return { state: "failed", why: "bounced", transaction: took.hash, finality, consumed: true };
-  return { state: "settled", transaction: took.hash, finality };
+function isPosition(p: unknown): p is bigint {
+  return typeof p === "bigint" && p >= 0n;
+}
+
+type Presented = "yes" | "no" | "unshown";
+type TvmSeen = Seen<bigint, TvmMark>;
+
+/** A read that established nothing, with its reason. */
+class Unread {
+  constructor(readonly reason: UnreadableReason) {}
 }
 
 /**
- * The read while no W5 transaction with the request has emitted the Jetton transfer: the earlier head decides, and the
- * lookup counts only when its index holds every block through that head.
+ * The reason a rejected read gives: a `ReaderError` of kind `too-large` is `too-large`, one of kind `malformed`
+ * `unparseable`, and any other rejection, a timeout among them, `transport`.
  */
-function unsent(ref: TvmRef, w5: OnAccount, head: number | "transport" | "unparseable"): TvmRead {
-  if (typeof head === "string") return { state: "unreadable", reason: head };
-  if (head <= ref.validUntil + EXPIRY_MARGIN) return { state: "pending", why: "not-found" };
-  const covered = w5.headUtime !== null && w5.headUtime >= head;
-  if (!covered) return { state: "pending", why: "not-found" };
-  const [first] = w5.transactions;
-  if (first === undefined) return { state: "failed", why: "expired" };
-  if (w5.transactions.some((t) => !t.aborted)) return { state: "failed", why: "no-transfer" };
-  const finality = Math.min(...w5.transactions.map((t) => t.finality)) as 0 | 1 | 2;
-  return { state: "failed", why: "aborted", transaction: first.hash, finality, consumed: false };
+function rejectedAs(e: unknown): UnreadableReason {
+  if (typeof e !== "object" || e === null || (e as { name?: unknown }).name !== "ReaderError") return "transport";
+  const kind = (e as { kind?: unknown }).kind;
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+}
+
+/** One reader call: its answer where it is in the reader's form, else `unparseable`; a rejection by `rejectedAs`. */
+async function call<T>(f: () => Promise<unknown>, valid: (v: unknown) => v is T): Promise<T> {
+  let v: unknown;
+  try {
+    v = await f();
+  } catch (e) {
+    throw new Unread(rejectedAs(e));
+  }
+  if (!valid(v)) throw new Unread("unparseable");
+  return v;
+}
+
+function isRef(ref: unknown): ref is TvmRef {
+  if (!isObject(ref)) return false;
+  return (
+    typeof ref["network"] === "string" &&
+    normalHash(ref["h"]) !== null &&
+    normalHash(ref["requestBodyHash"]) !== null &&
+    (ref["signedHash"] === undefined || normalHash(ref["signedHash"]) !== null) &&
+    rawKey(ref["jettonWallet"]) !== null &&
+    rawKey(ref["wallet"]) !== null &&
+    rawKey(ref["payee"]) !== null &&
+    isUint32(ref["validUntil"]) &&
+    isUint32(ref["seqno"]) &&
+    (ref["codeHash"] === undefined || normalHash(ref["codeHash"]) !== null)
+  );
+}
+
+async function readTvm(
+  ref: TvmRef,
+  reader: TvmReader,
+  query: StatusQuery<TvmRef, bigint, TvmMark, TvmSearch>,
+): Promise<Facts<bigint, TvmMark, TvmSearch>> {
+  const nothing = (reason: UnreadableReason): Facts<bigint, TvmMark, TvmSearch> => ({ unreadable: reason, seen: [], search: { whole: false }, history: false });
+  if (!isRef(ref) || !isObject(reader) || typeof reader.network !== "string") return nothing("unparseable");
+  if (reader.network !== ref.network) return nothing("chain-mismatch");
+  try {
+    return await factsOf(ref, reader, query);
+  } catch (e) {
+    if (e instanceof Unread) return nothing(e.reason);
+    throw e;
+  }
+}
+
+async function factsOf(
+  ref: TvmRef,
+  reader: TvmReader,
+  query: StatusQuery<TvmRef, bigint, TvmMark, TvmSearch>,
+): Promise<Facts<bigint, TvmMark, TvmSearch>> {
+  const h = normalHash(ref.h)!;
+  const request = normalHash(ref.requestBodyHash)!;
+  // The members of the payment presented, where the reference holds them: `presented` is stated only then.
+  const signedHash = ref.signedHash === undefined ? null : normalHash(ref.signedHash);
+  const head = await call(() => reader.headUtime(), isSafeInteger);
+  const stated = await call(() => reader.indexed(), isIndexed);
+  const own = (await call(() => reader.byInBody(request), isTxList)).filter((t) => sameAccount(t.account, ref.wallet));
+  const state = await call(() => reader.walletState(ref.wallet), isWalletState);
+  const w5 = isW5(state, ref);
+  const listing: Listing = w5 ? await walk(reader, ref, state, query.after, query.search) : { listed: [], end: true, newer: 0 };
+
+  const seen: TvmSeen[] = [];
+  let held = !listing.end;
+  /** Where the list resumes: the place in it of the first transaction read again, in the walk's order. */
+  const placeOf = new Map(listing.listed.map((t, i) => [t.hash, i]));
+  let resumeAt = listing.end ? Infinity : listing.listed.length;
+  const holdAt = (i: number): void => {
+    if (i < resumeAt) resumeAt = i;
+  };
+  /** A transaction the read must read again: a listed one holds the list there; one the lookup found holds no place. */
+  const hold = (t: TonTx): void => {
+    held = true;
+    const i = placeOf.get(t.hash);
+    if (i !== undefined) holdAt(i);
+  };
+  const undecodedAt: { transaction: string; place?: number }[] = [];
+  /** An item the search met and could not decode: named, never a failure of the read. */
+  const undecodable = (t: TonTx): void => {
+    const i = placeOf.get(t.hash);
+    undecodedAt.push({ transaction: t.hash, ...(i === undefined ? {} : { place: i }) });
+  };
+  const signer = rawKey(ref.wallet)!;
+  const party: TvmSeen["party"] = sameAccount(ref.wallet, ref.payee) ? "payee" : "payer";
+  const givenRefs = (query.others ?? []).flatMap((o) => ("ref" in o && isObject(o.ref) ? [o.ref] : []));
+  const givenBy = (body: Hex | null, signed: Hex | null): boolean =>
+    givenRefs.some(
+      (g) => (body !== null && normalHash(g.requestBodyHash) === body) || (signed !== null && normalHash(g.signedHash) === signed),
+    );
+  const positionOf = (t: TonTx): { position?: bigint } => (t.mcSeqno === undefined || t.mcSeqno === null ? {} : { position: t.mcSeqno });
+  const row = (
+    t: TonTx,
+    of: { result: "succeeded" | "failed"; consumed: boolean; carries: boolean; party: TvmSeen["party"]; kind: TvmSeen["kind"]; given: boolean; signer: string },
+    mark: TvmMark,
+  ): TvmSeen => ({ transaction: t.hash, ...positionOf(t), mark, account: "none", ...of });
+
+  /**
+   * Follows each of a run's Jetton `transfer` messages carrying H to the payer's Jetton wallet and from its
+   * `internal_transfer` to its taker. The run succeeded where every one was delivered; it names the payee's account
+   * where one of them reached the payee's Jetton wallet of its master.
+   */
+  const follow = async (
+    t: TonTx,
+    msgs: readonly TonOutMsg[],
+    of: { consumed: boolean; party: TvmSeen["party"]; given: boolean; signer: string },
+    shown: Presented | undefined,
+  ): Promise<void> => {
+    const moved: Moved[] = [];
+    const txs: TonTx[] = [t];
+    let account: TvmSeen["account"] = query.act === "payment" ? "other" : "none";
+    let failure = false;
+    for (const msg of msgs) {
+      const taken = (await call(() => reader.byInMessage(msg.hash), isTxList))[0];
+      if (taken === undefined) return hold(t);
+      txs.push(taken);
+      const internal = taken.outMsgs.find((m) => m.opcode === OP.internalTransfer);
+      if (taken.aborted || internal === undefined) {
+        failure = true;
+        continue;
+      }
+      const delivered = (await call(() => reader.byInMessage(internal.hash), isTxList))[0];
+      if (delivered === undefined) return hold(t);
+      txs.push(delivered);
+      if (delivered.aborted) {
+        failure = true;
+        continue;
+      }
+      const amount = delivered.inBody === null ? null : internalAmount(delivered.inBody);
+      if (amount === null) return undecodable(t);
+      const master = await call(() => reader.jettonMaster(taken.account), isRawAddress);
+      if (query.act === "payment") {
+        const payeeWallet = await call(() => reader.jettonWallet(master, ref.payee), isRawAddress);
+        if (sameAccount(delivered.account, payeeWallet)) account = "payee";
+      }
+      moved.push({ asset: rawKey(master)!, amount, to: rawKey(delivered.account)!, transaction: t.hash, place: msg.hash });
+    }
+    const mark = markOf(lowest(txs));
+    if (mark === undefined) return hold(t);
+    if (failure) {
+      // A failed result moved nothing: the account it names is the destination of the transfer the payer signed.
+      const named = msgs.map((m) => (m.body === undefined || m.body === null ? null : liteOf(m.body))).map((b) => (b === null ? null : jettonDestination(b)));
+      const failedAccount: TvmSeen["account"] =
+        query.act !== "payment" || named.every((d) => d === null) ? "none" : named.some((d) => d !== null && sameAccount(d, ref.payee)) ? "payee" : "other";
+      seen.push({ ...row(t, { result: "failed", carries: true, kind: "same", ...of }, mark), account: failedAccount, moved: [] });
+      return;
+    }
+    seen.push({
+      ...row(t, { result: "succeeded", carries: true, kind: "same", ...of }, mark),
+      account,
+      moved,
+      ...(shown === undefined ? {} : { presented: shown }),
+    });
+  };
+
+  const ownHashes = new Set(own.map((t) => t.hash));
+  // Oldest first, so that of two acts that meet every test the earlier is the one answered.
+  const order = (t: TonTx): bigint => (t.mcSeqno === undefined || t.mcSeqno === null ? 1n << 64n : t.mcSeqno);
+  const candidates = [...own, ...listing.listed.filter((t) => !ownHashes.has(t.hash))].sort((a, b) =>
+    order(a) < order(b) ? -1 : order(a) > order(b) ? 1 : 0,
+  );
+  let ran = false;
+  /** Whether a run at the signed number lies at or below the stated finalized block. */
+  let ranFinal = false;
+  const ranAt = (t: TonTx): void => {
+    ran = true;
+    if (stated !== null && t.mcSeqno !== undefined && t.mcSeqno !== null && t.mcSeqno <= stated.last) ranFinal = true;
+  };
+  for (const t of candidates) {
+    if (ownHashes.has(t.hash)) {
+      // The request itself: found by its body hash, at the signed number.
+      const given = givenBy(request, signedHash);
+      const of = { consumed: true, party, given, signer };
+      if (t.aborted) {
+        const mark = markOf(t.finality);
+        if (mark === undefined) hold(t);
+        else seen.push(row(t, { result: "failed", carries: true, kind: "same", ...of, consumed: false }, mark));
+        continue;
+      }
+      const transfers = t.outMsgs.filter((m) => m.opcode === OP.jettonTransfer);
+      if (transfers.length > 0) {
+        ranAt(t);
+        await follow(t, transfers, of, signedHash === null ? undefined : "yes");
+        continue;
+      }
+      const changed = dataChanged(t);
+      if (changed === undefined) hold(t);
+      else if (changed) {
+        // It ran and sent nothing: the number is consumed.
+        ranAt(t);
+        const mark = markOf(t.finality);
+        if (mark === undefined) hold(t);
+        else seen.push(row(t, { result: "failed", carries: true, kind: "same", ...of }, mark));
+      }
+      continue;
+    }
+    // A listed transaction of the wallet.
+    if (t.aborted) continue;
+    const body = t.inBody === null ? null : liteOf(t.inBody);
+    if (t.inBody !== null && body === null) {
+      undecodable(t);
+      continue;
+    }
+    const op = body === null ? null : opOf(body);
+    if (op === EXTENSION_ACTION) {
+      const carrying = carrying_(t, h);
+      if (carrying === "undecodable") undecodable(t);
+      else if (carrying !== undefined) {
+        const source = rawKey(t.inSource);
+        if (source === null) hold(t);
+        else await follow(t, carrying, { consumed: false, party: sameAccount(source, ref.payee) ? "payee" : "other", given: false, signer: source }, undefined);
+      }
+      continue;
+    }
+    if (op !== OP.internalSigned && op !== EXTERNAL_SIGNED) continue;
+    const req = requestOf(body!);
+    if (req === null) {
+      undecodable(t);
+      continue;
+    }
+    const changed = dataChanged(t);
+    if (changed === undefined) {
+      hold(t);
+      continue;
+    }
+    if (!changed) continue;
+    const atNumber = req.seqno === ref.seqno;
+    if (atNumber) ranAt(t);
+    const bodyHash = liteHash(body!);
+    const of = { consumed: atNumber, party, given: givenBy(bodyHash === null ? null : (`0x${toHex(bodyHash.hash)}` as Hex), req.signed), signer };
+    const carrying = carrying_(t, h);
+    if (carrying === "undecodable") {
+      undecodable(t);
+      continue;
+    }
+    if (carrying !== undefined) {
+      await follow(t, carrying, of, signedHash === null ? undefined : req.signed === null ? "unshown" : req.signed === signedHash ? "yes" : "no");
+      continue;
+    }
+    const mark = markOf(t.finality);
+    const comment = commented(t, h);
+    if (comment === "undecodable") {
+      undecodable(t);
+      continue;
+    }
+    if ((comment !== undefined || atNumber) && mark === undefined) {
+      hold(t);
+      continue;
+    }
+    if (comment !== undefined) seen.push(row(t, { result: "succeeded", carries: true, kind: "other", ...of }, mark!));
+    else if (atNumber) seen.push(row(t, { result: "succeeded", carries: false, kind: "same", ...of }, mark!));
+  }
+
+  const lapsed = head > ref.validUntil + EXPIRY_MARGIN;
+  let value: Facts<bigint, TvmMark>["value"];
+  let whole: boolean;
+  if (w5) {
+    // At the latest head: a run at the number, the active wallet's number above it, or the account removed or deployed.
+    const above = state.status === "active" && state.seqno !== null && state.seqno > ref.seqno;
+    const moved = listing.listed.some((t) => t.before!.status !== t.after!.status);
+    // At the final mark: a run at the number at or below the stated block, or the number moved by a wallet whose last
+    // transaction is at or below it.
+    const last = listing.listed[0]?.mcSeqno ?? undefined;
+    const settledBelow = stated !== null && (last === undefined || last <= stated.last);
+    const final = stated !== null && (!lapsed || stated.utime > ref.validUntil + EXPIRY_MARGIN);
+    // An active wallet whose state the index gives without its number is not read at the latest head, and holds the
+    // search: a state missing a member is no state the read can decide on.
+    const headRead = state.status !== "active" || state.seqno !== null;
+    if (!headRead) held = true;
+    value = {
+      consumed: ranFinal || ((above || moved) && settledBelow),
+      lapsed,
+      mark: final ? "finalized" : "confirmed",
+      ...(headRead ? { head: { consumed: ran || above || moved } } : {}),
+    };
+    // The step-4 gate: that the index lists whole is not yet shown by a run (profile `x402-exact-tvm`, rule 6), so the
+    // expiry read proves no absence and is never read whole, through any reader.
+    whole = false;
+  } else {
+    whole = !held && stated !== null && stated.utime >= head;
+  }
+  const after = query.after;
+  const history = stated !== null && (after !== undefined ? stated.first <= after : stated.first <= 1n);
+  // The search position: the given one where a transaction listed above it holds the list, else the place of the first
+  // transaction read again; none where the list was read to its end.
+  const cursorAt = (i: number): TvmSearch | undefined => {
+    if (i === Infinity) return undefined;
+    if (listing.heldAbove === true || i < listing.newer) return query.search;
+    const next = i < listing.listed.length ? linkOf(listing.listed[i]!) : listing.next;
+    return next === undefined || state.last === null ? undefined : { top: linkOf(state.last), next };
+  };
+  const at = cursorAt(resumeAt);
+  // In the order the list is read; an item the lookup found, which has no place in it, first.
+  const undecoded = [...undecodedAt]
+    .sort((a, b) => (a.place ?? -1) - (b.place ?? -1))
+    .map((u) => {
+      const c = u.place === undefined ? undefined : cursorAt(Math.min(u.place, resumeAt));
+      return c === undefined ? { transaction: u.transaction } : { transaction: u.transaction, at: c };
+    });
+  return {
+    seen,
+    ...(value === undefined ? {} : { value }),
+    search: at === undefined ? { whole } : { whole, at },
+    ...(undecoded.length === 0 ? {} : { undecoded }),
+    history,
+  };
+}
+
+/**
+ * A W5 wallet: its code hash, from its state, or, while it is `uninit`, `nonexist` or `frozen`, from its state where the
+ * index gives one and else from the reference, is W5R1's.
+ */
+function isW5(state: TonWalletState, ref: TvmRef): boolean {
+  const code = state.status === "active" ? state.codeHash : (state.codeHash ?? ref.codeHash);
+  return code !== null && code !== undefined && normalHash(code) === W5R1_CODE_HASH;
+}
+
+/**
+ * The wallet's list as the expiry read reads it: `listed`, newest first, the first `newer` of them those above the given
+ * search position's `top`; `end`, whether it reached the first at or before the position given, or the wallet's first;
+ * and, where it did not, `next`, the transaction it reads next.
+ */
+interface Listing {
+  readonly listed: TonTx[];
+  readonly end: boolean;
+  readonly newer: number;
+  readonly next?: TonLink;
+  /** Whether it held among those above the given search position's `top`, before reading on from its `next`. */
+  readonly heldAbove?: boolean;
+}
+
+/**
+ * The wallet's transactions from its last back, each by its predecessor, to the first at or before `after`, or to its
+ * first, at most `MAX_TVM_LISTED`. With a search position, those above its `top` are read, then the list reads on from
+ * its `next`, the transactions between having been read. A link that does not hold, a transaction lacking a member the
+ * read takes, or the bound reached holds the list at the transaction it reads next.
+ */
+async function walk(
+  reader: TvmReader,
+  ref: TvmRef,
+  state: TonWalletState,
+  after: bigint | undefined,
+  search: TvmSearch | undefined,
+): Promise<Listing> {
+  const listed: TonTx[] = [];
+  let newer = 0;
+  let above = search !== undefined;
+  let from = state.last;
+  const held = (): Listing => ({
+    listed,
+    end: false,
+    newer: above ? listed.length : newer,
+    ...(above ? { heldAbove: true } : {}),
+    ...(from === null ? {} : { next: from }),
+  });
+  while (from !== null) {
+    if (above && sameLink(from, search!.top)) {
+      newer = listed.length;
+      above = false;
+      from = search!.next;
+      continue;
+    }
+    if (listed.length >= MAX_TVM_LISTED) return held();
+    const at = from;
+    const page = await call(() => reader.transactions(ref.wallet, at, MAX_TVM_LISTED - listed.length), isTxList);
+    if (page.length === 0) return held();
+    for (const t of page) {
+      if (from === null || t.hash !== from.hash || t.lt !== from.lt || !sameAccount(t.account, ref.wallet)) return held();
+      if (above && sameLink(t, search!.top)) break;
+      if (t.mcSeqno === undefined || t.prev === undefined || t.before === undefined || t.after === undefined) return held();
+      listed.push(t);
+      if (after !== undefined && t.mcSeqno !== null && t.mcSeqno <= after) return { listed, end: true, newer: above ? listed.length : newer };
+      from = t.prev;
+      if (from === null) return { listed, end: true, newer: above ? listed.length : newer };
+      if (listed.length >= MAX_TVM_LISTED) return held();
+    }
+  }
+  return { listed, end: true, newer: above ? listed.length : newer };
+}
+
+/** Whether the account's data hash changed in the transaction; undefined where the index gave no state for it. */
+function dataChanged(t: TonTx): boolean | undefined {
+  if (t.before === undefined || t.after === undefined) return undefined;
+  return t.before.dataHash !== t.after.dataHash;
+}
+
+/** The lowest finality of the transactions. */
+function lowest(txs: readonly TonTx[]): 0 | 1 | 2 {
+  return Math.min(...txs.map((t) => t.finality)) as 0 | 1 | 2;
 }
 
 /** The mark of a TON Center finality state: 1 `confirmed`, 2 `finalized`, and none for 0. */
@@ -1001,86 +1501,289 @@ function markOf(finality: 0 | 1 | 2): TvmMark | undefined {
   return finality >= 2 ? "finalized" : finality >= 1 ? "confirmed" : undefined;
 }
 
-/**
- * The read's facts: the act at its mark where it settled, or where a Jetton transaction aborted or bounced, or every W5
- * transaction aborted, a failed result, which took the request where W5 ran it; the request read unconsumed with its
- * validity passed where it expired; and nothing for a transaction that carries no transfer, one not yet included, or
- * one not found. The lookup by body hash is never a search read whole.
- */
-function factsOf(read: TvmRead): Facts<bigint, TvmMark> {
-  const none = { seen: [], search: { whole: false }, history: false } as const;
-  const row = (transaction: string, finality: 0 | 1 | 2, result: "succeeded" | "failed", consumed: boolean): Seen<bigint, TvmMark>[] => {
-    const mark = markOf(finality);
-    return mark === undefined ? [] : [actSeen<bigint, TvmMark>(transaction, mark, undefined, result, consumed)];
-  };
-  switch (read.state) {
-    case "unreadable":
-      return { ...none, unreadable: read.reason };
-    case "pending":
-      return none;
-    case "settled":
-      return { ...none, seen: row(read.transaction, read.finality, "succeeded", true) };
-    case "failed":
-      switch (read.why) {
-        case "expired":
-          return { ...none, value: { consumed: false, lapsed: true, mark: "finalized" } };
-        case "no-transfer":
-          return none;
-        default:
-          return { ...none, seen: row(read.transaction, read.finality, "failed", read.consumed) };
-      }
+/** The transaction's Jetton `transfer` out messages carrying H; `undecodable` where one of them cannot be read. */
+function carrying_(t: TonTx, h: AtrHash): TonOutMsg[] | "undecodable" | undefined {
+  const found: TonOutMsg[] = [];
+  for (const m of t.outMsgs) {
+    if (m.opcode !== OP.jettonTransfer) continue;
+    const body = m.body === undefined || m.body === null ? null : liteOf(m.body);
+    const payload = body === null ? null : jettonPayload(body);
+    if (payload === null) return "undecodable";
+    if (commentOf(payload) === h) found.push(m);
   }
+  return found.length === 0 ? undefined : found;
+}
+
+/** The transaction's plain comment out message carrying H, an act of another kind; `undecodable` as `carrying_`. */
+function commented(t: TonTx, h: AtrHash): TonOutMsg | "undecodable" | undefined {
+  let unread = false;
+  for (const m of t.outMsgs) {
+    if (m.opcode !== TEXT_COMMENT) continue;
+    const body = m.body === undefined || m.body === null ? null : liteOf(m.body);
+    if (body === null) unread = true;
+    else if (commentOf(body) === h) return m;
+  }
+  return unread ? "undecodable" : undefined;
+}
+
+function isSafeInteger(v: unknown): v is number {
+  return Number.isSafeInteger(v);
+}
+
+function isIndexed(v: unknown): v is TonIndexed | null {
+  if (v === null) return true;
+  if (!isObject(v)) return false;
+  return isPosition(v["first"]) && isPosition(v["last"]) && v["first"] <= v["last"] && Number.isSafeInteger(v["utime"]);
+}
+
+const STATUSES: ReadonlySet<unknown> = new Set(["active", "uninit", "nonexist", "frozen"]);
+
+function isWalletState(v: unknown): v is TonWalletState {
+  if (!isObject(v) || !STATUSES.has(v["status"])) return false;
+  const { codeHash, seqno, last } = v;
+  return (
+    (codeHash === null || normalHash(codeHash) !== null) &&
+    (seqno === null || isUint32(seqno)) &&
+    (last === null || isLink(last))
+  );
+}
+
+function isLink(v: unknown): v is { hash: string; lt: string } {
+  return isObject(v) && typeof v["hash"] === "string" && typeof v["lt"] === "string";
+}
+
+function isTxList(v: unknown): v is readonly TonTx[] {
+  return Array.isArray(v) && v.every(isTonTx);
+}
+
+// ── The cells the read decodes, without @ton/core.
+
+/** A cell read from a bag of cells' bytes: whether it is exotic, its level mask, its data with its completion tag, its bits and its references. */
+interface Lite {
+  readonly exotic: boolean;
+  readonly mask: number;
+  readonly data: Uint8Array;
+  readonly bits: number;
+  readonly refs: readonly Lite[];
 }
 
 /**
- * The transactions that took this message; `transport` when the read fails, and `unparseable` when its answer is
- * malformed.
+ * The root of a bag of cells as `layoutOf` reads its bytes, each cell's bits and references read as `cellsOf` reads
+ * them, within the pairing's bounds; null where it is not one.
  */
-async function transactionsTaking(reader: TvmReader, msgHash: string): Promise<readonly TonTx[] | "transport" | "unparseable"> {
-  let found: readonly TonTx[];
-  try {
-    found = await reader.byInMessage(msgHash);
-  } catch {
-    return "transport";
+function liteOf(bytes: Uint8Array): Lite | null {
+  if (bytes.length > MAX_BOC_BYTES) return null;
+  const bag = layoutOf(bytes);
+  if (bag === null || bag.cells > MAX_CELLS) return null;
+  const { cells, rootIdx, refSize, spans, data } = bag;
+  const built = new Array<Lite>(cells);
+  for (let i = cells - 1; i >= 0; i--) {
+    const [start, end] = spans[i]!;
+    const s = data.subarray(start, end);
+    if (s.length < 2) return null;
+    const d1 = s[0]!;
+    const d2 = s[1]!;
+    const refCount = d1 & 7;
+    if (refCount > 4 || cellSize(d1, d2, refSize) !== s.length) return null;
+    const stored = (d1 & 16) === 0 ? 0 : popcount(d1 >> 5) + 1;
+    const bytesAt = 2 + stored * 34;
+    const n = (d2 >> 1) + (d2 & 1);
+    const refsAt = bytesAt + n;
+    const refs: Lite[] = [];
+    for (let k = 0; k < refCount; k++) {
+      let r = 0;
+      for (let j = 0; j < refSize; j++) r = r * 256 + s[refsAt + k * refSize + j]!;
+      if (r <= i || r >= cells) return null;
+      refs.push(built[r]!);
+    }
+    let bits = n * 8;
+    if ((d2 & 1) === 1) {
+      const last = s[refsAt - 1]!;
+      if ((last & 0x7f) === 0) return null;
+      bits -= 1 + (31 - Math.clz32(last & -last));
+    }
+    if (bits > 1023) return null;
+    built[i] = { exotic: (d1 & 8) !== 0, mask: d1 >> 5, data: s.subarray(bytesAt, refsAt), bits, refs };
   }
-  return Array.isArray(found) && found.every(isTonTx) ? found : "unparseable";
+  return built[rootIdx]!;
 }
 
-/** The head's `gen_utime`; `transport` when the read fails, and `unparseable` when its answer is not a safe integer. */
-async function headTime(reader: TvmReader): Promise<number | "transport" | "unparseable"> {
-  let head: unknown;
-  try {
-    head = await reader.headUtime();
-  } catch {
-    return "transport";
+/** Reads a `Lite` cell's bits in order, and its references; a read past its end throws. */
+class Bits {
+  private at = 0;
+  private ref = 0;
+  constructor(private readonly c: Lite) {}
+  bit(): boolean {
+    if (this.at >= this.c.bits) throw new RangeError("past the cell's bits");
+    const i = this.at++;
+    return ((this.c.data[i >> 3]! >> (7 - (i & 7))) & 1) === 1;
   }
-  return Number.isSafeInteger(head) ? (head as number) : "unparseable";
+  uint(n: number): number {
+    let v = 0;
+    for (let k = 0; k < n; k++) v = v * 2 + (this.bit() ? 1 : 0);
+    return v;
+  }
+  big(n: number): bigint {
+    let v = 0n;
+    for (let k = 0; k < n; k++) v = v * 2n + (this.bit() ? 1n : 0n);
+    return v;
+  }
+  skip(n: number): void {
+    if (this.at + n > this.c.bits) throw new RangeError("past the cell's bits");
+    this.at += n;
+  }
+  loadRef(): Lite {
+    const r = this.c.refs[this.ref++];
+    if (r === undefined) throw new RangeError("past the cell's references");
+    return r;
+  }
+  /** TL-B's `Grams`, a `VarUInteger 16`. */
+  coins(): bigint {
+    return this.big(this.uint(4) * 8);
+  }
+  /** Skips a TL-B `MsgAddress`. */
+  address(): void {
+    const tag = this.uint(2);
+    if (tag === 0) return;
+    if (tag === 1) return this.skip(this.uint(9));
+    if (this.bit()) this.skip(this.uint(5));
+    if (tag === 2) return this.skip(8 + 256);
+    const length = this.uint(9);
+    this.skip(32 + length);
+  }
+  /** The rest of the cell, its bits from here and its references from here, as a cell. */
+  rest(): Lite {
+    return bitsCell(this.c, this.at, this.c.bits, this.c.refs.slice(this.ref));
+  }
 }
 
-/** A lookup's transactions on one account, with the time through which its index holds every block (null: none). */
-interface OnAccount {
-  transactions: TonTx[];
-  headUtime: number | null;
+/** The cell of `c`'s bits from `from` to `to` and the references given, with its completion tag. */
+function bitsCell(c: Lite, from: number, to: number, refs: readonly Lite[]): Lite {
+  const bits = to - from;
+  const data = new Uint8Array(Math.ceil(bits / 8));
+  for (let i = 0; i < bits; i++) {
+    const j = from + i;
+    if (((c.data[j >> 3]! >> (7 - (j & 7))) & 1) === 1) data[i >> 3] = data[i >> 3]! | (0x80 >> (i & 7));
+  }
+  if (bits % 8 !== 0) data[bits >> 3] = data[bits >> 3]! | (0x80 >> (bits & 7));
+  return { exotic: false, mask: 0, data, bits, refs };
 }
 
 /**
- * The transactions with this inbound body on `account`; `transport` when the read fails, and `unparseable` when its
- * answer is malformed.
+ * The representation hash and depth of an ordinary cell of level 0 whose references are all such cells, as TON computes
+ * them (the descriptor bytes, the data with its completion tag, each reference's depth, then each reference's hash);
+ * null for a cell under which an exotic cell or a level lies.
  */
-async function transactionsOn(reader: TvmReader, bodyHash: Hex, account: string): Promise<OnAccount | "transport" | "unparseable"> {
-  let found: unknown;
-  try {
-    found = await reader.byInBody(bodyHash);
-  } catch {
-    return "transport";
+function liteHash(c: Lite, memo = new Map<Lite, { hash: Uint8Array; depth: number } | null>()): { hash: Uint8Array; depth: number } | null {
+  const known = memo.get(c);
+  if (known !== undefined) return known;
+  let out: { hash: Uint8Array; depth: number } | null = null;
+  if (!c.exotic && c.mask === 0) {
+    const kids = c.refs.map((r) => liteHash(r, memo));
+    if (kids.every((k) => k !== null)) {
+      const bytes = Math.ceil(c.bits / 8);
+      const repr = new Uint8Array(2 + bytes + kids.length * 34);
+      repr[0] = c.refs.length;
+      repr[1] = Math.floor(c.bits / 8) + bytes;
+      repr.set(c.data.subarray(0, bytes), 2);
+      kids.forEach((k, i) => {
+        repr[2 + bytes + 2 * i] = k!.depth >> 8;
+        repr[3 + bytes + 2 * i] = k!.depth & 0xff;
+        repr.set(k!.hash, 2 + bytes + 2 * kids.length + 32 * i);
+      });
+      out = { hash: sha256(repr), depth: kids.length === 0 ? 0 : 1 + Math.max(...kids.map((k) => k!.depth)) };
+    }
   }
-  if (!isObject(found)) return "unparseable";
-  const { transactions, headUtime } = found;
-  if (!Array.isArray(transactions) || !transactions.every(isTonTx)) return "unparseable";
-  return {
-    transactions: transactions.filter((t) => sameAccount(t.account, account)),
-    headUtime: Number.isSafeInteger(headUtime) ? (headUtime as number) : null,
-  };
+  memo.set(c, out);
+  return out;
+}
+
+/** A cell's first 32 bits, its op; null for an exotic cell or one shorter. */
+function opOf(c: Lite): number | null {
+  return c.exotic || c.bits < 32 ? null : new Bits(c).uint(32);
+}
+
+/**
+ * A request W5 runs as signed, `internal_signed` or `external_signed`: its sequence number, and the hash of the request
+ * less its last 512 bits, the signature, which the wallet's key signs (null where `liteHash` cannot hash it).
+ */
+function requestOf(c: Lite): { seqno: number; signed: Hex | null } | null {
+  if (c.exotic || c.bits < REQUEST_MIN_BITS) return null;
+  const r = new Bits(c);
+  const op = r.uint(32);
+  if (op !== OP.internalSigned && op !== EXTERNAL_SIGNED) return null;
+  r.skip(64);
+  const seqno = r.uint(32);
+  const signed = liteHash(bitsCell(c, 0, c.bits - SIGNATURE_BITS, c.refs));
+  return { seqno, signed: signed === null ? null : `0x${toHex(signed.hash)}` };
+}
+
+/**
+ * A Jetton `transfer` body's destination, the owner the transfer names, raw; null where the body is not a transfer or
+ * its destination is not a standard address with no anycast.
+ */
+function jettonDestination(c: Lite): string | null {
+  if (c.exotic) return null;
+  try {
+    const r = new Bits(c);
+    if (r.uint(32) !== OP.jettonTransfer) return null;
+    r.skip(64);
+    r.coins();
+    if (r.uint(2) !== 2 || r.bit()) return null;
+    const workchain = (r.uint(8) << 24) >> 24;
+    return `${workchain}:${r.big(256).toString(16).padStart(64, "0")}`;
+  } catch {
+    return null;
+  }
+}
+
+/** A Jetton `transfer` body's forward payload: its reference, or the rest of the body inline; null where it is not one. */
+function jettonPayload(c: Lite): Lite | null {
+  if (c.exotic) return null;
+  try {
+    const r = new Bits(c);
+    if (r.uint(32) !== OP.jettonTransfer) return null;
+    r.skip(64);
+    r.coins();
+    r.address();
+    r.address();
+    if (r.bit()) r.loadRef();
+    r.coins();
+    return r.bit() ? r.loadRef() : r.rest();
+  } catch {
+    return null;
+  }
+}
+
+/** The hash in a text comment cell holding an LCP string and no references, or null. */
+function commentOf(c: Lite): AtrHash | null {
+  if (c.exotic || c.refs.length !== 0 || c.bits < 32 || (c.bits - 32) % 8 !== 0) return null;
+  if (c.data[0] !== 0 || c.data[1] !== 0 || c.data[2] !== 0 || c.data[3] !== 0) return null;
+  try {
+    return fromLcpString(strictUtf8.decode(c.data.subarray(4, c.bits / 8)));
+  } catch {
+    return null;
+  }
+}
+
+/** The amount of a Jetton `internal_transfer` body, in decimal; null where the body is not one. */
+function internalAmount(bytes: Uint8Array): string | null {
+  const c = liteOf(bytes);
+  if (c === null || c.exotic) return null;
+  try {
+    const r = new Bits(c);
+    if (r.uint(32) !== OP.internalTransfer) return null;
+    r.skip(64);
+    return r.coins().toString();
+  } catch {
+    return null;
+  }
+}
+
+function toHex(b: Uint8Array): string {
+  let s = "";
+  for (const x of b) s += x.toString(16).padStart(2, "0");
+  return s;
 }
 
 /**
@@ -1119,16 +1822,29 @@ export async function tvmRecover(
 
 function isTonTx(t: unknown): t is TonTx {
   if (!isObject(t)) return false;
-  const { hash, account, aborted, finality, inBody, outMsgs } = t;
+  const { hash, account, aborted, finality, inBody, outMsgs, inSource, mcSeqno, lt, prev, before, after } = t;
+  const bytes = (b: unknown) => b === undefined || b === null || b instanceof Uint8Array;
   return (
     typeof hash === "string" &&
-    typeof account === "string" &&
+    rawKey(account) !== null &&
     typeof aborted === "boolean" &&
     (finality === 0 || finality === 1 || finality === 2) &&
     (inBody === null || inBody instanceof Uint8Array) &&
     Array.isArray(outMsgs) &&
-    outMsgs.every((m) => isObject(m) && typeof m["hash"] === "string" && (m["opcode"] === null || typeof m["opcode"] === "number"))
+    outMsgs.every(
+      (m) => isObject(m) && typeof m["hash"] === "string" && (m["opcode"] === null || typeof m["opcode"] === "number") && bytes(m["body"]),
+    ) &&
+    (inSource === undefined || inSource === null || typeof inSource === "string") &&
+    (mcSeqno === undefined || mcSeqno === null || isPosition(mcSeqno)) &&
+    (lt === undefined || typeof lt === "string") &&
+    (prev === undefined || prev === null || isLink(prev)) &&
+    (before === undefined || isAccountState(before)) &&
+    (after === undefined || isAccountState(after))
   );
+}
+
+function isAccountState(v: unknown): v is TonAccountState {
+  return isObject(v) && STATUSES.has(v["status"]) && (v["dataHash"] === null || typeof v["dataHash"] === "string");
 }
 
 function sameAccount(a: string, b: string): boolean {
@@ -1174,7 +1890,8 @@ function isRawAddress(s: unknown): s is string {
 
 /**
  * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra`, the amount as a Jetton amount
- * below 2^120, a forward TON amount below 2^120 − 1 (`build` attaches more TON than it, and the attached value is a
+ * below 2^120, `"0"` among them (the agreement's floor is zero: the scheme asks the transfer to equal the amount with no
+ * floor, and the stock settler and the standard Jetton wallet take a zero), a forward TON amount below 2^120 − 1 (`build` attaches more TON than it, and the attached value is a
  * `Grams`, below 2^120), and `maxTimeoutSeconds` a positive integer below 2^32, which `build` writes into the request
  * (the wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds`). The network is
  * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
@@ -1195,7 +1912,7 @@ const check: OptionFilter = (o) => {
   if (extra?.["areFeesSponsored"] !== true) return refusal("tvm/option-malformed");
   const forwardTon = extra["forwardTonAmount"];
   if (forwardTon !== undefined && decimalBelow(forwardTon, COINS_LIMIT - 1n) === undefined) return refusal("tvm/option-malformed");
-  if (!isAmount(o.amount) || decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
+  if (!(o.amount === "0" || isAmount(o.amount)) || decimalBelow(o.amount, COINS_LIMIT) === undefined) return refusal("tvm/option-malformed");
   const t = o.maxTimeoutSeconds;
   if (!isTimeoutSeconds(t) || !isUint32(t)) return refusal("tvm/option-malformed");
   if (!isRawAddress(o.asset) || !isRawAddress(o.payTo)) return refusal("tvm/option-malformed");
@@ -1216,12 +1933,27 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 }
 
 /**
+ * The stock server's forward payload, the cell of one zero bit, as `@x402/tvm` 2.30.0 writes it
+ * (`beginCell().storeBit(0).endCell().toBoc()`, `src/utils.ts:60-62`; `src/exact/server/scheme.ts:98-99`, `:116`):
+ * `te6cckEBAQEAAwAAAUD20kA0`.
+ */
+const STOCK_PLACEHOLDER = Uint8Array.from([
+  0xb5, 0xee, 0x9c, 0x72, 0x41, 0x01, 0x01, 0x01, 0x00, 0x03, 0x00, 0x00, 0x01, 0x40, 0xf6, 0xd2, 0x40, 0x34,
+]);
+
+/** True for the cell of one zero bit and no references, which a stock server places as an empty forward payload. */
+function isPlaceholder(c: Cell): boolean {
+  return !c.isExotic && c.refs.length === 0 && c.bits.length === 1 && !c.bits.at(0);
+}
+
+/**
  * x402's legal context placed in the document, then `extra.forwardPayload` on the offered option set to the BoC of the
- * hash's comment, which `commentBoc` writes without @ton/core. An offer that carries a forward payload keeps it only
- * when it is that comment's cell, else `tvm/carrier-occupied`: bytes equal to the BoC written are that cell, and bytes
- * `bagOf` refuses are not, without @ton/core; any other BoC is decoded and compared by representation hash, the one
- * step here that needs @ton/core, so without it that offer is `tvm/peer-missing`. Every other answer is the same with
- * @ton/core and without it.
+ * hash's comment, which `commentBoc` writes without @ton/core. An offer that carries a forward payload is placed only
+ * when it is that comment's cell or the stock server's empty one, the cell of one zero bit (`STOCK_PLACEHOLDER`), which
+ * is replaced; any other is `tvm/carrier-occupied`. Bytes equal to the comment's BoC or the stock server's are those
+ * cells, and bytes `bagOf` refuses are neither, without @ton/core; any other BoC is decoded and compared by its cell,
+ * the one step here that needs @ton/core, so without it that offer is `tvm/peer-missing`. Every other answer is the
+ * same with @ton/core and without it.
  */
 function advertise(
   doc: PaymentRequired,
@@ -1238,10 +1970,10 @@ function advertise(
   if (present !== undefined) {
     const bag = bagOf(present);
     if (isRefusal(bag)) return refusal("tvm/carrier-occupied");
-    if (!sameBytes(bag.bytes, carrier)) {
+    if (!sameBytes(bag.bytes, carrier) && !sameBytes(bag.bytes, STOCK_PLACEHOLDER)) {
       const cell = rootIn(bag);
       if (isRefusal(cell) && cell.code === "tvm/peer-missing") return cell;
-      if (isRefusal(cell) || !cell.equals(comment(nh) as Cell)) return refusal("tvm/carrier-occupied");
+      if (isRefusal(cell) || !(cell.equals(comment(nh) as Cell) || isPlaceholder(cell))) return refusal("tvm/carrier-occupied");
     }
   }
   const i = offeredAt(placed.accepts, offer);
@@ -1265,7 +1997,8 @@ function workchainOf(s: string): number {
  * `attachNanotons`, each `x402/option-malformed`, and of a state init given as a BoC, its bytes (`bagOf`); its document
  * and option (`chosen`, whose filter needs no peer); the option's forward payload's bytes (`bagOf`, else
  * `tvm/carrier-mismatch`); the wallets' workchains and `now` with the option's timeout, each `x402/option-malformed`;
- * and the attached value against the option's forward amount (`tvm/value-too-low`). Then @ton/core decodes the forward
+ * and the attached value against the option's forward amount, which it must be above (`tvm/value-too-low`) by at most
+ * `MAX_TVM_ATTACHED_ABOVE_FORWARD`, the stock settler's cap (`tvm/value-too-high`). Then @ton/core decodes the forward
  * payload, which must be the hash's comment cell, and the state init, and writes the request's cells: without it the
  * choice is `tvm/peer-missing` only there. A state init given as an object waits for @ton/core, which alone tells its
  * `Cell`. The state init's fields and hash against the wallet come last.
@@ -1296,6 +2029,7 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   if (!isUint32(validUntil)) return refusal("x402/option-malformed");
   const forwardTon = extra["forwardTonAmount"] === undefined ? 0n : BigInt(extra["forwardTonAmount"] as string);
   if (attachNanotons <= forwardTon) return refusal("tvm/value-too-low");
+  if (attachNanotons > forwardTon + MAX_TVM_ATTACHED_ABOVE_FORWARD) return refusal("tvm/value-too-high");
   if (peer === undefined) return refusal("tvm/peer-missing");
   const carrier = comment(nh) as Cell;
   const held = rootIn(carried);
@@ -1539,20 +2273,31 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
   return isRefusal(r) ? r : r.c.h;
 }
 
-/** The read keys, computed from the signed BoC, and the payee, the `payTo` of the option the payment answers. */
+/**
+ * The read keys, computed from the signed BoC: H, the request's body hash, its signed hash, the sequence number it was
+ * signed against and, where the payment carries a state init, its code's hash; and the payee, the `payTo` of the option
+ * the payment answers. A payment whose `accepted` is not that option, compared by RFC 8785 with `extra.forwardPayload`
+ * dropped from both as `unplaced` drops it, is `x402/accepted-not-option`.
+ */
 async function reference(presented: unknown, option: PaymentRequirements): Promise<TvmRef | Refusal> {
   const r = carried(presented);
   if (isRefusal(r)) return r;
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
+  const given = unplaced(option);
+  if (isRefusal(given) || !sameJson(unplaced(r.accepted), given)) return refusal("x402/accepted-not-option");
   return {
     network: r.accepted.network as TvmNetwork,
     payee,
+    h: r.c.h,
     transferBodyHash: r.c.transferBodyHash,
     jettonWallet: r.c.jettonWallet,
     requestBodyHash: r.c.requestBodyHash,
+    signedHash: r.c.signedHash,
     wallet: r.c.wallet,
     validUntil: r.c.validUntil,
+    seqno: r.c.seqno,
+    ...(r.c.codeHash === undefined ? {} : { codeHash: r.c.codeHash }),
   };
 }
 
@@ -1596,7 +2341,7 @@ export const exactTvm = Object.freeze({
     unsigned: TvmUnsigned;
     landed: unknown;
     network: TvmNetwork;
-    query: StatusQuery<TvmRef, bigint, TvmMark>;
+    query: StatusQuery<TvmRef, bigint, TvmMark, TvmSearch>;
     answer: TvmStatus;
   }
 >;

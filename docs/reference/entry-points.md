@@ -30,7 +30,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents and `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
 | [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. Settlement is read from the relayed transaction's receipts through a bounded reader. |
 | [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by block and index through Sidecar. SCALE is encoded and decoded here for these shapes only. |
-| [`@integraledger/lcp/stacks`](#integraledgerlcpstacks) | Stacks rail pieces: the transaction id, the reader a settlement read goes through, the reading of a SIP-010 `transfer` whose memo argument is the ATR hash's 32 bytes, and the zero-party recovery of that hash from a mined transaction. |
+| [`@integraledger/lcp/stacks`](#integraledgerlcpstacks) | Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read. |
 | [`@integraledger/lcp/starknet`](#integraledgerlcpstarknet) | Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits. Settlement is read from the executed call's trace through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash. |
 | [`@integraledger/lcp/stellar`](#integraledgerlcpstellar) | Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8 bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. |
 | [`@integraledger/lcp/sui`](#integraledgerlcpsui) | Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a transaction's bytes is the one step that needs it: without it a function refuses `sui/peer-missing` only when it reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own dependency @scure/base, so it is checked without the peer. |
@@ -305,15 +305,15 @@ import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/
 
 ## `@integraledger/lcp/stacks`
 
-Stacks rail pieces: the transaction id, the reader a settlement read goes through, the reading of a SIP-010 `transfer` whose memo argument is the ATR hash's 32 bytes, and the zero-party recovery of that hash from a mined transaction.
+Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read.
 
 ```ts no-check
-import { stacksRecover, stacksStatus, stacksTxid } from "@integraledger/lcp/stacks";
+import { MAX_SEARCH_NONCES, MAX_STACKS_TX_BYTES, stacksRecover, … } from "@integraledger/lcp/stacks";
 ```
 
-**Values (3):** `stacksRecover`, `stacksStatus`, `stacksTxid`.
+**Values (5):** `MAX_SEARCH_NONCES`, `MAX_STACKS_TX_BYTES`, `stacksRecover`, `stacksStatus`, `stacksTxid`.
 
-**Types (6):** `StacksLanded`, `StacksMempool`, `StacksNetwork`, `StacksReader`, `StacksRef`, `StacksStatus`.
+**Types (11):** `StacksAssetEvent`, `StacksLanded`, `StacksListed`, `StacksMark`, `StacksMempool`, `StacksNetwork`, `StacksPage`, `StacksQuery`, `StacksReader`, `StacksRef`, `StacksStatus`.
 
 ## `@integraledger/lcp/starknet`
 
@@ -398,14 +398,14 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment holding its LCP string. The payer's W5 wallet signs a request whose one Jetton transfer carries that payload; settlement is read from the W5 wallet's transaction with that request and the Jetton wallets' transactions it led to, through a bounded reader.
 
 ```ts no-check
-import { exactTvm, lcpComment, OP, … } from "@integraledger/lcp/tvm";
+import { exactTvm, lcpComment, MAX_TVM_ATTACHED_ABOVE_FORWARD, … } from "@integraledger/lcp/tvm";
 ```
 
 **Pairings:** `x402/exact/tvm`.
 
-**Values (6):** `exactTvm`, `lcpComment`, `OP`, `tvmCarrier`, `tvmRecover`, `tvmStatus`.
+**Values (13):** `exactTvm`, `lcpComment`, `MAX_TVM_ATTACHED_ABOVE_FORWARD`, `MAX_TVM_BOC_BYTES`, `MAX_TVM_CELLS`, `MAX_TVM_DEPTH`, `MAX_TVM_LISTED`, `OP`, `TVM_EXPIRY_MARGIN`, `tvmCarrier`, `tvmRecover`, `tvmStatus`, `W5R1_CODE_HASH`.
 
-**Types (8):** `Broadcaster`, `TonCell`, `TonTx`, `TvmNetwork`, `TvmReader`, `TvmRef`, `TvmStatus`, `TvmUnsigned`.
+**Types (15):** `Broadcaster`, `TonAccountState`, `TonAccountStatus`, `TonCell`, `TonIndexed`, `TonLink`, `TonOutMsg`, `TonTx`, `TonWalletState`, `TvmNetwork`, `TvmReader`, `TvmRef`, `TvmSearch`, `TvmStatus`, `TvmUnsigned`.
 
 ## `@integraledger/lcp/ucp`
 

@@ -2,8 +2,8 @@
  * Stacks addresses in c32check, written as a Stacks node writes them. stacks-core 4.0.5 (stacks-network/stacks-core
  * d736ba0) writes an address with `c32_address` (stacks-common/src/address/c32.rs:372-375), the function a
  * `StacksAddress` is displayed with (stacks-common/src/types/mod.rs:1150-1157); `c32Address` gives the same characters.
- * `../mpp-usdc.ts` writes the `usdc` Stacks pairing's contract and origin addresses with it. No entry point exports
- * these names.
+ * `../mpp-usdc.ts` writes the `usdc` Stacks pairing's contract and origin addresses with it; `isCanonicalPrincipal`
+ * holds a challenge's recipient and a reference's payee to that spelling. No entry point exports these names.
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 
@@ -52,4 +52,38 @@ export function c32Address(version: number, hash160: Uint8Array): string {
   data.set(hash160);
   data.set(sha256(sha256(checked)).subarray(0, 4), 20);
   return `S${C32[version]}${c32Encode(data)}`;
+}
+
+/** A Clarity contract name, as `stacks.ts` and the `usdc` Stacks profile read one: at most 128 characters. */
+const CONTRACT_NAME = /^[a-zA-Z][a-zA-Z0-9_-]{0,127}$/;
+
+/**
+ * Whether `s` is a principal exactly as a Stacks node writes it: a standard principal as `c32Address` writes one (`S`,
+ * the version's digit, and the c32 text of a hash160 followed by its checksum), or such a principal, `.` and a Clarity
+ * contract name. A principal in lowercase, with a digit c32 decoding reads as an alias (`O`, `I`, `L`), with a leading
+ * `0` the encoding does not write, or with a checksum that does not hold is not one: c32 decoding takes the first three
+ * for the canonical principal (c32.rs:229-295), so they name the account the node writes canonically, and only that
+ * spelling is what the API names.
+ */
+export function isCanonicalPrincipal(s: unknown): boolean {
+  if (typeof s !== "string") return false;
+  const dot = s.indexOf(".");
+  const address = dot < 0 ? s : s.slice(0, dot);
+  if (dot >= 0 && !CONTRACT_NAME.test(s.slice(dot + 1))) return false;
+  if (address.length < 3 || address.length > 41 || address[0] !== "S") return false;
+  const version = C32.indexOf(address[1]!);
+  if (version < 0) return false;
+  let n = 0n;
+  for (const ch of address.slice(2)) {
+    const d = C32.indexOf(ch);
+    if (d < 0) return false;
+    n = n * 32n + BigInt(d);
+  }
+  if (n >= 1n << 192n) return false;
+  const data = new Uint8Array(24);
+  for (let i = 23; i >= 0; i--) {
+    data[i] = Number(n & 0xffn);
+    n >>= 8n;
+  }
+  return c32Address(version, data.subarray(0, 20)) === address;
 }

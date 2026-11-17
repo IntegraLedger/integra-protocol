@@ -36,9 +36,10 @@ export const TVM = /* @__PURE__ */ freeze({
     },
     proves:
       "The payer's W5 wallet signed a request whose one Jetton transfer carries this ATR's hash in its forward " +
-      "payload, as a TEP-74 text comment in LCP string form. The payer's Jetton wallet executed that transfer, " +
-      "and the Jetton wallet its `internal_transfer` reached accepted it. The comment is on chain in the " +
-      "transfer's message bodies. This does not show that amount, payee, asset or timing match the ATR's " +
-      "content.",
+      "payload, as a TEP-74 text comment in LCP string form, and ran it: the payer's own signed act carries the hash. " +
+      "The W5 wallet paid, through its Jetton wallet, the amount the `internal_transfer` names, zero included, to the " +
+      "Jetton wallet that took it, the recipient; where the read observed no transfer, the W5 wallet signed. The signer " +
+      "is the W5 wallet, named apart from the recipient. This does not show that the amount, the Jetton, the payee or " +
+      "the time match the ATR's content.",
   },
 });

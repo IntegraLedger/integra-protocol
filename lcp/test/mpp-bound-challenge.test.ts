@@ -188,7 +188,6 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   "mpp/charge/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/usdc/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/usdc/evm": { "mpp/nonce-not-usdc-derivation": "the signed nonce derives from the challenge's id, realm and request" },
-  "mpp/charge/usdc/stacks": { "mpp/request-malformed": "reference takes the request's recipient, the option's payee, as a non-empty string" },
   "mpp/charge/usdc/gateway": { "mpp/salt-not-usdc-derivation": "the burn intent's salt derives from the challenge's id, realm and request" },
   "mpp/charge/xrpl": { "xrpl/carrier-mismatch": "the signed InvoiceID is the request's methodDetails.invoiceId" },
   "mpp/session/evm": { "mpp/channel-not-bound": "the channel id derives from the request's chain, escrow, recipient and currency" },
@@ -263,7 +262,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge pairingsOfPlaced does not name, bound and reference refuse with the code pairingsOf gives", () => {
     const refused = rowsOf(answers, "every answer", {
-      exact: 1228,
+      exact: 1236,
       keep: ["the challenges pairingsOfPlaced does not name for the pairing", (a) => !a.named],
       leave: ["the challenges it names", (a) => a.named],
     });
@@ -279,7 +278,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge it names, bound gives H again or a refusal naming what it compares, and reference reads", () => {
     const named = rowsOf(answers, "every answer", {
-      exact: 1510,
+      exact: 1502,
       keep: ["the challenges pairingsOfPlaced names for the pairing", (a) => a.named],
       leave: ["the challenges it does not name", (a) => !a.named],
     });
@@ -301,7 +300,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([1314, 196]);
+    expect([bindings, named.length - bindings]).toEqual([1306, 196]);
     const listed = Object.entries(COMPARES).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);

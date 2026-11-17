@@ -106,7 +106,7 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | Starknet | `starknet` | `x402/exact/starknet` | The SNIP-9 outside execution's nonce: H's low 250 bits. |
 | Sui | `sui` | `x402/exact/sui` | One `Pure` input, H's 32 bytes, that no command uses. |
 | Tron | `tron` | `x402/exact/tron/lcp-trc20-memo` | The TRC-20 transfer's memo, `raw_data.data`: H's LCP string. |
-| TON | `tvm` | `x402/exact/tvm` | The Jetton transfer's forward payload: a TEP-74 text comment holding H's LCP string. The pairing serves `tvm:-239` (mainnet) and `tvm:-3` (testnet). The settlement BoC is read as TON deserializes a bag of cells, and each message in it as TON's action phase sends it at the configuration lcp holds for the option's network, which for both is mainnet's: bytes or a settlement message TON refuses are `tvm/boc-malformed`, an outgoing message TON would not send, or a W5 send mode TON refuses or skips, is `tvm/not-jetton-transfer`, and the wallet and Jetton wallet `reference` names are the addresses TON sends to. The W5 request is read as W5's `internal_signed` path reads it: its signature is the body's last 512 bits, and nothing after `has_other_actions` 0 is read. `build` refuses a state init TON deploys no wallet from: one that holds libraries, whose fixed prefix is longer than 8 bits, or whose hash, the bits of its fixed prefix aside, is not the wallet's address. |
+| TON | `tvm` | `x402/exact/tvm` | The Jetton transfer's forward payload: a TEP-74 text comment holding H's LCP string. The pairing serves `tvm:-239` (mainnet) and `tvm:-3` (testnet). The settlement BoC is read as TON deserializes a bag of cells, and each message in it as TON's action phase sends it at the configuration lcp holds for the option's network, which for both is mainnet's: bytes or a settlement message TON refuses are `tvm/boc-malformed`, an outgoing message TON would not send is `tvm/not-jetton-transfer`, a send mode other than 1 or 3, the two x402's TON scheme admits, is `tvm/actions`, and the wallet and Jetton wallet `reference` names are the addresses TON sends to. The W5 request is read as W5's `internal_signed` path reads it: its signature is the body's last 512 bits, and nothing after `has_other_actions` 0 is read. `build` refuses a state init TON deploys no wallet from: one that holds libraries, whose fixed prefix is longer than 8 bits, or whose hash, the bits of its fixed prefix aside, is not the wallet's address, and an attached value above the option's forward TON amount plus 30,000,000 nanotons, the stock settler's cap (`tvm/value-too-high`). `advertise` reads the stock server's forward payload, the cell of one zero bit, as an empty carrier. |
 | Stacks | `stacks` | `mpp/charge/usdc/stacks` | The SIP-010 `transfer`'s memo: H's 32 bytes. The signed transaction is read as a Stacks node decodes it: bytes a node does not decode and serialize back to themselves are `mpp/stacks-tx-malformed`. |
 | Lightning | `lightning` | `mpp/charge/lightning`, `mpp/session/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
 
@@ -141,7 +141,7 @@ the same answer, after the same calls, wherever it decodes nothing with the peer
 makes a `status` `unreadable`, or a locate's search incomplete, when it is reached, after the reads before it.
 Of the reads, Stellar's `status` and `stellarLocate` decode only a transaction that succeeded (a search that lists no
 candidate decodes none), Sui's `status` only a present transaction's bytes that hash to the digest, and TON's `status`
-nothing: it compares raw addresses without `@ton/core`. Every other rail needs nothing more than the package.
+decodes the cells it reads itself and compares raw addresses, without `@ton/core`. Every other rail needs nothing more than the package.
 
 ## Reading settlement
 
@@ -205,8 +205,9 @@ Failed means the rail itself says so: a reverted, aborted or expired transaction
 payment. On Tron a failed answer can come from the FullNode's head before the block is solidified, and on TON from
 transactions not yet finalized; a failed answer names no finality.
 
-`status` reads the settlement of the presented transaction. On Stacks, Tron and NEAR, `reference` takes the token from
-that transaction, so `status` reports the settlement on the contract the transaction called, and on Solana
+`status` reads the settlement of the presented transaction. On Tron and NEAR, `reference` takes the token from
+that transaction, so `status` reports the settlement on the contract the transaction called; on Stacks the reference
+names the origin, the nonce it signed and the challenge's recipient, and no contract, and on Solana
 the reference names no token: confirming that it is the token the challenge named is the seller's check.
 
 On EVM chains and Tempo, a block above the `finalized` mark can be replaced, by one in which the same transaction
@@ -278,29 +279,30 @@ point, in the answer itself or read from the source that answered before the loo
 past the reference point. A payment that lands between the two reads, or that a lookup misses because its source lags
 the reference point, as one node behind a load-balanced endpoint can, stays pending (`nearLapsed` answers false), never
 failed, and so does one whose answer names no point. A later read, once that source has caught up, gives the verdict.
-The rule governs `expired` on Tron, TON, Aptos, Stellar and Cardano, TON's `no-transfer` and `aborted` when no W5
-transaction with the request sent its Jetton transfer, `nonce-used` for a transaction the Stacks API does not know or
-lists as dropped, `nonce-moved` for a named Solana durable-nonce transaction no lookup finds, and `nearLapsed`. On
-Stacks the API's answers name no height, so a reader reads the API's chain tip from the node that answered, after the
-nonce read and before the lookup, and must pin one node to name it; a reader that cannot names no height. On Solana
+The rule governs `expired` on Tron, TON, Aptos, Stellar and Cardano, `nonce-moved` for a named Solana durable-nonce
+transaction no lookup finds, and `nearLapsed`. Stacks reads no absence this way: its read holds the origin's nonce, read
+at the chain tip, so a nonce not consumed there is `instrument-live`, and one consumed whose transaction no lookup finds is
+`search-incomplete`, never `not-found`. On Solana
 `getTransaction` names no slot when it finds nothing, so a reader reads `getSlot` at the lookup's commitment from the
 node that answers, before the lookup, and must pin one node to name it; a reader that cannot names no slot.
 
 | Rail | The reference point, read first | What the answer that finds nothing names |
 |---|---|---|
 | Tron | the latest solidified block's time | `{ notFound: true, timestamp }`: the time of the latest block at the lookup's level on the node that answered |
-| TON | the masterchain head's `gen_utime` | `byInBody`'s `headUtime`: the `gen_utime` of a masterchain block through which the index that answered holds every block |
-| Stacks | the origin's confirmed nonce, with its `height` read after it | `{ notFound: true, height }`, or an unmined transaction's `height`: the block height of the chain tip of the API that answered, read before the lookup |
+| TON | the masterchain head's `gen_utime` | `indexed()`: the index's statement of a finalized masterchain block through which it holds every block, with its `gen_utime`, on which the expiry read decides |
 | Aptos | the ledger's timestamp | `{ notFound: true, timestampUsecs }`: the ledger timestamp of the answer |
 | Stellar | `getLatestLedger`, read after the named transaction and before the events search | each events page's `latestLedger` |
 | NEAR | the final block height | the key read's `blockHeight`, `view_access_key`'s `block_height` |
 | Cardano | the chain tip's slot | `{ notFound: true, slot }`: the slot of the latest block the indexer that answered held |
 | Solana | the context slot of the durable nonce account's read (`getAccountInfo` at `finalized`) | `{ notFound: true, slot }`: the slot at the lookup's commitment of the node that answered, read before the lookup |
 
-On TON, `status` counts only the Jetton transfer that a transaction of the payer's W5 wallet sent with the signed
-request, since W5 checks the signature before it sends anything; an equal transfer body executed any other way never
-settles. A request the payer's W5 wallet has executed stays pending `in-flight` until its Jetton transfer lands,
-however late, because an internal message carries no expiry.
+On TON, `status` counts only a Jetton transfer that a run of the payer's W5 wallet sent, since W5 checks the
+signature before it sends anything; an equal transfer body executed any other way never settles. A request the wallet
+has run stays pending `search-incomplete`, held at its transaction, until its Jetton transfer lands, however
+late, because an internal message carries no expiry. Its lapse is the expiry read of the profile `x402-exact-tvm`
+(rule 6): the wallet's state, its transactions linked back to the position, and the index's statement of the blocks it
+holds. That an index lists whole is not yet shown by a run, so until it is the expiry read releases nothing: no answer
+but `before-position` is `failed`.
 
 | Rail | Reader | Its calls | Settled carries |
 |---|---|---|---|
@@ -319,8 +321,8 @@ however late, because an internal message carries no expiry.
 | Starknet | `StarknetReader` | `starknet_getTransactionReceipt` with its `Transfer` events, `starknet_traceTransaction` | `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` |
 | Sui | `SuiReader` | the transaction by digest, with the current epoch and the first checkpoint the endpoint holds transactions from | the checkpoint |
 | Tron | `TronReader` | the latest solidified block, read first; `gettransactioninfobyid` at the solidified or head level, with the node's latest block time at that level when it finds nothing; `gettransactionbyid` | `solidified` or `head` |
-| TON | `TvmReader` | the masterchain head, read first; Toncenter's transactions by message body hash (the signed W5 request's), with the `gen_utime` of a masterchain block through which the index holds every block, by message hash (the Jetton transfer the W5 transaction sent, then the `internal_transfer` it led to) and by hash | `confirmed` or `finalized` |
-| Stacks | `StacksReader` | the origin's confirmed nonce, read first, with the chain tip's height (`GET /extended`) read after it from the same node; the transaction by id, with the chain tip's height read before it from the same node when the API does not know it or lists it unmined; a block's tenure height; the tip's tenure height | `block` or `bitcoin` |
+| TON | `TvmReader` | the masterchain head, read first; the index's statement of the blocks it holds; Toncenter's transactions by message body hash (the signed W5 request's); the wallet's state and its transactions by account, each with its predecessor and the account's state before and after it; by message hash (the Jetton transfer a run sent, then the `internal_transfer` it led to) and by hash; and `runGetMethod`'s `get_wallet_data` and `get_wallet_address` | `confirmed` or `finalized` |
+| Stacks | `StacksReader` | the chain tip's Stacks and Bitcoin heights (`GET /extended`), read first; the reference's transaction by id with its events and bytes, a hint; the origin's last executed nonce at the tip or at a height; the lookup by origin and nonce, or for nonce 0 a scan of the origin's transactions; a block's transactions, the lookup's fallback; the Bitcoin height of the burn block of the tenure after a block's | `block` or `bitcoin` |
 
 On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport` or
 `malformed`. The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a

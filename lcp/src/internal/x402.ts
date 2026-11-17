@@ -54,7 +54,7 @@ const AMOUNT = /^[1-9][0-9]*$/;
 /**
  * True when an option's `amount` is the canonical decimal string of a positive integer: digits only, the first not `0`,
  * so no sign, point, exponent, space or leading zero. The one rule every x402 pairing's option filter holds the member
- * to; a pairing's own width bound applies beside it. The batch-settlement EVM and Solana filters also take `"0"`, and
+ * to; a pairing's own width bound applies beside it. The batch-settlement EVM and Solana filters, and the TON one, also take `"0"`, and
  * the XRPL filter takes an issued currency's `value` in the canonical decimal form of a positive STAmount value (no
  * sign, exponent or leading zero, a fraction that ends in a digit other than 0, at most 16 significant digits, at least
  * 10^-81, and digits below 2^63 with the point removed), as those schemes define the member.

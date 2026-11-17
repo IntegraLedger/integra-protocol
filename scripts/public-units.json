@@ -433,9 +433,9 @@
     {
       "unit": "Stacks",
       "exports": {
-        "./stacks": ["StacksLanded", "StacksMempool", "StacksNetwork", "StacksReader", "StacksRef", "StacksStatus", "stacksRecover", "stacksStatus", "stacksTxid"]
+        "./stacks": ["StacksLanded", "StacksMempool", "StacksNetwork", "StacksReader", "StacksRef", "StacksStatus", "stacksRecover", "stacksStatus", "stacksTxid", "MAX_STACKS_TX_BYTES", "MAX_SEARCH_NONCES", "StacksAssetEvent", "StacksListed", "StacksPage", "StacksMark", "StacksQuery"]
       },
-      "use": "Anyone reading a Stacks payment finds a SIP-010 transfer whose memo is H, learns whether it landed, and reads H back from the mined transaction.",
+      "use": "Anyone reading a Stacks payment finds it by its origin and the nonce the origin signed through a Stacks Blockchain API, searches the origin's nonces for H, learns whether it landed and whether it is the payment presented, and reads H back from the mined transaction; the bounds size a reader's work.",
       "fixedBy": "SIP-010; mpp-charge-usdc-stacks.md."
     },
     {
@@ -465,10 +465,10 @@
     {
       "unit": "TON",
       "exports": {
-        "./tvm": ["OP", "TonCell", "TonTx", "TvmNetwork", "TvmReader", "TvmRef", "TvmStatus", "TvmUnsigned", "exactTvm", "lcpComment", "tvmCarrier", "tvmRecover", "tvmStatus"]
+        "./tvm": ["MAX_TVM_ATTACHED_ABOVE_FORWARD", "MAX_TVM_BOC_BYTES", "MAX_TVM_CELLS", "MAX_TVM_DEPTH", "MAX_TVM_LISTED", "OP", "TVM_EXPIRY_MARGIN", "TonAccountState", "TonAccountStatus", "TonCell", "TonIndexed", "TonLink", "TonOutMsg", "TonTx", "TonWalletState", "TvmNetwork", "TvmReader", "TvmRef", "TvmSearch", "TvmStatus", "TvmUnsigned", "W5R1_CODE_HASH", "exactTvm", "lcpComment", "tvmCarrier", "tvmRecover", "tvmStatus"]
       },
-      "use": "Any TON buyer's client sends a Jetton transfer whose forward payload is H as a text comment, any server validates it before it is relayed, and anyone reads it back.",
-      "fixedBy": "x402's exact scheme on TON; TEP-74."
+      "use": "Any TON buyer's client sends a Jetton transfer whose forward payload is H as a text comment, any server validates it before it is relayed, and anyone reads it back, reads whether it settled, and reads its lapse from the wallet's state and its linked list of transactions.",
+      "fixedBy": "x402's exact scheme on TON; TEP-74; x402-exact-tvm.md."
     }
   ]
 }

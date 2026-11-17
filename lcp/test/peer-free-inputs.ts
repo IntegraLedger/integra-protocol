@@ -865,56 +865,86 @@ export function suiStatusRows(): StatusRow[] {
   ];
 }
 
-type TonFixture = Record<string, unknown>;
-type TonStatusRow = {
-  case: string;
-  byInBody?: TonFixture[] | "reader-error";
-  byInBodyRequest?: TonFixture[] | "reader-error";
-  byInMessage?: Record<string, TonFixture[] | "reader-error">;
-  headUtime?: number;
-  indexedUtime?: number;
-  expect: unknown;
+/** A TON ledger for a status row: the W5 wallet's state, its own request's run, and the index's statement. */
+type TonRow = {
+  head: number | "reject";
+  seqno: number | null;
+  status?: string;
+  code?: "w5" | "other";
+  /** The request's run: its finality, and where its transfer went. */
+  run?: { finality: 1 | 2; delivery: "payee" | "untaken" };
+  stated?: number;
 };
-/** A TON reader answering a status row's fixtures as tvm.test.ts's does, its calls counted. */
-function tonStatusReader(row: TonStatusRow): Counted {
-  const request = TVM.V4.ref.requestBodyHash as string;
-  const tx = (f: TonFixture) => ({ ...f, inBody: null });
-  return countedBy(TON_NETWORK, (method, args) => {
-    if (method === "byInBody") {
-      const answer = args[0] === request ? row.byInBodyRequest : row.byInBody;
-      if (answer === "reader-error") throw new Error("transport");
-      return { transactions: (answer ?? []).map(tx), headUtime: row.indexedUtime ?? row.headUtime };
+/** The internal_transfer of 10,000 a payee's Jetton wallet takes, as @ton/core 0.63.1 writes it (written out here, since the rows run without it). */
+const TON_INTERNAL = Uint8Array.from(Buffer.from("b5ee9c7241010101001100001d178d45190000000000000000227108f89196b5", "hex"));
+const TON_W5 = "0x20834b7b72b112147e1b2fb457b84e74d1a30f04f737d4f62a668e9552d2b72f";
+/** A TON reader answering for the row's ledger, its calls counted; it holds only raw bytes, so it needs no @ton/core. */
+function tonStatusReader(row: TonRow): Counted {
+  const ref = TVM.V4.ref as { wallet: string; jettonWallet: string; validUntil: number; requestBodyHash: string };
+  const payeeJw = `0:${"33".repeat(32)}`;
+  const run = row.run;
+  const w5 = run === undefined ? [] : [{
+    hash: "w5", account: ref.wallet, aborted: false, finality: run.finality, inBody: null,
+    outMsgs: [{ hash: "w5:t", opcode: 0x0f8a7ea5 }], mcSeqno: 10n, lt: "2", prev: null,
+    before: { status: "active", dataHash: "a" }, after: { status: "active", dataHash: "b" },
+  }];
+  const c = countedBy(TON_NETWORK, (method, args) => {
+    switch (method) {
+      case "headUtime":
+        if (row.head === "reject") throw new Error("transport");
+        return row.head;
+      case "indexed":
+        return { first: 1n, last: 50n, utime: row.stated ?? (row.head as number) };
+      case "byInBody":
+        return args[0] === ref.requestBodyHash ? w5 : [];
+      case "walletState":
+        return { status: row.status ?? "active", codeHash: row.code === "other" ? `0x${"ab".repeat(32)}` : TON_W5, seqno: row.seqno, last: w5[0] === undefined ? null : { hash: "w5", lt: "2" } };
+      case "transactions":
+        return w5;
+      case "byInMessage":
+        if (run === undefined || run.delivery === "untaken") return [];
+        if (args[0] === "w5:t") return [{ hash: "w5-j", account: ref.jettonWallet, aborted: false, finality: run.finality, inBody: null, outMsgs: [{ hash: "w5:i", opcode: 0x178d4519 }] }];
+        return [{ hash: "w5-d", account: payeeJw, aborted: false, finality: run.finality, inBody: TON_INTERNAL, outMsgs: [] }];
+      case "jettonMaster":
+        return `0:${"aa".repeat(32)}`;
+      case "jettonWallet":
+        return payeeJw;
+      default:
+        return null;
     }
-    if (method === "byInMessage") {
-      const answer = row.byInMessage?.[args[0] as string];
-      if (answer === "reader-error") throw new Error("transport");
-      return (answer ?? []).map(tx);
-    }
-    if (method === "headUtime") {
-      if (row.headUtime === undefined) throw new Error("transport");
-      return row.headUtime;
-    }
-    return null;
   });
+  return { reader: c.reader, reads: c.reads };
 }
 
 /**
- * `tvmStatus` reads: x402-exact-tvm.json's V4 status rows and the ref with its accounts written in another raw
- * spelling, each with the act payment at the finality the row gives, finalized where it gives none. The read decodes no
- * cell and compares raw addresses itself, so each gives its answer, after the same reads, without @ton/core.
+ * `tvmStatus` reads of a TON ledger, each with the act payment at the finality finalized, and the ref with its accounts
+ * written in another raw spelling. The read decodes the cells it reads itself and compares raw addresses itself, so each
+ * gives its answer, after the same reads, without @ton/core.
  */
 export function tvmStatusRows(): StatusRow[] {
-  const ref = TVM.V4.ref as { wallet: string; jettonWallet: string };
-  const rows = TVM.V4.status as (TonStatusRow & { finality?: string })[];
-  const query = (finality = "finalized") => ({ act: "payment", finality });
-  // The head and the request's lookup, then the lookup of each message the read follows.
-  const reads = [4, 4, 4, 3, 4, 2, 2, 3, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2];
-  const settled = rows[0]!;
+  const ref = TVM.V4.ref as { wallet: string; jettonWallet: string; validUntil: number };
+  const VU = ref.validUntil;
+  const query = { act: "payment", finality: "finalized" };
+  const moved = [{ asset: `0:${"aa".repeat(32)}`, amount: "10000", to: `0:${"33".repeat(32)}`, transaction: "w5", place: "w5:t" }];
+  const settled = { state: "settled", transaction: "w5", position: 10n, finality: "finalized", moved, signer: ref.wallet, foreign: [], presented: "yes" };
+  const rows: [string, TonRow, unknown, number][] = [
+    ["the request's run, its transfer delivered to the payee's Jetton wallet, finalized", { head: VU - 100, seqno: 6, run: { finality: 2, delivery: "payee" } }, settled, 9],
+    ["the same, confirmed", { head: VU - 100, seqno: 6, run: { finality: 1, delivery: "payee" } }, { ...settled, state: "pending", reason: "below-mark", finality: "confirmed", presented: undefined }, 9],
+    ["the request's run, its transfer not yet taken", { head: VU - 100, seqno: 6, run: { finality: 2, delivery: "untaken" } }, { state: "pending", reason: "search-incomplete", search: { top: { hash: "w5", lt: "2" }, next: { hash: "w5", lt: "2" } }, foreign: [] }, 6],
+    ["no run, the number not passed, before the validity", { head: VU - 100, seqno: 5 }, { state: "pending", reason: "instrument-live", foreign: [] }, 4],
+    // The step-4 gate: the expiry read proves no absence until a run shows the index lists whole, so no failed but before-position.
+    ["no run, the number not passed, the validity past at the stated block: search-incomplete", { head: VU + 100, seqno: 5 }, { state: "pending", reason: "search-incomplete", foreign: [] }, 4],
+    ["a wallet that is not W5, nothing found", { head: VU + 100, seqno: 5, code: "other" }, { state: "pending", reason: "not-found", foreign: [] }, 4],
+    ["a frozen wallet, read as uninit, the validity past: search-incomplete under the gate", { head: VU + 100, seqno: 5, status: "frozen" }, { state: "pending", reason: "search-incomplete", foreign: [] }, 4],
+    ["a head read that fails", { head: "reject", seqno: 5 }, { state: "unreadable", reason: "transport", foreign: [] }, 1],
+  ];
+  const strip = (a: Record<string, unknown>) => Object.fromEntries(Object.entries(a).filter(([, v]) => v !== undefined));
   const respelled = (s: string, wc: string) => `${wc}:${s.slice(s.indexOf(":") + 1).toUpperCase()}`;
   return [
-    ...rows.map((row, i) => ({ case: row.case, ref, reader: () => tonStatusReader(row), expect: row.expect, reads: reads[i]!, query: query(row.finality) })),
-    { case: "the ref's accounts in uppercase hex, workchain 00 and -0", ref: { ...ref, wallet: respelled(ref.wallet, "00"), jettonWallet: respelled(ref.jettonWallet, "-0") }, reader: () => tonStatusReader(settled), expect: settled.expect, reads: 4, query: query() },
-    { case: "a ref whose wallet is not a raw address", ref: { ...ref, wallet: "x" }, reader: () => tonStatusReader(settled), expect: { state: "unreadable", reason: "unparseable", foreign: [] }, reads: 0, query: query() },
+    ...rows.map(([name, r, expect, reads]) => ({ case: name, ref, reader: () => tonStatusReader(r), expect: strip(expect as Record<string, unknown>), reads, query })),
+    { case: "the ref's accounts in uppercase hex, workchain 00 and -0", ref: { ...ref, wallet: respelled(ref.wallet, "00"), jettonWallet: respelled(ref.jettonWallet, "-0") }, reader: () => tonStatusReader(rows[0]![1]), expect: { ...settled, signer: ref.wallet }, reads: 9, query },
+    { case: "a ref whose wallet is not a raw address", ref: { ...ref, wallet: "x" }, reader: () => tonStatusReader(rows[0]![1]), expect: { state: "unreadable", reason: "unparseable", foreign: [] }, reads: 0, query },
+    { case: "a reader for another network", ref: { ...ref, network: "tvm:-3" }, reader: () => tonStatusReader(rows[0]![1]), expect: { state: "unreadable", reason: "chain-mismatch", foreign: [] }, reads: 0, query },
   ];
 }
 
