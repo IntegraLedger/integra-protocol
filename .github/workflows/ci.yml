@@ -330,8 +330,15 @@ jobs:
           const settings = ["minimumReleaseAge: 1440", "trustPolicy: no-downgrade", "strictDepBuilds: true"];
           const optional = ["autoInstallPeers: false"];
           const blocks = [
-            "permissions:", "minimumReleaseAgeExclude:", "overrides:", "catalog:", "catalogs:", "patchedDependencies:",
+            "permissions:", "minimumReleaseAgeExclude:", "trustPolicyExclude:", "overrides:", "catalog:", "catalogs:",
+            "patchedDependencies:",
           ];
+          // Under trustPolicyExclude each entry is one of these exact versions, single- or double-quoted, one to an
+          // entry, and one a lockfile installs: no bare name, pattern, range or " || " list, each of which would exempt
+          // more. Each is a version its maintainer published without provenance after a later version of the package
+          // had it, which a dependency requires and no published version of that dependency avoids (CONTRIBUTING.md
+          // names each and why).
+          const trusted = ["@noble/ed25519@1.7.5", "@noble/secp256k1@1.7.2"];
           const note = "(?: +#.*)?";
           // Under permissions each entry is a package name, plain, single- or double-quoted, mapped in flow style on
           // its line or in block style on the lines under it to build, skills or both, each false.
@@ -359,6 +366,7 @@ jobs:
           const glob = new RegExp(`^  - (?:${quoted}|([A-Za-z0-9._][A-Za-z0-9._*/-]*))${note}$`);
           const exempt = String.raw`(@integraledger/[a-z0-9][a-z0-9._~-]*)@(${version}(?: \|\| ${version})*)`;
           const excluded = new RegExp(`^  - (?:'${exempt}'|"${exempt}")${note}$`);
+          const excepted = new RegExp(`^  - (?:'([^']+)'|"([^"]+)")${note}$`);
           const pin = `("${version}"|'${version}'|${version})`;
           const override = new RegExp(`^  ("[^"\\\\]+"|'[^']+'|[A-Za-z0-9][A-Za-z0-9._@/>-]*): ${pin}${note}$`);
           const cut = `${scoped}@${version}>${scoped}`;
@@ -425,6 +433,11 @@ jobs:
                 const m = excluded.exec(l);
                 if (m === null) bad.push(at(i));
                 else for (const v of (m[2] ?? m[4]).split(" || ")) exclusions.push([at(i), `${m[1] ?? m[3]}@${v}`]);
+              } else if (key.line === "trustPolicyExclude:") {
+                const m = excepted.exec(l);
+                const entry = m === null ? null : (m[1] ?? m[2]);
+                if (!trusted.includes(entry)) bad.push(at(i));
+                else exclusions.push([at(i), entry]);
               } else if (key.line === "overrides:" && !override.test(l) && !removal.test(l)) bad.push(at(i));
               else if (key.line === "catalog:" && !pinned.test(l)) bad.push(at(i));
               else if (key.line === "catalogs:" && l.startsWith("    ")) {
@@ -513,28 +526,32 @@ jobs:
           JS
           # Second, pnpm's own reading in each folder that holds a workspace file, before it installs anything: each of
           # the three settings exactly, every override an exact version or a removal below an exact version, every
-          # catalog entry an exact version, autoInstallPeers unset or false, and no pnpmfile, globalPnpmfile or
-          # configDependencies, whatever else pnpm reads besides the text.
+          # catalog entry an exact version, trustPolicyExclude unset or only versions the text's check admits,
+          # autoInstallPeers unset or false, and no pnpmfile, globalPnpmfile or configDependencies, whatever else pnpm
+          # reads besides the text.
+          trusted='"@noble/ed25519@1\.7\.5"|"@noble/secp256k1@1\.7\.2"'
           files=$(git ls-files -- pnpm-workspace.yaml '*/pnpm-workspace.yaml')
           for f in $files; do
             d=$(dirname "$f")
             for want in minimumReleaseAge=1440 trustPolicy=no-downgrade strictDepBuilds=true overrides=exact \
-              catalogs=exact autoInstallPeers=false pnpmfile=undefined globalPnpmfile=undefined \
-              configDependencies=undefined; do
+              catalogs=exact trustPolicyExclude=exact autoInstallPeers=false pnpmfile=undefined \
+              globalPnpmfile=undefined configDependencies=undefined; do
               key=${want%%=*}
               if ! have=$(pnpm --dir "$d" config get "$key"); then
                 printf 'pnpm cannot read %s in %s\n' "$key" "$d"
                 exit 1
               fi
-              # pnpm prints overrides and catalogs as JSON, an entry to a line, or undefined when there are none, and
-              # each catalog's entries under its name, the default catalog's under "default"; each other line is kept
-              # with its number. A removal is "-" from a parent at an exact version to a child with no version.
+              # pnpm prints overrides, catalogs and trustPolicyExclude as JSON, an entry to a line, or undefined when
+              # there are none, and each catalog's entries under its name, the default catalog's under "default"; each
+              # other line is kept with its number. A removal is "-" from a parent at an exact version to a child with
+              # no version.
               v='[0-9]+\.[0-9]+\.[0-9]+'
               n='(@[A-Za-z0-9._~-]+/)?[A-Za-z0-9][A-Za-z0-9._~-]*'
               pin='"[^"\]+": "'"$v"'",?'
               case $key in
                 overrides) exact="undefined|[{}]|  $pin|  \"$n@$v>$n\": \"-\",?" ;;
                 catalogs) exact='undefined|[{}]|  "[^"\]+": [{]|  [}],?|    '"$pin" ;;
+                trustPolicyExclude) exact='undefined|[][]|  ('"$trusted"'),?' ;;
                 *) exact= ;;
               esac
               if [ -n "$exact" ]; then
@@ -572,7 +589,7 @@ jobs:
             printf 'these workflow lines set the install policy around the files:\n%s\n' "$around"
             exit 1
           fi
-          echo "$(printf '%s\n' "$files" | wc -l) workspace file(s), the root's and one in each folder its packages exclude: pnpm reads minimumReleaseAge 1440, trustPolicy no-downgrade and strictDepBuilds true in each, every override as an exact version or a removal below one, every catalog entry as an exact version, autoInstallPeers unset or false, and no pnpmfile, globalPnpmfile or configDependencies; each records build and skills decisions only as false, excludes from the age only exact @integraledger/<name>@<x.y.z> versions a lockfile installs, one to an entry or joined by \" || \" as pnpm writes them, pins overrides and catalog entries only to exact registry versions, removes a dependency only below an exact parent version, patches only exact versions from patches/ files git lists, sets autoInstallPeers only to false, and holds nothing else, a comment after a line included; the root's packages are relative globs; every manifest's overrides and resolutions are exact versions; every lockfile takes each package from the registry by its integrity and links only to a workspace package; every .npmrc holds only comments, registry=https://registry.npmjs.org/ and engine-strict=true; git lists no .pnpmfile.cjs or .pnpmfile.mjs; none of the $# workflow(s) sets pnpm's settings"
+          echo "$(printf '%s\n' "$files" | wc -l) workspace file(s), the root's and one in each folder its packages exclude: pnpm reads minimumReleaseAge 1440, trustPolicy no-downgrade and strictDepBuilds true in each, every override as an exact version or a removal below one, every catalog entry as an exact version, trustPolicyExclude unset or only the versions the step names, autoInstallPeers unset or false, and no pnpmfile, globalPnpmfile or configDependencies; each records build and skills decisions only as false, excludes from the age only exact @integraledger/<name>@<x.y.z> versions a lockfile installs, one to an entry or joined by \" || \" as pnpm writes them, excludes from the trust policy only the exact versions the step names, one to an entry, each one a lockfile installs, pins overrides and catalog entries only to exact registry versions, removes a dependency only below an exact parent version, patches only exact versions from patches/ files git lists, sets autoInstallPeers only to false, and holds nothing else, a comment after a line included; the root's packages are relative globs; every manifest's overrides and resolutions are exact versions; every lockfile takes each package from the registry by its integrity and links only to a workspace package; every .npmrc holds only comments, registry=https://registry.npmjs.org/ and engine-strict=true; git lists no .pnpmfile.cjs or .pnpmfile.mjs; none of the $# workflow(s) sets pnpm's settings"
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r --if-present run build
       - run: pnpm -r --if-present run typecheck

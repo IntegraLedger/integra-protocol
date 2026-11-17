@@ -25,7 +25,14 @@ pnpm -r --if-present run build
 ```
 
 The workspace installs with `minimumReleaseAge: 1440` (no package version younger than a day), `trustPolicy:
-no-downgrade` and `strictDepBuilds: true`. Every dependency and devDependency is pinned to an exact version. The
+no-downgrade` and `strictDepBuilds: true`. `trustPolicyExclude` names two exact versions, `@noble/ed25519@1.7.5` and
+`@noble/secp256k1@1.7.2`, and nothing wider. The settler's Casper module registers `@x402/casper` 2.31.0, which pins
+`casper-js-sdk` 5.1.1; every `casper-js-sdk` from 5.1.1 to 5.3.1 requires `@noble/ed25519` `^1.7.5` and
+`@noble/secp256k1` `^1.7.2`, with which it verifies a payer's ed25519 and secp256k1 signatures and signs with the
+settler's key, and no version of either package avoids them. Both were published in April 2025 as maintenance
+releases of the packages' 1.x lines without provenance, after each package's 2.1.0 had been published with it in
+March 2024, so `no-downgrade` refuses them. Every other version of the two packages, and every other package, stays
+under the policy. Every dependency and devDependency is pinned to an exact version. The
 optional peer dependencies of `@integraledger/lcp`, the rails' own libraries, are ranges, each a caret or a tilde. Each
 of them is also a devDependency, so the tests and vectors run on the version it pins.
 
@@ -167,13 +174,16 @@ and from the publish workflow before it packs. Its other steps check:
 - **The install policy:** every `pnpm-workspace.yaml` git lists, the root's and the site's, sets
   `minimumReleaseAge: 1440`, `trustPolicy: no-downgrade` and `strictDepBuilds: true`, and before the install
   `pnpm config get` reads those three values in each folder that holds one, every override as an exact version or a
-  removal below one, every catalog entry as an exact version, `autoInstallPeers` unset or `false`, and no `pnpmfile`,
-  `globalPnpmfile` or `configDependencies`. No other setting is admitted but `packages` (the root's alone:
+  removal below one, every catalog entry as an exact version, `trustPolicyExclude` unset or only the versions the step
+  names, `autoInstallPeers` unset or `false`, and no `pnpmfile`, `globalPnpmfile` or `configDependencies`. No other
+  setting is admitted but `packages` (the root's alone:
   relative globs that exclude each folder holding its own workspace file, here `"*"` and `"!website"`, so `pnpm -r`
   reaches every package), `permissions` (each package's `build` and `skills` decisions, every one `false`),
   `minimumReleaseAgeExclude` (exact `'@integraledger/<name>@<x.y.z>'` versions a lockfile installs, one to an entry, or
   several of one package in pnpm's own form, `'@integraledger/<name>@<x.y.z> || <x.y.z>'`, single- or double-quoted
-  as pnpm writes them), `overrides` (exact
+  as pnpm writes them), `trustPolicyExclude` (only the exact versions the step names, today
+  `'@noble/ed25519@1.7.5'` and `'@noble/secp256k1@1.7.2'`, single- or double-quoted, one to an entry, each one a
+  lockfile installs: no bare name, pattern, range or `||` list), `overrides` (exact
   registry versions: no range, prerelease, URL, `file:`, `link:`, git, `github:` or `npm:` alias; or `"-"`, which
   removes a dependency and adds no code, under a selector that names a parent at an exact version and a child with no
   version, `"<name>@<x.y.z>><child>": "-"`, quoted either way), `catalog` and `catalogs` (the versions a manifest names

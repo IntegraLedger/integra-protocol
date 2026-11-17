@@ -191,6 +191,7 @@ names (`eip155:<chain id>`, `solana:<genesis hash prefix>`, and so on).
 | `algorand` | Algorand | `exact`: `x402/exact/algorand` | `fee-payer` | `true` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
 | `aptos` | Aptos | `exact`: `x402/exact/aptos` | `fee-payer`, or `none` with `sponsor: false` | `false` | `@x402/aptos`'s class |
 | `cardano` | Cardano | `exact`: `x402/exact/cardano`, `x402/exact/cardano/lock` | `none` | `false` | `@x402/cardano`'s class |
+| `casper` | Casper | `exact`: `x402/exact/casper` | `relayer` | `false` | `@x402/casper`'s class |
 | `concordium` | Concordium | `exact`: `x402/exact/ccd` | `fee-payer` | `true` | `@x402/concordium`'s class |
 | `evm` | EVM | `exact`: `x402/exact/eip155/eip3009`, `x402/exact/eip155/permit2`; `upto`: `x402/upto/eip155/permit2`; `auth-capture`: `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`; `batch-settlement`: `x402/batch-settlement/eip155` | `relayer` | `false` | `@x402/evm`'s classes |
 | `erc7710` | EVM | `exact` with `erc7710`: `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt` | `relayer` | `false` | the settler's own, behind the `evm` module's `exact` |
@@ -227,6 +228,22 @@ Each member, one entry per network unless it says otherwise:
   class broadcasts the transaction the buyer signed, whose fee the buyer pays. Its guard against broadcasting one
   transaction twice is kept in the settler's database, so a repeat after a restart resumes observing what was
   broadcast.
+- **`casper`**: `network`, `casper:casper-test` (the settler does not start on `casper:casper`: see *What it does not
+  serve*); `signer`, the seller's key as `@x402/casper`'s class takes it (`FacilitatorCasperSigner`, made with its
+  `toFacilitatorCasperSigner` and an `rpcUrlConfig` that names `rpc` for the network), which sends the transaction that
+  calls the token package's `transfer_with_authorization` with the payer's CEP-3009 authorization, and pays its gas;
+  `rpc`, the seller's node, through which the class reads the token before it settles, lcp's read finds the payment and
+  the fee count reads its cost. The settler does not start where the signer names another node, as `@x402/casper`'s
+  signer does for a network its `rpcUrlConfig` leaves out, falling back to a public node, nor where its
+  `speculativeRpcUrlConfig` names a node other than `rpc`: with one, the class's check has the key sign a deploy of the
+  payer's authorization at every `/verify` and `/settle` and sends it there for speculative execution. `paymentMotes`,
+  optional, is the most the transaction can pay, in motes (`@x402/casper`'s default, 2.5 CSPR, where absent), which the
+  fee budget counts from the transaction's submission until the node shows the cost. The class refuses a zero amount.
+  `signers` lists the key's account hash, 64 hex digits without the `00` tag a payload's address carries. The class's
+  node calls and lcp's read carry no header of the seller's, so a node credential reaches the node only within `rpc`'s
+  URL; and the class waits up to a minute for its transaction, its node calls without a timeout of their own, so its
+  settle can run past `settleWaitMs`. lcp's read takes the token's used nonces from its dictionary
+  `used_nonces`, as lcp's profile names it, where the class's check before it settles reads `authorization_state`.
 - **`concordium`**: `network`, the one the signer is connected to; `signer`, the seller's sponsor account and its key
   with its node (`FacilitatorConcordiumSigner`), which co-signs the payer's sponsored transaction and pays its energy;
   `reader`, lcp's `CcdReader` over the seller's node. The record names each payment by the digest of what its sender
@@ -311,7 +328,7 @@ Each member, one entry per network unless it says otherwise:
 | `extra.key` | The key | Modules |
 |---|---|---|
 | `none` | The module holds no key and signs nothing: it submits what the payer signed, and the payer pays the fee. | `cardano`, `lnbtc`, `polkadot`, `sui`, `tron`, `xrpl`, and `aptos` with `sponsor: false` |
-| `relayer` | The key sends the transaction and pays its network fee. | `erc7710`, `evm`, `near`, `starknet`, `stellar`, `ton` |
+| `relayer` | The key sends the transaction and pays its network fee. | `casper`, `erc7710`, `evm`, `near`, `starknet`, `stellar`, `ton` |
 | `fee-payer` | The key co-signs the payer's transaction as the account that pays its fee. | `algorand`, `aptos`, `concordium`, `hedera`, `solana` |
 
 Each chain's own name for the role (a gas key, a sponsor, a source account, an executor) stays in its module's notes
@@ -344,8 +361,9 @@ The fee counted is what the chain shows. On an EVM network it is the gas used ti
 network, the L1 data fee the receipt shows (`l1Fee`); before inclusion, the gas limit times the fee cap, with the L1
 data fee the network's GasPriceOracle (`getL1Fee`) gives. On Hedera it is the fee the Mirror Node shows, asked for up
 to five seconds after the settle answers; where the mirror shows none by then, the `maxFee` the payer signed. The
-`evm`, `solana` and `aptos` modules count each transaction their key sends as it is sent, one their class does not
-name in its answer included: a payer's ERC-6492 wallet deployment on EVM, or a Solana transaction whose send failed.
+`evm`, `solana`, `aptos` and `casper` modules count each transaction their key sends as it is sent, one their class
+does not name in its answer included: a payer's ERC-6492 wallet deployment on EVM, or a Solana or Casper transaction
+whose send failed.
 
 At start the settler refuses a budget on a network no configured module serves, and one on a network where a module
 whose key pays fees can neither show the fee of what it sent nor count it as it sends: the `ton` and `concordium`
@@ -353,7 +371,7 @@ modules, whose classes and lcp's reads give no fee.
 
 Its stated costs:
 
-- A transaction is counted once it is sent (`evm`, `solana`, `aptos`) or once its settle answers (`algorand`,
+- A transaction is counted once it is sent (`evm`, `solana`, `aptos`, `casper`) or once its settle answers (`algorand`,
   `erc7710`, `hedera`, `near`), so settles that run at once on a nearly spent budget can each pass the check before the
   first is counted. The `starknet` and `stellar` modules count each send before it is made, one at a time per network.
 - A transaction whose id is not known before it is sent is counted at its bound for the whole period, as well as at
@@ -430,6 +448,8 @@ What each kind of repeat answers is in [the reference](../reference/settler.md#t
   executor, and x402's specification of the method admits none by default.
 - **Solana's channel forms on mainnet.** `x402/upto/solana` and `x402/batch-settlement/solana` need the payment-channels
   program, which is not deployed on Solana mainnet; there only `exact` is registered.
+- **Casper mainnet.** x402's Casper scheme names `casper:casper`, but no token there has yet been shown to execute
+  `transfer_with_authorization`, so the `casper` module does not start on it; it serves `casper:casper-test`.
 - **lcp's x402 pairings that another party settles.** `x402/exact/eip155/gateway-batched`, Circle's batched option,
   which the `evm` module refuses, and `x402/batch-settlement/cloudflare`, on Cloudflare's `cloudflare:402` network,
   which no module serves.

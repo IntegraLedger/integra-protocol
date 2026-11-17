@@ -27,7 +27,7 @@ export const MODULES = [
 
   listed("cardano", () => import("./cardano/index.js")),
 
-  // listed("casper", () => import("./casper/index.js")),
+  listed("casper", () => import("./casper/index.js")),
 
   listed("concordium", () => import("./concordium/index.js")),
 
