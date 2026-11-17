@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 63 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 64 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -59,6 +59,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/usdc/stacks` | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
 | `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
 | `mpp/session/evm` | `sessionEvm` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
+| `mpp/session/hedera/stock` | `sessionHederaStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/session/lightning` | `sessionLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | `mpp/session/tempo` | `sessionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | `mpp/session/xrpl` | `sessionXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
@@ -215,6 +216,10 @@ The payer signed, with a single key, an XRPL Payment whose InvoiceID is this ATR
 
 The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer opened a payment channel whose salt is this ATR's hash, so the channel id, keccak256 over the payer, payee, token, salt, authorized signer, escrow and chain, commits to it. The payer signed that opening as an open call carrying the salt, an EIP-3009 authorization whose nonce is MPP's hash over the channel parameters and the salt, or a Permit2 transfer whose witness carries the salt, and the escrow and the token verified it on chain. The seller read that the opening transaction succeeded and moved the payer's deposit to the escrow. Where the payer sent the open call, or a relayer sent the escrow's Permit2 opening, the seller read that call: it is to the escrow, its salt is this ATR's hash, and its payer, payee, token and authorized signer give this channel id, so the payer is the account that signed the call or, on Permit2, the transfer. This does not show that amount, payee, asset or timing match the ATR's content. Each voucher in this channel signs a commitment to this ATR's hash.
 
+### `mpp/session/hedera/stock`
+
+Before this session, an account signed an agreement transaction carrying this ATR's hash on the session's Hedera network. The opening the credential names reached consensus: the account its ChannelOpened log names as payer deposited the deposit into the escrow's channel, whose payee the log names, after the block the agreement was recorded at. The opening does not carry the hash, and this does not show that the account that signed the agreement is the one that opened the channel unless the record compares the two. Vouchers sign the channel id and an amount, not the hash. This does not show that amount, deposit, payee or timing match the ATR's content.
+
 ### `mpp/session/lightning`
 
 Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content. The close is the seller's report.
@@ -317,11 +322,11 @@ The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with
 
 ### `x402/exact/hedera`
 
-The payer signed a Hedera transaction body whose memo carries this ATR's hash in LCP string form. A transaction under that body's id with that memo reached consensus with SUCCESS, and the memo is in the public transaction record; the fee payer, the seller's facilitator, could land another body under the same id. This does not show that amount, recipient, token or timing match the ATR's content.
+The payer's own signed act carries this ATR's hash: a Hedera crypto transfer whose memo is the hash's LCP string reached consensus with SUCCESS, debiting the payer, the one account its rows debit, and paid the account it credits, recorded with the asset and amount it moved. The memo is in the public transaction record, readable by transaction id. It compares no amount, asset or time with the ATR's terms.
 
 ### `x402/exact/hedera/transfer-executor`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The seller read the merged consensus record of the named transaction, and found that its one debited account, by at least one unit, is the payer recorded when the payment was presented. This does not show that amount, recipient, token or timing match the ATR's content.
+Before this payment was taken, an account signed an agreement carrying this ATR's hash on <network>, recorded in <transaction>; this does not show that the account is the payer. The payment is an x402 transferExecutor payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, and nothing the payer signed carries it. The read of the named transaction's merged consensus record found that its one debited account is the payer recorded when the payment was presented, and that it credited the payee. It compares no amount, asset or time with the ATR's terms.
 
 ### `x402/exact/near`
 

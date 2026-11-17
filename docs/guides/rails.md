@@ -455,6 +455,7 @@ mpp/charge/lightning
 mpp/charge/nearintents
 mpp/charge/stripe
 mpp/charge/usdc/gateway
+mpp/session/hedera/stock
 mpp/session/lightning
 mpp/subscription/stripe
 x402/batch-settlement/cloudflare

@@ -28,14 +28,38 @@ const hex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 const fromHex = (h: string) => Uint8Array.from(Buffer.from(h, "hex"));
 const fromB64 = (s: string) => Uint8Array.from(Buffer.from(s, "base64"));
 
-function readerOf(entries: MirrorEntry[] | null | "reader-error", network = "hedera:testnet"): HederaReader {
+/** A mirror's answers, as a vector row gives them. */
+export interface Mirror {
+  latest?: string;
+  oldest?: string;
+  byId: MirrorEntry[] | null | "reader-error";
+  pages?: ({ transactions: MirrorEntry[]; next: string | null } | "refused")[];
+}
+
+/** A reader answering a row's mirror: the latest and oldest timestamps, the entries under the id, and the pages in order. */
+function mirrorReader(m: Mirror, network = "hedera:testnet"): HederaReader {
+  let page = 0;
   return {
     network: network as HederaReader["network"],
     transactions: async () => {
-      if (entries === "reader-error") throw new Error("transport");
-      return entries;
+      if (m.byId === "reader-error") throw new Error("transport");
+      return m.byId;
+    },
+    latest: async () => {
+      if (m.latest === "reader-error") throw new Error("transport");
+      return m.latest ?? "1700000010.000000000";
+    },
+    oldest: async () => m.oldest ?? "archival",
+    accountTransactions: async () => {
+      const p = m.pages?.[page++];
+      if (p === undefined || p === "refused") throw new Error("refused");
+      return p;
     },
   };
+}
+
+function readerOf(entries: MirrorEntry[] | null | "reader-error", network = "hedera:testnet", rest: Omit<Mirror, "byId"> = {}): HederaReader {
+  return mirrorReader({ ...rest, byId: entries }, network);
 }
 
 function presentedOf(transaction: string, accepted: PaymentRequirements = O) {
@@ -163,36 +187,66 @@ describe("x402-exact-hedera.json", () => {
   const asked = { act: "payment", finality: "consensus" } as const;
   const recoverInput = { network: V.V5.reference.network, tx: V.V5.reference.transactionId, option: O };
 
-  // Each V5 row gives status's answer under the profile read-status and recover's for the same reader answer. A Hedera
-  // transaction that reaches consensus with a status other than SUCCESS is final: the network charges its fee and makes
-  // none of its transfers (HAPI: the TransactionReceipt's status, a ResponseCodeEnum, and the Mirror Node's `result`).
-  // recover refuses such entries hedera/not-success; a transaction id that no counted user entry uses yet is a read to
-  // repeat, hedera/not-found (docs/reference/refusals.md).
-  for (const [i, row] of rowsOf(V.V5.rows as { case?: string; query?: object; entries: MirrorEntry[] | null | "reader-error"; expect: unknown; expectRecover: unknown }[], "x402-exact-hedera.json V5.rows").entries()) {
-    it(`V5: status and recover, ${row.case ?? `row ${i}`}`, async () => {
-      expect(await hederaStatus(V.V5.reference, readerOf(row.entries), (row.query ?? asked) as never)).toEqual(row.expect);
+  // Each V5 row gives a mirror's answers and status's answer under the profiles read-status and x402-exact-hedera.
+  // A row's reference members replace V5's.
+  for (const [i, row] of rowsOf(V.V5.rows as { case?: string; reference?: object; query?: object; mirror: Mirror; expect: unknown }[], "x402-exact-hedera.json V5.rows").entries()) {
+    it(`V5: status, ${row.case ?? `row ${i}`}`, async () => {
+      const ref = { ...V.V5.reference, ...(row.reference ?? {}) };
+      expect(await hederaStatus(ref, mirrorReader(row.mirror), (row.query ?? asked) as never)).toEqual(row.expect);
+    });
+  }
+
+  // recover's answer for each reader answer. A Hedera transaction that reaches consensus with a status other than
+  // SUCCESS is final: the network charges its fee and makes none of its transfers (HAPI: the TransactionReceipt's
+  // status, a ResponseCodeEnum, and the Mirror Node's `result`). recover refuses such entries hedera/not-success; a
+  // transaction id that no counted user entry uses yet is a read to repeat, hedera/not-found (docs/reference/refusals.md).
+  for (const [i, row] of rowsOf(V.V5.recoverRows as { case?: string; entries: MirrorEntry[] | null | "reader-error"; expectRecover: unknown }[], "x402-exact-hedera.json V5.recoverRows").entries()) {
+    it(`V5: recover, ${row.case ?? `row ${i}`}`, async () => {
       expect(await exactHedera.recover(recoverInput, readerOf(row.entries))).toEqual(row.expectRecover);
     });
   }
 
   it("recover refuses an input whose tx is not a Mirror Node id or whose option is not an object, with nothing read", async () => {
-    const reader = readerOf(V.V5.rows[0].entries);
+    const reader = readerOf(V.V5.recoverRows[0].entries);
     for (const input of [{ ...recoverInput, tx: "0.0.1235@1700000000.000000000" }, { ...recoverInput, option: null }, null]) {
       expect(await exactHedera.recover(input as never, reader)).toEqual({ refused: true, code: "hedera/wrong-reader" });
     }
   });
 
-  it("status of a reader for another network is unreadable chain-mismatch", async () => {
-    expect(await hederaStatus(V.V5.reference, readerOf(V.V5.rows[0].entries, "hedera:mainnet"), asked)).toEqual({
+  it("status of a reader for another network is unreadable chain-mismatch, and of a malformed reference unparseable", async () => {
+    expect(await hederaStatus(V.V5.reference, mirrorReader(V.V5.rows[0].mirror, "hedera:mainnet"), asked)).toEqual({
       state: "unreadable",
       reason: "chain-mismatch",
       foreign: [],
     });
+    expect(await hederaStatus({ ...V.V5.reference, validStart: 1700000000 }, mirrorReader(V.V5.rows[0].mirror), asked)).toEqual({
+      state: "unreadable",
+      reason: "unparseable",
+      foreign: [],
+    });
   });
 
-  it("plant 1: a duplicate read first never hides the settled entry", async () => {
-    const plant = V.plants.duplicateFirst;
-    expect(await hederaStatus(V.V5.reference, readerOf(plant.entries), asked)).toEqual(plant.expect);
+  // read-status answers a malformed reference or query unparseable: the presented members are read only once each is in
+  // its form, and the query only once it is an object asking about an act.
+  it("status of a reference whose presented members are not in their form, or of a query that is not one, is unparseable", async () => {
+    const p = V.V5.reference.presented;
+    const row = (account: string, amount: unknown) => ({ account, amount, isApproval: false });
+    const refs = [
+      { ...p, transfer: {} },
+      { ...p, transfer: { hbar: [row("0.0.5555", "-1000"), row("0.0.1234", "1.5")], tokens: [] } },
+      { ...p, transfer: { hbar: [row("0.0.5555", "-1000"), row("0.0.1234", 1000)], tokens: [] } },
+      { ...p, transfer: { hbar: [], tokens: [{ token: "0.0.6000", rows: "x" }] } },
+      { ...p, nodes: ["node"] },
+      { ...p, maxFee: "-1" },
+    ];
+    for (const presented of refs) {
+      for (const m of [V.V5.rows[0].mirror, V.V5.rows.find((r: { case: string }) => r.case.startsWith("a failed result under the id")).mirror]) {
+        expect(await hederaStatus({ ...V.V5.reference, presented }, mirrorReader(m), asked)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
+      }
+    }
+    for (const query of [null, "payment", { finality: "consensus" }]) {
+      expect(await hederaStatus(V.V5.reference, mirrorReader(V.V5.rows[0].mirror), query as never)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
+    }
   });
 
   it("plant 2: a transfer with no memo is refused before anything is sent, though it echoes the extension", async () => {
@@ -215,6 +269,43 @@ describe("x402-exact-hedera.json", () => {
         const doc = { ...required, accepts: [row.option] };
         expect(exactHedera.advertise(doc, H, V.fixed.link, row.option)).toEqual({ refused: true, code: row.expect });
       }
+    }
+  });
+
+  it("the chain's longest valid duration, 180 seconds, is taken; reference refuses a fee payer's debit, two debits and another option", async () => {
+    expect(await exactHedera.bound(presentedOf(V.life.transactionBase64))).toBe(V.life.expectBound);
+    for (const row of rowsOf(V.referenceRefusals as { case: string; transactionBase64: string; optionAmount?: string; expect: string }[], "x402-exact-hedera.json referenceRefusals", { exact: 3 })) {
+      const option = row.optionAmount === undefined ? O : { ...O, amount: row.optionAmount };
+      expect([row.case, await exactHedera.reference(presentedOf(row.transactionBase64), option)]).toEqual([row.case, { refused: true, code: row.expect }]);
+    }
+  });
+
+  // The network takes no valid start later than its consensus time (HAPI ResponseCode INVALID_TRANSACTION_START), so
+  // build refuses one later than the time of the call; the clock is held at V2's valid start plus one second.
+  it("build refuses a valid start later than the time of the call", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue((Number(V.fixed.validStart.seconds) + 1) * 1000);
+    try {
+      const at = (seconds: bigint) =>
+        exactHedera.build(
+          { required: { ...required, accepts: [O] }, accepted: O, payer: V.fixed.payer, node: V.fixed.node, validStart: { seconds, nanos: 0 }, maxFee: BigInt(V.fixed.maxFee) },
+          H,
+        );
+      expect("refused" in (await at(BigInt(V.fixed.validStart.seconds) + 1n))).toBe(false);
+      expect(await at(BigInt(V.fixed.validStart.seconds) + 2n)).toEqual({ refused: true, code: "hedera/valid-start-future" });
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  // The server's checks refuse a valid start later than the time of the check, as build does: bound and reference read
+  // the clock, and each row's valid start is later than any time of the check before 2100, or passed.
+  it("bound and reference refuse a valid start later than the time of the check", async () => {
+    const rows = V.validStartChecked.rows as { case: string; transactionBase64: string; expect: unknown }[];
+    for (const row of rowsOf(rows, "x402-exact-hedera.json validStartChecked.rows", { exact: 2 })) {
+      const presented = presentedOf(row.transactionBase64);
+      expect([row.case, await exactHedera.bound(presented)]).toEqual([row.case, row.expect]);
+      const ref = await exactHedera.reference(presented, O);
+      expect([row.case, "refused" in ref ? ref : V.V2.expectBound]).toEqual([row.case, row.expect]);
     }
   });
 
@@ -355,7 +446,7 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
       if ("refused" in b) throw new Error(b.code);
       const payment = b.complete(X.fixed.payload);
       if ("refused" in payment) throw new Error(payment.code);
-      return exactHederaExecutor.reference(payment, OX);
+      return exactHederaExecutor.reference(payment, doc.accepts[0]!);
     };
     const clock = vi.spyOn(Date, "now").mockReturnValue(X.fixed.now * 1000);
     try {
@@ -384,16 +475,26 @@ describe("x402-exact-hedera-transfer-executor.json", () => {
     expect(await hederaIdDigest(X.fixed.payload.payer)).toBe(X.reference.expectIdDigest);
   });
 
+  it("reference refuses a payment whose accepted is not the option it is given", async () => {
+    const payment = (await built()).complete(X.fixed.payload);
+    if ("refused" in payment) throw new Error(payment.code);
+    const row = X.reference.notOption as { options: PaymentRequirements[]; expect: string };
+    for (const option of rowsOf(row.options, "x402-exact-hedera-transfer-executor.json reference.notOption.options", { exact: 2 })) {
+      expect(await exactHederaExecutor.reference(payment, option)).toEqual({ refused: true, code: row.expect });
+    }
+  });
+
   const asked = { act: "payment", finality: "consensus" } as const;
-  for (const [i, row] of rowsOf(X.status.rows as { case?: string; reference?: object; query?: object; entries: MirrorEntry[] | null; expect: unknown }[], "x402-exact-hedera-transfer-executor.json status.rows").entries()) {
+  for (const [i, row] of rowsOf(X.status.rows as { case?: string; reference?: object; mirror?: object; query?: object; entries: MirrorEntry[] | null; expect: unknown }[], "x402-exact-hedera-transfer-executor.json status.rows").entries()) {
     it(`executorStatus: ${row.case ?? `row ${i}`}`, async () => {
       const ref = { ...X.status.reference, ...(row.reference ?? {}) };
-      expect(await executorStatus(ref, readerOf(row.entries), (row.query ?? asked) as never)).toEqual(row.expect);
+      const mirror = { ...X.status.mirror, ...(row.mirror ?? {}) };
+      expect(await executorStatus(ref, readerOf(row.entries, "hedera:testnet", mirror), (row.query ?? asked) as never)).toEqual(row.expect);
     });
   }
 
-  it("plant: a debit from an account other than the payer settles nothing", async () => {
-    expect(await executorStatus(X.status.reference, readerOf(X.plant.entries), asked)).toEqual(X.plant.expect);
+  it("plant: a debit from an account other than the payer settles nothing, instrument-consumed", async () => {
+    expect(await executorStatus(X.status.reference, readerOf(X.plant.entries, "hedera:testnet", X.status.mirror), asked)).toEqual(X.plant.expect);
   });
 
   it("the record states the agreement step and no public proof", () => {

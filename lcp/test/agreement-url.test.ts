@@ -21,6 +21,7 @@ import {
   pairingsOf,
   subscriptionStripe,
   type MppChallenge,
+  sessionHederaStock,
 } from "../src/mpp.js";
 import { agentSigned, ap2Mandate, bookingAp2Mandate, bookingUnsigned, unsigned } from "../src/ucp.js";
 import { exactErc7710 } from "../src/x402.js";
@@ -129,6 +130,7 @@ const TX = load("mpp-charge-evm-transaction.json");
 const NI = load("mpp-charge-nearintents.json");
 const LC = load("mpp-charge-lightning.json");
 const LS = load("mpp-session-lightning.json");
+const HSS = load("mpp-session-hedera-solana-xrpl.json");
 const CC = load("mpp-charge-card.json");
 const CS = load("mpp-charge-stripe.json");
 const GW = load("mpp-charge-usdc-gateway.json");
@@ -194,6 +196,7 @@ const MPP_CASES: Case[] = [
   mppCase("mpp/charge/card", chargeCard, MC.fixed.H, MC.fixed.link, cardChallenge, carried(cardChallenge, { ...CC.M1.request, externalId: `lcp:sha256:${MC.fixed.H}` })),
   mppCase("mpp/charge/stripe", chargeStripe, MC.fixed.H, MC.fixed.link, stripeChallenge, carried(stripeChallenge, stripeDetails(CS.M2.request))),
   mppCase("mpp/charge/usdc/gateway", chargeUsdcGateway, GW.fixed.H, GW.fixed.link, gatewayChallenge, byHand(gatewayChallenge, GW.fixed.H, GW.fixed.link)),
+  mppCase("mpp/session/hedera/stock", sessionHederaStock, HSS.fixed.H, HSS.fixed.link, HSS.SS1.hedera.challenge, HSS.SS1.hedera.placed),
   mppCase("mpp/subscription/stripe", subscriptionStripe, MC.fixed.H, MC.fixed.link, subscriptionChallenge, carried(subscriptionChallenge, stripeDetails(CS.M2.request))),
 ];
 

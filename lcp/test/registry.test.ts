@@ -71,6 +71,9 @@ import {
   sessionEvm,
   sessionTempo,
   sessionXrpl,
+  sessionHederaStock,
+  type HederaStockReader,
+  type HederaStockRef,
   subscriptionStripe,
   subscriptionTempo,
   type MppChallenge,
@@ -169,6 +172,7 @@ const OWN = {
   "mpp/charge/xrpl": chargeXrpl satisfies Entry<"mpp/charge/xrpl", MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof chargeXrpl>>,
   "mpp/charge/nearintents": chargeNearIntents satisfies Entry<"mpp/charge/nearintents", MppCredential, NearIntentsRef, never, Own<typeof chargeNearIntents>>,
   "mpp/session/xrpl": sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "expect" | "fromLedger">, XrplReader, Own<typeof sessionXrpl>>,
+  "mpp/session/hedera/stock": sessionHederaStock satisfies Entry<"mpp/session/hedera/stock", MppCredential, HederaStockRef, HederaStockReader, Own<typeof sessionHederaStock>>,
   "mpp/charge/card": chargeCard satisfies Entry<"mpp/charge/card", MppCredential, never, never, Own<typeof chargeCard>>,
   "mpp/charge/stripe": chargeStripe satisfies Entry<"mpp/charge/stripe", MppCredential, never, never, Own<typeof chargeStripe>>,
   "mpp/subscription/stripe": subscriptionStripe satisfies Entry<"mpp/subscription/stripe", MppCredential, never, never, Own<typeof subscriptionStripe>>,
@@ -348,7 +352,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 63 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 64 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.
@@ -523,7 +527,7 @@ describe("the registry's type test", () => {
 
   it("CARRIER is the table the MPP entries' carrier datum gives, and the entries of one intent and method agree", () => {
     const table: { [intent: string]: { [method: string]: readonly string[] | null } } = {};
-    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 20 });
+    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 21 });
     for (const b of mpp) {
       const [, intent, method] = b.id.split("/") as [string, string, string];
       if (method === "usdc") continue;

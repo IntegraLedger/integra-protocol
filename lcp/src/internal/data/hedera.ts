@@ -13,8 +13,10 @@ export const HEDERA = /* @__PURE__ */ freeze({
       note: "the mirror node's REST interface",
       search:
         "Found by the transaction id fixed in what the buyer signs (`GET /api/v1/transactions/{id}`). Before every `failed` " +
-        "but `before-position`, the search for H over the debited account's transactions after the position, paged to the " +
-        "mirror's latest consensus timestamp, each `memo_base64` compared with H's string.",
+        "but `before-position`, the search for H over the debited account's transactions after the position " +
+        "(`GET /api/v1/transactions?account.id=`), 100 a page, at most 8 pages a read, to the mirror's latest consensus " +
+        "timestamp, each `memo_base64` compared with H's string; never read whole until a run shows the three facts it " +
+        "rests on, so it proves no absence and every such `failed` is `pending`, `search-incomplete`.",
       history:
         "the mirror holds records back to the valid start, and for the search back to the position, by the first timestamp " +
         "of its oldest block or the endpoint's archival declaration; otherwise `unreadable`, `history-gap`",
@@ -44,10 +46,10 @@ export const HEDERA = /* @__PURE__ */ freeze({
         "credit is recorded as observed",
     },
     proves:
-      "The payer signed a Hedera transaction body whose memo carries this ATR's hash in LCP string form. A " +
-      "transaction under that body's id with that memo reached consensus with SUCCESS, and the memo is in the " +
-      "public transaction record; the fee payer, the seller's facilitator, could land another body under the " +
-      "same id. This does not show that amount, recipient, token or timing match the ATR's content.",
+      "The payer's own signed act carries this ATR's hash: a Hedera crypto transfer whose memo is the hash's LCP " +
+      "string reached consensus with SUCCESS, debiting the payer, the one account its rows debit, and paid the " +
+      "account it credits, recorded with the asset and amount it moved. The memo is in the public transaction " +
+      "record, readable by transaction id. It compares no amount, asset or time with the ATR's terms.",
   },
   "x402/exact/hedera/transfer-executor": {
     coverage: "none",
@@ -57,14 +59,72 @@ export const HEDERA = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "any",
+    read: {
+      endpoint: ["mirror-rest"],
+      note: "the mirror node's REST interface",
+      search:
+        "The transaction the facilitator names, by its id (`GET /api/v1/transactions/{id}`), in its merged consensus " +
+        "record, the user entry and its child entries; no search, the act being the transaction named.",
+      history:
+        "the mirror holds records back to the named transaction's valid start, by the first timestamp of its oldest block " +
+        "or the endpoint's archival declaration; otherwise `unreadable`, `history-gap`",
+      contracts: [],
+      lapse:
+        "the named transaction id, single-use: consumed by an entry under it that decides, or unconsumed with its valid " +
+        "start plus 180 seconds, the chain's longest `validDuration`, strictly before the mirror's latest consensus timestamp",
+    },
+    destination: "the account the merged record credits, other than the node's and the fee accounts', compared with the option's payee",
+    asset: "HBAR (0.0.0) or the token id of each credited row; recorded and compared with nothing",
+    payer: "the one account the merged record debits, compared by its digest with the payer `reference` recorded",
     confirmed: "no",
     proves:
-      "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
-      "<network>, recorded in <transaction>. The payment is an x402 transferExecutor payment on Hedera: the " +
-      "payer's executor contract moved the funds under an authorization the seller did not read, and the " +
-      "facilitator submitted the transaction. The hash reached the payer only in the challenge's extension, " +
-      "and nothing the payer signed carries it. The seller read the merged consensus record of the named " +
-      "transaction, and found that its one debited account, by at least one unit, is the payer recorded when " +
-      "the payment was presented. This does not show that amount, recipient, token or timing match the ATR's content.",
+      "Before this payment was taken, an account signed an agreement carrying this ATR's hash on <network>, recorded " +
+      "in <transaction>; this does not show that the account is the payer. The payment is an x402 transferExecutor " +
+      "payment on Hedera: the payer's executor contract moved the funds under an authorization the seller did not " +
+      "read, and the facilitator submitted the transaction. The hash reached the payer only in the challenge's " +
+      "extension, and nothing the payer signed carries it. The read of the named transaction's merged consensus " +
+      "record found that its one debited account is the payer recorded when the payment was presented, and that it " +
+      "credited the payee. It compares no amount, asset or time with the ATR's terms.",
+  },
+  "mpp/session/hedera/stock": {
+    coverage: "none",
+    carrier: { signed: null },
+    link: "none",
+    source: "none: the stock client sends `approve` and `open` itself, with a random salt",
+    nonce: "unshown",
+    broadcasts: "either",
+    agreementOn: "same-network",
+    read: {
+      endpoint: ["json-rpc", "mirror-rest"],
+      note:
+        "the network's JSON-RPC relay, which reads the opening, and its mirror node's REST interface, which resolves the " +
+        "opening's payer and payee to account ids; a network that declares no relay is not served",
+      search:
+        "The opening by the transaction hash its credential names (`eth_getTransactionReceipt`), at the relay's " +
+        "`finalized` block, every block the relay serves being final; no search.",
+      history:
+        "the mirror holds the blocks after the position the opening must come after, by the number of its oldest block " +
+        "or the endpoint's archival declaration; otherwise a hash with no receipt is `unreadable`, `history-gap`",
+      contracts: ["the escrow the challenge's `methodDetails.escrowContract` names"],
+      lapse:
+        "none but the revert: a named hash that never lands is read until the caller's own bound ends, answering " +
+        "`pending`, `not-found`",
+    },
+    destination:
+      "the escrow's `ChannelOpened` `payee`, resolved by the mirror (`GET /api/v1/accounts/{address}`) to an account id " +
+      "and compared with the account the challenge's `recipient` names",
+    asset: "the `ChannelOpened` token and deposit, recorded as observed and compared with nothing",
+    payer:
+      "the `ChannelOpened` `payer`, an EVM address, resolved by the mirror to the account id that opened the channel; an " +
+      "address it resolves to no account is another account",
+    confirmed: "no",
+    proves:
+      "Before this session, an account signed an agreement transaction carrying this ATR's hash on the session's " +
+      "Hedera network. The opening the credential names reached consensus: the account its ChannelOpened log names " +
+      "as payer deposited the deposit into the escrow's channel, whose payee the log names, after the block the " +
+      "agreement was recorded at. The opening does not carry the hash, and this does not show that the account that " +
+      "signed the agreement is the one that opened the channel unless the record compares the two. Vouchers sign the " +
+      "channel id and an amount, not the hash. This does not show that amount, deposit, payee or timing match the " +
+      "ATR's content.",
   },
 });

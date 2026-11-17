@@ -202,6 +202,11 @@
       "source": "draft-xrpl-session-00 at tempoxyz/mpp-specs 08e7dd87: the open: \"The server broadcasts it\"; the close: \"Redemption itself is the server's to perform\""
     },
     {
+      "pairing": "mpp/session/hedera/stock",
+      "broadcaster": null,
+      "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87: the client sends the open and a topUp itself and names each by txHash; the server redeems vouchers and sends the close"
+    },
+    {
       "pairing": "mpp/charge/card",
       "broadcaster": "payee",
       "source": "draft-card-charge-00 at tempoxyz/mpp-specs 08e7dd87: \"The Server Enabler decrypts and processes the payment through existing card network rails.\""
@@ -993,6 +998,99 @@
       },
       "expect": "payer",
       "source": "AP2 e1ea56d, docs/ap2/specification.md:203-209: the merchant \"initiates payment with the Merchant Payment Processor if a Merchant-initiated charge\"; \"In the case that the payment method pushes funds to the Merchant, the Merchant will instead receive confirmation of funds sent\". The push presentation carries that confirmation as payment_receipt, AP2's Payment Receipt (code/sdk/schemas/ap2/payment_receipt.json at e1ea56d), as the profile ap2-checkout-mandate.md states."
+    },
+    {
+      "case": "mpp/session/hedera/stock: a open credential",
+      "pairing": "mpp/session/hedera/stock",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "hedera",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "action": "open",
+          "channelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+          "txHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+          "cumulativeAmount": "0",
+          "signature": "0x22"
+        }
+      },
+      "expect": "payer",
+      "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87, its four actions: the client sends the open and a topUp and names each by txHash; the server redeems vouchers and sends the close"
+    },
+    {
+      "case": "mpp/session/hedera/stock: a topUp credential",
+      "pairing": "mpp/session/hedera/stock",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "hedera",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "action": "topUp",
+          "channelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+          "txHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+          "additionalDeposit": "10"
+        }
+      },
+      "expect": "payer",
+      "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87, its four actions: the client sends the open and a topUp and names each by txHash; the server redeems vouchers and sends the close"
+    },
+    {
+      "case": "mpp/session/hedera/stock: a voucher credential",
+      "pairing": "mpp/session/hedera/stock",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "hedera",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "action": "voucher",
+          "channelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+          "cumulativeAmount": "5",
+          "signature": "0x22"
+        }
+      },
+      "expect": "payee",
+      "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87, its four actions: the client sends the open and a topUp and names each by txHash; the server redeems vouchers and sends the close"
+    },
+    {
+      "case": "mpp/session/hedera/stock: a close credential",
+      "pairing": "mpp/session/hedera/stock",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "hedera",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "action": "close",
+          "channelId": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+          "cumulativeAmount": "5",
+          "signature": "0x22"
+        }
+      },
+      "expect": "payee",
+      "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87, its four actions: the client sends the open and a topUp and names each by txHash; the server redeems vouchers and sends the close"
     }
   ],
   "refusals": [

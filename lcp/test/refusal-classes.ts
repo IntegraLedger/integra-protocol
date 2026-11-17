@@ -120,8 +120,9 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "reverted", "wrong-reader",
   ],
   hedera: [
-    "deprecated-fields", "executor-malformed", "executor-not-offered", "list-inconsistent", "memo-not-lcp",
-    "no-legal-context", "no-memo", "not-success", "option-malformed", "tx-malformed", "tx-too-large", "wrong-reader",
+    "deprecated-fields", "executor-malformed", "executor-not-offered", "list-inconsistent",
+    "memo-not-lcp", "no-legal-context", "no-memo", "not-success", "option-malformed", "payer-not-buyer", "tx-malformed",
+    "tx-too-large", "valid-duration", "valid-start-future", "wrong-reader",
   ],
   ln: [
     "currency-network", "description-inline", "description-present", "expires-after-invoice", "field-length",

@@ -64,6 +64,7 @@ import { evmSessionResume, sessionEvm, sessionNetwork, sessionTempo, subscriptio
 import { solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { chargeLightning, sessionLightning } from "./lightning.js";
 import { railSessionResume, sessionXrpl } from "./mpp-session-rails.js";
+import { hederaSessionResume, sessionHederaStock } from "./hedera-session.js";
 import { chargeSolana } from "./mpp-solana.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -130,6 +131,13 @@ export {
   type RailSessionUnsigned,
   type SolanaTablesCredential,
 } from "./mpp-session-rails.js";
+export {
+  hederaStockStatus,
+  sessionHederaStock,
+  type HederaStockReader,
+  type HederaStockRef,
+  type HederaStockStatus,
+} from "./hedera-session.js";
 export {
   evmChannelId,
   keySearch,
@@ -330,14 +338,15 @@ function echoedChain(e: Echoed): number | Refusal {
 
 /**
  * The network and channel a session challenge names for the client to resume, spelled as the pairing's `channel.ref`
- * spells it: EVM and Tempo in `methodDetails.channelId` (a bytes32, lowercase), XRPL in the request's `channelId` (64
- * hex characters, upper case). Null
+ * spells it: EVM, Tempo and Hedera in `methodDetails.channelId` (a bytes32, lowercase), XRPL in the request's
+ * `channelId` (64 hex characters, upper case). Null
  * when the challenge names no channel; refused for a challenge of no session pairing, or a channel or network that
  * cannot be read.
  */
 export function sessionResume(c: MppChallenge): { network: string; channel: string } | null | Refusal {
   const method = typeof c === "object" && c !== null ? c.method : undefined;
-  return method === "hedera" || method === "solana" || method === "xrpl" ? railSessionResume(c) : evmSessionResume(c);
+  if (method === "hedera") return hederaSessionResume(c);
+  return method === "solana" || method === "xrpl" ? railSessionResume(c) : evmSessionResume(c);
 }
 
 /**
@@ -943,6 +952,7 @@ export const MPP_BINDINGS = Object.freeze([
   chargeXrpl,
   chargeNearIntents,
   sessionXrpl,
+  sessionHederaStock,
   chargeCard,
   chargeStripe,
   subscriptionStripe,

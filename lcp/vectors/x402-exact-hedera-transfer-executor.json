@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is the payer's, printf '%s' '0.0.5001' | sha256sum; openssl dgst -sha256 and Python hashlib printed the same. Payee and amount are not read: a row settles when the payer is the one account debited. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. Each parent entry with transfers carries charged_tx_fee, the fee the Mirror Node's Transaction records as charged to the fee payer; here it is the fee payer's 5000000-tinybar debit, credited to 0.0.3 and 0.0.98; x402's example states no fee. A row's reference fields override the status reference. The status rows give executorStatus's answer under the profile read-status at the one mark, consensus, asked about the act payment unless a row's query says otherwise. At coverage none the read has no single-use value to read: a transaction with a failed result answers pending search-incomplete, never failed (rule 23), and a transaction id with no counted entry, or one that debits another account than the payer, answers unreadable history-gap, since the reader states no history (rule 18).",
+ "about": "Vectors for the x402/exact/hedera/transfer-executor pairing, from x402's own example at 8228bd6d. idDigest is the payer's, printf '%s' '0.0.5001' | sha256sum; openssl dgst -sha256 and Python hashlib printed the same. A row settles where the payer is the one account the record debits and the record credits the payee; the asset and amount are recorded and judged by nothing. The staking-reward rows add a reward of 12345 tinybars to x402's example as HIP-406 records one: the rewarded account's credit in transfers includes the reward, 0.0.800 pays it, and staking_reward_transfers lists it. Each parent entry with transfers carries charged_tx_fee, the fee the Mirror Node's Transaction records as charged to the fee payer; here it is the fee payer's 5000000-tinybar debit, credited to 0.0.3 and 0.0.98; x402's example states no fee. A row's reference fields override the status reference. The status rows give executorStatus's answer under the profile read-status at the one mark, consensus, asked about the act payment unless a row's query says otherwise. The named transaction id is single-use (x402-exact-hedera.md, rule 15): a failed result under it answers failed, transaction-failed; a success that is not the payer's payment to the payee, one crediting another account or debiting another account than the payer among them, failed, instrument-consumed; and with no entry under it that decides, pending, instrument-live, until its valid start plus 180 seconds is strictly before the mirror's latest consensus timestamp, and failed, instrument-unused, after it, the mirror holding records back to that valid start.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -145,7 +145,41 @@
   "expectWithoutExtension": "hedera/no-legal-context"
  },
  "reference": {
-  "expectIdDigest": "0x2baa52abedfc2bc71addf127e5dd4f6016a273bdc886027a5435ae35455f86f1"
+  "expectIdDigest": "0x2baa52abedfc2bc71addf127e5dd4f6016a273bdc886027a5435ae35455f86f1",
+  "notOption": {
+   "case": "the payment whose accepted is the file's option O, given to reference beside another option the seller offers (O with payTo 0.0.4002, and O with amount 200000000): it answers another option, x402/accepted-not-option, the two compared by their RFC 8785 forms",
+   "options": [
+    {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "100000000",
+     "asset": "0.0.0",
+     "payTo": "0.0.4002",
+     "maxTimeoutSeconds": 120,
+     "extra": {
+      "assetTransferMethod": "transferExecutor",
+      "executors": [
+       "0.0.7000"
+      ]
+     }
+    },
+    {
+     "scheme": "exact",
+     "network": "hedera:testnet",
+     "amount": "200000000",
+     "asset": "0.0.0",
+     "payTo": "0.0.4001",
+     "maxTimeoutSeconds": 120,
+     "extra": {
+      "assetTransferMethod": "transferExecutor",
+      "executors": [
+       "0.0.7000"
+      ]
+     }
+    }
+   ],
+   "expect": "x402/accepted-not-option"
+  }
  },
  "status": {
   "reference": {
@@ -179,7 +213,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -204,8 +239,19 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
-    }
+    },
+    "case": "the named transaction debits the payer and credits the payee: settled"
    },
    {
     "entries": [
@@ -229,14 +275,21 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      }
     ],
     "expect": {
-     "state": "unreadable",
-     "reason": "history-gap",
-     "foreign": []
-    }
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "moved": [],
+     "foreign": [],
+     "signer": "0.0.9000"
+    },
+    "case": "only the fee moved: the record debits no account, its fee payer is no payer, and it names no account: instrument-consumed"
    },
    {
     "entries": [
@@ -260,25 +313,48 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      }
     ],
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
+     "state": "failed",
+     "reason": "transaction-failed",
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "moved": [],
      "foreign": []
-    }
+    },
+    "case": "the named transaction's failed result consumed its id: transaction-failed"
    },
    {
     "entries": null,
     "expect": {
-     "state": "unreadable",
-     "reason": "history-gap",
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    },
+    "case": "no entry under the named id (the mirror's 404), its valid start plus 180 seconds not yet passed: instrument-live"
+   },
+   {
+    "case": "no entry under a named id whose nanoseconds are written in one digit, 0.0.9000-1755499920-5: its valid start is 1755499920.000000005, the nanoseconds an integer as the id's spelling writes them, so its valid start plus 180 seconds, 1755500100.000000005, is before the mirror's latest consensus timestamp: instrument-unused",
+    "reference": {
+     "transaction": "0.0.9000-1755499920-5"
+    },
+    "mirror": {
+     "latest": "1755500100.100000000"
+    },
+    "entries": null,
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-unused",
+     "finality": "consensus",
      "foreign": []
     }
    },
    {
-    "case": "the child credits 0.0.4002 instead of 0.0.4001: the payee is not read",
+    "case": "the child credits 0.0.4002 instead of 0.0.4001: it names another account than the payee's, instrument-consumed",
     "entries": [
      {
       "result": "SUCCESS",
@@ -300,7 +376,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -321,16 +398,27 @@
      }
     ],
     "expect": {
-     "state": "settled",
+     "state": "failed",
+     "reason": "instrument-consumed",
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
-     "foreign": []
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4002",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4002"
+      }
+     ],
+     "foreign": [],
+     "signer": "0.0.5001"
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit"
    },
    {
-    "case": "the payer moves one tinybar: the amount is not read",
+    "case": "the payer moves one tinybar: the amount is recorded and judged by nothing, settled",
     "entries": [
      {
       "result": "SUCCESS",
@@ -352,7 +440,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -377,12 +466,22 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit"
    },
    {
-    "case": "a second account is debited",
+    "case": "a second account is debited: the record has no one signer, so it is no act of the payer's, instrument-consumed",
     "entries": [
      {
       "result": "SUCCESS",
@@ -404,7 +503,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -429,8 +529,20 @@
      }
     ],
     "expect": {
-     "state": "unreadable",
-     "reason": "history-gap",
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "0.0.9000-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000001",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d: 'The facilitator constructs `from`, `asset`, `to` and `amount` itself', and 'Settlement success MUST reflect actual on-chain effects'; the read identifies the payment by the named transaction and the payer's debit; x402 rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)'"
@@ -472,7 +584,8 @@
         "account": "0.0.4001",
         "amount": 12345
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -497,6 +610,16 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
@@ -534,7 +657,8 @@
         "account": "0.0.4001",
         "amount": 12345
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -559,6 +683,16 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
@@ -600,7 +734,8 @@
         "account": "0.0.4001",
         "amount": 12345
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -625,6 +760,16 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'if a transaction has a portion of its transaction fee that sends 3 tinybars to 0.0.800, and 0.0.800 is sending Bob 1 tinybar as an earned staking reward, then the existing list will show a change of +2 tinybars for 0.0.800'."
@@ -666,7 +811,8 @@
         "account": "0.0.5001",
         "amount": 12345
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -691,6 +837,16 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list."
@@ -736,7 +892,8 @@
         "account": "0.0.800",
         "amount": -12345
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -761,6 +918,16 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "HIP-406 (Transaction Record Format): 'if Alice sends 100 tinybars to Bob, and this triggers a reward of 1 tinybar for Bob, then the existing list will show that Bob's account increased by 101 tinybars, and the new list will show that Bob's account increased by 1 tinybar due to staking rewards'; the reward is transferred 'from the staking reward account (0.0.800)'. The Mirror Node's staking_reward_transfers is that new list. 'the new list will show a -1 change for 0.0.800 (change due to staking rewards)'."
@@ -794,7 +961,8 @@
         "account": "0.0.4001",
         "amount": 12345
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -819,6 +987,16 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "99987655",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "the payer, 0.0.5001, is the one account debited; the payee's credit, less the listed reward, is not read"
@@ -849,7 +1027,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -903,7 +1082,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -957,7 +1137,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -1012,7 +1193,8 @@
       "staking_reward_transfers": {
        "account": "0.0.4001",
        "amount": 12345
-      }
+      },
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -1040,19 +1222,20 @@
     "source": "the Mirror Node's staking_reward_transfers is an array; another shape is an unreadable answer"
    },
    {
-    "case": "only a node due-diligence failure",
+    "case": "only a node due-diligence failure under the named id, its validity open: instrument-live",
     "entries": [
      {
       "result": "INVALID_PAYER_SIGNATURE",
       "nonce": 0,
       "scheduled": false,
       "memo_base64": null,
-      "consensus_timestamp": "1755500001.000000001"
+      "consensus_timestamp": "1755500001.000000001",
+      "node": "0.0.3"
      }
     ],
     "expect": {
-     "state": "unreadable",
-     "reason": "history-gap",
+     "state": "pending",
+     "reason": "instrument-live",
      "foreign": []
     },
     "source": "hiero-consensus-node RecordCache: records with INVALID_NODE_ACCOUNT or INVALID_PAYER_SIGNATURE 'do not prevent valid transactions with the same id from reaching consensus and being handled'"
@@ -1083,7 +1266,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -1108,12 +1292,22 @@
      "transaction": "0.0.5001-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.5001-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'When `payer` is the fee payer, the single HBAR debit MUST equal `amount + transactionFee`'; the Mirror Node's Transaction charged_tx_fee is that fee, in tinybars, and the fee payer's transfers row includes it"
    },
    {
-    "case": "the payer is the fee payer and only the fee moved",
+    "case": "the payer is the fee payer and only the fee moved: the payer's act names no account, instrument-consumed",
     "reference": {
      "transaction": "0.0.5001-1755500000-000000000"
     },
@@ -1138,13 +1332,19 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      }
     ],
     "expect": {
-     "state": "unreadable",
-     "reason": "history-gap",
-     "foreign": []
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "0.0.5001-1755500000-000000000",
+     "position": "1755500003.000000001",
+     "finality": "consensus",
+     "moved": [],
+     "foreign": [],
+     "signer": "0.0.5001"
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'When `payer` is the fee payer, the single HBAR debit MUST equal `amount + transactionFee`'; the Mirror Node's Transaction charged_tx_fee is that fee, in tinybars, and the fee payer's transfers row includes it; with the fee taken out, no account is debited"
    },
@@ -1175,7 +1375,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -1202,6 +1403,16 @@
      "transaction": "0.0.5001-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.456858",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.5001-1755500000-000000000",
+       "place": "0.0.456858/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"
@@ -1233,7 +1444,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -1260,6 +1472,16 @@
      "transaction": "0.0.4001-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.456858",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.4001-1755500000-000000000",
+       "place": "0.0.456858/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     },
     "source": "x402 scheme_exact_hedera.md at 8228bd6d, transferExecutor settlement rule 3: 'the only debited accounts are `payer` (by `amount` in `asset`) and the fee payer (by the transaction fee in HBAR)' and 'An HTS token list carries no fee distribution'; the fee is HBAR, in the parent's transfers, so in the token the payer is the one account debited"
@@ -1286,7 +1508,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -1341,7 +1564,8 @@
         "account": "0.0.98",
         "amount": 4750000
        }
-      ]
+      ],
+      "node": "0.0.3"
      },
      {
       "result": "SUCCESS",
@@ -1367,13 +1591,28 @@
      "transaction": "0.0.9000-1755500000-000000000",
      "position": "1755500003.000000001",
      "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "100000000",
+       "to": "0.0.4001",
+       "transaction": "0.0.9000-1755500000-000000000",
+       "place": "0.0.0/0.0.4001"
+      }
+     ],
+     "signer": "0.0.5001",
      "foreign": []
     }
    }
-  ]
+  ],
+  "mirror": {
+   "latest": "1755500100.000000000",
+   "oldest": "archival"
+  },
+  "about": "executorStatus reads the transaction the facilitator names as the act at coverage none: its merged record's one debited account is the payer where its digest is the one reference recorded, it pays where it credits the payee, what moved is recorded and judged by nothing, and its transaction id is single-use. Each row's entries are what GET /api/v1/transactions/{id} answers (null for its 404); mirror gives the reader's latest consensus timestamp and the start of its oldest block, a row's own mirror members replacing them. The expected answers were written by hand. Each transfer of what moved is named by the transaction id and its place, the asset and the credited account, `<asset>/<account>` (x402-exact-hedera.md, rule 14)."
  },
  "plant": {
-  "case": "the child debits 0.0.5002 instead of 0.0.5001: never settled",
+  "case": "a debit from an account other than the payer settles nothing: instrument-consumed",
   "entries": [
    {
     "result": "SUCCESS",
@@ -1395,7 +1634,8 @@
       "account": "0.0.98",
       "amount": 4750000
      }
-    ]
+    ],
+    "node": "0.0.3"
    },
    {
     "result": "SUCCESS",
@@ -1416,9 +1656,22 @@
    }
   ],
   "expect": {
-   "state": "unreadable",
-   "reason": "history-gap",
-   "foreign": []
+   "state": "failed",
+   "reason": "instrument-consumed",
+   "transaction": "0.0.9000-1755500000-000000000",
+   "position": "1755500003.000000001",
+   "finality": "consensus",
+   "moved": [
+    {
+     "asset": "0.0.0",
+     "amount": "100000000",
+     "to": "0.0.4001",
+     "transaction": "0.0.9000-1755500000-000000000",
+     "place": "0.0.0/0.0.4001"
+    }
+   ],
+   "foreign": [],
+   "signer": "0.0.5002"
   }
  },
  "buyer": {

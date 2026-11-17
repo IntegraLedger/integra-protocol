@@ -364,20 +364,21 @@ describe("no entry point passes a caller's value back as a refusal", () => {
     "mpp/session/tempo",
     "mpp/subscription/tempo",
     "mpp/session/xrpl",
+    "mpp/session/hedera/stock",
     "mpp/charge/usdc/evm",
     "mpp/charge/usdc/stacks",
     "mpp/charge/usdc/gateway",
   ];
-  it("the MPP pairings whose unplaced returns the advertised challenge as given are these eleven", () => {
+  it("the MPP pairings whose unplaced returns the advertised challenge as given are these twelve", () => {
     const mpp = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 20,
+      exact: 21,
       keep: ["the MPP pairings", (b) => b.id.startsWith("mpp/")],
       leave: ["the pairings of the other carriers, which the tests above take", (b) => !b.id.startsWith("mpp/")],
     });
     for (const b of mpp) expect(advertisedOf.get(b.id), b.id).toBeTypeOf("object");
     const same = mpp.filter((b) => (b.unplaced as (c: unknown) => unknown)(advertisedOf.get(b.id)) === advertisedOf.get(b.id));
     expect(same.map((b) => b.id).sort()).toEqual([...sameChallenge].sort());
-    expect(sameChallenge.length).toBe(11);
+    expect(sameChallenge.length).toBe(12);
   });
   for (const id of sameChallenge) {
     it(`${id}: unplaced refuses a challenge carrying a refused member as mpp/challenge-malformed`, () => {
@@ -433,7 +434,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
   it("the x402 and MPP pairings whose unplaced removes a carrier are these fourteen", () => {
     const pairings = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 27 + 20,
+      exact: 27 + 21,
       keep: ["the x402 and MPP pairings", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
       leave: ["the ACK, ACP, AP2, card and UCP pairings, whose unplaced the checkout tests above take", (b) => options[b.id.split("/")[0]!] !== undefined],
     });
@@ -610,7 +611,7 @@ describe("every placement function refuses a seller document carrying a refused 
   // opaque, which place writes. The Lightning invoice, which carries the hash, exists when advertise is called, so
   // advertise takes the challenge with it, and advertiseBeforeCarrier takes it without.
   const mpp = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 20,
+    exact: 21,
     keep: ["the MPP pairings", (b) => b.id.startsWith("mpp/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("mpp/")],
   });
@@ -622,8 +623,8 @@ describe("every placement function refuses a seller document carrying a refused 
     const h = fromLcpString(opaque["legalContext"]!);
     return { issued, h, link: opaque["legalContextUrl"]!, agreementUrl: opaque["legalContextAgreementUrl"] };
   };
-  it("the MPP pairings are twenty, each with an advertised list of one challenge whose opaque holds only the legal context", () => {
-    expect(mpp.length).toBe(20);
+  it("the MPP pairings are twenty-one, each with an advertised list of one challenge whose opaque holds only the legal context", () => {
+    expect(mpp.length).toBe(21);
     for (const b of mpp) {
       const [c, ...rest] = advertisedDoc.get(b.id) as Record<string, string>[];
       expect(rest, b.id).toEqual([]);

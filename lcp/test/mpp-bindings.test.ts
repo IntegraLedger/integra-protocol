@@ -23,6 +23,7 @@ import {
   chargeSolana,
   chargeXrpl,
   sessionXrpl,
+  sessionHederaStock,
   type MppChallenge,
   type MppCredential,
   type SessionUnsigned,
@@ -68,6 +69,7 @@ describe("MPP_BINDINGS", () => {
       "mpp/charge/xrpl",
       "mpp/charge/nearintents",
       "mpp/session/xrpl",
+      "mpp/session/hedera/stock",
       "mpp/charge/card",
       "mpp/charge/stripe",
       "mpp/subscription/stripe",
@@ -90,6 +92,7 @@ describe("MPP_BINDINGS", () => {
           chargeXrpl,
       chargeNearIntents,
               sessionXrpl,
+      sessionHederaStock,
       chargeCard,
       chargeStripe,
       subscriptionStripe,
@@ -98,7 +101,7 @@ describe("MPP_BINDINGS", () => {
       chargeUsdcStacks,
       chargeUsdcGateway,
     ]);
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 20 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 21 })) {
       expect(Object.isFrozen(b)).toBe(true);
       expect(Object.isFrozen(b.pattern)).toBe(true);
     }
@@ -220,12 +223,13 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
       challenge("tempo", "session", T.fixed.requestV2),
       challenge("tempo", "subscription", U.fixed.request),
       SR.SS1.xrpl.challenge,
+      SR.SS1.hedera.challenge,
       challenge("usdc", "charge", UE.M3.requestJson),
       challenge("usdc", "charge", UG.M5.requestJson),
       { ...challenge("usdc", "charge", "{}"), request: b64u(JSON.stringify(US.fixed.request)) },
     ];
     const placedBy = new Set<string>();
-    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 20 })) {
+    for (const b of rowsOf(MPP_BINDINGS, "MPP_BINDINGS, the MPP pairings", { exact: 21 })) {
       for (const option of issued) {
         const offered = pairingsOf(option);
         if (!Array.isArray(offered) || !offered.includes(b.id as never)) continue;
@@ -246,6 +250,7 @@ describe("the agreement URL, placed by every pairing of one challenge", () => {
         "mpp/session/tempo",
         "mpp/subscription/tempo",
         "mpp/session/xrpl",
+        "mpp/session/hedera/stock",
         "mpp/charge/usdc/evm",
         "mpp/charge/usdc/gateway",
         "mpp/charge/usdc/stacks",

@@ -288,10 +288,13 @@ describe("what a node answers, with a pad bit set", () => {
     const reader = (entries: MirrorEntry[]): HederaReader => ({
       network: V.V5.readerNetwork,
       transactions: async () => entries,
+      latest: async () => V.V5.rows[0].mirror.latest,
+      oldest: async () => "archival",
+      accountTransactions: async () => ({ transactions: [], next: null }),
     });
     const memo = (entries: MirrorEntry[], m: (s: string) => string) =>
       entries.map((e) => ({ ...e, memo_base64: m(e.memo_base64!) }));
-    const settled: MirrorEntry[] = V.V5.rows[0].entries;
+    const settled: MirrorEntry[] = V.V5.rows[0].mirror.byId;
     expect(settled[0]!.memo_base64!.endsWith("=")).toBe(true);
     const query = { act: "payment", finality: "consensus" } as const;
     const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };

@@ -30,6 +30,7 @@ import {
   usdcChargePairings,
 } from "./mpp-method-checks.js";
 import {
+  hederaSessionPairings,
   nearIntentsChargePairings,
   solanaChargePairings,
   xrplChargePairings,
@@ -45,6 +46,7 @@ import { NEAR } from "./internal/data/near.js";
 import { SOLANA } from "./internal/data/solana.js";
 import { STACKS } from "./internal/data/stacks.js";
 import { XRPL } from "./internal/data/xrpl.js";
+import { HEDERA } from "./internal/data/hedera.js";
 
 /** A challenge's auth-params after quoted-string unescaping. `request` and `opaque` are base64url-nopad JSON. */
 export interface MppChallenge {
@@ -116,7 +118,7 @@ type CarrierTable = { [i in MppIntent]: { [m in MppMethod]?: readonly string[] |
 function carrierTables(): { byMethod: CarrierTable; usdc: { [profile: string]: readonly string[] | null } } {
   const byMethod: CarrierTable = { charge: {}, session: {}, subscription: {} };
   const usdc: { [profile: string]: readonly string[] | null } = {};
-  for (const family of [CARD, EIP155_TEMPO_MPP, LIGHTNING, NEAR, SOLANA, STACKS, XRPL]) {
+  for (const family of [CARD, EIP155_TEMPO_MPP, LIGHTNING, NEAR, SOLANA, STACKS, XRPL, HEDERA]) {
     for (const [id, data] of Object.entries(family)) {
       const [protocol, i, m, rest] = id.split("/");
       const intent = INTENTS.find((x) => x === i);
@@ -158,6 +160,7 @@ export type MppPairingId =
   | "mpp/charge/xrpl"
   | "mpp/charge/nearintents"
   | "mpp/session/xrpl"
+  | "mpp/session/hedera/stock"
   | "mpp/charge/card"
   | "mpp/charge/stripe"
   | "mpp/subscription/stripe"
@@ -684,6 +687,7 @@ const PAIRING_CHECKS: { readonly [intentAndMethod: string]: PairingCheck } = Obj
   "charge/xrpl": xrplChargePairings,
   "charge/nearintents": nearIntentsChargePairings,
   "session/xrpl": xrplSessionPairings,
+  "session/hedera": hederaSessionPairings,
   "charge/card": cardChargePairings,
   "charge/stripe": stripeChargePairings,
   "subscription/stripe": stripeSubscriptionPairings,

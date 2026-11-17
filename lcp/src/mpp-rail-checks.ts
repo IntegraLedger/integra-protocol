@@ -11,6 +11,14 @@ import type { MppPairingId } from "./mpp-challenge.js";
 import { refusal, type Refusal } from "./refusal.js";
 
 type Obj = { [k: string]: Json };
+type HederaSessionNetwork = "hedera:mainnet" | "hedera:testnet";
+
+/** The chain ids of draft-hedera-session-00's `methodDetails.chainId`, absent being 295. */
+const HEDERA_SESSION_CHAINS: { readonly [id: number]: HederaSessionNetwork } = Object.freeze({
+  295: "hedera:mainnet",
+  296: "hedera:testnet",
+});
+const EVM_ADDRESS = /^0x[0-9A-Fa-f]{40}$/;
 
 const U64_LIMIT = 1n << 64n;
 const DECIMAL = /^[0-9]{1,78}$/;
@@ -196,4 +204,30 @@ export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | R
     return refusal("mpp/request-malformed");
   }
   return ["mpp/session/xrpl"];
+}
+
+// ── session on hedera ──────────────────────────────────────────────────────────────────────────────────────────
+
+/** The network of a Hedera session's `methodDetails.chainId`, absent being 295; another is `mpp/request-malformed`. */
+export function hederaSessionNetworkOf(details: Obj): HederaSessionNetwork | Refusal {
+  const id = details["chainId"] ?? 295;
+  return typeof id === "number" && Object.hasOwn(HEDERA_SESSION_CHAINS, id) ? HEDERA_SESSION_CHAINS[id]! : refusal("mpp/request-malformed");
+}
+
+/**
+ * `session` on `hedera`: the stock session. No `channelId` (`mpp/channel-named`); `chainId` absent, 295 or 296;
+ * `currency`, `recipient` and `escrowContract` addresses (draft-hedera-session-00), else `mpp/request-malformed`.
+ */
+export function hederaSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
+  if (d["channelId"] !== undefined) return refusal("mpp/channel-named");
+  const network = hederaSessionNetworkOf(d);
+  if (typeof network !== "string") return network;
+  if (!isEvmAddress(r["currency"]) || !isEvmAddress(r["recipient"]) || !isEvmAddress(d["escrowContract"])) {
+    return refusal("mpp/request-malformed");
+  }
+  return ["mpp/session/hedera/stock"];
+}
+
+function isEvmAddress(v: unknown): boolean {
+  return typeof v === "string" && EVM_ADDRESS.test(v);
 }

@@ -77,8 +77,9 @@ console.log(channels.sort().join("\n"));
 ```
 
 ```text
-8
+9
 mpp/session/evm
+mpp/session/hedera/stock
 mpp/session/lightning
 mpp/session/tempo
 mpp/session/xrpl

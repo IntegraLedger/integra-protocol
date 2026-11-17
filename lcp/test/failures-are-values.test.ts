@@ -511,7 +511,14 @@ describe("hedera", () => {
   it("hederaStatus: a ref whose expectMemo is not a string is unreadable unparseable, with nothing read", async () => {
     const V = load("x402-exact-hedera.json").V5;
     let reads = 0;
-    const reader = { network: V.readerNetwork, transactions: async () => (reads++, V.rows[0].entries) };
+    const m = V.rows[0].mirror;
+    const reader = {
+      network: V.readerNetwork,
+      transactions: async () => (reads++, m.byId),
+      latest: async () => (reads++, m.latest),
+      oldest: async () => (reads++, "archival"),
+      accountTransactions: async () => (reads++, { transactions: [], next: null }),
+    };
     expect(await hederaStatus(V.reference, reader as never, consensus as never)).toEqual(V.rows[0].expect);
     for (const v of [undefined, null, 1, {}]) {
       reads = 0;
@@ -523,7 +530,12 @@ describe("hedera", () => {
   it("executorStatus: a ref whose asset or idDigest is not of the form reference writes is unreadable unparseable, with nothing read", async () => {
     const V = load("x402-exact-hedera-transfer-executor.json").status;
     let reads = 0;
-    const reader = { network: V.readerNetwork, transactions: async () => (reads++, V.rows[0].entries) };
+    const reader = {
+      network: V.readerNetwork,
+      transactions: async () => (reads++, V.rows[0].entries),
+      latest: async () => (reads++, V.mirror.latest),
+      oldest: async () => (reads++, V.mirror.oldest),
+    };
     expect(await executorStatus(V.reference, reader as never, consensus as never)).toEqual(V.rows[0].expect);
     const bad: readonly [string, unknown][] = [
       ["idDigest", undefined],

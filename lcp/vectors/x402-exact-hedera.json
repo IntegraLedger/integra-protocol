@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/hedera pairing of @integraledger/lcp's hedera entry point. H is SHA-256(\"abc\") from FIPS 180-2. The bytes were computed with hiero-sdk-python 0.2.10's generated protobufs and protobuf 7.36.2 (SerializeToString(deterministic=True)) and cryptography's Ed25519 on Python 3.12.3, 2026-09-25; the signing seed is not recorded here. Byte strings are hex unless named base64. The V5 rows give status's answer under the profile read-status at the one mark, consensus, asked about the act payment unless a row's query says otherwise. The rows read failed with the transaction's own result, failed under another memo, and pending not-found answer pending search-incomplete: at coverage full, failed comes only once the search for H is read whole, and the read has no search (rules 18, 23 and 24).",
+ "about": "Vectors for the x402/exact/hedera pairing of @integraledger/lcp's hedera entry point. H is SHA-256(\"abc\") from FIPS 180-2. The bytes were computed with hiero-sdk-python 0.2.10's generated protobufs and protobuf 7.36.2 (SerializeToString(deterministic=True)) and cryptography's Ed25519 on Python 3.12.3, 2026-09-25; the signing seed is not recorded here. Byte strings are hex unless named base64. The V5 rows give status's answer under the profiles read-status and x402-exact-hedera at the one mark, consensus, asked about the act payment unless a row's query says otherwise.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -44,9 +44,32 @@
   "expectReference": {
    "network": "hedera:testnet",
    "transactionId": "0.0.1235-1700000000-000000000",
+   "validStart": "1700000000.000000000",
+   "validDuration": 120,
    "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "validUntil": 1700000120,
-   "payee": "0.0.1234"
+   "payer": "0.0.5555",
+   "payee": "0.0.1234",
+   "presented": {
+    "nodes": [
+     "0.0.3"
+    ],
+    "maxFee": "100000000",
+    "transfer": {
+     "hbar": [
+      {
+       "account": "0.0.5555",
+       "amount": "-1000",
+       "isApproval": false
+      },
+      {
+       "account": "0.0.1234",
+       "amount": "1000",
+       "isApproval": false
+      }
+     ],
+     "tokens": []
+    }
+   }
   },
   "expectTxIdText": "0.0.1235@1700000000.000000000",
   "presentedOptions": [
@@ -97,9 +120,32 @@
     "expectReference": {
      "network": "hedera:testnet",
      "transactionId": "0.0.1235-1700000000-000000000",
+     "validStart": "1700000000.000000000",
+     "validDuration": 120,
      "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-     "validUntil": 1700000120,
-     "payee": "0.0.1234"
+     "payer": "0.0.5555",
+     "payee": "0.0.1234",
+     "presented": {
+      "nodes": [
+       "0.0.3"
+      ],
+      "maxFee": "100000000",
+      "transfer": {
+       "hbar": [
+        {
+         "account": "0.0.5555",
+         "amount": "-1000",
+         "isApproval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": "1000",
+         "isApproval": false
+        }
+       ],
+       "tokens": []
+      }
+     }
     }
    }
   ]
@@ -117,16 +163,1969 @@
   "expectRefusal": "hedera/memo-not-lcp"
  },
  "V5": {
-  "case": "status for V2's reference with the payee of the option it answers, and recover from the transaction id, for each reader answer",
+  "case": "status for V2's reference, through a mirror whose answers each row gives, and recover from the transaction id",
+  "about": "Each row's mirror answers are constructed, in the shape of the Mirror Node REST interface's OpenAPI description 0.163.1 (Transaction, TransactionsResponse, Block) and of a recorded testnet answer of GET /api/v1/transactions/{id}, for 0.0.3229-1791145265-469000038 (2026-10-04), in which the whole charged fee is credited to 0.0.802 and no row names its node: latest is the end of its newest block, oldest the start of its oldest block, byId the transactions of GET /api/v1/transactions/{id} (null for its 404), pages the answers of the account search in order ('refused' for a page the mirror refuses). Each expected answer was written by hand from read-status.md and x402-exact-hedera.md, rules 11 to 14; the search is never read whole until a run shows its three facts (rule 13), so every answer that waits on it is pending, search-incomplete, at the search's position. Each transfer of what moved is named by the transaction id and its place, the asset and the credited account (rule 14).",
   "reference": {
    "network": "hedera:testnet",
    "transactionId": "0.0.1235-1700000000-000000000",
+   "validStart": "1700000000.000000000",
+   "validDuration": 120,
    "expectMemo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "validUntil": 1700000120,
-   "payee": "0.0.1234"
+   "payer": "0.0.5555",
+   "payee": "0.0.1234",
+   "presented": {
+    "nodes": [
+     "0.0.3"
+    ],
+    "maxFee": "100000000",
+    "transfer": {
+     "hbar": [
+      {
+       "account": "0.0.5555",
+       "amount": "-1000",
+       "isApproval": false
+      },
+      {
+       "account": "0.0.1234",
+       "amount": "1000",
+       "isApproval": false
+      }
+     ],
+     "tokens": []
+    }
+   }
   },
   "readerNetwork": "hedera:testnet",
   "rows": [
+   {
+    "case": "the entry under the id: SUCCESS, the memo H's string, the payer's debit and the payee's credit: settled, the body presented",
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same entry, asked about on the act agreement: settled",
+    "query": {
+     "act": "agreement",
+     "finality": "consensus"
+    },
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same entry, asked about after its own consensus timestamp: failed before-position",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1700000003.000000001"
+    },
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the entry under the id names another maximum fee than the body presented: settled, presented no",
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "200000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "no",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the entry under the id shows no maximum fee: settled, presented unshown",
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "unshown",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a duplicate entry read first never hides the settled entry",
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "DUPLICATE_TRANSACTION",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      },
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "no entry under the id (the mirror's 404), its validity open: instrument-live",
+    "mirror": {
+     "latest": "1700000060.000000000",
+     "byId": null
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    }
+   },
+   {
+    "case": "only a node due-diligence failure under the id, its validity open: instrument-live",
+    "mirror": {
+     "latest": "1700000060.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "INVALID_PAYER_SIGNATURE",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    }
+   },
+   {
+    "case": "no entry under the id, its validity open, and the mirror's records begin after the valid start, so an entry under the id could lie before them: history-gap, not instrument-live",
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "oldest": "1700000005.000000000",
+     "byId": null
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "no entry under the id, its validity passed, every page of the search read to its last: search-incomplete at the search's position, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the validity passed and the mirror's records begin after the position: history-gap",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1700000001.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the validity passed and the search finds a later body under another id that carries H, debits the payer and credits the payee: settled on it",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [
+        {
+         "transaction_id": "0.0.1235-1700000100-000000000",
+         "name": "CRYPTOTRANSFER",
+         "result": "SUCCESS",
+         "nonce": 0,
+         "scheduled": false,
+         "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+         "consensus_timestamp": "1700000101.000000001",
+         "valid_start_timestamp": "1700000100.000000000",
+         "valid_duration_seconds": "120",
+         "max_fee": "100000000",
+         "node": "0.0.3",
+         "charged_tx_fee": 96926,
+         "transfers": [
+          {
+           "account": "0.0.1235",
+           "amount": -96926,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.5555",
+           "amount": -1000,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.1234",
+           "amount": 1000,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.802",
+           "amount": 96926,
+           "is_approval": false
+          }
+         ],
+         "token_transfers": [],
+         "staking_reward_transfers": [],
+         "assessed_custom_fees": []
+        }
+       ],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000100-000000000",
+     "position": "1700000101.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000100-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "no",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a failed result under the id consumed it, and the search finds nothing: search-incomplete, not transaction-failed, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "INSUFFICIENT_PAYER_BALANCE",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the entry under the id carries another memo, and the search finds nothing: search-incomplete, not instrument-consumed, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "MHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMDExMjhmYjI2NWU3NjBk",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the entry under the id carries H and credits another account: for a payment, a foreign item, other-account, and search-incomplete, not instrument-consumed, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.4444",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": [
+      {
+       "transaction": "0.0.1235-1700000000-000000000",
+       "position": "1700000003.000000001",
+       "signer": "0.0.5555",
+       "moved": [
+        {
+         "asset": "0.0.0",
+         "amount": "1000",
+         "to": "0.0.4444",
+         "transaction": "0.0.1235-1700000000-000000000",
+         "place": "0.0.0/0.0.4444"
+        }
+       ],
+       "reason": "other-account"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the same entry on the act agreement, held to no account: settled, presented no",
+    "query": {
+     "act": "agreement",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.4444",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "1000",
+       "to": "0.0.4444",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.4444"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "no",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the entry under the id carries H and the payee's account is the one it debits: a foreign item, payee-signed, and search-incomplete, not instrument-consumed, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.4444",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": [
+      {
+       "transaction": "0.0.1235-1700000000-000000000",
+       "position": "1700000003.000000001",
+       "signer": "0.0.1234",
+       "moved": [
+        {
+         "asset": "0.0.0",
+         "amount": "1000",
+         "to": "0.0.4444",
+         "transaction": "0.0.1235-1700000000-000000000",
+         "place": "0.0.0/0.0.4444"
+        }
+       ],
+       "reason": "payee-signed"
+      }
+     ]
+    }
+   },
+   {
+    "case": "a page left: the search's next page refused, its position the last entry read",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [
+        {
+         "transaction_id": "0.0.5555-1700000049-000000000",
+         "name": "CRYPTOTRANSFER",
+         "result": "SUCCESS",
+         "nonce": 0,
+         "scheduled": false,
+         "memo_base64": "MHhlZjFlZDcxMjAxN2I0MzY0NDQ5ZDFkYzE5YThhN2IwMDAwMDAwMDAwMDAwMDAwMDAwMDExMjhmYjI2NWU3NjBk",
+         "consensus_timestamp": "1700000050.000000000",
+         "valid_start_timestamp": "1700000049.000000000",
+         "valid_duration_seconds": "120",
+         "max_fee": "100000000",
+         "node": "0.0.3",
+         "charged_tx_fee": 96926,
+         "transfers": [
+          {
+           "account": "0.0.5555",
+           "amount": -96926,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.5555",
+           "amount": -5,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.9",
+           "amount": 5,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.802",
+           "amount": 96926,
+           "is_approval": false
+          }
+         ],
+         "token_transfers": [],
+         "staking_reward_transfers": [],
+         "assessed_custom_fees": []
+        }
+       ],
+       "next": "/api/v1/transactions?account.id=0.0.5555&limit=100&order=asc&timestamp=lte:1700000200.000000000&timestamp=gt:1700000050.000000000"
+      },
+      "refused"
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1700000050.000000000",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the search finds H under another account's signature: a foreign item, other-signer; the search goes on, and answers search-incomplete at its last position, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [
+        {
+         "transaction_id": "0.0.7777-1700000040-000000000",
+         "name": "CRYPTOTRANSFER",
+         "result": "SUCCESS",
+         "nonce": 0,
+         "scheduled": false,
+         "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+         "consensus_timestamp": "1700000041.000000001",
+         "valid_start_timestamp": "1700000040.000000000",
+         "valid_duration_seconds": "120",
+         "max_fee": "100000000",
+         "node": "0.0.3",
+         "charged_tx_fee": 96926,
+         "transfers": [
+          {
+           "account": "0.0.7777",
+           "amount": -96926,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.7777",
+           "amount": -1000,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.1234",
+           "amount": 1000,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.802",
+           "amount": 96926,
+           "is_approval": false
+          }
+         ],
+         "token_transfers": [],
+         "staking_reward_transfers": [],
+         "assessed_custom_fees": []
+        }
+       ],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1700000041.000000001",
+     "foreign": [
+      {
+       "transaction": "0.0.7777-1700000040-000000000",
+       "position": "1700000041.000000001",
+       "signer": "0.0.7777",
+       "moved": [
+        {
+         "asset": "0.0.0",
+         "amount": "1000",
+         "to": "0.0.1234",
+         "transaction": "0.0.7777-1700000040-000000000",
+         "place": "0.0.0/0.0.1234"
+        }
+       ],
+       "reason": "other-signer"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the search finds the payer's body carrying H with a failed result: no foreign item, and search-incomplete at the search's last position",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [
+        {
+         "transaction_id": "0.0.1235-1700000040-000000000",
+         "name": "CRYPTOTRANSFER",
+         "result": "INSUFFICIENT_PAYER_BALANCE",
+         "nonce": 0,
+         "scheduled": false,
+         "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+         "consensus_timestamp": "1700000041.000000001",
+         "valid_start_timestamp": "1700000040.000000000",
+         "valid_duration_seconds": "120",
+         "max_fee": "100000000",
+         "node": "0.0.3",
+         "charged_tx_fee": 96926,
+         "transfers": [
+          {
+           "account": "0.0.1235",
+           "amount": -96926,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.802",
+           "amount": 96926,
+           "is_approval": false
+          }
+         ],
+         "token_transfers": [],
+         "staking_reward_transfers": [],
+         "assessed_custom_fees": []
+        }
+       ],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1700000041.000000001",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the search finds the payer's message of another kind carrying H: a foreign item, other-kind, and search-incomplete at the search's last position",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [
+        {
+         "transaction_id": "0.0.5555-1700000040-000000000",
+         "name": "CONSENSUSSUBMITMESSAGE",
+         "result": "SUCCESS",
+         "nonce": 0,
+         "scheduled": false,
+         "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+         "consensus_timestamp": "1700000041.000000001",
+         "valid_start_timestamp": "1700000040.000000000",
+         "valid_duration_seconds": "120",
+         "max_fee": "100000000",
+         "node": "0.0.3",
+         "charged_tx_fee": 96926,
+         "transfers": [
+          {
+           "account": "0.0.5555",
+           "amount": -96926,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.802",
+           "amount": 96926,
+           "is_approval": false
+          }
+         ],
+         "token_transfers": [],
+         "staking_reward_transfers": [],
+         "assessed_custom_fees": []
+        }
+       ],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1700000041.000000001",
+     "foreign": [
+      {
+       "transaction": "0.0.5555-1700000040-000000000",
+       "position": "1700000041.000000001",
+       "signer": "0.0.5555",
+       "moved": [],
+       "reason": "other-kind"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the search passes an entry whose memo_base64 is not canonical base64: search-incomplete, the entry named, the position held before it",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [
+        {
+         "transaction_id": "0.0.5555-1700000049-000000000",
+         "name": "CRYPTOTRANSFER",
+         "result": "SUCCESS",
+         "nonce": 0,
+         "scheduled": false,
+         "memo_base64": "bGNw=",
+         "consensus_timestamp": "1700000050.000000000",
+         "valid_start_timestamp": "1700000049.000000000",
+         "valid_duration_seconds": "120",
+         "max_fee": "100000000",
+         "node": "0.0.3",
+         "charged_tx_fee": 96926,
+         "transfers": [
+          {
+           "account": "0.0.5555",
+           "amount": -96926,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.5555",
+           "amount": -1000,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.1234",
+           "amount": 1000,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.802",
+           "amount": 96926,
+           "is_approval": false
+          }
+         ],
+         "token_transfers": [],
+         "staking_reward_transfers": [],
+         "assessed_custom_fees": []
+        }
+       ],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1700000049.999999999",
+     "undecoded": [
+      "0.0.5555-1700000049-000000000"
+     ],
+     "foreign": []
+    }
+   },
+   {
+    "case": "the entry under the id is the other act the caller gives by its reference: never settled, a foreign item, given, and search-incomplete, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000",
+     "others": [
+      {
+       "ref": {
+        "transactionId": "0.0.1235-1700000000-000000000"
+       }
+      }
+     ]
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": [
+      {
+       "transaction": "0.0.1235-1700000000-000000000",
+       "position": "1700000003.000000001",
+       "signer": "0.0.5555",
+       "moved": [
+        {
+         "asset": "0.0.0",
+         "amount": "1000",
+         "to": "0.0.1234",
+         "transaction": "0.0.1235-1700000000-000000000",
+         "place": "0.0.0/0.0.1234"
+        }
+       ],
+       "reason": "given"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the same act given by its transaction in the SDK's spelling: a foreign item, given, and search-incomplete",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000",
+     "others": [
+      {
+       "transaction": "0.0.1235@1700000000.000000000"
+      }
+     ]
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": [
+      {
+       "transaction": "0.0.1235-1700000000-000000000",
+       "position": "1700000003.000000001",
+       "signer": "0.0.5555",
+       "moved": [
+        {
+         "asset": "0.0.0",
+         "amount": "1000",
+         "to": "0.0.1234",
+         "transaction": "0.0.1235-1700000000-000000000",
+         "place": "0.0.0/0.0.1234"
+        }
+       ],
+       "reason": "given"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the entry under the id carries H and credits the payee, but its debit of the payer spends an allowance (is_approval true), so the payer did not sign it: a foreign item, other-signer, and search-incomplete, not instrument-consumed, since no run has shown the search's three facts (rule 13)",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": true
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ],
+     "pages": [
+      {
+       "transactions": [],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": "1699999999.000000000",
+     "foreign": [
+      {
+       "transaction": "0.0.1235-1700000000-000000000",
+       "position": "1700000003.000000001",
+       "signer": "0.0.5555",
+       "moved": [
+        {
+         "asset": "0.0.0",
+         "amount": "1000",
+         "to": "0.0.1234",
+         "transaction": "0.0.1235-1700000000-000000000",
+         "place": "0.0.0/0.0.1234"
+        }
+       ],
+       "reason": "other-signer"
+      }
+     ]
+    }
+   },
+   {
+    "case": "the body presented itself lists the network's fee account 0.0.98, whose row cannot be told from a fee's: settled, presented unshown",
+    "reference": {
+     "presented": {
+      "nodes": [
+       "0.0.3"
+      ],
+      "maxFee": "100000000",
+      "transfer": {
+       "hbar": [
+        {
+         "account": "0.0.5555",
+         "amount": "-1000",
+         "isApproval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": "990",
+         "isApproval": false
+        },
+        {
+         "account": "0.0.98",
+         "amount": "10",
+         "isApproval": false
+        }
+       ],
+       "tokens": []
+      }
+     }
+    },
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 990,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.98",
+         "amount": 10,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.0",
+       "amount": "990",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.0/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "unshown",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the token transfer under the id assessed a custom fee (assessed_custom_fees, the detail of GET /api/v1/transactions/{id}), which changes its rows: settled, presented unshown, the fee's collector named among what moved",
+    "reference": {
+     "presented": {
+      "nodes": [
+       "0.0.3"
+      ],
+      "maxFee": "100000000",
+      "transfer": {
+       "hbar": [],
+       "tokens": [
+        {
+         "token": "0.0.6000",
+         "rows": [
+          {
+           "account": "0.0.5555",
+           "amount": "-1000",
+           "isApproval": false
+          },
+          {
+           "account": "0.0.1234",
+           "amount": "1000",
+           "isApproval": false
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "mirror": {
+     "latest": "1700000010.000000000",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [
+        {
+         "token_id": "0.0.6000",
+         "account": "0.0.5555",
+         "amount": -1010,
+         "is_approval": false
+        },
+        {
+         "token_id": "0.0.6000",
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "token_id": "0.0.6000",
+         "account": "0.0.9999",
+         "amount": 10,
+         "is_approval": false
+        }
+       ],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": [
+        {
+         "amount": 10,
+         "collector_account_id": "0.0.9999",
+         "effective_payer_account_ids": [
+          "0.0.5555"
+         ],
+         "token_id": "0.0.6000"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000000-000000000",
+     "position": "1700000003.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.6000",
+       "amount": "1000",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.6000/0.0.1234"
+      },
+      {
+       "asset": "0.0.6000",
+       "amount": "10",
+       "to": "0.0.9999",
+       "transaction": "0.0.1235-1700000000-000000000",
+       "place": "0.0.6000/0.0.9999"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "unshown",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the validity passed and the search finds a later body under another id that carries H, debits the payer and credits the payee in the token 0.0.6000 and another amount: settled on it, the asset and amount recorded and compared with nothing",
+    "query": {
+     "act": "payment",
+     "finality": "consensus",
+     "after": "1699999999.000000000"
+    },
+    "mirror": {
+     "latest": "1700000200.000000000",
+     "oldest": "1699990000.000000000",
+     "byId": null,
+     "pages": [
+      {
+       "transactions": [
+        {
+         "transaction_id": "0.0.1235-1700000100-000000000",
+         "name": "CRYPTOTRANSFER",
+         "result": "SUCCESS",
+         "nonce": 0,
+         "scheduled": false,
+         "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+         "consensus_timestamp": "1700000101.000000001",
+         "valid_start_timestamp": "1700000100.000000000",
+         "valid_duration_seconds": "120",
+         "max_fee": "100000000",
+         "node": "0.0.3",
+         "charged_tx_fee": 96926,
+         "transfers": [
+          {
+           "account": "0.0.1235",
+           "amount": -96926,
+           "is_approval": false
+          },
+          {
+           "account": "0.0.802",
+           "amount": 96926,
+           "is_approval": false
+          }
+         ],
+         "token_transfers": [
+          {
+           "token_id": "0.0.6000",
+           "account": "0.0.5555",
+           "amount": -2500,
+           "is_approval": false
+          },
+          {
+           "token_id": "0.0.6000",
+           "account": "0.0.1234",
+           "amount": 2500,
+           "is_approval": false
+          }
+         ],
+         "staking_reward_transfers": [],
+         "assessed_custom_fees": []
+        }
+       ],
+       "next": null
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.1235-1700000100-000000000",
+     "position": "1700000101.000000001",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.6000",
+       "amount": "2500",
+       "to": "0.0.1234",
+       "transaction": "0.0.1235-1700000100-000000000",
+       "place": "0.0.6000/0.0.1234"
+      }
+     ],
+     "signer": "0.0.5555",
+     "presented": "no",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the mirror's latest timestamp cannot be read: transport",
+    "mirror": {
+     "latest": "reader-error",
+     "byId": [
+      {
+       "transaction_id": "0.0.1235-1700000000-000000000",
+       "name": "CRYPTOTRANSFER",
+       "result": "SUCCESS",
+       "nonce": 0,
+       "scheduled": false,
+       "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+       "consensus_timestamp": "1700000003.000000001",
+       "valid_start_timestamp": "1700000000.000000000",
+       "valid_duration_seconds": "120",
+       "max_fee": "100000000",
+       "node": "0.0.3",
+       "charged_tx_fee": 96926,
+       "transfers": [
+        {
+         "account": "0.0.1235",
+         "amount": -96926,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.5555",
+         "amount": -1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.1234",
+         "amount": 1000,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.802",
+         "amount": 96926,
+         "is_approval": false
+        }
+       ],
+       "token_transfers": [],
+       "staking_reward_transfers": [],
+       "assessed_custom_fees": []
+      }
+     ]
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "transport",
+     "foreign": []
+    }
+   }
+  ],
+  "recover": {
+   "entries": [
+    {
+     "result": "SUCCESS",
+     "nonce": 0,
+     "scheduled": false,
+     "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
+     "consensus_timestamp": "1700000003.000000001"
+    }
+   ],
+   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "recoverRows": [
    {
     "entries": [
      {
@@ -137,13 +2136,6 @@
       "consensus_timestamp": "1700000003.000000001"
      }
     ],
-    "expect": {
-     "state": "settled",
-     "transaction": "0.0.1235-1700000000-000000000",
-     "position": "1700000003.000000001",
-     "finality": "consensus",
-     "foreign": []
-    },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
@@ -156,11 +2148,6 @@
       "consensus_timestamp": "1700000003.000000001"
      }
     ],
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
     "expectRecover": {
      "refused": true,
      "code": "hedera/not-success"
@@ -168,11 +2155,6 @@
    },
    {
     "entries": null,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
     "expectRecover": {
      "refused": true,
      "code": "hedera/not-found"
@@ -188,11 +2170,6 @@
       "consensus_timestamp": "1700000003.000000001"
      }
     ],
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
     "expectRecover": {
      "refused": true,
      "code": "hedera/memo-not-lcp"
@@ -208,11 +2185,6 @@
       "consensus_timestamp": "1700000003.000000001"
      }
     ],
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
     "expectRecover": {
      "refused": true,
      "code": "hedera/not-found"
@@ -220,12 +2192,6 @@
    },
    {
     "entries": "reader-error",
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    },
-    "source": "a failed read is pending",
     "expectRecover": {
      "refused": true,
      "code": "hedera/unreadable"
@@ -241,12 +2207,6 @@
       "consensus_timestamp": "1700000001.000000001"
      }
     ],
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'",
     "expectRecover": {
      "refused": true,
      "code": "hedera/not-found"
@@ -262,12 +2222,6 @@
       "consensus_timestamp": "1700000001.000000001"
      }
     ],
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'",
     "expectRecover": {
      "refused": true,
      "code": "hedera/not-found"
@@ -290,22 +2244,10 @@
       "consensus_timestamp": "1700000009.000000001"
      }
     ],
-    "expect": {
-     "state": "settled",
-     "transaction": "0.0.1235-1700000000-000000000",
-     "position": "1700000009.000000001",
-     "finality": "consensus",
-     "foreign": []
-    },
-    "source": "hiero-consensus-node RecordCache.NODE_FAILURES = {INVALID_NODE_ACCOUNT, INVALID_PAYER_SIGNATURE}: 'records with these statuses do not prevent valid transactions with the same id from reaching consensus and being handled'",
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
     "case": "the settled entry, asked about on the act agreement: an agreement is held to no account, and the same record settles it",
-    "query": {
-     "act": "agreement",
-     "finality": "consensus"
-    },
     "entries": [
      {
       "result": "SUCCESS",
@@ -315,22 +2257,10 @@
       "consensus_timestamp": "1700000003.000000001"
      }
     ],
-    "expect": {
-     "state": "settled",
-     "transaction": "0.0.1235-1700000000-000000000",
-     "position": "1700000003.000000001",
-     "finality": "consensus",
-     "foreign": []
-    },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
     "case": "the settled entry, asked about after its own consensus timestamp: failed before-position",
-    "query": {
-     "act": "payment",
-     "finality": "consensus",
-     "after": "1700000003.000000001"
-    },
     "entries": [
      {
       "result": "SUCCESS",
@@ -340,57 +2270,11 @@
       "consensus_timestamp": "1700000003.000000001"
      }
     ],
-    "expect": {
-     "state": "failed",
-     "reason": "before-position",
-     "transaction": "0.0.1235-1700000000-000000000",
-     "position": "1700000003.000000001",
-     "finality": "consensus",
-     "foreign": []
-    },
     "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    }
-  ],
-  "recover": {
-   "entries": [
-    {
-     "result": "SUCCESS",
-     "nonce": 0,
-     "scheduled": false,
-     "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
-     "consensus_timestamp": "1700000003.000000001"
-    }
-   ],
-   "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-  }
+  ]
  },
  "plants": {
-  "duplicateFirst": {
-   "case": "the duplicate entry first, then the SUCCESS entry: settled, never pending or failed",
-   "entries": [
-    {
-     "result": "DUPLICATE_TRANSACTION",
-     "nonce": 0,
-     "scheduled": false,
-     "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
-     "consensus_timestamp": "1700000003.000000001"
-    },
-    {
-     "result": "SUCCESS",
-     "nonce": 0,
-     "scheduled": false,
-     "memo_base64": "bGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQ=",
-     "consensus_timestamp": "1700000003.000000001"
-    }
-   ],
-   "expect": {
-    "state": "settled",
-    "transaction": "0.0.1235-1700000000-000000000",
-    "position": "1700000003.000000001",
-    "finality": "consensus",
-    "foreign": []
-   }
-  },
   "noMemo": {
    "case": "V2's transfer with no memo, presented under x402: bound refuses",
    "transactionBase64": "Kp4BCjQKDQoGCIDiz6oGEgMY0wkSAhgDGIDC1y8iAgh4chYKFAoICgMYsysQzw8KCAoDGNIJENAPEmYKZAog7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EaQN4FwRBA8ktbha5LT/mYYvyuUjzBlwtfQdTmcpAu79gYX0pLcdh+jds47WyvSgWwI2KLM98lS6pz1nKCsCjZkg0=",
@@ -502,6 +2386,24 @@
    "case": "V2's transaction with a bit set past the last byte in its last character before the padding: the same bytes, not in canonical form (RFC 4648 §3.5)",
    "transactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAR==",
    "expect": "hedera/tx-malformed"
+  },
+  {
+   "case": "the memo with its first hex digit in upper case (byte 'b' -> 'B'): not H's string byte for byte",
+   "source": "V2's transaction re-wrapped around V2's body bytes with one stated edit (the protobuf lengths re-written by hand)",
+   "transactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweEJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+   "expect": "hedera/memo-not-lcp"
+  },
+  {
+   "case": "a TransactionList of V2's transaction and V2's body with the payee's credit 1000 -> 1001 (field 14's last varint 0xd00f -> 0xd20f): the bodies differ in more than the node",
+   "source": "V2's transaction re-wrapped around V2's body bytes with one stated edit (the protobuf lengths re-written by hand)",
+   "transactionBase64": "CvEBKu4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQrxASruAQqDAQoNCgYIgOLPqgYSAxjTCRICGAMYgMLXLyICCHgyTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkchYKFAoICgMYsysQzw8KCAoDGNIJENIPEmYKZAog7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EaQIKOlPqbm+FSX3Gx0glNOr/qpMitzvCsThjrzQ4C+m73nDWY4U8Po9lmwcUfPTVvMltabInBCVkIvsePPhlgxAE=",
+   "expect": "hedera/list-inconsistent"
+  },
+  {
+   "case": "transactionValidDuration 120 -> 181 seconds (field 4 0x0878 -> 0x08b501): above transaction.maxValidDuration, 180",
+   "source": "V2's transaction re-wrapped around V2's body bytes with one stated edit (the protobuf lengths re-written by hand)",
+   "transactionBase64": "Ku8BCoQBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgMItQEyTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkchYKFAoICgMYsysQzw8KCAoDGNIJENAPEmYKZAog7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EaQIKOlPqbm+FSX3Gx0glNOr/qpMitzvCsThjrzQ4C+m73nDWY4U8Po9lmwcUfPTVvMltabInBCVkIvsePPhlgxAE=",
+   "expect": "hedera/valid-duration"
   }
  ],
  "tokenBuild": {
@@ -821,5 +2723,51 @@
     "expect": "hedera/option-malformed"
    }
   ]
- }
+ },
+ "life": {
+  "case": "transactionValidDuration 120 -> 180 seconds (field 4 0x0878 -> 0x08b401), the chain's longest: bound gives H",
+  "source": "V2's transaction re-wrapped around V2's body bytes with one stated edit (the protobuf lengths re-written by hand)",
+  "transactionBase64": "Ku8BCoQBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgMItAEyTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkchYKFAoICgMYsysQzw8KCAoDGNIJENAPEmYKZAog7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EaQIKOlPqbm+FSX3Gx0glNOr/qpMitzvCsThjrzQ4C+m73nDWY4U8Po9lmwcUfPTVvMltabInBCVkIvsePPhlgxAE=",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "validStartChecked": {
+  "case": "the network takes no valid start later than its consensus time (HAPI ResponseCode INVALID_TRANSACTION_START), so bound and reference, the server's checks, refuse a body whose valid start is later than the time of the check, hedera/valid-start-future, and take one whose valid start has passed",
+  "rows": [
+   {
+    "case": "a valid start of 4102444800.000000000 (2100-01-01T00:00:00Z), later than the time of any check before then",
+    "source": "V2's transaction with one stated edit: the valid start's seconds 1700000000 -> 4102444800 (varint 0x80e2cfaa06 -> 0x80ae99a40f, the same length, so no length is re-written); the signature is V2's, which bound does not verify",
+    "transactionBase64": "Ku4BCoMBCg0KBgiArpmkDxIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+    "expect": {
+     "refused": true,
+     "code": "hedera/valid-start-future"
+    }
+   },
+   {
+    "case": "V2's own valid start, 1700000000.000000000 (2023-11-14T22:13:20Z), passed",
+    "transactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   }
+  ]
+ },
+ "referenceRefusals": [
+  {
+   "case": "the debit's account 0.0.5555 -> 0.0.1235, the account the transaction id names (0x18b32b -> 0x18d309): the fee payer is never the buyer",
+   "source": "V2's transaction re-wrapped around V2's body bytes with one stated edit (the protobuf lengths re-written by hand)",
+   "transactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxjTCRDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+   "expect": "hedera/payer-not-buyer"
+  },
+  {
+   "case": "the payee's credit +1000 -> -1000 (zigzag 0xd00f -> 0xcf0f): the body debits two accounts",
+   "source": "V2's transaction re-wrapped around V2's body bytes with one stated edit (the protobuf lengths re-written by hand)",
+   "transactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQzw8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+   "expect": "hedera/tx-malformed"
+  },
+  {
+   "case": "V2's payment, given to reference with another option than its accepted (amount 1000 -> 2000)",
+   "source": "V2's transaction unchanged",
+   "transactionBase64": "Ku4BCoMBCg0KBgiA4s+qBhIDGNMJEgIYAxiAwtcvIgIIeDJNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWRyFgoUCggKAxizKxDPDwoICgMY0gkQ0A8SZgpkCiDtSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30RpAgo6U+pub4VJfcbHSCU06v+qkyK3O8KxOGOvNDgL6bvecNZjhTw+j2WbBxR89NW8yW1psicEJWQi+x48+GWDEAQ==",
+   "optionAmount": "2000",
+   "expect": "x402/accepted-not-option"
+  }
+ ]
 }

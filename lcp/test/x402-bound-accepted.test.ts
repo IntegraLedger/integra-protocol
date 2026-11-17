@@ -134,10 +134,10 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 29434;
-const NOT_OFFERED = 785678;
-const OFFERED_OWN_BINDS = 1266;
-const OFFERED_COUNTS = [1134, 132, 1056];
+const PRESENTED = 29520;
+const NOT_OFFERED = 787914;
+const OFFERED_OWN_BINDS = 1268;
+const OFFERED_COUNTS = [1136, 132, 1058];
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>

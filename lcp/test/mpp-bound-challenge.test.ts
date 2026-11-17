@@ -41,7 +41,7 @@ type Pairing = {
 const MPP = rowsOf(
   BINDINGS.filter((b) => b.id.startsWith("mpp/")) as unknown as Pairing[],
   "BINDINGS, the MPP pairings",
-  { exact: 20 },
+  { exact: 21 },
 );
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -176,7 +176,14 @@ function filterCode(c: MppChallenge, pairing: string): string | null | "invoicel
 /** The refusal of a challenge the filter refuses for `pairing`. */
 const codeOf = (code: string | null | "invoiceless") => (code === "invoiceless" ? "ln/invoice-malformed" : code);
 /** The MPP pairings whose `bound` never binds: nothing the payer signs carries H (`mpp/no-signed-place`). */
-const NO_SIGNED_PLACE = ["mpp/charge/card", "mpp/charge/stripe", "mpp/subscription/stripe", "mpp/charge/evm/transaction", "mpp/charge/evm/hash"];
+const NO_SIGNED_PLACE = [
+  "mpp/charge/card",
+  "mpp/charge/stripe",
+  "mpp/subscription/stripe",
+  "mpp/charge/evm/transaction",
+  "mpp/charge/evm/hash",
+  "mpp/session/hedera/stock",
+];
 const BINDING = MPP.map((b) => b.id).filter((id) => !NO_SIGNED_PLACE.includes(id));
 
 /** What a pairing's `bound` compares with the echoed challenge, as the refusal it gives when the two differ. */

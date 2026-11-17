@@ -245,7 +245,7 @@ import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, decodeHederaTx, … } from 
 
 **Values (13):** `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `decodeHederaTx`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `FETCHED`, `hederaChannelId`, `hederaIdDigest`, `hederaStatus`, `hederaVoucher`, `txIdMirror`, `txIdText`.
 
-**Types (14):** `Broadcaster`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaReader`, `HederaRef`, `HederaSessionRef`, `HederaStatus`, `HederaTxId`, `HederaUnsigned`, `MirrorEntry`.
+**Types (19):** `Broadcaster`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaEvmReader`, `HederaNetwork`, `HederaPresented`, `HederaReader`, `HederaRef`, `HederaRow`, `HederaSessionRef`, `HederaStatus`, `HederaTransfer`, `HederaTxId`, `HederaUnsigned`, `MirrorEntry`, `MirrorPage`, `MirrorRow`.
 
 ## `@integraledger/lcp/lightning`
 
@@ -269,11 +269,11 @@ The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairi
 import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lcp/mpp";
 ```
 
-**Pairings:** `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/stripe`, `mpp/subscription/tempo`.
+**Pairings:** `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/hedera/stock`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/stripe`, `mpp/subscription/tempo`.
 
-**Values (46):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeNearIntents`, `chargeSolana`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `FETCHED`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionResume`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `subscriptionStripe`, `subscriptionTempo`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
+**Values (48):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeNearIntents`, `chargeSolana`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `FETCHED`, `hederaStockStatus`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHederaStock`, `sessionResume`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `subscriptionStripe`, `subscriptionTempo`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
 
-**Types (26):** `Broadcaster`, `GatewayPreimage`, `GatewaySaltInput`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `TokenDomain`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `X402Mapped`, `XrplChargeChoice`, `XrplChargeUnsigned`.
+**Types (29):** `Broadcaster`, `GatewayPreimage`, `GatewaySaltInput`, `HederaStockReader`, `HederaStockRef`, `HederaStockStatus`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `TokenDomain`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `X402Mapped`, `XrplChargeChoice`, `XrplChargeUnsigned`.
 
 ## `@integraledger/lcp/near`
 
