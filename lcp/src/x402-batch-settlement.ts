@@ -1033,6 +1033,11 @@ const BATCH_EVM_READ: ReadSpec<BatchEvmRef> = {
     { address: BATCH_SETTLEMENT, topics: [DEPOSITED_TOPIC, ref.channel] },
   ],
   entry: (ref, _values, e) => !same(e.topics[0], CHANNEL_CREATED_TOPIC) || createdMayCarry(e, ref.h),
+  // The channel contract's `ChannelCreated` or `Deposited` whose topic 1 is the reference's channel id.
+  consumers: (ref) => [
+    { address: BATCH_SETTLEMENT, topics: [CHANNEL_CREATED_TOPIC, ref.channel] },
+    { address: BATCH_SETTLEMENT, topics: [DEPOSITED_TOPIC, ref.channel] },
+  ],
   classify: (ref, _values, view, reader) => batchClassify(ref, view, reader),
   presented: (ref) =>
     isObject(ref) && normalHash(ref["channel"]) !== null && typeof ref["amount"] === "string"

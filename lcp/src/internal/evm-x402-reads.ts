@@ -481,6 +481,11 @@ export const EIP3009_READ: ReadSpec<Eip3009Ref> = {
     ...(values.w === undefined ? [] : [{ topics: [AUTHORIZATION_USED_TOPIC, addressTopic(ref.payer), values.w] }]),
     { address: ref.asset, topics: [AUTHORIZATION_CANCELED_TOPIC, null, values.v] },
   ],
+  // The asset's own use or cancellation of the payer's nonce.
+  consumers: (ref, values) => [
+    { address: ref.asset, topics: [AUTHORIZATION_USED_TOPIC, addressTopic(ref.payer), values.v] },
+    { address: ref.asset, topics: [AUTHORIZATION_CANCELED_TOPIC, addressTopic(ref.payer), values.v] },
+  ],
   classify: (ref, values, view, reader) => eip3009Acts(ref, ref.payer, values, view, reader),
   presented: (ref) => (isObject(ref) && isSigned(ref["presented"]) ? ref["presented"] : undefined),
   payer: (ref) => ref.payer,
@@ -488,6 +493,15 @@ export const EIP3009_READ: ReadSpec<Eip3009Ref> = {
 
 /** `status` of `x402/exact/eip155/eip3009`. */
 export const eip3009Read = statusOf(EIP3009_READ);
+
+/**
+ * The read of an EIP-3009 payment carried at coverage `none`, whose nonce is no agreement's value and carries no H:
+ * `x402/exact/eip155/eip3009`'s read, the authorization's own nonce standing in the reference where that pairing has H.
+ */
+export const CARRIED_EIP3009_READ: ReadSpec<Eip3009Ref> = { ...EIP3009_READ, coverage: "none", agreementValue: false };
+
+/** `status` of an EIP-3009 payment carried at coverage `none` (`CARRIED_EIP3009_READ`). */
+export const carriedEip3009Read = statusOf(CARRIED_EIP3009_READ);
 
 // ── `exact` and `upto` over Permit2.
 
@@ -720,6 +734,12 @@ function permit2Spec(proxy: "exact" | "upto"): ReadSpec<Permit2Ref> {
       { topics: [TRANSFER_TOPIC_HEX, addressTopic(ref.payer)] },
       { address: PERMIT2, topics: [UNORDERED_NONCE_INVALIDATION_TOPIC, addressTopic(ref.payer)] },
     ],
+    // Every contract's `Transfer` from the payer, counted where its transaction carries the nonce in a proxy call of the
+    // payer's, and Permit2's invalidation of a word of the payer's nonces.
+    consumers: (ref) => [
+      { topics: [TRANSFER_TOPIC_HEX, addressTopic(ref.payer)] },
+      { address: PERMIT2, topics: [UNORDERED_NONCE_INVALIDATION_TOPIC, addressTopic(ref.payer)] },
+    ],
     classify: permit2Classify(proxy),
     presented: (ref) => (isObject(ref) && isSigned(ref["presented"]) ? ref["presented"] : undefined),
     payer: (ref) => ref.payer,
@@ -888,6 +908,8 @@ export const AUTH_CAPTURE_READ: ReadSpec<AuthCaptureRef> = {
   search: "open",
   filters: (ref) => escrowEvents(ref).map((e) => ({ address: ref.escrow, topics: [e] })),
   entry: (ref, _values, e) => saltIs(e, ref.salt),
+  // The escrow's `PaymentAuthorized` or `PaymentCharged` whose topic 1 is the presented payment's hash.
+  consumers: (ref) => escrowEvents(ref).map((e) => ({ address: ref.escrow, topics: [e, ref.paymentId] })),
   classify: (ref, values, view) => authCaptureClassify(ref, values, view),
   presented: (ref) => (isObject(ref) && normalHash(ref["paymentId"]) !== null ? { paymentId: lower(ref["paymentId"] as string) } : undefined),
   payer: (ref) => ref.payer,

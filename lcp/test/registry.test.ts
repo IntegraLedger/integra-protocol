@@ -205,7 +205,7 @@ const OWN = {
   "ucp/checkout/unsigned": unsigned satisfies Entry<"ucp/checkout/unsigned", Ap2Presented, ChargeRef, never, Own<typeof unsigned>>,
   "ucp/booking/ap2-mandate": bookingAp2Mandate satisfies Entry<"ucp/booking/ap2-mandate", Ap2Presented, never, never, Own<typeof bookingAp2Mandate>>,
   "ucp/booking/unsigned": bookingUnsigned satisfies Entry<"ucp/booking/unsigned", Ap2Presented, never, never, Own<typeof bookingUnsigned>>,
-  "ap2/checkout-mandate/x402": checkoutMandateX402 satisfies Entry<"ap2/checkout-mandate/x402", Ap2X402Presented, Ap2X402Ref, never, Own<typeof checkoutMandateX402>>,
+  "ap2/checkout-mandate/x402": checkoutMandateX402 satisfies Entry<"ap2/checkout-mandate/x402", Ap2X402Presented, Ap2X402Ref, EvmReader, Own<typeof checkoutMandateX402>>,
   "ucp/checkout/agent-signed": agentSigned satisfies Entry<"ucp/checkout/agent-signed", AgentSignedPresented, never, never, Own<typeof agentSigned>>,
 } satisfies { readonly [I in PairingId]: { readonly id: I } };
 

@@ -38,11 +38,14 @@ import {
   TRANSFER_TOPIC,
   authorizationIdDigest,
   type Eip155,
+  type EvmQuery,
+  type EvmReader,
   type EvmRef,
+  type EvmStatus,
   type PullAuthorization,
   type TransferLog,
 } from "./internal/evm.js";
-import type { Eip3009Ref } from "./internal/evm-x402-reads.js";
+import { carriedEip3009Read, type Eip3009Ref } from "./internal/evm-x402-reads.js";
 import { CARD } from "./internal/data/card.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
@@ -635,13 +638,22 @@ const x402Pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
 });
 
-/** The AP2 x402 route's family descriptor: AP2's, with the x402 method its `reference` takes. */
-type Ap2X402Family = Omit<Ap2Family, "option"> & { option: X402Method };
+/**
+ * The AP2 x402 route's family descriptor: AP2's, with the x402 method its `reference` takes, and the read of the
+ * carried EIP-3009 payment, which `status` makes.
+ */
+type Ap2X402Family = Omit<Ap2Family, "option" | "landed" | "query" | "answer"> & {
+  option: X402Method;
+  landed: { transaction?: Hex };
+  query: EvmQuery<unknown>;
+  answer: EvmStatus;
+};
 
 /**
  * `ap2/checkout-mandate/x402`. The payee broadcasts (`broadcaster` answers `"payee"`): the merchant forwards AP2's x402
- * credential to its payment processor, which submits the authorization; `x402/exact/eip155/eip3009`'s `status` reads it
- * by this pairing's `reference`. A value that is not a JSON object gets `ap2/mandate-malformed`, as `bound` refuses it.
+ * credential to its payment processor, which submits the authorization. `status` reads it by this pairing's
+ * `reference` as `x402/exact/eip155/eip3009`'s read does, at coverage `none`, the authorization's own nonce standing
+ * where that pairing has H. A value that is not a JSON object gets `ap2/mandate-malformed`, as `bound` refuses it.
  */
 export const checkoutMandateX402 = Object.freeze({
   id: X402_ID,
@@ -656,4 +668,5 @@ export const checkoutMandateX402 = Object.freeze({
   bound: boundX402,
   reference: referenceX402,
   broadcaster: broadcastsWithin(mandateShape, "payee"),
-}) satisfies Entry<typeof X402_ID, X402Presented, X402Ref, never, Ap2X402Family>;
+  status: carriedEip3009Read,
+}) satisfies Entry<typeof X402_ID, X402Presented, X402Ref, EvmReader, Ap2X402Family>;

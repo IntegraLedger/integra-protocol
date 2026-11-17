@@ -5,7 +5,19 @@ const PERMIT2_NOTE =
   "receipt, logs, a transaction (the hit's input), `eth_call` (`nonceBitmap`), a block by mark with its timestamp; the " +
   "archival fallback for Permit2 state the node no longer holds";
 
-const NO_SEARCH_FOR_H = "This is no search for H, and none is defined: every answer that would be `failed` is `pending`, `search-incomplete`.";
+const NO_SEARCH_FOR_H =
+  "This is no search for H, and none is defined: every answer that would be `failed`, but `before-position`, is " +
+  "`pending`, `search-incomplete`.";
+
+/**
+ * How a read that holds its single-use value finds, below the position recorded at issue, the transaction that consumed
+ * it, by `logs`, the indexed logs that name it in one block.
+ */
+const belowPosition = (logs: string): string =>
+  " Where the value reads consumed and the search has found no transaction that consumed it, the value is read at the " +
+  "position recorded at issue; consumed there, the first block at which it reads consumed is found by halving the range " +
+  "from the network's first block, and " + logs + " in that block name the transaction: `failed`, `before-position`, " +
+  "naming it, or, where none is found, `pending`, `search-incomplete`.";
 
 const ESCROW_LAPSE =
   "`preApprovalExpiry`: the value unconsumed at a final block past it; no `failed` is answered while no search for H is defined";
@@ -28,7 +40,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "contract counts only where the payer's signature verifies (by ecrecover in the contract's domain, or the payer's " +
         "ERC-1271 check), holds the search where the read cannot verify it or show it is not the payer's, and a " +
         "cancellation is the asset's " +
-        "`[AuthorizationCanceled, null, H]`.",
+        "`[AuthorizationCanceled, null, H]`." +
+        belowPosition("the asset's `[AuthorizationUsed, payer, H]` and `[AuthorizationCanceled, payer, H]` logs"),
       history: "the log search from the position recorded at issue to the latest head",
       contracts: ["the asset (the EIP-3009 token)"],
       lapse:
@@ -71,7 +84,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "Every contract's `Transfer` from the payer from the block after the position recorded at issue, each hit counted " +
         "only where its transaction's input carries H in the proxy call whose owner is the payer, the bit set at the hit's " +
         "block and unset at the block before; read to a `finalized` block past `deadline`, and whole to the latest head " +
-        "before any `failed`. A cancellation is Permit2's `UnorderedNonceInvalidation` with the payer as owner.",
+        "before any `failed`. A cancellation is Permit2's `UnorderedNonceInvalidation` with the payer as owner." +
+        belowPosition("every contract's `Transfer` from the payer, counted so, and Permit2's `UnorderedNonceInvalidation` of the payer"),
       history:
         "an archive JSON-RPC endpoint where the node no longer holds the Permit2 bitmap state the read needs; without it " +
         "the read is `unreadable`, `history-gap`",
@@ -111,7 +125,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       search:
         "As `x402/exact/eip155/permit2`, through the `upto` proxy: every contract's `Transfer` from the payer, each hit " +
         "counted only where its transaction's input carries H in the proxy call whose owner is the payer and the bit is set " +
-        "at its block and unset before; a cancellation by `UnorderedNonceInvalidation`.",
+        "at its block and unset before; a cancellation by `UnorderedNonceInvalidation`." +
+        belowPosition("every contract's `Transfer` from the payer, counted so, and Permit2's `UnorderedNonceInvalidation` of the payer"),
       history: "an archive JSON-RPC endpoint where the node no longer holds the Permit2 bitmap state the read needs; else `history-gap`",
       contracts: ["Permit2", "x402's `upto` Permit2 proxy"],
       lapse: "`deadline`: the Permit2 bit unset at a `finalized` block whose timestamp is past `deadline`, and at the latest block",
@@ -144,7 +159,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "The escrow's `PaymentAuthorized` and `PaymentCharged` logs, each tested by its `PaymentInfo.salt` before its " +
         "transaction's receipt is read, the act the option's flow's event through the deployment's EIP-3009 collector; the value, the escrow's payment hash with payer " +
         "zero as the token's authorization nonce, read by `authorizationState` on the asset. " +
-        NO_SEARCH_FOR_H,
+        NO_SEARCH_FOR_H +
+        belowPosition("the escrow's `PaymentAuthorized` and `PaymentCharged` logs whose topic 1 is the payment hash"),
       contracts: ["the escrow (v1.1 or v1.0 deployment)", "the deployment's EIP-3009 collector", "the asset"],
       lapse: ESCROW_LAPSE,
     },
@@ -178,7 +194,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "The escrow's `PaymentAuthorized` and `PaymentCharged` logs, each tested by its `PaymentInfo.salt` before its " +
         "transaction's receipt is read, the act the option's flow's event through the deployment's Permit2 collector; the value, the escrow's payment hash with payer " +
         "zero as the Permit2 nonce, read by the payer's `nonceBitmap` bit. " +
-        NO_SEARCH_FOR_H,
+        NO_SEARCH_FOR_H +
+        belowPosition("the escrow's `PaymentAuthorized` and `PaymentCharged` logs whose topic 1 is the payment hash"),
       contracts: ["the escrow (v1.1 or v1.0 deployment)", "the deployment's Permit2 collector", "Permit2"],
       lapse: ESCROW_LAPSE,
     },
@@ -216,7 +233,8 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "authSalt)` on the token, or the Permit2 nonce), any other deposit a later credential of the channel; another " +
         "channel's opening is its payer's only with the payer's transfer of its amount. In the refund-authorizer mode " +
         "the reference's channel salt carries no H, and the nonce is `keccak256(channelId, H)` or H. " +
-        NO_SEARCH_FOR_H,
+        NO_SEARCH_FOR_H +
+        belowPosition("the channel contract's `ChannelCreated` and `Deposited` logs whose topic 1 is the channel id"),
       contracts: ["the channel contract", "the token or Permit2 (the deposit collector)"],
       lapse:
         "the deposit's `validBefore` or `deadline`: the value unconsumed at a final block past it; no `failed` is answered " +

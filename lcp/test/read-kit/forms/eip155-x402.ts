@@ -22,6 +22,7 @@ import { DELEGATION_MANAGER, ESCROW, EXACT_PERMIT2_PROXY, PAYMENT_AUTHORIZED_TOP
 import type { Act, StatusAnswer } from "../../../src/internal/read.js";
 import { BATCH_SETTLEMENT, CHANNEL_CREATED_TOPIC, DEPOSITED_TOPIC, batchChannelId, batchEvm } from "../../../src/x402-batch-settlement.js";
 import { authCaptureEip3009, authCapturePermit2, exactEip3009, exactErc7710, exactErc7710Salt, exactPermit2, uptoPermit2 } from "../../../src/x402.js";
+import { checkoutMandateX402 } from "../../../src/ap2.js";
 import { abiStringOf, readerOf, topicOf, wordOf, type Chain, type ChainTx } from "../../evm-chain.js";
 import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
 import { ACTS, answering, READ_STATUS } from "../harness.js";
@@ -323,12 +324,31 @@ function consumedFromOf(c: ReadCase, l: Layout, txs: readonly ChainTx[], consume
   return undefined;
 }
 
-function arrangeEip3009(c: ReadCase, act: Act) {
+/** The read an EIP-3009 ledger's cases run through: a pairing's `status`, and the nonces of the act asked about. */
+interface Eip3009Read {
+  readonly status: (ref: never, reader: never, query: never) => Promise<StatusAnswer<bigint, "latest" | "safe" | "finalized">>;
+  readonly values: (act: Act) => Promise<{ v: Hex; w: Hex }>;
+}
+
+const EXACT_EIP3009: Eip3009Read = { status: exactEip3009.status as never, values: valuesFor };
+
+/**
+ * `ap2/checkout-mandate/x402`'s carried payment: an EIP-3009 authorization whose nonce is keccak-256 of the payment
+ * mandate chain (here of a constructed chain's text), standing in the reference where `x402/exact/eip155/eip3009`
+ * has H; the other act's value another authorization's nonce.
+ */
+const MANDATE_NONCE = lower(keccak256(toBytes("a payment mandate chain")));
+const AP2_X402: Eip3009Read = {
+  status: checkoutMandateX402.status as never,
+  values: async () => ({ v: MANDATE_NONCE, w: lower(keccak256(toBytes("another payment mandate chain"))) }),
+};
+
+function arrangeEip3009(c: ReadCase, act: Act, read: Eip3009Read = EXACT_EIP3009) {
   return {
     run: async (): Promise<CaseAnswer> => {
       const l = layout(c, lapseOf(c));
       const vb = l.validBefore(true);
-      const values = await valuesFor(act);
+      const values = await read.values(act);
       const taken = { used: false };
       const txs: ChainTx[] = [];
       for (const s of c.facts.seen) txs.push(await eip3009Tx(s, l, vb, values, taken));
@@ -344,15 +364,13 @@ function arrangeEip3009(c: ReadCase, act: Act) {
       const ref = {
         network: NETWORK,
         payee: PAYEE,
-        h: H,
+        h: read === EXACT_EIP3009 ? H : values.v,
         asset: ASSET,
         payer: PAYER,
         validBefore: (vb).toString(),
         presented: { token: ASSET, from: PAYER, to: PAYEE, value: presentedAmount.toString(), nonce: values.v.toLowerCase() },
-        // A transaction the caller names, read beside the search: the act a before-position case names.
-        ...(beforePosition(c) ? { transaction: HASH[c.facts.seen[0]!.transaction]! } : {}),
       };
-      return back(await exactEip3009.status(ref as never, readerOf(chain), queryOf(c, act, l)), l);
+      return back(await read.status(ref as never, readerOf(chain) as never, queryOf(c, act, l)), l);
     },
   };
 }
@@ -366,12 +384,6 @@ function queryOf(c: ReadCase, act: Act, l: Layout) {
     ...(c.query.after === undefined ? {} : { after: l.block(c.query.after) }),
     ...(others.length === 0 ? {} : { others }),
   } as never;
-}
-
-/** A case whose act sits at or before the position given, which no search from that position meets. */
-function beforePosition(c: ReadCase): boolean {
-  const after = c.query.after;
-  return after !== undefined && c.facts.seen.some((s) => s.position !== undefined && s.position <= after);
 }
 
 // ── `x402/exact/eip155/permit2` and `x402/upto/eip155/permit2`.
@@ -463,7 +475,6 @@ function arrangePermit2(proxy: Proxy) {
           validAfter: "0",
           ...(proxy === "upto" ? { facilitator: OTHER } : {}),
         },
-        ...(beforePosition(c) ? { transaction: HASH[c.facts.seen[0]!.transaction]! } : {}),
       };
       const status = proxy === "exact" ? exactPermit2.status! : uptoPermit2.status!;
       return back(await status(ref as never, readerOf(chain), queryOf(c, act, l)), l);
@@ -588,7 +599,6 @@ function arrangeAuthCapture(scheme: "eip3009" | "permit2") {
         signatureNonce,
         salt: H.toLowerCase(),
         expiry: expiry.toString(),
-        ...(beforePosition(c) ? { transaction: HASH[c.facts.seen[0]!.transaction]! } : {}),
       };
       const status = scheme === "eip3009" ? authCaptureEip3009.status! : authCapturePermit2.status!;
       return back(await status(ref as never, readerOf(chain), queryOf(c, act, l)), l);
@@ -729,7 +739,6 @@ function arrangeBatch(fixed?: "eip3009" | "permit2", refundAuthorizer = false) {
         nonce,
         settleBy: settleBy.toString(),
         amount: amount.toString(),
-        ...(beforePosition(c) ? { transaction: HASH[c.facts.seen[0]!.transaction]! } : {}),
       };
       return back(await batchEvm.status(ref as never, readerOf(chain), queryOf(c, act, l)), l);
     },
@@ -852,7 +861,7 @@ function arrangeErc7710Salt(c: ReadCase, act: Act) {
       }
       let chain: Chain = { network: NETWORK, heads: l.heads, time: l.time, txs, ...(c.facts.history ? {} : { lowest: l.start + 1n }) };
       chain = faultedHead(c, chain);
-      const named = c.facts.seen.find((s) => s.party === "other") ?? (beforePosition(c) ? c.facts.seen[0] : undefined);
+      const named = c.facts.seen.find((s) => s.party === "other");
       // The leaf delegation presented, whole, by its EIP-712 hash as viem's `hashStruct` gives it over the manager's
       // `Delegation` type: the leaf `saltTx` writes, its authority another where the case's differs.
       const differs = c.facts.seen.some((x) => x.presented === "no");
@@ -956,8 +965,14 @@ const VALUE_7710 = givingValue(`${MARKS}: on both ERC-7710 levels every case who
 /** The declarations of `x402/exact/eip155/erc7710`. */
 export const ERC7710_DECLARED: readonly Inapplicable[] = once(TX_FAILED, UNUSED_CONSUMED_7710, NOPOS, VALUE_7710);
 
+const BELOW_POSITION_7710 = `${MARKS}: on erc7710-salt, before-position is decided before any other reason and a transaction at the position given counts as before it, whose act carrying H lies at or below the position given: its search for H starts at that position, it holds no value whose read there would show an act below it, and a leaf delegation carries H, so it is signed only after the ATR exists, and the position the caller gives is the one read before then; the cost, on a test network that restarts: a redemption landed on the restarted ledger below that position is not met, and the search runs for as long as the caller asks`;
+const BELOW_POSITION_SALT = [
+  ...opening("before-position is decided before any other reason", BELOW_POSITION_7710),
+  ...opening("a transaction at the position given counts as before it", BELOW_POSITION_7710),
+];
+
 /** The declarations of `x402/exact/eip155/erc7710-salt`. */
-export const ERC7710_SALT_DECLARED: readonly Inapplicable[] = meeting(once(TX_FAILED, NOT_FOUND, UNUSED_CONSUMED_7710, NOPOS, VALUE_7710), [
+export const ERC7710_SALT_DECLARED: readonly Inapplicable[] = meeting(once(TX_FAILED, NOT_FOUND, UNUSED_CONSUMED_7710, NOPOS, VALUE_7710, BELOW_POSITION_SALT), [
   ["a read that did not read the value at the latest head", PAYMENT],
   ["a search narrowed to one asset, payee or token", PAYMENT],
   ["a value read consumed whose transaction the search has not found", PAYMENT],
@@ -1009,8 +1024,19 @@ export const NO_SEARCH_DECLARED: readonly Inapplicable[] = meeting(once(TX_FAILE
   ["search-incomplete is answered before not-found", BOTH],
 ]);
 
+const AP2_MARKS = "Declared inapplicable to the read kit on ap2/checkout-mandate/x402, whose read is the EIP-3009 read, the authorization's nonce standing where H stands, read at the final mark and at the latest head";
+const AP2_HOLDS_VALUE = `${AP2_MARKS}: the read holds its single-use value and reads it at both marks, so it answers instrument-unused or instrument-consumed by that value, which no item the search could not decode changes`;
+
+/** The declarations of `ap2/checkout-mandate/x402`. */
+export const AP2_X402_DECLARED: readonly Inapplicable[] = once(
+  answering("transaction-failed", `${AP2_MARKS}: transaction-failed, since a reverted transaction consumes no authorization nonce`),
+  opening("a failed result that consumed the value", `${AP2_MARKS}: the cases opening a failed result that consumed the value, since a reverted transaction consumes no authorization nonce`),
+  answering("not-found", AP2_HOLDS_VALUE),
+  opening("at coverage none, a lookup read whole beside an item the search could not decode", AP2_HOLDS_VALUE),
+);
+
 export const forms: readonly DeclaredForm[] = [
-  formOf("x402/exact/eip155/eip3009", EIP3009_DECLARED, arrangeEip3009),
+  formOf("x402/exact/eip155/eip3009", EIP3009_DECLARED, (c, act) => arrangeEip3009(c, act)),
   formOf("x402/exact/eip155/erc7710", ERC7710_DECLARED, arrangeErc7710),
   formOf("x402/exact/eip155/erc7710-salt", ERC7710_SALT_DECLARED, arrangeErc7710Salt),
   formOf("x402/exact/eip155/permit2", PERMIT2_DECLARED, arrangePermit2("exact")),
@@ -1018,6 +1044,7 @@ export const forms: readonly DeclaredForm[] = [
   formOf("x402/auth-capture/eip155/eip3009", NO_SEARCH_DECLARED, arrangeAuthCapture("eip3009")),
   formOf("x402/auth-capture/eip155/permit2", NO_SEARCH_DECLARED, arrangeAuthCapture("permit2")),
   formOf("x402/batch-settlement/eip155", NO_SEARCH_DECLARED, arrangeBatch()),
+  formOf("ap2/checkout-mandate/x402", AP2_X402_DECLARED, (c, act) => arrangeEip3009(c, act, AP2_X402)),
 ];
 
 /**

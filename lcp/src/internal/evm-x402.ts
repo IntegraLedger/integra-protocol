@@ -128,6 +128,12 @@ export interface ReadSpec<R> {
    * receipt is read.
    */
   readonly entry?: (ref: R, values: Values, e: EvmLogEntry) => boolean;
+  /**
+   * The indexed logs that name, within one block, the transaction that consumed the value: read where the value reads
+   * consumed, the search found no transaction that consumed it, and the value reads consumed at the position given, in
+   * the first block at which it reads consumed (`firstConsumed`). Absent where the read holds no single-use value.
+   */
+  readonly consumers?: (ref: R, values: Values) => readonly Filter[];
   /** The acts a transaction holds that carry H or the value, classified against the reference. */
   readonly classify: (ref: R, values: Values, view: TxView, reader: EvmReader) => Promise<Classified>;
   /** The members of the payment presented, as the reference holds them; undefined where the pairing compares none. */
@@ -260,20 +266,19 @@ async function factsOf<R extends X402EvmRefBase>(
   );
   const givenRefs = others.flatMap((o) => ("ref" in o ? [spec.presented(o["ref"])] : []));
   const presentedHere = spec.presented(ref);
-  const seen: SeenEvm[] = [];
-  const undecoded: { transaction: Hex; at: bigint }[] = [];
-  let lookupMissing = false;
-  for (const [key, hash] of hashes) {
+  // One transaction read and classified: the acts it holds, placed at its block; `undecodable` where the read cannot
+  // decode it; `missing` where the endpoint holds no receipt for it.
+  const classified = async (
+    key: string,
+    hash: Hex,
+  ): Promise<{ seen: SeenEvm[] } | { undecodable: bigint } | { missing: true } | { unreadable: UnreadableReason }> => {
     let receipt: EvmReceipt | null;
     try {
       receipt = await reader.receipt(hash);
     } catch (e) {
       return { unreadable: rejected(e) };
     }
-    if (receipt === null) {
-      lookupMissing = true;
-      continue;
-    }
+    if (receipt === null) return { missing: true };
     if (!isReceipt(receipt) || !receipt.logs.every(isLog)) return { unreadable: "unparseable" };
     let body: EvmTransaction | null | { unreadable: UnreadableReason } | undefined;
     const view: TxView = {
@@ -292,22 +297,52 @@ async function factsOf<R extends X402EvmRefBase>(
     };
     const c = await spec.classify(ref, values, view, reader);
     if ("unreadable" in c) return c;
-    if ("undecodable" in c) {
-      if (!valueIsSearch) undecoded.push({ transaction: hash, at: receipt.blockNumber });
-      continue;
-    }
-    for (const s of c.seen) {
-      const given = givenTx.has(key) || (s.signed !== undefined && givenRefs.some((p) => presentation(p, s.signed) === "yes"));
-      // `presented` is stated where the pairing compares the act with what was presented, on an act of its kind.
-      const presented = presentedHere !== undefined && s.kind === "same" ? { presented: presentation(presentedHere, s.signed) } : {};
-      seen.push({
-        ...s,
-        transaction: hash,
-        position: receipt.blockNumber,
-        mark: markOf(receipt.blockNumber),
-        ...(given ? { given } : {}),
-        ...presented,
-      });
+    if ("undecodable" in c) return { undecodable: receipt.blockNumber };
+    const at = receipt.blockNumber;
+    return {
+      seen: c.seen.map((s) => {
+        const given = givenTx.has(key) || (s.signed !== undefined && givenRefs.some((p) => presentation(p, s.signed) === "yes"));
+        // `presented` is stated where the pairing compares the act with what was presented, on an act of its kind.
+        const presented = presentedHere !== undefined && s.kind === "same" ? { presented: presentation(presentedHere, s.signed) } : {};
+        return { ...s, transaction: hash, position: at, mark: markOf(at), ...(given ? { given } : {}), ...presented };
+      }),
+    };
+  };
+  const seen: SeenEvm[] = [];
+  const undecoded: { transaction: Hex; at: bigint }[] = [];
+  let lookupMissing = false;
+  for (const [key, hash] of hashes) {
+    const c = await classified(key, hash);
+    if ("unreadable" in c) return c;
+    if ("missing" in c) lookupMissing = true;
+    else if ("undecodable" in c) {
+      if (!valueIsSearch) undecoded.push({ transaction: hash, at: c.undecodable });
+    } else seen.push(...c.seen);
+  }
+
+  // Below the position given: where the value reads consumed and the search found no transaction that consumed it,
+  // the value read at that position shows whether it was consumed at or before it; where it was, the first block at
+  // which it reads consumed holds the transaction that consumed it, named by the pairing's indexed logs in that block.
+  if (
+    value !== undefined &&
+    consumedLatest &&
+    query.after !== undefined &&
+    spec.consumers !== undefined &&
+    reader.logs !== undefined &&
+    !seen.some((s) => s.consumed)
+  ) {
+    const first = await firstConsumed(spec, ref, values.v, reader, query.after);
+    if (typeof first === "object") return first;
+    if (first !== undefined) {
+      const found = await search(reader, spec.consumers(ref, values), first, first);
+      if ("unreadable" in found) return found;
+      const met = new Map<string, Hex>();
+      for (const e of found.entries) met.set(e.transactionHash.toLowerCase(), e.transactionHash);
+      for (const [key, hash] of met) {
+        const c = await classified(key, hash);
+        if ("unreadable" in c) return c;
+        if ("seen" in c) seen.push(...c.seen.filter((s) => s.consumed));
+      }
     }
   }
   // The act at the lowest position first, so `decide` settles on the first that landed.
@@ -327,8 +362,9 @@ async function factsOf<R extends X402EvmRefBase>(
       }
     }
   }
-  if (spec.coverage === "none") {
-    // At coverage `none` the read is the lookup of the transaction the reference names, read whole where it is named.
+  if (spec.coverage === "none" && spec.filters(ref, values).length === 0) {
+    // At coverage `none` a read with no search is the lookup of the transaction the reference names, read whole where
+    // it is named.
     // A named transaction the endpoint holds shows the history it is in. The read holds no single-use value, so a named
     // transaction that is not the act answers no `instrument-live`: one that reverted `search-incomplete`, and one that
     // holds no transfer to the payee's account, or that the caller gave, `not-found`.
@@ -344,6 +380,35 @@ async function factsOf<R extends X402EvmRefBase>(
       history,
     },
   };
+}
+
+/**
+ * The first block at or below `at` at which the value reads consumed: the value read at `at`, then the range from the
+ * network's first block to `at` halved by reads of the value at blocks. Undefined where the value reads unconsumed at
+ * `at`; unreadable where a read fails, `history-gap` where the endpoint does not hold a block's state.
+ */
+export async function firstConsumed<R>(
+  spec: ReadSpec<R>,
+  ref: R,
+  v: Hex,
+  reader: EvmReader,
+  at: bigint,
+): Promise<bigint | undefined | { unreadable: UnreadableReason }> {
+  const read = spec.value!;
+  const there = await read(ref, v, reader, at);
+  if (typeof there !== "boolean") return { unreadable: there.unreadable };
+  if (!there) return undefined;
+  // Consumed at `b`; unconsumed at `a`, or `a` lies below the network's first block.
+  let a = -1n;
+  let b = at;
+  while (b - a > 1n) {
+    const m = a + (b - a) / 2n;
+    const r = await read(ref, v, reader, m);
+    if (typeof r !== "boolean") return { unreadable: r.unreadable };
+    if (r) b = m;
+    else a = m;
+  }
+  return b;
 }
 
 /** The final, `safe` and latest heads, each with its time where the reader reads blocks. */

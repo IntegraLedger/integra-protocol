@@ -19,7 +19,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { describe, expect, it } from "vitest";
 import { authCaptureEip3009, exactEip3009, exactErc7710, exactPermit2 } from "../src/x402.js";
 import { x402ExactPermit2ProxyABI } from "@x402/evm";
-import { ESCROW, EXACT_PERMIT2_PROXY, PAYMENT_AUTHORIZED_TOPIC, type Hex } from "../src/evm.js";
+import { ESCROW, EXACT_PERMIT2_PROXY, PAYMENT_AUTHORIZED_TOPIC, ReaderError, type Hex } from "../src/evm.js";
 import { SYSTEM_TRANSFER_EMITTER } from "../src/internal/evm-x402.js";
 import { abiStringOf, readerOf, wordOf, type Chain, type ChainTx } from "./evm-chain.js";
 
@@ -487,5 +487,39 @@ describe("the x402 eip155 reads refuse a reference they cannot read, with nothin
       expect([name, await status({ ...r, network: odd } as never, reader as never, query as never)]).toEqual([name, { state: "unreadable", reason: "unparseable", foreign: [] }]);
       expect([name, reader.asked]).toEqual([name, []]);
     }
+  });
+});
+
+describe("a value read consumed whose transaction the search after the position given did not meet", () => {
+  // The payer's nonce consumed on the asset by a use at block 500, below the position given, 900.
+  const USED_AT = 500n;
+  const below = { act: "payment", finality: "finalized", after: 900n } as const;
+  const used = (lowest = 0n, txs: ChainTx[] = [{ hash: T1, block: USED_AT, status: 1, logs: useLogs(ASSET), from: payer.address.toLowerCase() as Hex, to: ASSET }]): Chain => ({
+    ...chainWith(txs),
+    call: async (_to, data, block) => {
+      if (!data.startsWith("0xe94a0102")) throw new Error("execution reverted");
+      if (block < lowest) throw new ReaderError("history");
+      return wordOf(block >= USED_AT ? 1n : 0n);
+    },
+  });
+
+  it("names the use in the first block the nonce reads consumed at, found by halving below the position: before-position", async () => {
+    const reader = readerOf(used());
+    expect(await exactEip3009.status!(ref as never, reader, below as never)).toMatchObject({
+      state: "failed",
+      reason: "before-position",
+      transaction: T1,
+      finality: "finalized",
+      position: USED_AT,
+      signer: payer.address.toLowerCase(),
+      foreign: [],
+    });
+    // The asset's own logs of the payer's nonce, in that one block.
+    expect(reader.asked.filter((x) => x.startsWith("logs ") && x.endsWith(` ${USED_AT}-${USED_AT}`))).toEqual([`logs ${ASSET} ${USED_AT}-${USED_AT}`, `logs ${ASSET} ${USED_AT}-${USED_AT}`]);
+  });
+
+  it("answers search-incomplete where that block holds no log naming the use, and history-gap where a halving's block is not held", async () => {
+    expect(await exactEip3009.status!(ref as never, readerOf(used(0n, [])), below as never)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+    expect(await exactEip3009.status!(ref as never, readerOf(used(700n)), below as never)).toEqual({ state: "unreadable", reason: "history-gap", foreign: [] });
   });
 });
