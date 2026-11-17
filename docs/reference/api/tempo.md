@@ -501,6 +501,26 @@ keccak256(`0x76` ‖ rlp(every envelope field before the sender's signature) ‖
 
 ***
 
+### keyAuthorizationDigest()
+
+> **keyAuthorizationDigest**(`a`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
+
+The digest a key authorization's root key signs: keccak256 of `encodeKeyAuthorization(a)`, the authorization with no
+signature, the `digest` of `KeyAuthorizationUnsigned`'s request. An authorization `encodeKeyAuthorization` refuses is
+refused the same way.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `a` | [`TempoKeyAuthorization`](#tempokeyauthorization) |
+
+#### Returns
+
+[`Refusal`](index.md#refusal) \| `` `0x${string}` ``
+
+***
+
 ### memoCalldata()
 
 > **memoCalldata**(`to`, `amount`, `memo`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``

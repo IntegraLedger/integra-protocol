@@ -56,6 +56,7 @@ import {
   decodeTempoTx,
   encodeKeyAuthorization,
   expiringNonceHash,
+  keyAuthorizationDigest,
   tempoChannelId,
   witnessRecover,
   type KeyAuthorizationUnsigned,
@@ -1536,6 +1537,7 @@ describe("mpp-subscription-tempo.json", () => {
     const unsigned = encodeKeyAuthorization(a) as Uint8Array;
     expect(unsigned.length).toBe(U.SUB1.expectUnsignedLength);
     expect(keccak256(unsigned)).toBe(U.SUB1.expectDigest);
+    expect(keyAuthorizationDigest(a)).toBe(U.SUB1.expectDigest);
     const viemRlp = toRlp([
       num(a.chainId),
       num(a.keyType),

@@ -227,6 +227,16 @@ export function encodeKeyAuthorization(a: TempoKeyAuthorization, signature?: Hex
 }
 
 /**
+ * The digest a key authorization's root key signs: keccak256 of `encodeKeyAuthorization(a)`, the authorization with no
+ * signature, the `digest` of `KeyAuthorizationUnsigned`'s request. An authorization `encodeKeyAuthorization` refuses is
+ * refused the same way.
+ */
+export function keyAuthorizationDigest(a: TempoKeyAuthorization): Hex | Refusal {
+  const unsigned = encodeKeyAuthorization(a);
+  return unsigned instanceof Uint8Array ? keccakHex(unsigned) : unsigned;
+}
+
+/**
  * Reads a signed key authorization: an RLP list of the authorization (3 to 9 items) and a byte-string signature. The
  * digest is keccak256 over the authorization's bytes as received. The witness is item 6, 32 bytes, when present. The
  * scope the payer signed is item 4, the limits (each a 20-byte token, a limit and, when non-zero, a period; an absent

@@ -257,7 +257,7 @@
     {
       "unit": "Tempo",
       "exports": {
-        "./tempo": ["ACCESS_KEY_SPEND_TOPIC", "ACCOUNT_KEYCHAIN", "CHANNEL_CLOSED_V1_TOPIC", "CHANNEL_CLOSED_V2_TOPIC", "CHANNEL_OPENED_V1_TOPIC", "CHANNEL_OPENED_V2_TOPIC", "KEY_AUTHORIZATION_WITNESS_TOPIC", "KEY_REVOKED_TOPIC", "KeyAuthorizationUnsigned", "OPEN_V1_SELECTOR", "OPEN_V2_SELECTOR", "RECEIVE_POLICY_GUARD", "TIP20_CHANNEL_RESERVE", "TRANSFER_WITH_MEMO_SELECTOR", "TRANSFER_WITH_MEMO_TOPIC", "TempoCall", "TempoDescriptor", "TempoKeyAuthorization", "TempoSearchReader", "decodeKeyAuthorization", "decodeTempoTx", "encodeKeyAuthorization", "expiringNonceHash", "memoCalldata", "tempoChannelId", "witnessRecover"]
+        "./tempo": ["ACCESS_KEY_SPEND_TOPIC", "ACCOUNT_KEYCHAIN", "CHANNEL_CLOSED_V1_TOPIC", "CHANNEL_CLOSED_V2_TOPIC", "CHANNEL_OPENED_V1_TOPIC", "CHANNEL_OPENED_V2_TOPIC", "KEY_AUTHORIZATION_WITNESS_TOPIC", "KEY_REVOKED_TOPIC", "KeyAuthorizationUnsigned", "OPEN_V1_SELECTOR", "OPEN_V2_SELECTOR", "RECEIVE_POLICY_GUARD", "TIP20_CHANNEL_RESERVE", "TRANSFER_WITH_MEMO_SELECTOR", "TRANSFER_WITH_MEMO_TOPIC", "TempoCall", "TempoDescriptor", "TempoKeyAuthorization", "TempoSearchReader", "decodeKeyAuthorization", "decodeTempoTx", "encodeKeyAuthorization", "expiringNonceHash", "keyAuthorizationDigest", "memoCalldata", "tempoChannelId", "witnessRecover"]
       },
       "use": "Any Tempo buyer or seller builds and reads the transaction's calls, the TIP-20 memo transfer, the channel reserve's ids and the account keychain's key authorizations, and any holder of an ATR reads H back from a key authorization's witness.",
       "fixedBy": "Tempo's transaction and TIP-20 specifications; mpp-session-evm-tempo.md."
