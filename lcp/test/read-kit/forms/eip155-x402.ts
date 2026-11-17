@@ -813,8 +813,7 @@ const DELEGATION_TYPES = {
 
 /**
  * One transaction of the case on the delegation ledger: a redemption through the reference manager whose root is the
- * payer (another account's, where another signed, which the reference names since the search reads the payer's roots),
- * whose delegation carries H as its salt, the leaf's (`kind` same) or one further up the chain (`other`), its
+ * payer (another account's, where another signed), whose delegation carries H as its salt, the leaf's (`kind` same) or one further up the chain (`other`), its
  * delegator the payee where the payee signed; with a `Transfer` from the root per member of what moved. A failed
  * result is a reverted redemption, which emits nothing.
  */
@@ -861,13 +860,12 @@ function arrangeErc7710Salt(c: ReadCase, act: Act) {
       }
       let chain: Chain = { network: NETWORK, heads: l.heads, time: l.time, txs, ...(c.facts.history ? {} : { lowest: l.start + 1n }) };
       chain = faultedHead(c, chain);
-      const named = c.facts.seen.find((s) => s.party === "other");
       // The leaf delegation presented, whole, by its EIP-712 hash as viem's `hashStruct` gives it over the manager's
       // `Delegation` type: the leaf `saltTx` writes, its authority another where the case's differs.
       const differs = c.facts.seen.some((x) => x.presented === "no");
       const leaf = { delegate: ELSEWHERE, delegator: PAYER, authority: `0x${(differs ? "fe" : "ff").repeat(32)}` as Hex, caveats: [], salt: BigInt(H) };
       const presented = { delegation: hashStruct({ data: leaf, primaryType: "Delegation", types: DELEGATION_TYPES }).toLowerCase() };
-      const ref = { network: NETWORK, payee: PAYEE, h: H, payer: PAYER, asset: ASSET, presented, ...(named === undefined ? {} : { transaction: HASH[named.transaction]! }) };
+      const ref = { network: NETWORK, payee: PAYEE, h: H, payer: PAYER, asset: ASSET, presented };
       return back(await exactErc7710Salt.status!(ref as never, readerOf(chain), queryOf(c, act, l)), l);
     },
   };
@@ -971,8 +969,13 @@ const BELOW_POSITION_SALT = [
   ...opening("a transaction at the position given counts as before it", BELOW_POSITION_7710),
 ];
 
+const OTHER_ROOT = opening(
+  "an act carrying H under another account's signature",
+  `${MARKS}: on erc7710-salt, an act carrying H under another account's signature, since its search reads the redemptions whose root delegator, RedeemedDelegation's topic 1, is the payer, and a redemption under another root carries H only in its leaf delegation's salt, a member the event does not index, so the search would meet one only by reading and decoding every redemption the manager records on the network, which it does not; the cost: a redemption carrying H under another account's root is named in no answer, and, being a foreign item, it would decide nothing`,
+);
+
 /** The declarations of `x402/exact/eip155/erc7710-salt`. */
-export const ERC7710_SALT_DECLARED: readonly Inapplicable[] = meeting(once(TX_FAILED, NOT_FOUND, UNUSED_CONSUMED_7710, NOPOS, VALUE_7710, BELOW_POSITION_SALT), [
+export const ERC7710_SALT_DECLARED: readonly Inapplicable[] = meeting(once(TX_FAILED, NOT_FOUND, UNUSED_CONSUMED_7710, NOPOS, VALUE_7710, BELOW_POSITION_SALT, OTHER_ROOT), [
   ["a read that did not read the value at the latest head", PAYMENT],
   ["a search narrowed to one asset, payee or token", PAYMENT],
   ["a value read consumed whose transaction the search has not found", PAYMENT],

@@ -341,7 +341,7 @@ async function factsOf<R extends EvmReadRefBase>(
     reader.logs !== undefined &&
     !seen.some((s) => s.consumed)
   ) {
-    const first = await firstConsumed(spec, ref, values.v, reader, query.after);
+    const first = await firstConsumed((block) => spec.value!(ref, values.v, reader, block), query.after);
     if (typeof first === "object") return first;
     if (first !== undefined) {
       const found = await search(reader, spec.consumers(ref, values), first, first);
@@ -393,19 +393,16 @@ async function factsOf<R extends EvmReadRefBase>(
 }
 
 /**
- * The first block at or below `at` at which the value reads consumed: the value read at `at`, then the range from the
- * network's first block to `at` halved by reads of the value at blocks. Undefined where the value reads unconsumed at
- * `at`; unreadable where a read fails, `history-gap` where the endpoint does not hold a block's state.
+ * The first block at or below `at` at which the value reads consumed, `read` giving the value in the state after a
+ * block: the value read at `at`, then the range from the network's first block to `at` halved by reads of the value at
+ * blocks. Undefined where the value reads unconsumed at `at`; unreadable where a read fails, `history-gap` where the
+ * endpoint does not hold a block's state.
  */
-export async function firstConsumed<R>(
-  spec: ReadSpec<R>,
-  ref: R,
-  v: Hex,
-  reader: EvmReader,
+export async function firstConsumed(
+  read: (block: bigint) => Promise<boolean | { readonly unreadable: UnreadableReason }>,
   at: bigint,
 ): Promise<bigint | undefined | { unreadable: UnreadableReason }> {
-  const read = spec.value!;
-  const there = await read(ref, v, reader, at);
+  const there = await read(at);
   if (typeof there !== "boolean") return { unreadable: there.unreadable };
   if (!there) return undefined;
   // Consumed at `b`; unconsumed at `a`, or `a` lies below the network's first block.
@@ -413,7 +410,7 @@ export async function firstConsumed<R>(
   let b = at;
   while (b - a > 1n) {
     const m = a + (b - a) / 2n;
-    const r = await read(ref, v, reader, m);
+    const r = await read(m);
     if (typeof r !== "boolean") return { unreadable: r.unreadable };
     if (r) b = m;
     else a = m;

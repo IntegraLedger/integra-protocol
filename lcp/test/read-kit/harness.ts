@@ -98,7 +98,7 @@ export async function runCase(declared: DeclaredForm, c: ReadCase, act: Act): Pr
   // `presented` is held to its value only where the case states it (read-status.md rule 28): `toMatchObject` holds the
   // value there, and in each other case a settled answer states whatever the read's comparison gives.
   expect(answer).toMatchObject(want);
-  if (answer.state === "settled") expect("presented" in answer, "a settled answer states presented").toBe(true);
+  if (answer.state === "settled") expect(answer.presented, "a settled answer states presented").toBeDefined();
   expect(foreignOf(answer)).toEqual(foreignOf(want));
   for (const key of ["transaction", "carries", "search", "undecoded"] as const) {
     expect(key in answer, `${key} in the answer`).toBe(key in want);

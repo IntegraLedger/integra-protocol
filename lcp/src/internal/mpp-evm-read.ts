@@ -4,7 +4,8 @@
  * (`mpp/charge/evm/authorization`, `mpp/charge/usdc/evm`) make the EIP-3009 read of `evm-eip3009.ts` over `statusOf`.
  * The Permit2 charge reads the single-use value at the final mark and at the latest head, and searches for the payer's
  * acts carrying the nonce or the challenge's witness word, from the position the caller gives to the latest head, in
- * pages of at most 10,000 blocks; each transaction met is classified from what landed against the reference's payer and
+ * the pages and with the look-back below that position the EIP-3009 read makes (`evm-x402.ts` `search` and
+ * `firstConsumed`); each transaction met is classified from what landed against the reference's payer and
  * the option's payee. The session's opening is read alike, by its funding, its search being no search for H. The
  * `transaction` and `hash` charges, at coverage `none`, read the transaction the credential names. `decide` composes
  * every answer.
@@ -43,7 +44,7 @@ import {
 import type { EvmLogEntry, EvmSearchReader } from "./evm-search.js";
 import { decide, type Facts, type Moved, type Seen, type StatusAnswer, type UnreadableReason } from "./read.js";
 import { EIP3009_PRESENTED, eip3009CallsIn, eip3009Spec } from "./evm-eip3009.js";
-import { statusOf } from "./evm-x402.js";
+import { firstConsumed, search, statusOf, type Filter } from "./evm-x402.js";
 import { issuedDigest, isChallengeShape, type MppChallenge } from "../mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
@@ -51,11 +52,6 @@ import { isRefusal, refusal, type Refusal } from "../refusal.js";
 export const AUTHORIZATION_CANCELED_TOPIC = keccakHex("AuthorizationCanceled(address,bytes32)");
 /** keccak256("UnorderedNonceInvalidation(address,uint256,uint256)"), Permit2's cancellation of a word of nonces. */
 export const UNORDERED_NONCE_INVALIDATION_TOPIC = keccakHex("UnorderedNonceInvalidation(address,uint256,uint256)");
-
-/** The blocks one page of a search reads at most; a page the endpoint refuses is halved. */
-export const SEARCH_PAGE_BLOCKS = 10_000n;
-/** The pages one `status` call reads at most; a search with range left answers its position, and the next call resumes. */
-export const MAX_SEARCH_PAGES = 8;
 
 /** Whether an act is the payment the reference was built from, `Seen.presented`. */
 export type Presentation = Seen<bigint, EvmMark>["presented"];
@@ -219,12 +215,6 @@ interface TxView {
 /** What classifying a transaction gives: the acts it holds, an item the read cannot decode, or a read that failed. */
 type Classified = { readonly seen: readonly Act[] } | { readonly undecodable: true } | { readonly unreadable: UnreadableReason };
 
-/** A log filter of a search: `address` absent reads every contract. */
-interface Filter {
-  readonly address?: Hex;
-  readonly topics: readonly (Hex | null)[];
-}
-
 /** The reference fields every logs-searching read takes. */
 interface ChargeRefBase {
   readonly network: `eip155:${string}`;
@@ -244,7 +234,7 @@ interface ChargeSpec<R extends ChargeRefBase> {
   readonly filters: (ref: R) => readonly Filter[];
   /**
    * The logs that find the transaction that consumed the value, read in the one block it was first read consumed at
-   * when that block is at or below the position given (`consumerBelow`); absent where no indexed log finds it.
+   * when that block is at or below the position given (`firstConsumed`); absent where no indexed log finds it.
    */
   readonly consumers?: (ref: R) => readonly Filter[];
   readonly classify: (ref: R, view: TxView, reader: MppEvmReader) => Promise<Classified>;
@@ -292,54 +282,6 @@ async function headsOf(reader: MppEvmReader): Promise<Heads | { unreadable: Unre
 
 function isBlock(b: unknown): b is { number: bigint; timestamp: bigint } {
   return isObject(b) && typeof b["number"] === "bigint" && typeof b["timestamp"] === "bigint" && b["number"] >= 0n;
-}
-
-/**
- * The logs of `filters` from `from` to `to`, in pages of at most `SEARCH_PAGE_BLOCKS` blocks, halved where the endpoint
- * refuses a page, a page refused at one block `transport`, never absence; at most `MAX_SEARCH_PAGES` pages, after which
- * the search answers the block it would read next. A rejection that names missing history is `history-gap`.
- */
-async function search(
-  reader: MppEvmReader,
-  filters: readonly Filter[],
-  from: bigint,
-  to: bigint,
-): Promise<{ entries: EvmLogEntry[]; whole: boolean; at?: bigint } | { unreadable: UnreadableReason }> {
-  const entries: EvmLogEntry[] = [];
-  let pos = from;
-  let span = SEARCH_PAGE_BLOCKS;
-  let pages = 0;
-  while (pos <= to) {
-    if (pages === MAX_SEARCH_PAGES) return { entries, whole: false, at: pos };
-    const end = pos + span - 1n < to ? pos + span - 1n : to;
-    const page: EvmLogEntry[] = [];
-    try {
-      for (const f of filters) {
-        const got = await reader.logs({
-          ...(f.address === undefined ? {} : { address: f.address }),
-          topics: f.topics,
-          fromBlock: pos,
-          toBlock: end,
-        });
-        if (!Array.isArray(got)) return { unreadable: "unparseable" };
-        page.push(...got);
-      }
-    } catch (e) {
-      if (whyRejected(e) === "history-gap") return { unreadable: "history-gap" };
-      if (end === pos) return { unreadable: "transport" };
-      span = (end - pos + 1n) / 2n;
-      continue;
-    }
-    if (!page.every(isEntry)) return { unreadable: "unparseable" };
-    entries.push(...page);
-    pages++;
-    pos = end + 1n;
-  }
-  return { entries, whole: true };
-}
-
-function isEntry(e: unknown): e is EvmLogEntry {
-  return isLog(e) && normalHash((e as EvmLogEntry).transactionHash) !== null && typeof (e as EvmLogEntry).blockNumber === "bigint";
 }
 
 /** The other acts the caller gave: by transaction, each in the caller's spelling by its lowercase form; and by reference. */
@@ -396,7 +338,9 @@ async function chargeFacts<R extends ChargeRefBase>(
   for (const e of s.entries) if (!hashes.has(lower(e.transactionHash))) hashes.set(lower(e.transactionHash), e.transactionHash);
   const seen: SeenEvm[] = [];
   const undecoded: { transaction: Hex; at: bigint }[] = [];
-  const read = async (key: string, hash: Hex): Promise<{ unreadable: UnreadableReason } | undefined> => {
+  // One transaction read and classified; below the position given (`below`), only the acts that consumed the value are
+  // kept, and an item the read cannot decode there is no item of the search.
+  const read = async (key: string, hash: Hex, below = false): Promise<{ unreadable: UnreadableReason } | undefined> => {
     let receipt: EvmReceipt | null;
     try {
       receipt = await reader.receipt(hash);
@@ -423,10 +367,10 @@ async function chargeFacts<R extends ChargeRefBase>(
     const c = await spec.classify(ref, view, reader);
     if ("unreadable" in c) return c;
     if ("undecodable" in c) {
-      undecoded.push({ transaction: name(hash), at: receipt.blockNumber });
+      if (!below) undecoded.push({ transaction: name(hash), at: receipt.blockNumber });
       return undefined;
     }
-    for (const a of c.seen) {
+    for (const a of below ? c.seen.filter((x) => x.consumed) : c.seen) {
       const given = byTx.has(key) || (a.signed !== undefined && byRef.some((o) => presentation(spec.presented(o), a.signed) === "yes"));
       seen.push({
         ...a,
@@ -443,13 +387,22 @@ async function chargeFacts<R extends ChargeRefBase>(
     const r = await read(key, hash);
     if (r !== undefined) return r;
   }
-  // The transaction that consumed the value at or before the position given, where no act read took it.
+  // Below the position given: where the value reads consumed and no act read took it, the value read at that position
+  // shows whether it was consumed at or before it; where it was, the first block at which it reads consumed holds the
+  // transaction that consumed it, named by the pairing's indexed logs in that block, each read failing as its reason.
   if (spec.consumers !== undefined && query.after !== undefined && (atFinal || atLatest) && !seen.some((a) => a.consumed)) {
-    for (const hash of await consumerBelow(spec, ref, reader, query.after)) {
-      if (hashes.has(lower(hash))) continue;
-      hashes.set(lower(hash), hash);
-      const r = await read(lower(hash), hash);
-      if (r !== undefined) return r;
+    const first = await firstConsumed((block) => spec.value(ref, reader, block), query.after);
+    if (typeof first === "object") return first;
+    if (first !== undefined) {
+      const found = await search(reader, spec.consumers(ref), first, first);
+      if ("unreadable" in found) return found;
+      for (const e of found.entries) {
+        const key = lower(e.transactionHash);
+        if (hashes.has(key)) continue;
+        hashes.set(key, e.transactionHash);
+        const r = await read(key, e.transactionHash, true);
+        if (r !== undefined) return r;
+      }
     }
   }
   // The act at the lowest position first, so that `decide` settles on the first that landed.
@@ -464,45 +417,6 @@ async function chargeFacts<R extends ChargeRefBase>(
       history: true,
     },
   };
-}
-
-/**
- * The transactions that may have consumed the value at or before `after`, the position given: where the value reads
- * consumed at `after`, the first block at which it reads consumed is found by halving `[0, after]`, one read of the
- * value a halving, and the logs `spec.consumers` names are read in that block alone. None where the value reads
- * unconsumed at `after`; a read of the value or of the logs that fails leaves the consumer unfound, so the answer stays
- * `search-incomplete`, never `failed`.
- */
-async function consumerBelow<R extends ChargeRefBase>(spec: ChargeSpec<R>, ref: R, reader: MppEvmReader, after: bigint): Promise<Hex[]> {
-  const consumed = async (block: bigint): Promise<boolean | undefined> => {
-    const v = await spec.value(ref, reader, block).catch(() => undefined);
-    return typeof v === "boolean" ? v : undefined;
-  };
-  if ((await consumed(after)) !== true) return [];
-  // Invariant: consumed at b; unconsumed at a, or a is block 0 and consumed (b = a).
-  let a = 0n;
-  let b = after;
-  const atZero = await consumed(0n);
-  if (atZero === undefined) return [];
-  if (atZero) b = 0n;
-  while (b - a > 1n) {
-    const m = (a + b) / 2n;
-    const v = await consumed(m);
-    if (v === undefined) return [];
-    if (v) b = m;
-    else a = m;
-  }
-  const out: Hex[] = [];
-  try {
-    for (const f of spec.consumers!(ref)) {
-      const got = await reader.logs({ ...(f.address === undefined ? {} : { address: f.address }), topics: f.topics, fromBlock: b, toBlock: b });
-      if (!Array.isArray(got)) return [];
-      for (const e of got) if (isEntry(e) && !out.some((h) => same(h, e.transactionHash))) out.push(e.transactionHash);
-    }
-  } catch {
-    return [];
-  }
-  return out;
 }
 
 /** An `eth_call` answer of one word, or the reason it is not one. */
@@ -1154,7 +1068,7 @@ const OPENING_SPEC: ChargeSpec<MppSessionOpeningRef> = {
  * payer to the escrow, by a filter that names no address, since the payer's Permit2 bit is one across its tokens and the
  * read compares no asset; each transaction met classified as `openingClassify` states, an opening counted only where
  * the receipt shows the escrow ran it; where the value reads used at the position given and no transaction read took
- * it, the search's logs read in the first block it reads used at (`consumerBelow`). The nonce of an `authorization` is a digest over the recipient and the token
+ * it, the search's logs read in the first block it reads used at (`firstConsumed`), the acts there that used it kept. The nonce of an `authorization` is a digest over the recipient and the token
  * as well as H, and a `permit2`'s any unused value, so neither search is a search for H: it is never read whole, and the
  * answer is never `failed` but `before-position`. `presented` on `settled`, from what `openingClassify` reads.
  */
