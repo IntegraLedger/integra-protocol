@@ -84,10 +84,12 @@ interface Case {
   /** What `read` takes, from an advertised document. */
   readable: (advertised: Json) => unknown;
   prefix: string;
+  /** On the NEAR Intents charge, the challenge as the ATR names it, which `advertise` takes after the agreement URL. */
+  named?: MppChallenge;
 }
 
 const call = (c: Case, ...extra: unknown[]) =>
-  (c.binding.advertise as (...a: unknown[]) => unknown)(...c.args, ...extra) as Json;
+  (c.binding.advertise as (...a: unknown[]) => unknown)(...c.args, ...(c.named === undefined ? extra : [extra[0], c.named])) as Json;
 const readOf = (c: Case, doc: unknown) =>
   (c.binding.read as (d: unknown) => { h: string; link: string; agreement?: string } | { refused: true; code: string })(doc);
 
@@ -188,7 +190,7 @@ const MPP_CASES: Case[] = [
   mppCase("mpp/charge/evm/hash", evmHash, MC.fixed.H, MC.fixed.link, evmChallenge, byHand(evmChallenge, MC.fixed.H, MC.fixed.link)),
   mppCase("mpp/charge/lightning", chargeLightning, LC.fixed.H, LC.fixed.link, lnCharge, byHand(lnCharge, LC.fixed.H, LC.fixed.link)),
   mppCase("mpp/session/lightning", sessionLightning, LS.fixed.H, LS.fixed.link, lnSession, byHand(lnSession, LS.fixed.H, LS.fixed.link)),
-  mppCase("mpp/charge/nearintents", chargeNearIntents, NI.fixed.H, NI.fixed.link, NI.challenge, NI.place.expect),
+  { ...mppCase("mpp/charge/nearintents", chargeNearIntents, NI.fixed.H, NI.fixed.link, NI.challenge, NI.place.expect), named: NI.unplaced.expect },
   mppCase("mpp/charge/card", chargeCard, MC.fixed.H, MC.fixed.link, cardChallenge, carried(cardChallenge, { ...CC.M1.request, externalId: `lcp:sha256:${MC.fixed.H}` })),
   mppCase("mpp/charge/stripe", chargeStripe, MC.fixed.H, MC.fixed.link, stripeChallenge, carried(stripeChallenge, stripeDetails(CS.M2.request))),
   mppCase("mpp/charge/usdc/gateway", chargeUsdcGateway, GW.fixed.H, GW.fixed.link, gatewayChallenge, byHand(gatewayChallenge, GW.fixed.H, GW.fixed.link)),

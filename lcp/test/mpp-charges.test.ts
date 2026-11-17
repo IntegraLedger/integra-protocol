@@ -518,16 +518,16 @@ describe("mpp-charge-nearintents.json", () => {
 
   it("pairingsOf, and advertise places id, opaque and externalId", () => {
     expect(pairingsOf(V.challenge)).toEqual(["mpp/charge/nearintents"]);
-    expect(chargeNearIntents.advertise([V.challenge], H, V.fixed.link, V.challenge, 0)).toEqual([V.place.expect]);
+    expect(chargeNearIntents.advertise([V.challenge], H, V.fixed.link, V.challenge, 0, undefined, V.unplaced.expect)).toEqual([V.place.expect]);
     const occupied = withRequest(V.challenge, V.occupied.request);
-    expect(chargeNearIntents.advertise([occupied], H, V.fixed.link, occupied, 0)).toEqual(refused(V.occupied.expect));
+    expect(chargeNearIntents.advertise([occupied], H, V.fixed.link, occupied, 0, undefined, V.unplaced.expect)).toEqual(refused(V.occupied.expect));
     expect(chargeNearIntents.claims).toBe(false);
     expect(chargeNearIntents.data.coverage).toBe("none");
   });
 
-  it("unplaced gives the challenge as issued: its request without externalId", async () => {
+  it("unplaced gives the challenge as the ATR names it: its request without externalId and the quote, and no expires", async () => {
     const issued = chargeNearIntents.unplaced(placed) as MppChallenge;
-    expect(issued).toEqual({ ...placed, request: V.challenge.request });
+    expect(issued).toEqual({ ...V.unplaced.expect, id: placed.id, opaque: placed.opaque });
     expect(await issuedDigest(issued)).toBe(await issuedDigest(V.challenge));
   });
 

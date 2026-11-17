@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; row 28, V1's with two parts changed, the receiver's first bytes and the count of actions; row 29, V1's with two parts changed, the sender, written as 64 A's, and the count of actions; and row 30, V1's with two parts changed, the receiver, written as -usdc.testnet, and the count of actions. Nonces and heights are decimal strings. Finality follows nearcore's TxExecutionStatus (core/primitives/src/views.rs): Executed is \"All non-refund transaction receipts finished their execution. The corresponding blocks for each receipt may be not finalized yet\", and Final is \"Execution of all transaction receipts is finalized, including refund receipts\". A key that does not exist is not proof that the delegate never executed: the key's holder may delete it after the delegate ran. view_access_key answers the key's nonce with the block_height of the block whose state it reads (nearcore RPC), so a key read shows the delegate unexecuted only through that height: V3's lapsed rows give keyNonce as that answer, a lapse needing its blockHeight at or past the final height read first. A lapsed row with a ref member is read with V3's ref, each member it names in place of the ref's own. Each delegate in a reader fixture carries the delegate action's receiver_id and its function call's method_name, and V3's ref carries argsDigest, V1's arguments' SHA-256 (hashlib). The second-delegate rows hold other delegates on the same key and nonce, written with Python json and base64. Status rows are read with the act payment at the finality the row gives, final where it gives none, and answer as the profile read-status gives them: since the read holds no search for H and does not read the access key's nonce, a failed token receipt, a delegate that is not the instrument and a transaction no relayer knows answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
+ "about": "Vectors for the x402/exact/near pairing: the near entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. The payer's key is the Ed25519 seed 01 repeated 32 times and its implicit account. The option is x402's NEAR example. Expected values were computed with (borsh-construct 0.1.0, hashlib and PyNaCl 1.6.2, with near-api-js 7.3.1 and borsh 2.0.0 as a cross-check). Negative signed delegate actions are V1's with one part changed and a zero signature, except these agreedRefusals rows: row 15, V2's with a bit set past the last byte in its last base64 character before the padding; row 16, V2's delegate action with its ft_transfer arguments led by a byte-order mark (EF BB BF), signed again with the payer's key; rows 23 to 25, V1's with two parts changed, the sender's first bytes and the count of actions; row 26, V1's with a signature of 63 zero bytes and 0x20; row 28, V1's with two parts changed, the receiver's first bytes and the count of actions; row 29, V1's with two parts changed, the sender, written as 64 A's, and the count of actions; and row 30, V1's with two parts changed, the receiver, written as -usdc.testnet, and the count of actions. Nonces and heights are decimal strings. The read rows are constructed ledgers, described in read.about; a status row's expected answer was derived by hand from the profile read-status.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "seedHex": "0101010101010101010101010101010101010101010101010101010101010101",
@@ -42,7 +42,10 @@
    "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
    "nonce": "101",
    "maxBlockHeight": "200000060",
-   "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb"
+   "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb",
+   "gas": "30000000000000",
+   "deposit": "1",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "presentedOptions": [
    {
@@ -85,545 +88,2041 @@
    "keyType": 0.0
   }
  },
- "V3": {
-  "relayers": [
-   "relayer.testnet"
-  ],
-  "ref": {
-   "network": "near:testnet",
-   "payee": "merchant.testnet",
-   "asset": "usdc.testnet",
-   "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-   "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-   "nonce": "101",
-   "maxBlockHeight": "200000060",
-   "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb",
-   "transaction": "7XsZtC4Hj3Y1k2v3"
-  },
-  "status": [
+ "read": {
+  "about": "Constructed ledgers, marked constructed: each is a reader's answers in the shapes of NEAR's RPC (EXPERIMENTAL_tx_status, block, query view_access_key, changes single_access_key_changes and all_access_key_changes; https://docs.near.org/api-reference/, read 2026-11-16), not a recorded answer of a real endpoint. Heights, nonces, gas and deposits are decimal strings; the reference is V2's expectReference, with the row's transaction as its hint where the row names one, and a query's others by reference take V2's. Function-call arguments are written with Python json and base64. Each row is read on both acts with its query; the expected answers were derived by hand from lcp/profiles/read-status.md and lcp/profiles/x402-exact-near-memo.md, positions and search positions being block heights.",
+  "rows": [
    {
-    "case": "receipts succeed, status FINAL",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the presented delegate, run by the relayer's transaction, FINAL: settled, presented yes",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
     },
-    "expect": {
-     "state": "settled",
-     "transaction": "7XsZtC4Hj3Y1k2v3",
+    "query": {
      "finality": "final",
-     "foreign": []
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "settled",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": [],
+      "presented": "yes"
+     },
+     "agreement": {
+      "state": "settled",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": [],
+      "presented": "yes"
+     }
     }
    },
    {
-    "case": "receipts succeed, status EXECUTED_OPTIMISTIC",
-    "finality": "optimistic",
-    "outcome": {
-     "status": "EXECUTED_OPTIMISTIC",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the same, EXECUTED and not FINAL, read at final: below-mark",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "EXECUTED_OPTIMISTIC",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
     },
     "expect": {
-     "state": "settled",
-     "transaction": "7XsZtC4Hj3Y1k2v3",
+     "payment": {
+      "state": "pending",
+      "reason": "below-mark",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "optimistic",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "below-mark",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "optimistic",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     }
+    }
+   },
+   {
+    "case": "the same, EXECUTED and not FINAL, read at optimistic: settled at optimistic",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "EXECUTED_OPTIMISTIC",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
      "finality": "optimistic",
-     "foreign": []
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "settled",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "optimistic",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": [],
+      "presented": "yes"
+     },
+     "agreement": {
+      "state": "settled",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "optimistic",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": [],
+      "presented": "yes"
+     }
     }
    },
    {
-    "case": "receipts succeed, status EXECUTED",
-    "finality": "optimistic",
-    "outcome": {
-     "status": "EXECUTED",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the delegate ran and the token's receipt has not run: below-mark, at either mark asked",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "EXECUTED_OPTIMISTIC",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "pending"
+        }
+       ]
+      }
+     }
     },
-    "expect": {
-     "state": "settled",
-     "transaction": "7XsZtC4Hj3Y1k2v3",
+    "query": {
      "finality": "optimistic",
-     "foreign": []
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "below-mark",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "optimistic",
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "below-mark",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "optimistic",
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     }
     }
    },
    {
-    "case": "the token's receipt fails",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "usdc.testnet",
-       "outcome": "failure"
+    "case": "the key deleted before max_block_height, its nonce unread: search-incomplete",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": null,
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": null,
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000005",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": null,
+       "transaction": {
+        "hash": "TD",
+        "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+       }
+      }
+     ],
+     "txs": {}
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     }
     }
    },
    {
-    "case": "delegate nonce 102",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "102",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the delegate refused for its nonce in the transaction the settler named, and run by another relayer's transaction: settled on that one",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer2.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      },
+      "T2": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T2-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "failure",
+         "height": "200000012"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+     "payment": {
+      "state": "settled",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": [],
+      "presented": "yes"
+     },
+     "agreement": {
+      "state": "settled",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": [],
+      "presented": "yes"
+     }
+    },
+    "transaction": "T2"
+   },
+   {
+    "case": "a delegate carrying H signed with another key of the payer's account, found by the search for H: settled on it, presented no",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "100",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000020",
+       "publicKey": "ed25519:8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+       "nonce": "7",
+       "transaction": {
+        "hash": "T3",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T3": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+        "nonce": "7",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T3-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000020"
+        },
+        {
+         "id": "T3-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000021"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "settled",
+      "transaction": "T3",
+      "position": "200000020",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T3",
+        "place": "T3-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+      "foreign": [],
+      "presented": "no"
+     },
+     "agreement": {
+      "state": "settled",
+      "transaction": "T3",
+      "position": "200000020",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T3",
+        "place": "T3-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+      "foreign": [],
+      "presented": "no"
+     }
     }
    },
    {
-    "case": "no transaction",
-    "outcome": null,
+    "case": "the delegate paying another receiver, which consumed the nonce: a foreign item, other-account, held search-incomplete until the search is shown whole, on a payment; settled on an agreement",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T4",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T4": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im90aGVyLnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T4-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T4-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": [
+       {
+        "transaction": "T4",
+        "position": "200000010",
+        "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "moved": [
+         {
+          "asset": "usdc.testnet",
+          "amount": "1000000",
+          "to": "other.testnet",
+          "transaction": "T4",
+          "place": "T4-token"
+         }
+        ],
+        "reason": "other-account"
+       }
+      ]
+     },
+     "agreement": {
+      "state": "settled",
+      "transaction": "T4",
+      "position": "200000010",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "other.testnet",
+        "transaction": "T4",
+        "place": "T4-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": [],
+      "presented": "no"
+     }
     }
    },
    {
-    "case": "a ReaderError",
-    "outcome": "reader-error",
+    "case": "a delegate carrying H whose sender is the option's payee, named by the settler: a foreign item, payee-signed, on either act",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "100",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [],
+     "txs": {
+      "T5": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "merchant.testnet",
+        "publicKey": "ed25519:CktRuQ2mttgRGkXJtyksdKHjUdc2C4TgDzyB98oEzy8",
+        "nonce": "9",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T5-delegate",
+         "executor": "merchant.testnet",
+         "outcome": "success",
+         "height": "200000015"
+        },
+        {
+         "id": "T5-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000016"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
     "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
+     "payment": {
+      "state": "pending",
+      "reason": "instrument-live",
+      "foreign": [
+       {
+        "transaction": "T5",
+        "position": "200000015",
+        "signer": "merchant.testnet",
+        "moved": [
+         {
+          "asset": "usdc.testnet",
+          "amount": "1000000",
+          "to": "merchant.testnet",
+          "transaction": "T5",
+          "place": "T5-token"
+         }
+        ],
+        "reason": "payee-signed"
+       }
+      ]
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "instrument-live",
+      "foreign": [
+       {
+        "transaction": "T5",
+        "position": "200000015",
+        "signer": "merchant.testnet",
+        "moved": [
+         {
+          "asset": "usdc.testnet",
+          "amount": "1000000",
+          "to": "merchant.testnet",
+          "transaction": "T5",
+          "place": "T5-token"
+         }
+        ],
+        "reason": "payee-signed"
+       }
+      ]
+     }
+    },
+    "transaction": "T5"
+   },
+   {
+    "case": "the act above the final head, the nonce consumed at the latest head only: below-mark",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000053",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "EXECUTED_OPTIMISTIC",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000053"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000054"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "below-mark",
+      "transaction": "T1",
+      "position": "200000053",
+      "finality": "optimistic",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "below-mark",
+      "transaction": "T1",
+      "position": "200000053",
+      "finality": "optimistic",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     }
     }
    },
    {
-    "case": "a second delegate on the same key and nonce whose memo carries another hash (SHA-256 of abd)",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhhNTJkMTU5ZjI2MmIyYzZkZGI3MjRhNjE4NDBiZWZjMzZlYjMwYzg4ODc3YTQwMzBiNjVjYmU4NjI5ODQ0OWM5In0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the delegate refused for its signature or its expiry in the transaction the settler named, the nonce unconsumed: instrument-live",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000050"
       },
+      "optimistic": {
+       "nonce": "100",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [],
+     "txs": {
+      "T6": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T6-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "failure",
+         "height": "200000012"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "instrument-live",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "instrument-live",
+      "foreign": []
+     }
+    },
+    "transaction": "T6"
+   },
+   {
+    "case": "the delegate ran and the token's receipt failed, the search read to the latest head: search-incomplete, not transaction-failed, until the search is shown whole",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
       {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "failure",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     }
+    }
+   },
+   {
+    "case": "the nonce below the signed one at a final block past max_block_height, the search read to the latest head: search-incomplete, not instrument-unused, until the search is shown whole",
+    "ledger": {
+     "final": "200000100",
+     "latest": "200000110",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000100"
+      },
+      "optimistic": {
+       "nonce": "100",
+       "blockHeight": "200000110"
+      }
+     },
+     "changes": [],
+     "txs": {}
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     }
+    }
+   },
+   {
+    "case": "the nonce read at the signed one and no change found that carried it: search-incomplete",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [],
+     "txs": {}
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     }
+    }
+   },
+   {
+    "case": "the node holds no history from the issue position: history-gap",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "100",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [],
+     "txs": {},
+     "history": "missing"
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "unreadable",
+      "reason": "history-gap",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "unreadable",
+      "reason": "history-gap",
+      "foreign": []
+     }
+    }
+   },
+   {
+    "case": "a change whose transaction the reader cannot name holds the search at the block before it",
+    "ledger": {
+     "final": "200000100",
+     "latest": "200000110",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000100"
+      },
+      "optimistic": {
+       "nonce": "100",
+       "blockHeight": "200000110"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000030",
+       "publicKey": "ed25519:8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+       "nonce": "8"
+      }
+     ],
+     "txs": {}
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "search": "200000029",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "search": "200000029",
+      "foreign": []
+     }
+    }
+   },
+   {
+    "case": "the search resumed from a position past that change, read to the latest head: search-incomplete, with no position, until the search is shown whole",
+    "ledger": {
+     "final": "200000100",
+     "latest": "200000110",
+     "key": {
+      "final": {
+       "nonce": "100",
+       "blockHeight": "200000100"
+      },
+      "optimistic": {
+       "nonce": "100",
+       "blockHeight": "200000110"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000030",
+       "publicKey": "ed25519:8qbHbw2BbbTHBW1sbeqakYXVKRQM8Ne7pLK7m6CVfeR",
+       "nonce": "8"
+      }
+     ],
+     "txs": {}
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000",
+     "search": "200000030"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     }
+    }
+   },
+   {
+    "case": "the delegate refused for its nonce, taken by the payer's own transaction with that key: search-incomplete, not instrument-consumed, until the search is shown whole",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000008",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T8",
+        "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c"
+       }
+      }
+     ],
+     "txs": {
+      "T7": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T7-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "failure",
+         "height": "200000012"
+        }
+       ]
+      },
+      "T8": {
+       "status": "FINAL",
+       "delegate": null,
+       "receipts": [
+        {
+         "id": "T8-receipt",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000008"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
+    },
+    "expect": {
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": []
+     }
+    },
+    "transaction": "T7"
+   },
+   {
+    "case": "the delegate landed at or before the issue position, named by the settler: before-position",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000020"
+    },
+    "expect": {
+     "payment": {
+      "state": "failed",
+      "reason": "before-position",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     },
+     "agreement": {
+      "state": "failed",
+      "reason": "before-position",
+      "transaction": "T1",
+      "position": "200000010",
+      "finality": "final",
+      "moved": [
+       {
+        "asset": "usdc.testnet",
+        "amount": "1000000",
+        "to": "merchant.testnet",
+        "transaction": "T1",
+        "place": "T1-token"
+       }
+      ],
+      "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+      "authority": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "foreign": []
+     }
+    },
+    "transaction": "T1"
+   },
+   {
+    "case": "the delegate is the other act the caller gave by its reference: a foreign item, given, held search-incomplete until the search is shown whole",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000",
+     "others": [
+      {
+       "ref": {
+        "network": "near:testnet",
+        "payee": "merchant.testnet",
+        "asset": "usdc.testnet",
+        "payer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "argsDigest": "0xc54579d642d77e47dadad8935132e1d459572716d93f58c165a0e3a7a9fd7dcb",
+        "gas": "30000000000000",
+        "deposit": "1",
+        "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+       }
       }
      ]
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; its arguments' SHA-256 is 0x1eb14eb8f48e1e3f6bda1de1e8e80716189ca8ea1e8faab7e35878f4a60f6491"
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": [
+       {
+        "transaction": "T1",
+        "position": "200000010",
+        "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "moved": [
+         {
+          "asset": "usdc.testnet",
+          "amount": "1000000",
+          "to": "merchant.testnet",
+          "transaction": "T1",
+          "place": "T1-token"
+         }
+        ],
+        "reason": "given"
+       }
+      ]
+     },
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "foreign": [
+       {
+        "transaction": "T1",
+        "position": "200000010",
+        "signer": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "moved": [
+         {
+          "asset": "usdc.testnet",
+          "amount": "1000000",
+          "to": "merchant.testnet",
+          "transaction": "T1",
+          "place": "T1-token"
+         }
+        ],
+        "reason": "given"
+       }
+      ]
+     }
+    }
    },
    {
-    "case": "a second delegate on the same key and nonce whose memo is invoice-42",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6Imludm9pY2UtNDIifQ=="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the transaction that carried the change holds arguments that are not base64: named as an item the search could not decode, held at the block before it",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [
+      {
+       "account": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+       "height": "200000010",
+       "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "nonce": "101",
+       "transaction": {
+        "hash": "T1",
+        "signer": "relayer.testnet"
+       }
+      }
+     ],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "not base64!",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "finality": "final",
+     "after": "200000000"
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action"
-   },
-   {
-    "case": "a second delegate on the same key and nonce whose arguments carry no memo",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIn0="
+     "payment": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "search": "200000009",
+      "undecoded": [
+       "T1"
+      ],
+      "foreign": []
      },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
-      },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
-      }
-     ]
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action"
-   },
-   {
-    "case": "a second delegate on the same key and nonce, with the same arguments, calling another contract",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "router.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
-      },
-      {
-       "executor": "router.testnet",
-       "outcome": "success"
-      },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
-      }
-     ]
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; NEP-366: the delegate action's receiver_id is the contract its actions call"
-   },
-   {
-    "case": "a second delegate on the same key and nonce, with the same arguments, calling ft_transfer_call",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer_call",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
-      },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
-      }
-     ]
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; NEP-141's ft_transfer_call is another method, which calls the receiver's ft_on_transfer"
-   },
-   {
-    "case": "a second delegate the payer signed on the same key and nonce whose memo carries H and whose amount is 1",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
-      },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
-      }
-     ]
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    },
-    "source": "the ref names the instrument the payer signed: the delegate's sender, key and nonce, an ft_transfer on the token, and the SHA-256 of the signed arguments, as reference reads them from the signed delegate action; the arguments differ, so their SHA-256 differs from the ref's argsDigest"
-   }
-  ],
-  "lapsed": [
-   {
-    "case": "finalHeight 200000061, key nonce 100 read at 200000061",
-    "finalHeight": "200000061",
-    "keyNonce": {
-     "nonce": "100",
-     "blockHeight": "200000061"
-    },
-    "expect": true
-   },
-   {
-    "case": "finalHeight 200000061, key nonce 101",
-    "finalHeight": "200000061",
-    "keyNonce": {
-     "nonce": "101",
-     "blockHeight": "200000061"
-    },
-    "expect": false
-   },
-   {
-    "case": "finalHeight 200000060",
-    "finalHeight": "200000060",
-    "keyNonce": {
-     "nonce": "100",
-     "blockHeight": "200000060"
-    },
-    "expect": false
-   },
-   {
-    "case": "finalHeight 200000061, the key does not exist",
-    "finalHeight": "200000061",
-    "keyNonce": null,
-    "expect": false
-   },
-   {
-    "case": "finalHeight 200000061, key nonce 100 read at 200000060",
-    "finalHeight": "200000061",
-    "keyNonce": {
-     "nonce": "100",
-     "blockHeight": "200000060"
-    },
-    "expect": false
-   },
-   {
-    "case": "finalHeight 200000061, key nonce 100 read at 200000061, with the ref's publicKey ed25519: and no key: the ref names no key, so no key read is made and none proves the lapse",
-    "ref": {
-     "publicKey": "ed25519:"
-    },
-    "finalHeight": "200000061",
-    "keyNonce": {
-     "nonce": "100",
-     "blockHeight": "200000061"
-    },
-    "expect": false
+     "agreement": {
+      "state": "pending",
+      "reason": "search-incomplete",
+      "search": "200000009",
+      "undecoded": [
+       "T1"
+      ],
+      "foreign": []
+     }
+    }
    }
   ],
   "recover": [
    {
-    "case": "the settled fixture, whose args are V1's",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the settled delegate's transaction",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
     },
+    "tx": "T1",
     "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
-    "case": "a delegate whose function call is ft_transfer_call, with V1's args",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer_call",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "the token's receipt failed: H recovered whatever the transfer's outcome",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "success"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "failure",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
     },
-    "expect": {
-     "refused": true,
-     "code": "near/not-ft-transfer"
-    },
-    "source": "the pairing reads the memo of one NEP-141 ft_transfer; ft_transfer_call is another method"
+    "tx": "T1",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
    },
    {
-    "case": "a delegate whose ft_transfer args name memo twice, first as a free-form string, then as V1's LCP string, whose token receipt fails: serde's derived reader refuses a field named twice (duplicate_field), so the token contract makes no transfer and the args carry no hash, though JSON.parse keeps the last memo",
-    "outcome": {
-     "status": "FINAL",
-     "delegate": {
-      "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-      "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-      "nonce": "101",
-      "receiverId": "usdc.testnet",
-      "methodName": "ft_transfer",
-      "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImEgZnJlZS1mb3JtIG1lbW8iLCJtZW1vIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQifQ=="
-     },
-     "receipts": [
-      {
-       "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-       "outcome": "success"
+    "case": "a transaction carrying no delegate action",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
       },
-      {
-       "executor": "usdc.testnet",
-       "outcome": "failure"
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
       }
-     ]
+     },
+     "changes": [],
+     "txs": {
+      "T8": {
+       "status": "FINAL",
+       "delegate": null,
+       "receipts": [
+        {
+         "id": "T8-receipt",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000008"
+        }
+       ]
+      }
+     }
     },
-    "expect": {
-     "refused": true,
-     "code": "near/args-malformed"
+    "tx": "T8",
+    "expect": "near/not-ft-transfer"
+   },
+   {
+    "case": "a delegate holding two actions",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [],
+     "txs": {
+      "T9": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0=",
+          "gas": "30000000000000",
+          "deposit": "1"
+         },
+         null
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T9-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T9-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
     },
-    "source": "agreedRefusals row 37's args, written with Python base64"
+    "tx": "T9",
+    "expect": "near/actions"
+   },
+   {
+    "case": "a delegate whose arguments are not base64",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [],
+     "txs": {
+      "T1": {
+       "status": "FINAL",
+       "delegate": {
+        "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+        "nonce": "101",
+        "maxBlockHeight": "200000060",
+        "receiverId": "usdc.testnet",
+        "actions": [
+         {
+          "methodName": "ft_transfer",
+          "argsBase64": "not base64!",
+          "gas": "30000000000000",
+          "deposit": "1"
+         }
+        ]
+       },
+       "receipts": [
+        {
+         "id": "T1-delegate",
+         "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+         "outcome": "success",
+         "height": "200000010"
+        },
+        {
+         "id": "T1-token",
+         "executor": "usdc.testnet",
+         "outcome": "success",
+         "height": "200000011"
+        }
+       ]
+      }
+     }
+    },
+    "tx": "T1",
+    "expect": "near/unreadable"
+   },
+   {
+    "case": "a transaction the reader does not know",
+    "ledger": {
+     "final": "200000050",
+     "latest": "200000055",
+     "key": {
+      "final": {
+       "nonce": "101",
+       "blockHeight": "200000050"
+      },
+      "optimistic": {
+       "nonce": "101",
+       "blockHeight": "200000055"
+      }
+     },
+     "changes": [],
+     "txs": {}
+    },
+    "tx": "T0",
+    "expect": "near/not-found"
    }
   ]
- },
- "plant": {
-  "case": "the outer transaction and the payer's Delegate receipt succeed, the token's receipt fails, status FINAL",
-  "outcome": {
-   "status": "FINAL",
-   "delegate": {
-    "senderId": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-    "publicKey": "ed25519:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
-    "nonce": "101",
-    "receiverId": "usdc.testnet",
-    "methodName": "ft_transfer",
-    "argsBase64": "eyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0="
-   },
-   "receipts": [
-    {
-     "executor": "relayer.testnet",
-     "outcome": "success"
-    },
-    {
-     "executor": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
-     "outcome": "success"
-    },
-    {
-     "executor": "usdc.testnet",
-     "outcome": "failure"
-    }
-   ]
-  },
-  "expect": {
-   "state": "pending",
-   "reason": "search-incomplete",
-   "foreign": []
-  }
  },
  "agreedRefusals": {
   "about": "Refusal codes where the pairing leaves the code to the implementation. The TypeScript and Python implementations both apply the option, delegate-action, payer, key and signature rows. The two recover rows and the missing-peer row are the TypeScript implementation's alone: the Python one has no recover, and decodes NEAR with no optional package. A signedDelegateAction's length is counted in UTF-16 code units, as JavaScript's String length counts it; U+10000 is one code point of two UTF-16 code units.",
@@ -710,7 +2209,7 @@
     "expect": "near/args-malformed"
    },
    {
-    "case": "build with a publicKey that is not ed25519:… or secp256k1:…",
+    "case": "build with a publicKey that is not ed25519:\u2026 or secp256k1:\u2026",
     "publicKey": "not-a-key",
     "expect": "x402/option-malformed"
    },
@@ -724,8 +2223,8 @@
     "expect": "near/unreadable"
    },
    {
-    "case": "recover with no relayer published",
-    "expect": "near/no-relayer"
+    "case": "recover of a transaction whose delegate holds two actions",
+    "expect": "near/actions"
    },
    {
     "case": "any near function that needs borsh when borsh is not installed",
@@ -733,16 +2232,16 @@
    },
    {
     "case": "a signedDelegateAction of 8191 base64 characters and U+10000: 8193 UTF-16 code units, 8192 code points",
-    "signedDelegateAction": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA𐀀",
+    "signedDelegateAction": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\ud800\udc00",
     "expect": "near/sda-too-large"
    },
    {
     "case": "a signedDelegateAction of 8190 base64 characters and U+10000: 8192 UTF-16 code units, not base64",
-    "signedDelegateAction": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA𐀀",
+    "signedDelegateAction": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\ud800\udc00",
     "expect": "near/sda-malformed"
    },
    {
-    "case": "a signedDelegateAction whose last character before the padding has a bit set past the last byte (V2's): the same bytes, not in canonical form (RFC 4648 §3.5)",
+    "case": "a signedDelegateAction whose last character before the padding has a bit set past the last byte (V2's): the same bytes, not in canonical form (RFC 4648 \u00a73.5)",
     "signedDelegateAction": "QAAAADhhODhlM2RkNzQwOWYxOTVmZDUyZGIyZDNjYmE1ZDcyY2E2NzA5YmYxZDk0MTIxYmYzNzQ4ODAxYjQwZjZmNWMMAAAAdXNkYy50ZXN0bmV0AQAAAAILAAAAZnRfdHJhbnNmZXKMAAAAeyJyZWNlaXZlcl9pZCI6Im1lcmNoYW50LnRlc3RuZXQiLCJhbW91bnQiOiIxMDAwMDAwIiwibWVtbyI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIn0A4FfrSBsAAAEAAAAAAAAAAAAAAAAAAABlAAAAAAAAADzC6wsAAAAAAIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cANCS+8ze3sYPcFte5u1h3LnfanVdo7jJggxLPudilVCmDsxQu0BjPHXqpDbrcWFcztOVClDOOlgPkL7pAWZGiQp=",
     "expect": "near/sda-malformed"
    },

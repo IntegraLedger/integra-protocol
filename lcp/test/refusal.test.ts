@@ -258,11 +258,14 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   const batchOptions: Record<string, object> = {
     "x402/batch-settlement/eip155": batch.fixed.evm.option,
     "x402/batch-settlement/cloudflare": batch.EC1.payload.accepted,
+    // The Cardano lock's option is held beside the address method's, in x402-exact-cardano.json.
+    "x402/exact/cardano/lock": JSON.parse(readFileSync(new URL("x402-exact-cardano.json", dir), "utf8")).fixed.OLock,
   };
   const noCarrier = [
     "x402/exact/algorand",
     "x402/exact/aptos",
     "x402/exact/cardano",
+    "x402/exact/cardano/lock",
     "x402/exact/casper",
     "x402/exact/ccd",
     "x402/exact/hedera",
@@ -430,7 +433,7 @@ describe("no entry point passes a caller's value back as a refusal", () => {
   // challenge back as a copy without its carrier; every other x402 and MPP pairing gives it back as given.
   it("the x402 and MPP pairings whose unplaced removes a carrier are these fourteen", () => {
     const pairings = rowsOf(BINDINGS, "BINDINGS", {
-      exact: 26 + 20,
+      exact: 27 + 20,
       keep: ["the x402 and MPP pairings", (b) => b.id.startsWith("x402/") || b.id.startsWith("mpp/")],
       leave: ["the ACK, ACP, AP2, card and UCP pairings, whose unplaced the checkout tests above take", (b) => options[b.id.split("/")[0]!] !== undefined],
     });
@@ -513,15 +516,21 @@ describe("every placement function refuses a seller document carrying a refused 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
   // the carrier (unplaced).
   const x402 = rowsOf(BINDINGS, "BINDINGS", {
-    exact: 26,
+    exact: 27,
     keep: ["the x402 pairings", (b) => b.id.startsWith("x402/")],
     leave: ["the pairings of the other carriers", (b) => !b.id.startsWith("x402/")],
   });
-  it("the x402 pairings are twenty-six, each with an advertised document of one option", () => {
-    expect(x402.length).toBe(26);
+  it("the x402 pairings are twenty-seven, each with an advertised document of one option", () => {
+    expect(x402.length).toBe(27);
     for (const b of x402) expect((advertisedDoc.get(b.id) as { accepts: unknown[] }).accepts.length, b.id).toBe(1);
   });
-  const x402Calls = x402.map((b) => [b.id, "advertise", b.advertise as Place, true] as const);
+  // The Cardano address method takes coinsPerUtxoByte after the offer, before the agreement URL: V8's parameter.
+  const cardanoFloorArg = BigInt(load("x402-exact-cardano.json").V8.coinsPerUtxoByte);
+  const placeOf = (b: (typeof x402)[number]): Place =>
+    b.id === "x402/exact/cardano"
+      ? (doc, h, link, offer, url) => (b.advertise as (...a: unknown[]) => unknown)(doc, h, link, offer, cardanoFloorArg, url)
+      : (b.advertise as Place);
+  const x402Calls = x402.map((b) => [b.id, "advertise", placeOf(b), true] as const);
   const issuedX402 = (id: string, asIssued: boolean) => {
     const b = BINDINGS.find((p) => p.id === id)!;
     const advertised = advertisedDoc.get(id) as { accepts: unknown[]; extensions: { legalContext: { info: Record<string, string> } } };
@@ -623,13 +632,18 @@ describe("every placement function refuses a seller document carrying a refused 
     }
   });
   const lightning = new Set(["mpp/charge/lightning", "mpp/session/lightning"]);
+  // The NEAR Intents charge's advertise holds the quote to the challenge the ATR names, here the offer itself; its
+  // unplaced challenge has no quote and no expires, which advertise and MPP's place require, so both take it placed.
+  const NEARINTENTS = "mpp/charge/nearintents";
+  const heldToOffer = (id: string, f: MppPlace): MppPlace =>
+    id === NEARINTENTS ? (doc, h, link, offer, position, agreementUrl) => (f as (...a: unknown[]) => unknown)(doc, h, link, offer, position, agreementUrl, offer) : f;
   const mppCalls = [
-    ...mpp.map((b) => [b.id, "advertise", atPosition(b.id, b.advertise as MppPlace), !lightning.has(b.id)] as const),
+    ...mpp.map((b) => [b.id, "advertise", atPosition(b.id, heldToOffer(b.id, b.advertise as MppPlace)), !lightning.has(b.id) && b.id !== NEARINTENTS] as const),
     ...rowsOf(mpp, "the MPP pairings", {
       keep: ["the MPP pairings with advertiseBeforeCarrier", (b) => typeof b.advertiseBeforeCarrier === "function"],
       leave: ["the MPP pairings with none, which place with advertise and place", (b) => b.advertiseBeforeCarrier === undefined],
     }).map((b) => [b.id, "advertiseBeforeCarrier", atPosition(b.id, b.advertiseBeforeCarrier as MppPlace), true] as const),
-    ...mpp.map((b) => [b.id, "place", atPosition(b.id, place as MppPlace), true] as const),
+    ...mpp.map((b) => [b.id, "place", atPosition(b.id, place as MppPlace), b.id !== NEARINTENTS] as const),
   ];
   for (const [id, member, placeIn, unplace] of mppCalls) {
     it(`${id}: ${member} refuses a challenge list in which a challenge carries a refused member as mpp/challenge-malformed`, () => {

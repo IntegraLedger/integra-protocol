@@ -209,7 +209,7 @@
   "case": "the pairings whose quote or invoice the seller writes after H: tie binds, and issuedDigest digests, the challenge without the members written after H, so the challenge as issued and as placed give one slot entry and one digest",
   "rows": [
    {
-    "case": "mpp/charge/nearintents: the issued challenge and the placed one, whose request carries externalId",
+    "case": "mpp/charge/nearintents: the issued challenge and the placed one, whose request carries externalId; both read without the quote's members, refundTo and expires",
     "issued": {
      "realm": "api.seller.example",
      "method": "nearintents",
@@ -226,13 +226,12 @@
      "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
     },
-    "expectDigest": "0x7bf6613c10b2009f5cfd4e26e40c53c232573f2790f8349a67b7c8925b7f7312",
+    "expectDigest": "0xbf4ad60bd15e6091fb4645ae373e7c7c8988bd78ef7f1af2704d082382567d70",
     "expectTiedPlaced": {
      "realm": "api.seller.example",
      "method": "nearintents",
      "intent": "charge",
-     "request": "eyJhbW91bnQiOiIxMDA1MDAwIiwiY3VycmVuY3kiOiJlaXAxNTU6NDIxNjEvZXJjMjA6MHhhZjg4ZDA2NWU3N2M4Y0MyMjM5MzI3QzVFRGIzQTQzMjI2OGU1ODMxIiwiZGVzY3JpcHRpb24iOiJDcm9zcy1jaGFpbiBwcmVtaXVtIGRhdGEgYWNjZXNzIiwibWV0aG9kRGV0YWlscyI6eyJhbW91bnRPdXQiOiIxMDAwMDAwIiwiY3JlZGVudGlhbFR5cGVzIjpbImhhc2giXSwiZGVwb3NpdE1lbW8iOm51bGwsImRlc3RpbmF0aW9uQXNzZXQiOiJuZWFyOm1haW5uZXQvbmVwMTQxOjE3MjA4NjI4Zjg0ZjVkNmFkMzNmMGRhM2JiYmViMjdmZmNiMzk4ZWFjNTAxYTMxYmQ2YWQyMDExZTM2MTMzYTEiLCJkZXN0aW5hdGlvbk5ldHdvcmsiOiJuZWFyOm1haW5uZXQiLCJkZXN0aW5hdGlvblJlY2lwaWVudCI6Im1lcmNoYW50Lm5lYXIiLCJtaW5BbW91bnRJbiI6IjEwMDAwMDAiLCJvcmlnaW5OZXR3b3JrIjoiZWlwMTU1OjQyMTYxIiwicmVmdW5kVG8iOiIweDI1MjdEMDI1OTlCYTY0MWMxOUZFYTc5M2NEMEY5YTZlODQ1N0MzMTciLCJzZXR0bGVtZW50QmFja2VuZCI6Im5lYXItaW50ZW50cyIsInNsaXBwYWdlVG9sZXJhbmNlIjoxMDAsInRpbWVFc3RpbWF0ZSI6MTIwfSwicmVjaXBpZW50IjoiMHg3NmI0YzU2MDg1RUQxMzZhODc0NEQ1MmJFOTU2Mzk2NjI0YTczMEU4In0",
-     "expires": "2026-09-21T14:14:20Z",
+     "request": "eyJjdXJyZW5jeSI6ImVpcDE1NTo0MjE2MS9lcmMyMDoweGFmODhkMDY1ZTc3YzhjQzIyMzkzMjdDNUVEYjNBNDMyMjY4ZTU4MzEiLCJkZXNjcmlwdGlvbiI6IkNyb3NzLWNoYWluIHByZW1pdW0gZGF0YSBhY2Nlc3MiLCJtZXRob2REZXRhaWxzIjp7ImFtb3VudE91dCI6IjEwMDAwMDAiLCJjcmVkZW50aWFsVHlwZXMiOlsiaGFzaCJdLCJkZXN0aW5hdGlvbkFzc2V0IjoibmVhcjptYWlubmV0L25lcDE0MToxNzIwODYyOGY4NGY1ZDZhZDMzZjBkYTNiYmJlYjI3ZmZjYjM5OGVhYzUwMWEzMWJkNmFkMjAxMWUzNjEzM2ExIiwiZGVzdGluYXRpb25OZXR3b3JrIjoibmVhcjptYWlubmV0IiwiZGVzdGluYXRpb25SZWNpcGllbnQiOiJtZXJjaGFudC5uZWFyIiwib3JpZ2luTmV0d29yayI6ImVpcDE1NTo0MjE2MSIsInNldHRsZW1lbnRCYWNrZW5kIjoibmVhci1pbnRlbnRzIiwic2xpcHBhZ2VUb2xlcmFuY2UiOjEwMH19",
      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
     }
    },

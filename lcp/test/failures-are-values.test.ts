@@ -49,7 +49,7 @@ import {
   sessionXrpl,
   subscriptionTempo,
 } from "../src/mpp.js";
-import { nearLapsed, nearRecover, nearStatus } from "../src/near.js";
+import { nearRecover, nearStatus } from "../src/near.js";
 import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
 import { muxedFor, stellarLocate, stellarStatus } from "../src/stellar.js";
@@ -489,8 +489,8 @@ describe("cardano", () => {
   it("cardanoRecover: an input whose tx is not a 32-byte hash is cardano/wrong-reader, with nothing read", async () => {
     const V = load("x402-exact-cardano.json");
     const cbor = Uint8Array.from(Buffer.from(V.V2.transactionBase64, "base64"));
-    const reader = { network: V.V5.ref.network, transaction: async () => ({ blockHeight: 1n, slot: 1n, valid: true, cbor }) };
-    const input = { network: V.V5.ref.network, tx: V.V5.ref.txId, option: V.fixed.O };
+    const reader = { network: V.V2.expectReference.network, transaction: async () => ({ blockHeight: 1n, slot: 1n, valid: true, cbor }) };
+    const input = { network: V.V2.expectReference.network, tx: V.V2.expectReference.txId, option: V.fixed.O };
     expect(await cardanoRecover(input, reader as never)).toBe(V.V5.recover[0].expect);
     for (const tx of [undefined, null, 5]) {
       const { reader: r, calls } = counting(reader);
@@ -601,7 +601,6 @@ describe("near", () => {
   reads([
     ["nearStatus", nearStatus, "x402-exact-near.json", { state: "unreadable", reason: "unparseable", foreign: [] }, { act: "payment", finality: "final" }],
     ["nearRecover", nearRecover, "x402-exact-near.json", refused("near/wrong-reader")],
-    ["nearLapsed", nearLapsed, "x402-exact-near.json", false],
   ]);
 });
 

@@ -15,14 +15,19 @@ export const NEAR = /* @__PURE__ */ freeze({
       fallback: "json-rpc",
       note: "the archival fallback for history below the node's floor",
       search:
-        "Keyed by the payer's access key (account and public key), from the position recorded at issue to the delegate's " +
-        "`max_block_height`. The lapse's search for H covers every access key of the payer's account from the issue " +
-        "position to the latest head.",
+        "The payer's access key (account and public key): the change that carried its nonce to or past the signed one, " +
+        "from the position recorded at issue to the delegate's `max_block_height`, and, where the nonce is read at or " +
+        "past the signed one, to the block it was read so at. The search for H reads the changes of every access key of " +
+        "the payer's account from the issue position to the latest head at the read. A hash a settler names is a hint. " +
+        "Not yet shown on a live relayed delegate; until a run shows it whole, no read answers a `failed` but " +
+        "`before-position`.",
       history: "from the position recorded at issue (the final block height); below the node's floor, the declared archival fallback",
       contracts: [],
       lapse:
-        "the access key's nonce still below the signed nonce at a final block past `max_block_height`, and the search for H " +
-        "read whole finding no delegate action for H",
+        "the access key's nonce still below the signed nonce at a final block past `max_block_height`, and the changes of " +
+        "every access key of the payer's account from the issue position to the latest head at the read, read whole, " +
+        "holding no delegate of the act asked about; a nonce at or past the signed one whose change is not found, and a " +
+        "key deleted before that block, are never a lapse",
     },
     destination:
       "the `receiver_id` of the executed `ft_transfer`, recorded as observed; on a charge the delegate pays only where it " +
@@ -38,10 +43,11 @@ export const NEAR = /* @__PURE__ */ freeze({
         "its token and `receiver_id` recorded as observed",
     },
     proves:
-      "The payer signed a NEP-366 delegate action whose one ft_transfer carries this ATR's hash in its memo, " +
-      "in LCP string form. The runtime verified that signature and executed the transfer on the token " +
-      "contract, and the memo is on chain in the delegated call's arguments. This does not show that amount, " +
-      "receiver, token or timing match the ATR's content.",
+      "Paid: the payer's account signed a NEP-366 delegate action whose one ft_transfer carries this ATR's hash in its " +
+      "memo, in LCP string form, so the payer's own signed act carries the hash. The runtime verified that signature " +
+      "and ran the delegate, and the transfer succeeded on the token contract the delegate names, reaching the account " +
+      "its receiver_id names, both as read. The signer is the delegate's sender, named apart from any other act's. This " +
+      "states nothing of the amount, nor that the token, the account reached or the time meet a term of the ATR.",
   },
   "mpp/charge/nearintents": {
     coverage: "none",
@@ -55,10 +61,9 @@ export const NEAR = /* @__PURE__ */ freeze({
     agreementOn: "any",
     confirmed: "no",
     proves:
-      "Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on " +
-      "<network>, recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its " +
-      "externalId, bound by the seller's server to a deposit address issued for that challenge only, and the " +
-      "seller reported delivery. The buyer's deposit does not carry the hash, and the buyer did not sign it. " +
-      "The NEAR Intents backend, not a contract the buyer signed, links the deposit to the seller.",
+      "Before this payment was reported, an agreement transaction carrying this ATR's hash was signed on " +
+      "<network>, recorded in <transaction>; this shows neither that its signer is the payer nor when the " +
+      "deposit was made. The seller's MPP challenge carried the hash in its externalId. The deposit carries no " +
+      "hash, and its payer signed nothing that does. The seller reported it paid.",
   },
 });

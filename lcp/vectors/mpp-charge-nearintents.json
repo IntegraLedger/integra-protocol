@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/nearintents, on MPP's own example request (draft-nearintents-charge-01, blob 6a389faa6b) without its externalId. The placed request is computed with Python 3 json and base64url.",
+ "about": "Vectors for mpp/charge/nearintents (mpp-charge-nearintents.md), on MPP's own example request (draft-nearintents-charge-01, blob 6a389faa6b, lines 329-353; again at 821-843) without its externalId. Every expected value is computed from the profile with Python 3.12.3's json, base64 and hashlib, never with lcp: RFC 8785 as json.dumps(sort_keys=True, separators=(',',':')) over these values, which hold ASCII keys and no fractions; base64url without padding; SHA-256. The second quote's members, the changed fixed members and every hash in reference but the draft's example deposit hash (line 870) are constructed, not recorded: the bip122 and stellar hashes are SHA-256 of a label, and the near and solana hashes are base58 (Bitcoin's alphabet, written in Python over int.from_bytes) of SHA-256 and SHA-512 of a label. The spelling rules reference applies are the draft's (Replay Protection, lines 663-670).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -40,7 +40,7 @@
   "expires": "2026-09-21T14:14:20Z"
  },
  "place": {
-  "case": "advertise sets id MV1, opaque MV3 and externalId = L",
+  "case": "advertise sets id MV1, opaque MV3 and externalId = L, the quote held to the challenge the ATR names (unplaced.expect)",
   "expect": {
    "realm": "api.seller.example",
    "method": "nearintents",
@@ -214,5 +214,323 @@
     "expect": "mpp/expires-required"
    }
   ]
+ },
+ "unplaced": {
+  "case": "the challenge as unplaced gives it, which tie binds and issuedDigest digests: the request without externalId, recipient, amount and methodDetails' minAmountIn, depositMemo, timeEstimate and refundTo, and no expires; the same from the challenge as issued and as placed",
+  "request": {
+   "currency": "eip155:42161/erc20:0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+   "description": "Cross-chain premium data access",
+   "methodDetails": {
+    "originNetwork": "eip155:42161",
+    "destinationNetwork": "near:mainnet",
+    "destinationAsset": "near:mainnet/nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "destinationRecipient": "merchant.near",
+    "amountOut": "1000000",
+    "slippageTolerance": 100,
+    "settlementBackend": "near-intents",
+    "credentialTypes": [
+     "hash"
+    ]
+   }
+  },
+  "expect": {
+   "realm": "api.seller.example",
+   "method": "nearintents",
+   "intent": "charge",
+   "request": "eyJjdXJyZW5jeSI6ImVpcDE1NTo0MjE2MS9lcmMyMDoweGFmODhkMDY1ZTc3YzhjQzIyMzkzMjdDNUVEYjNBNDMyMjY4ZTU4MzEiLCJkZXNjcmlwdGlvbiI6IkNyb3NzLWNoYWluIHByZW1pdW0gZGF0YSBhY2Nlc3MiLCJtZXRob2REZXRhaWxzIjp7ImFtb3VudE91dCI6IjEwMDAwMDAiLCJjcmVkZW50aWFsVHlwZXMiOlsiaGFzaCJdLCJkZXN0aW5hdGlvbkFzc2V0IjoibmVhcjptYWlubmV0L25lcDE0MToxNzIwODYyOGY4NGY1ZDZhZDMzZjBkYTNiYmJlYjI3ZmZjYjM5OGVhYzUwMWEzMWJkNmFkMjAxMWUzNjEzM2ExIiwiZGVzdGluYXRpb25OZXR3b3JrIjoibmVhcjptYWlubmV0IiwiZGVzdGluYXRpb25SZWNpcGllbnQiOiJtZXJjaGFudC5uZWFyIiwib3JpZ2luTmV0d29yayI6ImVpcDE1NTo0MjE2MSIsInNldHRsZW1lbnRCYWNrZW5kIjoibmVhci1pbnRlbnRzIiwic2xpcHBhZ2VUb2xlcmFuY2UiOjEwMH19"
+  },
+  "expectDigest": "0xbf4ad60bd15e6091fb4645ae373e7c7c8988bd78ef7f1af2704d082382567d70"
+ },
+ "secondQuote": {
+  "case": "a second quote for H (constructed): another deposit address, amount, minimum, deposit memo, time estimate, refund address and expires, the fixed members unchanged. advertise, held to unplaced.expect, places it, and its issued digest is the first quote's",
+  "request": {
+   "amount": "1004000",
+   "currency": "eip155:42161/erc20:0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+   "recipient": "0x5bD6B1C0eF06bE1d1b9A8a3b3a8b4bC9A2C1f0e7",
+   "description": "Cross-chain premium data access",
+   "methodDetails": {
+    "originNetwork": "eip155:42161",
+    "destinationNetwork": "near:mainnet",
+    "destinationAsset": "near:mainnet/nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    "destinationRecipient": "merchant.near",
+    "amountOut": "1000000",
+    "minAmountIn": "1000500",
+    "depositMemo": "7712",
+    "slippageTolerance": 100,
+    "timeEstimate": 90,
+    "refundTo": "0x8Ba1f109551bD432803012645Ac136ddd64DBA72",
+    "settlementBackend": "near-intents",
+    "credentialTypes": [
+     "hash"
+    ]
+   }
+  },
+  "expires": "2026-09-21T14:24:20Z",
+  "expect": {
+   "realm": "api.seller.example",
+   "method": "nearintents",
+   "intent": "charge",
+   "request": "eyJhbW91bnQiOiIxMDA0MDAwIiwiY3VycmVuY3kiOiJlaXAxNTU6NDIxNjEvZXJjMjA6MHhhZjg4ZDA2NWU3N2M4Y0MyMjM5MzI3QzVFRGIzQTQzMjI2OGU1ODMxIiwiZGVzY3JpcHRpb24iOiJDcm9zcy1jaGFpbiBwcmVtaXVtIGRhdGEgYWNjZXNzIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJhbW91bnRPdXQiOiIxMDAwMDAwIiwiY3JlZGVudGlhbFR5cGVzIjpbImhhc2giXSwiZGVwb3NpdE1lbW8iOiI3NzEyIiwiZGVzdGluYXRpb25Bc3NldCI6Im5lYXI6bWFpbm5ldC9uZXAxNDE6MTcyMDg2MjhmODRmNWQ2YWQzM2YwZGEzYmJiZWIyN2ZmY2IzOThlYWM1MDFhMzFiZDZhZDIwMTFlMzYxMzNhMSIsImRlc3RpbmF0aW9uTmV0d29yayI6Im5lYXI6bWFpbm5ldCIsImRlc3RpbmF0aW9uUmVjaXBpZW50IjoibWVyY2hhbnQubmVhciIsIm1pbkFtb3VudEluIjoiMTAwMDUwMCIsIm9yaWdpbk5ldHdvcmsiOiJlaXAxNTU6NDIxNjEiLCJyZWZ1bmRUbyI6IjB4OEJhMWYxMDk1NTFiRDQzMjgwMzAxMjY0NUFjMTM2ZGRkNjREQkE3MiIsInNldHRsZW1lbnRCYWNrZW5kIjoibmVhci1pbnRlbnRzIiwic2xpcHBhZ2VUb2xlcmFuY2UiOjEwMCwidGltZUVzdGltYXRlIjo5MH0sInJlY2lwaWVudCI6IjB4NWJENkIxQzBlRjA2YkUxZDFiOUE4YTNiM2E4YjRiQzlBMkMxZjBlNyJ9",
+   "expires": "2026-09-21T14:24:20Z",
+   "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+  },
+  "expectDigest": "0xbf4ad60bd15e6091fb4645ae373e7c7c8988bd78ef7f1af2704d082382567d70"
+ },
+ "fixedChanged": {
+  "case": "each fixed member of the example request changed in turn (constructed values): advertise, held to unplaced.expect, refuses the quote, and its issued digest is the row's, never unplaced.expectDigest",
+  "expect": "near/fixed-members-differ",
+  "rows": [
+   {
+    "member": "currency",
+    "path": [
+     "currency"
+    ],
+    "value": "eip155:42161/erc20:0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+    "expectDigest": "0x7c1ccd31257cd851cf94283816ae500b13c5d76e30dc43698138d4935a92a90c"
+   },
+   {
+    "member": "methodDetails.originNetwork",
+    "path": [
+     "methodDetails",
+     "originNetwork"
+    ],
+    "value": "eip155:8453",
+    "expectDigest": "0x829443ddd173cc0f5efa825bc9958bbba1417550f078ea3c70e9ffba5585d16c"
+   },
+   {
+    "member": "methodDetails.destinationNetwork",
+    "path": [
+     "methodDetails",
+     "destinationNetwork"
+    ],
+    "value": "eip155:1",
+    "expectDigest": "0xabe3aea6317db17ed79a243b9237192de56ac8ca5b7c39f9a63713f6b78a5e35"
+   },
+   {
+    "member": "methodDetails.destinationAsset",
+    "path": [
+     "methodDetails",
+     "destinationAsset"
+    ],
+    "value": "near:mainnet/nep141:usdt.tether-token.near",
+    "expectDigest": "0x40ae00d1db936d4e885f3823b201f779077ec514635d1e2607a0a8a6be0fe6c2"
+   },
+   {
+    "member": "methodDetails.destinationRecipient",
+    "path": [
+     "methodDetails",
+     "destinationRecipient"
+    ],
+    "value": "other-merchant.near",
+    "expectDigest": "0x83ebfe83c045f50964d2bcb5a4ba9ea3edd8a19837ff3bf2816045609dfa40a1"
+   },
+   {
+    "member": "methodDetails.amountOut",
+    "path": [
+     "methodDetails",
+     "amountOut"
+    ],
+    "value": "2000000",
+    "expectDigest": "0xaf3b38942e847c49b626b4dcbe0d0c112efb706730515f726c3b1cf23735cb43"
+   },
+   {
+    "member": "description",
+    "path": [
+     "description"
+    ],
+    "value": "Cross-chain premium data access, annual",
+    "expectDigest": "0x03fd668340deefd964ab248c96ff8c1153a736c069ab4cf0f7f8aba8cb6e3564"
+   },
+   {
+    "member": "methodDetails.slippageTolerance",
+    "path": [
+     "methodDetails",
+     "slippageTolerance"
+    ],
+    "value": 50,
+    "expectDigest": "0xc6ad1e5465c6bbb303808d5a9de6aa069337a8fd10d9fd60906deb5855194b13"
+   },
+   {
+    "member": "methodDetails.settlementBackend",
+    "path": [
+     "methodDetails",
+     "settlementBackend"
+    ],
+    "value": "other-backend",
+    "expectDigest": "0xe406201c2cdae42dff7352ee40ae671edaa901ae417195fe272df2ce263df2e3"
+   },
+   {
+    "member": "methodDetails.credentialTypes",
+    "path": [
+     "methodDetails",
+     "credentialTypes"
+    ],
+    "value": [
+     "hash",
+     "transaction"
+    ],
+    "expectDigest": "0xaeb117135421d27d8a2cef6123739476e840f7e9ef39c84aae71a88179b086e1"
+   }
+  ]
+ },
+ "beforeCarrier": {
+  "case": "advertiseBeforeCarrier at issue, on unplaced.expect, the fixed members alone and no expires: id MV1, opaque MV3 and externalId = L placed, no expires; its issued digest is unplaced.expectDigest",
+  "challenge": {
+   "realm": "api.seller.example",
+   "method": "nearintents",
+   "intent": "charge",
+   "request": "eyJjdXJyZW5jeSI6ImVpcDE1NTo0MjE2MS9lcmMyMDoweGFmODhkMDY1ZTc3YzhjQzIyMzkzMjdDNUVEYjNBNDMyMjY4ZTU4MzEiLCJkZXNjcmlwdGlvbiI6IkNyb3NzLWNoYWluIHByZW1pdW0gZGF0YSBhY2Nlc3MiLCJtZXRob2REZXRhaWxzIjp7ImFtb3VudE91dCI6IjEwMDAwMDAiLCJjcmVkZW50aWFsVHlwZXMiOlsiaGFzaCJdLCJkZXN0aW5hdGlvbkFzc2V0IjoibmVhcjptYWlubmV0L25lcDE0MToxNzIwODYyOGY4NGY1ZDZhZDMzZjBkYTNiYmJlYjI3ZmZjYjM5OGVhYzUwMWEzMWJkNmFkMjAxMWUzNjEzM2ExIiwiZGVzdGluYXRpb25OZXR3b3JrIjoibmVhcjptYWlubmV0IiwiZGVzdGluYXRpb25SZWNpcGllbnQiOiJtZXJjaGFudC5uZWFyIiwib3JpZ2luTmV0d29yayI6ImVpcDE1NTo0MjE2MSIsInNldHRsZW1lbnRCYWNrZW5kIjoibmVhci1pbnRlbnRzIiwic2xpcHBhZ2VUb2xlcmFuY2UiOjEwMH19"
+  },
+  "expect": {
+   "realm": "api.seller.example",
+   "method": "nearintents",
+   "intent": "charge",
+   "request": "eyJjdXJyZW5jeSI6ImVpcDE1NTo0MjE2MS9lcmMyMDoweGFmODhkMDY1ZTc3YzhjQzIyMzkzMjdDNUVEYjNBNDMyMjY4ZTU4MzEiLCJkZXNjcmlwdGlvbiI6IkNyb3NzLWNoYWluIHByZW1pdW0gZGF0YSBhY2Nlc3MiLCJleHRlcm5hbElkIjoibGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQiLCJtZXRob2REZXRhaWxzIjp7ImFtb3VudE91dCI6IjEwMDAwMDAiLCJjcmVkZW50aWFsVHlwZXMiOlsiaGFzaCJdLCJkZXN0aW5hdGlvbkFzc2V0IjoibmVhcjptYWlubmV0L25lcDE0MToxNzIwODYyOGY4NGY1ZDZhZDMzZjBkYTNiYmJlYjI3ZmZjYjM5OGVhYzUwMWEzMWJkNmFkMjAxMWUzNjEzM2ExIiwiZGVzdGluYXRpb25OZXR3b3JrIjoibmVhcjptYWlubmV0IiwiZGVzdGluYXRpb25SZWNpcGllbnQiOiJtZXJjaGFudC5uZWFyIiwib3JpZ2luTmV0d29yayI6ImVpcDE1NTo0MjE2MSIsInNldHRsZW1lbnRCYWNrZW5kIjoibmVhci1pbnRlbnRzIiwic2xpcHBhZ2VUb2xlcmFuY2UiOjEwMH19",
+   "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+  },
+  "expectDigest": "0xbf4ad60bd15e6091fb4645ae373e7c7c8988bd78ef7f1af2704d082382567d70",
+  "refusals": {
+   "case": "advertiseBeforeCarrier on unplaced.expect with one fixed member the draft requires removed",
+   "expect": "mpp/request-malformed",
+   "rows": [
+    [
+     "currency"
+    ],
+    [
+     "methodDetails",
+     "destinationNetwork"
+    ],
+    [
+     "methodDetails",
+     "destinationAsset"
+    ],
+    [
+     "methodDetails",
+     "destinationRecipient"
+    ],
+    [
+     "methodDetails",
+     "amountOut"
+    ]
+   ]
+  }
+ },
+ "reference": {
+  "case": "reference of a hash credential echoing the placed challenge it is given, its originNetwork as the row names: the origin network and the deposit's hash in that network's spelling; no payee, the pairing having no status",
+  "rows": [
+   {
+    "case": "eip155, the draft's example deposit hash",
+    "originNetwork": "eip155:42161",
+    "hash": "0x9bcff372aee89b648c922b850573b22387c31d693079f5e37cd255814e2d615a",
+    "expect": {
+     "network": "eip155:42161",
+     "transaction": "0x9bcff372aee89b648c922b850573b22387c31d693079f5e37cd255814e2d615a"
+    }
+   },
+   {
+    "case": "eip155, upper-case hex: compared case-insensitively, written lowercase",
+    "originNetwork": "eip155:42161",
+    "hash": "0x9BCFF372AEE89B648C922B850573B22387C31D693079F5E37CD255814E2D615A",
+    "expect": {
+     "network": "eip155:42161",
+     "transaction": "0x9bcff372aee89b648c922b850573b22387c31d693079f5e37cd255814e2d615a"
+    }
+   },
+   {
+    "case": "eip155, no 0x prefix: written with one",
+    "originNetwork": "eip155:42161",
+    "hash": "9bcff372aee89b648c922b850573b22387c31d693079f5e37cd255814e2d615a",
+    "expect": {
+     "network": "eip155:42161",
+     "transaction": "0x9bcff372aee89b648c922b850573b22387c31d693079f5e37cd255814e2d615a"
+    }
+   },
+   {
+    "case": "bip122, a 0x prefix and upper-case hex: written lowercase without the prefix",
+    "originNetwork": "bip122:000000000019d6689c085ae165831e93",
+    "hash": "0xBE8B04579C8C40C594662383C2FF361E9EEA7495D63C6FCA6D00320078EC7CCC",
+    "expect": {
+     "network": "bip122:000000000019d6689c085ae165831e93",
+     "transaction": "be8b04579c8c40c594662383c2ff361e9eea7495d63c6fca6d00320078ec7ccc"
+    }
+   },
+   {
+    "case": "near, base58 of 32 bytes, kept exactly",
+    "originNetwork": "near:mainnet",
+    "hash": "2vSyHi9wySAipSbXLDmr4fia9cLaRdmN1zAJNqodSwvK",
+    "expect": {
+     "network": "near:mainnet",
+     "transaction": "2vSyHi9wySAipSbXLDmr4fia9cLaRdmN1zAJNqodSwvK"
+    }
+   },
+   {
+    "case": "solana, base58 of 64 bytes, kept exactly",
+    "originNetwork": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "hash": "5CKcP45GXeS1Do6ad1pZJtUkHLwaZ2Liz4uD9CYeUzSEUsD5n9oAaejTitHAgrx9fnBsUpHAXuNKZGYfHPNpbmw4",
+    "expect": {
+     "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+     "transaction": "5CKcP45GXeS1Do6ad1pZJtUkHLwaZ2Liz4uD9CYeUzSEUsD5n9oAaejTitHAgrx9fnBsUpHAXuNKZGYfHPNpbmw4"
+    }
+   },
+   {
+    "case": "stellar, a namespace the draft gives no rule for: kept as presented",
+    "originNetwork": "stellar:pubnet",
+    "hash": "62B911C12C84637C7DDF599454D1538E440C811ECD5822E5E9D65144B780C382",
+    "expect": {
+     "network": "stellar:pubnet",
+     "transaction": "62B911C12C84637C7DDF599454D1538E440C811ECD5822E5E9D65144B780C382"
+    }
+   }
+  ],
+  "refusals": [
+   {
+    "case": "eip155, 31 bytes of hex",
+    "originNetwork": "eip155:42161",
+    "hash": "0x9bcff372aee89b648c922b850573b22387c31d693079f5e37cd255814e2d61",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "bip122, 33 bytes of hex",
+    "originNetwork": "bip122:000000000019d6689c085ae165831e93",
+    "hash": "be8b04579c8c40c594662383c2ff361e9eea7495d63c6fca6d00320078ec7ccc00",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "near, base58 of 31 bytes",
+    "originNetwork": "near:mainnet",
+    "hash": "SFVcWGAjh96Pz17saFh7irJ2VrJ68RYx3ywEZMXv1D",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "near, the hex of an EVM hash",
+    "originNetwork": "near:mainnet",
+    "hash": "0x9bcff372aee89b648c922b850573b22387c31d693079f5e37cd255814e2d615a",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "solana, base58 of 32 bytes",
+    "originNetwork": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+    "hash": "2vSyHi9wySAipSbXLDmr4fia9cLaRdmN1zAJNqodSwvK",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "stellar, a space inside",
+    "originNetwork": "stellar:pubnet",
+    "hash": "62B911C12C84637C7DDF599454D1538E 440C811ECD5822E5E9D65144B780C382",
+    "expect": "mpp/credential-malformed"
+   },
+   {
+    "case": "eip155, a hash that is not a string",
+    "originNetwork": "eip155:42161",
+    "hash": 5,
+    "expect": "mpp/credential-malformed"
+   }
+  ],
+  "notTheOption": {
+   "case": "the credential echoes the first quote's placed challenge (place.expect) and reference is given the second quote's (secondQuote.expect)",
+   "expect": "mpp/challenge-not-option"
+  }
  }
 }

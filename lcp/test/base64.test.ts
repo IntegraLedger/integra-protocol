@@ -16,6 +16,7 @@ import { avmCarrier, exactAvm, type AvmParams } from "../src/avm.js";
 import { decodeCardanoTx, exactCardano } from "../src/cardano.js";
 import { exactHedera, hederaStatus, type HederaReader, type MirrorEntry } from "../src/hedera.js";
 import { exactNear, type NearReader } from "../src/near.js";
+import { ledgerReader, type LedgerJson } from "./read-kit/forms/near.js";
 import { base64Bytes, fromBase64, toBase64 } from "../src/rail-bytes.js";
 import { decodeStellarTx, transferEventOf } from "../src/stellar.js";
 import { decodeSuiTx, exactSui } from "../src/sui.js";
@@ -305,32 +306,29 @@ describe("what a node answers, with a pad bit set", () => {
     expect(await recover(memo(landed, raised))).toEqual(refused("hedera/unreadable"));
   });
 
-  it("NEAR function-call arguments: status is unreadable unparseable and recover near/unreadable, as for others", async () => {
+  // A transaction the NEAR read meets in its search whose function-call arguments are not base64 is one it cannot read:
+  // the search is held at the block before it (read-status rule 19), and recover answers near/unreadable.
+  it("NEAR function-call arguments: status holds its search before the transaction and recover is near/unreadable", async () => {
     const V = load("x402-exact-near.json");
-    type Outcome = { delegate: { argsBase64: string; nonce: string } };
-    const reader = (o: Outcome): NearReader => ({
-      network: V.V3.ref.network,
-      relayers: V.V3.relayers,
-      txStatus: async () => ({ ...o, delegate: { ...o.delegate, nonce: BigInt(o.delegate.nonce) } }) as never,
-      finalHeight: async () => 0n,
-      accessKeyNonce: async () => null,
-    });
-    const args = (o: Outcome, m: (s: string) => string): Outcome => ({
-      ...o,
-      delegate: { ...o.delegate, argsBase64: m(o.delegate.argsBase64) },
-    });
-    const settled = V.V3.status[0];
+    const settled = V.read.rows[0] as { ledger: LedgerJson; expect: { payment: unknown } };
+    const ref = V.V2.expectReference;
+    const withArgs = (m: (s: string) => string): NearReader => {
+      const t1 = settled.ledger.txs["T1"]!;
+      const d = t1.delegate!;
+      const call = d.actions[0]!;
+      const ledger = { ...settled.ledger, txs: { T1: { ...t1, delegate: { ...d, actions: [{ ...call, argsBase64: m(call.argsBase64) }] } } } };
+      return ledgerReader(ledger, ref.payer, ref.publicKey);
+    };
     const q = { act: "payment", finality: "final" } as const;
-    const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };
-    expect(settled.outcome.delegate.argsBase64.endsWith("=")).toBe(true);
-    expect(await exactNear.status(V.V3.ref, reader(settled.outcome), q)).toEqual(settled.expect);
-    expect(await exactNear.status(V.V3.ref, reader(args(settled.outcome, () => NOT_BASE64)), q)).toEqual(unparseable);
-    expect(await exactNear.status(V.V3.ref, reader(args(settled.outcome, raised)), q)).toEqual(unparseable);
-    const landed = V.V3.recover[0];
-    const recover = (o: Outcome) => exactNear.recover({ network: V.V3.ref.network, tx: V.V3.ref.transaction, option: V.fixed.O }, reader(o));
-    expect(await recover(landed.outcome)).toBe(landed.expect);
-    expect(await recover(args(landed.outcome, () => NOT_BASE64))).toEqual(refused("near/unreadable"));
-    expect(await recover(args(landed.outcome, raised))).toEqual(refused("near/unreadable"));
+    const held = { state: "pending", reason: "search-incomplete", search: 200000009n, undecoded: ["T1"], foreign: [] };
+    expect(settled.ledger.txs["T1"]!.delegate!.actions[0]!.argsBase64.endsWith("=")).toBe(true);
+    expect((await exactNear.status(ref, withArgs((s) => s), q)).state).toBe("settled");
+    expect(await exactNear.status(ref, withArgs(() => NOT_BASE64), q)).toEqual(held);
+    expect(await exactNear.status(ref, withArgs(raised), q)).toEqual(held);
+    const recover = (r: NearReader) => exactNear.recover({ network: ref.network, tx: "T1", option: V.fixed.O }, r);
+    expect(await recover(withArgs((s) => s))).toBe(V.fixed.H);
+    expect(await recover(withArgs(() => NOT_BASE64))).toEqual(refused("near/unreadable"));
+    expect(await recover(withArgs(raised))).toEqual(refused("near/unreadable"));
   });
 
   it("Stellar event topics are stellar/event-malformed, as any other that does not decode", () => {

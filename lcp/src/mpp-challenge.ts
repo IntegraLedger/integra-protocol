@@ -751,14 +751,42 @@ export async function issuedDigest(given: MppChallenge): Promise<Hex | Refusal> 
 const WRITTEN_AFTER_H: ReadonlySet<string> = new Set(["charge/nearintents", "charge/lightning", "session/lightning"]);
 
 /**
+ * The request members of a NEAR Intents charge written after H, at the quote (draft-nearintents-charge-01, Shared
+ * Fields and Method Details): the carrier `externalId`; the quote's `recipient`, `amount`, `methodDetails.minAmountIn`,
+ * `methodDetails.depositMemo` and `methodDetails.timeEstimate`; and `methodDetails.refundTo`, which the server sets for
+ * each payer before it asks for the quote. Every other member is the seller's own, fixed before any quote.
+ */
+const NEARINTENTS_QUOTE: readonly (readonly string[])[] = [
+  ["externalId"],
+  ["recipient"],
+  ["amount"],
+  ["methodDetails", "minAmountIn"],
+  ["methodDetails", "depositMemo"],
+  ["methodDetails", "timeEstimate"],
+  ["methodDetails", "refundTo"],
+];
+
+/**
  * A challenge as its pairing's `unplaced` gives it, where the pairing's quote or invoice is written after H: its
- * request without the members written after H, re-encoded as base64url of the core's `canonicalJson`. Any other
- * challenge, and a value that is not a challenge, comes back as it is. `tie` and `issuedDigest` read every challenge
- * through it, and the `unplaced` member of those pairings is this function.
+ * request without the members written after H, re-encoded as base64url of the core's `canonicalJson`; for a NEAR
+ * Intents charge, also without its `expires`, the quote's deadline, so that every quote for one H gives one challenge.
+ * Any other challenge, and a value that is not a challenge, comes back as it is. `tie` and `issuedDigest` read every
+ * challenge through it, and the `unplaced` member of those pairings is this function.
  */
 export function unplacedChallenge(c: MppChallenge): MppChallenge {
   if (!isChallengeShape(c) || !WRITTEN_AFTER_H.has(`${c.intent}/${c.method}`)) return c;
+  if (c.intent === "charge" && c.method === "nearintents") return withoutQuote(c);
   return withoutCarrier(c);
+}
+
+/** A NEAR Intents charge without its `expires` and the request members `NEARINTENTS_QUOTE` names. */
+function withoutQuote(c: MppChallenge): MppChallenge {
+  const out: MppChallenge = { ...c };
+  delete out.expires;
+  const request = decodeObject(c.request);
+  if (request === undefined) return out;
+  const text = canonicalJson(NEARINTENTS_QUOTE.reduce((r, path) => without(r, path), request));
+  return typeof text === "string" ? { ...out, request: toBase64Url(new TextEncoder().encode(text)) } : out;
 }
 
 // ── The seller's placement and the buyer's reading.
@@ -1491,7 +1519,7 @@ function hasHashableRealm(c: MppChallenge): boolean {
 }
 
 /** True when `a` and `b` agree on every bound member, comparing `opaque` by its seller map. */
-function sameBound(a: MppChallenge, b: MppChallenge): boolean {
+export function sameBound(a: MppChallenge, b: MppChallenge): boolean {
   for (const k of BOUND) {
     if (k === "opaque") continue;
     if (a[k] !== b[k]) return false;

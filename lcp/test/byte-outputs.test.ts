@@ -309,7 +309,7 @@ const cases: { [K in keyof Outputs]: Case<Outputs[K]> } = {
   auxiliaryData: () => unwrap(auxiliaryData(CA.fixed.H)),
   "CardanoUnsigned request.auxiliaryData": async () => {
     const O: PaymentRequirements = CA.fixed.O;
-    const required = unwrap(exactCardano.advertise(x402(CA.fixed.resource, O), CA.fixed.H, CA.fixed.link, O));
+    const required = unwrap(exactCardano.advertise(x402(CA.fixed.resource, O), CA.fixed.H, CA.fixed.link, O, BigInt(CA.V8.coinsPerUtxoByte)));
     return unwrap(await exactCardano.build({ required, accepted: O }, CA.fixed.H)).request.auxiliaryData;
   },
 

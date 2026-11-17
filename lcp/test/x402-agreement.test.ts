@@ -16,7 +16,12 @@ type Read = (doc: unknown) => unknown;
 const bindingOf = (id: string) => {
   const b = BINDINGS.find((x) => x.id === id);
   if (b === undefined) throw new Error(id);
-  return b as unknown as { advertise: Advertise; read: Read };
+  const pairing = b as unknown as { advertise: Advertise; read: Read };
+  // The Cardano address method takes coinsPerUtxoByte after the offer, before the agreement URL: V8's parameter.
+  if (id !== "x402/exact/cardano") return pairing;
+  const advertise = pairing.advertise as unknown as (...a: unknown[]) => ReturnType<Advertise>;
+  const cpub = BigInt(load("x402-exact-cardano").V8.coinsPerUtxoByte);
+  return { ...pairing, advertise: ((doc, h, link, offer, url) => advertise(doc, h, link, offer, cpub, url)) as Advertise };
 };
 
 const MX = load("x402-exact-eip155-eip3009").MX;
@@ -76,6 +81,7 @@ const ROWS: readonly [id: string, file: string, option: string, h: string][] = [
   ["x402/exact/algorand", "x402-exact-algorand", "fixed.O", "fixed.H"],
   ["x402/exact/aptos", "x402-exact-aptos", "fixed.O", "fixed.H"],
   ["x402/exact/cardano", "x402-exact-cardano", "fixed.O", "fixed.H"],
+  ["x402/exact/cardano/lock", "x402-exact-cardano", "fixed.OLock", "fixed.H"],
   ["x402/exact/casper", "x402-exact-casper", "fixed.O", "fixed.H"],
   ["x402/exact/ccd", "x402-exact-ccd", "fixed.O", "fixed.H"],
   ["x402/exact/hedera", "x402-exact-hedera", "fixed.O", "fixed.H"],

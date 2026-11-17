@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/cardano pairing: the cardano entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is cbor2 5.7.1's encoding of the auxiliary data (pycardano 0.19.2's AuxiliaryData(AlonzoMetadata(...)).to_cbor() is equal). V2 and V4 are built with pycardano 0.19.2 on Python 3.11; the one vkey witness is from a key generated when the fixture was built, which does not change the body or the id. V3 is Cardano preprod transaction 628eca29\u2026c73ef4be, its CBOR read through Koios /tx_cbor on 2026-09-25; V4's row 14 is V3's transaction with a bit set past the last byte in its last base64 character before the padding. Every Blake2b-256 is Python's hashlib.blake2b(digest_size=32) over the item's bytes as located by cbor2's decoder. The V4 rows that carry auxiliaryDataHex were built with cbor2 5.7.1 and hashlib on Python 3.12.3: V2's body with key 7 set to the Blake2b-256 of the hand-assembled auxiliary data given, signed by the Ed25519 key of seed 00x32 (pycardano 0.19.2). CIP-20 lines are compared as their UTF-8 bytes: a repeated key in label 674's map, a repeated label 674, more than one line that reads as the marker when case and a leading byte-order mark (U+FEFF) are ignored, and a marker line not in lower case are each refused, because readers that keep the last of repeated keys (cborg 6.1.3's default decode) or strip a leading byte-order mark would read those messages another way; cborg 6.1.3 with rejectDuplicateMapKeys refuses each repeated-key row. V5's lookups that find nothing answer notFound with the slot of the latest block the indexer that answered held, so they show the transaction absent only through that slot, and status reads expiry only from a lookup at or past the tip read first. V5's status rows read at depth 20, the newer blocks at which the caller takes a settlement as final (x402's Cardano scheme: \"`1..20` means that at least that many newer canonical blocks exist\"; \"A transaction that appears in the mempool or even in a recent block can be rolled back\"). An absent transaction is expired only once the block that depth below the tip, whose slot the reader answers by height (deep), is at or past the TTL slot: the ledger takes a transaction only in a slot below its TTL (cardano-ledger's Allegra inInterval, \"slot < top\"; x402's Cardano scheme: \"Once the transaction's validity window has closed without the ledger recording it, it can no longer land\"). V5's status rows give status's answer under the profile read-status, asked about the act payment at 20 confirmations unless a row's query says otherwise: positions are block heights, marks counts of confirmations, and the final mark the count asked for, at which expiry is also read. The rows read failed (valid false, expired) and pending not-found answer pending search-incomplete: at coverage full, failed comes only once the search for H is read whole, and the read has no search (rules 18, 23 and 24). The agreedRefusals row for an inclusion above the tip reads 0 confirmations, below the 20 asked for: pending below-mark (rule 17).",
+ "about": "Vectors for the x402/exact/cardano and x402/exact/cardano/lock pairings: the cardano entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is cbor2 5.7.1's encoding of the auxiliary data (pycardano 0.19.2's AuxiliaryData(AlonzoMetadata(...)).to_cbor() is equal). V2 and V4 are built with pycardano 0.19.2 on Python 3.11; the one vkey witness is from a key generated when the fixture was built, which does not change the body or the id. V3 is Cardano preprod transaction 628eca29…c73ef4be, its CBOR read through Koios /tx_cbor on 2026-09-25; V4's row 14 is V3's transaction with a bit set past the last byte in its last base64 character before the padding. Every Blake2b-256 is Python's hashlib.blake2b(digest_size=32) over the item's bytes as located by cbor2's decoder. fixed.OLock is fixed.O under the `script` lock method, the option of x402/exact/cardano/lock. The V4 rows that carry auxiliaryDataHex were built with cbor2 5.7.1 and hashlib on Python 3.12.3: V2's body with key 7 set to the Blake2b-256 of the hand-assembled auxiliary data given, signed by the Ed25519 key of seed 00x32 (pycardano 0.19.2). CIP-20 lines are compared as their UTF-8 bytes: a repeated key in label 674's map, a repeated label 674, more than one line that reads as the marker when case and a leading byte-order mark (U+FEFF) are ignored, and a marker line not in lower case are each refused, because readers that keep the last of repeated keys (cborg 6.1.3's default decode) or strip a leading byte-order mark would read those messages another way; cborg 6.1.3 with rejectDuplicateMapKeys refuses each repeated-key row. V5's recover rows read the included transaction by its id. V6 is V2's transaction with body key 3 removed and the map's count lowered, its id Python's hashlib.blake2b(digest_size=32) over the new body: the address method admits a body with no TTL, as @x402/cardano 2.30.0's facilitator admits it (exact/facilitator/scheme.ts:815, which checks a TTL only where the body has one), and the lock refuses it, since the scheme requires a TTL of a lock (scheme_exact_cardano.md:836). V7 is the scheme's own Masumi datum encoding test vector, copied from scheme_exact_cardano.md (SHA-256 7079d96f…204e4968, line 514), whose field 2, the seller, is the enterprise address of key hash 22 x 28 (lines 497-513). V8 is the agreement floor, the formula of the scheme's Minimum UTXO Value (scheme_exact_cardano.md:899-902): its address bytes are BIP-173's reference Bech32 decoder's (github.com/sipa/bech32 ref/python/segwit_addr.py, without the 90-character limit) and each output is cborg 6.1.3's encoding of {0: address, 1: value}, its coin found by iterating from zero to the least coin that covers its own encoding; the token row's value is [coin, {policy: {empty name: 1}}]. The read's own rows, status over a ledger, are the read kit's (read-status.json through the forms in test/read-kit/forms/cardano.ts, over a constructed ledger, every answer of which is constructed and says so) and the constructed rows of test/cardano.test.ts. The agreedRefusals row for an inclusion above the tip reads 0 confirmations, below the 20 asked for: pending below-mark (rule 17).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -9,6 +9,17 @@
    "asset": "lovelace",
    "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
    "maxTimeoutSeconds": 60
+  },
+  "OLock": {
+   "scheme": "exact",
+   "network": "cardano:preprod",
+   "amount": "2000000",
+   "asset": "lovelace",
+   "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+   "maxTimeoutSeconds": 60,
+   "extra": {
+    "assetTransferMethod": "script"
+   }
   },
   "nonce": "1111111111111111111111111111111111111111111111111111111111111111#0",
   "resource": {
@@ -29,7 +40,10 @@
    "network": "cardano:preprod",
    "txId": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
    "ttlSlot": "134620000",
-   "payee": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0"
+   "input": "1111111111111111111111111111111111111111111111111111111111111111#0",
+   "payee": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+   "method": "default",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   }
  },
  "V3": {
@@ -38,7 +52,7 @@
   "txId": "0x628eca2962e60d5666e84718d708a1789b73b673a39175af2f4af43bc73ef4be",
   "auxHash": "0xd3c8fd4a1abae8034b9940e5ed2debf44901a7507e75ce4d92189e33d03da7de",
   "expectBound": "cardano/hash-not-carried",
-  "expectReference": "cardano/ttl-missing"
+  "expectReference": "cardano/hash-not-carried"
  },
  "V4": [
   {
@@ -122,194 +136,16 @@
    "expectBound": "cardano/ambiguous"
   },
   {
-   "case": "V3's transaction with a bit set past the last byte in its last character before the padding: the same bytes, not in canonical form (RFC 4648 \u00a73.5)",
+   "case": "V3's transaction with a bit set past the last byte in its last character before the padding: the same bytes, not in canonical form (RFC 4648 §3.5)",
    "transactionBase64": "hKQA2QEChYJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2BYJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2AIJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2AYJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2BIJYIIAHu8I5LLyotQp48wJh2E0Zd/ZlpafmxY2f5R9MiEr2AwGGogBYHWDjKhMKOIcvneAqWYOG2pCukVIJGM48WanayD+WARoJf5r6ogBYHWDzXXJK4GGa9TM4LRBiryOGa+2SFDPYt0mp2sDsARoqIvhDogBYOQAAt4R8idVyFZL8DMiTL1Co+CWLObk4YRQKG5n7wvRaFqZoVhblZsAPwIH+Wfi9erZ57hXpziA0RgGCGgBMS0ChWBzmdbRuTSJCyZGokyqZ2zBE6AUVrhS0xMz2s/TJoUkAFN8QdFVTRE0aO5rKAKIAWB1wXqseErqa9Rql/fFvf5H77AwKFUu2dYq94ffR/AGCGgAQgdKhWBzmdbRuTSJCyZGokyqZ2zBE6AUVrhS0xMz2s/TJoUkAFN8QdFVTRE0bAAAI0nUN6ACiAFgdcF6rHhK6mvUapf3xb3+R++wMChVLtnWKveH30fwBGwAAAA7xty2OogBYHWBg0KcPo1u1FDY38GfJx4LLbycQMPz4lHLh7AVVARoQvRbiAhoAAx/5B1gg08j9Shq66ANLmUDl7S3r9EkBp1B+dc5NkhieM9A9p96iANkBAoSCWCCCAWuI/ClHePw4d4nior6cgU72KWTBgq18AaF6rt0w7lhA518A7H6UHgUNjMwb4sDNKg/VvidFnlDOLPF0Lly5IoiD7LKT3Jhfe67kEYD/vAD8sneCNOkan05BrlkjD1QGCIJYIE0f9EGuK60F85qKJBm+uJrXDepVXBfQ1boRqeHatqChWECT1zobAK7X5XbEmjfi/VMhrnO7JILnYwkXO2dokIJOcKnRq239AQkIvv0ZATs21rr/hQEu8syJTdQ9XSeg6wEKglggE+X5p6+WhW7gJheqVDbrs2L78zgaBskyrTeStdhd/oNYQB5+HvtkJ00LeBvDzS7Zd6IbgI0wR254FRMRCvc0OP8+xYJwHJE6nCYwICqXNhb0qRSQ1VYFkvCYcBUR6JrSSQmCWCAz8ep4FhUYm6L29VEyjNXjzqzCrA0p+d3Hsm/Or3M0g1hA7AgbnEmXRyDdC9oDC5/f62SZpAaiRVPJOiqDP7uDGcozWylSdo5RQ/o3X1SKTcHvCSzs/BkgL3CabncRFoHKCwHZAQKBggGCggBYHGDQpw+jW7UUNjfwZ8nHgstvJxAw/PiUcuHsBVWCAFgcASa4t+4lyxG1gRfQLZfrKawpVPt4PLsn5pJNBfXZAQOhAKEZAqKhY21zZ4F4G2h0dHBzOi8vdHVzZG0ubW9uZXRhLmdsb2JhbB==",
    "expectBound": "cardano/tx-malformed"
   }
  ],
  "V5": {
-  "ref": {
-   "network": "cardano:preprod",
-   "txId": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
-   "ttlSlot": "134620000",
-   "payee": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0"
-  },
   "tip": {
    "blockHeight": "5216538",
    "slot": "134617495"
   },
-  "depth": "20",
-  "status": [
-   {
-    "case": "in block 5216518, valid",
-    "tx": {
-     "blockHeight": "5216518",
-     "slot": "134617000",
-     "valid": true
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
-     "position": "5216518",
-     "finality": "20",
-     "foreign": []
-    }
-   },
-   {
-    "case": "valid false",
-    "tx": {
-     "blockHeight": "5216518",
-     "slot": "134617000",
-     "valid": false
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "not found at the tip's slot",
-    "tx": {
-     "notFound": true,
-     "slot": "134617495"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "not found at the tip's slot with tip slot 134620400, the block 20 below the tip at slot 134619999, below the TTL slot",
-    "tip": {
-     "blockHeight": "5216538",
-     "slot": "134620400"
-    },
-    "deep": {
-     "blockHeight": "5216518",
-     "slot": "134619999"
-    },
-    "tx": {
-     "notFound": true,
-     "slot": "134620400"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "not found at the tip's slot with tip slot 134620400, the block 20 below the tip at slot 134620000, the TTL slot",
-    "tip": {
-     "blockHeight": "5216538",
-     "slot": "134620400"
-    },
-    "deep": {
-     "blockHeight": "5216518",
-     "slot": "134620000"
-    },
-    "tx": {
-     "notFound": true,
-     "slot": "134620400"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "a ReaderError",
-    "readerError": true,
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    }
-   },
-   {
-    "case": "not found at slot 134617495, with tip slot 134620400 and the block 20 below the tip at slot 134620001: the lookup lags the tip read first",
-    "tip": {
-     "blockHeight": "5216538",
-     "slot": "134620400"
-    },
-    "deep": {
-     "blockHeight": "5216518",
-     "slot": "134620001"
-    },
-    "tx": {
-     "notFound": true,
-     "slot": "134617495"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "in block 5216518, valid, asked about on the act agreement: an agreement is held to no account, and the same transaction settles it",
-    "query": {
-     "act": "agreement",
-     "finality": "20"
-    },
-    "tx": {
-     "blockHeight": "5216518",
-     "slot": "134617000",
-     "valid": true
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
-     "position": "5216518",
-     "finality": "20",
-     "foreign": []
-    }
-   },
-   {
-    "case": "in block 5216518, valid, asked about after block 5216518: failed before-position",
-    "query": {
-     "act": "payment",
-     "finality": "20",
-     "after": "5216518"
-    },
-    "tx": {
-     "blockHeight": "5216518",
-     "slot": "134617000",
-     "valid": true
-    },
-    "expect": {
-     "state": "failed",
-     "reason": "before-position",
-     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
-     "position": "5216518",
-     "finality": "20",
-     "foreign": []
-    }
-   },
-   {
-    "case": "in block 5216518, valid, asked about at 21 confirmations: below-mark",
-    "query": {
-     "act": "payment",
-     "finality": "21"
-    },
-    "tx": {
-     "blockHeight": "5216518",
-     "slot": "134617000",
-     "valid": true
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "below-mark",
-     "transaction": "0x03f8ca96d5e855493bebd3b1e9d107ab690b404e74ca76ac5fa7717aafb5dc38",
-     "position": "5216518",
-     "finality": "20",
-     "foreign": []
-    }
-   }
-  ],
   "recover": [
    {
     "case": "V2's bytes as cbor",
@@ -322,6 +158,42 @@
     "txId": "0x628eca2962e60d5666e84718d708a1789b73b673a39175af2f4af43bc73ef4be",
     "cbor": "V3",
     "expect": "cardano/hash-not-carried"
+   }
+  ]
+ },
+ "V6": {
+  "case": "V2's transaction with body key 3, the TTL, removed and the map's count lowered from 5 to 4; the witness set and the auxiliary data unchanged",
+  "transactionBase64": "hKQAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUAHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6EAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAK9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk",
+  "expectReference": {
+   "network": "cardano:preprod",
+   "txId": "0x0650618ca50f6548d1cfc24a54c032a175ebcce87a3a39bd418d949c1cc9f08d",
+   "input": "1111111111111111111111111111111111111111111111111111111111111111#0",
+   "payee": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+   "method": "default",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+  },
+  "expectLock": "cardano/ttl-missing"
+ },
+ "V7": {
+  "case": "x402's Cardano scheme's Masumi escrow datum encoding test vector (scheme_exact_cardano.md line 514): buyer key hash 11 x 28, seller key hash 22 x 28, both enterprise addresses",
+  "datumHex": "d8799fd8799fd8799f581c11111111111111111111111111111111111111111111111111111111ffd87a80ffd87a80d8799fd8799f581c22222222222222222222222222222222222222222222222222222222ffd87a80ffd87a8043a1010150555555555555555555555555555555555820333333333333333333333333333333333333333333333333333333333333333340401a0015e65e58204444444444444444444444444444444444444444444444444444444444444444401b0000019fc75a1f001b0000019fc7910d801b0000019fc7c7fc001b0000019fc7feea800000d87980ff",
+  "expectSeller": "key:22222222222222222222222222222222222222222222222222222222"
+ },
+ "V8": {
+  "case": "the agreement floor: (160 + |output|) x coinsPerUtxoByte at 4310 lovelace a byte, the output {0: the payTo's address bytes, 1: value} in the post-Alonzo map form, its coin the least that covers its own encoding",
+  "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+  "addressHex": "600d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06",
+  "coinsPerUtxoByte": "4310",
+  "rows": [
+   {
+    "asset": "lovelace",
+    "outputHex": "a200581d600d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb06011a000d165a",
+    "expect": "857690"
+   },
+   {
+    "asset": "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad.",
+    "outputHex": "a200581d600d6a577e9441ad8ed9663931906e4d43ece8f82c712b1d0235affb0601821a000f639ca1581cc48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ada14001",
+    "expect": "1008540"
    }
   ]
  },
@@ -378,7 +250,7 @@
     "case": "a transaction of 87384 UTF-16 code units and 65538 code points, whose length gives 65538 decoded bytes, over 64 KiB",
     "transaction": {
      "$repeat": [
-      "AA\ud800\udc00",
+      "AA𐀀",
       21846
      ]
     },
@@ -387,7 +259,7 @@
   ]
  },
  "buyer": {
-  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant, once for each pairing (the lock's option names the `script` method): the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is each pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
   "rows": [
    {
     "name": "B2",
@@ -407,6 +279,73 @@
         "asset": "lovelace",
         "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
         "maxTimeoutSeconds": 60
+       }
+      ],
+      "extensions": {
+       "legalContext": {
+        "info": {
+         "type": "sha256",
+         "value": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+         "legalContextUrl": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f"
+        },
+        "schema": {
+         "$schema": "https://json-schema.org/draft/2020-12/schema",
+         "type": "object",
+         "properties": {
+          "type": {
+           "const": "sha256"
+          },
+          "value": {
+           "type": "string",
+           "pattern": "^0x[0-9a-f]{64}$"
+          },
+          "legalContextUrl": {
+           "type": "string",
+           "pattern": "^https://"
+          }
+         },
+         "required": [
+          "type",
+          "value",
+          "legalContextUrl"
+         ]
+        }
+       }
+      }
+     },
+     "servesHex": "616264",
+     "account": "cardano:preprod:addr%5Ftest1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+     "now": 1790000000,
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B2",
+    "pairing": "x402/exact/cardano/lock",
+    "plant": true,
+    "input": {
+     "doc": {
+      "x402Version": 2,
+      "resource": {
+       "url": "https://api.seller.example/v1/quote"
+      },
+      "accepts": [
+       {
+        "scheme": "exact",
+        "network": "cardano:preprod",
+        "amount": "2000000",
+        "asset": "lovelace",
+        "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+        "maxTimeoutSeconds": 60,
+        "extra": {
+         "assetTransferMethod": "script"
+        }
        }
       ],
       "extensions": {
@@ -490,6 +429,47 @@
      }
     ],
     "note": "presented is this file's V2 payment, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B6",
+    "pairing": "x402/exact/cardano/lock",
+    "input": {
+     "presented": {
+      "x402Version": 2,
+      "accepted": {
+       "scheme": "exact",
+       "network": "cardano:preprod",
+       "amount": "2000000",
+       "asset": "lovelace",
+       "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+       "maxTimeoutSeconds": 60,
+       "extra": {
+        "assetTransferMethod": "script"
+       }
+      },
+      "payload": {
+       "transaction": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6EAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAK9dkBA6EAoRkCoqFjbXNngm1sY3A6c2hhMjU2OjB4eEBiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFk",
+       "nonce": "1111111111111111111111111111111111111111111111111111111111111111#0"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's V2 payment under fixed.OLock, the script lock method; no signature was made for this row."
    }
   ]
  },
@@ -499,7 +479,7 @@
    {
     "case": "the option with amount \"abc\", which is not a decimal amount",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -513,7 +493,7 @@
    {
     "case": "the option with scheme upto",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "upto",
      "network": "cardano:preprod",
@@ -527,7 +507,7 @@
    {
     "case": "the option with maxTimeoutSeconds 60.5, which is not an integer",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -541,7 +521,7 @@
    {
     "case": "the option with maxTimeoutSeconds \"60\", a string, not a number",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -555,7 +535,7 @@
    {
     "case": "the option with maxTimeoutSeconds 0, which is not positive",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -569,7 +549,7 @@
    {
     "case": "the option with maxTimeoutSeconds 2^53, which is not a safe integer",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -583,7 +563,7 @@
    {
     "case": "the option with amount \"0\", which is zero",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -597,7 +577,7 @@
    {
     "case": "the option with amount \"010\", which has a leading zero",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -611,7 +591,7 @@
    {
     "case": "the option with amount \"1.5\", which is not an integer",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -625,7 +605,7 @@
    {
     "case": "the option with amount \"-1\", which is negative",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -639,7 +619,7 @@
    {
     "case": "the option with amount \"\", which is empty",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
@@ -653,11 +633,25 @@
    {
     "case": "the option with amount 10000, a number, not a string",
     "pairing": "x402/exact/cardano",
-    "payment": "/buyer/rows/1/input/presented",
+    "payment": "/buyer/rows/2/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "cardano:preprod",
      "amount": 10000,
+     "asset": "lovelace",
+     "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
+     "maxTimeoutSeconds": 60
+    },
+    "expect": "x402/option-not-this-pairing"
+   },
+   {
+    "case": "the lock's payment under the address method's option, which is another pairing's",
+    "pairing": "x402/exact/cardano/lock",
+    "payment": "/buyer/rows/3/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "cardano:preprod",
+     "amount": "2000000",
      "asset": "lovelace",
      "payTo": "addr_test1vqxk54m7j3q6mrkevcunryrwf4p7e68c93cjk8gzxkhlkpsffv7s0",
      "maxTimeoutSeconds": 60

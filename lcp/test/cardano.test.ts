@@ -8,34 +8,29 @@ import { ReaderError } from "../src/evm.js";
 import {
   LCP_MARKER,
   auxiliaryData,
+  cardanoFloor,
   decodeCardanoTx,
   exactCardano,
+  exactCardanoLock,
   type CardanoReader,
   type CardanoRef,
 } from "../src/cardano.js";
+import { CRED, REF_INPUT, addressOf, bech, credOf, inputN, masumiDatum, readerOf, refFor, txOf, type World } from "./cardano-world.js";
 import { pairingOf } from "../src/index.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
+import { UNSHOWN, SCRIPT_RAN, arrangeOn, declaredFor, forms as cardanoForms, runsOnScript } from "./read-kit/forms/cardano.js";
+import { READ_STATUS, leftOutByData, runCase } from "./read-kit/harness.js";
 import { blake2b } from "@noble/hashes/blake2.js";
 import * as cborg from "cborg";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-cardano.json", import.meta.url), "utf8"));
+/** V8's protocol parameter, the one `advertise` takes on the address method. */
+const COINS_PER_UTXO_BYTE = BigInt(V.V8.coinsPerUtxoByte);
 const H: `0x${string}` = V.fixed.H;
 const O = V.fixed.O;
 const LINK: string = V.fixed.link;
 const TX: Record<string, string> = { V2: V.V2.transactionBase64, V3: V.V3.transactionBase64 };
-const DEPTH = BigInt(V.V5.depth);
-/** The query of the act payment at `depth` confirmations. */
-const atDepth = (depth: bigint) => ({ act: "payment", finality: depth }) as const;
-/** A vector row's query: its finality and position as bigints. */
-const queryOf = (q: { act: "payment" | "agreement"; finality: string; after?: string }) => ({
-  act: q.act,
-  finality: BigInt(q.finality),
-  ...(q.after === undefined ? {} : { after: BigInt(q.after) }),
-});
-const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
-const UNPARSEABLE = { state: "unreadable", reason: "unparseable", foreign: [] };
-
 function payment(transaction: string, accepted = O) {
   return { x402Version: 2, accepted, payload: { transaction, nonce: V.fixed.nonce } };
 }
@@ -58,8 +53,15 @@ function reader(
   network = "cardano:preprod",
   deep?: Tip,
 ): CardanoReader & { calls: number; heights: bigint[] } {
+  const unread = async (): Promise<never> => {
+    throw new Error("recover reads the transaction alone");
+  };
   const r = {
     network: network as CardanoReader["network"],
+    securityParam: unread,
+    output: unread,
+    inputAddresses: unread,
+    credentialTransactions: unread,
     calls: 0,
     heights: [] as bigint[],
     async tip() {
@@ -86,10 +88,6 @@ function reader(
     },
   };
   return r;
-}
-
-function refOf(v: { network: string; txId: string; ttlSlot: string; payee: string }): CardanoRef {
-  return { network: v.network as CardanoRef["network"], txId: v.txId as `0x${string}`, ttlSlot: v.ttlSlot, payee: v.payee };
 }
 
 /** recover's input for the transaction id, under the vector's option. */
@@ -148,15 +146,16 @@ describe("V2 · bound and reference", () => {
   });
   // x402's Cardano scheme: the nonce is "a UTXO reference (`txHash#index`) that is also one of the transaction's
   // inputs", which the facilitator checks (verification rule 5). bound reads the signed body and its metadata only.
-  it("bound and reference take a string nonce of any length; a nonce that is not a string is refused", async () => {
+  it("bound takes a string nonce of any length; reference takes only an input the body spends; a nonce that is not a string is refused", async () => {
     const withNonce = (nonce: unknown) => ({
       ...payment(V.V2.transactionBase64),
       payload: { transaction: V.V2.transactionBase64, nonce },
     });
-    for (const nonce of ["n".repeat(257), "n".repeat(4096)]) {
+    for (const nonce of ["n".repeat(257), "n".repeat(4096), `${"11".repeat(32)}#1`, `${"22".repeat(32)}#0`]) {
       expect(await exactCardano.bound(withNonce(nonce))).toBe(V.V2.expectBound);
-      expect(throughJson(await exactCardano.reference(withNonce(nonce), O))).toEqual(V.V2.expectReference);
+      expect(await exactCardano.reference(withNonce(nonce), O)).toEqual(refused("cardano/nonce-not-input"));
     }
+    expect(throughJson(await exactCardano.reference(withNonce(`${"11".repeat(32).toUpperCase()}#0`), O))).toEqual(V.V2.expectReference);
     for (const nonce of [7, null, undefined]) {
       expect(await exactCardano.bound(withNonce(nonce))).toEqual(refused("x402/payload-malformed"));
     }
@@ -190,144 +189,240 @@ describe("V4 · refusals", () => {
   });
 });
 
-describe("V5 · status and recover", () => {
-  for (const row of rowsOf(V.V5.status, "x402-exact-cardano.json V5.status")) {
-    it(`status: ${row.case}`, async () => {
-      const r = reader(row.tip ?? V.V5.tip, row.readerError ? "error" : row.tx, undefined, undefined, row.deep);
-      const query = row.query === undefined ? atDepth(DEPTH) : queryOf(row.query);
-      expect(plain(await exactCardano.status(refOf(V.V5.ref), r, query))).toEqual(row.expect);
-      expect(r.calls).toBeLessThanOrEqual(3);
-    });
-  }
-  it("status: a reader for another network is unreadable chain-mismatch", async () => {
-    const r = reader(V.V5.tip, V.V5.status[0].tx, undefined, "cardano:preview");
-    expect(await exactCardano.status(refOf(V.V5.ref), r, atDepth(DEPTH))).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
+// The read over a constructed ledger (test/cardano-world.ts, every answer constructed and marked so): security
+// parameter 10, the tip at height 1100, 20 slots a block, the position given 1000. The read kit's common cases run
+// through the same read in test/read-kit/forms/cardano.ts; these are the cases particular to Cardano's read.
+describe("status over a constructed ledger", () => {
+  const TTL = 1200n * 20n;
+  const pay = (over: Partial<Parameters<typeof txOf>[0]> = {}) =>
+    txOf({ inputs: [REF_INPUT], outputs: [{ to: "payee", coin: 2000000n }, { to: "payer", coin: 5n }], h: H, ttl: TTL, ...over });
+  const P = pay();
+  const at = (t: { bytes: Uint8Array }, height: bigint, valid = true, holders: ("payer" | "payee" | "other")[] = ["payer"]) => ({
+    bytes: t.bytes,
+    height,
+    valid,
+    holders,
   });
+  const world = (over: Partial<World> = {}): World => ({
+    k: 10n,
+    tip: 1100n,
+    held: 900n,
+    genesis: true,
+    txs: new Map(),
+    output: { address: bech(addressOf("payer")), slot: 1100n * 20n },
+    listed: [],
+    through: 1100n,
+    ...over,
+  });
+  const q = (act: "payment" | "agreement" = "payment", more: object = {}) => ({ act, finality: 10n, after: 1000n, ...more });
+  const read = async (w: World, ref: CardanoRef = refFor(P.id, H, "default", TTL), query: object = q()) =>
+    plain(await (ref.method === "default" ? exactCardano : exactCardanoLock).status(ref, readerOf(w), query as never));
 
-  // The block `depth` below the tip decides expiry; above it a block can still be rolled back (x402's Cardano scheme),
-  // so an absent transaction whose expiry that block does not show is pending not-found.
-  const PAST = { blockHeight: "5216538", slot: "134620400" };
-  it("status: slotAt is read only for an absent transaction once the tip's slot is at or past the TTL slot", async () => {
-    const included = reader(PAST, V.V5.status[0].tx);
-    expect(plain(await exactCardano.status(refOf(V.V5.ref), included, atDepth(DEPTH)))).toEqual(V.V5.status[0].expect);
-    const early = reader(V.V5.tip, null);
-    expect(await exactCardano.status(refOf(V.V5.ref), early, atDepth(DEPTH))).toEqual(SEARCH);
-    expect([included.heights, early.heights]).toEqual([[], []]);
-  });
-  it("status: a tip fewer than depth blocks high, or no block held at that height, is pending search-incomplete", async () => {
-    const low = reader({ blockHeight: "19", slot: "134620400" }, null);
-    expect(await exactCardano.status(refOf(V.V5.ref), low, atDepth(DEPTH))).toEqual(SEARCH);
-    expect(low.heights).toEqual([]);
-    const none = reader(PAST, null);
-    expect(await exactCardano.status(refOf(V.V5.ref), none, atDepth(DEPTH))).toEqual(SEARCH);
-    expect(none.heights).toEqual([5216518n]);
-  });
-  // cardano-ledger b1097d47, eras/allegra/impl/src/Cardano/Ledger/Allegra/Scripts.hs: "a ValidityInterval is a half
-  // Open interval", `inInterval slot (ValidityInterval SNothing (SJust top)) = slot < top`; the Allegra, Babbage and
-  // Conway UTXO rules run it on the body's validity interval, whose top is invalid_hereafter (body key 3). A transaction
-  // lands only in a slot below ttlSlot, so a final block at ttlSlot or later shows an absent one can never land.
-  it("status: an absent transaction is expired from the TTL slot itself, at depth and at the tip", async () => {
-    const ttl = BigInt(V.V5.ref.ttlSlot);
-    // An expired TTL and an absent transaction both answer pending search-incomplete with no search for H (rule 24);
-    // which one the read observed shows in the slotAt calls.
-    const notFound = SEARCH;
-    const expired = SEARCH;
-    for (const [slot, want] of [[ttl - 1n, notFound], [ttl, expired], [ttl + 1n, expired]] as const) {
-      const at = { blockHeight: "5216518", slot: slot.toString() };
-      const deep = reader(PAST, null, undefined, undefined, at);
-      expect([slot, await exactCardano.status(refOf(V.V5.ref), deep, atDepth(DEPTH))]).toEqual([slot, want]);
-      expect(deep.heights).toEqual([5216518n]);
-      const tip = reader({ blockHeight: "5216538", slot: slot.toString() }, null);
-      expect([slot, await exactCardano.status(refOf(V.V5.ref), tip, atDepth(0n))]).toEqual([slot, want]);
-      const both = reader({ blockHeight: "5216538", slot: slot.toString() }, null, undefined, undefined, at);
-      expect([slot, await exactCardano.status(refOf(V.V5.ref), both, atDepth(DEPTH))]).toEqual([slot, want]);
-      expect([slot, both.heights]).toEqual([slot, slot < ttl ? [] : [5216518n]]);
+  it("settles on the presented body, presented yes, each output named by its index; a payee address with a stake part is the payee's", async () => {
+    const S = pay({ outputs: [{ to: "payer", coin: 5n }, { to: addressOf("payee", 0x55), coin: 7n }] });
+    for (const [body, output, amount] of [[P, 0, "2000000"], [S, 1, "7"]] as const) {
+      const w = world({ txs: new Map([[body.id, at(body, 1050n)]]), output: { address: bech(addressOf("payer")), spentBy: body.id } });
+      expect(await read(w, refFor(body.id, H, "default", TTL))).toMatchObject({
+        state: "settled",
+        transaction: body.id,
+        presented: "yes",
+        position: "1050",
+        finality: "50",
+        signer: credOf("payer"),
+        moved: [{ asset: "lovelace", amount, to: credOf("payee"), transaction: body.id, place: output }],
+      });
     }
   });
-  it("status: depth 0 reads expiry at the tip's own slot, with no slotAt call", async () => {
-    const r = reader(PAST, null);
-    expect(await exactCardano.status(refOf(V.V5.ref), r, atDepth(0n))).toEqual(SEARCH);
-    expect(r.heights).toEqual([]);
+  it("a body the payer rebuilt from the same input settles, presented no; one paying another account settles an agreement, and holds a payment search-incomplete until the search is shown whole", async () => {
+    const R = pay({ outputs: [{ to: "payee", coin: 1n }] });
+    const X = pay({ outputs: [{ to: "other", coin: 1n }] });
+    const spent = (b: { id: `0x${string}`; bytes: Uint8Array }) =>
+      world({ txs: new Map([[b.id, at(b, 1050n)]]), output: { address: bech(addressOf("payer")), spentBy: b.id } });
+    expect(await read(spent(R))).toMatchObject({ state: "settled", transaction: R.id, presented: "no" });
+    expect(await read(spent(X))).toMatchObject({ state: "pending", reason: "search-incomplete", foreign: [{ transaction: X.id, reason: "other-account" }] });
+    expect(await read(spent(X), undefined, q("agreement"))).toMatchObject({ state: "settled", transaction: X.id, presented: "no" });
   });
-  // An indexer's lookup shows a transaction absent only through the latest block it holds, so a lookup from an
-  // indexer behind the tip read first cannot show that a transaction which landed before the TTL is missing; the
-  // transaction landed in a block below the TTL slot (x402's Cardano scheme: a transaction can land only inside its
-  // validity window).
-  it("status: a lookup from an indexer behind the tip read first is pending, never expired", async () => {
-    const deep = { blockHeight: "5216518", slot: "134620001" };
-    for (const depth of [0n, DEPTH]) {
-      for (const [slot, want] of [
-        ["134617495", "not-found"],
-        ["134620399", "not-found"],
-        ["134620400", "expired"],
-        ["134620401", "expired"],
-      ] as const) {
-        const r = reader(PAST, { notFound: true, slot }, undefined, undefined, deep);
-        expect([depth, slot, await exactCardano.status(refOf(V.V5.ref), r, atDepth(depth))]).toEqual([depth, slot, SEARCH]);
-        if (want === "not-found") expect(r.heights).toEqual([]);
-        else expect(r.heights).toEqual(depth === 0n ? [] : [BigInt(PAST.blockHeight) - depth]);
-      }
-    }
-    const unnamed = { ...reader(PAST, null), transaction: async () => ({ notFound: true }) as never };
-    expect(await exactCardano.status(refOf(V.V5.ref), unnamed, atDepth(0n))).toEqual(SEARCH);
-    const bare = { ...reader(PAST, null), transaction: async () => null as never };
-    expect(await exactCardano.status(refOf(V.V5.ref), bare, atDepth(0n))).toEqual(UNPARSEABLE);
+  it("an absent body past its TTL with the input unspent: search-incomplete, never instrument-unused, until a run shows a listing whole", async () => {
+    const past = refFor(P.id, H, "default", 1090n * 20n);
+    // Read to the tip, the search gives no position; stopped below it, it is held there.
+    expect(await read(world(), past)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+    expect(await read(world({ through: 1095n }), past)).toEqual({ state: "pending", reason: "search-incomplete", search: "1095", foreign: [] });
+    // Past the tip's slot and not the final block's: below the final mark.
+    expect(await read(world(), refFor(P.id, H, "default", 1095n * 20n))).toMatchObject({ state: "pending", reason: "below-mark" });
   });
-  // Blockfrost answers 404 for a transaction its indexer does not hold, naming no slot, so a reader takes the slot from
-  // a second call (/blocks/latest), which a load-balanced endpoint can send to another indexer. A reader that cannot
-  // read the slot from the indexer that answered names none.
-  it("status: a lookup naming a null slot reads no expiry", async () => {
-    const deep = { blockHeight: "5216518", slot: "134620001" };
-    for (const depth of [0n, DEPTH]) {
-      const r = reader(PAST, null, undefined, undefined, deep);
-      const unnamed: CardanoReader = { ...r, transaction: async () => ({ notFound: true, slot: null }) };
-      expect(await exactCardano.status(refOf(V.V5.ref), unnamed, atDepth(depth))).toEqual(SEARCH);
-      expect(r.heights).toEqual([]);
-      expect(await exactCardano.recover(input(V.V5.ref.txId), unnamed)).toEqual(refused("cardano/not-found"));
-      expect(await exactCardano.status(refOf(V.V5.ref), r, atDepth(depth))).toEqual(SEARCH);
-      expect(r.heights).toEqual(depth === 0n ? [] : [BigInt(PAST.blockHeight) - depth]);
+  it("a body with no TTL is never instrument-unused: instrument-live while its input is unspent at the latest head", async () => {
+    expect(await read(world(), refFor(P.id, H, "default"))).toMatchObject({ state: "pending", reason: "instrument-live" });
+    // An indexer behind the tip read first has not read the input at the latest head.
+    const behind = world({ output: { address: bech(addressOf("payer")), slot: 1099n * 20n } });
+    expect(await read(behind, refFor(P.id, H, "default"))).toMatchObject({ state: "pending", reason: "search-incomplete" });
+  });
+  it("the presented body included with valid_contract false and its input unspent: instrument-live before the TTL, search-incomplete after", async () => {
+    const F = pay({ valid: false, collateral: [inputN(9)] });
+    const w = world({ txs: new Map([[F.id, at(F, 1050n, false)]]) });
+    expect(await read(w, refFor(F.id, H, "default", TTL))).toMatchObject({ state: "pending", reason: "instrument-live" });
+    expect(await read(w, refFor(F.id, H, "default", 1000n * 20n))).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+  });
+  it("the presented body included with valid_contract false, its input taken as collateral, below the final mark: below-mark, naming it, having moved nothing", async () => {
+    const F = pay({ valid: false, collateral: [REF_INPUT] });
+    const w = world({ txs: new Map([[F.id, at(F, 1095n, false)]]), output: { address: bech(addressOf("payer")), spentBy: F.id } });
+    expect(await read(w, refFor(F.id, H, "default", TTL))).toMatchObject({ state: "pending", reason: "below-mark", transaction: F.id, moved: [] });
+  });
+  it("a body from another input of the payer carrying H, found by the search, settles; above the final head it is below-mark", async () => {
+    const A = pay({ inputs: [inputN(1)] });
+    const past = refFor(P.id, H, "default", 1000n * 20n);
+    for (const [height, want] of [[1080n, { state: "settled", transaction: A.id, presented: "no" }], [1095n, { state: "pending", reason: "below-mark", transaction: A.id }]] as const) {
+      const w = world({ txs: new Map([[A.id, at(A, height)]]), listed: [{ txId: A.id, blockHeight: height }] });
+      expect(await read(w, past)).toMatchObject(want);
     }
   });
-  // A txId that is not 0x and 64 hex digits cannot find the transaction, so the read is pending, never expired
-  // (docs/guides/rails.md, "Reading settlement"); the id is the same 32 bytes in either case. This reader holds the
-  // transaction under the id reference wrote, and answers any other id with a lookup that reached the tip.
-  it("status: a ref whose txId is malformed is unreadable unparseable, with nothing read", async () => {
-    const deep = { blockHeight: "5216518", slot: "134620001" };
-    const held = () => {
-      const r = reader(PAST, V.V5.status[0].tx, undefined, undefined, deep);
-      const lookup = r.transaction;
-      r.transaction = async (id, withCbor) => (id === V.V5.ref.txId ? lookup(id, withCbor) : { notFound: true, slot: BigInt(PAST.slot) });
-      return r;
-    };
-    for (const txId of [undefined, V.V5.ref.txId.slice(2), `0X${V.V5.ref.txId.slice(2)}`, "0x12"]) {
-      const r = held();
-      expect(await exactCardano.status({ ...refOf(V.V5.ref), txId } as CardanoRef, r, atDepth(DEPTH))).toEqual(UNPARSEABLE);
-      expect(r.calls).toBe(0);
-    }
-    const upper = { ...refOf(V.V5.ref), txId: `0x${V.V5.ref.txId.slice(2).toUpperCase()}` as CardanoRef["txId"] };
-    expect(plain(await exactCardano.status(upper, held(), atDepth(DEPTH)))).toEqual(V.V5.status[0].expect);
-  });
-  // A rejected read is `transport` (a ReaderError by its kind), and a call or an answer outside the types `unparseable`.
-  it("status: a failed or malformed slotAt, or a finality that is not a non-negative bigint, is unreadable", async () => {
-    const failing = { ...reader(PAST, null), slotAt: async () => Promise.reject(new ReaderError("timeout")) };
-    expect(await exactCardano.status(refOf(V.V5.ref), failing, atDepth(DEPTH))).toEqual({ state: "unreadable", reason: "transport", foreign: [] });
-    const tooLarge = { ...reader(PAST, null), slotAt: async () => Promise.reject(new ReaderError("too-large")) };
-    expect(await exactCardano.status(refOf(V.V5.ref), tooLarge, atDepth(DEPTH))).toEqual({ state: "unreadable", reason: "too-large", foreign: [] });
-    const malformed = { ...reader(PAST, null), slotAt: async () => "134620001" as never };
-    expect(await exactCardano.status(refOf(V.V5.ref), malformed, atDepth(DEPTH))).toEqual(UNPARSEABLE);
-    for (const depth of [undefined, 20, "20", -1n]) {
-      const r = reader(PAST, null);
-      expect(await exactCardano.status(refOf(V.V5.ref), r, atDepth(depth as never))).toEqual(UNPARSEABLE);
-      expect(r.calls).toBe(0);
-    }
-  });
-  for (const row of rowsOf(V.V5.recover, "x402-exact-cardano.json V5.recover")) {
-    it(`recover: ${row.case}`, async () => {
-      const r = reader(V.V5.tip, { blockHeight: "5216518", slot: "134617000", valid: true }, TX[row.cbor]);
-      const got = await exactCardano.recover(input(row.txId), r);
-      expect(got).toEqual(row.expect.startsWith("0x") ? row.expect : refused(row.expect));
+  it("a listed transaction that does not decode is named and holds the search at it; the search resumes from the position given", async () => {
+    const bad = `0x${"9a".repeat(32)}` as const;
+    const A = pay({ inputs: [inputN(1)] });
+    const past = refFor(P.id, H, "default", 1000n * 20n);
+    const w = world({
+      txs: new Map([[bad, { bytes: Uint8Array.from([0x80]), height: 1060n, valid: true, holders: [] }], [A.id, at(A, 1070n)]]),
+      listed: [{ txId: bad, blockHeight: 1060n }, { txId: A.id, blockHeight: 1070n }],
     });
-  }
+    // The search reads on past the item: an act found after it settles; with none, the answer holds at the item.
+    expect(await read(w, past)).toMatchObject({ state: "settled", transaction: A.id });
+    const alone = world({ txs: new Map([[bad, w.txs.get(bad)!]]), listed: [w.listed[0]!] });
+    expect(await read(alone, past)).toMatchObject({ state: "pending", reason: "search-incomplete", search: "1059", undecoded: [bad] });
+    expect(await read(w, past, q("payment", { search: 1060n }))).toMatchObject({ state: "settled", transaction: A.id });
+    expect(await read(w, past, q("payment", { search: 1070n }))).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+  });
+  it("history-gap where the endpoint holds no block at the position given", async () => {
+    expect(await read(world({ held: 1001n }))).toEqual({ state: "unreadable", reason: "history-gap", foreign: [] });
+  });
+  it("a Masumi lock pays where its escrow datum's seller (V7, the scheme's own vector) has the payee's payment credential", async () => {
+    const datumBytes = Uint8Array.from(Buffer.from(V.V7.datumHex, "hex"));
+    const L = pay({ outputs: [{ to: "escrow", coin: 3000000n, datumBytes }] });
+    const w = world({ txs: new Map([[L.id, at(L, 1050n)]]), output: { address: bech(addressOf("payer")), spentBy: L.id } });
+    const seller = new Uint8Array(28).fill(0x22);
+    expect(V.V7.expectSeller).toBe(credOf(seller));
+    expect(await read(w, { ...refFor(L.id, H, "masumi", TTL), payee: bech(addressOf(seller)) })).toMatchObject({
+      state: "settled",
+      moved: [{ asset: "lovelace", amount: "3000000", to: V.V7.expectSeller, transaction: L.id, place: 0 }],
+    });
+    const held = { state: "pending", reason: "search-incomplete" } as const;
+    expect(await read(w, refFor(L.id, H, "masumi", TTL))).toMatchObject({ ...held, foreign: [{ transaction: L.id, reason: "other-account" }] });
+    // On the address method the same transaction is a deposit, another pairing's act.
+    expect(await read(w, refFor(L.id, H, "default", TTL))).toMatchObject({ ...held, foreign: [{ transaction: L.id, reason: "other-kind" }] });
+  });
+  // A script's address the payer controls, not the escrow, and another key of the payer's.
+  const MINE = Uint8Array.from([0x70, ...new Uint8Array(28).fill(0x99)]);
+  const OTHER_KEY = Uint8Array.from([0x60, ...new Uint8Array(28).fill(0x98)]);
+  const spentBy = (b: { id: `0x${string}`; bytes: Uint8Array }, height = 1050n) =>
+    world({ txs: new Map([[b.id, at(b, height)]]), output: { address: bech(addressOf("payer")), spentBy: b.id } });
+  it("a Masumi lock's seller is read only from a deposit into the reference's escrow: a datum naming the seller anywhere else pays no one", async () => {
+    const seller = masumiDatum(CRED.payee);
+    const ref = (id: `0x${string}`) => refFor(id, H, "masumi", TTL);
+    // A deposit into another script, its datum naming the seller; a key output carrying that datum beside one.
+    const A = pay({ outputs: [{ to: MINE, coin: 1500000n, datum: seller }] });
+    const B = pay({ outputs: [{ to: OTHER_KEY, coin: 1500000n, datum: seller }, { to: MINE, coin: 1500000n, datum: masumiDatum(CRED.other) }] });
+    for (const b of [A, B]) {
+      expect(await read(spentBy(b), ref(b.id))).toMatchObject({
+        state: "pending",
+        reason: "search-incomplete",
+        foreign: [{ transaction: b.id, reason: "other-account" }],
+      });
+    }
+    // Into the escrow it pays the seller; and a plain output to the seller's own credential is a transfer to the payee.
+    const E = pay({ outputs: [{ to: "escrow", coin: 1500000n, datum: seller }] });
+    const D = pay({ outputs: [{ to: "escrow", coin: 1500000n, datum: masumiDatum(CRED.other) }, { to: "payee", coin: 1500000n }] });
+    expect(await read(spentBy(E), ref(E.id))).toMatchObject({ state: "settled", moved: [{ to: credOf("payee"), place: 0 }] });
+    expect(await read(spentBy(D), ref(D.id))).toMatchObject({ state: "settled", moved: [{ to: credOf("other") }, { to: credOf("payee"), place: 1 }] });
+  });
+  it("the script lock: every act is of its kind, and item 3 tests it by payTo", async () => {
+    const ref = (id: `0x${string}`) => ({ ...refFor(id, H, "script", TTL), payee: bech(addressOf("escrow")) });
+    // To payTo, a script's address, with no datum and with one; and to a key-address payTo, a plain output.
+    const S = pay({ outputs: [{ to: "escrow", coin: 1500000n }] });
+    const T = pay({ outputs: [{ to: "escrow", coin: 1500000n, datum: [42] }] });
+    const K = pay({ outputs: [{ to: "payee", coin: 1500000n }] });
+    for (const [b, r] of [[S, ref(S.id)], [T, ref(T.id)], [K, refFor(K.id, H, "script", TTL)]] as const) {
+      expect(await read(spentBy(b), r)).toMatchObject({ state: "settled", transaction: b.id, moved: [{ place: 0 }] });
+    }
+    // A deposit into another script pays another account.
+    const O2 = pay({ outputs: [{ to: MINE, coin: 1500000n, datum: [42] }] });
+    expect(await read(spentBy(O2), ref(O2.id))).toMatchObject({ state: "pending", reason: "search-incomplete", foreign: [{ transaction: O2.id, reason: "other-account" }] });
+  });
+  it("a payer whose address holds no payment credential (a Byron address) gives no search, so the read never answers failed", async () => {
+    // A Byron address in base58, which holds no payment credential (the reader's contract).
+    const BYRON = "Ae2tdPwUPEZFRbyhz3cpfC2CumGzNkFBN2L42rcUc2yjQpEkxDbkPodpMAi";
+    const past = refFor(P.id, H, "default", 1000n * 20n);
+    // The own id absent from a lookup that covers the tip, the TTL passed at the final mark, the input unspent.
+    expect(await read(world({ output: { address: BYRON, slot: 1100n * 20n } }), past)).toEqual({ state: "pending", reason: "search-incomplete", foreign: [] });
+    // The input spent by a transaction that carries no H.
+    const X = pay({ h: `0x${"cd".repeat(32)}` as AtrHash, outputs: [{ to: "other", coin: 1n }] });
+    const spent = world({ txs: new Map([[X.id, at(X, 1050n)]]), output: { address: BYRON, spentBy: X.id } });
+    expect(await read(spent, past)).toMatchObject({ state: "pending", reason: "search-incomplete" });
+  });
+  it("a listing a block behind the tip is read to its last page, and the search is held below the tip only after it", async () => {
+    const past = refFor(P.id, H, "default", 1000n * 20n);
+    const other = `0x${"cd".repeat(32)}` as AtrHash;
+    const [N1, N2, N3] = [1, 2, 3].map((n) => pay({ inputs: [inputN(n)], h: other }));
+    const A = pay({ inputs: [inputN(4)] });
+    // Pages of two: the payer's act carrying H and paying the payee is on the second.
+    const ledger = (third: { id: `0x${string}`; bytes: Uint8Array }) =>
+      world({
+        through: 1099n,
+        txs: new Map([[N1!.id, at(N1!, 1060n)], [N2!.id, at(N2!, 1061n)], [third.id, at(third, 1062n)]]),
+        listed: [{ txId: N1!.id, blockHeight: 1060n }, { txId: N2!.id, blockHeight: 1061n }, { txId: third.id, blockHeight: 1062n }],
+      });
+    expect(await read(ledger(A), past)).toMatchObject({ state: "settled", transaction: A.id, presented: "no" });
+    expect(await read(ledger(N3!), past)).toEqual({ state: "pending", reason: "search-incomplete", search: "1099", foreign: [] });
+  });
+  it("an item the search could not decode never carries the search position past a range it did not read", async () => {
+    const bad = `0x${"9b".repeat(32)}` as const;
+    const past = refFor(P.id, H, "default", 1000n * 20n);
+    // The input spent by a transaction that does not decode, at 1080; the listing named 1050 before its page.
+    const w = world({
+      txs: new Map([[bad, { bytes: Uint8Array.from([0x80]), height: 1080n, valid: true, holders: [] }]]),
+      output: { address: bech(addressOf("payer")), spentBy: bad },
+      through: 1050n,
+    });
+    expect(await read(w, past)).toMatchObject({ state: "pending", reason: "search-incomplete", search: "1050", undecoded: [bad] });
+  });
+});
+
+describe("V6, V8 · the reference's members, a body with no TTL, the floor", () => {
+  it("the address method names no TTL for a body that sets none; a lock refuses it", async () => {
+    expect(throughJson(await exactCardano.reference(payment(V.V6.transactionBase64), O))).toEqual(V.V6.expectReference);
+    const lock = { ...O, extra: { assetTransferMethod: "script" } };
+    expect(await exactCardanoLock.reference(payment(V.V6.transactionBase64, lock), lock)).toEqual(refused(V.V6.expectLock));
+  });
+  it("reference refuses a presented accepted that is not the option it is given", async () => {
+    expect(await exactCardano.reference(payment(V.V2.transactionBase64), { ...O, amount: "1" })).toEqual(refused("x402/accepted-not-option"));
+  });
+  it("a Masumi lock's payee is the seller extra.terms.sellerAddress names", async () => {
+    const seller = bech(addressOf("payee"));
+    const lock = { ...O, extra: { assetTransferMethod: "masumi", terms: { sellerAddress: seller } } };
+    expect(await exactCardanoLock.reference(payment(V.V2.transactionBase64, lock), lock)).toMatchObject({ method: "masumi", payee: seller });
+    const bare = { ...O, extra: { assetTransferMethod: "masumi" } };
+    expect(await exactCardanoLock.reference(payment(V.V2.transactionBase64, bare), bare)).toEqual(refused("x402/option-malformed"));
+  });
+  it("the floor is the formula over the output's encoding, at the least coin that covers it", () => {
+    for (const row of rowsOf(V.V8.rows, "x402-exact-cardano.json V8.rows")) {
+      const asset = row.asset.endsWith(".") ? row.asset.slice(0, -1) + "." : row.asset;
+      expect(cardanoFloor({ payTo: V.V8.payTo, asset, coinsPerUtxoByte: BigInt(V.V8.coinsPerUtxoByte) })).toBe(BigInt(row.expect));
+    }
+    for (const bad of [{ payTo: "addr1", asset: "lovelace", coinsPerUtxoByte: 4310n }, { payTo: V.V8.payTo, asset: "ada", coinsPerUtxoByte: 4310n }, { payTo: V.V8.payTo, asset: "lovelace", coinsPerUtxoByte: 0n }]) {
+      expect(cardanoFloor(bad)).toEqual(refused("cardano/floor-input"));
+    }
+  });
+  it("advertise on the address method evaluates the floor from coinsPerUtxoByte, given after the offer, and refuses a lovelace amount below it", () => {
+    const floor = V.V8.rows.find((r: { asset: string }) => r.asset === "lovelace").expect as string;
+    const at = (amount: string, cpub: bigint) => {
+      const o = { ...O, amount };
+      return exactCardano.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [o] }, H, LINK, o, cpub);
+    };
+    expect(at(floor, COINS_PER_UTXO_BYTE)).not.toHaveProperty("refused");
+    expect(at((BigInt(floor) - 1n).toString(), COINS_PER_UTXO_BYTE)).toEqual(refused("cardano/amount-below-floor"));
+    expect(at(floor, 0n)).toEqual(refused("cardano/floor-input"));
+    expect(at(floor, undefined as unknown as bigint)).toEqual(refused("cardano/floor-input"));
+  });
+});
+
+describe("V5 · recover", () => {
   it("recover: wrong reader, failed read, absent, an answer of no documented shape, invalid, no cbor, and bytes for another id", async () => {
     const ref = input(V.V2.expectReference.txId);
     const ok0 = { blockHeight: "1", slot: "1", valid: true };
@@ -362,23 +457,30 @@ describe("the pairing's filter, advertise, read, build and complete", () => {
   // x402's Cardano scheme (x402-foundation/x402 specs/schemes/exact/scheme_exact_cardano.md, blob c53d0185) lists
   // `"assetTransferMethods": ["default", "masumi", "script"]`, and its SDK's facilitator reads an option that names no
   // method as "default" (typescript/packages/mechanisms/cardano, exact/facilitator/scheme.ts).
-  it("takes the named networks, their CIP-34 aliases and the three methods", async () => {
+  it("takes the named networks and their CIP-34 aliases; the address method and the two locks are two pairings", async () => {
     const pays = (o: PaymentRequirements) => pairingOf(o) === "x402/exact/cardano";
     for (const network of ["cardano:mainnet", "cardano:preview", "cip34:1-764824073", "cip34:0-2"]) {
       expect(pays({ ...O, network })).toBe(true);
     }
-    for (const m of ["default", "script", "masumi"]) {
-      expect(pays({ ...O, extra: { assetTransferMethod: m } })).toBe(true);
-      expect(await exactCardano.bound(payment(V.V2.transactionBase64, { ...O, extra: { assetTransferMethod: m } }))).toBe(
-        V.V2.expectBound,
-      );
+    for (const [m, id, codec] of [
+      [undefined, "x402/exact/cardano", exactCardano],
+      ["default", "x402/exact/cardano", exactCardano],
+      ["script", "x402/exact/cardano/lock", exactCardanoLock],
+      ["masumi", "x402/exact/cardano/lock", exactCardanoLock],
+    ] as const) {
+      const o = m === undefined ? O : { ...O, extra: { assetTransferMethod: m } };
+      expect(pairingOf(o)).toBe(id);
+      expect(await codec.bound(payment(V.V2.transactionBase64, o))).toBe(V.V2.expectBound);
     }
+    // The published scheme sponsors no fee: an option that says it does names a member the pairing cannot honour.
+    expect(pays({ ...O, extra: { areFeesSponsored: false } })).toBe(true);
+    expect(pays({ ...O, extra: { areFeesSponsored: true } })).toBe(false);
     expect(pays({ ...O, extra: { assetTransferMethod: "eip3009" } })).toBe(false);
     expect(pays({ ...O, extra: { paymentFlow: "upfront" } })).toBe(false);
     expect(pays({ ...O, network: "cip34:0-4" })).toBe(false);
   });
   it("advertise and read; build asks for the auxiliary data; complete accepts only a payment bound to H", async () => {
-    const required = exactCardano.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
+    const required = exactCardano.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O, COINS_PER_UTXO_BYTE);
     if ("refused" in required) throw new Error(required.code);
     const r = exactCardano.read(required as PaymentRequired);
     if ("refused" in r) throw new Error(r.code);
@@ -557,7 +659,7 @@ describe("x402-exact-cardano.json agreedRefusals: every row that gives no transa
           await exactCardano.bound(payment(V.V2.transactionBase64, o)),
           await exactCardano.reference(payment(V.V2.transactionBase64, o), o),
           await exactCardano.build({ required: doc, accepted: o }, H),
-          exactCardano.advertise(doc, H, LINK, o),
+          exactCardano.advertise(doc, H, LINK, o, COINS_PER_UTXO_BYTE),
         );
       }
       return out;
@@ -584,7 +686,7 @@ describe("x402-exact-cardano.json agreedRefusals: every row that gives no transa
       async () => {
         const ref = input(V.V2.expectReference.txId);
         const v3 = { ...ref, tx: V.V3.txId };
-        const included = V.V5.status[0].tx;
+        const included = { blockHeight: "5216518", slot: "134617000", valid: true };
         const recovered = (r: typeof ref, cbor?: string) => exactCardano.recover(r, reader(V.V5.tip, included, cbor));
         const row = (name: string): string => V.V4.find((r: { case: string }) => r.case === name).transactionBase64;
         const b64 = (...b: number[]) => Buffer.from(b).toString("base64");
@@ -601,20 +703,25 @@ describe("x402-exact-cardano.json agreedRefusals: every row that gives no transa
           await recovered(ref),
         ];
       },
-    // V5's tip and reference, with the inclusion read 1 and 1,000 blocks above the tip.
+    // A constructed ledger (test/cardano-world.ts) whose presented body is read 1 and 1,000 blocks above the tip.
     "status: an inclusion read above the tip read before it": async () => {
       const out: unknown[] = [];
+      const body = txOf({ inputs: [REF_INPUT], outputs: [{ to: "payee", coin: 1n }], h: H, ttl: 1n << 40n });
       for (const above of [1n, 1000n]) {
-        const blockHeight = (BigInt(V.V5.tip.blockHeight) + above).toString();
-        const r = reader(V.V5.tip, { ...V.V5.status[0].tx, blockHeight });
-        out.push(await exactCardano.status(refOf(V.V5.ref), r, atDepth(DEPTH)));
+        const w: World = {
+          k: 10n, tip: 1100n, held: 0n, genesis: true,
+          txs: new Map([[body.id, { bytes: body.bytes, height: 1100n + above, valid: true, holders: ["payer"] }]]),
+          output: { address: bech(addressOf("payer")), spentBy: body.id },
+          listed: [], through: 1100n,
+        };
+        out.push(await exactCardano.status(refFor(body.id, H, "default", 1n << 40n), readerOf(w), { act: "payment", finality: 10n }));
       }
       return out;
     },
     // Built for H: V3's transaction, whose bound refuses, and V2's body without key 3, whose bound is H and whose
-    // reference refuses ttl-missing. Built for another hash: V2's transaction, whose bound is H.
+    // reference names no TTL, which lcp's client always writes. Built for another hash: V2's transaction, whose bound is H.
     "complete with a payload whose bound is not the built hash, or whose reference refuses": async () => {
-      const required = exactCardano.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O);
+      const required = exactCardano.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [O] }, H, LINK, O, COINS_PER_UTXO_BYTE);
       if ("refused" in required) throw new Error(required.code);
       const forH = await exactCardano.build({ required, accepted: O }, H);
       const forOther = await exactCardano.build({ required, accepted: O }, OTHER);
@@ -625,7 +732,7 @@ describe("x402-exact-cardano.json agreedRefusals: every row that gives no transa
       expect(map.delete(3)).toBe(true);
       const noTtl = tx(cborg.encode(map), witnesses, valid, aux);
       expect(await exactCardano.bound(payment(noTtl))).toBe(H);
-      expect(await exactCardano.reference(payment(noTtl), O)).toEqual(refused("cardano/ttl-missing"));
+      expect(await exactCardano.reference(payment(noTtl), O)).not.toHaveProperty("ttlSlot");
       const nonce: string = V.fixed.nonce;
       return [
         await forH.complete({ transaction: V.V3.transactionBase64, nonce }),
@@ -646,4 +753,47 @@ describe("x402-exact-cardano.json agreedRefusals: every row that gives no transa
       for (const r of results) expect(r).toEqual(wanted(row.expect));
     });
   }
+});
+
+describe("the read kit's cases that rest on the credential search, through Cardano's read", () => {
+  // The forms skip them while no run shows a listing whole; through the read each answers what the read gives.
+  for (const [method, subject] of [["default", "x402/exact/cardano"], ["masumi", "x402/exact/cardano/lock"]] as const) {
+    it(`${subject}: every case skipped while the search is unshown answers pending, search-incomplete`, async () => {
+      const resting = rowsOf(
+        READ_STATUS.cases.flatMap((c) =>
+          (["payment", "agreement"] as const).flatMap((act) => {
+            const d = declaredFor(c, act);
+            return d?.stated === UNSHOWN && leftOutByData(cardanoForms.find((f) => f.form.subject === subject)!.form, c, act) === undefined
+              ? [{ c, act }]
+              : [];
+          }),
+        ),
+        "the cases resting on the search",
+        { exact: method === "default" ? 15 : 8 },
+      );
+      for (const { c, act } of resting) {
+        for (const m of method === "masumi" && runsOnScript(c) ? (["masumi", "script"] as const) : [method]) {
+          const a = await arrangeOn(m, c, act).run();
+          expect([c.case, act, m, a.state, "reason" in a ? a.reason : undefined]).toEqual([c.case, act, m, "pending", "search-incomplete"]);
+        }
+      }
+    });
+  }
+});
+
+describe("the read kit's lock form runs the script lock's read", () => {
+  // Every case the lock pairing runs whose acts are each of their kind runs on the script lock as well, its answer
+  // held to the case's; one holding an act of another kind runs on the Masumi lock alone.
+  it("runs on the script lock every case it runs whose acts are each of their kind", async () => {
+    const lock = cardanoForms.find((f) => f.form.subject === "x402/exact/cardano/lock")!;
+    const ran: string[] = [];
+    for (const c of READ_STATUS.cases) {
+      for (const act of ["payment", "agreement"] as const) {
+        const outcome = await runCase(lock, c, act);
+        if (outcome === "ran" && runsOnScript(c)) ran.push(`${c.case} (act ${act})`);
+      }
+    }
+    rowsOf(ran, "the lock's cases on the script lock", { exact: 47 });
+    expect([...SCRIPT_RAN].sort()).toEqual(ran.sort());
+  });
 });

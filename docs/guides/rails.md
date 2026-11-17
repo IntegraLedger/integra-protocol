@@ -97,7 +97,7 @@ MPP challenge id:       ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0
 | | | `x402/exact/hedera/transfer-executor` | The challenge only. |
 | Algorand | `avm` | `x402/exact/algorand` | The asset transfer's `note`: H's LCP string. The payment entry is read as the x402 facilitator decodes it and as algod decodes the bytes the facilitator submits: an entry either reader refuses, or that the two read as different signed transactions, is `avm/txn-malformed`, and the transaction id is the one algod computes, from the transaction's canonical encoding. The facilitator decodes an entry's base64 with Node's `Buffer.from(entry, "base64")`, which takes other spellings of the same bytes; `avmCarrier` reads the canonical form only (RFC 4648 §3.5). |
 | Aptos | `aptos` | `x402/exact/aptos` | The challenge only. No field of a standard Aptos transfer carries H; the seller ties the payment to H when it claims it for the request. `build`'s `complete` reads the signed transaction as `reference` reads it and gives `reference`'s code for each fault: a `transaction` that is not a string is `x402/payload-malformed`; text that is not base64 of a transaction prefix that reads to the end of its fields, or that names a module, function or struct with a name that is not a Move identifier, is `aptos/tx-malformed`; a transaction over the size bound, 64 KiB decoded, is `aptos/tx-too-large`; a payload that is not an entry function call is `aptos/not-entry-function`; a call that is not the framework `primary_fungible_store::transfer` or `fungible_asset::transfer` with one struct type argument and three arguments is `aptos/not-an-x402-transfer`; and a transaction for a chain other than the option's network is `aptos/chain-mismatch`. |
-| Cardano | `cardano` | `x402/exact/cardano` | A CIP-20 message (metadata label 674) holding H's LCP string as two strings, `lcp:sha256:0x` and the 64 lowercase hex digits, which the signed body commits to through `auxiliary_data_hash`. A message that repeats a key, or holds a second line reading as the marker in any case or behind a byte-order mark, is refused, so every reader of the chain sees one hash. |
+| Cardano | `cardano` | `x402/exact/cardano`, `x402/exact/cardano/lock` | A CIP-20 message (metadata label 674) holding H's LCP string as two strings, `lcp:sha256:0x` and the 64 lowercase hex digits, which the signed body commits to through `auxiliary_data_hash`. A message that repeats a key, or holds a second line reading as the marker in any case or behind a byte-order mark, is refused, so every reader of the chain sees one hash. |
 | Casper | `casper` | `x402/exact/casper` | The CEP-3009 authorization's `nonce`. |
 | Concordium | `ccd` | `x402/exact/ccd` | The one transfer's memo: H's LCP string as a CBOR text string, which a PLT transfer wraps in CBOR tag 24. The signed transaction travels in x402's wire form, which `@concordium/web-sdk` gives as `JSON.parse(Transaction.toJSONString(tx))`. |
 | NEAR | `near` | `x402/exact/near` | The `memo` of the one NEP-141 `ft_transfer` in the NEP-366 delegate action the payer signs. |
@@ -260,11 +260,11 @@ endpoint holds transactions from that checkpoint or earlier; otherwise an absent
 A transaction that sets no maximum epoch can execute in any later epoch: `reference` records it with a null
 `untilEpoch`, and `suiStatus` never answers `expired` for it.
 
-On Cardano, a recent block can still be rolled back. `cardanoStatus(ref, reader, depth)` takes the number of newer
-blocks at which you take a settlement as final, and answers failed `expired` only when the block that many blocks below
-the tip is at or past the transaction's TTL slot, so a rollback above that depth leaves a payment that landed pending
-`not-found`, never failed. The ledger takes a transaction only in a slot below its TTL (`invalid_hereafter`), so the
-TTL slot is the first in which it cannot land.
+On Cardano, a recent block can still be rolled back. `cardanoStatus(ref, reader, query)` counts a transaction's
+confirmations up to the ledger's security parameter, read from the endpoint's genesis, which is the final mark, and
+reads the body's TTL as passed only when the block that many blocks below the tip is at or past its TTL slot, so a
+rollback above that depth leaves a payment that landed pending, never failed. The ledger takes a transaction only in a
+slot below its TTL (`invalid_hereafter`), so the TTL slot is the first in which it cannot land.
 
 On Aptos, the ledger takes a transaction only while its time, in whole seconds, is below the transaction's
 `expiration_timestamp_secs` (the prologue's `timestamp::now_seconds() < txn_expiration_time`), so that second is the
@@ -277,12 +277,12 @@ read before the lookup it judges, and
 a lookup shows the payment absent only up to the point its own source had reached. So the reader's answer names that
 point, in the answer itself or read from the source that answered before the lookup, and the verdict needs it at or
 past the reference point. A payment that lands between the two reads, or that a lookup misses because its source lags
-the reference point, as one node behind a load-balanced endpoint can, stays pending (`nearLapsed` answers false), never
+the reference point, as one node behind a load-balanced endpoint can, stays pending (NEAR's `status` answers `pending`), never
 failed, and so does one whose answer names no point. A later read, once that source has caught up, gives the verdict.
-The rule governs `expired` on Tron, TON, Aptos, Stellar and Cardano, `nonce-moved` for a named Solana durable-nonce
-transaction no lookup finds, and `nearLapsed`. Stacks reads no absence this way: its read holds the origin's nonce, read
-at the chain tip, so a nonce not consumed there is `instrument-live`, and one consumed whose transaction no lookup finds is
-`search-incomplete`, never `not-found`. On Solana
+The rule governs `expired` on Tron, TON, Aptos and Stellar, `nonce-moved` for a named Solana durable-nonce transaction
+no lookup finds, and NEAR's and Cardano's `instrument-unused`. Stacks reads no absence this way: its read holds the
+origin's nonce, read at the chain tip, so a nonce not consumed there is `instrument-live`, and one consumed whose
+transaction no lookup finds is `search-incomplete`, never `not-found`. On Solana
 `getTransaction` names no slot when it finds nothing, so a reader reads `getSlot` at the lookup's commitment from the
 node that answers, before the lookup, and must pin one node to name it; a reader that cannot names no slot.
 
@@ -313,10 +313,10 @@ but `before-position` is `failed`.
 | Hedera | `HederaReader` | the Mirror Node's transaction by id, where a rejected duplicate or a node due-diligence failure (`INVALID_NODE_ACCOUNT`, `INVALID_PAYER_SIGNATURE`) leaves the id free for the transaction itself | the consensus timestamp |
 | Algorand | `AvmReader` | the Indexer's transaction search by id | the confirmed round |
 | Aptos | `AptosReader` | the ledger info, read first; the transaction by hash; the sender's transaction by sequence number, with the ledger timestamp of its answer | the version |
-| Cardano | `CardanoReader` | the chain tip, read first; the transaction by id, with the indexer's latest slot when it holds none; the slot of the block at a height | the confirmations |
+| Cardano | `CardanoReader` | the security parameter from the endpoint's genesis; the chain tip, read first; the slot of the block at a height; the output an input names, with the transaction that spent it; the transaction by id, with the indexer's latest slot when it holds none; the addresses that hold a transaction's inputs; a payment credential's transactions, by page | the confirmations |
 | Casper | `CasperReader` | `info_get_transaction` | the finalized block height |
 | Concordium | `CcdReader` | gRPC `GetBlockItemStatus` | `finalized` |
-| NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` with its `block_height` | `final` when the status is `FINAL`, else `optimistic` |
+| NEAR | `NearReader` | `EXPERIMENTAL_tx_status`, the final block height, `view_access_key` at final and at the latest head with its `block_height`, `changes` for one access key and for every key of an account | `final` when the status is `FINAL` and the change is at or below the final height, else `optimistic` |
 | Polkadot Asset Hub | `PolkadotReader` | Sidecar's extrinsic by block and index, a block's raw extrinsics, the finalized head | `finalized` or `head` |
 | Starknet | `StarknetReader` | `starknet_getTransactionReceipt` with its `Transfer` events, `starknet_traceTransaction` | `ACCEPTED_ON_L2` or `ACCEPTED_ON_L1` |
 | Sui | `SuiReader` | the transaction by digest, with the current epoch and the first checkpoint the endpoint holds transactions from | the checkpoint |
@@ -378,7 +378,7 @@ console.log(recoverable.sort().join("\n"));
 ```
 
 ```text
-26
+27
 mpp/charge/solana
 mpp/charge/usdc/solana
 mpp/charge/usdc/stacks
@@ -391,6 +391,7 @@ x402/batch-settlement/eip155
 x402/batch-settlement/solana
 x402/exact/algorand
 x402/exact/cardano
+x402/exact/cardano/lock
 x402/exact/casper
 x402/exact/ccd
 x402/exact/eip155/eip3009

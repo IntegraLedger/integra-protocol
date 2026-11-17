@@ -24,6 +24,7 @@ const ROWS: readonly [file: string, path: string, id: string][] = [
   ["x402-exact-algorand", "fixed.O", "x402/exact/algorand"],
   ["x402-exact-aptos", "fixed.O", "x402/exact/aptos"],
   ["x402-exact-cardano", "fixed.O", "x402/exact/cardano"],
+  ["x402-exact-cardano", "fixed.OLock", "x402/exact/cardano/lock"],
   ["x402-exact-casper", "fixed.O", "x402/exact/casper"],
   ["x402-exact-ccd", "fixed.O", "x402/exact/ccd"],
   ["x402-exact-hedera", "fixed.O", "x402/exact/hedera"],

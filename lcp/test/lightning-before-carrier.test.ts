@@ -79,8 +79,8 @@ describe("mpp/session/lightning before its deposit invoice", () => {
 });
 
 describe("which pairings declare a carrier written after H", () => {
-  it("exactly the two whose invoice the seller's node writes after H", () => {
+  it("exactly the two whose invoice the seller's node writes after H, and NEAR Intents' charge, whose quote it writes after H", () => {
     const ids = BINDINGS.filter((b) => typeof (b as { advertiseBeforeCarrier?: unknown }).advertiseBeforeCarrier === "function").map((b) => b.id);
-    expect(ids.sort()).toEqual(["mpp/charge/lightning", "mpp/session/lightning"]);
+    expect(ids.sort()).toEqual(["mpp/charge/lightning", "mpp/charge/nearintents", "mpp/session/lightning"]);
   });
 });

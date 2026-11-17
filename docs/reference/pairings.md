@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 62 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 63 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -50,7 +50,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/evm/permit2` | `evmPermit2` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/evm/transaction` | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
 | `mpp/charge/lightning` | `chargeLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
-| `mpp/charge/nearintents` | `chargeNearIntents` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| `mpp/charge/nearintents` | `chargeNearIntents` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge/nearintents`](../../lcp/profiles/mpp-charge-nearintents.md) |
 | `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/stripe` | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
 | `mpp/charge/usdc/evm` | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
@@ -87,6 +87,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/algorand` | `exactAvm` from `@integraledger/lcp/avm` | `full` | no | `native-field` | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
 | `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | no | `http-advisory` | no | no |  |
 | `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
+| `x402/exact/cardano/lock` | `exactCardanoLock` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
 | `x402/exact/casper` | `exactCasper` from `@integraledger/lcp/casper` | `full` | yes | `native-field` | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
 | `x402/exact/ccd` | `exactCcd` from `@integraledger/lcp/ccd` | `full` | no | `native-field` | yes | yes | [`x402/exact/ccd`](../../lcp/profiles/x402-exact-ccd.md) |
 | `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
@@ -180,7 +181,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `mpp/charge/nearintents`
 
-Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's MPP challenge carried this ATR's hash in its externalId, bound by the seller's server to a deposit address issued for that challenge only, and the seller reported delivery. The buyer's deposit does not carry the hash, and the buyer did not sign it. The NEAR Intents backend, not a contract the buyer signed, links the deposit to the seller.
+Before this payment was reported, an agreement transaction carrying this ATR's hash was signed on <network>, recorded in <transaction>; this shows neither that its signer is the payer nor when the deposit was made. The seller's MPP challenge carried the hash in its externalId. The deposit carries no hash, and its payer signed nothing that does. The seller reported it paid.
 
 ### `mpp/charge/solana`
 
@@ -284,7 +285,11 @@ Before this payment was taken, an account signed an agreement transaction carryi
 
 ### `x402/exact/cardano`
 
-The payer signed a Cardano transaction whose body commits, through its auxiliary_data_hash, to a CIP-20 message (label 674) carrying this ATR's hash. The ledger included the transaction as valid, at the stated depth; a Cardano transaction with fewer than k blocks after it (2160 on mainnet) can be rolled back. The hash is in the transaction's metadata on chain. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer, the payment credential that holds the input the payment names, signed a Cardano transaction whose body commits through its auxiliary_data_hash to a CIP-20 message (label 674) carrying this ATR's hash, and the ledger included it as valid at the mark read. It paid: the read names each output it created, to which payment credential and in what asset and amount, as observed, and on a payment one output reached the payee's payment credential. A transaction with fewer confirmations than the ledger's security parameter (2160 on mainnet) can be rolled back. The read compares no amount, asset or time with the ATR's terms.
+
+### `x402/exact/cardano/lock`
+
+The payer, the payment credential that holds the input the payment names, signed a Cardano transaction whose body commits through its auxiliary_data_hash to a CIP-20 message (label 674) carrying this ATR's hash, and the ledger included it as valid at the mark read. It deposited into a contract: the read names each output it created, as observed, and on a Masumi lock the beneficiary its escrow datum names. A deposit is a charge and never an agreement. The read compares no amount, asset or time with the ATR's terms.
 
 ### `x402/exact/casper`
 
@@ -320,7 +325,7 @@ Before this payment, the buyer signed and paid an agreement transaction carrying
 
 ### `x402/exact/near`
 
-The payer signed a NEP-366 delegate action whose one ft_transfer carries this ATR's hash in its memo, in LCP string form. The runtime verified that signature and executed the transfer on the token contract, and the memo is on chain in the delegated call's arguments. This does not show that amount, receiver, token or timing match the ATR's content.
+Paid: the payer's account signed a NEP-366 delegate action whose one ft_transfer carries this ATR's hash in its memo, in LCP string form, so the payer's own signed act carries the hash. The runtime verified that signature and ran the delegate, and the transfer succeeded on the token contract the delegate names, reaching the account its receiver_id names, both as read. The signer is the delegate's sender, named apart from any other act's. This states nothing of the amount, nor that the token, the account reached or the time meet a term of the ATR.
 
 ### `x402/exact/polkadot/lcp-assets-remark`
 

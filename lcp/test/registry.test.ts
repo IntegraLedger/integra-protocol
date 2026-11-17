@@ -14,7 +14,7 @@ import { checkoutMandate, checkoutMandateX402, type Presented as Ap2Presented, t
 import { exactAptos, type AptosReader, type AptosRef } from "../src/aptos.js";
 import { exactAvm, type AvmReader, type AvmRef } from "../src/avm.js";
 import { agentPay, sellerReference, viAutonomous, viImmediate, visaTap, visaVic, type ChargeRef, type TapPresented, type VicPresented, type ViAutonomous, type ViImmediate } from "../src/card.js";
-import { exactCardano, type CardanoReader, type CardanoRef } from "../src/cardano.js";
+import { exactCardano, exactCardanoLock, type CardanoReader, type CardanoRef } from "../src/cardano.js";
 import { exactCasper, type CasperReader, type CasperRef } from "../src/casper.js";
 import { exactCcd, type CcdReader, type CcdRef } from "../src/ccd.js";
 import type { AtrHash, Json } from "../src/core.js";
@@ -77,6 +77,7 @@ import {
   type MppCredential,
 } from "../src/mpp.js";
 import { carrierOf, type MppForms } from "../src/mpp-challenge.js";
+import type { NearIntentsRef } from "../src/mpp-nearintents.js";
 import type { XrplChargeChoice, XrplChargeUnsigned } from "../src/mpp-xrpl.js";
 import type { RailSessionChoice, XrplSessionUnsigned } from "../src/mpp-session-rails.js";
 import type { SessionRef } from "../src/mpp-session.js";
@@ -141,6 +142,7 @@ const OWN = {
   "x402/exact/algorand": exactAvm satisfies Entry<"x402/exact/algorand", AvmPaymentPayload, AvmRef, AvmReader, Own<typeof exactAvm>>,
   "x402/exact/aptos": exactAptos satisfies Entry<"x402/exact/aptos", AptosPaymentPayload, AptosRef, AptosReader, Own<typeof exactAptos>>,
   "x402/exact/cardano": exactCardano satisfies Entry<"x402/exact/cardano", CardanoPaymentPayload, CardanoRef, CardanoReader, Own<typeof exactCardano>>,
+  "x402/exact/cardano/lock": exactCardanoLock satisfies Entry<"x402/exact/cardano/lock", CardanoPaymentPayload, CardanoRef, CardanoReader, Own<typeof exactCardanoLock>>,
   "x402/exact/casper": exactCasper satisfies Entry<"x402/exact/casper", CasperPaymentPayload, CasperRef, CasperReader, Own<typeof exactCasper>>,
   "x402/exact/ccd": exactCcd satisfies Entry<"x402/exact/ccd", CcdPaymentPayload, CcdRef, CcdReader, Own<typeof exactCcd>>,
   "x402/exact/hedera": exactHedera satisfies Entry<"x402/exact/hedera", HederaPaymentPayload, HederaRef, HederaReader, Own<typeof exactHedera>>,
@@ -165,7 +167,7 @@ const OWN = {
   "mpp/session/lightning": sessionLightning satisfies Entry<"mpp/session/lightning", MppCredential, LnRef, never, Own<typeof sessionLightning>>,
   "mpp/charge/solana": chargeSolana satisfies Entry<"mpp/charge/solana", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof chargeSolana>>,
   "mpp/charge/xrpl": chargeXrpl satisfies Entry<"mpp/charge/xrpl", MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof chargeXrpl>>,
-  "mpp/charge/nearintents": chargeNearIntents satisfies Entry<"mpp/charge/nearintents", MppCredential, never, never, Own<typeof chargeNearIntents>>,
+  "mpp/charge/nearintents": chargeNearIntents satisfies Entry<"mpp/charge/nearintents", MppCredential, NearIntentsRef, never, Own<typeof chargeNearIntents>>,
   "mpp/session/xrpl": sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "expect" | "fromLedger">, XrplReader, Own<typeof sessionXrpl>>,
   "mpp/charge/card": chargeCard satisfies Entry<"mpp/charge/card", MppCredential, never, never, Own<typeof chargeCard>>,
   "mpp/charge/stripe": chargeStripe satisfies Entry<"mpp/charge/stripe", MppCredential, never, never, Own<typeof chargeStripe>>,
@@ -346,7 +348,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 62 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 63 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.

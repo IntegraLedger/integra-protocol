@@ -19,7 +19,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/aptos`](#integraledgerlcpaptos) | Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified by a digest of the transfer the payer signed and by the expiry it signed. |
 | [`@integraledger/lcp/avm`](#integraledgerlcpavm) | Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes. `algosdk` is an optional peer: this module loads it when present, and `build` writes the transactions with it. The addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`, `reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs none. |
 | [`@integraledger/lcp/card`](#integraledgerlcpcard) | The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout. |
-| [`@integraledger/lcp/cardano`](#integraledgerlcpcardano) | Cardano, and the `x402/exact/cardano` pairing: the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so settlement is read by an id fixed before any money moves. |
+| [`@integraledger/lcp/cardano`](#integraledgerlcpcardano) | Cardano, and its two pairings: `x402/exact/cardano`, x402's address-to-address method, and `x402/exact/cardano/lock`, its two lock methods (`masumi` and `script`), told apart by the option's `extra.assetTransferMethod`. Each carries the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so a payment is named by an id fixed before any money moves, and its single-use value is the input `payload.nonce` names, which the body spends. |
 | [`@integraledger/lcp/casper`](#integraledgerlcpcasper) | CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments. |
 | [`@integraledger/lcp/ccd`](#integraledgerlcpccd) | Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer event. |
 | [`@integraledger/lcp/core`](#integraledgerlcpcore) | The core alone: assembling an ATR and hashing its exact bytes, comparing hashes, the agreement's own value of a hash, the hash's string and structured forms, the https-link rule and the URL Standard's host and domain parsers it reads a link with, the RFC 8785 form of a JSON value and its digest, JSON reading capped at 64 levels, padded standard base64 and unpadded base64url, each read in its canonical form only (with or without a bound on its size) and written, `isRefusal` and `readToRepeat`. It imports no pairing, no rail and no optional peer, so a bundle of it holds these functions and nothing else. The package root exports the same functions: each is one function, reached by either path. |
@@ -28,7 +28,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/hedera`](#integraledgerlcphedera) | Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); the escrow channel pieces `hederaChannelId` and `hederaVoucher`; and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
 | [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices, the x402 Lightning payment's types, and the Lightning pairings on MPP. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice. |
 | [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents and `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
-| [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. Settlement is read from the relayed transaction's receipts through a bounded reader. |
+| [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of the payer's account for H. |
 | [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by block and index through Sidecar. SCALE is encoded and decoded here for these shapes only. |
 | [`@integraledger/lcp/stacks`](#integraledgerlcpstacks) | Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read. |
 | [`@integraledger/lcp/starknet`](#integraledgerlcpstarknet) | Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits. Settlement is read from the executed call's trace through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash. |
@@ -157,17 +157,17 @@ import { agentPay, disclosureDigest, MAX_CHARGE_REFERENCE, … } from "@integral
 
 ## `@integraledger/lcp/cardano`
 
-Cardano, and the `x402/exact/cardano` pairing: the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so settlement is read by an id fixed before any money moves.
+Cardano, and its two pairings: `x402/exact/cardano`, x402's address-to-address method, and `x402/exact/cardano/lock`, its two lock methods (`masumi` and `script`), told apart by the option's `extra.assetTransferMethod`. Each carries the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so a payment is named by an id fixed before any money moves, and its single-use value is the input `payload.nonce` names, which the body spends.
 
 ```ts no-check
-import { auxiliaryData, cardanoRecover, cardanoStatus, … } from "@integraledger/lcp/cardano";
+import { auxiliaryData, CARDANO_MAX_TX_BYTES, CARDANO_SEARCH_BOUND, … } from "@integraledger/lcp/cardano";
 ```
 
-**Pairings:** `x402/exact/cardano`.
+**Pairings:** `x402/exact/cardano`, `x402/exact/cardano/lock`.
 
-**Values (6):** `auxiliaryData`, `cardanoRecover`, `cardanoStatus`, `decodeCardanoTx`, `exactCardano`, `LCP_MARKER`.
+**Values (10):** `auxiliaryData`, `CARDANO_MAX_TX_BYTES`, `CARDANO_SEARCH_BOUND`, `cardanoFloor`, `cardanoRecover`, `cardanoStatus`, `decodeCardanoTx`, `exactCardano`, `exactCardanoLock`, `LCP_MARKER`.
 
-**Types (9):** `Broadcaster`, `CardanoNetwork`, `CardanoOnChain`, `CardanoPayload`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`.
+**Types (12):** `Broadcaster`, `CardanoMethod`, `CardanoNetwork`, `CardanoOnChain`, `CardanoOutput`, `CardanoPage`, `CardanoPayload`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`.
 
 ## `@integraledger/lcp/casper`
 
@@ -277,7 +277,7 @@ import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lc
 
 ## `@integraledger/lcp/near`
 
-NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. Settlement is read from the relayed transaction's receipts through a bounded reader.
+NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of the payer's account for H.
 
 ```ts no-check
 import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/lcp/near";
@@ -285,9 +285,9 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 **Pairings:** `x402/exact/near`.
 
-**Values (8):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `nearCarrier`, `nearLapsed`, `nearRecover`, `nearStatus`, `NEP461_DELEGATE`.
+**Values (9):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `MAX_FT_TRANSFER_ARGS_BYTES`, `MAX_SIGNED_DELEGATE_BASE64`, `nearCarrier`, `nearRecover`, `nearStatus`, `NEP461_DELEGATE`.
 
-**Types (7):** `Broadcaster`, `NearNetwork`, `NearOutcome`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
+**Types (12):** `Broadcaster`, `NearFunctionCall`, `NearKeyChange`, `NearKeyChanges`, `NearMark`, `NearNetwork`, `NearOutcome`, `NearQuery`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
 
 ## `@integraledger/lcp/polkadot`
 

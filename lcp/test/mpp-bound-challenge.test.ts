@@ -244,7 +244,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("each credential is bound by one pairing, each pairing that binds binds one, and each change is presented to it", () => {
     expect(PRESENTED.map((p) => p.pairing.id).sort()).toEqual([...BINDING].sort());
-    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 2738 });
+    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 2794 });
   });
 
   it("pairingsOfPlaced names the pairing exactly where pairingsOf names it, with the Lightning invoice written", () => {
@@ -278,7 +278,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge it names, bound gives H again or a refusal naming what it compares, and reference reads", () => {
     const named = rowsOf(answers, "every answer", {
-      exact: 1502,
+      exact: 1558,
       keep: ["the challenges pairingsOfPlaced names for the pairing", (a) => a.named],
       leave: ["the challenges it does not name", (a) => !a.named],
     });
@@ -300,7 +300,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([1306, 196]);
+    expect([bindings, named.length - bindings]).toEqual([1354, 204]);
     const listed = Object.entries(COMPARES).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);

@@ -282,7 +282,7 @@
         "./mpp": ["chargeCard", "chargeNearIntents", "chargeSolana", "chargeStripe", "chargeUsdcEvm", "chargeUsdcGateway", "chargeUsdcSolana", "chargeUsdcStacks", "chargeXrpl", "evmAuthorization", "evmHash", "evmPermit2", "evmTransaction", "transferPresent", "XrplChargeChoice", "XrplChargeUnsigned", "GatewayPreimage", "GatewaySaltInput", "usdcGatewaySalt", "usdcNonce", "usdcRequestHash", "UsdcUnsigned", "ReceiveTypedData", "SolanaTablesCredential", "attributionMemo", "checkAttribution"]
       },
       "use": "Any MPP seller offers, and any buyer's client pays, a charge whose payment carries H or its commitment, and any server reads the payment back; on Tempo, builds and checks the attribution memo the stock MPP libraries write.",
-      "fixedBy": "mpp-charge.md; mpp-charge-solana.md; mpp-charge-usdc-stacks.md; each method's MPP draft."
+      "fixedBy": "mpp-charge.md; mpp-charge-solana.md; mpp-charge-usdc-stacks.md; mpp-charge-nearintents.md; each method's MPP draft."
     },
     {
       "unit": "MPP sessions and subscriptions",
@@ -393,9 +393,9 @@
     {
       "unit": "Cardano",
       "exports": {
-        "./cardano": ["CardanoNetwork", "CardanoOnChain", "CardanoPayload", "CardanoReader", "CardanoRef", "CardanoStatus", "CardanoTx", "CardanoUnsigned", "LCP_MARKER", "auxiliaryData", "cardanoRecover", "cardanoStatus", "decodeCardanoTx", "exactCardano"]
+        "./cardano": ["CARDANO_MAX_TX_BYTES", "CARDANO_SEARCH_BOUND", "CardanoMethod", "CardanoNetwork", "CardanoOnChain", "CardanoOutput", "CardanoPage", "CardanoPayload", "CardanoReader", "CardanoRef", "CardanoStatus", "CardanoTx", "CardanoUnsigned", "LCP_MARKER", "auxiliaryData", "cardanoFloor", "cardanoRecover", "cardanoStatus", "decodeCardanoTx", "exactCardano", "exactCardanoLock"]
       },
-      "use": "Any Cardano buyer's client builds a transaction whose signed body commits to H as a CIP-20 message, any server checks it, and anyone reads H back from the included transaction.",
+      "use": "Any Cardano buyer's client builds a transaction whose signed body commits to H as a CIP-20 message, on x402's address method or its two lock methods, any server checks it and prices the smallest agreement by the ledger's minimum output, and anyone reads the payment through its own indexer, by the input it spends and the payer's credential, or reads H back from the included transaction.",
       "fixedBy": "x402-exact-cardano.md; CIP-20."
     },
     {
@@ -417,9 +417,9 @@
     {
       "unit": "NEAR",
       "exports": {
-        "./near": ["FT_TRANSFER_GAS", "NEP461_DELEGATE", "NearNetwork", "NearOutcome", "NearReader", "NearRef", "NearStatus", "NearUnsigned", "exactNear", "ftTransferArgs", "nearCarrier", "nearLapsed", "nearRecover", "nearStatus"]
+        "./near": ["FT_TRANSFER_GAS", "MAX_FT_TRANSFER_ARGS_BYTES", "MAX_SIGNED_DELEGATE_BASE64", "NEP461_DELEGATE", "NearFunctionCall", "NearKeyChange", "NearKeyChanges", "NearMark", "NearNetwork", "NearOutcome", "NearQuery", "NearReader", "NearRef", "NearStatus", "NearUnsigned", "exactNear", "ftTransferArgs", "nearCarrier", "nearRecover", "nearStatus"]
       },
-      "use": "Any NEAR buyer's client signs a delegate action whose ft_transfer memo is H, any relayer or server checks it, and anyone reads the payment back from the relayed transaction's receipts.",
+      "use": "Any NEAR buyer's client signs a delegate action whose ft_transfer memo is H, any relayer or server checks it, and anyone reads the payment through the payer's access key and the relayed transaction's receipts.",
       "fixedBy": "x402-exact-near-memo.md; NEP-366; NEP-141."
     },
     {

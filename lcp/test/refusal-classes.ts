@@ -90,8 +90,9 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "vi-signature-invalid", "vi-transaction-id-mismatch", "vi-typ",
   ],
   cardano: [
-    "ambiguous", "aux-hash-mismatch", "aux-missing", "hash-not-carried", "network-malformed", "not-valid",
-    "ttl-missing", "tx-malformed", "tx-too-large", "wrong-reader",
+    "ambiguous", "aux-hash-mismatch", "aux-missing", "floor-input", "hash-not-carried", "network-malformed",
+    "nonce-not-input", "not-valid", "ttl-missing", "tx-malformed", "tx-too-large", "wrong-reader",
+    "amount-below-floor",
   ],
   casper: [
     "address-malformed", "amount-malformed", "key-tag-mismatch", "network-malformed", "no-authorization-call",
@@ -141,9 +142,10 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "witness-taken", "position-taken", "no-x402-twin",
   ],
   near: [
-    "actions", "args-malformed", "carrier-occupied", "memo-missing", "memo-not-lcp", "network-malformed", "no-relayer",
+    "actions", "args-malformed", "carrier-occupied", "memo-missing", "memo-not-lcp", "network-malformed",
     "not-ft-transfer", "not-hash-credential", "option-malformed", "peer-missing", "sda-malformed", "sda-too-large",
     "wrong-reader",
+    "fixed-members-differ",
   ],
   polkadot: [
     "address-malformed", "address-not-id", "call-not-profile", "call-not-suffix", "extrinsic-malformed",

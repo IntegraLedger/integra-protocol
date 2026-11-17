@@ -14,6 +14,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { AtrHash } from "../src/core.js";
 import { exactNear, ftTransferArgs, nearCarrier, type NearReader } from "../src/near.js";
+import { ledgerReader, type LedgerJson } from "./read-kit/forms/near.js";
 import type { PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 
@@ -44,18 +45,15 @@ const payment = (signedDelegateAction: string) => ({
   payload: { signedDelegateAction },
 });
 
-// V3's settled recover fixture, its delegate's arguments replaced.
-const landed = V.V3.recover[0];
-const readerWithArgs = (text: string): NearReader => ({
-  network: V.V3.ref.network,
-  relayers: V.V3.relayers,
-  txStatus: async () => ({
-    ...landed.outcome,
-    delegate: { ...landed.outcome.delegate, nonce: BigInt(landed.outcome.delegate.nonce), argsBase64: Buffer.from(text, "utf8").toString("base64") },
-  }),
-  finalHeight: async () => 0n,
-  accessKeyNonce: async () => null,
-});
+// The vector file's landed ledger (read.recover), its delegate's arguments replaced.
+const LANDED: LedgerJson = V.read.recover[0].ledger;
+const readerWithArgs = (text: string): NearReader => {
+  const t1 = LANDED.txs["T1"]!;
+  const d = t1.delegate!;
+  const argsBase64 = Buffer.from(text, "utf8").toString("base64");
+  const ledger: LedgerJson = { ...LANDED, txs: { T1: { ...t1, delegate: { ...d, actions: [{ ...d.actions[0]!, argsBase64 }] } } } };
+  return ledgerReader(ledger, V.V2.expectReference.payer, V.V2.expectReference.publicKey);
+};
 
 // V1's arguments, member by member: R, A and M.
 const R = '"receiver_id":"merchant.testnet"';
@@ -73,7 +71,7 @@ async function answer(text: string): Promise<string> {
   const b = await exactNear.bound(payment(sda));
   const c = nearCarrier(sda);
   const r = await exactNear.reference(payment(sda), V.fixed.O);
-  const v = await exactNear.recover({ network: V.V3.ref.network, tx: V.V3.ref.transaction, option: V.fixed.O }, readerWithArgs(text));
+  const v = await exactNear.recover({ network: V.V2.expectReference.network, tx: "T1", option: V.fixed.O }, readerWithArgs(text));
   const of = (x: unknown, ok: (v: unknown) => boolean) =>
     typeof x === "object" && x !== null && "refused" in x ? String((x as { code?: unknown }).code) : ok(x) ? "H" : JSON.stringify(x);
   const each = [

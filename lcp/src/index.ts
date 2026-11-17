@@ -85,7 +85,7 @@ import { checkoutMandate, checkoutMandateX402, type Presented as Ap2Presented, t
 import { exactAptos } from "./aptos.js";
 import { exactAvm } from "./avm.js";
 import { agentPay, sellerReference, type TapPresented, type VicPresented, viAutonomous, type ViAutonomous, viImmediate, type ViImmediate, visaTap, visaVic } from "./card.js";
-import { exactCardano } from "./cardano.js";
+import { exactCardano, exactCardanoLock } from "./cardano.js";
 import { exactCasper } from "./casper.js";
 import { exactCcd } from "./ccd.js";
 import { exactHedera, exactHederaExecutor } from "./hedera.js";
@@ -131,6 +131,7 @@ export type X402Binding =
   | typeof exactAvm
   | typeof exactAptos
   | typeof exactCardano
+  | typeof exactCardanoLock
   | typeof exactCasper
   | typeof exactCcd
   | typeof exactErc7710
@@ -268,6 +269,7 @@ export const BINDINGS: readonly Binding[] = /* @__PURE__ */ (() => Object.freeze
   exactAvm,
   exactAptos,
   exactCardano,
+  exactCardanoLock,
   exactCasper,
   exactCcd,
   exactErc7710,

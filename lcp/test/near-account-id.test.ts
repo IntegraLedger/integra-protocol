@@ -6,11 +6,13 @@
 // the oracle over one generated sweep: boundary lengths, each separator first, last and doubled, uppercase, non-ASCII,
 // every printable ASCII character, ASCII controls, the typed forms the crate names, and drawn strings.
 import { readFileSync } from "node:fs";
+import { isDeepStrictEqual } from "node:util";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { describe, expect, it } from "vitest";
 import type { AtrHash } from "../src/core.js";
 import { isNearAccountId } from "../src/internal/near-delegate.js";
-import { exactNear, ftTransferArgs, nearCarrier, nearLapsed, type NearOutcome, type NearReader, type NearRef } from "../src/near.js";
+import { exactNear, ftTransferArgs, nearCarrier, type NearReader, type NearRef } from "../src/near.js";
+import { ledgerReader, type LedgerJson, type TxJson } from "./read-kit/forms/near.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { rowsOf } from "./rows.js";
@@ -18,7 +20,7 @@ import { rowsOf } from "./rows.js";
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-near.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
 const O: PaymentRequirements = V.fixed.O;
-const REF: NearRef & { transaction: string } = V.V3.ref;
+const REF: NearRef = V.V2.expectReference;
 const Q = { act: "payment", finality: "final" } as const;
 const UNPARSEABLE = JSON.stringify({ state: "unreadable", reason: "unparseable", foreign: [] });
 /** Each sweep's bound: its time grows with the machine's load. */
@@ -251,21 +253,17 @@ const choice = () => ({
   finalHeight: BigInt(V.fixed.finalHeight),
 });
 
-type Fixture = {
-  status: string;
-  delegate: { senderId: string; publicKey: string; nonce: string; receiverId: string; methodName: string; argsBase64: string };
-  receipts: NearOutcome["receipts"];
-};
-const SETTLED: { outcome: Fixture; expect: unknown } = V.V3.status[0];
-function readerFor(outcome: Fixture, relayers: readonly string[] = V.V3.relayers): NearReader {
-  return {
-    network: REF.network,
-    relayers,
-    txStatus: async () => ({ ...outcome, delegate: { ...outcome.delegate, nonce: BigInt(outcome.delegate.nonce) } }),
-    finalHeight: async () => 0n,
-    accessKeyNonce: async () => null,
-  };
-}
+/** The vector file's settled row: its ledger, and its answer on the act payment with heights as decimal strings. */
+const SETTLED: { ledger: LedgerJson; expect: { payment: unknown } } = V.read.rows[0];
+const T1: TxJson = SETTLED.ledger.txs["T1"]!;
+const readerFor = (ledger: LedgerJson = SETTLED.ledger): NearReader => ledgerReader(ledger, REF.payer, REF.publicKey);
+const withT1 = (t: TxJson): LedgerJson => ({ ...SETTLED.ledger, txs: { T1: t } });
+const written = (a: unknown): string => JSON.stringify(a, (_k, v: unknown) => (typeof v === "bigint" ? v.toString() : v));
+/**
+ * The settled row's answer where the transaction that carried the change is out of the reader's form: named as an item
+ * the search could not decode, held before it.
+ */
+const HELD = JSON.stringify({ state: "pending", reason: "search-incomplete", search: "200000009", undecoded: ["T1"], foreign: [] });
 
 describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
   it("the sweep: each group's size and the oracle's answers over it", () => {
@@ -305,8 +303,8 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
           if ("refused" in c || c[field] !== onWire(s) || b !== H) return `read as ${JSON.stringify(c)}, bound ${JSON.stringify(b)}`;
           const ref = await exactNear.reference(payment(text), O);
           if ("refused" in ref || ref[field] !== onWire(s)) return `reference ${JSON.stringify(ref)}`;
-          const { reader, calls } = counting(readerFor(SETTLED.outcome));
-          const answer = await exactNear.status({ ...ref, transaction: REF.transaction }, reader, Q);
+          const { reader, calls } = counting(readerFor());
+          const answer = await exactNear.status(ref, reader, Q);
           return calls.length > 0 ? "ok" : `status read nothing: ${JSON.stringify(answer)}`;
         },
         onWire,
@@ -390,68 +388,48 @@ describe("NEAR account ids as near-account-id 3.0.0 reads them", () => {
     expect(r).toEqual({ ok: each.ok(), refused: each.refused(), differ: [] });
   });
 
-  it("a ref's payer and asset: status is unreadable unparseable and nearLapsed false, each with nothing read, for one that is not an account id", { timeout: SWEEP_MS }, async () => {
-    const lapsed = V.V3.lapsed.find((row: { expect: boolean }) => row.expect === true);
-    for (const field of ["payer", "asset"] as const) {
+  it("a ref's payer, asset and payee: status is unreadable unparseable, with nothing read, for one that is not an account id", { timeout: SWEEP_MS }, async () => {
+    for (const field of ["payer", "asset", "payee"] as const) {
       const r = await differences(`a ref's ${field}`, async (s) => {
-        const { reader, calls } = counting(readerFor(SETTLED.outcome));
+        const { reader, calls } = counting(readerFor());
         const answer = await exactNear.status({ ...REF, [field]: s }, reader, Q);
         if (calls.length === 0) return JSON.stringify(answer) === UNPARSEABLE ? "refused" : JSON.stringify(answer);
         return "ok";
       });
       expect([field, r]).toEqual([field, { ok: each.ok(), refused: each.refused(), differ: [] }]);
     }
-    const r = await differences("nearLapsed's payer", async (s) => {
-      const keyNonce = lapsed.keyNonce;
-      const { reader, calls } = counting<NearReader>({
-        ...readerFor(SETTLED.outcome),
-        finalHeight: async () => BigInt(lapsed.finalHeight),
-        accessKeyNonce: async () => ({ nonce: BigInt(keyNonce.nonce), blockHeight: BigInt(keyNonce.blockHeight) }),
-      });
-      const answer = await nearLapsed({ ...REF, payer: s }, reader);
-      if (calls.length === 0) return answer === false ? "refused" : `true with nothing read`;
-      return answer === true ? "ok" : "false after reading";
-    });
-    expect(r).toEqual({ ok: each.ok(), refused: each.refused(), differ: [] });
   });
 
-  it("the reader's answer: a delegate sender or receiver, or a receipt's executor, that is not an account id is unreadable", { timeout: SWEEP_MS }, async () => {
-    const recoverRef = { network: REF.network, tx: REF.transaction, option: O };
-    const edits: [string, (s: string) => Fixture][] = [
-      ["the delegate's sender", (s) => ({ ...SETTLED.outcome, delegate: { ...SETTLED.outcome.delegate, senderId: s } })],
-      ["the delegate's receiver", (s) => ({ ...SETTLED.outcome, delegate: { ...SETTLED.outcome.delegate, receiverId: s } })],
-      ["a receipt's executor", (s) => ({ ...SETTLED.outcome, receipts: [...SETTLED.outcome.receipts, { executor: s, outcome: "success" }] })],
+  it("the reader's answer: a delegate sender or receiver, or a receipt's executor, that is not an account id is a transaction the read cannot read", { timeout: SWEEP_MS }, async () => {
+    const recoverRef = { network: REF.network, tx: "T1", option: O };
+    const d = T1.delegate!;
+    const edits: [string, (s: string) => TxJson][] = [
+      ["the delegate's sender", (s) => ({ ...T1, delegate: { ...d, senderId: s } })],
+      ["the delegate's receiver", (s) => ({ ...T1, delegate: { ...d, receiverId: s } })],
+      ["a receipt's executor", (s) => ({ ...T1, receipts: [...T1.receipts, { id: "R9", executor: s, outcome: "success" }] })],
     ];
     for (const [where, edit] of edits) {
       const r = await differences(where, async (s) => {
-        const reader = readerFor(edit(s));
-        const status = await exactNear.status(REF, reader, Q);
+        const reader = readerFor(withT1(edit(s)));
+        const status = written(await exactNear.status(REF, reader, Q));
         const recovered = await exactNear.recover(recoverRef, reader);
-        const unreadable = JSON.stringify(status) === UNPARSEABLE;
-        if (unreadable && isRefusal(recovered, "near/unreadable")) return "refused";
-        return !unreadable && recovered === H ? "ok" : `${JSON.stringify(status)} ${JSON.stringify(recovered)}`;
+        if (status === HELD && isRefusal(recovered, "near/unreadable")) return "refused";
+        return status !== HELD && status !== UNPARSEABLE && recovered === H ? "ok" : `${status} ${JSON.stringify(recovered)}`;
       });
       expect([where, r]).toEqual([where, { ok: each.ok(), refused: each.refused(), differ: [] }]);
     }
   });
 
-  it("the reader's relayers: a list whose first four are not each an account id is unreadable unparseable and near/no-relayer, with nothing read", { timeout: SWEEP_MS }, async () => {
-    const recoverRef = { network: REF.network, tx: REF.transaction, option: O };
-    const r = await differences("a relayer", async (s) => {
-      const relayers = ["relayer.testnet", "relayer.near", "r2.testnet", s];
-      const { reader, calls } = counting(readerFor(SETTLED.outcome, relayers));
-      const status = await exactNear.status(REF, reader, Q);
-      const recovered = await exactNear.recover(recoverRef, reader);
-      if (calls.length === 0) {
-        const unreadable = JSON.stringify(status) === UNPARSEABLE;
-        return unreadable && isRefusal(recovered, "near/no-relayer") ? "refused" : `${JSON.stringify(status)} ${JSON.stringify(recovered)}`;
-      }
-      return JSON.stringify(status) === JSON.stringify(SETTLED.expect) && recovered === H ? "ok" : `${JSON.stringify(status)} ${JSON.stringify(recovered)}`;
+  it("the reader's change: a transaction signer that is not an account id is unreadable unparseable", { timeout: SWEEP_MS }, async () => {
+    const r = await differences("a change's transaction signer", async (s) => {
+      const ledger: LedgerJson = {
+        ...SETTLED.ledger,
+        changes: SETTLED.ledger.changes.map((c) => ({ ...c, transaction: { hash: c.transaction!.hash, signer: s } })),
+      };
+      const status = written(await exactNear.status(REF, readerFor(ledger), Q));
+      if (status === UNPARSEABLE) return "refused";
+      return isDeepStrictEqual(JSON.parse(status), SETTLED.expect.payment) ? "ok" : status;
     });
     expect(r).toEqual({ ok: each.ok(), refused: each.refused(), differ: [] });
-    // A fifth relayer is never asked, so it is not read.
-    const fifth = readerFor(SETTLED.outcome, ["relayer.testnet", "relayer.near", "r2.testnet", "r3.testnet", "Not An Id"]);
-    expect(await exactNear.status(REF, fifth, Q)).toEqual(SETTLED.expect);
-    expect(await exactNear.recover(recoverRef, fifth)).toBe(H);
   });
 });

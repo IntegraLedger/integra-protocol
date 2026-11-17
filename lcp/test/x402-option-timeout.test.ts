@@ -29,11 +29,11 @@ const ROWS = rowsOf(
     return { pairing, where: found?.[0], option: found?.[1] };
   }),
   "BINDINGS, the x402 pairings, each with an option its read offers",
-  { exact: 26 },
+  { exact: 27 },
 );
 
 describe("every x402 pairing's read offers an option's maxTimeoutSeconds only as a positive safe integer", () => {
-  it("each of the 26 x402 pairings offers an option from the vector files set to 60", () => {
+  it("each of the 27 x402 pairings offers an option from the vector files set to 60", () => {
     expect(ROWS.filter((r) => r.option === undefined).map((r) => r.pairing.id)).toEqual([]);
   });
 
@@ -46,17 +46,17 @@ describe("every x402 pairing's read offers an option's maxTimeoutSeconds only as
     expect(offered(pairing, all)).toEqual([option]);
   });
 
-  it("26 options set to 60 are offered and 104 set outside are not", () => {
+  it("27 options set to 60 are offered and 108 set outside are not", () => {
     const answers = ROWS.flatMap(({ pairing, option }) => [
       ["60", offered(pairing, [option!])],
       ...OUTSIDE.map(([what, t]) => [what, offered(pairing, [withTimeout(option!, t)])]),
     ]);
     const refused = rowsOf(answers, "each pairing's read of its option at each timeout", {
-      exact: 104,
+      exact: 108,
       keep: ["the options set outside a positive safe integer", ([what]) => what !== "60"],
       leave: ["the options set to 60", ([what]) => what === "60"],
     });
     expect(refused.every(([, a]) => isRefusal(a))).toBe(true);
-    expect(answers.filter(([what, a]) => what === "60" && Array.isArray(a) && a.length === 1)).toHaveLength(26);
+    expect(answers.filter(([what, a]) => what === "60" && Array.isArray(a) && a.length === 1)).toHaveLength(27);
   });
 });

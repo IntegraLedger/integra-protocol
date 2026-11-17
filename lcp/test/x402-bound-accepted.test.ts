@@ -133,10 +133,10 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 28512;
-const NOT_OFFERED = 732698;
-const OFFERED_OWN_BINDS = 1233;
-const OFFERED_COUNTS = [1102, 131, 1027];
+const PRESENTED = 29391;
+const NOT_OFFERED = 784562;
+const OFFERED_OWN_BINDS = 1263;
+const OFFERED_COUNTS = [1132, 131, 1054];
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>
@@ -202,9 +202,9 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
     }
   }, 0);
 
-  it("each presentation is answered by each of the 26 x402 pairings", () => {
-    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 26 });
-    expect(answers.length).toBe(PRESENTATIONS.length * 26);
+  it("each presentation is answered by each of the 27 x402 pairings", () => {
+    rowsOf(X402, "BINDINGS, the x402 pairings", { exact: 27 });
+    expect(answers.length).toBe(PRESENTATIONS.length * 27);
   });
 
   it("under an option its read does not offer, each pairing's bound refuses the payment with the code its advertise gives", () => {
@@ -242,8 +242,8 @@ describe("each x402 pairing's bound holds accepted to the filter its read applie
       compared(a, "bound", a.bound);
     }
     expect([...new Set(outside)].sort()).toEqual([]);
-    // Cardano's read offers an option with its `payTo` removed.
-    expect([...payeeRefused].sort()).toEqual(["x402/exact/cardano"]);
+    // Cardano's two reads offer an option with its `payTo` removed.
+    expect([...payeeRefused].sort()).toEqual(["x402/exact/cardano", "x402/exact/cardano/lock"]);
     rowsOf(offered, "every pairing's answer under an option its read offers, for a payment its bound binds under its own option", { exact: OFFERED_OWN_BINDS });
     expect([bindings, offered.length - bindings, keyed]).toEqual(OFFERED_COUNTS);
     const listed = Object.entries(SIGNED_AGAINST_THE_OPTION).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
@@ -283,7 +283,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 303 },
+  { exact: 304 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {
