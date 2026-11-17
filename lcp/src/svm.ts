@@ -22,27 +22,40 @@ export {
   findPda,
   isKey,
   openInstructionData,
-  svmChannelStatus,
   svmCarrier,
   svmDigest,
-  svmLocate,
-  svmNonceMoved,
-  svmRecover,
-  svmStatus,
 } from "./internal/svm.js";
 export type {
   ChannelBuildInput,
   ChannelIx,
-  ChannelStatus,
   SolanaNetwork,
   SvmBuildInput,
-  SvmLanded,
   SvmNonce,
+  SvmTx,
+  SvmV1Header,
+} from "./internal/svm.js";
+export {
+  SVM_MAX_CANDIDATES,
+  SVM_SEARCH_SHOWN,
+  svmChannelStatus,
+  svmOpeningStatus,
+  svmRecover,
+  svmStatus,
+} from "./internal/svm-read.js";
+export type {
+  ChannelStatus,
+  SvmCommitment,
+  SvmCursor,
+  SvmInner,
+  SvmLanded,
+  SvmMark,
+  SvmQuery,
   SvmReader,
   SvmRef,
+  SvmSignature,
   SvmStatus,
-  SvmTx,
-} from "./internal/svm.js";
+  SvmTokenBalance,
+} from "./internal/svm-read.js";
 export {
   OPEN_DISCRIMINATOR,
   SEAL_DISCRIMINATOR,

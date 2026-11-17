@@ -77,12 +77,15 @@ console.log(channels.sort().join("\n"));
 ```
 
 ```text
-9
+12
 mpp/session/evm
 mpp/session/hedera/stock
 mpp/session/lightning
+mpp/session/solana/memo
+mpp/session/solana/stock
 mpp/session/tempo
 mpp/session/xrpl
+mpp/subscription/solana
 mpp/subscription/stripe
 mpp/subscription/tempo
 x402/batch-settlement/eip155

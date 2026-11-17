@@ -101,6 +101,7 @@ describe("the buyer rows B2 and B6 of every pairing's vector file", () => {
       "mpp/charge/evm/transaction",
       "mpp/charge/stripe",
       "mpp/session/hedera/stock",
+      "mpp/session/solana/stock",
       "mpp/subscription/stripe",
       "ucp/booking/unsigned",
       "ucp/checkout/unsigned",

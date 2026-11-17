@@ -21,8 +21,8 @@ type PairingRow = { pairing: string; broadcaster: Broadcaster | null; source: st
 type KindRow = { case: string; pairing: string; presented: unknown; expect: Broadcaster; source: string };
 type RefusalRow = { case: string; pairing: string; presented: unknown; expectRefusal: string; bound?: string };
 
-const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 64 });
-const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 33 });
+const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 68 });
+const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 36 });
 const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 23 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
 const answerOf = (id: string): Broadcaster | null => PAIRINGS.find((r) => r.pairing === id)!.broadcaster;
@@ -57,6 +57,10 @@ const MPP_IDS: { readonly [id in MppPairingId]: true } = {
   "mpp/charge/lightning": true,
   "mpp/session/lightning": true,
   "mpp/charge/solana": true,
+  "mpp/charge/solana/unsponsored": true,
+  "mpp/subscription/solana": true,
+  "mpp/session/solana/memo": true,
+  "mpp/session/solana/stock": true,
   "mpp/charge/xrpl": true,
   "mpp/charge/nearintents": true,
   "mpp/session/xrpl": true,
@@ -98,6 +102,7 @@ const BINDS_NOTHING: Readonly<Record<string, string>> = {
   "mpp/charge/card": "mpp/no-signed-place",
   "mpp/charge/stripe": "mpp/no-signed-place",
   "mpp/subscription/stripe": "mpp/no-signed-place",
+  "mpp/session/solana/stock": "mpp/no-signed-place",
   "mpp/session/hedera/stock": "mpp/no-signed-place",
   "ack/payment-request": "ack/no-signed-place",
   "acp/checkout/undelegated": "acp/not-buyer-signed",

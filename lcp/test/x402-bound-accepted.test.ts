@@ -45,15 +45,22 @@ const SIGNED_AGAINST_THE_OPTION: Readonly<Record<string, Readonly<Record<string,
   "x402/batch-settlement/solana": {
     "svm/carrier-mismatch": "the opening's memo is the option's extra.memo",
     "svm/channel-id-mismatch": "the opening's channel is the one the option's extra.feePayer derives",
+    "svm/version-not-admitted": "the signed message's version is one the option's extra.transactionVersions admits, absent [0]",
   },
-  "x402/exact/solana": { "svm/carrier-mismatch": "the transaction's memo is the option's extra.memo" },
+  "x402/exact/solana": {
+    "svm/carrier-mismatch": "the transaction's memo is the option's extra.memo",
+    "svm/version-not-admitted": "the signed message's version is one the option's extra.transactionVersions admits, absent [0]",
+  },
   "x402/exact/starknet": { "starknet/caller-not-fee-payer": "the signed Caller is the option's extra.feePayer" },
   "x402/exact/tvm": { "tvm/carrier-mismatch": "the forward payload is the option's extra.forwardPayload" },
   "x402/exact/xrpl": {
     "xrpl/carrier-not-lcp": "H is the option's extra.invoiceId, which the signed InvoiceID carries",
     "xrpl/carrier-mismatch": "the signed InvoiceID is the digest of the option's extra.invoiceId",
   },
-  "x402/upto/solana": { "svm/carrier-mismatch": "the opening's memo is the option's extra.memo" },
+  "x402/upto/solana": {
+    "svm/carrier-mismatch": "the opening's memo is the option's extra.memo",
+    "svm/version-not-admitted": "the signed message's version is one the option's extra.transactionVersions admits, absent [0]",
+  },
 };
 
 const set = (o: PaymentRequirements, key: string, value: unknown): PaymentRequirements => {
@@ -134,10 +141,10 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 29520;
-const NOT_OFFERED = 787914;
-const OFFERED_OWN_BINDS = 1268;
-const OFFERED_COUNTS = [1136, 132, 1058];
+const PRESENTED = 30472;
+const NOT_OFFERED = 813370;
+const OFFERED_OWN_BINDS = 1301;
+const OFFERED_COUNTS = [1140, 161, 1062];
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>
@@ -284,7 +291,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundAccepted.rows, `${f} boundAccepted.rows`).map((row, i) => ({ file: f, i, row, payment: at(v, row.payment) as PaymentPayload }));
   }),
   "every x402 vector file's boundAccepted rows",
-  { exact: 304 },
+  { exact: 309 },
 );
 
 describe("the x402 vector files' boundAccepted rows", () => {

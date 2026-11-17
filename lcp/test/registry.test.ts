@@ -58,6 +58,7 @@ import {
   chargeCard,
   chargeNearIntents,
   chargeSolana,
+  chargeSolanaUnsponsored,
   chargeStripe,
   chargeUsdcEvm,
   chargeUsdcGateway,
@@ -71,6 +72,9 @@ import {
   sessionEvm,
   sessionTempo,
   sessionXrpl,
+  sessionSolanaMemo,
+  sessionSolanaStock,
+  subscriptionSolana,
   sessionHederaStock,
   type HederaStockReader,
   type HederaStockRef,
@@ -169,6 +173,10 @@ const OWN = {
   "mpp/charge/lightning": chargeLightning satisfies Entry<"mpp/charge/lightning", MppCredential, LnRef, never, Own<typeof chargeLightning>>,
   "mpp/session/lightning": sessionLightning satisfies Entry<"mpp/session/lightning", MppCredential, LnRef, never, Own<typeof sessionLightning>>,
   "mpp/charge/solana": chargeSolana satisfies Entry<"mpp/charge/solana", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof chargeSolana>>,
+  "mpp/charge/solana/unsponsored": chargeSolanaUnsponsored satisfies Entry<"mpp/charge/solana/unsponsored", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof chargeSolanaUnsponsored>>,
+  "mpp/session/solana/memo": sessionSolanaMemo satisfies Entry<"mpp/session/solana/memo", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof sessionSolanaMemo>>,
+  "mpp/session/solana/stock": sessionSolanaStock satisfies Entry<"mpp/session/solana/stock", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof sessionSolanaStock>>,
+  "mpp/subscription/solana": subscriptionSolana satisfies Entry<"mpp/subscription/solana", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof subscriptionSolana>>,
   "mpp/charge/xrpl": chargeXrpl satisfies Entry<"mpp/charge/xrpl", MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof chargeXrpl>>,
   "mpp/charge/nearintents": chargeNearIntents satisfies Entry<"mpp/charge/nearintents", MppCredential, NearIntentsRef, never, Own<typeof chargeNearIntents>>,
   "mpp/session/xrpl": sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "expect" | "fromLedger">, XrplReader, Own<typeof sessionXrpl>>,
@@ -352,7 +360,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 64 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 68 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.
@@ -527,7 +535,7 @@ describe("the registry's type test", () => {
 
   it("CARRIER is the table the MPP entries' carrier datum gives, and the entries of one intent and method agree", () => {
     const table: { [intent: string]: { [method: string]: readonly string[] | null } } = {};
-    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 21 });
+    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 25 });
     for (const b of mpp) {
       const [, intent, method] = b.id.split("/") as [string, string, string];
       if (method === "usdc") continue;

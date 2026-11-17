@@ -187,6 +187,26 @@
       "source": "by credential type: see kinds"
     },
     {
+      "pairing": "mpp/charge/solana/unsponsored",
+      "broadcaster": null,
+      "source": "by credential type: see kinds"
+    },
+    {
+      "pairing": "mpp/subscription/solana",
+      "broadcaster": "payee",
+      "source": "@solana/mpp 0.7.0 src/client/Subscription.ts:230: transfer_subscription takes the challenge's puller as a signer, the seller's key, so the seller's server co-signs and submits the activation"
+    },
+    {
+      "pairing": "mpp/session/solana/memo",
+      "broadcaster": "payee",
+      "source": "@solana/mpp 0.7.0 src/client/PaymentChannels.ts:104-173 and src/server/Session.ts:472-485: the open's fee payer is the operator, and the server, set to openTxSubmitter server, co-signs and submits it"
+    },
+    {
+      "pairing": "mpp/session/solana/stock",
+      "broadcaster": "payer",
+      "source": "@solana/mpp 0.7.0 src/server/Session.ts:509-520: in push mode the client has broadcast the open and the server reads its signature"
+    },
+    {
       "pairing": "mpp/charge/xrpl",
       "broadcaster": null,
       "source": "by credential type: see kinds"
@@ -452,6 +472,71 @@
           "method": "solana",
           "intent": "charge",
           "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsImZlZVBheWVyIjp0cnVlLCJmZWVQYXllcktleSI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "type": "signature",
+          "signature": "5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+        }
+      },
+      "expect": "payer",
+      "source": "draft-solana-charge-00 at tempoxyz/mpp-specs 08e7dd87: \"the client has already broadcast the transaction to the Solana network\""
+    },
+    {
+      "case": "mpp/charge/solana/unsponsored: a transaction credential",
+      "pairing": "mpp/charge/solana/unsponsored",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "solana",
+          "intent": "charge",
+          "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm5ldHdvcmsiOiJkZXZuZXQiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "type": "transaction",
+          "transaction": "ASyLTiwjJLI8VniUfvdQ6tycLndH43Evoff0LLjM+KJcK5bJ9NqyzxQnsfnCXvI+BrJ3l7LjivAphwAYGpwGBACAAQAEB4qI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4jtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAJAwEAAAAAAAAABAAFAkANAwAGBAIDAQAKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+        }
+      },
+      "expect": "payee",
+      "source": "draft-solana-charge-00 at tempoxyz/mpp-specs 08e7dd87: pull mode: the server broadcasts the transaction the client signed"
+    },
+    {
+      "case": "mpp/charge/solana/unsponsored: a bundle credential",
+      "pairing": "mpp/charge/solana/unsponsored",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "solana",
+          "intent": "charge",
+          "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm5ldHdvcmsiOiJkZXZuZXQiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "type": "bundle",
+          "transactions": [
+            "ASyLTiwjJLI8VniUfvdQ6tycLndH43Evoff0LLjM+KJcK5bJ9NqyzxQnsfnCXvI+BrJ3l7LjivAphwAYGpwGBACAAQAEB4qI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4jtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAJAwEAAAAAAAAABAAFAkANAwAGBAIDAQAKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+          ]
+        }
+      },
+      "expect": "payee",
+      "source": "draft-solana-charge-00 at tempoxyz/mpp-specs 08e7dd87: \"The server submits the transactions in array order\""
+    },
+    {
+      "case": "mpp/charge/solana/unsponsored: a signature credential",
+      "pairing": "mpp/charge/solana/unsponsored",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "solana",
+          "intent": "charge",
+          "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm5ldHdvcmsiOiJkZXZuZXQiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
           "expires": "2026-09-21T14:14:20Z",
           "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
           "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"

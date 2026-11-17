@@ -250,7 +250,7 @@ settle on a readable rail add `reference`, `status` and, where the rail keeps H,
 Generated from `BINDINGS` by `scripts/docs-reference.mjs`, which CI runs to check this list against the registry.
 
 <!-- pairings:start -->
-64 pairings on 7 surfaces.
+68 pairings on 7 surfaces.
 
 | Surface | Pairings |
 |---|---|
@@ -258,7 +258,7 @@ Generated from `BINDINGS` by `scripts/docs-reference.mjs`, which CI runs to chec
 | `acp` (2) | `acp/checkout/delegated`, `acp/checkout/undelegated` |
 | `ap2` (2) | `ap2/checkout-mandate`, `ap2/checkout-mandate/x402` |
 | `card` (6) | `card/mastercard-agent-pay`, `card/mastercard-vi/autonomous`, `card/mastercard-vi/immediate`, `card/seller-reference`, `card/visa-tap`, `card/visa-vic` |
-| `mpp` (21) | `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/lightning`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/hedera/stock`, `mpp/session/lightning`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/stripe`, `mpp/subscription/tempo` |
+| `mpp` (25) | `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/lightning`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/solana/unsponsored`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/hedera/stock`, `mpp/session/lightning`, `mpp/session/solana/memo`, `mpp/session/solana/stock`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/solana`, `mpp/subscription/stripe`, `mpp/subscription/tempo` |
 | `ucp` (5) | `ucp/booking/ap2-mandate`, `ucp/booking/unsigned`, `ucp/checkout/agent-signed`, `ucp/checkout/ap2-mandate`, `ucp/checkout/unsigned` |
 | `x402` (27) | `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/cloudflare`, `x402/batch-settlement/eip155`, `x402/batch-settlement/solana`, `x402/exact/algorand`, `x402/exact/aptos`, `x402/exact/cardano`, `x402/exact/cardano/lock`, `x402/exact/casper`, `x402/exact/ccd`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/permit2`, `x402/exact/hedera`, `x402/exact/hedera/transfer-executor`, `x402/exact/near`, `x402/exact/polkadot/lcp-assets-remark`, `x402/exact/solana`, `x402/exact/starknet`, `x402/exact/sui`, `x402/exact/tron/lcp-trc20-memo`, `x402/exact/tvm`, `x402/exact/xrpl`, `x402/upto/eip155/permit2`, `x402/upto/solana` |
 <!-- pairings:end -->

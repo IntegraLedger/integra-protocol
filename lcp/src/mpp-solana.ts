@@ -1,35 +1,40 @@
 /**
- * `mpp/charge/solana`: the ATR hash in LCP string form as the request's `externalId`, which the payer signs as the one
- * Memo instruction of the transaction whose data parses as an LCP string. Other Memo instructions, such as split
- * labels, are not read.
+ * `mpp/charge/solana` and `mpp/charge/solana/unsponsored`: the ATR hash in LCP string form as the request's
+ * `externalId`, which the payer signs as the one Memo instruction of the transaction whose data parses as an LCP
+ * string. Other Memo instructions, such as split labels, are not read. The first id is a challenge whose
+ * `methodDetails.feePayer` is `true`, the second any other.
  */
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { normalHash, notFoundPoint } from "./fields.js";
 import {
-  COMPUTE_BUDGET,
   MEMO_V3,
   MEMO_V4,
   SYSTEM,
   buildSvmMessage,
+  builtVersion,
   canonicalCarrier,
-  compileV0,
+  compileBudgeted,
+  MPP_V1,
   decodeSvmTx,
   isKey,
   isSignature,
   keyBytes,
-  svmReference,
-  svmStatus,
   signedWire,
   staticNonce,
-  unbuiltVersion,
+  versionNotAdmitted,
   wireOf,
+  type SvmV1Header,
   type SolanaNetwork,
+  type SvmTx,
+} from "./internal/svm.js";
+import {
+  mppSvmReference,
+  svmStatus,
+  type SvmQuery,
   type SvmReader,
   type SvmRef,
-  type SvmTx,
-  type SvmQuery,
   type SvmStatus,
-} from "./internal/svm.js";
+} from "./internal/svm-read.js";
 import {
   byType,
   chosenFor,
@@ -62,9 +67,13 @@ import type { RecoverInput } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/charge/solana" as const;
+const UNSPONSORED = "mpp/charge/solana/unsponsored" as const;
+
+/** The ids of the Solana charges. */
+type ChargeId = typeof ID | typeof UNSPONSORED | "mpp/charge/usdc/solana";
 
 /** What differs between the Solana charges of MPP's `solana` method and of `usdc`'s Solana profile. */
-export interface SolanaCharge<Id extends "mpp/charge/solana" | "mpp/charge/usdc/solana"> {
+export interface SolanaCharge<Id extends ChargeId> {
   id: Id;
   /** The Solana details object of a challenge. */
   details(c: Checked | Echoed): { [k: string]: Json };
@@ -83,6 +92,7 @@ const SOLANA: SolanaCharge<typeof ID> = {
   occupied: () => refusal("svm/carrier-occupied"),
   transactionOnly: false,
 };
+const SOLANA_UNSPONSORED: SolanaCharge<typeof UNSPONSORED> = { ...SOLANA, id: UNSPONSORED };
 const MAX_BUNDLE = 8;
 const MEMO_V3_KEY = keyBytes(MEMO_V3)!;
 const MEMO_V4_KEY = keyBytes(MEMO_V4)!;
@@ -117,7 +127,7 @@ function sameKey(a: Uint8Array | undefined, b: Uint8Array): boolean {
  * instructions whose data is not an LCP string are not read. None is `svm/no-carrier`; more than one `svm/memo-count`.
  * The one found must be `toLcpString(h)` exactly, in lowercase hex, else `svm/carrier-not-canonical`.
  */
-function mppSvmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
+export function mppSvmCarrier(tx: SvmTx): { h: AtrHash; memo: string } | Refusal {
   const found: { h: AtrHash; memo: string }[] = [];
   for (const ix of tx.instructions) {
     const program = tx.keys[ix.program];
@@ -167,7 +177,7 @@ function presentedTx(credential: MppCredential, payload: { [k: string]: Json }, 
  * name the challenge's H.
  */
 function bindingOf(
-  spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
+  spec: SolanaCharge<ChargeId>,
   credential: MppCredential,
 ): { h: AtrHash; checked: Echoed; tx: SvmTx } | Refusal {
   const e = echoedFor(credential, spec.id);
@@ -177,6 +187,8 @@ function bindingOf(
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
+  const version = versionNotAdmitted(spec.details(e.checked), tx, "mpp");
+  if (version !== null) return version;
   const carrier = mppSvmCarrier(tx);
   if (isRefusal(carrier)) return carrier;
   if (carrier.memo !== e.checked.request["externalId"]) return refusal("svm/carrier-mismatch");
@@ -185,7 +197,7 @@ function bindingOf(
 }
 
 /** H from the echoed challenge, once the signed LCP memo equals the request's `externalId` and names that H. */
-async function bound(spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">, input: unknown): Promise<AtrHash | Refusal> {
+async function bound(spec: SolanaCharge<ChargeId>, input: unknown): Promise<AtrHash | Refusal> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
   const b = bindingOf(spec, credential);
@@ -197,10 +209,10 @@ async function bound(spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">, i
  * `option`, the challenge the payment answers (`mppPayee`).
  */
 async function reference(
-  spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
+  spec: SolanaCharge<ChargeId>,
   input: unknown,
   option: MppChallenge,
-): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
+): Promise<SvmRef | Refusal> {
   const credential = credentialOf(input);
   if (isRefusal(credential)) return credential;
   const b = bindingOf(spec, credential);
@@ -208,14 +220,10 @@ async function reference(
   const network = solanaNetworkOf(spec.details(b.checked), spec.networkRequired);
   if (network === null) return refusal("svm/network-undeclared");
   if (typeof network !== "string") return network;
-  const ref = await svmReference(network, b.tx);
+  const ref = await mppSvmReference(credential.challenge, network, b.tx, b.h, option);
   if (isRefusal(ref)) return ref;
-  const payee = mppPayee(option);
-  if (isRefusal(payee)) return payee;
   const signature = credential.payload["signature"];
-  return credential.payload["type"] === "signature" && typeof signature === "string"
-    ? { ...ref, transaction: signature, payee }
-    : { ...ref, payee };
+  return credential.payload["type"] === "signature" && typeof signature === "string" ? { ...ref, transaction: signature } : ref;
 }
 
 /**
@@ -228,7 +236,7 @@ async function reference(
  * replaced; when that read holds it without an error, the wire it gives is added.
  */
 async function fetchPresented(
-  spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
+  spec: SolanaCharge<ChargeId>,
   credential: MppCredential,
   reader: SvmReader,
 ): Promise<(MppCredential & { [FETCHED]?: { transaction: string } }) | Refusal> {
@@ -279,19 +287,19 @@ async function readLanded(
 }
 
 /** A base58 Ed25519 signature's text: 64 to 88 base58 characters. */
-function isSignatureText(s: unknown): s is string {
+export function isSignatureText(s: unknown): s is string {
   return typeof s === "string" && /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(s);
 }
 
 /**
- * Zero-party: the one LCP memo of the landed transaction, read by `tx`, its signature, at `finalized`, then
- * `confirmed`; `option`, the challenge the ATR's binding slot holds, must be an object, and no member of it is read. A
- * transaction that landed with an error is `svm/err` when the read at `finalized` holds it, and `svm/not-final` when
- * only the read at `confirmed` holds it. A landed wire that does not decode is `svm/unreadable`, an answer out of the
+ * Zero-party: the one LCP memo of the landed transaction, read by `tx`, its signature, at `finalized`; `option`, the
+ * challenge the ATR's binding slot holds, must be an object, and no member of it is read. A transaction that landed with
+ * an error at `finalized` is `svm/err`; one only the read at `confirmed` holds, with an error or none, is
+ * `svm/not-final`, a read to repeat. A landed wire that does not decode is `svm/unreadable`, an answer out of the
  * reader's documented form. An input or option that is not an object, and a `tx` that is not a signature, base58 of 64
  * bytes, are `svm/wrong-reader`, with nothing read. One or two calls.
  */
-async function recover(input: RecoverInput<SolanaNetwork, MppChallenge>, reader: SvmReader): Promise<AtrHash | Refusal> {
+export async function recover(input: RecoverInput<SolanaNetwork, MppChallenge>, reader: SvmReader): Promise<AtrHash | Refusal> {
   if (!isObject(input) || !isObject(input.option)) return refusal("svm/wrong-reader");
   if (!isObject(reader) || reader.network !== input.network) return refusal("svm/wrong-reader");
   if (!isSignature(input.tx)) return refusal("svm/wrong-reader");
@@ -303,7 +311,8 @@ async function recover(input: RecoverInput<SolanaNetwork, MppChallenge>, reader:
   }
   if (read === "unreadable") return refusal("svm/unreadable");
   if (read === "not-found") return refusal("svm/not-found");
-  if (read.failed) return finalized ? refusal("svm/err") : refusal("svm/not-final");
+  if (!finalized) return refusal("svm/not-final");
+  if (read.failed) return refusal("svm/err");
   const tx = decodeSvmTx(read.wire);
   if (isRefusal(tx)) return refusal("svm/unreadable");
   const c = mppSvmCarrier(tx);
@@ -324,8 +333,9 @@ function u32le(v: number): Uint8Array {
 
 /**
  * The versioned message for a native SOL charge: `SetComputeUnitLimit`, `SetComputeUnitPrice`, System `transfer` of
- * `lamports` from the payer to the recipient, then one v3 Memo instruction carrying `memo`'s UTF-8 bytes. A memo that is
- * not a well-formed string is `svm/input-malformed`, with nothing built.
+ * `lamports` from the payer to the recipient, then one v3 Memo instruction carrying `memo`'s UTF-8 bytes, as a v0
+ * message; with `v1`, the same without the two Compute Budget instructions, as a version-1 message whose header carries
+ * the budget. A memo that is not a well-formed string is `svm/input-malformed`, with nothing built.
  */
 async function buildSolMessage(i: {
   feePayer: string;
@@ -336,6 +346,7 @@ async function buildSolMessage(i: {
   memo: string;
   computeUnitLimit: number;
   computeUnitPrice: bigint;
+  v1?: SvmV1Header;
 }): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   if (typeof i.memo !== "string" || !i.memo.isWellFormed()) return refusal("svm/input-malformed");
   let kit: typeof import("@solana/kit");
@@ -348,9 +359,7 @@ async function buildSolMessage(i: {
   const data = new Uint8Array(12);
   data.set(u32le(2), 0);
   data.set(u64le(i.lamports), 4);
-  return compileV0(i.feePayer, i.recentBlockhash, [
-    { programAddress: address(COMPUTE_BUDGET), data: Uint8Array.of(2, ...u32le(i.computeUnitLimit)) },
-    { programAddress: address(COMPUTE_BUDGET), data: Uint8Array.of(3, ...u64le(i.computeUnitPrice)) },
+  return compileBudgeted(i.feePayer, i.recentBlockhash, [
     {
       programAddress: address(SYSTEM),
       accounts: [
@@ -360,7 +369,7 @@ async function buildSolMessage(i: {
       data,
     },
     { programAddress: address(MEMO_V3), data: new TextEncoder().encode(i.memo) },
-  ]);
+  ], i, i.v1);
 }
 
 /**
@@ -369,12 +378,13 @@ async function buildSolMessage(i: {
  * transfers are not built: the pairing's filter refuses a challenge that asks for them (`svm/input-malformed`). Every
  * input's form is checked before @solana/kit writes the message, the blockhash's as a key (base58 of 32 bytes, as
  * @solana/kit's `blockhash` reads it) included, so without the kit a choice is `svm/peer-missing` only once every one
- * holds. The checks run in order: the choice, then the challenge, then the Solana details' `transactionVersions`
- * (`unbuiltVersion`: a list that is present and does not admit version 0, the one version this builds, is
- * `svm/version-not-built`, with no message to sign), then the request's `externalId` against H, then the inputs.
+ * holds. The message is version 1 where the Solana details' `transactionVersions` holds 1, its header as pay-kit
+ * 86400da's charge client writes it (`MPP_V1`), else v0 (`builtVersion`); a field that admits neither is refused by
+ * the challenge's checks (`svm/input-malformed`). The checks run in order: the choice, then the challenge, then the
+ * request's `externalId` against H, then the inputs.
  */
 async function build(
-  spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
+  spec: SolanaCharge<ChargeId>,
   choice: SolanaChargeChoice,
   h: AtrHash,
 ): Promise<SolanaChargeUnsigned | Refusal> {
@@ -383,8 +393,9 @@ async function build(
   if (isRefusal(checked)) return checked;
   const r = checked.request;
   const d = spec.details(checked);
-  const version = unbuiltVersion(d);
-  if (version !== null) return version;
+  const version = builtVersion(d);
+  if (version === null) return refusal("svm/input-malformed");
+  const v1 = version === 1 ? { v1: MPP_V1 } : {};
   const memo = toLcpString(h);
   if (r["externalId"] !== memo) return refusal("svm/carrier-mismatch");
   if (keyBytes(choice.payer) === null) return refusal("svm/input-malformed");
@@ -411,6 +422,7 @@ async function build(
       memo,
       computeUnitLimit,
       computeUnitPrice,
+      ...v1,
     });
   } else {
     const decimals = typeof d["decimals"] === "number" ? d["decimals"] : choice.decimals;
@@ -428,6 +440,7 @@ async function build(
       memo,
       computeUnitLimit,
       computeUnitPrice,
+      ...v1,
     });
   }
   if (isRefusal(message)) return message;
@@ -445,7 +458,7 @@ async function build(
 
 /** The placement: MPP's `place`, then `externalId` set to H's LCP string. */
 function advertise(
-  spec: SolanaCharge<typeof ID | "mpp/charge/usdc/solana">,
+  spec: SolanaCharge<ChargeId>,
   doc: readonly MppChallenge[],
   h: AtrHash,
   link: string,
@@ -483,12 +496,15 @@ const pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
 });
 
+/** `mpp/charge/usdc/solana`'s own profile, the `usdc` method's. */
+const usdcPattern: LcpPattern = deepFreeze({ ...pattern, profile: "mpp/charge/usdc/solana" });
+
 /** The members of the Solana charge pairing `spec` describes, pull mode only. */
-function pullPairing<Id extends typeof ID | "mpp/charge/usdc/solana">(spec: SolanaCharge<Id>) {
+function pullPairing<Id extends ChargeId>(spec: SolanaCharge<Id>) {
   return {
     id: spec.id,
     data: SOLANA_DATA[spec.id],
-    pattern,
+    pattern: spec.id === "mpp/charge/usdc/solana" ? usdcPattern : pattern,
     claims: true as boolean,
     unplaced,
     tie,
@@ -505,35 +521,57 @@ function pullPairing<Id extends typeof ID | "mpp/charge/usdc/solana">(spec: Sola
 }
 
 /** A Solana charge pairing that accepts only `type="transaction"` credentials, so it reads no landed payment. */
-export function solanaChargePairing<Id extends typeof ID | "mpp/charge/usdc/solana">(spec: Omit<SolanaCharge<Id>, "transactionOnly">) {
+export function solanaChargePairing<Id extends "mpp/charge/usdc/solana">(spec: Omit<SolanaCharge<Id>, "transactionOnly">) {
   return Object.freeze(pullPairing({ ...spec, transactionOnly: true }));
 }
 
 /**
- * `mpp/charge/solana`. `broadcaster` answers by the credential's `type`, as draft-solana-charge-00 has it:
- * `transaction` and `bundle`, `"payee"`, signed transactions the seller's server broadcasts (a bundle's in order),
- * naming the signature to `status`; `signature`, `"payer"`, a transaction the payer broadcast, which `fetchPresented`
- * reads, then `status`. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it.
+ * A Solana charge of the `solana` method. `broadcaster` answers by the credential's `type`, as draft-solana-charge-00
+ * has it: `transaction` and `bundle`, `"payee"`, signed transactions the seller's server broadcasts (a bundle's in
+ * order), naming the signature to `status`; `signature`, `"payer"`, a transaction the payer broadcast, which
+ * `fetchPresented` reads, then `status`. A credential of any other type gets `mpp/credential-type`, as `bound` refuses
+ * it.
  */
-export const chargeSolana = Object.freeze({
-  ...pullPairing(SOLANA),
-  broadcaster: mppBroadcaster(byType({ transaction: "payee", bundle: "payee", signature: "payer" })),
-  fetchPresented: (credential: MppCredential, reader: SvmReader) => fetchPresented(SOLANA, credential, reader),
-  landedTx: (presented: unknown): string | undefined => {
-    const signature = pushedField(presented, "signature", "signature");
-    return isSignatureText(signature) ? signature : undefined;
-  },
-}) satisfies Entry<
+function stockCharge<Id extends typeof ID | typeof UNSPONSORED>(spec: SolanaCharge<Id>) {
+  return {
+    ...pullPairing(spec),
+    broadcaster: mppBroadcaster(byType({ transaction: "payee", bundle: "payee", signature: "payer" })),
+    fetchPresented: (credential: MppCredential, reader: SvmReader) => fetchPresented(spec, credential, reader),
+    landedTx: (presented: unknown): string | undefined => {
+      const signature = pushedField(presented, "signature", "signature");
+      return isSignatureText(signature) ? signature : undefined;
+    },
+  };
+}
+
+/** The family types of the two charges of the `solana` method. */
+type StockChargeForms = MppForms & {
+  choice: SolanaChargeChoice;
+  unsigned: SolanaChargeUnsigned;
+  landed: object;
+  network: SolanaNetwork;
+  query: SvmQuery;
+  answer: SvmStatus;
+};
+
+/**
+ * `mpp/charge/solana`: a challenge whose `methodDetails.feePayer` is `true`, under which the stock client refuses to
+ * broadcast from `@solana/mpp` 0.6.0. A `signature` credential, which an older client pushes, is a payment that
+ * already moved.
+ */
+export const chargeSolana = Object.freeze(stockCharge(SOLANA)) satisfies Entry<
   typeof ID,
   MppCredential,
-  Omit<SvmRef, "fromSlot">,
+  SvmRef,
   SvmReader,
-  MppForms & {
-    choice: SolanaChargeChoice;
-    unsigned: SolanaChargeUnsigned;
-    landed: { fromSlot: string; transaction: string };
-    network: SolanaNetwork;
-    query: SvmQuery;
-    answer: SvmStatus;
-  }
+  StockChargeForms
+>;
+
+/** `mpp/charge/solana/unsponsored`: a challenge of the `solana` method that does not set `feePayer: true`. */
+export const chargeSolanaUnsponsored = Object.freeze(stockCharge(SOLANA_UNSPONSORED)) satisfies Entry<
+  typeof UNSPONSORED,
+  MppCredential,
+  SvmRef,
+  SvmReader,
+  StockChargeForms
 >;

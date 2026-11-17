@@ -302,9 +302,9 @@ describe("mpp/charge/usdc/solana", () => {
     expect(chargeUsdcSolana).not.toHaveProperty("landedTx");
   });
 
-  it("its record is the Solana charge's", () => {
+  it("its record is the Solana charge's, under its own profile", () => {
     expect(SOL.patternAs).toBe(chargeSolana.id);
-    expect(chargeUsdcSolana.pattern).toEqual(chargeSolana.pattern);
+    expect(chargeUsdcSolana.pattern).toEqual({ ...chargeSolana.pattern, profile: SOL.profile });
     expect(chargeUsdcSolana.data.proves).toBe(chargeSolana.data.proves);
     expect(chargeUsdcSolana.claims).toBe(chargeSolana.claims);
   });

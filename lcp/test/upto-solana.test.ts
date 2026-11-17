@@ -34,7 +34,7 @@ const landed = (wire: Uint8Array, err: unknown = null): SvmLanded => ({ wire, er
 
 function readerFor(at: "finalized" | "confirmed" | null | "reader-error", l: SvmLanded, txid: string): SvmReader {
   return {
-    network: V.EU5.ref.network,
+    network: V.EU5.network,
     transaction: async (sig, commitment) => {
       if (at === "reader-error") throw new ReaderError("transport");
       if (sig !== txid || at === null) return { notFound: true, slot: null };
@@ -43,6 +43,7 @@ function readerFor(at: "finalized" | "confirmed" | null | "reader-error", l: Svm
     },
     signatures: async () => [],
     blockhashValid: async () => ({ valid: true, slot: 0n }),
+    slot: async () => 0n,
     firstAvailableBlock: async () => 0n,
     account: async () => {
       throw new Error("this reference names no nonce account");
@@ -255,21 +256,6 @@ describe("x402-upto-solana.json", () => {
     expect("refused" in r).toBe(false);
   });
 
-  it("EU5: status, recover, and a transaction with no channel instruction", async () => {
-    const wire = b64(V.EU5.landedWireBase64);
-    const ref = { ...V.EU5.ref, fromSlot: "0" } as SvmRef & { transaction: string };
-    for (const row of rowsOf(V.EU5.rows, "x402-upto-solana.json EU5.rows")) {
-      const answer = await uptoSvm.status(ref, readerFor(row.at, landed(wire, row.err ?? null), V.EU5.txid), row.query);
-      expect(answer, JSON.stringify(row)).toEqual(row.expect);
-    }
-    const input = { network: ref.network, tx: ref.transaction, option: V.EU4.accepted as PaymentRequirements };
-    expect(await uptoSvm.recover(input, readerFor("finalized", landed(wire), V.EU5.txid))).toBe(V.EU5.expectRecover);
-    const nc = V.EU5.noChannel;
-    const r = readerFor("finalized", landed(b64(nc.landedWireBase64)), "nc");
-    const query = { act: "payment", finality: "finalized" } as const;
-    expect(await uptoSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r, query)).toEqual(nc.expect);
-  });
-
   it("EU3's opening made durable: a sysvar from a lookup table is bound and recorded; a nonce account from one is refused", async () => {
     const sysvar = durableWire(V.EU3.wireBase64, [DURABLE.sysvar]);
     expect(sysvar.instruction0Accounts[0]).toBeLessThan(sysvar.staticKeys);
@@ -279,7 +265,7 @@ describe("x402-upto-solana.json", () => {
     expect(await uptoSvm.reference(p, V.EU4.accepted)).toEqual({
       ...V.EU4.expectReference,
       digest: sysvar.digest,
-      blockhash: "",
+      blockhash: undefined,
       nonce: { account: DURABLE.nonceAccount, value: DURABLE.value },
     });
     const both = durableWire(V.EU3.wireBase64, [DURABLE.nonceAccount, DURABLE.sysvar]);

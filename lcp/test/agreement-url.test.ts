@@ -19,6 +19,7 @@ import {
   evmHash,
   evmTransaction,
   pairingsOf,
+  sessionSolanaStock,
   subscriptionStripe,
   type MppChallenge,
   sessionHederaStock,
@@ -161,6 +162,9 @@ function mppCase(id: string, binding: Case["binding"], h: AtrHash, link: string,
   };
 }
 
+const SSV = load("mpp-session-solana.json");
+const SO_LINK = load("mpp-charge-solana.json").fixed.link as string;
+const solanaStockChallenge: MppChallenge = (({ id: _id, opaque: _opaque, ...c }) => c)(SSV.buyer.rows[2].input.doc[0]) as MppChallenge;
 const evmChallenge: MppChallenge = {
   realm: MC.fixed.realm,
   method: "evm",
@@ -192,6 +196,7 @@ const MPP_CASES: Case[] = [
   mppCase("mpp/charge/evm/hash", evmHash, MC.fixed.H, MC.fixed.link, evmChallenge, byHand(evmChallenge, MC.fixed.H, MC.fixed.link)),
   mppCase("mpp/charge/lightning", chargeLightning, LC.fixed.H, LC.fixed.link, lnCharge, byHand(lnCharge, LC.fixed.H, LC.fixed.link)),
   mppCase("mpp/session/lightning", sessionLightning, LS.fixed.H, LS.fixed.link, lnSession, byHand(lnSession, LS.fixed.H, LS.fixed.link)),
+  mppCase("mpp/session/solana/stock", sessionSolanaStock, SSV.fixed.H, SO_LINK, solanaStockChallenge, byHand(solanaStockChallenge, SSV.fixed.H, SO_LINK)),
   { ...mppCase("mpp/charge/nearintents", chargeNearIntents, NI.fixed.H, NI.fixed.link, NI.challenge, NI.place.expect), named: NI.unplaced.expect },
   mppCase("mpp/charge/card", chargeCard, MC.fixed.H, MC.fixed.link, cardChallenge, carried(cardChallenge, { ...CC.M1.request, externalId: `lcp:sha256:${MC.fixed.H}` })),
   mppCase("mpp/charge/stripe", chargeStripe, MC.fixed.H, MC.fixed.link, stripeChallenge, carried(stripeChallenge, stripeDetails(CS.M2.request))),

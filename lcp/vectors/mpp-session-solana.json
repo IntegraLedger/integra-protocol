@@ -1,0 +1,427 @@
+{
+ "about": "Vectors for mpp/session/solana/memo and mpp/session/solana/stock, @solana/mpp 0.7.0's session (src/Methods.ts:203-302), as the profile mpp-session-hedera-solana-xrpl.md, clause 2, states them. Fixtures: mpp-charge-solana.json's H, L, realm, expires, MV1, MV3opaque and blockhash; seed 01 as the payer, seed 02 as the operator, seed 03's address as the authorizedSigner, devnet USDC as the mint, x402's payTo as the payee, the payment-channels program CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX (src/client/PaymentChannels.ts:43). Requests are base64url without padding of Python 3 json.dumps(sort_keys=True, separators=(',',':')). The memo opening is computed from the profile with @solana/kit 8.4.0, never by this package's builder: the stock open (src/client/PaymentChannels.ts:96-186; src/generated/payment-channels/instructions/open.ts:209-273, types/openArgs.ts, types/distributionEntry.ts), its fee payer and rent payer the operator, then one Memo instruction carrying L; signed by the payer alone, the operator's slot zero. The stock opening is that open without the Memo, signed by both, as a landed transaction the payer broadcast and named by its first signature.",
+ "fixed": {
+  "program": "CHNLxYvVA28MJP9PrFuDXccuoGXAx7jBacfLEkahyGsX",
+  "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "authorizedSigner": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+  "salt": "42",
+  "deposit": "1000000",
+  "gracePeriod": 900,
+  "openSlot": "400000000",
+  "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "splits8": [
+   {
+    "recipient": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
+    "bps": 100
+   },
+   {
+    "recipient": "8SFqwqnq4whPhs8icwHA2hQg3hUoN1qrCLK1SBx3WKwe",
+    "bps": 100
+   },
+   {
+    "recipient": "AKkzLhjhyFtM9j7WAhbaqYpFe49cXeJBg2kzLRC2PnNa",
+    "bps": 100
+   },
+   {
+    "recipient": "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB",
+    "bps": 100
+   },
+   {
+    "recipient": "2KW2XRd9kwqet15Aha2oK3tYvd3nWbTFH1MBiRAv1BE1",
+    "bps": 100
+   },
+   {
+    "recipient": "J2xccRtuG43drESLYznHhLhQkLTdfepcKYbiQ9BsJVaf",
+    "bps": 100
+   },
+   {
+    "recipient": "5Z6Ay5NEcbg3xhopc522sBCRXQujkTiuDRnHGfQdcnSf",
+    "bps": 100
+   },
+   {
+    "recipient": "7v54NWdBtkjuAFJrLGsS2SXnuk8nKam81mZJeeYxVFi9",
+    "bps": 100
+   }
+  ],
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "operator": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+  "memoRequest": {
+   "cap": "1000000",
+   "currency": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "operator": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "network": "devnet",
+   "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "recentSlot": "400000000",
+   "modes": [
+    "pull"
+   ],
+   "pullVoucherStrategy": "clientVoucher"
+  },
+  "stockRequest": {
+   "cap": "1000000",
+   "currency": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "operator": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+   "network": "devnet",
+   "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+   "recentSlot": "400000000"
+  }
+ },
+ "readings": {
+  "case": "pairingsOf over each row's challenge: memoRequest with the row's change (null removes the member). The stock client opens in the first mode listed (src/client/Session.ts:767), and under pullVoucherStrategy clientVoucher composes the open with the operator as fee payer (src/client/PaymentChannels.ts:198-215).",
+  "rows": [
+   {
+    "case": "modes [\"pull\"], clientVoucher: the server submits the opening",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsIm9wZXJhdG9yIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJwdWxsVm91Y2hlclN0cmF0ZWd5IjoiY2xpZW50Vm91Y2hlciIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjQwMDAwMDAwMCIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/session/solana/memo"
+    ]
+   },
+   {
+    "case": "modes [\"pull\", \"push\"]",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiLCJwdXNoIl0sIm5ldHdvcmsiOiJkZXZuZXQiLCJvcGVyYXRvciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicHVsbFZvdWNoZXJTdHJhdGVneSI6ImNsaWVudFZvdWNoZXIiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInJlY2VudFNsb3QiOiI0MDAwMDAwMDAiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/session/solana/stock"
+    ]
+   },
+   {
+    "case": "modes [\"push\", \"pull\"]: the client opens in push and broadcasts",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1c2giLCJwdWxsIl0sIm5ldHdvcmsiOiJkZXZuZXQiLCJvcGVyYXRvciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicHVsbFZvdWNoZXJTdHJhdGVneSI6ImNsaWVudFZvdWNoZXIiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInJlY2VudFNsb3QiOiI0MDAwMDAwMDAiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/session/solana/stock"
+    ]
+   },
+   {
+    "case": "modes absent: push only",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJvcGVyYXRvciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiNDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/session/solana/stock"
+    ]
+   },
+   {
+    "case": "modes [\"pull\"] with no pullVoucherStrategy",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsIm9wZXJhdG9yIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInJlY2VudFNsb3QiOiI0MDAwMDAwMDAiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/session/solana/stock"
+    ]
+   },
+   {
+    "case": "pullVoucherStrategy operatedVoucher: a token delegation, no deposit (src/client/Session.ts:769-777; src/server/Session.ts:524-548)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsIm9wZXJhdG9yIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJwdWxsVm91Y2hlclN0cmF0ZWd5Ijoib3BlcmF0ZWRWb3VjaGVyIiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiNDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "svm/operated-voucher"
+    }
+   },
+   {
+    "case": "currency sol, which a payment channel cannot hold (src/client/PaymentChannels.ts:409-412)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJzb2wiLCJtb2RlcyI6WyJwdWxsIl0sIm5ldHdvcmsiOiJkZXZuZXQiLCJvcGVyYXRvciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicHVsbFZvdWNoZXJTdHJhdGVneSI6ImNsaWVudFZvdWNoZXIiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInJlY2VudFNsb3QiOiI0MDAwMDAwMDAiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
+   },
+   {
+    "case": "currency USDC, a symbol the stock client resolves (src/constants.ts:113-131)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJVU0RDIiwibW9kZXMiOlsicHVsbCJdLCJuZXR3b3JrIjoiZGV2bmV0Iiwib3BlcmF0b3IiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsInB1bGxWb3VjaGVyU3RyYXRlZ3kiOiJjbGllbnRWb3VjaGVyIiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiNDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/session/solana/memo"
+    ]
+   },
+   {
+    "case": "no operator, which the schema requires (src/Methods.ts:283)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsInB1bGxWb3VjaGVyU3RyYXRlZ3kiOiJjbGllbnRWb3VjaGVyIiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiNDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
+   }
+  ]
+ },
+ "memo": {
+  "case": "build of choice on the placed memo challenge gives expectMessageBase64, the message the payer signs, its size, two signatures included, expectSize, and its channel; complete of the payer's signature over it gives the credential at credential, a JSON Pointer (RFC 6901) into this file, whose transaction is expectWireBase64. bound gives H; reference names the operator as fee payer and the payee; channel.ref names the channel. With eight splits of 100 bps each (fixed.splits8) the same opening is eightSplitsSize bytes, within the 1,232-byte packet.",
+  "choice": {
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "authorizedSigner": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+   "salt": "42",
+   "gracePeriod": 900
+  },
+  "expectMessageBase64": "gAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cwpCOOXP0MjuyBpm5scvR6PA6WDgeU4LxWGk6s5/2r3DtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4vTbnUkfNttdOUPyDrsAlcTrQiFxw/hc479cQvFq16I6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKnJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIKDgEABgcLBAMCDgUNCQgKIQEqAAAAAAAAAEBCDwAAAAAAhAMAAACE1xcAAAAAAAAAAAwATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "expectWireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0q6H6D5CaOr6khLXRwjGYPlmSNf8uiN86RRNEYv5uAEwx78U1GjN4JjCm/KzccKVcuUqzba4bsVAYZiAguvcDgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cwpCOOXP0MjuyBpm5scvR6PA6WDgeU4LxWGk6s5/2r3DtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4vTbnUkfNttdOUPyDrsAlcTrQiFxw/hc479cQvFq16I6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKnJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIKDgEABgcLBAMCDgUNCQgKIQEqAAAAAAAAAEBCDwAAAAAAhAMAAACE1xcAAAAAAAAAAAwATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+  "expectSize": 778,
+  "expectChannel": "HUphy8N6KxZjr2Gh1sDgEZVHHkNP7WMh64WYBVRqB6JV",
+  "eightSplitsSize": 1051,
+  "credential": "/buyer/rows/1/input/presented",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectReferenceFeePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+  "expectReferencePayee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+  "expectPayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9"
+ },
+ "memoRefusals": [
+  {
+   "case": "an open action that carries no transaction, as the stock server-opened opener writes (src/client/PaymentChannels.ts:254-263)",
+   "drop": "transaction",
+   "expect": "svm/no-carrier"
+  },
+  {
+   "case": "the stock open, which carries no memo",
+   "transaction": "Aq+bnJJ/vqfk/rVrE2kqdKiwOAUBZm4tuXNlUVVURiuYIw2qxeAegmF4x7r2R+m2xr9KgkKUKZ4VHry0qyHV/Air198ReZCRnCR+L9bvV+9VQBVi+ZGftVaL4MJAaYbM0hEMksom25+BtL+5lQgVYks7Z+vgmbCjB7YjR+HaA7kKgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cwpCOOXP0MjuyBpm5scvR6PA6WDgeU4LxWGk6s5/2r3DtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4vTbnUkfNttdOUPyDrsAlcTrQiFxw/hc479cQvFq16I6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EGp9UXGSxcUSGMyUw9SvF/WNruCJuh/UTj29mKAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusBCg4BAAYHCwQDAg0FDAkICiEBKgAAAAAAAABAQg8AAAAAAIQDAAAAhNcXAAAAAAAAAAAA",
+   "expect": "svm/no-carrier"
+  },
+  {
+   "case": "a voucher, which is no opening",
+   "payload": {
+    "action": "voucher",
+    "voucher": {
+     "data": {
+      "channelId": "HUphy8N6KxZjr2Gh1sDgEZVHHkNP7WMh64WYBVRqB6JV",
+      "cumulativeAmount": "10",
+      "expiresAt": 0
+     },
+     "signature": "1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+    }
+   },
+   "expect": "mpp/not-an-opening"
+  }
+ ],
+ "stock": {
+  "case": "the stock opening named by its signature: fetchPresented reads landedWireBase64 at finalized; bound answers mpp/no-signed-place; reference names that signature, the open's payer (seed 01's address, as @solana/kit 8.4.0 derives it), never its authorizedSigner, and the payee; channel.ref names the channel; broadcaster answers payer; landedTx names the signature.",
+  "credential": {
+   "challenge": {
+    "realm": "api.seller.example",
+    "method": "solana",
+    "intent": "session",
+    "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJvcGVyYXRvciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiNDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+    "expires": "2026-09-21T14:14:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+   },
+   "payload": {
+    "action": "open",
+    "authorizedSigner": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+    "channelId": "HUphy8N6KxZjr2Gh1sDgEZVHHkNP7WMh64WYBVRqB6JV",
+    "deposit": "1000000",
+    "gracePeriod": 900,
+    "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "mode": "push",
+    "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "recentSlot": "400000000",
+    "salt": "42",
+    "signature": "4Wdt7tcu9ZexonfPy3vzyfB3XYtRxKi8J8zbLPrM7aUuxRwYJgjDcGQq6CcgjFqcfxqAjeaxNAKfiUWeHHjyCTbu"
+   }
+  },
+  "landedWireBase64": "Aq+bnJJ/vqfk/rVrE2kqdKiwOAUBZm4tuXNlUVVURiuYIw2qxeAegmF4x7r2R+m2xr9KgkKUKZ4VHry0qyHV/Air198ReZCRnCR+L9bvV+9VQBVi+ZGftVaL4MJAaYbM0hEMksom25+BtL+5lQgVYks7Z+vgmbCjB7YjR+HaA7kKgAIACQ6BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cwpCOOXP0MjuyBpm5scvR6PA6WDgeU4LxWGk6s5/2r3DtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4vTbnUkfNttdOUPyDrsAlcTrQiFxw/hc479cQvFq16I6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EGp9UXGSxcUSGMyUw9SvF/WNruCJuh/UTj29mKAAAAAAbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusBCg4BAAYHCwQDAg0FDAkICiEBKgAAAAAAAABAQg8AAAAAAIQDAAAAhNcXAAAAAAAAAAAA",
+  "expectChannel": "HUphy8N6KxZjr2Gh1sDgEZVHHkNP7WMh64WYBVRqB6JV",
+  "expectTransaction": "4Wdt7tcu9ZexonfPy3vzyfB3XYtRxKi8J8zbLPrM7aUuxRwYJgjDcGQq6CcgjFqcfxqAjeaxNAKfiUWeHHjyCTbu",
+  "expectReferencePayee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+  "expectPayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9"
+ },
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/session/solana/memo",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "solana",
+       "intent": "session",
+       "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsIm9wZXJhdG9yIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJwdWxsVm91Y2hlclN0cmF0ZWd5IjoiY2xpZW50Vm91Y2hlciIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjQwMDAwMDAwMCIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "inputs": {},
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/session/solana/memo",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "solana",
+       "intent": "session",
+       "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsIm9wZXJhdG9yIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJwdWxsVm91Y2hlclN0cmF0ZWd5IjoiY2xpZW50Vm91Y2hlciIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjQwMDAwMDAwMCIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+      },
+      "payload": {
+       "action": "open",
+       "authorizedSigner": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+       "channelId": "HUphy8N6KxZjr2Gh1sDgEZVHHkNP7WMh64WYBVRqB6JV",
+       "deposit": "1000000",
+       "gracePeriod": 900,
+       "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "mode": "pull",
+       "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+       "recentSlot": "400000000",
+       "salt": "42",
+       "signature": "1111111111111111111111111111111111111111111111111111111111111111",
+       "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0q6H6D5CaOr6khLXRwjGYPlmSNf8uiN86RRNEYv5uAEwx78U1GjN4JjCm/KzccKVcuUqzba4bsVAYZiAguvcDgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cwpCOOXP0MjuyBpm5scvR6PA6WDgeU4LxWGk6s5/2r3DtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4vTbnUkfNttdOUPyDrsAlcTrQiFxw/hc479cQvFq16I6AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcxm7UN1ERWkK1kFEyxPZoMoYR5ejet9hiWF0qNVHQATtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9EFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAABt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKnJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIKDgEABgcLBAMCDgUNCQgKIQEqAAAAAAAAAEBCDwAAAAAAhAMAAACE1xcAAAAAAAAAAAwATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's memo opening, as the file holds it; no signature was made for this row."
+   },
+   {
+    "name": "B2",
+    "pairing": "mpp/session/solana/stock",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "solana",
+       "intent": "session",
+       "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJvcGVyYXRvciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiNDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "inputs": {},
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   }
+  ],
+  "noSignedPayment": {
+   "mpp/session/solana/stock": "coverage none: the stock open carries no H, so bound answers mpp/no-signed-place"
+  }
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request without cap",
+    "pairing": "mpp/session/solana/memo",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjdXJyZW5jeSI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwibW9kZXMiOlsicHVsbCJdLCJuZXR3b3JrIjoiZGV2bmV0Iiwib3BlcmF0b3IiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsInB1bGxWb3VjaGVyU3RyYXRlZ3kiOiJjbGllbnRWb3VjaGVyIiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJyZWNlbnRTbG90IjoiNDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   },
+   {
+    "case": "modes [\"push\", \"pull\"], which names mpp/session/solana/stock",
+    "pairing": "mpp/session/solana/memo",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1c2giLCJwdWxsIl0sIm5ldHdvcmsiOiJkZXZuZXQiLCJvcGVyYXRvciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicHVsbFZvdWNoZXJTdHJhdGVneSI6ImNsaWVudFZvdWNoZXIiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInJlY2VudFNsb3QiOiI0MDAwMDAwMDAiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/not-this-pairing"
+   }
+  ]
+ }
+}

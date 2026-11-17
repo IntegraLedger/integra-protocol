@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/upto/solana pairing (the x402-upto-solana entry point of @integraledger/lcp). Expected values use x402-exact-solana.json's fixed inputs (receiverAuthorizer from seed 03x32; nonce 7; openSlot 341000000; amount 10000; withdrawDelay 3600), computed with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The fixtures (EU5's landed wire, the no-channel transaction, the plants' wires) were built with solders 0.26.0 on Python 3.11; the same script reproduces EU1, EU3 and EU5's txid. The no-channel message's digest, d4e6becc...1c47, is recorded here in full. EU5's and transactionV1's expected answers are the ones the profile read-status (read-status.md) gives for their fixtures, read for the act payment at the finality each row's query names, or at finalized: an error read at finalized, a transaction with no channel instruction, a message the payer did not sign, and a lookup that finds nothing are pending, search-incomplete, since this read is no search for H (rules 17, 23 and 24); a rejected read is unreadable, transport; and each reference names the option's payee. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
+ "about": "Vectors for the x402/upto/solana pairing (the x402-upto-solana entry point of @integraledger/lcp). Expected values use x402-exact-solana.json's fixed inputs (receiverAuthorizer from seed 03x32; nonce 7; openSlot 341000000; amount 10000; withdrawDelay 3600), computed with solders 0.26.0, PyNaCl 1.6.2 and @noble/curves 2.4.0. The fixtures (EU5's landed wire, the no-channel transaction, the plants' wires) were built with solders 0.26.0 on Python 3.11; the same script reproduces EU1, EU3 and EU5's txid. The no-channel message's digest, d4e6becc...1c47, is recorded here in full. EU5 is a landed opening and a transaction with no channel instruction, read by recover and bound; transactionV1's statusRows read the stock version-1 opening back, and the read's own cases are in svm-read.json; each reference names the option's payee. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -174,7 +174,9 @@
    "digest": "0x9ccec9c3d1637c36cc020f2554aa1a81762f0cbe924613ff90e36e9309212473",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
    "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "noFlowOption": {
    "scheme": "upto",
@@ -195,88 +197,7 @@
  "EU5": {
   "landedWireBase64": "AnL/0t8oEYXAp3SJ+v8PVmRcvgKEPohCdzGIpcg7HQC34jDwtb+2+DzBnCNgG0ncZYctT165YRJ7MqwuhG355wwgOFbNN1mZa8NqWGFEh0mUWAso937yWxCaO+GHE+ft1sn2/v1WW2tID1/FSntu7d/v88f4hOBvJEOzdrxJplsDgAIACg+BOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cBoDQZtYTvbAgtTwdUnf7pbbLioMwi+QHTdLLn2Ovm5or/gO9Bj86DQ2rZZj0Ntoaeg9u07m0ELs0bxISL+B3I+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nWlQNe2seKyu1F1IZyaPwYBCSQcqMTxcMwcotSO7q+dCMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4Waeh+6TrKwkJk/fS39YrieK4cgd6Y5/X10eo6Z9j1BWu7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9HJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wQGAAUCQA0DAAYACQMBAAAAAAAAAA0OAQAACg4CBAMJBQgMCw1DAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJwcATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
   "txid": "3JMXQMK9Z4BFZDcVTBbt8mb8gsKwREQUjpriMa3tFge2BZhbWE84EpW5TH4tJXtyXhvia9QdZsieJxz3g8N8dH2b",
-  "ref": {
-   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-   "transaction": "3JMXQMK9Z4BFZDcVTBbt8mb8gsKwREQUjpriMa3tFge2BZhbWE84EpW5TH4tJXtyXhvia9QdZsieJxz3g8N8dH2b",
-   "digest": "0x9ccec9c3d1637c36cc020f2554aa1a81762f0cbe924613ff90e36e9309212473",
-   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-   "fromSlot": "0"
-  },
-  "rows": [
-   {
-    "at": "finalized",
-    "err": null,
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "3JMXQMK9Z4BFZDcVTBbt8mb8gsKwREQUjpriMa3tFge2BZhbWE84EpW5TH4tJXtyXhvia9QdZsieJxz3g8N8dH2b",
-     "finality": "finalized",
-     "foreign": []
-    }
-   },
-   {
-    "at": "confirmed",
-    "err": null,
-    "query": {
-     "act": "payment",
-     "finality": "confirmed"
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "3JMXQMK9Z4BFZDcVTBbt8mb8gsKwREQUjpriMa3tFge2BZhbWE84EpW5TH4tJXtyXhvia9QdZsieJxz3g8N8dH2b",
-     "finality": "confirmed",
-     "foreign": []
-    }
-   },
-   {
-    "at": "finalized",
-    "err": {
-     "InstructionError": [
-      2,
-      {
-       "Custom": 1
-      }
-     ]
-    },
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "at": null,
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "at": "reader-error",
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    }
-   }
-  ],
+  "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "noChannel": {
    "landedWireBase64": "ApdCzdWrOy/W+1VybpEY68cXZkN+5IcfGO9ore6UXm/vvG4oBgB7QMejWmqXPmqokuHuiq56n0kPzmL7qUvTBQTPW1kHKSkU4CIhivYFbg9e/zdrpIYej8/2guOdFmXp8TwTd5M7ub7ophcxF/tq6ozm7q+W2tbJ50Ptw5ecyHMIgAIBAgSBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29cAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAwIABQJADQMAAgAJAwEAAAAAAAAAAwEBTWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
@@ -356,7 +277,7 @@
   }
  ],
  "transactionV1": {
-  "case": "A version-1 transaction as the stock client writes it: @x402/svm 2.31.0 (npm, the devDependency this package pins), run offline: the payer's key from Ed25519 seed 01x32 (@solana/kit 8.4.0 createKeyPairSignerFromPrivateKeyBytes), the clock at now, the option's extra.recentBlockhash as the lifetime and transactionVersions [0, 1] as a stock facilitator advertises them (scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4), so the client builds version 1, the highest version both sides admit; the client makes no RPC read, the option naming its token program and its recentSlot, the salt's 8 random bytes 07 and seven zeros, so the payload's nonce is 7 and its channelId EU1's channel. bound gives H from the one memo, extra.memo; reference gives the message's digest, the fee payer and the blockhash. landedWireBase64 is the stock wire with the fee payer's Ed25519 signature (seed 02x32, @noble/curves 2.4.0) of the message in signature slot 0; txid is that signature in base58. The message is every byte before the signatures (SIMD-0385, Transaction V1 Specification, at solana-foundation/solana-improvement-documents ae7b00f3), and messageSha256 is SHA-256 over it (node:crypto). status of the landed wire's reference, its transaction the txid, read at each row's commitment, answers the row's expect, and recover gives H. changed holds the stock wire with one member changed, each refused by bound with its code; landedChanged is the landed wire with the memo changed as changed's first row, read under the same txid, which status answers failed not-this-instrument, since its message digest is not the reference's",
+  "case": "A version-1 transaction as the stock client writes it: @x402/svm 2.31.0 (npm, the devDependency this package pins), run offline: the payer's key from Ed25519 seed 01x32 (@solana/kit 8.4.0 createKeyPairSignerFromPrivateKeyBytes), the clock at now, the option's extra.recentBlockhash as the lifetime and transactionVersions [0, 1] as a stock facilitator advertises them (scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4), so the client builds version 1, the highest version both sides admit; the client makes no RPC read, the option naming its token program and its recentSlot, the salt's 8 random bytes 07 and seven zeros, so the payload's nonce is 7 and its channelId EU1's channel. bound gives H from the one memo, extra.memo; reference gives the message's digest, the fee payer and the blockhash. landedWireBase64 is the stock wire with the fee payer's Ed25519 signature (seed 02x32, @noble/curves 2.4.0) of the message in signature slot 0; txid is that signature in base58. The message is every byte before the signatures (SIMD-0385, Transaction V1 Specification, at solana-foundation/solana-improvement-documents ae7b00f3), and messageSha256 is SHA-256 over it (node:crypto). status of the landed wire's reference, its transaction the txid, read back through a constructed reader (the buyer's account listing the txid with its memo as getSignaturesForAddress renders it; getTransaction holding it at finalized, or at confirmed alone, with the token balances getTransaction gives for each token account its TransferChecked names, the source the payer's and the destination the payee's; the finalized slot 1,100, the confirmed one 1,120; the blockhash valid at slot 1,000), answers each row's expect at the one mark, finalized (read-status rules 13, 17, 23 to 25): settled, with what moved and presented yes; pending, below-mark, naming it with no finality, where only confirmed holds it; and, with an error, pending, search-incomplete, since the search's gate holds the payer's own failed transaction while the search proves no absence. recover gives H. changed holds the stock wire with one member changed, each refused by bound with its code; landedChanged is the landed wire with the memo changed as changed's first row, read under the same txid, which status answers pending, instrument-live, since its message digest is not the reference's, so it consumed nothing and is no act carrying H, and the blockhash's validity has not passed",
   "now": 1790000000,
   "expectAsked": [],
   "presented": {
@@ -405,12 +326,15 @@
    "digest": "0x79d312fbf3c1c561143877d330e5234e9cd0b37e4b9fa79c20e0f1285075f8f1",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
    "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "landedWireBase64": "gQIACQ8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIOgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXCv+A70GPzoNDatlmPQ22hp6D27TubQQuzRvEhIv4Hcj7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IGgNBm1hO9sCC1PB1Sd/ultsuKgzCL5AdN0sufY6+bmgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa7tSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30QVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqQEAAAAAAAAAQA0DAAAAQAAJDkMACwBNAAEAAAYKBAMCDQUMCAcJAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJ2xjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFktxk9Vm7n60YRXMEV6YpjM0LFxMIAIhoFkegeqiyJb1aVquJ65qJBWFiBkri4b6IkYr54szrXTFDm8K91EjJ6CSlbPXaBFbfg2FSJpfbeoewSUPzHVxHTs6ThkrzLaG/aS9fOLnmr7ixnFTVCKKWEFVVw1S3KVdViqIn5okgMFwQ=",
   "txid": "4fKgq1suJkQtuVSLXNzEqHoShn5iTPiq1nUPyUuiechbYn7oVbzDx7mevPnKZvaCdFAXP4yzD5K5KT3EWvec8duA",
   "statusRows": [
    {
+    "case": "the landed wire at finalized: settled, what moved named by its transaction and place, presented yes",
     "at": "finalized",
     "err": null,
     "query": {
@@ -421,24 +345,50 @@
      "state": "settled",
      "transaction": "4fKgq1suJkQtuVSLXNzEqHoShn5iTPiq1nUPyUuiechbYn7oVbzDx7mevPnKZvaCdFAXP4yzD5K5KT3EWvec8duA",
      "finality": "finalized",
+     "moved": [
+      {
+       "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "amount": "10000",
+       "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "transaction": "4fKgq1suJkQtuVSLXNzEqHoShn5iTPiq1nUPyUuiechbYn7oVbzDx7mevPnKZvaCdFAXP4yzD5K5KT3EWvec8duA",
+       "place": 0
+      }
+     ],
+     "signer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "presented": "yes",
      "foreign": []
     }
    },
    {
+    "case": "the landed wire at confirmed alone, the latest head and no mark: pending, below-mark, naming it with no finality",
     "at": "confirmed",
     "err": null,
     "query": {
      "act": "payment",
-     "finality": "confirmed"
+     "finality": "finalized"
     },
     "expect": {
-     "state": "settled",
+     "state": "pending",
+     "reason": "below-mark",
      "transaction": "4fKgq1suJkQtuVSLXNzEqHoShn5iTPiq1nUPyUuiechbYn7oVbzDx7mevPnKZvaCdFAXP4yzD5K5KT3EWvec8duA",
-     "finality": "confirmed",
+     "moved": [
+      {
+       "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "amount": "10000",
+       "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "transaction": "4fKgq1suJkQtuVSLXNzEqHoShn5iTPiq1nUPyUuiechbYn7oVbzDx7mevPnKZvaCdFAXP4yzD5K5KT3EWvec8duA",
+       "place": 0
+      }
+     ],
+     "signer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "search": {
+      "validAt": "1000"
+     },
      "foreign": []
     }
    },
    {
+    "case": "the landed wire at finalized with an error, the payer's own failed transaction: the search's gate holds it, pending, search-incomplete",
     "at": "finalized",
     "err": {
      "InstructionError": [
@@ -455,6 +405,9 @@
     "expect": {
      "state": "pending",
      "reason": "search-incomplete",
+     "search": {
+      "validAt": "1000"
+     },
      "foreign": []
     }
    }
@@ -487,29 +440,50 @@
    }
   ],
   "landedChanged": {
+   "case": "the landed wire with its memo changed, under the same txid: no act carrying H and not the message presented, so the value reads unconsumed: pending, instrument-live",
    "landedWireBase64": "gQIACQ8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIOgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXCv+A70GPzoNDatlmPQ22hp6D27TubQQuzRvEhIv4Hcj7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+IGgNBm1hO9sCC1PB1Sd/ultsuKgzCL5AdN0sufY6+bmgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdaVA17ax4rK7UXUhnJo/BgEJJByoxPFwzByi1I7ur50IyXJY9OJInxuz0QKRSODYMLWhOZ2v8QhASOe9jb6fhZp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa7tSSjGKNHCxurpAziQWZVhKVknOlxj+TY2wUYUrIc30QVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksXFEhjMlMPUrxf1ja7gibof1E49vZigAAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqQEAAAAAAAAAQA0DAAAAQAAJDkMACwBNAAEAAAYKBAMCDQUMCAcJAQcAAAAAAAAAECcAAAAAAAAQDgAAQD9TFAAAAAABAAAAHMZu1DdREVpCtZBRMsT2aDKGEeXo3rfYYlhdKjVR0AEQJ2xjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFltxk9Vm7n60YRXMEV6YpjM0LFxMIAIhoFkegeqiyJb1aVquJ65qJBWFiBkri4b6IkYr54szrXTFDm8K91EjJ6CSlbPXaBFbfg2FSJpfbeoewSUPzHVxHTs6ThkrzLaG/aS9fOLnmr7ixnFTVCKKWEFVVw1S3KVdViqIn5okgMFwQ=",
    "expect": {
     "state": "pending",
-    "reason": "search-incomplete",
+    "reason": "instrument-live",
+    "search": {
+     "validAt": "1000"
+    },
     "foreign": []
    },
    "query": {
     "act": "payment",
     "finality": "finalized"
    }
+  },
+  "build": {
+   "case": "lcp's build of the same inputs the stock client was given, under presented.accepted offered alone in a document: its extra.transactionVersions holds 1, so it builds version 1, and the message it asks the payer to sign is the stock client's message byte for byte, every byte of presented's wire before the signatures as @solana/kit 8.4.0's getTransactionDecoder reads messageBytes. input is the choice beside the document and option; a bigint member is written in decimal. The nonce is the salt the stock client drew from its random bytes (7), the open slot extra.recentSlot, and the compute budget build's default, 200000 units at 1 micro-lamport, the stock open's OPEN_DEFAULT_COMPUTE_UNIT_LIMIT and DEFAULT_COMPUTE_UNIT_PRICE_MICROLAMPORTS (dist/esm/chunk-DP3B4MQJ.mjs:931; chunk-DAIKIZVB.mjs:13).",
+   "input": {
+    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "nonce": "7",
+    "openSlot": "341000000",
+    "now": 1790000000,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+   }
   }
  },
  "transactionVersions": {
-  "case": "build of EU3's input, the advertised option with extra.transactionVersions set to each row's value, both in the document and as the chosen option. scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4: extra.transactionVersions holds the transaction message versions the sponsor accepts, the JSON integers 0 and 1; when it is absent the accepted set is [0]; a field holding any other entry is invalid. This package's builders write version-0 messages only, so a row whose field admits 0 is built as the file's version-0 message, its first byte 128 and its SHA-256 the build's buildMessageSha256 as the input's own vector records it, and a row whose field does not is refused svm/version-not-built, with no request to sign (EU3.buildMessageSha256).",
+  "case": "build of EU3's input, the advertised option with extra.transactionVersions set to each row's value, or without it for the row that has none, both in the document and as the chosen option. scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4: extra.transactionVersions holds the transaction message versions the sponsor accepts, the JSON integers 0 and 1; when it is absent the accepted set is [0]; a field holding any other entry is invalid; @x402/svm 2.31.0's resolveTransactionVersion (dist/esm/chunk-DAIKIZVB.mjs:289-309) builds the highest version both admit and refuses a value that is not an array, an entry other than 0 and 1, and an empty list. The rule: the client builds as the stock clients do, the highest version both the offer's list and this package admit, version 1 where the list holds 1, version 0 where it holds 0 alone or is absent; an offer whose list admits neither, a field that is present and is not a non-empty array of the integers 0 and 1, is refused at the option filter, before the buyer signs. A row whose field holds 1 is built as version 1, its first byte 129 and its SHA-256 transactionV1.messageSha256, the open @x402/svm 2.31.0's upto client writes for the same inputs (transactionV1); a row whose field holds 0 alone, or that has none, is built as the file's version-0 message, its first byte 128 and its SHA-256 EU3.buildMessageSha256; any other row is refused x402/option-malformed by the option filter, with no request to sign.",
   "rows": [
+   {
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "440a78573a1185f684c8c6e58ee4fc1a410f5c40e06d9d58ab0750847a06b0f5"
+    }
+   },
    {
     "transactionVersions": [
      0,
      1
     ],
     "expect": {
-     "messageFirstByte": 128,
-     "buildMessageSha256": "440a78573a1185f684c8c6e58ee4fc1a410f5c40e06d9d58ab0750847a06b0f5"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "79d312fbf3c1c561143877d330e5234e9cd0b37e4b9fa79c20e0f1285075f8f1"
     }
    },
    {
@@ -527,8 +501,8 @@
      0
     ],
     "expect": {
-     "messageFirstByte": 128,
-     "buildMessageSha256": "440a78573a1185f684c8c6e58ee4fc1a410f5c40e06d9d58ab0750847a06b0f5"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "79d312fbf3c1c561143877d330e5234e9cd0b37e4b9fa79c20e0f1285075f8f1"
     }
    },
    {
@@ -536,15 +510,15 @@
      1
     ],
     "expect": {
-     "refused": true,
-     "code": "svm/version-not-built"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "79d312fbf3c1c561143877d330e5234e9cd0b37e4b9fa79c20e0f1285075f8f1"
     }
    },
    {
     "transactionVersions": [],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
@@ -553,7 +527,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
@@ -563,7 +537,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
@@ -573,21 +547,21 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
     "transactionVersions": null,
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
     "transactionVersions": 0,
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    }
   ]
@@ -994,6 +968,57 @@
       "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
       "paymentFlow": "escrow",
       "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     }
+    },
+    "expect": "x402/option-malformed"
+   },
+   {
+    "case": "the option with extra.splits, whose split legs no Solana build writes",
+    "pairing": "x402/upto/solana",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "10000",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "paymentFlow": "escrow",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "splits": [
+       {
+        "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        "amount": "10000"
+       }
+      ]
+     }
+    },
+    "expect": "svm/input-malformed"
+   },
+   {
+    "case": "the option with extra.transactionVersions [], which admits neither message version",
+    "pairing": "x402/upto/solana",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "upto",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "10000",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "receiverAuthorizer": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+      "withdrawDelay": 3600,
+      "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "paymentFlow": "escrow",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "transactionVersions": []
      }
     },
     "expect": "x402/option-malformed"

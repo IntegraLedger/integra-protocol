@@ -170,10 +170,10 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   svm: [
     "bundle-empty", "carrier-mismatch", "carrier-not-canonical", "carrier-occupied", "channel-id-mismatch",
-    "channel-instruction", "err", "input-malformed", "memo-count", "memo-not-lcp", "memo-not-utf8", "network-malformed",
-    "network-undeclared", "no-carrier", "no-channel-instruction", "nonce-account-not-static", "open-not-found",
-    "pda-not-found", "peer-missing", "read-first", "table-unusable", "tx-malformed", "tx-too-large", "version-not-built",
-    "wrong-reader",
+    "channel-instruction", "err", "input-malformed", "instruction-not-admitted", "memo-count", "memo-not-lcp",
+    "memo-not-utf8", "network-malformed", "network-undeclared", "no-carrier", "no-channel-instruction",
+    "nonce-account-not-static", "open-not-found", "open-not-operator", "operated-voucher", "pda-not-found", "peer-missing",
+    "read-first", "tx-malformed", "tx-too-large", "version-not-admitted", "wrong-reader",
   ],
   tempo: [
     "ambiguous", "descriptor-mismatch", "key-authorization-malformed", "key-not-authorized", "no-access-key",

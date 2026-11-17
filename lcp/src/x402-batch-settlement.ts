@@ -65,24 +65,29 @@ import {
   isPayerInput,
   isU64,
   isSolanaNetwork,
-  landedTransaction,
   memoCarrier,
   memoData,
   signedWire,
   staticNonce,
-  svmChannelStatus,
-  svmReference,
-  unbuiltVersion,
+  versionNotAdmitted,
+  builtVersion,
+  svmOptionFilter,
+  X402_V1,
   wireOf,
   TOKEN,
   TOKEN_2022,
   type SolanaNetwork,
+  type SvmTx,
+} from "./internal/svm.js";
+import {
+  landedTransaction,
+  svmChannelStatus,
+  type SvmQuery,
   type SvmReader,
   type SvmRef,
-  type SvmTx,
-  type SvmQuery,
   type SvmStatus,
-} from "./internal/svm.js";
+  x402SvmReference,
+} from "./internal/svm-read.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
 import {
   acceptedBy,
@@ -461,7 +466,7 @@ function cfPayable(o: PaymentRequirements): boolean {
  */
 const FILTER: Readonly<Record<BatchPairingId, OptionFilter>> = {
   [EVM_ID]: filterOf(isId(EVM_ID), evmPayable),
-  [SVM_ID]: filterOf(isId(SVM_ID), svmPayable),
+  [SVM_ID]: svmOptionFilter(filterOf(isId(SVM_ID), svmPayable)),
   [CF_ID]: filterOf(isId(CF_ID), cfPayable),
 };
 
@@ -1117,6 +1122,8 @@ async function svmOpening(presented: unknown) {
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
+  const version = versionNotAdmitted(x.accepted.extra, tx, "x402");
+  if (version !== null) return version;
   const ix = channelInstruction(tx);
   if (isRefusal(ix)) return ix;
   if (ix.kind !== "open") return refusal("x402/not-an-opening");
@@ -1137,14 +1144,10 @@ async function svmBound(presented: unknown): Promise<AtrHash | Refusal> {
  * The opening's read keys (`svmReference`), with the payee of `option`, the issued option the payment answers
  * (`x402Payee`), whose refusal comes after the payment's.
  */
-async function svmReferenceOf(
-  presented: unknown,
-  option: PaymentRequirements,
-): Promise<(Omit<SvmRef, "fromSlot" | "payee"> & { payee: string }) | Refusal> {
+async function svmReferenceOf(presented: unknown, option: PaymentRequirements): Promise<SvmRef | Refusal> {
   const o = await svmOpening(presented);
   if (isRefusal(o)) return o;
-  const keys: Omit<SvmRef, "fromSlot" | "payee"> | Refusal = await svmReference(o.accepted.network as SvmRef["network"], o.tx);
-  return withPayee(keys, x402Payee(option));
+  return x402SvmReference(o.accepted, o.tx, o.h, option);
 }
 
 /** The 64 bytes of a base58 Ed25519 signature, or undefined. */
@@ -1164,8 +1167,9 @@ function signatureBytes(s: unknown): Uint8Array | undefined {
  * A `payerAuthorizer` that is not a point on the Ed25519 curve, which the program's `open` refuses as the authorized
  * signer, is `svm/input-malformed`. H is checked first, then the form of the choice's payer, token program, blockhash
  * and compute budget (`isPayerInput`), deposit, `payerAuthorizer`, salt and `openSlot`, then its document and option,
- * then the option's `extra.transactionVersions` (`unbuiltVersion`), then the option's memo against H and its token
- * program against the choice's.
+ * then the option's memo against H and its token program against the choice's. The `open` is version 1 where the
+ * option's `extra.transactionVersions` holds 1, as @x402/svm 2.31.0's batch-settlement client writes it, else v0
+ * (`builtVersion`).
  */
 async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
@@ -1186,8 +1190,8 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
   if (ok !== true) return ok;
   const { accepted, required } = c;
   const extra = accepted.extra!;
-  const version = unbuiltVersion(extra);
-  if (version !== null) return version;
+  const version = builtVersion(extra);
+  if (version === null) return refusal("x402/option-malformed");
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
   if (c.tokenProgram !== extra["tokenProgram"]) return refusal("svm/input-malformed");
@@ -1211,6 +1215,7 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
       recentBlockhash: c.recentBlockhash,
       computeUnitLimit: c.computeUnitLimit ?? 200_000,
       computeUnitPrice: c.computeUnitPrice ?? 1n,
+      ...(version === 1 ? { v1: X402_V1 } : {}),
       instruction: {
         kind: "open",
         channel,
@@ -1261,9 +1266,9 @@ async function svmBuild(c: BatchSvmOpen, h: AtrHash): Promise<BatchUnsigned | Re
  * A later voucher, or a full refund, for a channel this buyer opened. Each carries the voucher for
  * `maxClaimableAmount`. A refund carries no `amount`; with `recentBlockhash` it also carries a `request_close` message
  * for the payer, signed first: the Compute Budget prefix, `request_close` with the payer (read-only signer) and the
- * channel (writable), then one Memo v3 with `extra.memo` when the option carries one. That message is v0, so a refund
- * with `recentBlockhash` under an option whose `extra.transactionVersions` does not admit version 0 is
- * `svm/version-not-built` (`unbuiltVersion`).
+ * channel (writable), then one Memo v3 with `extra.memo` when the option carries one. That message is version 1, the
+ * Compute Budget prefix carried in its header, where the option's `extra.transactionVersions` holds 1, else v0
+ * (`builtVersion`).
  */
 async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigned | Refusal> {
   if (!isObject(w)) return refusal("x402/not-v2");
@@ -1308,8 +1313,8 @@ async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigne
       };
     }
     const extra = accepted.extra!;
-    const version = unbuiltVersion(extra);
-    if (version !== null) return version;
+    const version = builtVersion(extra);
+    if (version === null) return refusal("x402/option-malformed");
     const memo = extra["memo"];
     const message = await buildChannelMessage({
       feePayer: extra["feePayer"] as string,
@@ -1320,6 +1325,7 @@ async function svmBuildWithin(w: BatchWithin, _h: AtrHash): Promise<BatchUnsigne
       ...(typeof memo === "string" ? { memo } : {}),
       computeUnitLimit: w.computeUnitLimit ?? 200_000,
       computeUnitPrice: w.computeUnitPrice ?? 1n,
+      ...(version === 1 ? { v1: X402_V1 } : {}),
       instruction: { kind: "request_close", channel },
     });
     if (isRefusal(message)) return message;
@@ -1386,6 +1392,7 @@ export const batchSvm = Object.freeze({
   data: SOLANA[SVM_ID],
   pattern: Object.freeze({
     pattern: "native-field",
+    profile: SVM_ID,
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: false,
@@ -1411,12 +1418,12 @@ export const batchSvm = Object.freeze({
 }) satisfies Entry<
   typeof SVM_ID,
   BatchPaymentPayload,
-  Omit<SvmRef, "fromSlot">,
+  SvmRef,
   SvmReader,
   X402Forms & {
     choice: BatchSvmOpen;
     unsigned: BatchUnsigned;
-    landed: { fromSlot: string; transaction: string };
+    landed: object;
     network: SolanaNetwork;
     query: SvmQuery;
     answer: SvmStatus;

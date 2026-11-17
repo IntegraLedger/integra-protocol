@@ -14,22 +14,28 @@ import {
   isSolanaNetwork,
   isU64,
   staticNonce,
+  versionNotAdmitted,
   svmCarrier,
-  svmChannelStatus,
-  svmRecover,
-  svmReference,
+  svmOptionFilter,
   svmSigning,
-  unbuiltVersion,
+  builtVersion,
+  X402_V1,
   wireOf,
   TOKEN,
   TOKEN_2022,
-  type SvmReader,
-  type SvmRef,
   type UptoSvmPaymentPayload,
   type SolanaNetwork,
-  type SvmQuery,
-  type SvmStatus,
 } from "./internal/svm.js";
+import {
+  svmChannelStatus,
+  svmRecover,
+  svmReference,
+  type SvmQuery,
+  type SvmReader,
+  type SvmRef,
+  type SvmStatus,
+  x402SvmReference,
+} from "./internal/svm-read.js";
 import { isObject, normalHash } from "./fields.js";
 import {
   acceptedBy,
@@ -116,9 +122,10 @@ function isThis(option: PaymentRequirements): boolean {
 
 /**
  * The pairing's option filter, which `advertise`, `read`, `build`, `bound` and `reference` apply: an option of this
- * pairing that `build` can pay (`payable`), else `x402/option-malformed`.
+ * pairing that `build` can pay (`payable`), else `x402/option-malformed`; then one that no Solana build honours
+ * (`unbuiltOption`: an `extra.transactionVersions` that admits neither version, or an `extra.splits`) is refused.
  */
-const filter = filterOf(isThis, payable);
+const filter = svmOptionFilter(filterOf(isThis, payable));
 
 /** True when the amount is a positive u64 in decimal (`isAmount`) and the timeout a positive safe integer. */
 function payable(o: PaymentRequirements): boolean {
@@ -164,11 +171,12 @@ function read(doc: PaymentRequired): X402Read | Refusal {
 }
 
 /**
- * The `open` message the payer signs: the channel escrows the option's amount, and its one memo is `extra.memo`. The
- * payload carries `openSlot` as a JSON number, so an `openSlot` above 2^53 − 1 is `svm/input-malformed`. H is checked
- * first, then the form of the choice's payer, token program, blockhash and compute budget (`isPayerInput`), nonce,
- * `openSlot` and `now`, then its document and option, then the option's `extra.transactionVersions` (`unbuiltVersion`),
- * then the option's memo against H and its token program against the choice's.
+ * The `open` message the payer signs: the channel escrows the option's amount, and its one memo is `extra.memo`. It is
+ * version 1 where the option's `extra.transactionVersions` holds 1, as @x402/svm 2.31.0's upto client writes it, else
+ * v0 (`builtVersion`). The payload carries `openSlot` as a JSON number, so an `openSlot` above 2^53 − 1 is
+ * `svm/input-malformed`. H is checked first, then the form of the choice's payer, token program, blockhash and compute
+ * budget (`isPayerInput`), nonce, `openSlot` and `now`, then its document and option, then the option's memo against H
+ * and its token program against the choice's.
  */
 async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmPaymentPayload> | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
@@ -187,8 +195,8 @@ async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmP
   if (ok !== true) return ok;
   const { accepted, required } = c;
   const extra = accepted.extra!;
-  const version = unbuiltVersion(extra);
-  if (version !== null) return version;
+  const version = builtVersion(extra);
+  if (version === null) return refusal("x402/option-malformed");
   const memo = extra["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
   if (c.tokenProgram !== extra["tokenProgram"]) return refusal("svm/input-malformed");
@@ -206,6 +214,7 @@ async function build(c: UptoSvmChoice, h: AtrHash): Promise<SvmUnsigned<UptoSvmP
     memo,
     computeUnitLimit: c.computeUnitLimit ?? 200_000,
     computeUnitPrice: c.computeUnitPrice ?? 1n,
+    ...(version === 1 ? { v1: X402_V1 } : {}),
     instruction: {
       kind: "open",
       channel,
@@ -254,6 +263,8 @@ function openingOf(presented: unknown) {
   if (isRefusal(tx)) return tx;
   const fromTable = staticNonce(tx);
   if (fromTable !== null) return fromTable;
+  const version = versionNotAdmitted(accepted.extra, tx, "x402");
+  if (version !== null) return version;
   const carrier = svmCarrier(tx);
   if (isRefusal(carrier)) return carrier;
   if (carrier.memo !== accepted.extra?.["memo"]) return refusal("svm/carrier-mismatch");
@@ -275,17 +286,15 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
  * The opening's read keys: digest, fee payer, blockhash, and the transaction id once the fee payer has signed; and the
  * payee of `option`, the option the payment answers (`x402Payee`).
  */
-async function reference(presented: unknown, option: PaymentRequirements): Promise<Omit<SvmRef, "fromSlot"> | Refusal> {
+async function reference(presented: unknown, option: PaymentRequirements): Promise<SvmRef | Refusal> {
   const p = openingOf(presented);
   if (isRefusal(p)) return p;
-  const ref = await svmReference(p.accepted.network as SvmRef["network"], p.tx);
-  if (isRefusal(ref)) return ref;
-  const payee = x402Payee(option);
-  return isRefusal(payee) ? payee : { ...ref, payee };
+  return x402SvmReference(p.accepted, p.tx, p.h, option);
 }
 
 const pattern: LcpPattern = Object.freeze({
   pattern: "native-field",
+  profile: ID,
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,
@@ -314,12 +323,12 @@ export const uptoSvm = Object.freeze({
 }) satisfies Entry<
   typeof ID,
   UptoSvmPaymentPayload,
-  Omit<SvmRef, "fromSlot">,
+  SvmRef,
   SvmReader,
   X402Forms & {
     choice: UptoSvmChoice;
     unsigned: SvmUnsigned<UptoSvmPaymentPayload>;
-    landed: { fromSlot: string; transaction: string };
+    landed: object;
     network: SolanaNetwork;
     query: SvmQuery;
     answer: SvmStatus;

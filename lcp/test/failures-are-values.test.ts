@@ -60,8 +60,6 @@ import {
   svmCarrier,
   svmChannelStatus,
   svmDigest,
-  svmLocate,
-  svmNonceMoved,
   svmRecover,
   svmStatus,
 } from "../src/svm.js";
@@ -732,8 +730,6 @@ describe("svm", () => {
     ["svmStatus", svmStatus, file, UNPARSEABLE, SVM_QUERY],
     ["svmChannelStatus", svmChannelStatus, file, UNPARSEABLE, SVM_QUERY],
     ["svmRecover", svmRecover, file, refused("svm/wrong-reader")],
-    ["svmNonceMoved", svmNonceMoved, file, null],
-    ["svmLocate", svmLocate, file, { complete: false }, H],
   ]);
   answers([
     ["svmCarrier", svmCarrier, [undefined], 0, refused("svm/tx-malformed")],

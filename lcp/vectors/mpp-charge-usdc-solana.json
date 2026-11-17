@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/charge/usdc/solana: the Solana charge with method usdc, its details read from methodDetails.solana, whose network is required (draft-usdc-charge-00, Solana profile). The request, the wire and the expected reference are mpp-charge-solana.json's, so the expected values are that file's. The usdc profile rule is the draft's: methodDetails.type names exactly one profile details object. Each reference names the payee of the challenge the payment answers, its request's recipient.",
+ "about": "Vectors for mpp/charge/usdc/solana: the Solana charge with method usdc, its details read from methodDetails.solana, whose network is required (draft-usdc-charge-00, Solana profile). The request, the wire and the expected reference are mpp-charge-solana.json's, so the expected values are that file's. The usdc profile rule is the draft's: methodDetails.type names exactly one profile details object. Each reference names the payee of the challenge the payment answers, its request's recipient. patternAs names the pairing whose record this one's is, and profile the one profile it names apart, profiles/mpp-charge-usdc-solana.md.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -35,7 +35,9 @@
    "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
    "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   }
  },
  "refusals": {
@@ -120,6 +122,7 @@
   }
  },
  "patternAs": "mpp/charge/solana",
+ "profile": "mpp/charge/usdc/solana",
  "buyer": {
   "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
   "rows": [
@@ -230,7 +233,7 @@
   ]
  },
  "transactionVersions": {
-  "case": "build of mpp-charge-solana.json build's input on the placed challenge of fixed.request whose Solana profile, methodDetails.solana, holds transactionVersions set to each row's value, the row without the member holding none; the profile holds the Solana details build reads, as methodDetails does for MPP's solana method. The draft methodDetails.transactionVersions of tempoxyz/mpp-specs pull request 355, unmerged, as solana-foundation/pay-kit 86400da reads it, unreleased (@solana/mpp 0.7.0 has no such field): the transaction message versions the server accepts, an array of the JSON integers 0 and 1, strings, other numbers and a bare integer refused (typescript/packages/mpp/src/Methods.ts, transactionVersions); absent, the accepted set is [0]; a present, empty list accepts nothing (src/utils/transaction-versions.ts, acceptedTransactionVersions); the client builds the highest version listed (negotiateTransactionVersion; src/client/Charge.ts:211-220); the server accepts exactly the versions listed and refuses legacy, before it co-signs (src/server/Charge.ts:390-433) and on chain (:1072-1085). This package's builders write version-0 messages only, so a row whose field admits 0, or that has no field (the first row), is built as mpp-charge-solana.json build's message, its first byte 128 and its SHA-256 that file's build.buildMessageSha256, and a row whose field does not admit 0 is refused svm/version-not-built, with no message to sign.",
+  "case": "build of mpp-charge-solana.json build's input on the placed challenge of fixed.request whose Solana profile, methodDetails.solana, holds transactionVersions set to each row's value, the row without the member holding none; the profile holds the Solana details build reads, as methodDetails does for MPP's solana method. The draft methodDetails.transactionVersions of tempoxyz/mpp-specs pull request 355, unmerged, as solana-foundation/pay-kit 86400da reads it, unreleased (@solana/mpp 0.7.0 has no such field): the transaction message versions the server accepts, an array of the JSON integers 0 and 1, strings, other numbers and a bare integer refused (typescript/packages/mpp/src/Methods.ts, transactionVersions); absent, the accepted set is [0]; a present, empty list accepts nothing (src/utils/transaction-versions.ts, acceptedTransactionVersions); the client builds the highest version listed (negotiateTransactionVersion; src/client/Charge.ts:211-220), a version-1 message carrying its budget in the header as setTransactionMessageComputeUnitLimit, setTransactionMessagePriorityFeeLamports and setTransactionMessageLoadedAccountsDataSizeLimit write it, the last at 64 MiB (src/client/Charge.ts:451-464), the one value its server's checkV1BudgetCaps admits; the server accepts exactly the versions listed and refuses legacy, before it co-signs (src/server/Charge.ts:390-433) and on chain (:1072-1085). The rule: the client builds as the stock clients do, the highest version both the offer's list and this package admit, version 1 where the list holds 1, version 0 where it holds 0 alone or is absent; an offer whose list admits neither, a field that is present and is not a non-empty array of the integers 0 and 1, is refused at the option filter, before the buyer signs. A row whose field holds 1 is built as version 1, its first byte 129 and its SHA-256 that of the message @solana/kit 8.4.0 alone writes from mpp-charge-solana.json V2.wireBase64's instructions (build's message) without its Compute Budget instructions, the same fee payer and blockhash, and the header pay-kit 86400da's client writes for build's computeUnitLimit and computeUnitPrice: computeUnitLimit 20000, priorityFeeLamports 1 (20000 units at 1 micro-lamport, rounded up), loadedAccountsDataSizeLimit 67108864 (test/kit-v1.ts); a row whose field holds 0 alone, or that has none (the first row), is built as build's message, its first byte 128 and its SHA-256 build.buildMessageSha256; any other row is refused svm/input-malformed by the challenge's checks, which pairingsOf and advertise apply, before the challenge is placed, so nothing is signed.",
   "rows": [
    {
     "expect": {
@@ -244,8 +247,8 @@
      1
     ],
     "expect": {
-     "messageFirstByte": 128,
-     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "a12dac8c02213e7b9392c13f7056c9ea88fda764df33f08315512858f5b79239"
     }
    },
    {
@@ -263,8 +266,8 @@
      0
     ],
     "expect": {
-     "messageFirstByte": 128,
-     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "a12dac8c02213e7b9392c13f7056c9ea88fda764df33f08315512858f5b79239"
     }
    },
    {
@@ -272,15 +275,15 @@
      1
     ],
     "expect": {
-     "refused": true,
-     "code": "svm/version-not-built"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "a12dac8c02213e7b9392c13f7056c9ea88fda764df33f08315512858f5b79239"
     }
    },
    {
     "transactionVersions": [],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "svm/input-malformed"
     }
    },
    {
@@ -289,7 +292,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "svm/input-malformed"
     }
    },
    {
@@ -299,7 +302,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "svm/input-malformed"
     }
    },
    {
@@ -309,21 +312,21 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "svm/input-malformed"
     }
    },
    {
     "transactionVersions": null,
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "svm/input-malformed"
     }
    },
    {
     "transactionVersions": 0,
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "svm/input-malformed"
     }
    }
   ]

@@ -21,7 +21,7 @@ import {
   type MppCredential,
   type SessionWithin,
 } from "../src/mpp.js";
-import { decodeSvmTx, openOf, sessionProof, solanaVoucher, svmLocate, type SvmReader } from "../src/svm.js";
+import { decodeSvmTx, openOf, sessionProof, solanaVoucher, type SvmReader } from "../src/svm.js";
 import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
@@ -110,44 +110,6 @@ describe("the svm entry point's payment-channel pieces", () => {
     expect(o).toEqual({ salt: BigInt(V.SV1.expectSalt), channel: V.SV2.channel });
     const ix = tx.instructions.find((i) => i.data[0] === 1)!;
     expect(hex(ix.data)).toBe(V.SV2.expectOpenData);
-  });
-
-  // The opening carries no memo, so it is found among the signatures of the channel account it creates (the PDA whose
-  // seeds include the salt, H's first 8 bytes), never the fee payer's; the search is complete only when the node still
-  // holds every block from the claim slot.
-  it("SV2b: a search for the opening pages the channel account, and is complete only from the first available block", async () => {
-    const ref = { ...V.SV2.expectReference, fromSlot: "100" };
-    const paged: string[] = [];
-    const readerOf = (first: bigint): SvmReader => ({
-      network: ref.network,
-      transaction: async () => ({ notFound: true as const, slot: null }),
-      signatures: async (address) => {
-        paged.push(address);
-        return address === V.SV2.channel
-          ? [
-              { signature: "close", slot: 130n, memo: null },
-              { signature: "opening", slot: 120n, memo: null },
-              { signature: "older", slot: 90n, memo: null },
-            ]
-          : [];
-      },
-      blockhashValid: async () => ({ valid: true, slot: 0n }),
-      firstAvailableBlock: async () => first,
-      account: async () => {
-        throw new Error("this reference names no nonce account");
-      },
-    });
-    const read: string[] = [];
-    const status = async (r: { transaction: string }) => {
-      read.push(r.transaction);
-      return r.transaction === "opening" ? { state: "settled" } : { state: "failed" };
-    };
-    expect(await svmLocate(ref, readerOf(100n), H, status)).toEqual({ found: "opening", complete: true });
-    expect(paged).toEqual([V.SV2.channel]);
-    expect(read).toEqual(["close", "opening"]);
-    expect(await svmLocate(ref, readerOf(101n), H, status)).toEqual({ complete: false });
-    const none = async () => ({ state: "failed" });
-    expect(await svmLocate(ref, readerOf(100n), H, none)).toEqual({ complete: true });
   });
 
   // SV3's voucher is the draft's 50 bytes (draft-solana-session-00 L1419-1429) as @solana/kit 8.4.0's codecs write

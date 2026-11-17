@@ -65,7 +65,9 @@ import { solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { chargeLightning, sessionLightning } from "./lightning.js";
 import { railSessionResume, sessionXrpl } from "./mpp-session-rails.js";
 import { hederaSessionResume, sessionHederaStock } from "./hedera-session.js";
-import { chargeSolana } from "./mpp-solana.js";
+import { chargeSolana, chargeSolanaUnsponsored } from "./mpp-solana.js";
+import { subscriptionSolana } from "./mpp-subscription-solana.js";
+import { sessionSolanaMemo, sessionSolanaStock, solanaSessionResume } from "./mpp-session-solana.js";
 import { chargeXrpl } from "./mpp-xrpl.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { rlpDecode, rlpUint } from "./rlp.js";
@@ -124,7 +126,9 @@ export {
 } from "./mpp-usdc.js";
 export { chargeNearIntents } from "./mpp-nearintents.js";
 export { toX402, type TokenDomain, type X402Mapped } from "./mpp-x402.js";
-export { chargeSolana } from "./mpp-solana.js";
+export { chargeSolana, chargeSolanaUnsponsored } from "./mpp-solana.js";
+export { subscriptionSolana } from "./mpp-subscription-solana.js";
+export { sessionSolanaMemo, sessionSolanaStock, type SolanaSessionChoice, type SolanaSessionUnsigned } from "./mpp-session-solana.js";
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
 export {
   sessionXrpl,
@@ -345,8 +349,9 @@ function echoedChain(e: Echoed): number | Refusal {
  */
 export function sessionResume(c: MppChallenge): { network: string; channel: string } | null | Refusal {
   const method = typeof c === "object" && c !== null ? c.method : undefined;
+  if (method === "solana") return solanaSessionResume(c);
   if (method === "hedera") return hederaSessionResume(c);
-  return method === "solana" || method === "xrpl" ? railSessionResume(c) : evmSessionResume(c);
+  return method === "xrpl" ? railSessionResume(c) : evmSessionResume(c);
 }
 
 /**
@@ -364,8 +369,13 @@ export function network(challenge: MppChallenge): string | Refusal {
     case "session/tempo":
     case "subscription/tempo":
       return sessionNetwork(challenge);
-    case "charge/solana": {
+    case "charge/solana":
+    case "subscription/solana": {
       const n = solanaNetworkOf(d, false);
+      return n === null ? refusal("svm/network-undeclared") : n;
+    }
+    case "session/solana": {
+      const n = solanaNetworkOf(c.request, false);
       return n === null ? refusal("svm/network-undeclared") : n;
     }
     case "charge/xrpl":
@@ -949,6 +959,10 @@ export const MPP_BINDINGS = Object.freeze([
   chargeLightning,
   sessionLightning,
   chargeSolana,
+  chargeSolanaUnsponsored,
+  subscriptionSolana,
+  sessionSolanaMemo,
+  sessionSolanaStock,
   chargeXrpl,
   chargeNearIntents,
   sessionXrpl,

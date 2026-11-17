@@ -6,6 +6,7 @@ const vectors = (name: string) => JSON.parse(readFileSync(new URL(`../vectors/${
 const SOLANA = vectors("mpp-charge-solana");
 const XRPL = vectors("mpp-charge-xrpl");
 const SESSION_EVM = vectors("mpp-session-evm");
+const SESSION_SOLANA = vectors("mpp-session-solana");
 
 const challenge = { id: "x", realm: "api.seller.example", method: "m", intent: "charge", request: "e30" };
 const credential = (payload: Record<string, unknown>) => ({ challenge, payload });
@@ -17,7 +18,9 @@ const PUSHED_HASH = `0x${"55".repeat(32)}`;
 const ROWS: readonly [id: string, payload: Record<string, unknown>, landed: string][] = [
   ["mpp/session/evm", { action: "open", type: "hash", hash: PUSHED_HASH, salt: SESSION_EVM.fixed.H }, PUSHED_HASH],
   ["mpp/charge/solana", { type: "signature", signature: SOLANA.refusals[1].payload.signature }, SOLANA.refusals[1].payload.signature],
+  ["mpp/charge/solana/unsponsored", { type: "signature", signature: SOLANA.refusals[1].payload.signature }, SOLANA.refusals[1].payload.signature],
   ["mpp/charge/xrpl", { type: "hash", hash: XRPL.refusals[0].payload.hash }, XRPL.refusals[0].payload.hash],
+  ["mpp/session/solana/stock", SESSION_SOLANA.stock.credential.payload, SESSION_SOLANA.stock.expectTransaction],
 ];
 
 describe("landedTx on push-mode pairings", () => {

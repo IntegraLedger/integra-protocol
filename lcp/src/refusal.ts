@@ -47,7 +47,7 @@ export function isRefusal(v: unknown): v is Refusal {
  * `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above the finalized height),
  * `stacks/not-final` (a failure in a Stacks block fewer than two tenures below the tip, which can be replaced),
  * `starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block, which can change),
- * `svm/not-final` (an error at Solana's `confirmed`, with the transaction not found at `finalized`) and
+ * `svm/not-final` (a transaction at Solana's `confirmed` not found at `finalized`, with an error or none) and
  * `tempo/not-final` (as `evm/not-final`, on Tempo). The refusal code reference marks each of them.
  *
  * False for every other string. A verdict is not a read to repeat: a later read gives the same answer. Nor is a call the

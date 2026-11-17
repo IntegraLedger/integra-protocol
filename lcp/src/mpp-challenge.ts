@@ -33,6 +33,8 @@ import {
   hederaSessionPairings,
   nearIntentsChargePairings,
   solanaChargePairings,
+  solanaSessionPairings,
+  solanaSubscriptionPairings,
   xrplChargePairings,
   xrplSessionPairings,
 } from "./mpp-rail-checks.js";
@@ -157,6 +159,10 @@ export type MppPairingId =
   | "mpp/charge/lightning"
   | "mpp/session/lightning"
   | "mpp/charge/solana"
+  | "mpp/charge/solana/unsponsored"
+  | "mpp/subscription/solana"
+  | "mpp/session/solana/memo"
+  | "mpp/session/solana/stock"
   | "mpp/charge/xrpl"
   | "mpp/charge/nearintents"
   | "mpp/session/xrpl"
@@ -684,6 +690,8 @@ const PAIRING_CHECKS: { readonly [intentAndMethod: string]: PairingCheck } = Obj
   "charge/lightning": lightningPairings("mpp/charge/lightning"),
   "session/lightning": lightningPairings("mpp/session/lightning"),
   "charge/solana": solanaChargePairings,
+  "subscription/solana": solanaSubscriptionPairings,
+  "session/solana": solanaSessionPairings,
   "charge/xrpl": xrplChargePairings,
   "charge/nearintents": nearIntentsChargePairings,
   "session/xrpl": xrplSessionPairings,

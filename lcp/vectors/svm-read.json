@@ -1,0 +1,1855 @@
+{
+ "about": "Vectors for the Solana read (lcp/src/internal/svm-read.ts) as the profile read-status and the Solana profiles' read (profiles/x402-exact-solana.md, 6) state it: the search for H by the buyer's own account, its handle and bounds, the blockhash's bound from the first isBlockhashValid answer of true, the one mark, the party facts from the landed data, presented, a failed result, a durable nonce, the history, and coverage none. Every row's ledger is constructed, not recorded: test/svm-read.test.ts encodes each transaction as a legacy wire (Solana's documented message layout) and answers each call as the JSON-RPC method documents it (solana.com/docs/rpc: getSignaturesForAddress, newest first, before and until exclusive, its memo field the transaction's memos rendered [length] text; getTransaction with meta.err, meta.postTokenBalances and meta.innerInstructions; isBlockhashValid with its context slot; getFirstAvailableBlock; getAccountInfo of a nonce account, @solana/rpc-api 8.4.0). Keys are named by role: the fee payer, the buyer (payer), the option's payee, another account, the mint and the token accounts, each a 32-byte key of one repeated byte. A ref holds the message (its digest, its id and its blockhash), a transaction alone, or a durable nonce; txs list each transaction with its signer, where its transfer goes, the commitment the node holds it at and its slot; reader holds the node's first available block, its finalized and confirmed slots, and isBlockhashValid's answer and context slot at confirmed until one answers true, and in lapse its answers once that bound is held, at finalized and at confirmed; asks, the calls the read must or must never make; rules, the read-status rules and the part of the Solana read the row holds. Each expect is status's answer in those names, slots as decimal strings. While the search proves no absence (SVM_SEARCH_SHOWN false: no run has yet shown that the buyer's signatures list every transaction the buyer signs), a failed answer but before-position is pending, search-incomplete.",
+ "fixed": {
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+ },
+ "rows": [
+  {
+   "case": "the payer's act carrying H, its transfer reaching the token account the balances give the payee as owner, at finalized: settled, presented yes by the message's digest, what moved named by its transaction and place",
+   "rules": "read-status 9, 10, 13; the Solana read's party facts",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "finalized",
+     "slot": 1010
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "asks": {
+    "signaturesOf": [
+     "payer"
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "transaction": "t1",
+    "position": "1010",
+    "finality": "finalized",
+    "presented": "yes",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 0
+     }
+    ],
+    "signer": "payer",
+    "foreign": []
+   }
+  },
+  {
+   "case": "an act listed only under the fee payer's account is never met: the search pages the buyer's own account, never the fee payer's, which hosted settlers share; the read holding no message answers not-found",
+   "rules": "the Solana read's search; read-status 18",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "finalized",
+     "slot": 1010,
+     "listed": "feePayer"
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "asks": {
+    "signaturesOf": [
+     "payer"
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "not-found",
+    "foreign": []
+   }
+  },
+  {
+   "case": "a listed signature whose memo rendering does not hold H's LCP string is no candidate and is not looked up; a payment presented as a transaction alone compares by that transaction, presented yes",
+   "rules": "the Solana read's search; read-status 13",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "finalized",
+     "slot": 1010
+    },
+    {
+     "id": "n1",
+     "at": "finalized",
+     "slot": 1020,
+     "memo": "none"
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "asks": {
+    "never": [
+     "getTransaction n1",
+     "isBlockhashValid"
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "transaction": "t1",
+    "position": "1010",
+    "finality": "finalized",
+    "presented": "yes",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 0
+     }
+    ],
+    "signer": "payer",
+    "foreign": []
+   }
+  },
+  {
+   "case": "an act found only at confirmed, the latest head, which is no mark: pending, below-mark, naming it with no finality",
+   "rules": "read-status 17, 25; the Solana read's one mark",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "confirmed",
+     "slot": 1110
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "below-mark",
+    "transaction": "t1",
+    "position": "1110",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 0
+     }
+    ],
+    "signer": "payer",
+    "search": {
+     "validAt": "1000"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "a query asking for confirmed names no mark of this family: unreadable, unparseable, with nothing read",
+   "rules": "the Solana read's one mark; read-status 12",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "confirmed"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "finalized",
+     "slot": 1010
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "asks": {
+    "never": [
+     "getSignaturesForAddress",
+     "getTransaction",
+     "isBlockhashValid"
+    ]
+   },
+   "expect": {
+    "state": "unreadable",
+    "reason": "unparseable",
+    "foreign": []
+   }
+  },
+  {
+   "case": "a transaction carrying H that the option's payee signed, beside the payer's act: settled on the act, the payee's named payee-signed with what it moved",
+   "rules": "read-status 14",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "finalized",
+     "slot": 1010
+    },
+    {
+     "id": "e1",
+     "signer": "payee",
+     "at": "finalized",
+     "slot": 1020
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "transaction": "t1",
+    "position": "1010",
+    "finality": "finalized",
+    "presented": "yes",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 0
+     }
+    ],
+    "signer": "payer",
+    "foreign": [
+     {
+      "transaction": "e1",
+      "position": "1020",
+      "signer": "payee",
+      "moved": [
+       {
+        "asset": "mint",
+        "amount": "5",
+        "to": "payee",
+        "transaction": "e1",
+        "place": 0
+       }
+      ],
+      "reason": "payee-signed"
+     }
+    ]
+   }
+  },
+  {
+   "case": "the payer's transaction carrying H whose transfer reaches a token account another owns: for a payment a foreign item, other-account, and the read holding no message answers not-found",
+   "rules": "read-status 9, 14, 18",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "to": "other",
+     "at": "finalized",
+     "slot": 1010
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "not-found",
+    "foreign": [
+     {
+      "transaction": "t1",
+      "position": "1010",
+      "signer": "payer",
+      "moved": [
+       {
+        "asset": "mint",
+        "amount": "5",
+        "to": "other",
+        "transaction": "t1",
+        "place": 0
+       }
+      ],
+      "reason": "other-account"
+     }
+    ]
+   }
+  },
+  {
+   "case": "a candidate whose token balances name no owner cannot show where its transfer went: an item the search could not decode, which holds the search, never another account",
+   "rules": "read-status 9, 15; the Solana read's party facts",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "finalized",
+     "slot": 1010,
+     "ownerless": true
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "search-incomplete",
+    "search": {},
+    "undecoded": [
+     "t1"
+    ],
+    "foreign": []
+   }
+  },
+  {
+   "case": "a transaction carrying H that two signers other than the fee payer signed, neither the buyer nor the payee: other-signer, naming no signer, since past the fee payer the signers' order says nothing of who signed H",
+   "rules": "read-status 14; the Solana read's party facts",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "signer": "other",
+     "cosigned": true,
+     "at": "finalized",
+     "slot": 1010,
+     "listed": "payer"
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "not-found",
+    "foreign": [
+     {
+      "transaction": "t1",
+      "position": "1010",
+      "reason": "other-signer",
+      "moved": [
+       {
+        "asset": "mint",
+        "amount": "5",
+        "to": "payee",
+        "transaction": "t1",
+        "place": 0
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "case": "a System transfer of lamports from the buyer's account to the payee counts: settled, what moved in sol",
+   "rules": "the Solana read's party facts",
+   "pairing": "mpp/charge/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "asset": "sol",
+     "at": "finalized",
+     "slot": 1010
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "transaction": "t1",
+    "position": "1010",
+    "finality": "finalized",
+    "presented": "yes",
+    "moved": [
+     {
+      "asset": "sol",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 0
+     }
+    ],
+    "signer": "payer",
+    "foreign": []
+   }
+  },
+  {
+   "case": "a transfer an inner instruction made is the act's, named by the index of the top-level instruction it ran under and its place among that one's inner instructions",
+   "rules": "read-status 13; the Solana read's party facts",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "inner": true,
+     "at": "finalized",
+     "slot": 1010
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "transaction": "t1",
+    "position": "1010",
+    "finality": "finalized",
+    "presented": "yes",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": "0.0"
+     }
+    ],
+    "signer": "payer",
+    "foreign": []
+   }
+  },
+  {
+   "case": "the payer's own failed transaction that consumed the value, at the position given: before-position, naming it with nothing moved, a failed result moving nothing",
+   "rules": "read-status 9, 16, 20",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized",
+    "after": 1005
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "finalized",
+     "slot": 1005,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "failed",
+    "reason": "before-position",
+    "transaction": "t1",
+    "position": "1005",
+    "finality": "finalized",
+    "moved": [],
+    "signer": "payer",
+    "foreign": []
+   }
+  },
+  {
+   "case": "a blockhash the endpoint never answers valid gives no bound: however far the slots, instrument-live",
+   "rules": "the Solana read's lapse; read-status 22",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 5000,
+    "confirmed": 5020,
+    "valid": [
+     false,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "instrument-live",
+    "foreign": []
+   }
+  },
+  {
+   "case": "a blockhash answered valid at context slot 1,000, then invalid at finalized at a finalized slot 150 past it, has lapsed: instrument-unused, which the search's gate holds while the search proves no absence, pending, search-incomplete, the bound kept in the handle",
+   "rules": "the Solana read's lapse, and its search until a run shows it whole; read-status 24, 25",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1150,
+    "confirmed": 1170,
+    "valid": [
+     true,
+     1000
+    ],
+    "lapse": {
+     "finalized": [
+      false,
+      1150
+     ]
+    }
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "search-incomplete",
+    "search": {
+     "validAt": "1000"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "a blockhash answered invalid at confirmed alone, the latest head, at a slot 150 past its bound: below-mark, naming nothing",
+   "rules": "the Solana read's lapse; read-status 17",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1150,
+    "valid": [
+     true,
+     1000
+    ],
+    "lapse": {
+     "confirmed": [
+      false,
+      1150
+     ]
+    }
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "below-mark",
+    "search": {
+     "validAt": "1000"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "the bound the handle keeps is read from it, with no isBlockhashValid call at confirmed, and past it the blockhash answered invalid at finalized has lapsed: instrument-unused, which the search's gate holds",
+   "rules": "the Solana read's lapse",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized",
+    "search": {
+     "validAt": "1000"
+    }
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1150,
+    "confirmed": 1170,
+    "valid": [
+     false,
+     0
+    ],
+    "lapse": {
+     "finalized": [
+      false,
+      1150
+     ]
+    }
+   },
+   "asks": {
+    "never": [
+     "isBlockhashValid bound"
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "search-incomplete",
+    "search": {
+     "validAt": "1000"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "a finalized slot 150 past the bound, the blockhash still valid there and at confirmed, since a skipped slot adds no block: no lapse, instrument-live, the bound kept in the handle",
+   "rules": "the Solana read's lapse; read-status 22, 24",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1150,
+    "confirmed": 1170,
+    "valid": [
+     true,
+     1000
+    ],
+    "lapse": {
+     "finalized": [
+      true,
+      1150
+     ],
+     "confirmed": [
+      true,
+      1170
+     ]
+    }
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "instrument-live",
+    "search": {
+     "validAt": "1000"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "ten full pages of 1,000 that do not reach the position given: not read whole, the handle holding the head and the range below the last signature read",
+   "rules": "the Solana read's search; read-status 19, 25",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized",
+    "after": 1000
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ],
+    "filler": 10000
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "search-incomplete",
+    "search": {
+     "head": "f0",
+     "before": "f9999"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "more candidates carrying H than one pass reads (50): not read whole, the handle resuming below the last candidate read",
+   "rules": "the Solana read's search; read-status 19",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "s0",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 3000,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s1",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2999,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s2",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2998,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s3",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2997,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s4",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2996,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s5",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2995,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s6",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2994,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s7",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2993,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s8",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2992,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s9",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2991,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s10",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2990,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s11",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2989,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s12",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2988,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s13",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2987,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s14",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2986,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s15",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2985,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s16",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2984,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s17",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2983,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s18",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2982,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s19",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2981,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s20",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2980,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s21",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2979,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s22",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2978,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s23",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2977,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s24",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2976,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s25",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2975,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s26",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2974,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s27",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2973,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s28",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2972,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s29",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2971,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s30",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2970,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s31",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2969,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s32",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2968,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s33",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2967,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s34",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2966,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s35",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2965,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s36",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2964,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s37",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2963,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s38",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2962,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s39",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2961,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s40",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2960,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s41",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2959,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s42",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2958,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s43",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2957,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s44",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2956,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s45",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2955,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s46",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2954,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s47",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2953,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s48",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2952,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s49",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2951,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    },
+    {
+     "id": "s50",
+     "signer": "other",
+     "at": "finalized",
+     "slot": 2950,
+     "err": {
+      "InstructionError": [
+       0,
+       {
+        "Custom": 1
+       }
+      ]
+     }
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "search-incomplete",
+    "search": {
+     "head": "s0",
+     "before": "s49"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "a pass not read whole that meets the agreement the caller gave resumes below the pages it read: a transaction that decides nothing does not send the next pass back to the head",
+   "rules": "read-status 19, 25; the Solana read's search",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized",
+    "others": [
+     "a1"
+    ]
+   },
+   "txs": [
+    {
+     "id": "a1",
+     "to": "none",
+     "at": "finalized",
+     "slot": 20000
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ],
+    "filler": 10000
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "instrument-live",
+    "search": {
+     "head": "a1",
+     "before": "f9998",
+     "validAt": "1000"
+    },
+    "foreign": [
+     {
+      "transaction": "a1",
+      "position": "20000",
+      "reason": "given",
+      "signer": "payer",
+      "moved": []
+     }
+    ]
+   }
+  },
+  {
+   "case": "an act an earlier pass met and kept in the handle (met) is looked up by its signature, though the ranges the handle resumes no longer list it: found only at confirmed, pending, below-mark, naming it",
+   "rules": "read-status 17, 19; the Solana read's search",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "message",
+    "tx": "p0",
+    "digestOf": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized",
+    "search": {
+     "met": [
+      "t1"
+     ],
+     "validAt": "1000"
+    }
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "at": "confirmed",
+     "slot": 1110,
+     "listed": "none"
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "below-mark",
+    "transaction": "t1",
+    "position": "1110",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 0
+     }
+    ],
+    "signer": "payer",
+    "search": {
+     "validAt": "1000"
+    },
+    "foreign": []
+   }
+  },
+  {
+   "case": "a node whose first available block is above the position given does not show the history: unreadable, history-gap",
+   "rules": "the Solana read's history; read-status 18",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized",
+    "after": 1005
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 1006,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "expect": {
+    "state": "unreadable",
+    "reason": "history-gap",
+    "foreign": []
+   }
+  },
+  {
+   "case": "a durable-nonce message: the payer's act that advanced the nonce under another message is the act, presented no, the nonce read spent at finalized",
+   "rules": "the Solana read's lapse; read-status 13, 21",
+   "pairing": "x402/exact/solana",
+   "ref": {
+    "holds": "nonce",
+    "tx": "q0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "nonce": true,
+     "at": "finalized",
+     "slot": 1010
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ],
+    "nonceMoved": true
+   },
+   "asks": {
+    "never": [
+     "isBlockhashValid"
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "transaction": "t1",
+    "position": "1010",
+    "finality": "finalized",
+    "presented": "no",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 1
+     }
+    ],
+    "signer": "payer",
+    "foreign": []
+   }
+  },
+  {
+   "case": "at coverage none, the stock session's named opening, which carries no H, is the act: settled, with no search made",
+   "rules": "read-status 7; mpp-session-hedera-solana-xrpl.md, the stock session",
+   "pairing": "mpp/session/solana/stock",
+   "ref": {
+    "holds": "message",
+    "tx": "t1"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [
+    {
+     "id": "t1",
+     "kind": "channel",
+     "memo": "none",
+     "at": "finalized",
+     "slot": 1010,
+     "listed": "none"
+    }
+   ],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "asks": {
+    "never": [
+     "getSignaturesForAddress",
+     "isBlockhashValid"
+    ]
+   },
+   "expect": {
+    "state": "settled",
+    "transaction": "t1",
+    "position": "1010",
+    "finality": "finalized",
+    "presented": "yes",
+    "moved": [
+     {
+      "asset": "mint",
+      "amount": "5",
+      "to": "payee",
+      "transaction": "t1",
+      "place": 0
+     }
+    ],
+    "signer": "payer",
+    "foreign": []
+   }
+  },
+  {
+   "case": "at coverage none, a named opening no lookup finds, on a node that holds the history: not-found",
+   "rules": "read-status 18",
+   "pairing": "mpp/session/solana/stock",
+   "ref": {
+    "holds": "transaction",
+    "tx": "p0"
+   },
+   "query": {
+    "act": "payment",
+    "finality": "finalized"
+   },
+   "txs": [],
+   "reader": {
+    "firstAvailableBlock": 0,
+    "finalized": 1100,
+    "confirmed": 1120,
+    "valid": [
+     true,
+     1000
+    ]
+   },
+   "asks": {
+    "never": [
+     "getSignaturesForAddress"
+    ]
+   },
+   "expect": {
+    "state": "pending",
+    "reason": "not-found",
+    "foreign": []
+   }
+  }
+ ]
+}

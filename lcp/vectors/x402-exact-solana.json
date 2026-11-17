@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. V3's row 4 is V2's wire with a bit set past the last byte in its last base64 character before the padding. Byte strings are hex unless named base64. carrierSpelling and durableNonce were built with solders 0.26.0 on Python 3.12.3 from the same seeds and inputs (the nonce account from seed 04x32, its authority the payer); durableNonce's messages were sent to the LiteSVM bundled with solders 0.26.0, whose outcomes and nonce account bytes the section records. Each status row's expected answer is the one the profile read-status (read-status.md) gives for its fixture, read for the act payment at the finality its query names, or at finalized: a failure read at finalized (an error, no transfer, a message the payer did not sign, a durable nonce moved on), and a lookup that finds nothing, are pending, search-incomplete, since this read is no search for H (rules 17, 23 and 24); a rejected read is unreadable, transport; and each reference names the option's payee. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
+ "about": "Vectors for the x402/exact/solana pairing: the svm and x402/exact/solana entry points of @integraledger/lcp. Expected values: H is SHA-256(\"abc\") from FIPS 180-2; keys from Ed25519 seeds 01x32 and 02x32; x402's example payTo and blockhash; devnet USDC, computed with solders 0.26.0 on Python 3.12.3. The transaction fixtures (V3's variants, V4's landed wire, the plant) were built with solders 0.26.0 on Python 3.11 from the same seeds; the same script reproduces the V2 wire and V4 txid. V3's row 4 is V2's wire with a bit set past the last byte in its last base64 character before the padding. Byte strings are hex unless named base64. carrierSpelling and durableNonce were built with solders 0.26.0 on Python 3.12.3 from the same seeds and inputs (the nonce account from seed 04x32, its authority the payer); durableNonce's messages were sent to the LiteSVM bundled with solders 0.26.0, whose outcomes and nonce account bytes the section records. The read's own cases, the search for H by the buyer's account, its handle, the blockhash's bound, the party facts and presented, are in svm-read.json; transactionV1's statusRows read the stock version-1 payment back; each reference names the option's payee. transactionV1 is the version-1 transaction (SIMD-0385) the stock @x402/svm 2.31.0 client writes, run offline as its case states; its landed wire adds the fee payer's signature made with @noble/curves 2.4.0.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -128,7 +128,9 @@
    "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
    "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   }
  },
  "V3": [
@@ -218,176 +220,19 @@
   }
  ],
  "V4": {
-  "case": "status and recover of the landed wire (V2's with the fee payer's signature in slot 0)",
+  "case": "recover of the landed wire (V2's with the fee payer's signature in slot 0); landedErr is the error recover reads it landed with, at finalized (svm/err) and at confirmed alone (svm/not-final)",
   "landedWireBase64": "AqP1NFpt3XeJB0sPpBAraBA0AUTAdMK+anaN+3eB21MGGFBWP8xYCuZJDNxsNiPl1ZIGGwpR6YjxoTXFAYhyOg6UoDe7b6/kVh95hiKyPlflS+nM2l7CeGQs5eKOdif05Kbh5gfIyBeidFCnaOIduIxSRK6FariD0c9BEVrqGasMgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
   "txid": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-  "ref": {
-   "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-   "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
-   "digest": "0xc9c23863e31d6bd0574bfda4bf5a4e4eb476f58e0821024f62180ccaa1a73aba",
-   "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-   "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-   "fromSlot": "0"
+  "landedErr": {
+   "InstructionError": [
+    2,
+    {
+     "Custom": 1
+    }
+   ]
   },
-  "rows": [
-   {
-    "at": "finalized",
-    "err": null,
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
-     "finality": "finalized",
-     "foreign": []
-    }
-   },
-   {
-    "at": "confirmed",
-    "err": null,
-    "query": {
-     "act": "payment",
-     "finality": "confirmed"
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
-     "finality": "confirmed",
-     "foreign": []
-    }
-   },
-   {
-    "at": "finalized",
-    "err": {
-     "InstructionError": [
-      2,
-      {
-       "Custom": 1
-      }
-     ]
-    },
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "at": null,
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "at": "reader-error",
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "unreadable",
-     "reason": "transport",
-     "foreign": []
-    }
-   },
-   {
-    "at": "confirmed",
-    "err": {
-     "InstructionError": [
-      2,
-      {
-       "Custom": 1
-      }
-     ]
-    },
-    "query": {
-     "act": "payment",
-     "finality": "finalized"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "below-mark",
-     "transaction": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
-     "finality": "confirmed",
-     "foreign": []
-    }
-   }
-  ],
   "expectRecover": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
- },
- "V5": {
-  "case": "svmLocate over the fee payer's signatures; a candidate is a signature whose RPC memo carries L, at most 50 per pass. The search is complete only when the node's first available block (getFirstAvailableBlock) is at or before fromSlot, the pages reach fromSlot, and every candidate is read: a listed candidate that cannot be read leaves it incomplete. Each reader here reports firstAvailableBlock unless a row gives its own.",
-  "fromSlot": "1000000",
-  "firstAvailableBlock": "999000",
-  "tenFullPagesNoMatch": {
-   "expect": {
-    "complete": false
-   },
-   "case": "ten full pages of 1000 signatures above fromSlot, each with another memo or none"
-  },
-  "secondPageReachesFromSlot": {
-   "expect": {
-    "found": "4H8LN9QqFzzxEJYvsvARSCa63p3uBJticDESYKSgEnSy4KqvjdSyREHRrSnRG2ufyVNWATCFpQdbtUHWcPiWZj8Z",
-    "complete": true
-   },
-   "case": "page 1: 1000 signatures with other memos; page 2: the landed txid with the carrier memo, then one below fromSlot"
-  },
-  "memoRendering": {
-   "source": "getSignaturesForAddress on solana devnet, 2026-09-25: each memo is rendered '[len] text'",
-   "carrier": "[77] lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-   "other": "[32] 2e1fbcbca266489ba18708e5ed9707dd"
-  },
-  "candidateCap": {
-   "case": "51 signatures above fromSlot whose memo carries L, each a landed transaction whose message digest is not the reference's (the plant's wire: not this instrument), then one below fromSlot",
-   "candidates": 51,
-   "candidateWire": "plant",
-   "expect": {
-    "complete": false
-   }
-  },
-  "candidatesWithinCap": {
-   "case": "50 such signatures, each the plant's landed wire (not this instrument), then one below fromSlot",
-   "candidates": 50,
-   "candidateWire": "plant",
-   "expect": {
-    "complete": true
-   }
-  },
-  "candidatesNotReadable": {
-   "case": "50 signatures above fromSlot whose memo carries L, whose transactions getTransaction does not return at either commitment, then one below fromSlot",
-   "candidates": 50,
-   "candidateWire": null,
-   "expect": {
-    "complete": false
-   }
-  },
-  "firstAvailableAboveFromSlot": {
-   "case": "one page reaching below fromSlot with no candidate, from a node whose first available block is fromSlot + 1",
-   "firstAvailableBlock": "1000001",
-   "expect": {
-    "complete": false
-   }
-  },
-  "firstAvailableAtFromSlot": {
-   "case": "the same page, from a node whose first available block is fromSlot",
-   "firstAvailableBlock": "1000000",
-   "expect": {
-    "complete": true
-   }
-  }
  },
  "plant": {
   "case": "a landed transaction the same payer signed carrying L as its one memo and no transfer (compute limit, compute price, memo with the payer as signer), err null at finalized",
@@ -410,7 +255,7 @@
   }
  },
  "transactionV1": {
-  "case": "A version-1 transaction as the stock client writes it: @x402/svm 2.31.0 (npm, the devDependency this package pins), run offline: the payer's key from Ed25519 seed 01x32 (@solana/kit 8.4.0 createKeyPairSignerFromPrivateKeyBytes), the clock at now, the option's extra.recentBlockhash as the lifetime and transactionVersions [0, 1] as a stock facilitator advertises them (scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4), so the client builds version 1, the highest version both sides admit; the client's one RPC read, getAccountInfo of the asset, answered with an initialized SPL Token mint of 6 decimals owned by the Token program, and no other read made, the seller memo extra.memo being L. bound gives H from the one memo, extra.memo; reference gives the message's digest, the fee payer and the blockhash. landedWireBase64 is the stock wire with the fee payer's Ed25519 signature (seed 02x32, @noble/curves 2.4.0) of the message in signature slot 0; txid is that signature in base58. The message is every byte before the signatures (SIMD-0385, Transaction V1 Specification, at solana-foundation/solana-improvement-documents ae7b00f3), and messageSha256 is SHA-256 over it (node:crypto). status of the landed wire's reference, its transaction the txid, read at each row's commitment, answers the row's expect, and recover gives H. changed holds the stock wire with one member changed, each refused by bound with its code; landedChanged is the landed wire with the memo changed as changed's first row, read under the same txid, which status answers failed not-this-instrument, since its message digest is not the reference's The changed rows after the third hold the stock wire with one member changed for each rule of SIMD-0385 the decoder applies (Transaction V1 Specification and Transaction Constraints, at solana-foundation/solana-improvement-documents ae7b00f3): a sanitization failure is svm/tx-malformed, a wire over 4,096 bytes svm/tx-too-large, and a wire within every rule, at a limit or over the 1,232 bytes of a legacy or v0 transaction, gives H. Where a row names kit, @solana/kit 8.4.0 gives the same verdict: isTransactionWithinSizeLimit of its decoded transaction (@solana/transactions transaction-size.ts, V1_TRANSACTION_SIZE_LIMIT 4096 in transaction-size-limits.ts), its message decoder refusing a single priority-fee bit (@solana/transaction-messages v1-transaction-config.ts, transactionConfigMaskHasPriorityFee, read by codecs/v1/config.ts), or setTransactionMessageHeapSize of the row's value (resource-limit-validation.ts, assertIsValidHeapSize); its compiler holds the same 64-address, 12-signer and 64-instruction limits (compile/v1/message.ts:54-71). SIMD-0385 assigns mask bits 0 to 4 and states no rule for a set bit it assigns no field, and @solana/kit's decoder reads no bytes for one; this package refuses such a bit (the row setting bit 5), since the 4 bytes it stands for have no meaning it can read.",
+  "case": "A version-1 transaction as the stock client writes it: @x402/svm 2.31.0 (npm, the devDependency this package pins), run offline: the payer's key from Ed25519 seed 01x32 (@solana/kit 8.4.0 createKeyPairSignerFromPrivateKeyBytes), the clock at now, the option's extra.recentBlockhash as the lifetime and transactionVersions [0, 1] as a stock facilitator advertises them (scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4), so the client builds version 1, the highest version both sides admit; the client's one RPC read, getAccountInfo of the asset, answered with an initialized SPL Token mint of 6 decimals owned by the Token program, and no other read made, the seller memo extra.memo being L. bound gives H from the one memo, extra.memo; reference gives the message's digest, the fee payer and the blockhash. landedWireBase64 is the stock wire with the fee payer's Ed25519 signature (seed 02x32, @noble/curves 2.4.0) of the message in signature slot 0; txid is that signature in base58. The message is every byte before the signatures (SIMD-0385, Transaction V1 Specification, at solana-foundation/solana-improvement-documents ae7b00f3), and messageSha256 is SHA-256 over it (node:crypto). status of the landed wire's reference, its transaction the txid, read back through a constructed reader (the buyer's account listing the txid with its memo as getSignaturesForAddress renders it; getTransaction holding it at finalized, or at confirmed alone, with the token balances getTransaction gives for each token account its TransferChecked names, the source the payer's and the destination the payee's; the finalized slot 1,100, the confirmed one 1,120; the blockhash valid at slot 1,000), answers each row's expect at the one mark, finalized (read-status rules 13, 17, 23 to 25): settled, with what moved and presented yes; pending, below-mark, naming it with no finality, where only confirmed holds it; and, with an error, pending, search-incomplete, since the search's gate holds the payer's own failed transaction while the search proves no absence. recover gives H. changed holds the stock wire with one member changed, each refused by bound with its code; landedChanged is the landed wire with the memo changed as changed's first row, read under the same txid, which status answers pending, instrument-live, since its message digest is not the reference's, so it consumed nothing and is no act carrying H, and the blockhash's validity has not passed The changed rows after the third hold the stock wire with one member changed for each rule of SIMD-0385 the decoder applies (Transaction V1 Specification and Transaction Constraints, at solana-foundation/solana-improvement-documents ae7b00f3): a sanitization failure is svm/tx-malformed, a wire over 4,096 bytes svm/tx-too-large, and a wire within every rule, at a limit or over the 1,232 bytes of a legacy or v0 transaction, gives H. Where a row names kit, @solana/kit 8.4.0 gives the same verdict: isTransactionWithinSizeLimit of its decoded transaction (@solana/transactions transaction-size.ts, V1_TRANSACTION_SIZE_LIMIT 4096 in transaction-size-limits.ts), its message decoder refusing a single priority-fee bit (@solana/transaction-messages v1-transaction-config.ts, transactionConfigMaskHasPriorityFee, read by codecs/v1/config.ts), or setTransactionMessageHeapSize of the row's value (resource-limit-validation.ts, assertIsValidHeapSize); its compiler holds the same 64-address, 12-signer and 64-instruction limits (compile/v1/message.ts:54-71). SIMD-0385 assigns mask bits 0 to 4 and states no rule for a set bit it assigns no field, and @solana/kit's decoder reads no bytes for one; this package refuses such a bit (the row setting bit 5), since the 4 bytes it stands for have no meaning it can read.",
   "now": 1790000000,
   "expectAsked": [
    "getAccountInfo"
@@ -447,12 +292,15 @@
    "digest": "0x50660952e15e4a91a9de575967952c5f69d1c562e39c157d8dd56b5327b32bcf",
    "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
    "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+   "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+   "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
   "landedWireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkCw7kV/lU1S2rQjclzsAEK1j9uBOSqbjmbEU3oxTyJPFi9yFgEXW/JZZi9jl+gpFmjetoM9Sovq4CstfJIsBBAWgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6Ozpgw=",
   "txid": "DpjyYi7c6w3zzh6caNLqk3C1wdrgefRApYPLia8QDFPe5a9CnaVqBySDjuZasZrbjhKHniBCsGCkAqgsvA7dKon",
   "statusRows": [
    {
+    "case": "the landed wire at finalized: settled, what moved named by its transaction and place, presented yes",
     "at": "finalized",
     "err": null,
     "query": {
@@ -463,24 +311,50 @@
      "state": "settled",
      "transaction": "DpjyYi7c6w3zzh6caNLqk3C1wdrgefRApYPLia8QDFPe5a9CnaVqBySDjuZasZrbjhKHniBCsGCkAqgsvA7dKon",
      "finality": "finalized",
+     "moved": [
+      {
+       "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "amount": "1000",
+       "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "transaction": "DpjyYi7c6w3zzh6caNLqk3C1wdrgefRApYPLia8QDFPe5a9CnaVqBySDjuZasZrbjhKHniBCsGCkAqgsvA7dKon",
+       "place": 0
+      }
+     ],
+     "signer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "presented": "yes",
      "foreign": []
     }
    },
    {
+    "case": "the landed wire at confirmed alone, the latest head and no mark: pending, below-mark, naming it with no finality",
     "at": "confirmed",
     "err": null,
     "query": {
      "act": "payment",
-     "finality": "confirmed"
+     "finality": "finalized"
     },
     "expect": {
-     "state": "settled",
+     "state": "pending",
+     "reason": "below-mark",
      "transaction": "DpjyYi7c6w3zzh6caNLqk3C1wdrgefRApYPLia8QDFPe5a9CnaVqBySDjuZasZrbjhKHniBCsGCkAqgsvA7dKon",
-     "finality": "confirmed",
+     "moved": [
+      {
+       "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+       "amount": "1000",
+       "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "transaction": "DpjyYi7c6w3zzh6caNLqk3C1wdrgefRApYPLia8QDFPe5a9CnaVqBySDjuZasZrbjhKHniBCsGCkAqgsvA7dKon",
+       "place": 0
+      }
+     ],
+     "signer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "search": {
+      "validAt": "1000"
+     },
      "foreign": []
     }
    },
    {
+    "case": "the landed wire at finalized with an error, the payer's own failed transaction: the search's gate holds it, pending, search-incomplete",
     "at": "finalized",
     "err": {
      "InstructionError": [
@@ -497,6 +371,9 @@
     "expect": {
      "state": "pending",
      "reason": "search-incomplete",
+     "search": {
+      "validAt": "1000"
+     },
      "foreign": []
     }
    }
@@ -733,29 +610,50 @@
    }
   ],
   "landedChanged": {
+   "case": "the landed wire with its memo changed, under the same txid: no act carrying H and not the message presented, so the value reads unconsumed: pending, instrument-live",
    "landedWireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFlCw7kV/lU1S2rQjclzsAEK1j9uBOSqbjmbEU3oxTyJPFi9yFgEXW/JZZi9jl+gpFmjetoM9Sovq4CstfJIsBBAWgIYO6wjo/AUBGHwgsZQQrfui7Lkk9TCLdwvdVXQucWZUryO1GEFdxo8LLbSjewbRI6kX9Vg1sU8O79C6Ozpgw=",
    "expect": {
     "state": "pending",
-    "reason": "search-incomplete",
+    "reason": "instrument-live",
+    "search": {
+     "validAt": "1000"
+    },
     "foreign": []
    },
    "query": {
     "act": "payment",
     "finality": "finalized"
    }
+  },
+  "build": {
+   "case": "lcp's build of the same inputs the stock client was given, under presented.accepted offered alone in a document: its extra.transactionVersions holds 1, so it builds version 1, and the message it asks the payer to sign is the stock client's message byte for byte, every byte of presented's wire before the signatures as @solana/kit 8.4.0's getTransactionDecoder reads messageBytes. input is the choice beside the document and option; a bigint member is written in decimal. The compute budget is the stock exact client's, DEFAULT_COMPUTE_UNIT_LIMIT 20000 and DEFAULT_COMPUTE_UNIT_PRICE_MICROLAMPORTS 1 (dist/esm/chunk-DAIKIZVB.mjs:13-15).",
+   "input": {
+    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "decimals": 6,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+    "computeUnitLimit": 20000,
+    "computeUnitPrice": "1"
+   }
   }
  },
  "transactionVersions": {
-  "case": "build of V1's input, the advertised option with extra.transactionVersions set to each row's value, both in the document and as the chosen option. scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4: extra.transactionVersions holds the transaction message versions the sponsor accepts, the JSON integers 0 and 1; when it is absent the accepted set is [0]; a field holding any other entry is invalid. This package's builders write version-0 messages only, so a row whose field admits 0 is built as the file's version-0 message, its first byte 128 and its SHA-256 the build's buildMessageSha256 as the input's own vector records it, and a row whose field does not is refused svm/version-not-built, with no request to sign (V1.buildMessageSha256).",
+  "case": "build of V1's input, the advertised option with extra.transactionVersions set to each row's value, or without it for the row that has none, both in the document and as the chosen option. scheme_exact_svm.md §1.5 at x402-foundation/x402 88b66dd4: extra.transactionVersions holds the transaction message versions the sponsor accepts, the JSON integers 0 and 1; when it is absent the accepted set is [0]; a field holding any other entry is invalid; @x402/svm 2.31.0's resolveTransactionVersion (dist/esm/chunk-DAIKIZVB.mjs:289-309) builds the highest version both admit and refuses a value that is not an array, an entry other than 0 and 1, and an empty list. The rule: the client builds as the stock clients do, the highest version both the offer's list and this package admit, version 1 where the list holds 1, version 0 where it holds 0 alone or is absent; an offer whose list admits neither, a field that is present and is not a non-empty array of the integers 0 and 1, is refused at the option filter, before the buyer signs. A row whose field holds 1 is built as version 1, its first byte 129 and its SHA-256 transactionV1.messageSha256, the message @x402/svm 2.31.0's exact client writes for the same inputs (transactionV1); a row whose field holds 0 alone, or that has none, is built as the file's version-0 message, its first byte 128 and its SHA-256 V1.buildMessageSha256; any other row is refused x402/option-malformed by the option filter, which advertise, read, build, bound and reference apply, with no request to sign.",
   "rows": [
+   {
+    "expect": {
+     "messageFirstByte": 128,
+     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+    }
+   },
    {
     "transactionVersions": [
      0,
      1
     ],
     "expect": {
-     "messageFirstByte": 128,
-     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "50660952e15e4a91a9de575967952c5f69d1c562e39c157d8dd56b5327b32bcf"
     }
    },
    {
@@ -773,8 +671,8 @@
      0
     ],
     "expect": {
-     "messageFirstByte": 128,
-     "buildMessageSha256": "a4c77c61251ca4bd174a22df7efbc66a62a63175a3cf5c583ff09972f79678c4"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "50660952e15e4a91a9de575967952c5f69d1c562e39c157d8dd56b5327b32bcf"
     }
    },
    {
@@ -782,15 +680,15 @@
      1
     ],
     "expect": {
-     "refused": true,
-     "code": "svm/version-not-built"
+     "messageFirstByte": 129,
+     "buildMessageSha256": "50660952e15e4a91a9de575967952c5f69d1c562e39c157d8dd56b5327b32bcf"
     }
    },
    {
     "transactionVersions": [],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
@@ -799,7 +697,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
@@ -809,7 +707,7 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
@@ -819,21 +717,21 @@
     ],
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
     "transactionVersions": null,
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    },
    {
     "transactionVersions": 0,
     "expect": {
      "refused": true,
-     "code": "svm/version-not-built"
+     "code": "x402/option-malformed"
     }
    }
   ]
@@ -859,6 +757,10 @@
    },
    {
     "case": "recover when the landed transaction's err is not null at confirmed and the transaction is not found at finalized",
+    "expect": "svm/not-final"
+   },
+   {
+    "case": "recover when the transaction landed with no error is found at confirmed alone, not at finalized: the carrier is read at finalized only",
     "expect": "svm/not-final"
    },
    {
@@ -1054,15 +956,6 @@
    "landedWireBase64": "AhBb3n8MndkUg40xKXv3wa9DsdyztY3l5SwgOO0QUmGTzUp77XxatCCmt0LNYRXeOAvLOlkkBGjtqhSAglmVdw4cOqhQ3bbRpLngwTwLD2HVHYWTvxIuzkQX5illsbFGzsIQiH1kCqfBxviylKZR53Mwp5suyBAGMTwqFGHMkIAHgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4gMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBAAFAiBOAAAEAAkDAQAAAAAAAAAGBAMHAgEKDOgDAAAAAAAABgUATWxjcDpzaGEyNTY6MHhCQTc4MTZCRjhGMDFDRkVBNDE0MTQwREU1REFFMjIyM0IwMDM2MUEzOTYxNzdBOUNCNDEwRkY2MUYyMDAxNUFEAA==",
    "txid": "KyFX2YU72ny6ZEqM35umXzRTcrERzXjpXbi2WRUjHSodizfYgwJ2i5UQs1hXW1bPBBrt1meebDAnjtqevFT71m7",
    "expect": "svm/carrier-not-canonical"
-  },
-  "locate": {
-   "case": "svmLocate matches the RPC's memo rendering without regard to case, so the landed message with the upper-case memo is a candidate; the reference's digest is that message's SHA-256",
-   "memoRendering": "[77] lcp:sha256:0xBA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD",
-   "digest": "0xd4805c63ed707600a98c550097e0334b3b219f5d9220ece5d274733e9f0b2350",
-   "expect": {
-    "found": "KyFX2YU72ny6ZEqM35umXzRTcrERzXjpXbi2WRUjHSodizfYgwJ2i5UQs1hXW1bPBBrt1meebDAnjtqevFT71m7",
-    "complete": true
-   }
   }
  },
  "durableNonce": {
@@ -1090,12 +983,13 @@
      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
      "digest": "0xad7bbfa60132acead0933fff3b2ac9e3cb052cb18d57c40b42ff48e412551c67",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-     "blockhash": "",
      "nonce": {
       "account": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
       "value": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H"
      },
-     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     }
    },
    {
@@ -1106,7 +1000,9 @@
      "digest": "0x9023a2a648e89f303eb0ed4a4375a4c3525a7dbea27eabc1490771b740f64101",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
      "blockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
-     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     }
    },
    {
@@ -1117,7 +1013,9 @@
      "digest": "0x1d7bf5a15b5350a098154a3d2ab6f9469b82a0b82e17a33cd5affd1e88fd6db2",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
      "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H",
-     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     }
    },
    {
@@ -1128,7 +1026,9 @@
      "digest": "0x73f46794ce2826940ed7848386abdbcaf438f63a83c5bd90ec3dbc06aeb91222",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
      "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H",
-     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     }
    },
    {
@@ -1139,7 +1039,9 @@
      "digest": "0xd8cf63bbcaf537c7955dbe3c7c8da1fb8f07d735f618ea64a170916582718f73",
      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
      "blockhash": "5zFCiB2H53Up7CiARBgUrMqLanzAN9dYnyg8JxNNmH1H",
-     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+     "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
     }
    }
   ],
@@ -1165,295 +1067,6 @@
     "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     "dataBase64": "AQAAAAEAAACKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXEoY6XXw8gBOEIhhvRihGiJx8yl3/CedtvM+yAoLYMjgiBMAAAAAAAA="
    }
-  },
-  "nonceMoved": {
-   "case": "svmNonceMoved on the durable reference with fromSlot 1000: a finalized read of the nonce account at a context slot at least 150 slots past fromSlot (a blockhash's lifetime: Solana's transaction documentation gives a blockhash 150 slots) shows whether the recorded nonce has moved on: svmNonceMoved answers that read's context slot when it shows the nonce moved on, svm/unreadable when the read is rejected or answers out of its documented shape, and null otherwise",
-   "fromSlot": "1000",
-   "rows": [
-    {
-     "case": "the account holds the recorded value",
-     "account": "held",
-     "slot": "1150",
-     "expect": null
-    },
-    {
-     "case": "the account holds another value",
-     "account": "moved",
-     "slot": "1150",
-     "expect": "1150"
-    },
-    {
-     "case": "another value, read 149 slots past fromSlot",
-     "account": "moved",
-     "slot": "1149",
-     "expect": null
-    },
-    {
-     "case": "no account",
-     "account": null,
-     "slot": "1150",
-     "expect": "1150"
-    },
-    {
-     "case": "an uninitialized System account",
-     "account": "uninitialized",
-     "slot": "1150",
-     "expect": "1150"
-    },
-    {
-     "case": "an account the System program does not own",
-     "account": "notSystem",
-     "slot": "1150",
-     "expect": "1150"
-    },
-    {
-     "case": "a legacy-version nonce account, which an upgrade turns into a current one",
-     "account": "legacyHeld",
-     "slot": "1150",
-     "expect": null
-    },
-    {
-     "case": "the reader fails: svm/unreadable, a read to repeat",
-     "account": "reader-error",
-     "slot": "1150",
-     "expect": "svm/unreadable"
-    },
-    {
-     "case": "the reader answers out of its documented shape, an account whose data is not bytes: svm/unreadable",
-     "account": "malformed",
-     "slot": "1150",
-     "expect": "svm/unreadable"
-    }
-   ]
-  },
-  "status": {
-   "case": "svmStatus on the durable message named by its txid, fromSlot 1000, with the nonce account read at context slot 1150. transactions lists what each successive transaction read answers: finalized, then confirmed, then, once the nonce has moved on and the node holds fromSlot, one more read at finalized. A read that finds nothing answers notFound with the node's slot at that commitment, read from that node before the lookup (Solana's getSlot), or null when the reader cannot read it there: the lookup shows the transaction absent only up to that slot, so the read shows the value consumed by another transaction (the nonce moved on) only from a last read at or past the nonce read's slot. Every answer but settled and unreadable is pending, search-incomplete, since this read is no search for H",
-   "landedWireBase64": "AmCpPBBBtnFMI++0DBLZfF7rh3680NkTB81bqxAAyn+7HRPZtuJScQ+plM+UazCw3Gr76TmuONmkQlWrK0f4pQsMrGN8VMSgl/vPLzXkROdAdKiOoZivjX+TSZ+Joq0l79ids9qA9EVBXZox1/iWiufU3lWmDKg5LyMkvcS3HXQOgAIBBguBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXKk6wXBRhwcdZ7g8f/Dv6BCOjsRTBXXXcmh5Mz29q+fO3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/iAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADBkZv5SEXMv/srbpyw5vnvIzlu8X3EmssQ5s6QAAAAAVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBqfVFxksVo7gioRfc9KXiM8DXDFFshqzRNgGLqlAAAAG3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqTtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nShjpdfDyAE4QiGG9GKEaInHzKXf8J5228z7ICgtgyOAFBQMDCAEEBAAAAAYABQJAnAAABgAJAwEAAAAAAAAACQQECgIBCgzoAwAAAAAAAAYHAE1sY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZAA=",
-   "fromSlot": "1000",
-   "rows": [
-    {
-     "case": "landed at finalized: settled, and the nonce account is not read",
-     "transactions": [
-      "landed"
-     ],
-     "account": null,
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "settled",
-      "transaction": "2w69WpPiw3ZzMRTC814avWjxu8CjYJP8n1KpHBZnvjLj4fWuFB1eYsayskL5rvY8D8MqSKXZrTQRPM33XbB8vDJA",
-      "finality": "finalized",
-      "foreign": []
-     },
-     "accountReads": 0
-    },
-    {
-     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1150, the nonce read's: the value read consumed: pending, search-incomplete",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      }
-     ],
-     "account": "moved",
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "pending",
-      "reason": "search-incomplete",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "never found, and the nonce has moved on, with the last read from a node at slot 1151, past the nonce read: the value read consumed: pending, search-incomplete",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1151"
-      }
-     ],
-     "account": "moved",
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "pending",
-      "reason": "search-incomplete",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "never found, and the nonce has moved on, but the last read comes from a node at slot 1149, behind the nonce read: pending, search-incomplete",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1149"
-      }
-     ],
-     "account": "moved",
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "pending",
-      "reason": "search-incomplete",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "never found, and the nonce has moved on, but the last read names no slot: pending, search-incomplete",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": null
-      }
-     ],
-     "account": "moved",
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "pending",
-      "reason": "search-incomplete",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "never found, and the account holds the recorded value: pending, search-incomplete",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      }
-     ],
-     "account": "held",
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "pending",
-      "reason": "search-incomplete",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "never found, the nonce has moved on, but the node's first available block is above fromSlot: pending, search-incomplete",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      }
-     ],
-     "account": "moved",
-     "firstAvailableBlock": "1001",
-     "expect": {
-      "state": "pending",
-      "reason": "search-incomplete",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "not found at first, then found by the read at finalized after the nonce read: settled",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      "landed"
-     ],
-     "account": "moved",
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "settled",
-      "transaction": "2w69WpPiw3ZzMRTC814avWjxu8CjYJP8n1KpHBZnvjLj4fWuFB1eYsayskL5rvY8D8MqSKXZrTQRPM33XbB8vDJA",
-      "finality": "finalized",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "never found, and the nonce account read fails: unreadable, transport",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      }
-     ],
-     "account": "reader-error",
-     "firstAvailableBlock": "0",
-     "expect": {
-      "state": "unreadable",
-      "reason": "transport",
-      "foreign": []
-     },
-     "accountReads": 1
-    },
-    {
-     "case": "never found, the nonce has moved on, and the first-available-block read fails: unreadable, transport",
-     "transactions": [
-      {
-       "notFound": true,
-       "slot": "1150"
-      },
-      {
-       "notFound": true,
-       "slot": "1150"
-      }
-     ],
-     "account": "moved",
-     "firstAvailableBlock": "reader-error",
-     "expect": {
-      "state": "unreadable",
-      "reason": "transport",
-      "foreign": []
-     },
-     "accountReads": 1
-    }
-   ]
   },
   "lookupTable": {
    "case": "A v0 message whose first instruction is AdvanceNonceAccount and names its nonce account or the RecentBlockhashes sysvar through an address lookup table; instruction0Accounts are the instruction's account indexes, where an index at or past staticKeys is a lookup-table entry. A durable message names its nonce account as a static key (SIMD-0242): a message whose nonce account is a lookup-table entry is invalid on the cluster, and bound and reference refuse it. A message whose nonce account is a writable static key and whose sysvar is a lookup-table entry is durable, the runtime checking the sysvar when AdvanceNonceAccount runs: bound gives H, and reference records the nonce account and the nonce value, the message's blockhash field, with an empty blockhash. liteSvm is the row's outcome when sent to the LiteSVM bundled with solders 0.26.0 after the recent blockhash expired, with the nonce value as its blockhash, and nonceMoved whether the nonce account then held another value. The lookup tables were made with the address lookup table program's CreateLookupTable and ExtendLookupTable in LiteSVM",
@@ -1495,12 +1108,13 @@
       "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
       "digest": "0x02a0f93a33397374f81021303fb9993ab010651a1df7ffc1da0a6e5bb1f05e32",
       "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-      "blockhash": "",
       "nonce": {
        "account": "EdmxWPmx2WH6WgFfTdu9xfkYf3k1g5wD1zccTVySEEh1",
        "value": "C4y3jiWhA9SkgWTWFK5QzPfJeo3e1hTuKmKovhVzmpp"
       },
-      "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+      "payee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+      "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
      }
     }
    ]
@@ -1653,19 +1267,44 @@
     "expect": "x402/option-malformed"
    },
    {
-    "case": "the option with amount \"0\", which is zero",
+    "case": "the option with extra.splits, whose split legs no Solana build writes",
     "pairing": "x402/exact/solana",
     "payment": "/buyer/rows/1/input/presented",
     "accepted": {
      "scheme": "exact",
      "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
-     "amount": "0",
+     "amount": "1000",
      "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
      "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
      "maxTimeoutSeconds": 60,
      "extra": {
       "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
-      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "splits": [
+       {
+        "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+        "amount": "1000"
+       }
+      ]
+     }
+    },
+    "expect": "svm/input-malformed"
+   },
+   {
+    "case": "the option with extra.transactionVersions [], which admits neither message version",
+    "pairing": "x402/exact/solana",
+    "payment": "/buyer/rows/1/input/presented",
+    "accepted": {
+     "scheme": "exact",
+     "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+     "amount": "1000",
+     "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+     "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+     "maxTimeoutSeconds": 60,
+     "extra": {
+      "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+      "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "transactionVersions": []
      }
     },
     "expect": "x402/option-malformed"
@@ -1759,6 +1398,92 @@
      }
     },
     "expect": "x402/option-malformed"
+   }
+  ]
+ },
+ "zeroAmount": {
+  "case": "An option at amount \"0\", the floor of x402/exact/solana: a zero TransferChecked lands, and @x402/svm 2.31.0's exact facilitator compares the transfer's amount with the option's by equality (dist/esm/chunk-RCDWMK2L.mjs:1010-1011), so the option filter offers it. presented is the payment @x402/svm 2.31.0's exact client writes for accepted, transactionV1's option with amount \"0\" and no extra.transactionVersions, run offline as transactionV1 is (test/stock-svm.ts): a version-0 transaction, its TransferChecked of 0 base units (data 0c, eight zero bytes, then the decimals 06). build of build.input under accepted offered alone asks the payer to sign the stock client's message byte for byte, every byte of presented's wire before the signatures as @solana/kit 8.4.0's getTransactionDecoder reads messageBytes; read offers accepted; and bound gives expectBound, H, from the one memo.",
+  "now": 1790000000,
+  "presented": {
+   "x402Version": 2,
+   "accepted": {
+    "scheme": "exact",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "amount": "0",
+    "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "feePayer": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+     "memo": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+     "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+    }
+   },
+   "payload": {
+    "transaction": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB5EEZSwDCqQhDreexIHDbJmRtE4cb54nUBc3SYJr/HV4M0UrkG+BZ8M7eMvCAw41eP4XXlXZLKYRSAMhZrSJUNgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4jtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBQAFAiBOAAAFAAkDAQAAAAAAAAAHBAMEAgEKDAAAAAAAAAAABgYATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA=="
+   }
+  },
+  "expectAsked": [
+   "getAccountInfo"
+  ],
+  "build": {
+   "input": {
+    "payer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+    "decimals": 6,
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+    "computeUnitLimit": 20000,
+    "computeUnitPrice": "1"
+   }
+  },
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+ },
+ "instructionLayout": {
+  "case": "The instruction layout of @x402/svm 2.31.0's exact facilitator (dist/esm/chunk-RCDWMK2L.mjs:140-245, resolveProtocolLayout and classify): the Memo program it takes is MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr alone (MEMO_PROGRAM_ADDRESS, chunk-DAIKIZVB.mjs:5), any other program outside its protocol order and Lighthouse guards is an unknown instruction, refused (:227), and a version-1 message holding a Compute Budget instruction is refused before any other layout check (:194-198). Each row is the stock exact client's payment, transactionV1 (version 1) or zeroAmount (version 0), with the row's change written by @solana/kit 8.4.0 alone: the message decoded and decompiled, its instruction list changed (none; memo-v4, the MemoSq4 Memo instruction's program set to Memo4c2pN8afCj432Lb7RMVKi9PbQnnW7ewFFaV3oAH with its data unchanged; compute-unit-limit-first, SetComputeUnitLimit of 20000 put first), compiled and encoded again, every signature slot zero, as wireBase64. bound of the payment under the base's option gives expect: H for the stock payments, which the round trip leaves byte for byte, and svm/instruction-not-admitted for each change the layout refuses. lcp's own build writes MemoSq4 alone, the Compute Budget instructions only in version 0, and the protocol order. What the layout admits beyond its default (preflight and postflight allowlists, smart-wallet verification, the compute unit and price caps) is the facilitator's configuration and is not held here.",
+  "rows": [
+   {
+    "case": "the stock version-1 payment as written, its message unchanged by the round trip: bound gives H",
+    "base": "transactionV1",
+    "change": "none",
+    "wireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1qZKSEGTSTocWDaOHx8NbXdvJK7geQfqEBBBUSNBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "the stock version-0 payment as written, its message unchanged by the round trip: bound gives H",
+    "base": "zeroAmount",
+    "change": "none",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4jtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBQAFAiBOAAAFAAkDAQAAAAAAAAAHBAMEAgEKDAAAAAAAAAAABgYATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+   },
+   {
+    "case": "the stock version-1 payment with its memo in a Memo v4 instruction, which the layout calls an unknown instruction (chunk-RCDWMK2L.mjs:145-161, :227)",
+    "base": "transactionV1",
+    "change": "memo-v4",
+    "wireBase64": "gQIBAw8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wIHgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwVKU1IoVM3RA8wuRjGj9ReSrHJ88eUKvJeCisWZTzzCBt324ddloZPZy+FGzut5rBy0he1fWzeROoz1hX7/AKkBAAAAAAAAACBOAAAAAEAABgQKAAUATQADBAIBDOgDAAAAAAAABmxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "expect": {
+     "refused": true,
+     "code": "svm/instruction-not-admitted"
+    }
+   },
+   {
+    "case": "the stock version-0 payment with its memo in a Memo v4 instruction, which the layout calls an unknown instruction (chunk-RCDWMK2L.mjs:145-161, :227)",
+    "base": "zeroAmount",
+    "change": "memo-v4",
+    "wireBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIBBAiBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlIqI4910CfGV/VLbLTy6XXLKZwm/HZQSG/N0iAG0D29chym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXtxjbgQB4pwJnqJwOAZZHm5AvuwQkVBwJdu/5tY3Yf4jtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAFSlNSKFTN0QPMLkYxo/UXkqxyfPHlCryXgorFmU88wgbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpyV29u5s5tb9yxXaxLxIjPB/vcv+BhIj3ODTS8YLYlusEBQAFAiBOAAAFAAkDAQAAAAAAAAAHBAMEAgEKDAAAAAAAAAAABgYATWxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkAA==",
+    "expect": {
+     "refused": true,
+     "code": "svm/instruction-not-admitted"
+    }
+   },
+   {
+    "case": "the stock version-1 payment with SetComputeUnitLimit(20000) first, a Compute Budget instruction in a version-1 message (chunk-RCDWMK2L.mjs:194-198)",
+    "base": "transactionV1",
+    "change": "compute-unit-limit-first",
+    "wireBase64": "gQIBBA8AAADJXb27mzm1v3LFdrEvEiM8H+9y/4GEiPc4NNLxgtiW6wMIgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5SKiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIcptbEkdSEoG6XJS/McBJGjkezFFLbYsACg1kr5ioAF7cY24EAeKcCZ6icDgGWR5uQL7sEJFQcCXbv+bWN2H+I7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqQEAAAAAAAAAIE4AAAAAQAAFAAUABwQKAAYATQACIE4AAAMEAgEM6AMAAAAAAAAGbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+    "expect": {
+     "refused": true,
+     "code": "svm/instruction-not-admitted"
+    }
    }
   ]
  }

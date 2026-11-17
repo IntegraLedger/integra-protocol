@@ -25,7 +25,6 @@ import {
   channelVoucherMessage,
   findPda,
   openInstructionData,
-  svmLocate,
   type SvmLanded,
   type SvmReader,
   type SvmRef,
@@ -328,10 +327,11 @@ const landed = (wire: Uint8Array, err: unknown = null): SvmLanded => ({ wire, er
 const FINAL = { act: "payment", finality: "finalized" } as const;
 function svmReaderFor(at: "finalized" | null, l: SvmLanded, txid: string): SvmReader {
   return {
-    network: V.ES5.ref.network,
+    network: V.ES5.network,
     transaction: async (sig) => (sig === txid && at !== null ? l : { notFound: true as const, slot: null }),
     signatures: async () => [],
     blockhashValid: async () => ({ valid: true, slot: 0n }),
+    slot: async () => 0n,
     firstAvailableBlock: async () => 0n,
     account: async () => {
       throw new Error("this reference names no nonce account");
@@ -577,7 +577,6 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(await svmReference(deposit(sysvar.wireBase64))).toMatchObject({
       network: V.ES4.accepted.network,
       digest: sysvar.digest,
-      blockhash: "",
       nonce: { account: DURABLE.nonceAccount, value: DURABLE.value },
     });
     const both = durableWire(V.ES2.wireBase64, [DURABLE.nonceAccount, DURABLE.sysvar]);
@@ -586,26 +585,9 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(await svmReference(deposit(both.wireBase64))).toEqual(refused("svm/nonce-account-not-static"));
   });
 
-  it("ES7: svmLocate reads each candidate through the pairing's own status", async () => {
-    const wire = b64(V.ES5.landedWireBase64);
-    const { transaction: _named, ...unnamed } = V.ES5.ref as SvmRef & { transaction: string };
-    const ref: SvmRef = { ...unnamed, fromSlot: V.ES7.fromSlot };
-    const fromSlot = BigInt(V.ES7.fromSlot);
-    const reader: SvmReader = {
-      ...svmReaderFor("finalized", landed(wire), V.ES5.txid),
-      firstAvailableBlock: async () => BigInt(V.ES7.firstAvailableBlock),
-      signatures: async () => [
-        { signature: V.ES5.txid, slot: fromSlot + 5n, memo: V.ES7.memo },
-        { signature: "older", slot: fromSlot - 1n, memo: null },
-      ],
-    };
-    expect(await svmLocate(ref, reader, H, batchSvm.status)).toEqual(V.ES7.expectChannelStatus);
-    expect(await svmLocate(ref, reader, H)).toEqual(V.ES7.expectTransferTest);
-  });
-
   it("ES8: the opening's memos, exactly one binding memo and one other, read by bound and recover (x402 751590a2, scheme_batch_settlement_svm.md L1320-1325, L1346-1348; steward test/unit/batch.receiverAuthorizer.test.ts)", async () => {
     const voucher = { channelId: V.ES1.channelPda, maxClaimableAmount: "1000", expiresAt: 0, signature: "x" };
-    const ref = { network: V.ES5.ref.network, tx: V.ES5.txid, option: S.option as PaymentRequirements };
+    const ref = { network: V.ES5.network, tx: V.ES5.txid, option: S.option as PaymentRequirements };
     expect(V.ES8.rows.length).toBe(4);
     for (const row of rowsOf(V.ES8.rows, "x402-batch-settlement.json ES8.rows", { exact: 4 })) {
       const opening = svmPayment({ type: "deposit", channelConfig: V.ES4.config, voucher, deposit: { amount: S.deposit, transaction: row.wireBase64 } });
@@ -646,26 +628,13 @@ describe("x402-batch-settlement.json: SVM", () => {
     }
   });
 
-  it("ES5: svmChannelStatus, and a transaction with no channel instruction", async () => {
-    const wire = b64(V.ES5.landedWireBase64);
-    const ref = { ...V.ES5.ref, fromSlot: "0" } as SvmRef & { transaction: string };
-    for (const row of rowsOf(V.ES5.rows, "x402-batch-settlement.json ES5.rows")) {
-      expect(await batchSvm.status(ref, svmReaderFor(row.at, landed(wire, row.err ?? null), V.ES5.txid), row.query), JSON.stringify(row)).toEqual(row.expect);
-    }
-    expect(await batchSvm.recover({ network: ref.network, tx: ref.transaction, option: S.option }, svmReaderFor("finalized", landed(wire), V.ES5.txid))).toBe(H);
-    const nc = V.ES5.plantNoChannel;
-    const r = svmReaderFor("finalized", landed(b64(nc.landedWireBase64)), "nc");
-    expect(await batchSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r, FINAL)).toEqual(nc.expect);
-  });
-
   // Solana's commitment levels: a block at `confirmed` has a supermajority's votes but is not finalized, and a block
   // that is not finalized can be replaced. An opening that landed with an error is svm/err once the read at `finalized`
   // holds it, and svm/not-final, a read to repeat, when only the read at `confirmed` does (docs/reference/refusals.md).
   it("ES5: recover of an opening that landed with an error is svm/err at finalized, and svm/not-final at confirmed only", async () => {
     const wire = b64(V.ES5.landedWireBase64);
-    const ref = { network: V.ES5.ref.network, tx: V.ES5.txid, option: S.option as PaymentRequirements };
-    const failed = (V.ES5.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
-    const atFinalized = svmReaderFor("finalized", landed(wire, failed.err), V.ES5.txid);
+    const ref = { network: V.ES5.network, tx: V.ES5.txid, option: S.option as PaymentRequirements };
+    const atFinalized = svmReaderFor("finalized", landed(wire, V.ES5.landedErr), V.ES5.txid);
     expect(await batchSvm.recover(ref, atFinalized)).toEqual(refused("svm/err"));
     const atConfirmed: SvmReader = {
       ...atFinalized,
@@ -674,43 +643,11 @@ describe("x402-batch-settlement.json: SVM", () => {
     expect(await batchSvm.recover(ref, atConfirmed)).toEqual(refused("svm/not-final"));
   });
 
-  // The same commitment levels place status: an opening that landed with an error, read at `confirmed` only, is the
-  // payer's own transaction failed below the final mark, pending below-mark (read-status.md rule 17); read at
-  // `finalized` it is no settlement, and this read is no search for H, so it is pending search-incomplete (rules 23
-  // and 24). The signature fixes the instructions, so a transaction with no channel instruction (the file's
-  // plantNoChannel) is no act at either commitment: pending search-incomplete.
-  it("ES5: status gives below-mark for an error read only at confirmed, and search-incomplete for one at finalized or for no channel instruction", async () => {
-    const wire = b64(V.ES5.landedWireBase64);
-    const ref = { ...V.ES5.ref, fromSlot: "0" } as SvmRef & { transaction: string };
-    const err = (V.ES5.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!.err;
-    const at = (commitment: "finalized" | "confirmed", l: SvmLanded, txid: string): SvmReader => {
-      const r = svmReaderFor("finalized", l, txid);
-      return commitment === "finalized" ? r : { ...r, transaction: async (sig, c) => (c === "finalized" ? { notFound: true, slot: null } : r.transaction(sig, c)) };
-    };
-    const incomplete = { state: "pending", reason: "search-incomplete", foreign: [] };
-    expect(await batchSvm.status(ref, at("finalized", landed(wire, err), V.ES5.txid), FINAL)).toEqual(incomplete);
-    expect(await batchSvm.status(ref, at("confirmed", landed(wire, err), V.ES5.txid), FINAL)).toEqual({
-      state: "pending",
-      reason: "below-mark",
-      transaction: V.ES5.txid,
-      finality: "confirmed",
-      foreign: [],
-    });
-    const nc = V.ES5.plantNoChannel;
-    expect(nc.expect).toEqual(incomplete);
-    for (const commitment of ["finalized", "confirmed"] as const) {
-      for (const e of [null, err]) {
-        const r = at(commitment, landed(b64(nc.landedWireBase64), e), "nc");
-        expect([commitment, e, await batchSvm.status({ ...ref, transaction: "nc", digest: nc.digest }, r, FINAL)]).toEqual([commitment, e, nc.expect]);
-      }
-    }
-  });
-
   // A transaction the chain executed is a well-formed one within Solana's 1232-byte packet (PACKET_DATA_SIZE), so a
   // landed wire that does not decode, here one byte short of ES5's, is the reader's answer out of its documented form.
   it("ES5: recover of a landed wire that does not decode is svm/unreadable", async () => {
     const wire = b64(V.ES5.landedWireBase64);
-    const ref = { network: V.ES5.ref.network, tx: V.ES5.txid, option: S.option as PaymentRequirements };
+    const ref = { network: V.ES5.network, tx: V.ES5.txid, option: S.option as PaymentRequirements };
     const short = svmReaderFor("finalized", landed(wire.subarray(0, wire.length - 1)), V.ES5.txid);
     expect(await batchSvm.recover(ref, short)).toEqual(refused("svm/unreadable"));
   });

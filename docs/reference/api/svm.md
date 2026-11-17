@@ -22,6 +22,7 @@ description: "The exports of @integraledger/lcp/svm."
 | <a id="property-payer"></a> `payer` | `string` | - |
 | <a id="property-recentblockhash"></a> `recentBlockhash` | `string` | - |
 | <a id="property-tokenprogram"></a> `tokenProgram` | `string` | - |
+| <a id="property-v1"></a> `v1?` | [`SvmV1Header`](#svmv1header) | Present, a version-1 message (SIMD-0385) whose header carries the compute budget in this form; absent, v0. |
 
 ***
 
@@ -41,19 +42,56 @@ description: "The exports of @integraledger/lcp/svm."
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-amount"></a> `amount` | `bigint` |
-| <a id="property-computeunitlimit-1"></a> `computeUnitLimit` | `number` |
-| <a id="property-computeunitprice-1"></a> `computeUnitPrice` | `bigint` |
-| <a id="property-decimals"></a> `decimals` | `number` |
-| <a id="property-feepayer-1"></a> `feePayer` | `string` |
-| <a id="property-memo-1"></a> `memo` | `string` |
-| <a id="property-mint-1"></a> `mint` | `string` |
-| <a id="property-payer-1"></a> `payer` | `string` |
-| <a id="property-payto"></a> `payTo` | `string` |
-| <a id="property-recentblockhash-1"></a> `recentBlockhash` | `string` |
-| <a id="property-tokenprogram-1"></a> `tokenProgram` | `string` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-amount"></a> `amount` | `bigint` | - |
+| <a id="property-computeunitlimit-1"></a> `computeUnitLimit` | `number` | - |
+| <a id="property-computeunitprice-1"></a> `computeUnitPrice` | `bigint` | - |
+| <a id="property-decimals"></a> `decimals` | `number` | - |
+| <a id="property-feepayer-1"></a> `feePayer` | `string` | - |
+| <a id="property-memo-1"></a> `memo` | `string` | - |
+| <a id="property-mint-1"></a> `mint` | `string` | - |
+| <a id="property-payer-1"></a> `payer` | `string` | - |
+| <a id="property-payto"></a> `payTo` | `string` | - |
+| <a id="property-recentblockhash-1"></a> `recentBlockhash` | `string` | - |
+| <a id="property-tokenprogram-1"></a> `tokenProgram` | `string` | - |
+| <a id="property-v1-1"></a> `v1?` | [`SvmV1Header`](#svmv1header) | Present, a version-1 message (SIMD-0385) whose header carries the compute budget in this form; absent, v0. |
+
+***
+
+### SvmCursor
+
+The search's handle, which a `pending` answer returns and the next call takes: `before`, the signature below which
+the buyer's account has range left to read; `head`, the newest signature an earlier pass read, so the next pass reads
+the head down to it; `met`, the signatures of the transactions carrying H an earlier pass met that the answer rests
+on, each a transaction that consumed the value or one the payer signed, other than those the caller gave, which the
+next pass looks up by signature, since the ranges it resumes no longer list them; and `validAt`, the context slot of
+the first `isBlockhashValid` answer of `true` at `confirmed`, as a decimal string, which bounds the blockhash's own
+slot from above.
+
+#### Properties
+
+| Property | Modifier | Type |
+| ------ | ------ | ------ |
+| <a id="property-before"></a> `before?` | `readonly` | `string` |
+| <a id="property-head"></a> `head?` | `readonly` | `string` |
+| <a id="property-met"></a> `met?` | `readonly` | readonly `string`[] |
+| <a id="property-validat"></a> `validAt?` | `readonly` | `string` |
+
+***
+
+### SvmInner
+
+One instruction of `meta.innerInstructions`: the top-level instruction it ran under (`index`), and its own fields.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-accounts"></a> `accounts` | readonly `number`[] | - |
+| <a id="property-data-1"></a> `data` | `Uint8Array` | - |
+| <a id="property-index"></a> `index` | `number` | The index, among the message's top-level instructions, of the instruction it ran under. |
+| <a id="property-program"></a> `program` | `number` | Indexes the static keys, then `loaded.writable`, then `loaded.readonly`, as a top-level instruction does. |
 
 ***
 
@@ -67,10 +105,13 @@ the highest message version this package decodes.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-err"></a> `err` | `unknown` | - |
-| <a id="property-inner"></a> `inner` | readonly `object`[] | `meta.innerInstructions`, flattened; `program` indexes the static keys, then `loaded.writable`, then `loaded.readonly`. |
+| <a id="property-inner"></a> `inner` | readonly [`SvmInner`](#svminner)[] | `meta.innerInstructions`, in the node's order, each with the top-level instruction it ran under. |
 | <a id="property-loaded"></a> `loaded` | `object` | - |
 | `loaded.readonly` | readonly `Uint8Array`\<`ArrayBufferLike`\>[] | - |
 | `loaded.writable` | readonly `Uint8Array`\<`ArrayBufferLike`\>[] | - |
+| <a id="property-post"></a> `post?` | readonly [`SvmTokenBalance`](#svmtokenbalance)[] | `meta.postTokenBalances`; absent read as none. |
+| <a id="property-pre"></a> `pre?` | readonly [`SvmTokenBalance`](#svmtokenbalance)[] | `meta.preTokenBalances`; absent read as none. |
+| <a id="property-slot"></a> `slot?` | `bigint` | The slot of the block that holds it, as `getTransaction` gives it; absent where the endpoint gives none. |
 | <a id="property-wire"></a> `wire` | `Uint8Array` | - |
 
 ***
@@ -92,14 +133,8 @@ the message carries in its blockhash field.
 ### SvmReader
 
 Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
-`@integraledger/lcp/evm`, and no function in this package reads a rejection as finding nothing. A rejected
-`transaction` or `account` call, and a rejected `firstAvailableBlock` call in a status read, is unreadable:
-`svm/unreadable`, a read to repeat, or a status read's `unreadable`, `transport` (`too-large` or `unparseable` for a
-`ReaderError` of kind `too-large` or `malformed`). In `svmLocate`, a rejected
-`firstAvailableBlock` or `signatures` call leaves the search `complete` false. `transaction` answers `notFound` when
-the node holds no such transaction at that commitment, with `slot`: the node's slot at that commitment (`getSlot`),
-read from that same node before the lookup, so the lookup is at or past it, or null when the reader cannot read it
-from that node. A lookup naming no slot never reads failed.
+`@integraledger/lcp/evm`, and no function in this package reads a rejection as finding nothing: a rejected call is
+`unreadable`, `transport` (`too-large` or `unparseable` for a `ReaderError` of kind `too-large` or `malformed`).
 
 #### Properties
 
@@ -111,16 +146,17 @@ from that node. A lookup naming no slot never reads failed.
 
 ##### account()
 
-> **account**(`address`): `Promise`\<\{ `slot`: `bigint`; `value`: \{ `data`: `Uint8Array`; `owner`: `string`; \} \| `null`; \}\>
+> **account**(`address`, `commitment`): `Promise`\<\{ `slot`: `bigint`; `value`: \{ `data`: `Uint8Array`; `owner`: `string`; \} \| `null`; \}\>
 
-`getAccountInfo` at commitment `finalized` with encoding `base64`: the response's context slot, and the account's
-owner and data, or null when no account exists at that address.
+`getAccountInfo` at that commitment with encoding `base64`: the response's context slot, and the account's owner and
+data, or null when no account exists at that address.
 
 ###### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `address` | `string` |
+| `commitment` | [`SvmCommitment`](#svmcommitment) |
 
 ###### Returns
 
@@ -128,22 +164,17 @@ owner and data, or null when no account exists at that address.
 
 ##### blockhashValid()
 
-> **blockhashValid**(`blockhash`): `Promise`\<\{ `slot`: `bigint`; `valid`: `boolean`; \}\>
+> **blockhashValid**(`blockhash`, `commitment`): `Promise`\<\{ `slot`: `bigint`; `valid`: `boolean`; \}\>
 
-`isBlockhashValid` at commitment `confirmed`: `valid` is the response's `value` ("Whether the blockhash is still
-valid at the evaluated slot"), and `slot` its context slot, the slot the node evaluated it at. No function in this
-package calls it; it serves the caller's own verdict that a message with a blockhash reference never landed. A node
-also answers false for a blockhash whose block it has not reached, so a false answer at a slot below `fromSlot` +
-150, the bound `svmNonceMoved` sets for its read, shows nothing; the bound holds for a blockhash from a slot at or
-before `fromSlot` + 150. From a false answer at or past that bound, the caller passes `slot` to `svmLocate` as
-`minContextSlot`, so a node behind this read fails the search's call and the search is `complete` false; a search
-given that slot and `complete` with nothing found shows the message never landed.
+`isBlockhashValid` at that commitment: `valid` is the response's `value`, and `slot` its context slot, the slot the
+node evaluated it at.
 
 ###### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `blockhash` | `string` |
+| `commitment` | [`SvmCommitment`](#svmcommitment) |
 
 ###### Returns
 
@@ -161,43 +192,58 @@ given that slot and `complete` with nothing found shows the message never landed
 
 ##### signatures()
 
-> **signatures**(`address`, `page`): `Promise`\<readonly `object`[]\>
+> **signatures**(`address`, `page`): `Promise`\<readonly [`SvmSignature`](#svmsignature)[]\>
 
-`getSignaturesForAddress`, newest first. `memo` is the RPC's rendering of the transaction's memos (`[len] text`,
-joined by `; `), or null when it has none. When the page names `minContextSlot`, the reader passes it to the RPC as
-`minContextSlot`, "the minimum slot that the request can be evaluated at", so a node that has not reached that slot
-fails the call, and the reader rejects with `ReaderError`.
+`getSignaturesForAddress` at that commitment, newest first, `before` and `until` as the RPC takes them (each
+exclusive), and `minContextSlot`, "the minimum slot that the request can be evaluated at", so a node that has not
+reached it fails the call.
 
 ###### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `address` | `string` |
-| `page` | \{ `before?`: `string`; `limit`: `1000`; `minContextSlot?`: `bigint`; \} |
+| `page` | \{ `before?`: `string`; `commitment`: [`SvmCommitment`](#svmcommitment); `limit`: `1000`; `minContextSlot?`: `bigint`; `until?`: `string`; \} |
 | `page.before?` | `string` |
+| `page.commitment` | [`SvmCommitment`](#svmcommitment) |
 | `page.limit` | `1000` |
 | `page.minContextSlot?` | `bigint` |
+| `page.until?` | `string` |
 
 ###### Returns
 
-`Promise`\<readonly `object`[]\>
+`Promise`\<readonly [`SvmSignature`](#svmsignature)[]\>
+
+##### slot()
+
+> **slot**(`commitment`): `Promise`\<`bigint`\>
+
+`getSlot` at that commitment.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `commitment` | [`SvmCommitment`](#svmcommitment) |
+
+###### Returns
+
+`Promise`\<`bigint`\>
 
 ##### transaction()
 
 > **transaction**(`signature`, `commitment`): `Promise`\<[`SvmLanded`](#svmlanded) \| \{ `notFound`: `true`; `slot`: `bigint` \| `null`; \}\>
 
 `getTransaction` at that commitment, with encoding `base64` and `maxSupportedTransactionVersion: 1`, or `notFound`
-with the node's slot there. A reader must ask with 1: a node asked with 0 answers a version-1 transaction with an
-error (-32015), which this call's contract reads as a rejection, so a version-1 payment, which `bound` and
-`reference` accept, reads `svm/unreadable` and its status `unreadable`, `transport`, on every read, and never
-reads settled.
+with the node's slot there (`getSlot`, read from the same node before the lookup), or null when the reader cannot
+read it. A reader must ask with 1: a node asked with 0 answers a version-1 transaction with an error (-32015).
 
 ###### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `signature` | `string` |
-| `commitment` | `"finalized"` \| `"confirmed"` |
+| `commitment` | [`SvmCommitment`](#svmcommitment) |
 
 ###### Returns
 
@@ -207,22 +253,54 @@ reads settled.
 
 ### SvmRef
 
-The read keys a seller keeps to read the settlement later: what `reference` returns, and `fromSlot`, which the seller
-adds.
+The read keys of a presented payment, which `reference` returns: the network; the transaction id once the message is
+signed in its first slot; the digest of the message the payer signed, the payment presented compared whole, absent
+where the payment was presented as a transaction alone; the buyer's account, which the search pages and whose
+signature is the act's; H as the presented payment carries it, which the search looks for; the option's payee, the
+key of the read's two party tests; the fee payer; and what bounds the message's life: its recent blockhash, or the
+durable nonce it uses.
 
 #### Properties
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-blockhash"></a> `blockhash` | `string` | The recent blockhash whose expiry bounds the message's life; empty for a durable-nonce message, whose life is bounded by `nonce` instead. |
-| <a id="property-channel-1"></a> `channel?` | `string` | The channel account the transaction creates, for an opening that carries no memo: the search pages this address's signatures instead of the fee payer's, and reads each one as a candidate. |
-| <a id="property-digest"></a> `digest` | `` `0x${string}` `` | - |
-| <a id="property-feepayer-2"></a> `feePayer` | `string` | - |
-| <a id="property-fromslot"></a> `fromSlot` | `string` | The slot the seller read when it kept the reference, as a decimal string. |
+| <a id="property-blockhash"></a> `blockhash?` | `string` | The recent blockhash; absent for a durable-nonce message and for a transaction alone. |
+| <a id="property-digest"></a> `digest?` | `` `0x${string}` `` | - |
+| <a id="property-feepayer-2"></a> `feePayer?` | `string` | - |
+| <a id="property-h"></a> `h` | `` `0x${string}` `` | - |
 | <a id="property-network-1"></a> `network` | `` `solana:${string}` `` | - |
 | <a id="property-nonce"></a> `nonce?` | [`SvmNonce`](#svmnonce) | Present exactly when the message uses a durable nonce. |
-| <a id="property-payee"></a> `payee` | `string` | The option's payee, which `reference` takes from the option the payment answers. |
+| <a id="property-payee"></a> `payee` | `string` | - |
+| <a id="property-payer-2"></a> `payer` | `string` | - |
 | <a id="property-transaction"></a> `transaction?` | `string` | - |
+
+***
+
+### SvmSignature
+
+One entry of `getSignaturesForAddress`.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-memo-2"></a> `memo` | `string` \| `null` | The RPC's rendering of the transaction's memos (`[len] text`, joined by `; `), or null when it has none. |
+| <a id="property-signature"></a> `signature` | `string` | - |
+| <a id="property-slot-1"></a> `slot` | `bigint` | - |
+
+***
+
+### SvmTokenBalance
+
+One entry of `meta.preTokenBalances` or `meta.postTokenBalances`.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-account-1"></a> `account` | `number` | `accountIndex`: the token account, indexing the keys as an instruction does. |
+| <a id="property-mint-2"></a> `mint` | `string` | - |
+| <a id="property-owner"></a> `owner?` | `string` | The token account's owner, which the read requires: a landed transaction whose balances name no owner cannot show whose account a transfer reached, so the search holds it as an item it could not decode, never another account. |
 
 ***
 
@@ -247,13 +325,28 @@ field in its own fresh `ArrayBuffer`, and a function that reads one takes any ba
 | <a id="property-message"></a> `message` | `Uint8Array`\<`B`\> | Exactly the bytes every signer signed. |
 | <a id="property-signatures"></a> `signatures` | readonly `Uint8Array`\<`B`\>[] | - |
 
+***
+
+### SvmV1Header
+
+The form of a version-1 message's header, which carries the compute budget in place of Compute Budget
+instructions: the compute unit limit, the priority fee in lamports for the limit at the budget's price per unit,
+rounded up, and the loaded-account-data limit.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-loadedaccountsdatasizelimit"></a> `loadedAccountsDataSizeLimit` | `number` | The loaded-account-data limit the header carries, in bytes. |
+| <a id="property-zeropriorityfee"></a> `zeroPriorityFee` | `boolean` | Whether the header carries a priority fee of 0 lamports; otherwise a fee of 0 is left out. |
+
 ## Type Aliases
 
 ### ChannelStatus
 
 > **ChannelStatus** = [`SvmStatus`](#svmstatus)
 
-A channel opening's read, as the profile `read-status` answers it: the answer `svmStatus` gives.
+A channel opening's read: the answer `svmStatus` gives.
 
 ***
 
@@ -273,11 +366,11 @@ CAIP-2: `solana:` and 32 base58 characters.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-channel-2"></a> `channel` | `string` | - |
+| <a id="property-channel-1"></a> `channel` | `string` | - |
 | <a id="property-network-2"></a> `network` | [`SolanaNetwork`](#solananetwork) | - |
 | <a id="property-payee-1"></a> `payee` | `string` | The option's payee. |
 | <a id="property-phase"></a> `phase` | `"close"` | - |
-| <a id="property-program"></a> `program` | `string` | - |
+| <a id="property-program-1"></a> `program` | `string` | - |
 | <a id="property-transaction-1"></a> `transaction` | `string` | - |
 
 ***
@@ -290,12 +383,41 @@ A reported close's read, as the profile `read-status` answers it: the answer `Sv
 
 ***
 
+### SvmCommitment
+
+> **SvmCommitment** = `"confirmed"` \| `"finalized"`
+
+A commitment an RPC call names: `finalized`, the mark, or `confirmed`, a block a supermajority of the cluster voted
+on, which is the latest head the search for H and the lookups read on to before a `failed`, and no mark.
+
+***
+
+### SvmMark
+
+> **SvmMark** = `"finalized"`
+
+The one Solana mark: `finalized`, a block at maximum lockout, the default and the final mark. A seller names it
+alone, and a caller asks for it alone.
+
+***
+
+### SvmQuery
+
+> **SvmQuery** = [`StatusQuery`](index.md#statusquery)\<[`SvmRef`](#svmref), `bigint`, [`SvmMark`](#svmmark), [`SvmCursor`](#svmcursor)\>
+
+What a Solana status read takes with the reference and the reader.
+
+***
+
 ### SvmStatus
 
-> **SvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `SvmMark`\>
+> **SvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`SvmMark`](#svmmark), [`SvmCursor`](#svmcursor)\>
 
-A Solana settlement read, as the profile `read-status` answers it. The position is a slot; the read names none, so
-a query that gives `after` is answered `pending`, `search-incomplete`, unless an earlier position decides it.
+A Solana settlement read, as the profile `read-status` answers it, the position a slot and the one mark `finalized`.
+A `settled` answer states `presented`: `yes` where the landed message is the one the reference holds, by its digest,
+or, for a payment presented as a transaction alone, where the act is that transaction; `no` otherwise; never
+`unshown`, since the read decodes every message it settles on. A `pending` or `failed` answer that names a
+transaction met only above the final head names no finality.
 
 ## Variables
 
@@ -365,6 +487,27 @@ The Rent sysvar id.
 
 ***
 
+### SVM\_MAX\_CANDIDATES
+
+> `const` **SVM\_MAX\_CANDIDATES**: `50` = `50`
+
+The most candidates one pass of the search reads: lcp's own bound, since each candidate costs up to two
+`getTransaction` calls, so one pass makes at most 100 lookups beside its 10 pages. A pass that meets more is not read
+whole, and the next call resumes it.
+
+***
+
+### SVM\_SEARCH\_SHOWN
+
+> `const` **SVM\_SEARCH\_SHOWN**: `false` = `false`
+
+Whether a run has shown the fact the search's completeness rests on: that every transaction the buyer signs is listed
+under its account's signatures (`getSignaturesForAddress`), which no run has shown yet. Until a run shows it,
+a search read whole proves no absence (read-status rule 25): the read answers no `failed` but `before-position`, and
+where it would answer `failed` it answers `pending`, `search-incomplete`. A later release sets it from that run.
+
+***
+
 ### SYSTEM
 
 > `const` **SYSTEM**: `"11111111111111111111111111111111"` = `"11111111111111111111111111111111"`
@@ -393,8 +536,10 @@ The SPL Token-2022 program id.
 
 > **buildChannelMessage**(`i`): `Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
-The v0 message for a channel instruction: `SetComputeUnitLimit`, `SetComputeUnitPrice`, the payment-channels
-instruction with its accounts in the program's order, then one v3 Memo instruction when `memo` is given. The fee
+The message for a channel instruction: `SetComputeUnitLimit`, `SetComputeUnitPrice`, the payment-channels
+instruction with its accounts in the program's order, then one v3 Memo instruction when `memo` is given, as a v0
+message; with `v1`, the same without the two Compute Budget instructions, as a version-1 message whose header
+carries the budget (`compileV1`). The fee
 payer is also the `open`'s rent payer and payee. A memo that is not a well-formed string (one holding a lone
 surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
 
@@ -414,10 +559,11 @@ surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
 
 > **buildSvmMessage**(`i`): `Promise`\<`Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)\>
 
-The versioned (v0) message bytes for a token payment: `SetComputeUnitLimit`, `SetComputeUnitPrice`,
-`TransferChecked` from the payer's associated token account to the payee's, then one v3 Memo instruction whose data
-is the memo's UTF-8 bytes. No lookup tables. A memo that is not a well-formed string (one holding a lone surrogate
-has no UTF-8 form) is `svm/input-malformed`, with nothing built.
+The versioned message bytes for a token payment: `SetComputeUnitLimit`, `SetComputeUnitPrice`, `TransferChecked`
+from the payer's associated token account to the payee's, then one v3 Memo instruction whose data is the memo's
+UTF-8 bytes, as a v0 message; with `v1`, the same without the two Compute Budget instructions, as a version-1
+message whose header carries the budget (`compileV1`). No lookup tables. A memo that is not a well-formed string
+(one holding a lone surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
 
 #### Parameters
 
@@ -670,20 +816,15 @@ any other spelling is `svm/carrier-not-canonical`. A `tx` that is not a decoded 
 
 > **svmChannelStatus**(`ref`, `reader`, `query`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
-`svmStatus` with the presence test replaced: exactly one top-level payment-channels instruction whose
-discriminator is `open` (1) or `top_up` (3). The test reads only the signed message, so a transaction without it is
-no act at either commitment, `pending`, `search-incomplete`; an error is `pending`, `below-mark`, from the read at
-`confirmed`, and `pending`, `search-incomplete`, from the read at `finalized`. At most two calls, or five for a
-durable-nonce reference: the two `transaction` reads, `account`, `firstAvailableBlock` and one more `transaction` at
-`finalized`.
+The read of a channel opening that carries H (`x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/session/solana/memo`).
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | [`SvmRef`](#svmref) & `object` |
+| `ref` | [`SvmRef`](#svmref) |
 | `reader` | [`SvmReader`](#svmreader) |
-| `query` | `SvmQuery` |
+| `query` | [`SvmQuery`](#svmquery) |
 
 #### Returns
 
@@ -710,62 +851,12 @@ SHA-256 over the message bytes every signer signed. Rejects with a TypeError whe
 
 ***
 
-### svmLocate()
+### svmOpeningStatus()
 
-> **svmLocate**(`ref`, `reader`, `h`, `status?`, `minContextSlot?`): `Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
+> **svmOpeningStatus**(`ref`, `reader`, `query`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
-Finds the instrument when no transaction was named: pages the fee payer's signatures, newest first, down to
-`fromSlot`, at most 10 pages of 1,000. A signature is a candidate only when its memo carries `h` in LCP string form,
-matched without regard to case. With `channel` in the reference, it pages that account's signatures instead, and
-every signature is a candidate. Each candidate is read through `status`, the pairing's own (`svmStatus` when none
-is given), at most 50 per pass: `svmStatus` and `svmChannelStatus` read it with their presence tests, a candidate
-read settled at either commitment is found, and one read failed (a message the payer did not sign, an error or no
-transfer at `finalized`) is passed; any other function is called with the ref and the reader, and its answer's
-`state` read the same way.
-`complete` is true only when the node's first available block is at or before `fromSlot`, the pages reached
-`fromSlot` within those bounds, and every candidate was read: a listed candidate whose transaction reads pending or
-unreadable leaves the search incomplete. A ref or reader that is not an object, or a reader for another network, is
-`complete` false, with nothing read.
-
-`minContextSlot` places the search no earlier than a read the caller made first, such as the nonce account read whose
-context slot `svmNonceMoved` gives, or the `blockhashValid` read's `slot`: every page names it, so a node that has not
-reached that slot fails the call and the search is `complete` false. A `minContextSlot` that is not a u64 bigint is
-`complete` false, with nothing read.
-
-#### Parameters
-
-| Parameter | Type | Default value |
-| ------ | ------ | ------ |
-| `ref` | [`SvmRef`](#svmref) | `undefined` |
-| `reader` | [`SvmReader`](#svmreader) | `undefined` |
-| `h` | `` `0x${string}` `` | `undefined` |
-| `status` | (`ref`, `reader`, ...`rest`) => `Promise`\<\{ `state`: `string`; \}\> | `svmStatus` |
-| `minContextSlot?` | `bigint` | `undefined` |
-
-#### Returns
-
-`Promise`\<\{ `complete`: `boolean`; `found?`: `string`; \}\>
-
-***
-
-### svmNonceMoved()
-
-> **svmNonceMoved**(`ref`, `reader`): `Promise`\<`bigint` \| [`Refusal`](index.md#refusal) \| `null`\>
-
-The context slot of the nonce account read when that read shows the durable nonce `ref.nonce` records is spent or
-gone; null when it does not show that; and `svm/unreadable`, a read to repeat, when the read is rejected or answers
-neither documented shape, as every read of `SvmReader.account` takes it. The read is at `finalized`, and shows it at
-a context slot at least 150 slots past `fromSlot` when it finds no account, an account the System program does not
-own, an account that is not an initialized nonce account, or an initialized current-version nonce account holding
-another value. A legacy-version nonce account and a read too early are null. A reference without `nonce` or with a
-`fromSlot` that is not a slot, a ref or reader that is not an object, and a reader for another network are null, with
-nothing read. One call.
-
-The message then can never land, and the transaction that used the nonce, when it landed, is final by that read. A
-lookup shows a transaction absent only up to the slot its node had reached, so a lookup of the named transaction that
-finds nothing shows the message never landed only from a node at or past that read's context slot, as `svmStatus`
-reads it. With no transaction named, a `svmLocate` given this slot as `minContextSlot`, and complete with nothing
-found, shows the message never landed.
+The read of a named channel opening at coverage `none` (`mpp/session/solana/stock`): the opening the reference names
+is the act, whether or not it carries H, and the read makes no search.
 
 #### Parameters
 
@@ -773,10 +864,11 @@ found, shows the message never landed.
 | ------ | ------ |
 | `ref` | [`SvmRef`](#svmref) |
 | `reader` | [`SvmReader`](#svmreader) |
+| `query` | [`SvmQuery`](#svmquery) |
 
 #### Returns
 
-`Promise`\<`bigint` \| [`Refusal`](index.md#refusal) \| `null`\>
+`Promise`\<[`SvmStatus`](#svmstatus)\>
 
 ***
 
@@ -784,12 +876,12 @@ found, shows the message never landed.
 
 > **svmRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
 
-Zero-party recovery: the ATR hash in the landed transaction's one memo, read by `tx`, the transaction's signature;
-`option`, the x402 option or MPP challenge the ATR's binding slot holds, must be an object, and no member of it is
-read. A transaction that landed with an error is `svm/err` when the read at `finalized` holds it, and `svm/not-final`
-when only the read at `confirmed` holds it, since a block that is not finalized can be replaced. A landed wire that
-does not decode is `svm/unreadable`. An input that is not an object, an option that is not an object, and a `tx` that
-is not a signature, base58 of 64 bytes, are `svm/wrong-reader`, with nothing read. One or two calls.
+Zero-party recovery: the ATR hash in the landed transaction's one memo, read by `tx`, the transaction's signature, at
+`finalized`; `option`, the x402 option or MPP challenge the ATR's binding slot holds, must be an object, and no
+member of it is read. A transaction that landed with an error at `finalized` is `svm/err`; one the read at
+`confirmed` alone holds, with an error or none, is `svm/not-final`, a read to repeat, since a block not yet finalized
+can be replaced. A landed wire that does not decode is `svm/unreadable`. An input or option that is not an object,
+and a `tx` that is not a signature, are `svm/wrong-reader`, with nothing read. One or two calls.
 
 #### Parameters
 
@@ -808,22 +900,15 @@ is not a signature, base58 of 64 bytes, are `svm/wrong-reader`, with nothing rea
 
 > **svmStatus**(`ref`, `reader`, `query`): `Promise`\<[`SvmStatus`](#svmstatus)\>
 
-The read of a named transaction's settlement, answered by the profile `read-status`: the message the payer signed
-(by digest), executed without error, carrying a token or SOL transfer, a top-level or an inner instruction, whose
-program is read from the static keys or from the addresses the transaction's lookup tables loaded. Read at
-`finalized` or `confirmed`, it is `settled` at the mark asked for or above it, and `pending`, `below-mark`, under it;
-an error seen only at `confirmed` is `pending`, `below-mark`. Every other read that is not unreadable answers
-`pending`, `search-incomplete`, since this read is no search for H. A ref, reader or query of the wrong form is
-`unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read. At most two
-calls, or five for a durable-nonce reference.
+The read of a transfer pairing (`x402/exact/solana`, the three MPP charges, `mpp/subscription/solana`).
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | [`SvmRef`](#svmref) & `object` |
+| `ref` | [`SvmRef`](#svmref) |
 | `reader` | [`SvmReader`](#svmreader) |
-| `query` | `SvmQuery` |
+| `query` | [`SvmQuery`](#svmquery) |
 
 #### Returns
 

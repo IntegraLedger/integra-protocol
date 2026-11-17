@@ -6,7 +6,7 @@
 import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm-abi.js";
 import type { HederaVoucherTypedData } from "./internal/hedera-session.js";
-import type { SolanaNetwork } from "./internal/svm.js";
+import type { SolanaSessionUnsigned } from "./mpp-session-solana.js";
 import {
   cancelAfterOf,
   RIPPLE_EPOCH,
@@ -114,22 +114,6 @@ export interface HederaSessionUnsigned {
    * it.
    */
   complete(signed: { openTx: Hex; signature: Hex }): MppCredential | Refusal;
-}
-
-/**
- * The values a Solana channel client composes the `open` from, and a `complete` that takes the composed open payload.
- * No pairing's `build` in this package answers this kind.
- */
-export interface SolanaSessionUnsigned {
-  request: {
-    kind: "solana-session-open";
-    salt: bigint;
-    channelProgram: string;
-    network: SolanaNetwork;
-    recentBlockhash: string;
-    recentSlot: bigint;
-  };
-  complete(open: { [k: string]: Json }): MppCredential | Refusal;
 }
 
 /** An XRPL `PaymentChannelCreate` for the wallet to sign, and the first claim's bytes. */

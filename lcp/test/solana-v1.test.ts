@@ -2,7 +2,8 @@
 // version-1 transactions (SIMD-0385) as the stock @x402/svm 2.31.0 clients write them, read through each pairing's
 // bound, reference, status and recover. The stock client is run again here and must write the recorded payload byte
 // for byte; @solana/kit 8.4.0's own transaction decoder and @noble/curves' Ed25519 check the message the payer signed.
-// x402-exact-solana.json's changed rows also hold each rule of the version-1 decoder, and where a row names kit,
+// Each section's build holds lcp's build of the stock client's inputs, which must ask the payer to sign the stock
+// client's message byte for byte. x402-exact-solana.json's changed rows also hold each rule of the version-1 decoder, and where a row names kit,
 // @solana/kit 8.4.0 is run on it and must give the row's verdict.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -31,23 +32,24 @@ interface V1 {
   expectAsked: string[];
   presented: {
     x402Version: 2;
-    accepted: { network: string; payTo: string; extra: { feePayer: string; transactionVersions: number[] } };
+    accepted: { network: string; payTo: string; extra: { feePayer: string; memo: string; transactionVersions: number[] } };
     payload: Payload;
   };
   expectVersionByte: number;
   messageLength: number;
   messageSha256: string;
   expectBound: string;
-  expectReference: { network: string; digest: string; feePayer: string; blockhash: string; payee: string };
+  expectReference: { network: string; digest: string; feePayer: string; blockhash: string; payee: string; payer: string; h: string };
   landedWireBase64: string;
   txid: string;
-  statusRows: { at: "finalized" | "confirmed"; err: unknown; query: Query; expect: unknown }[];
+  statusRows: { case: string; at: "finalized" | "confirmed"; err: unknown; query: Query; expect: unknown }[];
   expectRecover: string;
   changed: { case: string; wireBase64: string; expect: unknown; kit?: Kit }[];
-  landedChanged: { landedWireBase64: string; query: Query; expect: unknown };
+  landedChanged: { case: string; landedWireBase64: string; query: Query; expect: unknown };
+  build: { input: Record<string, string | number> };
 }
-/** A status read's query: the act and the finality asked for. */
-type Query = { act: "payment" | "agreement"; finality: "confirmed" | "finalized" };
+/** A status read's query: the act and the finality asked for, the one Solana mark. */
+type Query = { act: "payment" | "agreement"; finality: "finalized" };
 /** @solana/kit 8.4.0's verdict on a changed row's wire. */
 type Kit =
   | { check: "isTransactionWithinSizeLimit"; expect: boolean }
@@ -94,11 +96,61 @@ function readerFor(network: string, at: "finalized" | "confirmed" | "reader-erro
     },
     signatures: async () => [],
     blockhashValid: async () => ({ valid: true, slot: 0n }),
+    slot: async () => 0n,
     firstAvailableBlock: async () => 0n,
     account: async () => {
       throw new Error("this reference names no nonce account");
     },
   };
+}
+
+/**
+ * A reader for the read back of a landed version-1 wire, a constructed one: the buyer's account lists the transaction,
+ * its memo rendered as `getSignaturesForAddress` renders it (`[length] text`), at `confirmed`; `getTransaction` holds it
+ * at `finalized` where `at` is `finalized`, else only at `confirmed`, with the token balances `getTransaction` gives
+ * (`meta.postTokenBalances`): each token account a `TransferChecked` of the message names, its owner the payer for the
+ * source and the option's payee for the destination; the finalized slot 1,100, the confirmed one 1,120, the blockhash
+ * valid at slot 1,000, and every block held from slot 0.
+ */
+function readBackReader(network: string, at: "finalized" | "confirmed", l: SvmLanded, txid: string, memo: string, owners: { payer: string; payee: string }): SvmReader {
+  const tx = decodeSvmTx(l.wire);
+  if ("refused" in tx) throw new Error(tx.code);
+  const post: { account: number; mint: string; owner: string }[] = [];
+  for (const ix of tx.instructions) {
+    if (base58.encode(tx.keys[ix.program]!) !== "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" || ix.data[0] !== 12) continue;
+    const [source, mint, destination] = ix.accounts;
+    post.push({ account: source!, mint: base58.encode(tx.keys[mint!]!), owner: owners.payer });
+    post.push({ account: destination!, mint: base58.encode(tx.keys[mint!]!), owner: owners.payee });
+  }
+  const held: SvmLanded = { ...l, post };
+  return {
+    network: network as SvmReader["network"],
+    transaction: async (sig, commitment) =>
+      sig !== txid || (at === "confirmed" && commitment === "finalized") ? { notFound: true, slot: commitment === "finalized" ? 1100n : 1120n } : held,
+    signatures: async (address, page) =>
+      address === owners.payer && page.before === undefined ? [{ signature: txid, slot: 1050n, memo: `[${new TextEncoder().encode(memo).length}] ${memo}` }] : [],
+    blockhashValid: async () => ({ valid: true, slot: 1000n }),
+    slot: async (commitment) => (commitment === "finalized" ? 1100n : 1120n),
+    firstAvailableBlock: async () => 0n,
+    account: async () => {
+      throw new Error("this reference names no nonce account");
+    },
+  };
+}
+
+/** A status answer as the vector files write it: the slot positions as decimal strings. */
+const plain = (a: unknown): unknown => JSON.parse(JSON.stringify(a, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
+
+/** The section's option, offered alone in a document. */
+function offeredAlone(v: V1) {
+  return { required: { x402Version: 2, resource: E.fixed.resource, accepts: [v.presented.accepted] }, accepted: v.presented.accepted };
+}
+
+/** The Solana message a build asks the payer to sign; a refusal throws its code. */
+function messageOf(u: unknown): Uint8Array {
+  if (typeof u === "object" && u !== null && "refused" in u) throw new Error((u as unknown as { code: string }).code);
+  const b = u as { request?: { message: Uint8Array }; requests?: { kind: string; message: Uint8Array }[] };
+  return b.request?.message ?? b.requests!.find((r) => r.kind === "solana-message")!.message;
 }
 
 type Codec = {
@@ -116,6 +168,7 @@ const cases: {
   wireOf: (payload: Payload) => string;
   withWire: (payload: Payload, wire: string) => Payload;
   stock: (v: V1) => Promise<Stock>;
+  build: (v: V1) => Promise<Uint8Array>;
 }[] = [
   {
     file: "x402-exact-solana.json",
@@ -125,6 +178,14 @@ const cases: {
     wireOf: (p) => p.transaction!,
     withWire: (p, transaction) => ({ ...p, transaction }),
     stock: (v) => stockExact(E.fixed.payerSeed, v.presented.accepted, v.now),
+    build: async (v) => {
+      const i = v.build.input;
+      const u = await exactSvm.build(
+        { ...offeredAlone(v), payer: i.payer, decimals: i.decimals, tokenProgram: i.tokenProgram, recentBlockhash: i.recentBlockhash, computeUnitLimit: i.computeUnitLimit, computeUnitPrice: BigInt(i.computeUnitPrice!) } as never,
+        E.fixed.H,
+      );
+      return messageOf(u);
+    },
   },
   {
     file: "x402-upto-solana.json",
@@ -134,6 +195,14 @@ const cases: {
     wireOf: (p) => p.openTransaction!,
     withWire: (p, openTransaction) => ({ ...p, openTransaction }),
     stock: (v) => stockUpto(U.fixed.payerSeed, v.presented.accepted, v.now, Uint8Array.of(7, 0, 0, 0, 0, 0, 0, 0)),
+    build: async (v) => {
+      const i = v.build.input;
+      const u = await uptoSvm.build(
+        { ...offeredAlone(v), payer: i.payer, nonce: BigInt(i.nonce!), openSlot: BigInt(i.openSlot!), now: i.now, tokenProgram: i.tokenProgram, recentBlockhash: i.recentBlockhash } as never,
+        U.fixed.H,
+      );
+      return messageOf(u);
+    },
   },
   {
     file: "x402-batch-settlement.json",
@@ -143,10 +212,18 @@ const cases: {
     wireOf: (p) => p.deposit!.transaction,
     withWire: (p, transaction) => ({ ...p, deposit: { ...p.deposit!, transaction } }),
     stock: (v) => stockBatch(B.fixed.svm.payerSeed, v.presented.accepted, v.now, B.fixed.svm.salt, B.fixed.svm.deposit),
+    build: async (v) => {
+      const i = v.build.input;
+      const u = await batchSvm.build(
+        { ...offeredAlone(v), payer: i.payer, payerAuthorizer: i.payerAuthorizer, deposit: BigInt(i.deposit!), salt: BigInt(i.salt!), openSlot: BigInt(i.openSlot!), tokenProgram: i.tokenProgram, recentBlockhash: i.recentBlockhash } as never,
+        B.fixed.H,
+      );
+      return messageOf(u);
+    },
   },
 ];
 
-describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, withWire, stock }) => {
+describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, withWire, stock, build }) => {
   const presented = v.presented;
   const wire = b64(wireOf(presented.payload));
   const presentedWith = (w: string) => ({ ...presented, payload: withWire(presented.payload, w) });
@@ -157,6 +234,13 @@ describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, wi
     expect(asked).toEqual(v.expectAsked);
     expect(out.payload).toEqual(presented.payload);
     expect(wire[0]).toBe(v.expectVersionByte);
+  });
+
+  it("lcp's build of the stock client's inputs asks the payer to sign the stock client's message, byte for byte", async () => {
+    const stockMessage = Uint8Array.from(getTransactionDecoder().decode(wire).messageBytes);
+    const message = await build(v);
+    expect(message[0]).toBe(0x81);
+    expect(Buffer.from(message).equals(Buffer.from(stockMessage))).toBe(true);
   });
 
   it("lcp's message is the one @solana/kit decodes and the payer signed, and its digest is messageSha256", () => {
@@ -200,7 +284,7 @@ describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, wi
     for (const row of rows) expect(kitVerdict(row.kit!, b64(row.wireBase64)), row.case).toEqual(row.kit!.expect);
   });
 
-  it("status and recover of the landed wire, and the landed wire with its memo changed", async () => {
+  it("reference and recover of the landed wire", async () => {
     const lw = b64(v.landedWireBase64);
     const kit = getTransactionDecoder().decode(lw);
     const feePayer = v.expectReference.feePayer;
@@ -209,16 +293,23 @@ describe.each(cases)("$file transactionV1", ({ v, changedRows, codec, wireOf, wi
     expect(ed25519.verify(sig, Uint8Array.from(kit.messageBytes), base58.decode(feePayer))).toBe(true);
     const own = await codec.reference({ ...presented, payload: withWire(presented.payload, v.landedWireBase64) }, presented.accepted);
     expect(own).toEqual({ ...v.expectReference, transaction: v.txid });
-    const ref = { ...(own as SvmRef), fromSlot: "0" } as never;
     const net = v.expectReference.network;
-    for (const row of rowsOf(v.statusRows, "transactionV1.statusRows", { exact: 3 })) {
-      const answer = await codec.status(ref, readerFor(net, row.at, landed(lw, row.err), v.txid), row.query);
-      expect(answer, JSON.stringify(row)).toEqual(row.expect);
-    }
     const input = { network: net, tx: v.txid, option: presented.accepted };
     expect(await codec.recover(input, readerFor(net, "finalized", landed(lw), v.txid))).toBe(v.expectRecover);
-    const changed = b64(v.landedChanged.landedWireBase64);
-    const answer = await codec.status(ref, readerFor(net, "finalized", landed(changed), v.txid), v.landedChanged.query);
-    expect(answer).toEqual(v.landedChanged.expect);
+  });
+
+  it("status reads the landed version-1 wire back: each statusRows row, and the landed wire with its memo changed under the same id", async () => {
+    const lw = b64(v.landedWireBase64);
+    const ref = { ...v.expectReference, transaction: v.txid } as unknown as SvmRef;
+    const owners = { payer: v.expectReference.payer, payee: v.expectReference.payee };
+    const memo = v.presented.accepted.extra.memo;
+    const net = v.expectReference.network;
+    for (const row of rowsOf(v.statusRows, "transactionV1.statusRows", { exact: 3 })) {
+      const reader = readBackReader(net, row.at, landed(lw, row.err), v.txid, memo, owners);
+      expect([row.case, plain(await codec.status(ref as never, reader, row.query))]).toEqual([row.case, row.expect]);
+    }
+    const changed = v.landedChanged;
+    const reader = readBackReader(net, "finalized", landed(b64(changed.landedWireBase64)), v.txid, "lcp:sha256:0x" + "00".repeat(32), owners);
+    expect(plain(await codec.status(ref as never, reader, changed.query))).toEqual(changed.expect);
   });
 });

@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 64 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 68 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -52,17 +52,21 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/lightning` | `chargeLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | `mpp/charge/nearintents` | `chargeNearIntents` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge/nearintents`](../../lcp/profiles/mpp-charge-nearintents.md) |
 | `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
+| `mpp/charge/solana/unsponsored` | `chargeSolanaUnsponsored` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/stripe` | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
 | `mpp/charge/usdc/evm` | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no |  |
-| `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
+| `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/solana`](../../lcp/profiles/mpp-charge-usdc-solana.md) |
 | `mpp/charge/usdc/stacks` | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
 | `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
 | `mpp/session/evm` | `sessionEvm` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | `mpp/session/hedera/stock` | `sessionHederaStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/session/lightning` | `sessionLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| `mpp/session/solana/memo` | `sessionSolanaMemo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
+| `mpp/session/solana/stock` | `sessionSolanaStock` from `@integraledger/lcp/mpp` | `none` | no | `native-field` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/session/tempo` | `sessionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | `mpp/session/xrpl` | `sessionXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
+| `mpp/subscription/solana` | `subscriptionSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/subscription/solana`](../../lcp/profiles/mpp-subscription-solana.md) |
 | `mpp/subscription/stripe` | `subscriptionStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/subscription/stripe`](../../lcp/profiles/mpp-subscription-stripe.md) |
 | `mpp/subscription/tempo` | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
 
@@ -84,7 +88,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/auth-capture/eip155/permit2` | `authCapturePermit2` from `@integraledger/lcp/x402` | `full` | no | `id-reuse` | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
 | `x402/batch-settlement/cloudflare` | `batchCloudflare` from `@integraledger/lcp/x402-batch-settlement` | `none` | no | `protocol-extension` | no | no |  |
 | `x402/batch-settlement/eip155` | `batchEvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-settlement-eip155.md) |
-| `x402/batch-settlement/solana` | `batchSvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes |  |
+| `x402/batch-settlement/solana` | `batchSvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/solana`](../../lcp/profiles/x402-batch-settlement-solana.md) |
 | `x402/exact/algorand` | `exactAvm` from `@integraledger/lcp/avm` | `full` | no | `native-field` | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
 | `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | no | `http-advisory` | no | no |  |
 | `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
@@ -99,14 +103,14 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/hedera/transfer-executor` | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `none` | no | `http-advisory` | no | no |  |
 | `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `full` | no | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
 | `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | no | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
-| `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes |  |
+| `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes | [`x402/exact/solana`](../../lcp/profiles/x402-exact-solana.md) |
 | `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | no |  | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
 | `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | no | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
 | `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | no | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
 | `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | no | `native-field` | yes | yes |  |
 | `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | no | `id-reuse` | yes | no |  |
 | `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
-| `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `full` | no | `native-field` | yes | yes |  |
+| `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `full` | no | `native-field` | yes | yes | [`x402/upto/solana`](../../lcp/profiles/x402-upto-solana.md) |
 
 ## What each binding proves
 
@@ -186,7 +190,11 @@ Before this payment was reported, an agreement transaction carrying this ATR's h
 
 ### `mpp/charge/solana`
 
-The payer signed a Solana transaction whose one LCP-form Memo instruction carries this ATR's hash in LCP string form, and the transaction executed without error, carrying a token or SOL transfer. The memo is in the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing match the ATR's content.
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction is the hash's LCP string, final at `finalized` with no error. It paid each transfer it made from the buyer's account, recorded with its mint or lamports, amount and recipient, one of zero included, the recipient being the owner the transaction's token balances name; as a payment, one of them reached an account the option's payee owns. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
+
+### `mpp/charge/solana/unsponsored`
+
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction is the hash's LCP string, final at `finalized` with no error. It paid each transfer it made from the buyer's account, recorded with its mint or lamports, amount and recipient, one of zero included, the recipient being the owner the transaction's token balances name; as a payment, one of them reached an account the option's payee owns. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
 
 ### `mpp/charge/stripe`
 
@@ -202,7 +210,7 @@ The payer signed a Circle Gateway burn intent whose TransferSpec salt is keccak2
 
 ### `mpp/charge/usdc/solana`
 
-The payer signed a Solana transaction whose one LCP-form Memo instruction carries this ATR's hash in LCP string form, and the transaction executed without error, carrying a token or SOL transfer. The memo is in the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing match the ATR's content.
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction is the hash's LCP string, final at `finalized` with no error. It paid each transfer it made from the buyer's account, recorded with its mint or lamports, amount and recipient, one of zero included, the recipient being the owner the transaction's token balances name; as a payment, one of them reached an account the option's payee owns. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
 
 ### `mpp/charge/usdc/stacks`
 
@@ -224,6 +232,14 @@ Before this session, an account signed an agreement transaction carrying this AT
 
 Before this payment, the buyer signed and paid an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The seller's node's BOLT11 invoice's description hash is this ATR's hash, and the ATR commits its payment hash. Its signature is not verified here, and the payer signed nothing that carries the hash. Settlement is the seller's report; the invoice and its preimage, which the parties hold, show that the invoice was paid; they do not show who paid it, and no public ledger shows the payment. This does not show that amount, payee or timing match the ATR's content. The close is the seller's report.
 
+### `mpp/session/solana/memo`
+
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction in the `open` the seller's operator co-signed and submitted is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. Vouchers and the close do not carry the hash. It compares no amount, mint or time with the ATR's terms.
+
+### `mpp/session/solana/stock`
+
+Before this opening was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The opening, a stock MPP session's payment-channel open that its payer broadcast and that carries no hash, came after it and deposited the amount its `open` names into a channel whose distribution names the option's payee. This does not show that the account that signed the agreement is the opening's payer, nor that amount, recipient, mint or timing match the ATR's content.
+
 ### `mpp/session/tempo`
 
 The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in base64url with the challenge's position. The payer signed a Tempo transaction whose one call to the channel escrow opens a channel with this ATR's hash as its salt, and the chain verified that signature when it executed the call. The escrow's ChannelOpened event names the channel, whose id commits to the salt; on the TIP-1034 escrow the event also carries the salt itself. This does not show that amount, payee, asset or timing match the ATR's content. Each voucher in this channel signs a commitment to this ATR's hash.
@@ -231,6 +247,10 @@ The ATR's hash is in the MPP session challenge this channel opened under: its id
 ### `mpp/session/xrpl`
 
 The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. Vouchers in this channel sign the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.
+
+### `mpp/subscription/solana`
+
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, a subscription's activation, whose one LCP-form Memo instruction is the hash's LCP string, final at `finalized` with no error, which paid the first period to an account the option's payee owns, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. Renewals are the seller's later pulls, which do not carry the hash. It compares no amount, mint, period or time with the ATR's terms.
 
 ### `mpp/subscription/stripe`
 
@@ -278,7 +298,7 @@ The payer signed a token authorization for a deposit into an x402 batch-settleme
 
 ### `x402/batch-settlement/solana`
 
-The payer signed a Solana transaction whose seller Memo instruction (`extra.memo`) carries this ATR's hash in LCP string form, and which opened an x402 batch-settlement payment channel; it executed without error. The memo is in the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing match the ATR's content.
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose seller Memo instruction (`extra.memo`), beside the scheme's receiver-authorizer memo, is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
 
 ### `x402/exact/algorand`
 
@@ -338,7 +358,7 @@ The payer signed one Polkadot Asset Hub extrinsic whose bytes hold this ATR's ha
 
 ### `x402/exact/solana`
 
-The payer signed a Solana transaction whose one Memo instruction carries this ATR's hash in LCP string form, and the transaction executed without error, carrying a token or SOL transfer. The memo is in the transaction's instruction data on chain. This does not show that amount, recipient, mint or timing match the ATR's content.
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction is the hash's LCP string, final at `finalized` with no error. It paid each transfer it made from the buyer's account, recorded with its mint or lamports, amount and recipient, one of zero included, the recipient being the owner the transaction's token balances name; as a payment, one of them reached an account the option's payee owns. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
 
 ### `x402/exact/starknet`
 
@@ -366,5 +386,5 @@ The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with
 
 ### `x402/upto/solana`
 
-The payer signed a Solana transaction whose one Memo instruction carries this ATR's hash in LCP string form, and which opened a one-request payment channel escrowing the signed maximum; it executed without error. The memo is in the transaction's instruction data on chain. The amount charged from the escrow, which may be zero, is the seller's metering, settled by the facilitator in a later transaction that does not carry the hash, and the rest returns to the payer. This does not show that amount, recipient, mint or timing match the ATR's content.
+The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one Memo instruction is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. The deposit is the signed maximum a one-request channel escrows; the amount charged from it, which may be zero, is the seller's metering, settled in a later transaction that does not carry the hash, and the rest returns to the payer. It compares no amount, mint or time with the ATR's terms.
 

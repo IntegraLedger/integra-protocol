@@ -328,31 +328,27 @@ On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout
 `malformed`. The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a
 settlement through it.
 
-A Solana message lives until its recent blockhash expires, 150 slots after it, unless it uses a durable nonce: its first
-instruction is the System program's `AdvanceNonceAccount`, naming a writable nonce account as a static key, the
-`RecentBlockhashes` sysvar and the nonce authority as a signer, and its blockhash field holds the nonce value. Such a
-message lands only while the nonce account holds that value. Its reference records `nonce`, the account and the value,
-and an empty `blockhash`. The sysvar may come from an address lookup table: the runtime resolves it and checks it when
-`AdvanceNonceAccount` runs, and the reference records the nonce the same way. A durable message names its nonce account
-as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose `AdvanceNonceAccount` takes its nonce
-account from a lookup table with `svm/nonce-account-not-static`. `svmNonceMoved(ref, reader)` reads the nonce account at
-`finalized` and answers that read's context slot once the account holds another value, or is not a nonce account, at a
-read at least 150 slots past `fromSlot`; `svm/unreadable`, a read to repeat, when the read is rejected or answers out
-of its documented shape; and null otherwise. A named transaction then not found, by a lookup whose node
-had reached that slot, is failed, with the reason `nonce-moved`; a lookup from a node behind it, or naming no slot,
-leaves it pending, and a nonce account read or first-available-block read that fails leaves it `unreadable`.
-With no transaction named, pass that slot to `svmLocate` as `minContextSlot`: every
-`getSignaturesForAddress` page carries it as the RPC's `minContextSlot`, "the minimum slot that the request can be
-evaluated at", so a node behind the nonce read fails the call and the search is incomplete. A search given that slot
-and complete with nothing found shows the message never landed.
+A Solana message lives until its recent blockhash's validity ends, 150 blocks after the blockhash's own block, unless it
+uses a durable nonce: its first instruction is the System program's `AdvanceNonceAccount`, naming a writable nonce
+account as a static key, the `RecentBlockhashes` sysvar and the nonce authority as a signer, and its blockhash field
+holds the nonce value. Such a message lands only while the nonce account holds that value. Its reference records
+`nonce`, the account and the value, and an empty `blockhash`. The sysvar may come from an address lookup table: the
+runtime resolves it and checks it when `AdvanceNonceAccount` runs, and the reference records the nonce the same way. A
+durable message names its nonce account as a static key (SIMD-0242), so `bound` and `reference` refuse a message whose
+`AdvanceNonceAccount` takes its nonce account from a lookup table with `svm/nonce-account-not-static`.
 
-No `status` reads a recent blockhash's expiry. For your own verdict that a message with a blockhash reference never
-landed, the reader's `blockhashValid(blockhash)` answers `{ valid, slot }`: `isBlockhashValid`'s value at `confirmed`,
-and the context slot the node evaluated it at. A node also answers false for a blockhash whose block it has not reached,
-so a false answer at a slot below `fromSlot` + 150, the bound `svmNonceMoved` sets, shows nothing; the bound holds for a
-blockhash from a slot at or before `fromSlot` + 150. From a false answer at or past that bound, pass its `slot` to
-`svmLocate` as `minContextSlot`, as for a durable nonce: a node behind the blockhash read fails the call and the search
-is incomplete. A search given that slot and complete with nothing found shows the message never landed.
+A Solana `status` (`svmStatus`, `svmChannelStatus`, and each Solana pairing's `status`) reads one mark, `finalized`. It
+searches for H in the memo-carrying signatures of the buyer's own account, which every transaction the buyer signs
+loads, never the fee payer's, from the position given to the latest head (`confirmed`, which is no mark), 10 pages of
+1,000 and 50 candidates a pass; a pass not read whole answers `pending`, `search-incomplete`, with the handle
+(`search`) the next call takes. It reads a durable nonce's account at `finalized` and at the latest head. For a
+blockhash message it takes the first `isBlockhashValid` answer of `true` at `confirmed`, whose context slot bounds the
+blockhash's own slot from above and which the handle keeps; it reads the blockhash lapsed only where `isBlockhashValid`
+answers `false` at `finalized` at a slot at least 150 past that bound, since a slot count alone decides nothing: a
+skipped slot adds no block. Until a run shows that the buyer's signatures list every transaction the buyer signs
+(`SVM_SEARCH_SHOWN`), a search read whole proves no absence: the read answers no `failed` but `before-position`, and
+`pending`, `search-incomplete` where it would answer `instrument-unused`, `instrument-consumed` or
+`transaction-failed`. The profiles `x402-exact-solana` and `read-status` state the read whole.
 
 Lightning has no settlement read: the invoice and its preimage, which the parties hold, show that the invoice was paid.
 They do not show who paid it, and no public ledger shows the payment. Its pairings give `reference` and no `status`.
@@ -378,14 +374,17 @@ console.log(recoverable.sort().join("\n"));
 ```
 
 ```text
-27
+30
 mpp/charge/solana
+mpp/charge/solana/unsponsored
 mpp/charge/usdc/solana
 mpp/charge/usdc/stacks
 mpp/charge/xrpl
 mpp/session/evm
+mpp/session/solana/memo
 mpp/session/tempo
 mpp/session/xrpl
+mpp/subscription/solana
 mpp/subscription/tempo
 x402/batch-settlement/eip155
 x402/batch-settlement/solana
@@ -457,6 +456,7 @@ mpp/charge/stripe
 mpp/charge/usdc/gateway
 mpp/session/hedera/stock
 mpp/session/lightning
+mpp/session/solana/stock
 mpp/subscription/stripe
 x402/batch-settlement/cloudflare
 x402/exact/aptos

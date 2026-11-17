@@ -332,6 +332,7 @@ describe("problem", () => {
     transaction,
     signatures: async () => [],
     blockhashValid: async () => ({ valid: true, slot: 0n }),
+    slot: async () => 0n,
     firstAvailableBlock: async () => 0n,
     account: failing,
   });

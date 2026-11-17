@@ -21,8 +21,6 @@ import {
   decodeSvmTx,
   isKey,
   svmCarrier,
-  svmLocate,
-  svmNonceMoved,
   svmRecover,
   svmStatus,
   type SolanaNetwork,
@@ -73,6 +71,7 @@ function readerFor(
     },
     signatures: async () => [],
     blockhashValid: async () => ({ valid: true, slot: 0n }),
+    slot: async () => 0n,
     firstAvailableBlock: async () => 0n,
     account: async () => {
       throw new Error("this reference names no nonce account");
@@ -283,212 +282,6 @@ describe("x402-exact-solana.json", () => {
       expect(await exactSvm.bound(p), row.case).toEqual(refused(row.expect));
     }
   });
-
-  it("V4: status and recover", async () => {
-    const wire = b64(V.V4.landedWireBase64);
-    const ref = V.V4.ref as SvmRef & { transaction: string };
-    expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    for (const row of rowsOf(V.V4.rows, "x402-exact-solana.json V4.rows")) {
-      const reader = readerFor(row.at, landed(wire, row.err ?? null));
-      expect(await svmStatus(ref, reader, row.query), JSON.stringify(row)).toEqual(row.expect);
-    }
-    expect(await svmRecover(recoverOf(ref.transaction), readerFor("finalized", landed(wire)))).toBe(V.V4.expectRecover);
-    const tx = decodeSvmTx(wire);
-    if ("refused" in tx) throw new Error(tx.code);
-    const { base58 } = await import("@scure/base");
-    expect(base58.encode(tx.signatures[0]!)).toBe(V.V4.txid);
-  });
-
-  // Solana's commitment levels (solana.com/docs/rpc, "Configuring State Commitment"): a block at `confirmed` has been
-  // voted on by a supermajority of the cluster, and one at `finalized` has reached maximum lockout. A block that is not
-  // finalized can be replaced, and the transaction can land in another block and execute otherwise, so an error read at
-  // `confirmed` alone is the payer's own transaction, failed below the final mark: pending, below-mark (read-status.md
-  // rule 17). At `finalized` the same error, a transaction with no transfer, and a message the payer did not sign are no
-  // settlement, and this read is no search for H, so each is pending, search-incomplete (rules 23 and 24). The plant's
-  // answers are the file's (V4.rows, plant.ownDigest, plant.v1Digest).
-  it("V4: status gives below-mark for an error read only at confirmed, and search-incomplete for an error at finalized, no transfer, or a message the payer did not sign", async () => {
-    const wire = b64(V.V4.landedWireBase64);
-    const ref = V.V4.ref as SvmRef & { transaction: string };
-    const err = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!.err;
-    expect(await svmStatus(ref, readerFor("finalized", landed(wire, err)), FINAL)).toEqual(INCOMPLETE);
-    const below = { state: "pending", reason: "below-mark", transaction: V.V4.txid, finality: "confirmed", foreign: [] };
-    for (const finality of ["confirmed", "finalized"] as const) {
-      expect(await svmStatus(ref, readerFor("confirmed", landed(wire, err)), at(finality)), finality).toEqual(below);
-    }
-    const plant = b64(V.plant.landedWireBase64);
-    const own = { ...ref, transaction: "plant", digest: V.plant.ownDigest.digest };
-    expect(V.plant.ownDigest.expect).toEqual(INCOMPLETE);
-    expect(await svmStatus(own, readerFor("finalized", landed(plant), "plant"), FINAL)).toEqual(V.plant.ownDigest.expect);
-    expect(await svmStatus(own, readerFor("confirmed", landed(plant), "plant"), at("confirmed"))).toEqual(INCOMPLETE);
-    const other = { ...own, digest: V.plant.v1Digest.digest };
-    for (const commitment of ["finalized", "confirmed"] as const) {
-      for (const e of [null, err]) {
-        const answer = await svmStatus(other, readerFor(commitment, landed(plant, e), "plant"), at(commitment));
-        expect([commitment, e, answer]).toEqual([commitment, e, V.plant.v1Digest.expect]);
-      }
-    }
-  });
-
-  // The act `agreement` (x402/exact/solana's data has one) is held to no account: the landed payment the reference names
-  // settles it as it settles the act `payment`, at the mark asked for or above it.
-  it("V4: status on the act agreement settles the landed payment, and is below-mark under the mark asked for", async () => {
-    const wire = b64(V.V4.landedWireBase64);
-    const ref = V.V4.ref as SvmRef & { transaction: string };
-    const settled = { state: "settled", transaction: V.V4.txid, finality: "finalized", foreign: [] };
-    expect(await svmStatus(ref, readerFor("finalized", landed(wire)), at("finalized", "agreement"))).toEqual(settled);
-    expect(await svmStatus(ref, readerFor("confirmed", landed(wire)), at("finalized", "agreement"))).toEqual({
-      state: "pending",
-      reason: "below-mark",
-      transaction: V.V4.txid,
-      finality: "confirmed",
-      foreign: [],
-    });
-  });
-
-  // The read names no slot for the transaction it reads, so it cannot place it against a position the caller gives:
-  // pending, search-incomplete (read-status.md rule 16), on either act.
-  it("V4: status given a position to come after cannot place the landed payment, and is search-incomplete", async () => {
-    const wire = b64(V.V4.landedWireBase64);
-    const ref = V.V4.ref as SvmRef & { transaction: string };
-    for (const act of ["payment", "agreement"] as const) {
-      const answer = await svmStatus(ref, readerFor("finalized", landed(wire)), { ...at("finalized", act), after: 0n });
-      expect(answer, act).toEqual(INCOMPLETE);
-    }
-  });
-
-  // SvmReader.transaction answers a landed transaction, or notFound with the node's slot; any other answer, such as
-  // getTransaction's bare null passed through, is neither, and is a read to repeat.
-  it("a transaction answer of neither documented shape is unreadable, unparseable, and recover refuses it svm/unreadable", async () => {
-    const ref = V.V4.ref as SvmRef & { transaction: string };
-    const answering = (a: unknown): SvmReader => ({ ...readerFor("finalized", landed(new Uint8Array())), transaction: async () => a as never });
-    for (const a of [null, undefined, {}, { notFound: false, slot: 1150n }, "landed"]) {
-      expect(await svmStatus(ref, answering(a), FINAL), String(a)).toEqual(unreadable("unparseable"));
-      expect(await svmRecover(recoverOf(ref.transaction), answering(a)), String(a)).toEqual(refused("svm/unreadable"));
-    }
-    for (const slot of [1150n, null]) {
-      expect(await svmStatus(ref, answering({ notFound: true, slot }), FINAL)).toEqual(INCOMPLETE);
-      expect(await svmRecover(recoverOf(ref.transaction), answering({ notFound: true, slot }))).toEqual(refused("svm/not-found"));
-    }
-  });
-
-  // A rejected read is unreadable by the reader's own word for it: a ReaderError of kind too-large is too-large, one of
-  // kind malformed unparseable, and a timeout, a transport failure or any other rejection transport.
-  it("a rejected transaction read is unreadable, with the reason the rejection gives", async () => {
-    const ref = V.V4.ref as SvmRef & { transaction: string };
-    const rejecting = (e: unknown): SvmReader => ({
-      ...readerFor("finalized", landed(new Uint8Array())),
-      transaction: async () => {
-        throw e;
-      },
-    });
-    const rows: [unknown, string][] = [
-      [new ReaderError("timeout"), "transport"],
-      [new ReaderError("transport"), "transport"],
-      [new ReaderError("too-large"), "too-large"],
-      [new ReaderError("malformed"), "unparseable"],
-      [new Error("down"), "transport"],
-    ];
-    for (const [e, reason] of rows) expect(await svmStatus(ref, rejecting(e), FINAL), reason).toEqual(unreadable(reason));
-  });
-
-  it("a reader for another network is chain-mismatch, and a query of another form unparseable, each with nothing read", async () => {
-    const ref = V.V4.ref as SvmRef & { transaction: string };
-    let reads = 0;
-    const reader: SvmReader = {
-      ...readerFor("finalized", landed(b64(V.V4.landedWireBase64))),
-      transaction: async () => {
-        reads++;
-        return { notFound: true, slot: null };
-      },
-    };
-    const mainnet = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
-    expect(await svmStatus(ref, { ...reader, network: mainnet }, FINAL)).toEqual(unreadable("chain-mismatch"));
-    for (const q of [undefined, {}, { act: "payment", finality: "processed" }, { act: "charge", finality: "finalized" }]) {
-      expect(await svmStatus(ref, reader, q as never), JSON.stringify(q)).toEqual(unreadable("unparseable"));
-    }
-    expect(reads).toBe(0);
-  });
-
-  it("V5: svmLocate", async () => {
-    const fromSlot = BigInt(V.V5.fromSlot);
-    const ref: SvmRef = { ...V.V4.ref, fromSlot: V.V5.fromSlot };
-    const holds = async () => BigInt(V.V5.firstAvailableBlock);
-    delete (ref as { transaction?: string }).transaction;
-    expect(JSON.parse(JSON.stringify(ref))).toEqual(ref);
-    const wire = b64(V.V4.landedWireBase64);
-    const carrier: string = V.V5.memoRendering.carrier;
-    const other: string = V.V5.memoRendering.other;
-    type Sig = { signature: string; slot: bigint; memo: string | null };
-    const pages = (n: number, tail: Sig[]) => {
-      let served = 0;
-      return async (): Promise<readonly Sig[]> => {
-        served++;
-        if (served <= n) {
-          return Array.from({ length: 1000 }, (_, i) => ({
-            signature: `other-${served}-${i}`,
-            slot: fromSlot + 100_000n - BigInt(i),
-            memo: i % 2 === 0 ? other : null,
-          }));
-        }
-        return tail;
-      };
-    };
-    let reads = 0;
-    const counted = (r: SvmReader): SvmReader => ({
-      ...r,
-      transaction: async (sig, c) => {
-        reads++;
-        return r.transaction(sig, c);
-      },
-    });
-    const none = counted({ ...readerFor("finalized", landed(wire)), signatures: pages(1000, []), firstAvailableBlock: holds });
-    expect(await svmLocate(ref, none, H)).toEqual(V.V5.tenFullPagesNoMatch.expect);
-    expect(reads).toBe(0);
-    const second: SvmReader = {
-      ...readerFor("finalized", landed(wire)),
-      firstAvailableBlock: holds,
-      signatures: pages(1, [
-        { signature: V.V4.txid, slot: fromSlot + 5n, memo: carrier },
-        { signature: "older", slot: fromSlot - 1n, memo: carrier },
-      ]),
-    };
-    expect(await svmLocate(ref, second, H)).toEqual(V.V5.secondPageReachesFromSlot.expect);
-    const plantWire = b64(V.plant.landedWireBase64);
-    for (const c of [V.V5.candidateCap, V.V5.candidatesWithinCap, V.V5.candidatesNotReadable]) {
-      const list: Sig[] = Array.from({ length: c.candidates }, (_, i) => ({ signature: `cand-${i}`, slot: fromSlot + 10n, memo: carrier }));
-      list.push({ signature: "older", slot: fromSlot - 1n, memo: null });
-      expect(c.candidateWire === "plant" || c.candidateWire === null, c.case).toBe(true);
-      const r: SvmReader = {
-        network: V.V4.network,
-        transaction: async (sig) =>
-          c.candidateWire === "plant" && sig.startsWith("cand-") ? landed(plantWire) : { notFound: true as const, slot: null },
-        signatures: async () => list,
-        blockhashValid: async () => ({ valid: false, slot: 0n }),
-        firstAvailableBlock: holds,
-        account: async () => {
-          throw new Error("this reference names no nonce account");
-        },
-      };
-      expect(await svmLocate(ref, r, H), c.case).toEqual(c.expect);
-    }
-    for (const c of [V.V5.firstAvailableAboveFromSlot, V.V5.firstAvailableAtFromSlot]) {
-      const r: SvmReader = {
-        ...readerFor("finalized", landed(wire)),
-        signatures: async () => [{ signature: "older", slot: fromSlot - 1n, memo: null }],
-        firstAvailableBlock: async () => BigInt(c.firstAvailableBlock),
-      };
-      expect(await svmLocate(ref, r, H), c.case).toEqual(c.expect);
-    }
-  });
-
-  it("plant: a memo-only transaction is never settled", async () => {
-    const wire = b64(V.plant.landedWireBase64);
-    const txid = "plant";
-    const reader = readerFor("finalized", landed(wire), txid);
-    const base = { ...V.V4.ref, transaction: txid } as SvmRef & { transaction: string };
-    expect(await svmStatus({ ...base, digest: V.plant.ownDigest.digest }, reader, FINAL)).toEqual(V.plant.ownDigest.expect);
-    expect(await svmStatus({ ...base, digest: V.plant.v1Digest.digest }, reader, FINAL)).toEqual(V.plant.v1Digest.expect);
-  });
 });
 
 describe("x402-exact-solana.json carrierSpelling", () => {
@@ -512,26 +305,6 @@ describe("x402-exact-solana.json carrierSpelling", () => {
     expect(await svmRecover(recoverOf(C.recover.txid), reader)).toEqual(refused(C.recover.expect));
   });
 
-  it("svmLocate finds the landed payment whatever the case of its memo", async () => {
-    const fromSlot = BigInt(V.V5.fromSlot);
-    const ref: SvmRef = {
-      network: V.V4.network,
-      digest: C.locate.digest,
-      feePayer: V.fixed.feePayer,
-      blockhash: V.fixed.blockhash,
-      fromSlot: V.V5.fromSlot,
-      payee: V.V2.accepted.payTo,
-    };
-    const reader: SvmReader = {
-      ...readerFor("finalized", landed(b64(C.recover.landedWireBase64)), C.recover.txid),
-      signatures: async () => [
-        { signature: C.recover.txid, slot: fromSlot + 5n, memo: C.locate.memoRendering },
-        { signature: "older", slot: fromSlot - 1n, memo: null },
-      ],
-      firstAvailableBlock: async () => BigInt(V.V5.firstAvailableBlock),
-    };
-    expect(await svmLocate(ref, reader, H)).toEqual(C.locate.expect);
-  });
 });
 
 describe("x402-exact-solana.json durableNonce", () => {
@@ -612,20 +385,6 @@ describe("x402-exact-solana.json durableNonce", () => {
     }
   });
 
-  it("svmNonceMoved on that reference is null while the nonce account holds the value the message carries", async () => {
-    const row = D.lookupTable.rows.find((r: { expectReference?: unknown }) => r.expectReference !== undefined);
-    const ref: SvmRef = { ...row.expectReference, fromSlot: D.nonceMoved.fromSlot };
-    const readerOf = (name: string | null): SvmReader => ({
-      ...readerFor(null, landed(new Uint8Array())),
-      account: async (address) => {
-        expect(address).toBe(D.nonceAccount);
-        return { slot: 1150n, value: accountOf(name) };
-      },
-    });
-    expect(await svmNonceMoved(ref, readerOf("moved"))).toBe(null);
-    expect(await svmNonceMoved(ref, readerOf("held"))).toBe(1150n);
-    expect(await svmNonceMoved(ref, readerOf(null))).toBe(1150n);
-  });
 
   it("LiteSVM landed only the durable message", () => {
     expect(D.liteSvm.results.durable).toBe("landed");
@@ -635,163 +394,19 @@ describe("x402-exact-solana.json durableNonce", () => {
     expect(Buffer.from(D.accounts.held.dataBase64, "base64").length).toBe(80);
   });
 
-  it("svmNonceMoved reads the nonce account at a slot at least 150 past fromSlot, and answers that read's slot", async () => {
-    const ref: SvmRef = { ...D.reference[0].expect, fromSlot: D.nonceMoved.fromSlot };
-    for (const row of rowsOf(D.nonceMoved.rows, "x402-exact-solana.json durableNonce.nonceMoved.rows")) {
-      const reader: SvmReader = {
-        ...readerFor(null, landed(new Uint8Array())),
-        account: async (address) => {
-          expect(address).toBe(D.nonceAccount);
-          if (row.account === "reader-error") throw new ReaderError("transport");
-          if (row.account === "malformed") return { slot: BigInt(row.slot), value: { owner: "11111111111111111111111111111111", data: "AA==" } } as never;
-          return { slot: BigInt(row.slot), value: accountOf(row.account) };
-        },
-      };
-      const expected = row.expect === null ? null : row.expect.startsWith("svm/") ? refused(row.expect) : BigInt(row.expect);
-      expect(await svmNonceMoved(ref, reader), row.case).toEqual(expected);
-    }
-    const plain: SvmRef = { ...V.V4.ref, fromSlot: D.nonceMoved.fromSlot };
-    delete (plain as { transaction?: string }).transaction;
-    expect(await svmNonceMoved(plain, readerFor(null, landed(new Uint8Array())))).toBe(null);
-  });
 
   // A lookup that finds nothing shows the transaction absent only up to the slot its node had reached: Solana's
   // getTransaction answers null for a transaction the node does not hold at that commitment, and getSlot names the
   // node's slot at a commitment. The nonce account read shows the nonce moved on as of its response's context slot
   // (getAccountInfo's context.slot). So the last read shows the message never landed only from a node at or past that
   // slot; one behind it, or one naming no slot, leaves the payment pending.
-  it("status on the named durable message reads the value consumed once the nonce moved on and a last read at or past the nonce read finds nothing", async () => {
-    const ref: SvmRef & { transaction: string } = {
-      ...D.reference[0].expect,
-      transaction: D.txid,
-      fromSlot: D.status.fromSlot,
-    };
-    const wire = b64(D.status.landedWireBase64);
-    for (const row of rowsOf(D.status.rows, "x402-exact-solana.json durableNonce.status.rows")) {
-      const answers = [...row.transactions];
-      let accountReads = 0;
-      const reader: SvmReader = {
-        network: V.V4.network,
-        transaction: async (sig) => {
-          expect(sig).toBe(D.txid);
-          expect(answers.length, row.case).toBeGreaterThan(0);
-          const answer = answers.shift();
-          if (answer === "landed") return landed(wire);
-          return { notFound: true, slot: answer.slot === null ? null : BigInt(answer.slot) };
-        },
-        signatures: async () => [],
-        blockhashValid: async () => ({ valid: false, slot: 0n }),
-        firstAvailableBlock: async () => {
-          if (row.firstAvailableBlock === "reader-error") throw new ReaderError("transport");
-          return BigInt(row.firstAvailableBlock);
-        },
-        account: async () => {
-          accountReads++;
-          if (row.account === "reader-error") throw new ReaderError("transport");
-          return { slot: 1150n, value: accountOf(row.account) };
-        },
-      };
-      expect(await svmStatus(ref, reader, FINAL), row.case).toEqual(row.expect);
-      expect(answers, row.case).toEqual([]);
-      expect(accountReads, row.case).toBe(row.accountReads);
-    }
-  });
 
   // getSignaturesForAddress takes minContextSlot, "The minimum slot that the request can be evaluated at"
   // (solana.com/docs/rpc/http/getsignaturesforaddress), and a node whose slot is below it fails the call (Agave v3.1.8,
   // rpc/src/rpc.rs get_signatures_for_address: MinContextSlotNotReached, JSON-RPC error -32016, "Minimum context slot
   // has not been reached"). The nonce account read shows the nonce moved on as of its context slot, 1150 here as in
   // the status rows, so only a search from a node at or past that slot shows the durable message never landed.
-  describe("svmLocate given the nonce read's slot", () => {
-    const ref: SvmRef = { ...D.reference[0].expect, fromSlot: D.status.fromSlot };
-    const movedAt = 1150n;
-    const wire = b64(D.status.landedWireBase64);
-    const carrier: string = V.V5.memoRendering.carrier;
-    type Sig = { signature: string; slot: bigint; memo: string | null };
-    /** A node at slot `at` that lists `list`, as getSignaturesForAddress answers, and holds the durable message at finalized. */
-    const nodeAt = (at: bigint, list: Sig[] = [], pages: unknown[] = []): SvmReader => ({
-      network: V.V4.network,
-      transaction: async (sig, commitment) =>
-        sig === D.txid && commitment === "finalized" ? landed(wire) : { notFound: true, slot: at },
-      signatures: async (_address, page) => {
-        pages.push(page);
-        if (page.minContextSlot !== undefined && at < page.minContextSlot) throw new ReaderError("transport");
-        return list;
-      },
-      blockhashValid: async () => ({ valid: false, slot: at }),
-      firstAvailableBlock: async () => 0n,
-      account: async () => ({ slot: movedAt, value: accountOf("moved") }),
-    });
 
-    it("a node behind the nonce read fails the call, and the search is incomplete though it lists nothing", async () => {
-      expect(await svmLocate(ref, nodeAt(movedAt - 1n), H, undefined, movedAt)).toEqual({ complete: false });
-    });
-
-    it("a node at or past the nonce read answers as it does with no slot given", async () => {
-      const found = [
-        { signature: D.txid, slot: 1100n, memo: carrier },
-        { signature: "older", slot: 999n, memo: null },
-      ];
-      for (const at of [movedAt, movedAt + 1n]) {
-        expect(await svmLocate(ref, nodeAt(at), H, undefined, movedAt), String(at)).toEqual({ complete: true });
-        expect(await svmLocate(ref, nodeAt(at), H), String(at)).toEqual({ complete: true });
-        expect(await svmLocate(ref, nodeAt(at, found), H, undefined, movedAt), String(at)).toEqual({ found: D.txid, complete: true });
-        expect(await svmLocate(ref, nodeAt(at, found), H), String(at)).toEqual({ found: D.txid, complete: true });
-      }
-    });
-
-    it("every page names the slot, and a node behind it on a later page leaves the search incomplete", async () => {
-      const full: Sig[] = Array.from({ length: 1000 }, (_, i) => ({ signature: `other-${i}`, slot: 5000n - BigInt(i), memo: null }));
-      const tail: Sig[] = [{ signature: "older", slot: 999n, memo: null }];
-      const pages: unknown[] = [];
-      let served = 0;
-      const paged = (at: (page: number) => bigint): SvmReader => {
-        const nodes = [nodeAt(at(0), full, pages), nodeAt(at(1), tail, pages)];
-        return { ...nodes[0]!, signatures: (address, page) => nodes[Math.min(served++, 1)]!.signatures(address, page) };
-      };
-      expect(await svmLocate(ref, paged(() => movedAt), H, undefined, movedAt)).toEqual({ complete: true });
-      expect(pages).toEqual([
-        { limit: 1000, minContextSlot: movedAt },
-        { before: "other-999", limit: 1000, minContextSlot: movedAt },
-      ]);
-      served = 0;
-      expect(await svmLocate(ref, paged((p) => (p === 0 ? movedAt : movedAt - 1n)), H, undefined, movedAt)).toEqual({ complete: false });
-    });
-
-    it("with no slot given, no page names one", async () => {
-      const pages: unknown[] = [];
-      expect(await svmLocate(ref, nodeAt(movedAt - 1n, [], pages), H)).toEqual({ complete: true });
-      expect(pages).toStrictEqual([{ limit: 1000 }]);
-    });
-
-    it("a slot that is not a u64 bigint is incomplete, with nothing read", async () => {
-      for (const bad of [-1n, 2n ** 64n, 1150, "1150", null]) {
-        const pages: unknown[] = [];
-        let first = 0;
-        const reader: SvmReader = {
-          ...nodeAt(movedAt, [], pages),
-          firstAvailableBlock: async () => {
-            first++;
-            return 0n;
-          },
-        };
-        expect(await svmLocate(ref, reader, H, undefined, bad as never), String(bad)).toEqual({ complete: false });
-        expect([pages.length, first], String(bad)).toEqual([0, 0]);
-      }
-    });
-
-    it("the caller's sequence: svmNonceMoved's slot, passed to svmLocate, holds a lagging node's empty list incomplete", async () => {
-      const at = await svmNonceMoved(ref, nodeAt(movedAt));
-      expect(at).toBe(movedAt);
-      if (typeof at !== "bigint") throw new Error("svmNonceMoved names no slot");
-      expect(await svmLocate(ref, nodeAt(movedAt - 1n), H, undefined, at)).toEqual({ complete: false });
-    });
-  });
-
-  it("status on a reference without a nonce never reads a nonce account", async () => {
-    const reader = readerFor(null, landed(new Uint8Array()));
-    expect(await svmStatus(V.V4.ref, reader, FINAL)).toEqual(INCOMPLETE);
-  });
 });
 
 // isBlockhashValid answers an RpcResponse: its context is the "Slot and API version the node used to answer this
@@ -800,70 +415,6 @@ describe("x402-exact-solana.json durableNonce", () => {
 // new_response(&bank, is_valid), whose context slot is bank.slot() (rpc/src/rpc.rs is_blockhash_valid, new_response),
 // and a bank finds a blockhash only among the hashes it holds (accounts-db/src/blockhash_queue.rs
 // get_hash_info_if_valid, self.hashes.get(hash)), so a node behind the blockhash's block also answers false.
-describe("SvmReader.blockhashValid", () => {
-  type Answer = { context: { slot: number }; value: boolean };
-  type Sig = { signature: string; slot: bigint; memo: string | null };
-  const example: Answer = { context: { slot: 2483 }, value: false };
-  const ref: SvmRef = { ...V.V4.ref, fromSlot: "2333" };
-  delete (ref as { transaction?: string }).transaction;
-  const wire = b64(V.V4.landedWireBase64);
-  const carrier: string = V.V5.memoRendering.carrier;
-  const older: Sig = { signature: "older", slot: 2332n, memo: null };
-
-  /** The blockhash read from a node answering `read`, and the signatures from a node at slot `listAt` listing `list`. */
-  const nodes = (read: Answer, listAt: bigint, list: Sig[], pages: unknown[] = []): SvmReader => ({
-    ...readerFor("finalized", landed(wire)),
-    blockhashValid: async (blockhash) => {
-      expect(blockhash).toBe(ref.blockhash);
-      return { valid: read.value, slot: BigInt(read.context.slot) };
-    },
-    signatures: async (_address, page) => {
-      pages.push(page);
-      if (page.minContextSlot !== undefined && listAt < page.minContextSlot) throw new ReaderError("transport");
-      return list;
-    },
-  });
-
-  /** The guide's sequence: a false answer at a slot at least 150 past fromSlot, then svmLocate given that slot. */
-  const neverLanded = async (reader: SvmReader): Promise<boolean> => {
-    const read = await reader.blockhashValid(ref.blockhash);
-    if (read.valid || read.slot < BigInt(ref.fromSlot) + 150n) return false;
-    const search = await svmLocate(ref, reader, H, undefined, read.slot);
-    return search.complete && search.found === undefined;
-  };
-
-  it("answers the response's value and its context slot", async () => {
-    expectTypeOf<Awaited<ReturnType<SvmReader["blockhashValid"]>>>().toEqualTypeOf<{ valid: boolean; slot: bigint }>();
-    expect(await nodes(example, 2483n, []).blockhashValid(ref.blockhash)).toEqual({ valid: false, slot: 2483n });
-  });
-
-  it("a false answer, then a search given its slot that is complete with nothing found, shows the message never landed", async () => {
-    const pages: unknown[] = [];
-    expect(await neverLanded(nodes(example, 2483n, [older], pages))).toBe(true);
-    expect(pages).toEqual([{ limit: 1000, minContextSlot: 2483n }]);
-  });
-
-  it("a signatures node behind the blockhash read fails the call, though with no slot its empty list reads complete", async () => {
-    const lagging = nodes(example, 2482n, [older]);
-    expect(await svmLocate(ref, lagging, H)).toEqual({ complete: true });
-    expect(await svmLocate(ref, lagging, H, undefined, 2483n)).toEqual({ complete: false });
-    expect(await neverLanded(lagging)).toBe(false);
-  });
-
-  it("a search given the slot that finds the payment shows it landed", async () => {
-    const reader = nodes(example, 2484n, [{ signature: V.V4.txid, slot: 2400n, memo: carrier }, older]);
-    expect(await svmLocate(ref, reader, H, undefined, 2483n)).toEqual({ found: V.V4.txid, complete: true });
-    expect(await neverLanded(reader)).toBe(false);
-  });
-
-  it("a valid blockhash, or a false answer below fromSlot + 150, starts no search", async () => {
-    for (const read of [{ ...example, value: true }, { ...example, context: { slot: 2482 } }]) {
-      const pages: unknown[] = [];
-      expect(await neverLanded(nodes(read, 2483n, [older], pages)), JSON.stringify(read)).toBe(false);
-      expect(pages, JSON.stringify(read)).toEqual([]);
-    }
-  });
-});
 
 // The agreedRefusals rows that carry only case and expect: each case names its calls, and each call here is one of
 // them, made with the file's fixed data, V2's and V4's wires and V3's two-memo wire.
@@ -949,15 +500,17 @@ describe("x402-exact-solana.json agreedRefusals: the rows that carry only case a
       await svmRecover(named, readerFor(null, landed(wireV4))),
     ],
     "recover when the landed transaction's err is not null at finalized": async () => {
-      const failed = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
-      return [await svmRecover(named, readerFor("finalized", landed(wireV4, failed.err)))];
+      return [await svmRecover(named, readerFor("finalized", landed(wireV4, V.V4.landedErr)))];
     },
     // Solana's commitment levels: a block at `confirmed` has a supermajority's votes but is not finalized, and a block
     // that is not finalized can be replaced, so an error read there alone is a read to repeat.
     "recover when the landed transaction's err is not null at confirmed and the transaction is not found at finalized": async () => {
-      const failed = (V.V4.rows as { err?: unknown }[]).find((r) => r.err !== undefined && r.err !== null)!;
-      return [await svmRecover(named, readerFor("confirmed", landed(wireV4, failed.err)))];
+      return [await svmRecover(named, readerFor("confirmed", landed(wireV4, V.V4.landedErr)))];
     },
+    // `recover` reads the landed transaction's carrier at `finalized`: one found at `confirmed` alone can still be
+    // replaced, so its answer there is a read to repeat.
+    "recover when the transaction landed with no error is found at confirmed alone, not at finalized: the carrier is read at finalized only":
+      async () => [await svmRecover(named, readerFor("confirmed", landed(wireV4)))],
     // A transaction answer whose wire is the base64 text, not its bytes, is not a landed transaction's shape; nor is a
     // wire one byte short of V4's, which does not decode: a transaction the chain executed is a well-formed one within
     // Solana's 1232-byte packet (PACKET_DATA_SIZE), so a landed wire that does not decode is the reader's.
@@ -1035,6 +588,16 @@ describe("x402-exact-solana.json agreedRefusals: the rows that carry only case a
 
 // isKey is the 32-byte base58 key rule every Solana read applies to an address, a program id and a blockhash. The
 // expected lengths come from a base58 decoder written here from the alphabet, not from the package's.
+describe("the svm entry point's reads", () => {
+  // A read of Solana is `status` (svmStatus and each pairing's `status`), which takes no absence as shown until a run
+  // shows the search whole; the entry point exports no other locate or nonce read whose answer a caller would take as
+  // complete or final.
+  it("exports neither svmLocate nor svmNonceMoved", async () => {
+    const svm: Record<string, unknown> = await import("../src/svm.js");
+    expect(["svmLocate", "svmNonceMoved"].filter((name) => name in svm)).toEqual([]);
+  });
+});
+
 describe("isKey", () => {
   const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   const decodedLength = (s: string): number | null => {

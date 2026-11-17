@@ -1,0 +1,281 @@
+{
+ "about": "Vectors for mpp/subscription/solana, MPP's subscription intent under the stock solana method (@solana/mpp 0.7.0, src/Methods.ts:129-201). H rides as the activation's Memo instruction, which the stock client writes from the request's externalId (src/client/Subscription.ts:235-237, :344-354); the stock server does not read it, so bound checks it. Fixtures: mpp-charge-solana.json's H, L, realm, expires, link, MV1 and MV3opaque, seed 01 as the subscriber, seed 02 as the challenge's puller, seed 03's address as planId, devnet USDC as currency and mint, x402's payTo as recipient and its blockhash. Requests are base64url without padding of Python 3 json.dumps(sort_keys=True, separators=(',',':')). The activation is the stock client's composition for the placed challenge, computed with @solana/kit 8.4.0 from src/client/Subscription.ts:128-261 with the subscription authority read as absent, not by this package: SetComputeUnitPrice 1 and SetComputeUnitLimit 400000 prepended, init_subscription_authority, subscribe with the subscriber as payer, transfer_subscription with the puller as its signer, then the Memo; fee payer the subscriber; signed by the subscriber alone, the puller's signature slot zero, as the client leaves it (:260-262). Each reference names the payee of the challenge the payment answers, its request's recipient.",
+ "fixed": {
+  "puller": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+  "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "program": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44",
+  "planId": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+  "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+  "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
+  "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "subscriber": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "subscription": "ENiPZfT6FWNdh37GCKmdMugcRfL3jDqDYaBJteRCqzCe",
+  "authority": "HRnb9HcgoTNjjuwpjV8zVnUTthVqTVF9pMxxEQnGLocW",
+  "request": {
+   "amount": "1000",
+   "currency": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+   "periodUnit": "day",
+   "periodCount": "30",
+   "methodDetails": {
+    "network": "devnet",
+    "decimals": 6,
+    "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "planId": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+    "puller": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
+   }
+  }
+ },
+ "challenge": {
+  "realm": "api.seller.example",
+  "method": "solana",
+  "intent": "subscription",
+  "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+  "expires": "2026-09-21T14:14:20Z"
+ },
+ "place": {
+  "case": "advertise sets id MV1, opaque MV3 and request.externalId = L",
+  "expect": {
+   "realm": "api.seller.example",
+   "method": "solana",
+   "intent": "subscription",
+   "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+   "expires": "2026-09-21T14:14:20Z",
+   "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+   "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+  }
+ },
+ "readings": {
+  "case": "pairingsOf over each row's challenge: the fixture request with the row's change (null removes the member)",
+  "rows": [
+   {
+    "case": "the fixture request",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/subscription/solana"
+    ]
+   },
+   {
+    "case": "periodUnit week, periodCount 52: 8,736 hours",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiNTIiLCJwZXJpb2RVbml0Ijoid2VlayIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/subscription/solana"
+    ]
+   },
+   {
+    "case": "periodCount 366 days, past the stock client's 365 (src/shared/subscription.ts:19-22)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzY2IiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
+   },
+   {
+    "case": "periodUnit month, which the Solana profile rejects (src/Methods.ts:121)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoibW9udGgiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
+   },
+   {
+    "case": "no puller, which the schema requires (src/Methods.ts:177)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
+   },
+   {
+    "case": "tokenProgram not Token or Token-2022",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
+   },
+   {
+    "case": "feePayer true without feePayerKey",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsImZlZVBheWVyIjp0cnVlLCJtaW50IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJuZXR3b3JrIjoiZGV2bmV0IiwicGxhbklkIjoiR3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UiLCJwdWxsZXIiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
+   },
+   {
+    "case": "network localnet, which names no CAIP-2 network",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJsb2NhbG5ldCIsInBsYW5JZCI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": [
+     "mpp/subscription/solana"
+    ]
+   }
+  ]
+ },
+ "activation": {
+  "case": "bound and reference of credential, the placed challenge echoed with the activation as a transaction credential; reference names as the buyer the subscriber that instruction names (its account 0, a writable signer, src/client/Subscription.ts:314), never the challenge's puller, which signs transfer_subscription beside it (:340); channel.ref names the subscription the activation's subscribe instruction names (its account 3, :313-320, the subscription at :317), the PDA of [\"subscription\", planId, subscriber] (src/shared/subscription.ts:61-79)",
+  "credential": "/buyer/rows/1/input/presented",
+  "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "expectChannel": "ENiPZfT6FWNdh37GCKmdMugcRfL3jDqDYaBJteRCqzCe",
+  "expectReferenceFeePayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "expectReferencePayer": "AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+  "expectReferencePayee": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4"
+ },
+ "refusals": [
+  {
+   "case": "a signature credential: the activation needs the puller's signature, which the client does not hold (src/client/Subscription.ts:230)",
+   "payload": {
+    "type": "signature",
+    "signature": "5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
+   },
+   "expect": "mpp/credential-type"
+  },
+  {
+   "case": "the activation without its Memo",
+   "dropMemo": true,
+   "expect": "svm/no-carrier"
+  }
+ ],
+ "buyer": {
+  "about": "The buyer gate's rows for this file's pairings, in the form of buyer.json's rows. B2 is the plant: the document advertises H, the hash of the ATR in B6's first check, and the link serves the planted ATR, that ATR with one byte changed; the gate declines hash-mismatch and never calls the signer. B6 is the pairing's bound check over the payment this file already holds: check(ATR, presented) gives H, and check(planted ATR, presented) declines signed-not-bound. Where the ATR is abc, H is its SHA-256 (FIPS 180-2 B.1) and the planted ATR is abd. SHA-256 values are GNU coreutils sha256sum, which openssl dgst -sha256 matches. Bytes are hex. A B2 input names the account, the buyer's inputs and the time (now, in seconds) its build needs. noSignedPayment names each pairing of the file that has no B6 row, and why.",
+  "rows": [
+   {
+    "name": "B2",
+    "pairing": "mpp/subscription/solana",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "solana",
+       "intent": "subscription",
+       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "account": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:AKnL4NNf3DGWZJS6cPknBuEGnVsV4A4m5tgebLHaRSZ9",
+     "inputs": {},
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B6",
+    "pairing": "mpp/subscription/solana",
+    "input": {
+     "presented": {
+      "challenge": {
+       "realm": "api.seller.example",
+       "method": "solana",
+       "intent": "subscription",
+       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+      },
+      "payload": {
+       "type": "transaction",
+       "transaction": "AkhT8vWD+yCEJHu02r0mafymGQAOXFHxZpVS0ivAphowFMymAKPuLxTFCqc6NqaBasXRdiHbBhJ6YRr7WP1JFwMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIABw2KiOPddAnxlf1S2y08ul1yymcJvx2UEhvzdIgBtA9vXIE5dw6ofRdfVqNUZsNMfszLjYqRtO43ol32D1uPybOUhym1sSR1ISgbpclL8xwEkaOR7MUUttiwAKDWSvmKgAXGt+z9w+JjQVcWCys6WsV7zuO0AyVHlKehf6ZZyP39l+3GNuBAHinAmeonA4BlkebkC+7BCRUHAl27/m1jdh/i9BR6Pk0fhrrbxnEb/8/wjtmN2Dbs4QsCmV0nc7sG08sAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADtELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6nAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAC7x3evumjwEj7AxNG37olukwHJKcVaBrqVGCFYJYwVqe1JKMYo0cLG6ukDOJBZlWEpWSc6XGP5NjbBRhSshzfRBUpTWpkpIQZNJOhxYNo4fHw1td28kruB5B+oQEEFRI0G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqcldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrBggACQMBAAAAAAAAAAgABQKAGgYACQYABQcEDAYBAAkGAAAKAwUGAQsJCQEDCgUABAIHDAEKCwBNbGNwOnNoYTI1NjoweGJhNzgxNmJmOGYwMWNmZWE0MTQxNDBkZTVkYWUyMjIzYjAwMzYxYTM5NjE3N2E5Y2I0MTBmZjYxZjIwMDE1YWQA"
+      }
+     },
+     "check": [
+      {
+       "bytesHex": "616263"
+      },
+      {
+       "bytesHex": "616264"
+      }
+     ]
+    },
+    "expect": [
+     {
+      "h": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+     },
+     {
+      "decline": "signed-not-bound"
+     }
+    ],
+    "note": "presented is this file's activation credential, as the file holds it; no signature was made for this row."
+   }
+  ]
+ },
+ "boundChallenge": {
+  "case": "The file's credential at `credential`, a JSON Pointer (RFC 6901) into this file, presented with its echoed challenge replaced by `challenge`, the same challenge with the change the row's case names: pairingsOf, over the challenge as issued, does not name `pairing` for it, and that pairing's bound and reference refuse the credential with the row's code, the code pairingsOf gives (mpp/not-this-pairing where it names other pairings). The request is base64url, without padding, of its RFC 8785 form, except where the case says otherwise.",
+  "rows": [
+   {
+    "case": "the request without amount",
+    "pairing": "mpp/subscription/solana",
+    "credential": "/buyer/rows/1/input/presented",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJjdXJyZW5jeSI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJkZWNpbWFscyI6NiwibWludCI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwibmV0d29yayI6ImRldm5ldCIsInBsYW5JZCI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "expect": "mpp/request-malformed"
+   }
+  ]
+ }
+}

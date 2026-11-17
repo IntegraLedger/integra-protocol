@@ -24,7 +24,8 @@ import { boundStatus } from "./internal/evm-status.js";
 import { mppPayee } from "./internal/payee.js";
 import { memoArgument, originSigned } from "./internal/stacks.js";
 import { readStacksTransaction, type StacksTransaction } from "./internal/stacks-transaction.js";
-import { keyString, type SvmReader, type SvmRef, type SolanaNetwork, type SvmQuery, type SvmStatus } from "./internal/svm.js";
+import { keyString, type SolanaNetwork } from "./internal/svm.js";
+import type { SvmQuery, SvmReader, SvmRef, SvmStatus } from "./internal/svm-read.js";
 import {
   byType,
   chosenFor,
@@ -387,12 +388,12 @@ export const chargeUsdcSolana = solanaChargePairing({
 }) satisfies Entry<
   typeof SOLANA,
   MppCredential,
-  Omit<SvmRef, "fromSlot">,
+  SvmRef,
   SvmReader,
   MppForms & {
     choice: SolanaChargeChoice;
     unsigned: SolanaChargeUnsigned;
-    landed: { fromSlot: string; transaction: string };
+    landed: object;
     network: SolanaNetwork;
     query: SvmQuery;
     answer: SvmStatus;

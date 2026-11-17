@@ -26,6 +26,7 @@ import { ReaderError } from "../src/evm.js";
 import {
   chargeNearIntents,
   chargeSolana,
+  chargeSolanaUnsponsored,
   chargeXrpl,
   issuedDigest,
   network,
@@ -87,6 +88,25 @@ describe("mpp-charge-solana.json", () => {
     const r = chargeSolana.read([placed]);
     if ("refused" in r) throw new Error(r.code);
     expect(r.h).toBe(H);
+  });
+
+  it("unsponsored: feePayer true names mpp/charge/solana, any other challenge mpp/charge/solana/unsponsored", async () => {
+    const U = V.unsponsored;
+    const presented = U.credential.split("/").slice(1).reduce((v: unknown, k: string) => (v as Record<string, unknown>)[k], V as unknown) as MppCredential;
+    for (const row of rowsOf(U.readings, "mpp-charge-solana.json unsponsored.readings", { exact: 4 })) {
+      expect(pairingsOf(row.challenge), row.case).toEqual(row.expect);
+    }
+    expect(chargeSolanaUnsponsored.advertise([U.challenge], H, V.fixed.link, U.challenge, 0)).toEqual([U.placed]);
+    expect(await chargeSolanaUnsponsored.bound(presented)).toBe(U.expectBound);
+    expect(await chargeSolana.bound(presented)).toEqual(refused("mpp/not-this-pairing"));
+    const ref = await chargeSolanaUnsponsored.reference(presented, U.placed);
+    if ("refused" in ref) throw new Error(ref.code);
+    expect([ref.feePayer, ref.payee]).toEqual([U.expectReferenceFeePayer, U.expectReferencePayee]);
+    expect(await chargeSolanaUnsponsored.broadcaster(presented)).toBe("payee");
+    expect(await chargeSolanaUnsponsored.broadcaster({ ...presented, payload: { type: "signature", signature: "5".repeat(88) } })).toBe("payer");
+    const u = await chargeSolanaUnsponsored.build({ challenge: U.placed, payer: V.fixed.payer }, H);
+    if ("refused" in u) throw new Error(u.code);
+    expect(getCompiledTransactionMessageDecoder().decode(u.request.message).staticAccounts[0]).toBe(V.fixed.payer);
   });
 
   it("unplaced gives the challenge as issued: its request without externalId", async () => {
@@ -203,13 +223,13 @@ describe("mpp-charge-solana.json", () => {
   });
 
   // The published profile's clause 6 states what a record of this pairing proves: the one memo bound is the LCP-form
-  // one among the transaction's Memo instructions (clause 3), so the record says so.
+  // one among the transaction's Memo instructions (clause 3), so the record says so, and what it paid.
   it("the record's proves is the profile's clause 6: one LCP-form Memo instruction", () => {
     const profile = readFileSync(new URL("../profiles/mpp-charge-solana.md", import.meta.url), "utf8");
     const clause = /^6\. What a record of this pairing proves: (.+)$/m.exec(profile)?.[1];
     if (clause === undefined) throw new Error("the profile has no clause 6");
     expect(chargeSolana.data.proves).toBe(clause[0]!.toUpperCase() + clause.slice(1));
-    expect(chargeSolana.data.proves).toContain("whose one LCP-form Memo instruction carries this ATR's hash");
+    expect(chargeSolana.data.proves).toContain("whose one LCP-form Memo instruction is the hash's LCP string");
   });
 
   it("push: fetchPresented reads the landed wire, then bound and reference; recover", async () => {
@@ -224,6 +244,7 @@ describe("mpp-charge-solana.json", () => {
       transaction: async (sig) => (sig === V.push.txid ? landed : { notFound: true as const, slot: null }),
       signatures: async () => [],
       blockhashValid: async () => ({ valid: true, slot: 0n }),
+      slot: async () => 0n,
       firstAvailableBlock: async () => 0n,
       account: async () => {
         throw new Error("this reference names no nonce account");
@@ -250,6 +271,12 @@ describe("mpp-charge-solana.json", () => {
     const short = { ...landed, wire: landed.wire.subarray(0, landed.wire.length - 1) };
     expect(await chargeSolana.recover(named, answering(short))).toEqual(refused("svm/unreadable"));
     expect(await chargeSolana.recover(named, reader)).toBe(V.recover.expect);
+    // recover reads the carrier at `finalized`: a transaction found at `confirmed` alone is a read to repeat.
+    const confirmedOnly: SvmReader = {
+      ...reader,
+      transaction: async (sig, commitment) => (sig === V.push.txid && commitment === "confirmed" ? landed : { notFound: true as const, slot: null }),
+    };
+    expect(await chargeSolana.recover(named, confirmedOnly)).toEqual(refused("svm/not-final"));
   });
 
   // The landed wire is read only from the member FETCHED keys, which fetchPresented writes and no wire form carries: a
@@ -290,6 +317,7 @@ describe("mpp-charge-solana.json", () => {
       transaction: async (sig) => (sig === V.push.txid ? landed : { notFound: true as const, slot: null }),
       signatures: async () => [],
       blockhashValid: async () => ({ valid: true, slot: 0n }),
+      slot: async () => 0n,
       firstAvailableBlock: async () => 0n,
       account: async () => {
         throw new Error("a push credential's read makes no account read");
@@ -629,6 +657,7 @@ describe("mpp-charge-solana.json agreedRefusals: every row runs", () => {
     transaction: answer,
     signatures: async () => [],
     blockhashValid: async () => ({ valid: true, slot: 0n }),
+    slot: async () => 0n,
     firstAvailableBlock: async () => 0n,
     account: async () => {
       throw new Error("a push credential's read makes no account read");

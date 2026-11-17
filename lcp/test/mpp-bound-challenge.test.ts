@@ -22,7 +22,7 @@ const FILES = rowsOf(
   readdirSync(DIR).filter((n) => n.startsWith("mpp-")),
   "the MPP vector files",
   {
-    exact: 22,
+    exact: 24,
     keep: ["the files of the MPP pairings", (n) => !OF_THE_CHECKS.includes(n)],
     leave: [
       "mpp-server-checks.json and mpp-x402-mapping.json, whose credentials are changed for the check or the mapping each row names",
@@ -41,7 +41,7 @@ type Pairing = {
 const MPP = rowsOf(
   BINDINGS.filter((b) => b.id.startsWith("mpp/")) as unknown as Pairing[],
   "BINDINGS, the MPP pairings",
-  { exact: 21 },
+  { exact: 25 },
 );
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -66,7 +66,7 @@ function credentials(v: unknown, at: string, out: [string, MppCredential][]): [s
 const CREDENTIALS = rowsOf(
   FILES.flatMap((f) => credentials(vector(f), "", []).map(([at, c]) => ({ file: f, at, credential: c }))),
   "every credential the MPP vector files hold",
-  { exact: 15 },
+  { exact: 19 },
 );
 
 const decoded = (c: MppChallenge): Record<string, Json> => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
@@ -182,6 +182,7 @@ const NO_SIGNED_PLACE = [
   "mpp/subscription/stripe",
   "mpp/charge/evm/transaction",
   "mpp/charge/evm/hash",
+  "mpp/session/solana/stock",
   "mpp/session/hedera/stock",
 ];
 const BINDING = MPP.map((b) => b.id).filter((id) => !NO_SIGNED_PLACE.includes(id));
@@ -193,6 +194,9 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
     "mpp/carrier-not-challenge": "the request's externalId holds the H the challenge's id derives from",
   },
   "mpp/charge/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
+  "mpp/charge/solana/unsponsored": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
+  "mpp/subscription/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
+  "mpp/session/solana/memo": { "svm/open-not-operator": "the open's fee payer and rent payer are the request's operator" },
   "mpp/charge/usdc/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/usdc/evm": { "mpp/nonce-not-usdc-derivation": "the signed nonce derives from the challenge's id, realm and request" },
   "mpp/charge/usdc/gateway": { "mpp/salt-not-usdc-derivation": "the burn intent's salt derives from the challenge's id, realm and request" },
@@ -251,7 +255,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("each credential is bound by one pairing, each pairing that binds binds one, and each change is presented to it", () => {
     expect(PRESENTED.map((p) => p.pairing.id).sort()).toEqual([...BINDING].sort());
-    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 2794 });
+    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 3816 });
   });
 
   it("pairingsOfPlaced names the pairing exactly where pairingsOf names it, with the Lightning invoice written", () => {
@@ -269,7 +273,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge pairingsOfPlaced does not name, bound and reference refuse with the code pairingsOf gives", () => {
     const refused = rowsOf(answers, "every answer", {
-      exact: 1236,
+      exact: 1643,
       keep: ["the challenges pairingsOfPlaced does not name for the pairing", (a) => !a.named],
       leave: ["the challenges it names", (a) => a.named],
     });
@@ -285,7 +289,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge it names, bound gives H again or a refusal naming what it compares, and reference reads", () => {
     const named = rowsOf(answers, "every answer", {
-      exact: 1558,
+      exact: 2173,
       keep: ["the challenges pairingsOfPlaced names for the pairing", (a) => a.named],
       leave: ["the challenges it does not name", (a) => !a.named],
     });
@@ -307,7 +311,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([1354, 204]);
+    expect([bindings, named.length - bindings]).toEqual([1912, 261]);
     const listed = Object.entries(COMPARES).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);
@@ -341,7 +345,7 @@ const ROWS = rowsOf(
     return rowsOf(v.boundChallenge.rows, `${f} boundChallenge.rows`).map((row, i) => ({ file: f, i, row, credential: at(v, row.credential) as MppCredential }));
   }),
   "every MPP vector file's boundChallenge rows",
-  { exact: 30 },
+  { exact: 35 },
 );
 
 describe("the MPP vector files' boundChallenge rows", () => {
@@ -383,6 +387,6 @@ describe("a placed challenge whose opaque does not read", () => {
         presented++;
       }
     }
-    expect(presented).toBe(15);
+    expect(presented).toBe(18);
   });
 });
