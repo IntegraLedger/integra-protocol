@@ -225,7 +225,11 @@ Each member, one entry per network unless it says otherwise:
   names one of the key's addresses.
 - **`cardano`**: `network`; `signer`, the chain-query object `@x402/cardano`'s class takes over the seller's provider (a
   provider's project id is its configuration, not a key); `reader`, lcp's `CardanoReader` over the seller's indexer. The
-  class broadcasts the transaction the buyer signed, whose fee the buyer pays. Its guard against broadcasting one
+  class broadcasts the transaction the buyer signed, whose fee the buyer pays. The class reads a transaction's confirmations from Blockfrost
+  alone: over Koios alone it sees none, so an option it settles there states `extra.confirmationPolicy` as
+  `{ "l1Confirmations": 0 }`, and an option that states none, whose default asks one confirmation, is refused at `/verify`
+  (`@x402/cardano` 2.31.0, `dist/esm/index.mjs:483-492`, `dist/esm/chunk-C7JT2R6E.mjs:38`, `:116-117`). A provider with a
+  Blockfrost project serves an option that asks confirmations. Its guard against broadcasting one
   transaction twice is kept in the settler's database, so a repeat after a restart resumes observing what was
   broadcast.
 - **`casper`**: `network`, `casper:casper-test` (the settler does not start on `casper:casper`: see *What it does not
